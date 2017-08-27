@@ -57,8 +57,8 @@ class Register(object):
     """ IngeniaLink node register.
 
         Notes:
-            The supported data types are INTX/UINTX (X = 8, 16, 32, 64), all
-            defined in the ``ingenialink`` package.
+            The supported data types are SX/UX (X = 8, 16, 32, 64), all defined
+            in the ``ingenialink`` package.
 
         Args:
             idx (int): Reigtser index.
