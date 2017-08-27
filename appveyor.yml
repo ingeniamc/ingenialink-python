@@ -1,0 +1,22 @@
+matrix:
+  - PYTHON: C:\Python34\python.exe
+    platform: Any CPU
+  - PYTHON: C:\Python34-x64\python.exe
+    platform: x64
+  - PYTHON: C:\Python35\python.exe
+    platform: Any CPU
+  - PYTHON: C:\Python35-x64\python.exe
+    platform: x64
+  - PYTHON: C:\Python36\python.exe
+    platform: Any CPU
+  - PYTHON: C:\Python36-x64\python.exe
+    platform: x64
+
+cache:
+  - '%localappdata%\pip\cache -> setup.py'
+
+install:
+  - cmd: %PYTHON% -m pip install --upgrade pip setuptools
+
+build_script:
+  - cmd: %PYTHON% setup.py build bdist_wheel
