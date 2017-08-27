@@ -1,5 +1,5 @@
 Building from source
---------------------
+====================
 
 In case you need to run the package on a system for which no binary wheels are
 provided, you will need to build the package from source. In order to do so, the
