@@ -7,6 +7,7 @@ setup(name='ingenialink',
       version='0.9.9',
       packages=['ingenialink'],
       description='IngeniaLink Communications Library',
+      long_description=open('README.rst').read()
       author='Ingenia Motion Control',
       author_email='support@ingeniamc.com',
       url='https://www.ingeniamc.com',
