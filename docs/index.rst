@@ -76,7 +76,11 @@ Device listing and monitoring
 
     mon = il.NetworkMonitor(on_event)
 
-API documentation
------------------
+Further reading
+---------------
 
-You can also read the :doc:`api` for further reference.
+.. toctree::
+    :maxdepth: 2
+
+    api
+    building
