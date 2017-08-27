@@ -1,8 +1,8 @@
 environment:
   pypi_user:
-    KKXTfybdjSOuJyfkKtQYVg==
+    secure: KKXTfybdjSOuJyfkKtQYVg==
   pypi_pass:
-    tCVOa2L8AcyKdru04tVTCw==
+    secure: tCVOa2L8AcyKdru04tVTCw==
   matrix:
     - PYTHON: C:\Python35\python.exe
       platform: Any CPU
