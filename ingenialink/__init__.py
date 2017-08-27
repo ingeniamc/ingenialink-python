@@ -6,7 +6,7 @@ from ._utils import _cstr, _pstr
 from .exceptions import _raise
 
 
-__version__ = '0.9.9'
+__version__ = '0.9.10'
 
 
 U8 = 1

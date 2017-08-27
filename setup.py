@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
+import re
 from setuptools import setup
 
+_version = re.search(r'__version__\s+=\s+\'(.*)\'',
+                     open('ingenialink/__init__.py').read()).group(1)
 
 setup(name='ingenialink',
-      version='0.9.9',
+      version=_version,
       packages=['ingenialink'],
       description='IngeniaLink Communications Library',
       long_description=open('README.rst').read(),
