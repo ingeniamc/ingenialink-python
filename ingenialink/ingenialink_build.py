@@ -124,8 +124,8 @@ ffibuilder.cdef(
 
 ffibuilder.set_source('ingenialink._ingenialink',
                       r'#include <ingenialink/ingenialink.h>',
-                      include_dirs=['_install/include'],
-                      library_dirs=['_install/lib'],
+                      include_dirs=[_INC_DIR],
+                      library_dirs=[_LIB_DIR],
                       libraries=_get_libs())
 
 
