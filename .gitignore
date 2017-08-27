@@ -1,0 +1,19 @@
+# editors
+**/*.swp
+
+# python files
+**/*.pyc
+**/__pycache__
+build/
+dist/
+*.egg-info
+
+# temp files
+_deps
+_install
+_build
+*.c
+*.o
+*.pyd
+*.so
+*.dylib
