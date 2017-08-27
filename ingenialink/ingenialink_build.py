@@ -6,9 +6,6 @@ from subprocess import check_call
 from cffi import FFI
 
 
-__version__ = '0.9.9'
-
-
 _SRC_DIR = '_deps'
 _BUILD_DIR = '_build'
 _INSTALL_DIR = '_install'
@@ -24,6 +21,13 @@ _IL_URL = 'https://github.com/ingeniamc/ingenialink'
 _IL_SRC = join(_SRC_DIR, 'ingenialink')
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
 
+if sys.platform == 'win32':
+    _CMAKE_GENERATOR = 'Visual Studio 14 2015'
+    if sys.maxsize > 2**32:
+        _CMAKE_GENERATOR += ' Win64'
+else:
+    _CMAKE_GENERATOR = 'Unix Makefiles'
+
 
 def _build_deps():
     """ Obtain and build dependencies (sercomm and ingenialink). """
@@ -33,6 +37,7 @@ def _build_deps():
         check_call(['git', 'clone', _SER_URL, _SER_SRC])
 
     check_call(['cmake', '-H' + _SER_SRC, '-B' + _SER_BUILD,
+                '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
                 '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
@@ -44,6 +49,7 @@ def _build_deps():
         check_call(['git', 'clone', _IL_URL, _IL_SRC])
 
     check_call(['cmake', '-H' + _IL_SRC, '-B' + _IL_BUILD,
+                '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
                 '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])

@@ -6,6 +6,9 @@ from ._utils import _cstr, _pstr
 from .exceptions import _raise
 
 
+__version__ = '0.9.9'
+
+
 U8 = 1
 """ int: Unsigned 8-bit integer type. """
 S8 = 2
