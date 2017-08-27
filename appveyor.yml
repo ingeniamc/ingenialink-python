@@ -1,4 +1,8 @@
 environment:
+  pypi_user:
+    KKXTfybdjSOuJyfkKtQYVg==
+  pypi_pass:
+    tCVOa2L8AcyKdru04tVTCw==
   matrix:
     - PYTHON: C:\Python35\python.exe
       platform: Any CPU
@@ -13,7 +17,10 @@ cache:
   - '%localappdata%\pip\cache -> setup.py'
 
 install:
-  - cmd: '%PYTHON% -m pip install --upgrade pip setuptools wheel'
+  - cmd: '%PYTHON% -m pip install --upgrade pip setuptools wheel twine'
 
 build_script:
   - cmd: '%PYTHON% setup.py build bdist_wheel'
+
+deploy_script:
+  - cmd: '%PYTHON% -m twine upload -u %pypi_user% -p %pypi_pass% --skip-existing dist/*'
