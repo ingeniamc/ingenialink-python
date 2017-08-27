@@ -101,9 +101,9 @@ def _get_libs():
     libs = ['ingenialink', 'sercomm']
 
     if sys.platform.startswith('linux'):
-        libs.append('udev')
+        libs.extend('udev')
     elif sys.platform == 'win32':
-        libs.append(['user32', 'setupapi', 'advapi32'])
+        libs.extend(['user32', 'setupapi', 'advapi32'])
 
     return libs
 
