@@ -20,7 +20,7 @@ install:
   - cmd: '%PYTHON% -m pip install --upgrade pip setuptools wheel twine'
 
 build_script:
-  - cmd: '%PYTHON% setup.py build bdist_wheel'
+  - cmd: '%PYTHON% setup.py build sdist bdist_wheel'
 
 deploy_script:
   - cmd: '%PYTHON% -m twine upload -u %pypi_user% -p %pypi_pass% --skip-existing dist/*'
