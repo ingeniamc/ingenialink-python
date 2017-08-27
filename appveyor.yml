@@ -16,7 +16,7 @@ cache:
   - '%localappdata%\pip\cache -> setup.py'
 
 install:
-  - cmd: %PYTHON% -m pip install --upgrade pip setuptools
+  - cmd: '%PYTHON% -m pip install --upgrade pip setuptools'
 
 build_script:
-  - cmd: %PYTHON% setup.py build bdist_wheel
+  - cmd: '%PYTHON% setup.py build bdist_wheel'
