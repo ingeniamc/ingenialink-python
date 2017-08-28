@@ -9,7 +9,8 @@ environment:
       platform: Any CPU
     - PYTHON: C:\Python34\python.exe
       platform: Any CPU
-      DEPLOY_ONLY: true
+      on:
+        appveyor_repo_tag: true
     - PYTHON: C:\Python34-x64\python.exe
       platform: x64
       DEPLOY_ONLY: true
