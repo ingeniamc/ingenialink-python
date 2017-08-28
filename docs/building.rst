@@ -5,7 +5,7 @@ In case you need to run the package on a system for which no binary wheels are
 provided, you will need to build the package from source. In order to do so, the
 following packages need to be installed on your system:
 
-* C compiler (GCC/Clang/MSVC)
+* C compiler (the one used by your Python version)
 * Git
 * CMake (>= 3.0)
 * Python development package (``python-dev``)
