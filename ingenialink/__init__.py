@@ -89,7 +89,7 @@ def _raise_err(code):
     elif code == lib.IL_EFAULT:
         raise exc.IngeniaLinkFaultError(msg)
     elif code == lib.IL_EDISCONN:
-        raise exc.IngeniaLinkConnectionError(msg)
+        raise exc.IngeniaLinkDisconnectionError(msg)
     else:
         raise exc.IngeniaLinkError(msg)
 
