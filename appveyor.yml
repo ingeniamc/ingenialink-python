@@ -9,8 +9,7 @@ environment:
       platform: Any CPU
     - PYTHON: C:\Python34\python.exe
       platform: Any CPU
-      on:
-        appveyor_repo_tag: true
+      DEPLOY_ONLY: true
     - PYTHON: C:\Python34-x64\python.exe
       platform: x64
       DEPLOY_ONLY: true
@@ -29,7 +28,7 @@ cache:
   - '%localappdata%\pip\cache -> setup.py'
 
 init:
-  - cmd: "if %APPVEYOR_REPO_TAG%==false if %DEPLOY_ONLY%==true exit /b 0"
+  - cmd: "if %APPVEYOR_REPO_TAG%==false if %DEPLOY_ONLY%==true appveyor exit"
 
 install:
   - cmd: '%PYTHON% -m pip install --upgrade pip setuptools wheel twine'
