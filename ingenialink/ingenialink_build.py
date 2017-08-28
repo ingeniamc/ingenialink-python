@@ -22,7 +22,15 @@ _IL_SRC = join(_SRC_DIR, 'ingenialink')
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
 
 if sys.platform == 'win32':
-    _CMAKE_GENERATOR = 'Visual Studio 14 2015'
+    if sys.version_info >= (3, 5):
+        _CMAKE_GENERATOR = 'Visual Studio 14 2015'
+    elif sys.version_info >= (3, 3):
+        _CMAKE_GENERATOR = 'Visual Studio 10 2010'
+    elif sys.version_info >= (2, 7):
+        _CMAKE_GENERATOR = 'Visual Studio 9 2008'
+    else:
+        raise ImportError('Unsupported Python version')
+
     if sys.maxsize > 2**32:
         _CMAKE_GENERATOR += ' Win64'
 else:

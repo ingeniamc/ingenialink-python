@@ -22,7 +22,7 @@ This is a Python binding for the ingenialink_ C library. The binding is built as
 a native Python extension thanks to cffi_ and then exposed through an
 object-oriented API.
 
-Only Python 3.x is currently supported.
+Python versions 2.7, >=3.4 are supported.
 
 .. _ingenialink: https://github.com/ingeniamc/ingenialink
 .. _cffi: https://cffi.readthedocs.io/en/latest/
