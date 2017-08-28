@@ -16,13 +16,20 @@ addons:
 cache: pip
 
 install:
-  - python -m pip install --upgrade pip setuptools wheel twine
+  - python -m pip install --upgrade pip setuptools
 
 script:
-  - python setup.py sdist bdist_wheel
+  - python setup.py build
 
 deploy:
-  - python -m twine upload -u $PYPI_USER -p $PYPI_PASS --skip-existing dist/*
+  - provider: pypi
+    distributions: 'sdist bdist_wheel'
+    user:
+      secure: 'wDa8YPQDwajYMxrF9Z2e0OqrV1JkgwNfciq/pX8gltegJv9nLK8OXiSmS620RoVyAC8b+07OjTa6Zg3deoAcCrLHBPImCohcL8+cgNIB7m/2r+xquJPNX+O1moVzm8naylt8s5uq7WY07GeZ8RhknsGSNZksVA22nJNGteMfQGBEqfDui+YY5RVUYppyUwGROOMdoCN17CAd8nI1pO6lQvzMwaQ3uPE+aVpqp0t9tIC+lTxkZR9rv9h4+0JCNF/CPxObcnZ8aM5d6qBZ3lm1zX8JgbBCtQc7TxvybRhaim3Mkagt9rIrXpra1IfDwvijmD9nrykCVxk2Z1ibRSzq+/xN7UEUNNZP/uSOQpFrySs8Jmb7edRoioFeb6FShyDqppQKSbonXCCd7SSXB6RBpVpm8scg1WLZb0zGYbCuLN+zhEu0y9PUFNJ/++ulmjiWd9ZPiqv8DSos4lOfBS2g680gmjQs0GK8bo/Y5qiebjxiV78q4PG4FME0dtZtUXkQlwj89waho8eTALIyWvcxoX5wEH1/2qAUrlJGjR7joKWCcxaqTH0YkNFfN6OoxkRdZxlHCfzylkctmB9Bfn+e9Bvxh6GjLVOYmlAXuK94rRnVeo6dLmY1J1IuCPYaNzFDuz6JoCe6Oao8trLMS4MVmLgSm4c9pw7lkcACHhGuQ28='
+    password:
+      secure: 'TBwvyv87EJDb/CEnyDqfIJTQU5SK/xzLsesEq5eJB8NqmxZ7aamwwBb4UrsLtQybUWkWTuDRUUfzOhmm9JZLxdhzlQI5zGqHMg/a5NzKKGXuiEz+ow2ZmssQqqoF9ANcZMrnHWBnx6ostDCbkC3gnTSeZY0OoB42wNExLL/O/lIe2mQsHThsbA1pvoXfes2XyhxwG/2w5q1KLvBCyBas4DdKo/UyBxJf7ToWoZhQhiTYyT8lm7Xt329JoUXhzcLC2zsSykFbi/CNC0XsmsuWXWWkIid8y26zylZEPNUwpkf9tSxH0kpVdoOy84PNJZRxw0zUSkpp66xXYAA4RE4mzESWCkDRrTK2huquQowMtO21ImdwprLRjBLfWuJbWAv02GRfbHafFy9SEEySbmSBwKlrI0irMDMwTgUvFTiUN0PJPqyQFyNr6NdMGzTgxd3r+HxHidMJT6Vd6rAEGS7DkBzIns7R0r5XOkJ5jpxINd/f6GdvdnaJqJ1dNF2b/mV576IYEFzESuN08/1+ayt7jtb9SLWvjVgLwIDUl5ngEolyvyiXnoa0L6+p+o8f630NyTEZwkwN5IvPTPQUDIYTjBLiXkoWpaWJnKj24jWO+1fZEx/S9150mwW6wbf3IrAgvDNgCtvYpwG4/CbgvgOVLgtadolFvDBhaIlAInnVxwk='
+    on:
+      branch: master
 
 notifications:
   email: false
