@@ -18,6 +18,10 @@ ingenialink-python
     :target: https://pypi.python.org/pypi/ingenialink
     :alt: PyPI Version
 
+.. image:: https://api.codacy.com/project/badge/Grade/6bccc35bdbdb474c8fefa98f6c4a425e
+    :target: https://www.codacy.com/app/gmarull/ingenialink-python
+    :alt: Code Quality
+
 This is a Python binding for the ingenialink_ C library. The binding is built as
 a native Python extension thanks to cffi_ and then exposed through an
 object-oriented API.
