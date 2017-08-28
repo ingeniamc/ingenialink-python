@@ -58,5 +58,6 @@ Device listing and monitoring
         else:
             print('Removed', dev)
 
-    mon = il.NetworkMonitor(on_event)
+    mon = il.NetworkMonitor()
+    mon.start(on_event)
 

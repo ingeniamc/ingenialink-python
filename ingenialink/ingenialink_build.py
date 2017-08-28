@@ -117,7 +117,7 @@ ffibuilder = FFI()
 ffibuilder.cdef(
     _gen_cffi_header() + '''
     /* callbacks */
-    extern "Python" void _on_found_cb(void *ctx, uint8_t id);
+    extern "Python" void _on_found_cb(void *ctx, uint8_t node_id);
     extern "Python" void _on_evt_cb(void *ctx, il_net_dev_evt_t on_evt,
                                     const char *port);
 ''')

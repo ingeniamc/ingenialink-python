@@ -1,9 +1,6 @@
-import weakref
-
 from ._ingenialink import ffi, lib
 from ._utils import _cstr, _pstr
-
-from .exceptions import _raise
+from . import exceptions as exc
 
 
 __version__ = '0.9.10'
@@ -51,6 +48,50 @@ _write = {U8: lib.il_node_write_u8,
           U64: lib.il_node_write_u64,
           S64: lib.il_node_write_s64}
 """ dict: Function mappings for write operation. """
+
+
+def _raise_null(obj):
+    """ Raise exception if object is ffi.NULL.
+
+        Raises:
+            IngeniaLinkCreationError: If the object is NULL.
+    """
+
+    if obj == ffi.NULL:
+        msg = _pstr(lib.ilerr_last())
+        raise exc.IngeniaLinkCreationError(msg)
+
+
+def _raise_err(code):
+    """ Raise exception if the code is non-zero.
+
+        Raises:
+            IngeniaLinkValueError: if code is lib.IL_EINVAL
+            IngeniaLinkTimeoutError: if code is lib.IL_ETIMEDOUT
+            IngeniaLinkMemoryError: if code is lib.IL_ENOMEM
+            IngeniaLinkFaultError: if code is lib.IL_EFAULT
+            IngeniaLinkDisconnectionError: if code is lib.IL_EDISCONN
+            IngeniaLinkError: if code is lib.IL_EFAULT
+    """
+
+    if code == 0:
+        return
+
+    # obtain message and raise its matching exception
+    msg = _pstr(lib.ilerr_last())
+
+    if code == lib.IL_EINVAL:
+        raise exc.IngeniaLinkValueError(msg)
+    elif code == lib.IL_ETIMEDOUT:
+        raise exc.IngeniaLinkTimeoutError(msg)
+    elif code == lib.IL_ENOMEM:
+        raise exc.IngeniaLinkMemoryError(msg)
+    elif code == lib.IL_EFAULT:
+        raise exc.IngeniaLinkFaultError(msg)
+    elif code == lib.IL_EDISCONN:
+        raise exc.IngeniaLinkConnectionError(msg)
+    else:
+        raise exc.IngeniaLinkError(msg)
 
 
 class Register(object):
@@ -115,11 +156,11 @@ def devices():
 
 
 @ffi.def_extern()
-def _on_found_cb(ctx, id):
+def _on_found_cb(ctx, node_id):
     """ On found callback shim. """
 
     self = ffi.from_handle(ctx)
-    self._on_found(self._context, int(id))
+    self._on_found(self._context, int(node_id))
 
 
 class Network(object):
@@ -135,7 +176,7 @@ class Network(object):
 
     def __init__(self, port, timeout=100):
         self._net = lib.il_net_create(_cstr(port), timeout)
-        _raise(self._net)
+        _raise_null(self._net)
 
     def __del__(self):
         lib.il_net_destroy(self._net)
@@ -182,7 +223,7 @@ class Network(object):
 def _on_evt_cb(ctx, evt, port):
     """ On event callback shim. """
 
-    self = ffi.from_handle(ctx)()
+    self = ffi.from_handle(ctx)
     evt_ = EVT_ADDED if evt == lib.IL_NET_DEV_EVT_ADDED else EVT_REMOVED
 
     self._on_evt(self._context, evt_, _pstr(port))
@@ -191,24 +232,33 @@ def _on_evt_cb(ctx, evt, port):
 class NetworkMonitor(object):
     """ IngeniaLink network monitor.
 
-        Args:
-            on_evt (callback): Callback function.
-            context (object, optional): Callback context.
-
         Raises:
             IngeniaLinkCreationError: If the monitor cannot be created.
     """
 
-    def __init__(self, on_evt, context=None):
+    def __init__(self):
+        self._mon = lib.il_net_dev_mon_create()
+        _raise_null(self._mon)
+
+    def start(self, on_evt, context=None):
+        """ Start the monitor.
+
+            Args:
+                on_evt (callback): Callback function.
+                context (object, optional): Callback context.
+        """
+
         self._on_evt = on_evt
         self._context = context
+        self._handle = ffi.new_handle(self)
 
-        # create a weak ref, so that __del__ works as expected
-        self._handle = ffi.new_handle(weakref.ref(self))
+        r = lib.il_net_dev_mon_start(self._mon, lib._on_evt_cb, self._handle)
+        _raise_err(r)
 
-        self._mon = lib.il_net_dev_mon_create(lib._on_evt_cb,
-                                              self._handle)
-        _raise(self._mon)
+    def stop(self):
+        """ Stop the monitor. """
+
+        lib.il_net_dev_mon_stop(self._mon)
 
     def __del__(self):
         lib.il_net_dev_mon_destroy(self._mon)
@@ -225,12 +275,12 @@ class Node(object):
             IngeniaLinkCreationError: If the node cannot be created.
     """
 
-    def __init__(self, net, id):
+    def __init__(self, net, node_id):
         # keep network reference
         self._net = net
 
-        self._node = lib.il_node_create(self._net._net, id)
-        _raise(self._node)
+        self._node = lib.il_node_create(self._net._net, node_id)
+        _raise_null(self._node)
 
     def __del__(self):
         lib.il_node_destroy(self._node)
@@ -255,7 +305,7 @@ class Node(object):
         v, f = _read[reg.dtype]
 
         r = f(self._node, reg.idx, reg.sidx, v)
-        _raise(r)
+        _raise_err(r)
 
         return v[0]
 
@@ -284,4 +334,4 @@ class Node(object):
         f = _write[reg.dtype]
 
         r = f(self._node, reg.idx, reg.sidx, data)
-        _raise(r)
+        _raise_err(r)
