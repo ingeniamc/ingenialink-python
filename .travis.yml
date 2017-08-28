@@ -22,8 +22,8 @@ script:
   - python setup.py build
 
 deploy:
-  skip_cleanup: true
   - provider: pypi
+    skip_cleanup: true
     distributions: 'sdist bdist_wheel'
     user:
       secure: 'wDa8YPQDwajYMxrF9Z2e0OqrV1JkgwNfciq/pX8gltegJv9nLK8OXiSmS620RoVyAC8b+07OjTa6Zg3deoAcCrLHBPImCohcL8+cgNIB7m/2r+xquJPNX+O1moVzm8naylt8s5uq7WY07GeZ8RhknsGSNZksVA22nJNGteMfQGBEqfDui+YY5RVUYppyUwGROOMdoCN17CAd8nI1pO6lQvzMwaQ3uPE+aVpqp0t9tIC+lTxkZR9rv9h4+0JCNF/CPxObcnZ8aM5d6qBZ3lm1zX8JgbBCtQc7TxvybRhaim3Mkagt9rIrXpra1IfDwvijmD9nrykCVxk2Z1ibRSzq+/xN7UEUNNZP/uSOQpFrySs8Jmb7edRoioFeb6FShyDqppQKSbonXCCd7SSXB6RBpVpm8scg1WLZb0zGYbCuLN+zhEu0y9PUFNJ/++ulmjiWd9ZPiqv8DSos4lOfBS2g680gmjQs0GK8bo/Y5qiebjxiV78q4PG4FME0dtZtUXkQlwj89waho8eTALIyWvcxoX5wEH1/2qAUrlJGjR7joKWCcxaqTH0YkNFfN6OoxkRdZxlHCfzylkctmB9Bfn+e9Bvxh6GjLVOYmlAXuK94rRnVeo6dLmY1J1IuCPYaNzFDuz6JoCe6Oao8trLMS4MVmLgSm4c9pw7lkcACHhGuQ28='
