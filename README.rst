@@ -2,6 +2,10 @@
 ingenialink-python
 ==================
 
+.. image:: https://travis-ci.org/ingeniamc/ingenialink-python.svg?branch=master
+    :target: https://travis-ci.org/ingeniamc/ingenialink-python
+    :alt: Build Status
+
 .. image:: https://ci.appveyor.com/api/projects/status/evmgqlo3r0i6fr1d?svg=true
     :target: https://ci.appveyor.com/project/gmarull/ingenialink-python
     :alt: Build Status
