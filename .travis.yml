@@ -20,7 +20,7 @@ install:
 
 script:
   - python setup.py build sdist bdist_wheel
-  - auditwheel repair dist/*
+  - auditwheel repair dist/*.whl
 
 deploy:
   - provider: pypi
