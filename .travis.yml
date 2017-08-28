@@ -12,14 +12,16 @@ addons:
   apt:
     packages:
     - libudev-dev
+    - patchelf
 
 cache: pip
 
 install:
-  - python -m pip install --upgrade pip setuptools
+  - python -m pip install --upgrade pip setuptools auditwheel
 
 script:
-  - python setup.py build
+  - python setup.py build sdist bdist_wheel
+  - auditwheel repair dist/*
 
 deploy:
   - provider: pypi
