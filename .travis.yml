@@ -12,7 +12,6 @@ addons:
   apt:
     packages:
     - libudev-dev
-    - patchelf
 
 cache: pip
 
