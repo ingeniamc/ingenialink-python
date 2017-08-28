@@ -1,0 +1,34 @@
+language: python
+
+python:
+  - "3.4"
+  - "3.5"
+  - "3.6"
+
+os:
+  - linux
+  - osx
+
+addons:
+  apt:
+    packages:
+      - libudev-dev
+
+cache: pip
+
+install:
+  - python -m pip install --upgrade pip setuptools
+
+script:
+  - python setup.py build
+
+deploy:
+  - provider: pypi
+    distributions: "sdist bdist_wheel"
+    user:
+      secure: "NofZCvKnXmQri+SycXt2PFW4UUgO/Wp29kjij6cqEIUt9jKWfzDyNoUOJ8P6QEMRH4c3ATXvegK1VGyHvlRE/5L70/IMSvkOa8Oyqk1W1GkT+HFrMwmo1AaFdK+3oJ0is4Ggm96HfZJYquivXFhWZpq2n4UhCWvFtcmEwpHMPaCK29tDxDO9nXDK1psLPNek/Srg+JjTMKRKEF33ghTScLSnqvfsYo6iCyErHZ8MepYUJaVNDoiASARzv57qfyQX665FenrO18FMYGke72CXQ9+zzv+5ZyhhnC+4W2MJQLqBNNl20OR6c4gUIVFHh4jIKULw0ropEV4zLfakgFsYWRnCJiTVMHZI2VJp01oWGulWfIK+B9T3KjwY2qFsjXJbS+aZl9hfThQ+o1yyMyAaidMbcifPDxCR1WSXlttNa1WV02ilk0rzytYPdsh1IEjU9gGfd9ndLe0xfmezDaR63RFokQswqw+g9XroRIvMJDXIAd2sXWXzGgs8exIwNJVd6WWxUmO0rV/yzyhdruHWPqG3RytcEIa+Kp6N6v1EUktly6wov6w45XE7fdouS3UFLfxUmRkpC5peQsXrQdy/YWqPeCIwg7b9UCv6ow66gETff89cd58sBmMWUo6HInMHAjqBlIxFsHAmkg3GQUEl1+4tY+7JHylZSnJNez1bco8="
+    password:
+      secure: "vm2xhWzlXzmX5JRxVpqMCu7+lUhUZOJvWthqrphb9c8nuYh6oh2gfDuG+YcNpoLOiMrZg7NTwWHuQxBUhkPpFXCxB+nrI8/XWNthh3MtZHI9W5nWgXsUgXqAYSJ25PnvGg1r0eFYLJjS+Jnwo5KuNDDgLBHaBQgsoZ1RuEFx800cB8I281c2GF51DxSAveCsdzzkgwpZEE8uKqU6cApqXNRhzHuNAdj+enDnhpIiA7HP0Us1430sQG2u1VrSfYIu0Ylm6ZHhU81MP48OATR4kbCMivwzGtXwUthENuJVXf44pnCcr4rx5u13hepjQURXyaR/wfCtonL3RaoEBVpJjghRmSMUjtoWOjej6M2V04O0YemgdSl9cTNhrSCcRz6WrWEf7W+YVR6+qQtmGFgC2E2v2peNJJvFti05ATki43BFf/Yi0ruFDPuvD255+we9QMBtL4/W0rx68jlmf13BtVF0LwM9mxov0mUduhCwI9dlP9ppkSpAKe8D4PrMNf3uTYuaoMbUcfgWEfZWMuRSsLJWPg+M25/tfiz2U+oyPi18W1oIb1iGoAR5fgHf3uU7t1U+C49rDAZu3zmG43qGqQqBNS6pjJjXLWE9GkkRU5lOwLCHDU3XOKD870pFHOtGe7A4cl3aQkvXeGI4kfOmEj7eQ089n4uo2AqPCpVZ83k="
+
+notifications:
+  email: false
