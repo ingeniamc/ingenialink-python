@@ -16,6 +16,10 @@ addons:
 cache: pip
 
 install:
+  # install patchelf (required by auditwheel, not available on trusty)
+  - wget https://nixos.org/releases/patchelf/patchelf-0.9/patchelf-0.9.tar.gz
+  - tar xf patchelf-0.9.tar.gz
+  - (cd patchelf-0.9 && ./configure && make && sudo make install)
   - python -m pip install --upgrade pip setuptools auditwheel
 
 script:
