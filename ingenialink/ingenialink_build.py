@@ -1,6 +1,7 @@
 import sys
 import re
 from os.path import join, exists
+from distutils.spawn import find_executable
 from subprocess import check_call
 
 from cffi import FFI
@@ -14,10 +15,12 @@ _INC_DIR = join(_INSTALL_DIR, 'include')
 _LIB_DIR = join(_INSTALL_DIR, 'lib')
 
 _SER_URL = 'https://github.com/ingeniamc/sercomm'
+_SER_VER = '1.3.0'
 _SER_SRC = join(_SRC_DIR, 'sercomm')
 _SER_BUILD = join(_BUILD_DIR, 'sercomm')
 
 _IL_URL = 'https://github.com/ingeniamc/ingenialink'
+_IL_VER = '1.0.0'
 _IL_SRC = join(_SRC_DIR, 'ingenialink')
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
 
@@ -40,28 +43,37 @@ else:
 def _build_deps():
     """ Obtain and build dependencies (sercomm and ingenialink). """
 
+    # check for Git & CMake
+    git = find_executable('git')
+    if not git:
+        raise FileNotFoundError('Git is not installed or in PATH')
+
+    cmake = find_executable('cmake')
+    if not cmake:
+        raise FileNotFoundError('CMake is not installed or in PATH')
+
     # clone, build and install (locally) libsercomm
     if not exists(_SER_SRC):
-        check_call(['git', 'clone', _SER_URL, _SER_SRC])
+        check_call([git, 'clone', '-b', _SER_VER, _SER_URL, _SER_SRC])
 
-    check_call(['cmake', '-H' + _SER_SRC, '-B' + _SER_BUILD,
+    check_call([cmake, '-H' + _SER_SRC, '-B' + _SER_BUILD,
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
                 '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
-    check_call(['cmake', '--build', _SER_BUILD, '--config', 'Release',
+    check_call([cmake, '--build', _SER_BUILD, '--config', 'Release',
                 '--target', 'install'])
 
     # clone, build and install (locally) libingenialink
     if not exists(_IL_SRC):
-        check_call(['git', 'clone', _IL_URL, _IL_SRC])
+        check_call([git, 'clone', '-b', _IL_VER, _IL_URL, _IL_SRC])
 
-    check_call(['cmake', '-H' + _IL_SRC, '-B' + _IL_BUILD,
+    check_call([cmake, '-H' + _IL_SRC, '-B' + _IL_BUILD,
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
                 '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
-    check_call(['cmake', '--build', _IL_BUILD, '--config', 'Release',
+    check_call([cmake, '--build', _IL_BUILD, '--config', 'Release',
                 '--target', 'install'])
 
 

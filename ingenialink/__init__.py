@@ -10,7 +10,6 @@ U8 = 1
 """ int: Unsigned 8-bit integer type. """
 S8 = 2
 """ int: Signed 8-bit integer type. """
-""" int: """
 U16 = 3
 """ int: Unsigned 16-bit integer type. """
 S16 = 4
