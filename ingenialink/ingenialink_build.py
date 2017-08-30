@@ -20,7 +20,7 @@ _SER_SRC = join(_SRC_DIR, 'sercomm')
 _SER_BUILD = join(_BUILD_DIR, 'sercomm')
 
 _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-_IL_VER = '1.0.0'
+_IL_VER = '1.1.0'
 _IL_SRC = join(_SRC_DIR, 'ingenialink')
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
 
