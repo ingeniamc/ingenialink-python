@@ -159,7 +159,7 @@ def _on_found_cb(ctx, node_id):
     """ On found callback shim. """
 
     self = ffi.from_handle(ctx)
-    self._on_found(self._context, int(node_id))
+    self._on_found(int(node_id))
 
 
 class Network(object):
@@ -180,12 +180,11 @@ class Network(object):
     def __del__(self):
         lib.il_net_destroy(self._net)
 
-    def nodes(self, on_found=None, context=None):
+    def nodes(self, on_found=None):
         """ Obtain a list of attached nodes.
 
             Args:
                 on_found (callback, optional): Node found callback.
-                context (object, optional): Callback context.
 
             Returns:
                 list: List of attached nodes.
@@ -193,13 +192,11 @@ class Network(object):
 
         if on_found:
             self._on_found = on_found
-            self._context = context
 
             callback = lib._on_found_cb
             handle = ffi.new_handle(self)
         else:
             self._on_found = ffi.NULL
-            self._context = ffi.NULL
 
             callback = ffi.NULL
             handle = ffi.NULL
@@ -225,7 +222,7 @@ def _on_evt_cb(ctx, evt, port):
     self = ffi.from_handle(ctx)
     evt_ = EVT_ADDED if evt == lib.IL_NET_DEV_EVT_ADDED else EVT_REMOVED
 
-    self._on_evt(self._context, evt_, _pstr(port))
+    self._on_evt(evt_, _pstr(port))
 
 
 class NetworkMonitor(object):
@@ -239,16 +236,14 @@ class NetworkMonitor(object):
         self._mon = lib.il_net_dev_mon_create()
         _raise_null(self._mon)
 
-    def start(self, on_evt, context=None):
+    def start(self, on_evt):
         """ Start the monitor.
 
             Args:
                 on_evt (callback): Callback function.
-                context (object, optional): Callback context.
         """
 
         self._on_evt = on_evt
-        self._context = context
         self._handle = ffi.new_handle(self)
 
         r = lib.il_net_dev_mon_start(self._mon, lib._on_evt_cb, self._handle)

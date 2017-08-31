@@ -52,7 +52,7 @@ Device listing and monitoring
 
     import ingenialink as il
 
-    def on_event(context, event, dev):
+    def on_event(event, dev):
         if event == il.ADDED:
             print('Added', dev)
         else:
