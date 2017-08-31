@@ -3,7 +3,7 @@ from ._utils import _cstr, _pstr
 from . import exceptions as exc
 
 
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 
 
 U8 = 1
