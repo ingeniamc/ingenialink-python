@@ -28,14 +28,14 @@ EVT_ADDED = 0
 EVT_REMOVED = 1
 """ int: Device removed event. """
 
-_read = {U8: [ffi.new('uint8_t *'), lib.il_node_read_u8],
-         S8: [ffi.new('int8_t *'), lib.il_node_read_s8],
-         U16: [ffi.new('uint16_t *'), lib.il_node_read_u16],
-         S16: [ffi.new('int16_t *'), lib.il_node_read_s16],
-         U32: [ffi.new('uint32_t *'), lib.il_node_read_u32],
-         S32: [ffi.new('int32_t *'), lib.il_node_read_s32],
-         U64: [ffi.new('uint64_t *'), lib.il_node_read_u64],
-         S64: [ffi.new('int64_t *'), lib.il_node_read_s64]}
+_read = {U8: ['uint8_t *', lib.il_node_read_u8],
+         S8: ['int8_t *', lib.il_node_read_s8],
+         U16: ['uint16_t *', lib.il_node_read_u16],
+         S16: ['int16_t *', lib.il_node_read_s16],
+         U32: ['uint32_t *', lib.il_node_read_u32],
+         S32: ['int32_t *', lib.il_node_read_s32],
+         U64: ['uint64_t *', lib.il_node_read_u64],
+         S64: ['int64_t *', lib.il_node_read_s64]}
 """ dict: Data buffer and function mappings for read operation. """
 
 _write = {U8: lib.il_node_write_u8,
@@ -296,7 +296,8 @@ class Node(object):
             raise TypeError('Invalid register type')
 
         # obtain data pointer and function to call
-        v, f = _read[reg.dtype]
+        t, f = _read[reg.dtype]
+        v = ffi.new(t)
 
         r = f(self._node, reg.idx, reg.sidx, v)
         _raise_err(r)
