@@ -6,8 +6,10 @@ This site covers the ``ingenialink`` package usage & API documentation. The
 binding is built as a native Python extension thanks to cffi_ and it offers the
 same functionality as the C library, which summarizes to:
 
-* Read and write node registers
-* Scan for nodes in the network
+* Basic motion control support
+* Read and write axis registers
+* Register polling
+* Scan for axes in the network
 * Network devices discovery and monitor
 
 .. _ingenialink: https://github.com/ingeniamc/ingenialink

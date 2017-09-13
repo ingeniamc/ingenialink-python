@@ -31,3 +31,13 @@ class IngeniaLinkFaultError(IngeniaLinkError):
 class IngeniaLinkDisconnectionError(IngeniaLinkError):
     """ IngeniaLink disconnection error. """
     pass
+
+
+class IngeniaLinkAccessError(IngeniaLinkError):
+    """ IngeniaLink access error. """
+    pass
+
+
+class IngeniaLinkStateError(IngeniaLinkError):
+    """ IngeniaLink state error. """
+    pass

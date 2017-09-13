@@ -1,52 +1,94 @@
+import warnings
+
 from ._ingenialink import ffi, lib
 from ._utils import _cstr, _pstr
 from . import exceptions as exc
 
 
-__version__ = '1.1.3'
+__version__ = '1.9.0'
 
 
-U8 = 1
+DTYPE_U8 = lib.IL_REG_DTYPE_U8
 """ int: Unsigned 8-bit integer type. """
-S8 = 2
+DTYPE_S8 = lib.IL_REG_DTYPE_S8
 """ int: Signed 8-bit integer type. """
-U16 = 3
+DTYPE_U16 = lib.IL_REG_DTYPE_U16
 """ int: Unsigned 16-bit integer type. """
-S16 = 4
+DTYPE_S16 = lib.IL_REG_DTYPE_S16
 """ int: Signed 16-bit integer type. """
-U32 = 5
+DTYPE_U32 = lib.IL_REG_DTYPE_U32
 """ int: Unsigned 32-bit integer type. """
-S32 = 6
+DTYPE_S32 = lib.IL_REG_DTYPE_S32
 """ int: Signed 32-bit integer type. """
-U64 = 7
+DTYPE_U64 = lib.IL_REG_DTYPE_U64
 """ int: Unsigned 64-bit integer type. """
-S64 = 8
+DTYPE_S64 = lib.IL_REG_DTYPE_S64
 """ int: Signed 64-bit integer type. """
+
+_DTYPE_ALL = (DTYPE_U8, DTYPE_S8, DTYPE_U16, DTYPE_S16, DTYPE_U32, DTYPE_S32,
+              DTYPE_U64, DTYPE_S64)
+""" tuple: All data types. """
+
+ACCESS_RW = lib.IL_REG_ACCESS_RW
+""" int: Read/Write access. """
+ACCESS_RO = lib.IL_REG_ACCESS_RO
+""" int: Read-only access. """
+ACCESS_WO = lib.IL_REG_ACCESS_WO
+""" int: Write-only access. """
+
+_ACCESS_ALL = (ACCESS_RW, ACCESS_RO, ACCESS_WO)
+""" tuple: All access types. """
+
+PHY_NONE = lib.IL_REG_PHY_NONE
+""" int: No phyisical units. """
+PHY_TORQUE = lib.IL_REG_PHY_TORQUE
+""" int: Torque units. """
+PHY_POS = lib.IL_REG_PHY_POS
+""" int: Position units. """
+PHY_VEL = lib.IL_REG_PHY_VEL
+""" int: Velocity units. """
+PHY_ACC = lib.IL_REG_PHY_ACC
+""" int: Acceleration units. """
+
+_PHY_ALL = (PHY_NONE, PHY_TORQUE, PHY_POS, PHY_VEL, PHY_ACC)
+""" tuple: All physical units. """
+
+MODE_PP = lib.IL_AXIS_MODE_PP
+""" int: Profile position mode. """
+MODE_PV = lib.IL_AXIS_MODE_PV
+""" int: Profile velocity mode. """
+MODE_PT = lib.IL_AXIS_MODE_PT
+""" int: Profile torque mode. """
+MODE_HOMING = lib.IL_AXIS_MODE_HOMING
+""" int: Homing mode. """
+
+_MODE_ALL = (MODE_PP, MODE_PV, MODE_PT, MODE_HOMING)
+""" tuple: All operation modes. """
 
 EVT_ADDED = 0
 """ int: Device added event. """
 EVT_REMOVED = 1
 """ int: Device removed event. """
 
-_read = {U8: ['uint8_t *', lib.il_node_read_u8],
-         S8: ['int8_t *', lib.il_node_read_s8],
-         U16: ['uint16_t *', lib.il_node_read_u16],
-         S16: ['int16_t *', lib.il_node_read_s16],
-         U32: ['uint32_t *', lib.il_node_read_u32],
-         S32: ['int32_t *', lib.il_node_read_s32],
-         U64: ['uint64_t *', lib.il_node_read_u64],
-         S64: ['int64_t *', lib.il_node_read_s64]}
-""" dict: Data buffer and function mappings for read operation. """
+_raw_read = {DTYPE_U8: ['uint8_t *', lib.il_axis_raw_read_u8],
+             DTYPE_S8: ['int8_t *', lib.il_axis_raw_read_s8],
+             DTYPE_U16: ['uint16_t *', lib.il_axis_raw_read_u16],
+             DTYPE_S16: ['int16_t *', lib.il_axis_raw_read_s16],
+             DTYPE_U32: ['uint32_t *', lib.il_axis_raw_read_u32],
+             DTYPE_S32: ['int32_t *', lib.il_axis_raw_read_s32],
+             DTYPE_U64: ['uint64_t *', lib.il_axis_raw_read_u64],
+             DTYPE_S64: ['int64_t *', lib.il_axis_raw_read_s64]}
+""" dict: Data buffer and function mappings for raw read operation. """
 
-_write = {U8: lib.il_node_write_u8,
-          S8: lib.il_node_write_s8,
-          U16: lib.il_node_write_u16,
-          S16: lib.il_node_write_s16,
-          U32: lib.il_node_write_u32,
-          S32: lib.il_node_write_s32,
-          U64: lib.il_node_write_u64,
-          S64: lib.il_node_write_s64}
-""" dict: Function mappings for write operation. """
+_raw_write = {DTYPE_U8: lib.il_axis_raw_write_u8,
+              DTYPE_S8: lib.il_axis_raw_write_s8,
+              DTYPE_U16: lib.il_axis_raw_write_u16,
+              DTYPE_S16: lib.il_axis_raw_write_s16,
+              DTYPE_U32: lib.il_axis_raw_write_u32,
+              DTYPE_S32: lib.il_axis_raw_write_s32,
+              DTYPE_U64: lib.il_axis_raw_write_u64,
+              DTYPE_S64: lib.il_axis_raw_write_s64}
+""" dict: Function mappings for raw write operation. """
 
 
 def _raise_null(obj):
@@ -89,6 +131,10 @@ def _raise_err(code):
         raise exc.IngeniaLinkFaultError(msg)
     elif code == lib.IL_EDISCONN:
         raise exc.IngeniaLinkDisconnectionError(msg)
+    elif code == lib.IL_EACCESS:
+        raise exc.IngeniaLinkAccessError(msg)
+    elif code == lib.IL_ESTATE:
+        raise exc.IngeniaLinkStateError(msg)
     else:
         raise exc.IngeniaLinkError(msg)
 
@@ -96,41 +142,58 @@ def _raise_err(code):
 class Register(object):
     """ IngeniaLink node register.
 
-        Notes:
-            The supported data types are SX/UX (X = 8, 16, 32, 64), all defined
-            in the ``ingenialink`` package.
-
         Args:
             idx (int): Reigtser index.
             sidx (int): Register subindex.
             dtype (int): Register data type.
+            access (int, optional): Register access type.
+            phy (int, optional): Register physical units.
 
         Raises:
             ValueError: If the data type is unsupported.
     """
 
-    def __init__(self, idx, sidx, dtype):
-        if dtype not in (U8, S8, U16, S16, U32, S32, U64, S64):
+    def __init__(self, idx, sidx, dtype, access=ACCESS_RW, phy=PHY_NONE):
+        if dtype not in _DTYPE_ALL:
             raise ValueError('Unsupported register data type')
 
-        self._idx = idx
-        self._sidx = sidx
-        self._dtype = dtype
+        if access not in _ACCESS_ALL:
+            raise ValueError('Unsupported access type')
+
+        if phy not in _PHY_ALL:
+            raise ValueError('Unsupported phyisical units type')
+
+        self._reg = ffi.new('il_reg_t *',
+                            {'idx': idx,
+                             'sidx': sidx,
+                             'dtype': dtype,
+                             'access': access,
+                             'phy': phy})
 
     @property
     def idx(self):
         """ int: Register index. """
-        return self._idx
+        return self._reg.idx
 
     @property
     def sidx(self):
         """ int: Register subindex. """
-        return self._sidx
+        return self._reg.sidx
 
     @property
     def dtype(self):
         """ int: Register data type. """
-        return self._dtype
+        return self._reg.dtype
+
+    @property
+    def access(self):
+        """ int: Register access type. """
+        return self._reg.access
+
+    @property
+    def phy(self):
+        """ int: Register physical units. """
+        return self._reg.phy
 
 
 def devices():
@@ -155,11 +218,11 @@ def devices():
 
 
 @ffi.def_extern()
-def _on_found_cb(ctx, node_id):
+def _on_found_cb(ctx, axis_id):
     """ On found callback shim. """
 
     self = ffi.from_handle(ctx)
-    self._on_found(int(node_id))
+    self._on_found(int(axis_id))
 
 
 class Network(object):
@@ -167,27 +230,29 @@ class Network(object):
 
         Args:
             port (str): Network device port (e.g. COM1, /dev/ttyACM0, etc.).
-            timeout (int, optional): Communications timeout (ms).
 
         Raises:
             IngeniaLinkCreationError: If the network cannot be created.
     """
 
+    _net = None
+
     def __init__(self, port, timeout=100):
-        self._net = lib.il_net_create(_cstr(port), timeout)
+        self._net = lib.il_net_create(_cstr(port))
         _raise_null(self._net)
 
     def __del__(self):
-        lib.il_net_destroy(self._net)
+        if self._net:
+            lib.il_net_destroy(self._net)
 
-    def nodes(self, on_found=None):
-        """ Obtain a list of attached nodes.
+    def axes(self, on_found=None):
+        """ Obtain a list of attached axes.
 
             Args:
-                on_found (callback, optional): Node found callback.
+                on_found (callback, optional): Axis found callback.
 
             Returns:
-                list: List of attached nodes.
+                list: List of attached axes.
         """
 
         if on_found:
@@ -201,16 +266,16 @@ class Network(object):
             callback = ffi.NULL
             handle = ffi.NULL
 
-        nodes = lib.il_net_nodes_list_get(self._net, callback, handle)
+        axes = lib.il_net_axes_list_get(self._net, callback, handle)
 
         found = []
-        curr = nodes
+        curr = axes
 
         while curr:
             found.append(int(curr.id))
             curr = curr.next
 
-        lib.il_net_nodes_list_destroy(nodes)
+        lib.il_net_axes_list_destroy(axes)
 
         return found
 
@@ -258,29 +323,33 @@ class NetworkMonitor(object):
         lib.il_net_dev_mon_destroy(self._mon)
 
 
-class Node(object):
-    """ IngeniaLink network node.
+class Axis(object):
+    """ IngeniaLink network axis.
 
         Args:
             net (Network): Network instance.
-            id (int): Node id.
+            id (int): Axis id.
+            timeout (int, optional): Communications timeout (ms).
 
         Raises:
-            IngeniaLinkCreationError: If the node cannot be created.
+            IngeniaLinkCreationError: If the axis cannot be created.
     """
 
-    def __init__(self, net, node_id):
+    _axis = None
+
+    def __init__(self, net, axis_id, timeout=1000):
         # keep network reference
         self._net = net
 
-        self._node = lib.il_node_create(self._net._net, node_id)
-        _raise_null(self._node)
+        self._axis = lib.il_axis_create(self._net._net, axis_id, timeout)
+        _raise_null(self._axis)
 
     def __del__(self):
-        lib.il_node_destroy(self._node)
+        if self._axis:
+            lib.il_axis_destroy(self._axis)
 
-    def read(self, reg):
-        """ Read from node.
+    def raw_read(self, reg):
+        """ Raw read from axis.
 
             Args:
                 reg (Register): Register.
@@ -296,16 +365,38 @@ class Node(object):
             raise TypeError('Invalid register type')
 
         # obtain data pointer and function to call
-        t, f = _read[reg.dtype]
+        t, f = _raw_read[reg.dtype]
         v = ffi.new(t)
 
-        r = f(self._node, reg.idx, reg.sidx, v)
+        r = f(self._axis, reg._reg, v)
         _raise_err(r)
 
         return v[0]
 
-    def write(self, reg, data):
-        """ Write to node.
+    def read(self, reg):
+        """ Read from axis.
+
+            Args:
+                reg (Register): Register.
+
+            Returns:
+                float: Otained value
+
+            Raises:
+                TypeError: If the register type is not valid.
+        """
+
+        if not isinstance(reg, Register):
+            raise TypeError('Invalid register type')
+
+        v = ffi.new('double *')
+        r = lib.il_axis_read(self._axis, reg._reg, v)
+        _raise_err(r)
+
+        return v[0]
+
+    def raw_write(self, reg, data):
+        """ Raw write to axis.
 
             Args:
                 reg (Register): Register.
@@ -326,7 +417,229 @@ class Node(object):
             raise TypeError('Unsupported data type')
 
         # obtain function to call
-        f = _write[reg.dtype]
+        f = _raw_write[reg.dtype]
 
-        r = f(self._node, reg.idx, reg.sidx, data)
+        r = f(self._axis, reg._reg, data)
         _raise_err(r)
+
+    def write(self, reg, data):
+        """ Write to axis.
+
+            Args:
+                reg (Register): Register.
+                data (int): Data.
+
+            Raises:
+                TypeError: If any of the arguments type is not valid or
+                    unsupported.
+        """
+
+        if not isinstance(reg, Register):
+            raise TypeError('Invalid register type')
+
+        if not isinstance(data, (int, float)):
+            raise TypeError('Unsupported data type')
+
+        r = lib.il_axis_write(self._axis, reg._reg, data)
+        _raise_err(r)
+
+    def enable(self):
+        """ Enable PDS. """
+
+        r = lib.il_axis_enable(self._axis)
+        _raise_err(r)
+
+    def disable(self):
+        """ Disable PDS. """
+
+        r = lib.il_axis_disable(self._axis)
+        _raise_err(r)
+
+    def fault_reset(self):
+        """ Fault reset. """
+
+        r = lib.il_axis_fault_reset(self._axis)
+        _raise_err(r)
+
+    @property
+    def mode(self):
+        """ int: Operation mode. """
+        pass
+
+    @mode.setter
+    def mode(self, mode):
+        if mode not in _MODE_ALL:
+            raise ValueError('Unsupported mode')
+
+        r = lib.il_axis_mode_set(self._axis, mode)
+        _raise_err(r)
+
+    def homing_start(self):
+        """ Start the homing procedure. """
+
+        r = lib.il_axis_homing_start(self._axis)
+        _raise_err(r)
+
+    def homing_wait(self, timeout):
+        """ Wait until homing completes.
+
+            Notes:
+                The homing itself has a configurable timeout. The timeout given
+                here is purely a 'communications' timeout, e.g. it could happen
+                that the statusword change is never received. This timeout
+                should be >= than the programmed homing timeout.
+
+            Args:
+                timeout (int): Timeout (ms).
+        """
+
+        r = lib.il_axis_homing_wait(self._axis, timeout)
+        _raise_err(r)
+
+    @property
+    def torque(self):
+        """ float: Actual torque. """
+
+        torque = ffi.new('double *')
+        r = lib.il_axis_torque_get(self._axis, torque)
+        _raise_err(r)
+
+        return torque[0]
+
+    @torque.setter
+    def torque(self, torque):
+        """ Set the target torque. """
+
+        r = lib.il_axis_torque_set(self._axis, torque)
+        _raise_err(r)
+
+    @property
+    def position(self):
+        """ float: Actual position. """
+
+        position = ffi.new('double *')
+        r = lib.il_axis_position_get(self._axis, position)
+        _raise_err(r)
+
+        return position[0]
+
+    @position.setter
+    def position(self, pos):
+        """ Set the target position.
+
+            Notes:
+                Position can be either a single position, or a tuple/list
+                containing in the first position the position, and in the
+                second a dictionary with the following options:
+
+                    - immediate (bool): If True, the axis will go to the
+                      position immediately, otherwise it will push the position
+                      to the buffer. Defaults to True.
+                    - relative (bool): If True, the position will be taken as
+                      relative, otherwise it will be taken as absolute.
+                      Defaults to False.
+        """
+
+        immediate = 1
+        relative = 0
+
+        if isinstance(pos, (tuple, list)):
+            if len(pos) != 2 or not isinstance(pos[1], dict):
+                raise TypeError('Unexpected position')
+
+            if 'immediate' in pos[1]:
+                immediate = int(pos[1]['immediate'])
+
+            if 'relative' in pos[1]:
+                relative = int(pos[1]['relative'])
+
+            pos = pos[0]
+
+        r = lib.il_axis_position_set(self._axis, pos, immediate, relative)
+        _raise_err(r)
+
+    @property
+    def velocity(self):
+        """ float: Actual velocity. """
+
+        velocity = ffi.new('double *')
+        r = lib.il_axis_velocity_get(self._axis, velocity)
+        _raise_err(r)
+
+        return velocity[0]
+
+    @velocity.setter
+    def velocity(self, velocity):
+        """ Set the target velocity. """
+
+        r = lib.il_axis_velocity_set(self._axis, velocity)
+        _raise_err(r)
+
+    def wait_reached(self, timeout):
+        """ Wait until the axis does a target reach.
+
+            Args:
+                timeout (float): Timeout (ms).
+        """
+
+        r = lib.il_axis_wait_reached(self._axis, timeout)
+        _raise_err(r)
+
+
+class Poller(object):
+    """ Register poller.
+
+        Args:
+            axis (Axis): Axis.
+            reg (Register): Register to be polled.
+            period (int): Polling period (ms).
+            sz (int): Buffer size.
+
+        Raises:
+            IngeniaLinkCreationError: If the poller cannot be created.
+    """
+
+    _poller = None
+
+    def __init__(self, axis, reg, period, sz):
+        self._axis = axis
+
+        self._poller = lib.il_poller_create(axis._axis, reg._reg, period, sz)
+        _raise_null(self._poller)
+
+        self._t = ffi.new('double **')
+        self._d = ffi.new('double **')
+        self._cnt = ffi.new('size_t *')
+        self._lost = ffi.new('int *')
+
+    def __del__(self):
+        if self._poller:
+            lib.il_poller_destroy(self._poller)
+
+    def start(self):
+        """ Start poller. """
+
+        r = lib.il_poller_start(self._poller)
+        _raise_err(r)
+
+    def stop(self):
+        """ Stop poller. """
+
+        lib.il_poller_stop(self._poller)
+
+    @property
+    def data(self):
+        """ tuple (list, list): Current time and data vectors. """
+
+        r = lib.il_poller_data_get(self._poller, self._t, self._d, self._cnt,
+                                   self._lost)
+        _raise_err(r)
+
+        if self._lost[0]:
+            warnings.warn('Data was lost (increase buffer or empty faster)')
+
+        t = ffi.cast('double *', self._t[0])
+        d = ffi.cast('double *', self._d[0])
+        cnt = self._cnt[0]
+
+        return list(t[0:cnt]), list(d[0:cnt])

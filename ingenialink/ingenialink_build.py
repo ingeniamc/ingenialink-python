@@ -20,7 +20,7 @@ _SER_SRC = join(_SRC_DIR, 'sercomm')
 _SER_BUILD = join(_BUILD_DIR, 'sercomm')
 
 _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-_IL_VER = '1.1.1'
+_IL_VER = '2.0.0-alpha1'
 _IL_SRC = join(_SRC_DIR, 'ingenialink')
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
 
@@ -98,8 +98,10 @@ def _gen_cffi_header():
               '.+foreach.+\n.*']
 
     headers = [join(_INC_DIR, 'ingenialink', 'err.h'),
+               join(_INC_DIR, 'ingenialink', 'registers.h'),
                join(_INC_DIR, 'ingenialink', 'net.h'),
-               join(_INC_DIR, 'ingenialink', 'node.h'),
+               join(_INC_DIR, 'ingenialink', 'axis.h'),
+               join(_INC_DIR, 'ingenialink', 'poller.h'),
                join(_INC_DIR, 'ingenialink', 'version.h')]
 
     h_stripped = ''
@@ -121,11 +123,26 @@ def _get_libs():
     libs = ['ingenialink', 'sercomm']
 
     if sys.platform.startswith('linux'):
-        libs.extend(['udev'])
+        libs.extend(['udev', 'rt', 'pthread'])
+    elif sys.platform == 'darwin':
+        libs.extend(['pthread'])
     elif sys.platform == 'win32':
         libs.extend(['user32', 'setupapi', 'advapi32'])
 
     return libs
+
+
+def _get_link_args():
+    """ Ontain the list of extra linker arguments based on platform.
+
+        Returns:
+            list: List of extra linker arguments.
+    """
+
+    if sys.platform == 'darwin':
+        return ['-framework', 'IOKit', '-framework', 'Foundation']
+
+    return []
 
 
 # build dependencies first
@@ -146,7 +163,8 @@ ffibuilder.set_source('ingenialink._ingenialink',
                       r'#include <ingenialink/ingenialink.h>',
                       include_dirs=[_INC_DIR],
                       library_dirs=[_LIB_DIR],
-                      libraries=_get_libs())
+                      libraries=_get_libs(),
+                      extra_link_args=_get_link_args())
 
 
 if __name__ == '__main__':

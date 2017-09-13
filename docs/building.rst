@@ -11,8 +11,9 @@ following packages need to be installed on your system:
 * Python development package (``python-dev``)
 * ``udev`` development package (``libudev-dev``) on Linux
 
-Then, simply use the ``setup.py`` as usual:
-
-::
+Then, simply use the ``setup.py`` as usual::
 
         python setup.py install
+
+If you run into problems related with CFFI, please, read the official
+`installation guide <http://cffi.readthedocs.io/en/latest/installation.html>`_.

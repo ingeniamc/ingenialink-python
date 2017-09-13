@@ -11,18 +11,60 @@ Read/Write
 
     import ingenialink as il
 
-    POS_TARGET = il.Register(0x607A, 0x00, il.S32)
-    POS_ACTUAL = il.Register(0x6064, 0x00, il.S32)
+    POS_TARGET = il.Register(0x607A, 0x00, il.DTYPE_S32)
+    POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32)
 
     net = il.Network('/dev/ttyACM0')
-    node = il.Node(net, 0x20)
+    axis = il.Axis(net, 0x20)
 
     ...
-    node.write(POS_TARGET, 1000)
+    axis.write(POS_TARGET, 1000)
     ...
-    print('Actual position:', node.read(POS_ACTUAL))
+    print('Actual position:', axis.read(POS_ACTUAL))
 
-Node listing
+Motion control
+--------------
+
+::
+    import ingenialink as il
+
+    net = il.Network('/dev/ttyACM0')
+    axis = il.Axis(net, 0x20)
+
+
+    axis.disable()
+    axis.mode = il.MODE_PP
+    axis.enable()
+
+    axis.position = 500
+    axis.wait_reached(1000)
+
+Register polling
+----------------
+
+::
+    import ingenialink as il
+
+    POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32)
+
+    net = il.Network('/dev/ttyACM0')
+    axis = il.Axis(net, 0x20)
+
+    poller = il.Poller(axis, POS_ACTUAL, 2, 1000)
+
+    axis.disable()
+    axis.mode = il.MODE_PP
+    axis.enable()
+
+    poller.start()
+    axis.position = 500
+    axis.wait_reached(timeout=1000)
+    poller.stop()
+
+    t, d = poller.data
+    ...
+
+Axis listing
 ------------
 
 ::
@@ -30,11 +72,11 @@ Node listing
     import ingenialink as il
 
     net = il.Network('COM1')
-    nodes = net.nodes()
+    axes = net.axes()
 
-    print('Available nodes:')
-    for node in nodes:
-        print(node)
+    print('Available axes:')
+    for axis in axes:
+        print(axis)
 
 Device listing and monitoring
 -----------------------------
