@@ -66,50 +66,50 @@ _MODE_ALL = (MODE_PP, MODE_PV, MODE_PT, MODE_HOMING)
 """ tuple: All operation modes. """
 
 UNITS_TORQUE_NATIVE = lib.IL_UNITS_TORQUE_NATIVE
-""" int: Torque units: Native """
+""" int: Torque units, Native """
 UNITS_TORQUE_MN = lib.IL_UNITS_TORQUE_MN
-""" int: Torque units: Millinewtons. """
+""" int: Torque units, Millinewtons. """
 UNITS_TORQUE_N = lib.IL_UNITS_TORQUE_N
-""" int: Torque units: Newtons. """
+""" int: Torque units, Newtons. """
 
 _UNITS_TORQUE_ALL = (UNITS_TORQUE_NATIVE, UNITS_TORQUE_MN, UNITS_TORQUE_N)
 """ tuple: All torque units. """
 
 UNITS_POS_NATIVE = lib.IL_UNITS_POS_NATIVE
-""" int: Position units: Native. """
+""" int: Position units, Native. """
 UNITS_POS_REV = lib.IL_UNITS_POS_REV
-""" int: Position units: Revolutions. """
+""" int: Position units, Revolutions. """
 UNITS_POS_RAD = lib.IL_UNITS_POS_RAD
-""" int: Position units: Radians. """
+""" int: Position units, Radians. """
 UNITS_POS_DEG = lib.IL_UNITS_POS_DEG
-""" int: Position units: Degrees. """
+""" int: Position units, Degrees. """
 UNITS_POS_UM = lib.IL_UNITS_POS_UM
-""" int: Position units: Micrometers. """
+""" int: Position units, Micrometers. """
 UNITS_POS_MM = lib.IL_UNITS_POS_MM
-""" int: Position units: Millimeters. """
+""" int: Position units, Millimeters. """
 UNITS_POS_M = lib.IL_UNITS_POS_M
-""" int: Position units: Meters. """
+""" int: Position units, Meters. """
 
 _UNITS_POS_ALL = (UNITS_POS_NATIVE, UNITS_POS_REV, UNITS_POS_RAD,
                   UNITS_POS_DEG, UNITS_POS_UM, UNITS_POS_MM, UNITS_POS_M)
 """ tuple: All position units. """
 
 UNITS_VEL_NATIVE = lib.IL_UNITS_VEL_NATIVE
-""" int: Velocity units: Native. """
+""" int: Velocity units, Native. """
 UNITS_VEL_RPS = lib.IL_UNITS_VEL_RPS
-""" int: Velocity units: Revolutions per second. """
+""" int: Velocity units, Revolutions per second. """
 UNITS_VEL_RPM = lib.IL_UNITS_VEL_RPM
-""" int: Velocity units: Revolutions per minute. """
+""" int: Velocity units, Revolutions per minute. """
 UNITS_VEL_RAD_S = lib.IL_UNITS_VEL_RAD_S
-""" int: Velocity units: Radians/second. """
+""" int: Velocity units, Radians/second. """
 UNITS_VEL_DEG_S = lib.IL_UNITS_VEL_DEG_S
-""" int: Velocity units: Degrees/second. """
+""" int: Velocity units, Degrees/second. """
 UNITS_VEL_UM_S = lib.IL_UNITS_VEL_UM_S
-""" int: Velocity units: Micrometers/second. """
+""" int: Velocity units, Micrometers/second. """
 UNITS_VEL_MM_S = lib.IL_UNITS_VEL_MM_S
-""" int: Velocity units: Millimeters/second. """
+""" int: Velocity units, Millimeters/second. """
 UNITS_VEL_M_S = lib.IL_UNITS_VEL_M_S
-""" int: Velocity units: Meters/second. """
+""" int: Velocity units, Meters/second. """
 
 _UNITS_VEL_ALL = (UNITS_VEL_NATIVE, UNITS_VEL_RPS, UNITS_VEL_RPM,
                   UNITS_VEL_RAD_S, UNITS_VEL_DEG_S, UNITS_VEL_UM_S,
@@ -117,19 +117,19 @@ _UNITS_VEL_ALL = (UNITS_VEL_NATIVE, UNITS_VEL_RPS, UNITS_VEL_RPM,
 """ tuple: All velocity units. """
 
 UNITS_ACC_NATIVE = lib.IL_UNITS_ACC_NATIVE
-""" int: Acceleration units: Native. """
+""" int: Acceleration units, Native. """
 UNITS_ACC_REV_S2 = lib.IL_UNITS_ACC_REV_S2
-""" int: Acceleration units: Revolutions/second^2. """
+""" int: Acceleration units, Revolutions/second^2. """
 UNITS_ACC_RAD_S2 = lib.IL_UNITS_ACC_RAD_S2
-""" int: Acceleration units: Radians/second^2. """
+""" int: Acceleration units, Radians/second^2. """
 UNITS_ACC_DEG_S2 = lib.IL_UNITS_ACC_DEG_S2
-""" int: Acceleration units: Degrees/second^2. """
+""" int: Acceleration units, Degrees/second^2. """
 UNITS_ACC_UM_S2 = lib.IL_UNITS_ACC_UM_S2
-""" int: Acceleration units: Micrometers/second^2. """
+""" int: Acceleration units, Micrometers/second^2. """
 UNITS_ACC_MM_S2 = lib.IL_UNITS_ACC_MM_S2
-""" int: Acceleration units: Millimeters/second^2. """
+""" int: Acceleration units, Millimeters/second^2. """
 UNITS_ACC_M_S2 = lib.IL_UNITS_ACC_M_S2
-""" int: Acceleration units: Meters/second^2. """
+""" int: Acceleration units, Meters/second^2. """
 
 _UNITS_ACC_ALL = (UNITS_ACC_NATIVE, UNITS_ACC_REV_S2, UNITS_ACC_RAD_S2,
                   UNITS_ACC_UM_S2, UNITS_ACC_DEG_S2, UNITS_ACC_MM_S2,
