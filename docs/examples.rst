@@ -11,16 +11,16 @@ Read/Write
 
     import ingenialink as il
 
-    POS_TARGET = il.Register(0x607A, 0x00, il.DTYPE_S32)
-    POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32)
+    POS_TARGET = il.Register(0x607A, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_POS)
+    POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_POS)
 
     net = il.Network('/dev/ttyACM0')
     axis = il.Axis(net, 0x20)
 
     ...
-    axis.write(POS_TARGET, 1000)
+    axis.raw_write(POS_TARGET, 1000)
     ...
-    print('Actual position:', axis.read(POS_ACTUAL))
+    print('Actual position (counts):', axis.raw_read(POS_ACTUAL))
 
 Motion control
 --------------
@@ -32,12 +32,15 @@ Motion control
     net = il.Network('/dev/ttyACM0')
     axis = il.Axis(net, 0x20)
 
+    # set position units to degrees
+    axis.units_pos = il.UNITS_POS_DEG
+
     axis.disable()
     axis.mode = il.MODE_PP
     axis.enable()
 
-    axis.position = 500
-    axis.wait_reached(1000)
+    axis.position = 90
+    axis.wait_reached(timeout=500)
 
 Register polling
 ----------------
@@ -46,10 +49,12 @@ Register polling
 
     import ingenialink as il
 
-    POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32)
+    POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_POS)
 
     net = il.Network('/dev/ttyACM0')
     axis = il.Axis(net, 0x20)
+
+    axis.units_pos = il.UNITS_POS_DEG
 
     poller = il.Poller(axis, POS_ACTUAL, 2, 1000)
 
@@ -58,8 +63,8 @@ Register polling
     axis.enable()
 
     poller.start()
-    axis.position = 500
-    axis.wait_reached(timeout=1000)
+    axis.position = 180
+    axis.wait_reached(timeout=500)
     poller.stop()
 
     t, d = poller.data
