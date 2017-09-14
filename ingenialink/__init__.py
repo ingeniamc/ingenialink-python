@@ -5,7 +5,7 @@ from ._utils import _cstr, _pstr
 from . import exceptions as exc
 
 
-__version__ = '1.9.0'
+__version__ = '1.9.9'
 
 
 DTYPE_U8 = lib.IL_REG_DTYPE_U8
@@ -64,6 +64,77 @@ MODE_HOMING = lib.IL_AXIS_MODE_HOMING
 
 _MODE_ALL = (MODE_PP, MODE_PV, MODE_PT, MODE_HOMING)
 """ tuple: All operation modes. """
+
+UNITS_TORQUE_NATIVE = lib.IL_UNITS_TORQUE_NATIVE
+""" int: Torque units: Native """
+UNITS_TORQUE_MN = lib.IL_UNITS_TORQUE_MN
+""" int: Torque units: Millinewtons. """
+UNITS_TORQUE_N = lib.IL_UNITS_TORQUE_N
+""" int: Torque units: Newtons. """
+
+_UNITS_TORQUE_ALL = (UNITS_TORQUE_NATIVE, UNITS_TORQUE_MN, UNITS_TORQUE_N)
+""" tuple: All torque units. """
+
+UNITS_POS_NATIVE = lib.IL_UNITS_POS_NATIVE
+""" int: Position units: Native. """
+UNITS_POS_REV = lib.IL_UNITS_POS_REV
+""" int: Position units: Revolutions. """
+UNITS_POS_RAD = lib.IL_UNITS_POS_RAD
+""" int: Position units: Radians. """
+UNITS_POS_DEG = lib.IL_UNITS_POS_DEG
+""" int: Position units: Degrees. """
+UNITS_POS_UM = lib.IL_UNITS_POS_UM
+""" int: Position units: Micrometers. """
+UNITS_POS_MM = lib.IL_UNITS_POS_MM
+""" int: Position units: Millimeters. """
+UNITS_POS_M = lib.IL_UNITS_POS_M
+""" int: Position units: Meters. """
+
+_UNITS_POS_ALL = (UNITS_POS_NATIVE, UNITS_POS_REV, UNITS_POS_RAD,
+                  UNITS_POS_DEG, UNITS_POS_UM, UNITS_POS_MM, UNITS_POS_M)
+""" tuple: All position units. """
+
+UNITS_VEL_NATIVE = lib.IL_UNITS_VEL_NATIVE
+""" int: Velocity units: Native. """
+UNITS_VEL_RPS = lib.IL_UNITS_VEL_RPS
+""" int: Velocity units: Revolutions per second. """
+UNITS_VEL_RPM = lib.IL_UNITS_VEL_RPM
+""" int: Velocity units: Revolutions per minute. """
+UNITS_VEL_RAD_S = lib.IL_UNITS_VEL_RAD_S
+""" int: Velocity units: Radians/second. """
+UNITS_VEL_DEG_S = lib.IL_UNITS_VEL_DEG_S
+""" int: Velocity units: Degrees/second. """
+UNITS_VEL_UM_S = lib.IL_UNITS_VEL_UM_S
+""" int: Velocity units: Micrometers/second. """
+UNITS_VEL_MM_S = lib.IL_UNITS_VEL_MM_S
+""" int: Velocity units: Millimeters/second. """
+UNITS_VEL_M_S = lib.IL_UNITS_VEL_M_S
+""" int: Velocity units: Meters/second. """
+
+_UNITS_VEL_ALL = (UNITS_VEL_NATIVE, UNITS_VEL_RPS, UNITS_VEL_RPM,
+                  UNITS_VEL_RAD_S, UNITS_VEL_DEG_S, UNITS_VEL_UM_S,
+                  UNITS_VEL_MM_S, UNITS_VEL_M_S)
+""" tuple: All velocity units. """
+
+UNITS_ACC_NATIVE = lib.IL_UNITS_ACC_NATIVE
+""" int: Acceleration units: Native. """
+UNITS_ACC_REV_S2 = lib.IL_UNITS_ACC_REV_S2
+""" int: Acceleration units: Revolutions/second^2. """
+UNITS_ACC_RAD_S2 = lib.IL_UNITS_ACC_RAD_S2
+""" int: Acceleration units: Radians/second^2. """
+UNITS_ACC_DEG_S2 = lib.IL_UNITS_ACC_DEG_S2
+""" int: Acceleration units: Degrees/second^2. """
+UNITS_ACC_UM_S2 = lib.IL_UNITS_ACC_UM_S2
+""" int: Acceleration units: Micrometers/second^2. """
+UNITS_ACC_MM_S2 = lib.IL_UNITS_ACC_MM_S2
+""" int: Acceleration units: Millimeters/second^2. """
+UNITS_ACC_M_S2 = lib.IL_UNITS_ACC_M_S2
+""" int: Acceleration units: Meters/second^2. """
+
+_UNITS_ACC_ALL = (UNITS_ACC_NATIVE, UNITS_ACC_REV_S2, UNITS_ACC_RAD_S2,
+                  UNITS_ACC_UM_S2, UNITS_ACC_DEG_S2, UNITS_ACC_MM_S2,
+                  UNITS_ACC_M_S2)
+""" tuple: All acceleration units. """
 
 EVT_ADDED = 0
 """ int: Device added event. """
@@ -146,14 +217,14 @@ class Register(object):
             idx (int): Reigtser index.
             sidx (int): Register subindex.
             dtype (int): Register data type.
-            access (int, optional): Register access type.
-            phy (int, optional): Register physical units.
+            access (int): Register access type.
+            phy (int): Register physical units.
 
         Raises:
             ValueError: If the data type is unsupported.
     """
 
-    def __init__(self, idx, sidx, dtype, access=ACCESS_RW, phy=PHY_NONE):
+    def __init__(self, idx, sidx, dtype, access, phy):
         if dtype not in _DTYPE_ALL:
             raise ValueError('Unsupported register data type')
 
@@ -442,6 +513,54 @@ class Axis(object):
 
         r = lib.il_axis_write(self._axis, reg._reg, data)
         _raise_err(r)
+
+    @property
+    def units_torque(self):
+        """ int: Torque units. """
+        return lib.il_axis_units_torque_get(self._axis)
+
+    @units_torque.setter
+    def units_torque(self, units):
+        if units not in _UNITS_TORQUE_ALL:
+            raise ValueError('Unsupported torque units')
+
+        lib.il_axis_units_torque_set(self._axis, units)
+
+    @property
+    def units_pos(self):
+        """ int: Position units. """
+        return lib.il_axis_units_pos_get(self._axis)
+
+    @units_pos.setter
+    def units_pos(self, units):
+        if units not in _UNITS_POS_ALL:
+            raise ValueError('Unsupported position units')
+
+        lib.il_axis_units_pos_set(self._axis, units)
+
+    @property
+    def units_vel(self):
+        """ int: Velocity units. """
+        return lib.il_axis_units_vel_get(self._axis)
+
+    @units_vel.setter
+    def units_vel(self, units):
+        if units not in _UNITS_VEL_ALL:
+            raise ValueError('Unsupported velocity units')
+
+        lib.il_axis_units_vel_set(self._axis, units)
+
+    @property
+    def units_acc(self):
+        """ int: Acceleration units. """
+        return lib.il_axis_units_acc_get(self._axis)
+
+    @units_acc.setter
+    def units_acc(self, units):
+        if units not in _UNITS_ACC_ALL:
+            raise ValueError('Unsupported acceleration units')
+
+        lib.il_axis_units_acc_set(self._axis, units)
 
     def enable(self):
         """ Enable PDS. """
