@@ -28,6 +28,10 @@ object-oriented API.
 
 Python versions 2.7, >=3.4 are supported.
 
+.. image:: https://s3.eu-central-1.amazonaws.com/ingeniamc-cdn/images/all-servodrives.png
+     :target: http://www.ingeniamc.com
+     :alt: Ingenia Servodrives
+
 .. _ingenialink: https://github.com/ingeniamc/ingenialink
 .. _cffi: https://cffi.readthedocs.io/en/latest/
 
