@@ -26,11 +26,11 @@ Motion control
 --------------
 
 ::
+
     import ingenialink as il
 
     net = il.Network('/dev/ttyACM0')
     axis = il.Axis(net, 0x20)
-
 
     axis.disable()
     axis.mode = il.MODE_PP
@@ -43,6 +43,7 @@ Register polling
 ----------------
 
 ::
+
     import ingenialink as il
 
     POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32)
