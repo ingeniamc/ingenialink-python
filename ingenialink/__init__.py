@@ -183,6 +183,8 @@ def _raise_err(code):
             IngeniaLinkMemoryError: if code is lib.IL_ENOMEM
             IngeniaLinkFaultError: if code is lib.IL_EFAULT
             IngeniaLinkDisconnectionError: if code is lib.IL_EDISCONN
+            IngeniaLinkAccessError: if code is lib.IL_EACCESS
+            IngeniaLinkStateError: if code is lib.IL_ESTATE
             IngeniaLinkError: if code is lib.IL_EFAULT
     """
 
