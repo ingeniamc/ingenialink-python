@@ -44,10 +44,19 @@ The recommended way to install is by using ``pip``, i.e::
 
 Binary wheels are provided for most popular platforms and Python versions.
 
+Examples
+--------
+
+You can find some usage examples on the ``examples`` folder. Below, a screencast
+of the ``scope`` example:
+
+.. image:: https://github.com/ingeniamc/ingenialink-python/blob/next/examples/scope/scope.gif
+     :alt: Scope example
+
 Documentation
 -------------
 
 For further details you can read the documentation_ where you will find
-examples, the API docs, etc.
+simple usage examples, the API docs, etc.
 
 .. _documentation: https://ingenialink.readthedocs.io

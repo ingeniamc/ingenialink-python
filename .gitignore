@@ -6,7 +6,7 @@
 **/__pycache__
 build/
 dist/
-*.egg-info
+*.egg*
 
 # temp files
 _deps
@@ -17,3 +17,6 @@ _build
 *.pyd
 *.so
 *.dylib
+
+# os
+.DS_Store
