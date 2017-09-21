@@ -679,6 +679,21 @@ class Axis(object):
         r = lib.il_axis_position_set(self._axis, pos, immediate, relative)
         _raise_err(r)
 
+    def position_wait_ack(self, timeout):
+        """ Wait until a position is acknowledged.
+
+            Notes:
+                This is only useful for multi-point movements, where the
+                set-point acknowledge bit can be kept high until the positions
+                buffer is empty.
+
+            Args:
+                timeout (int): Timeout (ms).
+        """
+
+        r = lib.il_axis_position_wait_ack(self._axis, timeout)
+        _raise_err(r)
+
     @property
     def velocity(self):
         """ float: Actual velocity. """
