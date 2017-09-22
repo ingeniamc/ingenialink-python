@@ -779,3 +779,78 @@ class Poller(object):
         cnt = self._cnt[0]
 
         return list(t[0:cnt]), list(d[0:cnt])
+
+
+@ffi.def_extern()
+def _on_changed_cb(ctx, value):
+    """ Value changed callback shim. """
+
+    cb = ffi.from_handle(ctx)
+    cb(value)
+
+
+class Watcher(object):
+    """ Registers watcher.
+
+        The register watcher monitors for registers content periodically and
+        notifies if its value changes.
+
+        Args:
+            axis (Axis): Associated axis.
+            base_period (int): Base polling period (ms).
+
+        Raises:
+            IngeniaLinkCreatorError: If the watcher cannot be created.
+    """
+
+    _watcher = None
+
+    def __init__(self, axis, base_period):
+        self._axis = axis
+
+        self._watcher = lib.il_watcher_create(axis._axis, base_period)
+        _raise_null(self._watcher)
+
+        # dictionary of callback references
+        self._cb = {}
+
+    def __del__(self):
+        if self._watcher:
+            lib.il_watcher_destroy(self._watcher)
+
+    def start(self):
+        """ Start watcher. """
+
+        r = lib.il_watcher_start(self._watcher)
+        _raise_err(r)
+
+    def stop(self):
+        """ Stop watcher. """
+
+        lib.il_watcher_stop(self._watcher)
+
+    def subscribe(self, reg, period, cb):
+        """ Subscribe to changes on a register.
+
+            Args:
+                reg (Register): Register.
+                period (int): Watching period (ms), >= base period.
+                cb: Value change callback.
+        """
+
+        self._cb[reg] = ffi.new_handle(cb)
+
+        r = lib.il_watcher_subscribe(self._watcher, reg._reg, period,
+                                     lib._on_changed_cb, self._cb[reg])
+        _raise_err(r)
+
+    def unsubscribe(self, reg):
+        """ Unsubcribe from changes on a register.
+
+            Args:
+                reg (Register): Register.
+        """
+
+        lib.il_watcher_unsubcribe(self._watcher, reg)
+
+        del self._cb[reg]

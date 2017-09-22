@@ -112,6 +112,7 @@ def _gen_cffi_header():
                join(_INC_DIR, 'ingenialink', 'net.h'),
                join(_INC_DIR, 'ingenialink', 'axis.h'),
                join(_INC_DIR, 'ingenialink', 'poller.h'),
+               join(_INC_DIR, 'ingenialink', 'watcher.h'),
                join(_INC_DIR, 'ingenialink', 'version.h')]
 
     h_stripped = ''
@@ -167,6 +168,7 @@ ffibuilder.cdef(
     extern "Python" void _on_found_cb(void *ctx, uint8_t node_id);
     extern "Python" void _on_evt_cb(void *ctx, il_net_dev_evt_t on_evt,
                                     const char *port);
+    extern "Python" void _on_changed_cb(void *ctx, double value);
 ''')
 
 ffibuilder.set_source('ingenialink._ingenialink',
