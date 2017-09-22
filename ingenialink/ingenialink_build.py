@@ -1,5 +1,6 @@
 import sys
 import re
+import os
 from os.path import join, exists
 from distutils.spawn import find_executable
 from subprocess import check_call
@@ -14,14 +15,23 @@ _INSTALL_DIR = '_install'
 _INC_DIR = join(_INSTALL_DIR, 'include')
 _LIB_DIR = join(_INSTALL_DIR, 'lib')
 
-_SER_URL = 'https://github.com/ingeniamc/sercomm'
-_SER_VER = '1.3.0'
-_SER_SRC = join(_SRC_DIR, 'sercomm')
+if 'SERCOMM_DIR' in os.environ:
+    _SER_URL = None
+    _SER_SRC = os.environ['SERCOMM_DIR']
+else:
+    _SER_URL = 'https://github.com/ingeniamc/sercomm'
+    _SER_VER = '1.3.0'
+    _SER_SRC = join(_SRC_DIR, 'sercomm')
+
 _SER_BUILD = join(_BUILD_DIR, 'sercomm')
 
-_IL_URL = 'https://github.com/ingeniamc/ingenialink'
-_IL_VER = 'next'
-_IL_SRC = join(_SRC_DIR, 'ingenialink')
+if 'INGENIALINK_DIR' in os.environ:
+    _IL_URL = None
+    _IL_SRC = os.environ['INGENIALINK_DIR']
+else:
+    _IL_URL = 'https://github.com/ingeniamc/ingenialink'
+    _IL_VER = 'next'
+    _IL_SRC = join(_SRC_DIR, 'ingenialink')
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
 
 if sys.platform == 'win32':
@@ -53,7 +63,7 @@ def _build_deps():
         raise FileNotFoundError('CMake is not installed or in PATH')
 
     # clone, build and install (locally) libsercomm
-    if not exists(_SER_SRC):
+    if not exists(_SER_SRC) and _SER_URL:
         check_call([git, 'clone', '-b', _SER_VER, _SER_URL, _SER_SRC])
 
     check_call([cmake, '-H' + _SER_SRC, '-B' + _SER_BUILD,
@@ -65,7 +75,7 @@ def _build_deps():
                 '--target', 'install'])
 
     # clone, build and install (locally) libingenialink
-    if not exists(_IL_SRC):
+    if not exists(_IL_SRC) and _IL_URL:
         check_call([git, 'clone', '-b', _IL_VER, _IL_URL, _IL_SRC])
 
     check_call([cmake, '-H' + _IL_SRC, '-B' + _IL_BUILD,
