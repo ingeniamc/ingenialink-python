@@ -845,12 +845,12 @@ class Watcher(object):
         _raise_err(r)
 
     def unsubscribe(self, reg):
-        """ Unsubcribe from changes on a register.
+        """ Unsubscribe from changes on a register.
 
             Args:
                 reg (Register): Register.
         """
 
-        lib.il_watcher_unsubcribe(self._watcher, reg)
+        lib.il_watcher_unsubscribe(self._watcher, reg._reg)
 
         del self._cb[reg]
