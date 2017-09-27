@@ -52,7 +52,7 @@ Examples
 You can find some usage examples on the ``examples`` folder. Below, a screencast
 of the ``scope`` example:
 
-.. image:: https://github.com/ingeniamc/ingenialink-python/blob/next/examples/scope/scope.gif
+.. image:: https://s3.eu-central-1.amazonaws.com/ingeniamc-cdn/images/examples-scope.gif
      :alt: Scope example
 
 Documentation
