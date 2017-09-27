@@ -308,15 +308,15 @@ class Network(object):
             IngeniaLinkCreationError: If the network cannot be created.
     """
 
-    _net = None
-
     def __init__(self, port, timeout=100):
         self._net = lib.il_net_create(_cstr(port))
         _raise_null(self._net)
 
     def __del__(self):
-        if self._net:
+        try:
             lib.il_net_destroy(self._net)
+        except:
+            pass
 
     def axes(self, on_found=None):
         """ Obtain a list of attached axes.
@@ -374,6 +374,12 @@ class NetworkMonitor(object):
         self._mon = lib.il_net_dev_mon_create()
         _raise_null(self._mon)
 
+    def __del__(self):
+        try:
+            lib.il_net_dev_mon_destroy(self._mon)
+        except:
+            pass
+
     def start(self, on_evt):
         """ Start the monitor.
 
@@ -392,9 +398,6 @@ class NetworkMonitor(object):
 
         lib.il_net_dev_mon_stop(self._mon)
 
-    def __del__(self):
-        lib.il_net_dev_mon_destroy(self._mon)
-
 
 class Axis(object):
     """ IngeniaLink network axis.
@@ -408,8 +411,6 @@ class Axis(object):
             IngeniaLinkCreationError: If the axis cannot be created.
     """
 
-    _axis = None
-
     def __init__(self, net, axis_id, timeout=1000):
         # keep network reference
         self._net = net
@@ -418,8 +419,10 @@ class Axis(object):
         _raise_null(self._axis)
 
     def __del__(self):
-        if self._axis:
+        try:
             lib.il_axis_destroy(self._axis)
+        except:
+            pass
 
     def raw_read(self, reg):
         """ Raw read from axis.
@@ -749,8 +752,10 @@ class Poller(object):
         self._lost = ffi.new('int *')
 
     def __del__(self):
-        if self._poller:
+        try:
             lib.il_poller_destroy(self._poller)
+        except:
+            pass
 
     def start(self):
         """ Start poller. """
@@ -803,8 +808,6 @@ class Watcher(object):
             IngeniaLinkCreatorError: If the watcher cannot be created.
     """
 
-    _watcher = None
-
     def __init__(self, axis, base_period):
         self._axis = axis
 
@@ -815,8 +818,10 @@ class Watcher(object):
         self._cb = {}
 
     def __del__(self):
-        if self._watcher:
+        try:
             lib.il_watcher_destroy(self._watcher)
+        except:
+            pass
 
     def start(self):
         """ Start watcher. """
