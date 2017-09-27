@@ -109,6 +109,8 @@ class RegisterWatcher(QObject):
             self._thread.exit()
             self._thread.wait()
 
+            self._running = False
+
     def add(self, reg, period, item):
         """ Adds a register to the register watcher.
 
