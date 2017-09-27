@@ -70,34 +70,8 @@ Register polling
     t, d = poller.data
     ...
 
-Register watching
------------------
 
-::
-
-    import ingenialink as il
-
-    def on_pos_changed(value):
-        print('New position value:', value)
-
-    def on_vel_changed(value):
-        print('New velocity value:', value)
-
-    POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_POS)
-    VEL_ACTUAL = il.Register(0x606c, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_VEL)
-
-    net = il.Network('/dev/ttyACM0')
-    axis = il.Axis(net, 0x20)
-
-    watcher = il.Watcher(axis, 100)
-    watcher.subscribe(POS_ACTUAL, 500, on_pos_changed)
-    watcher.subscribe(VEL_ACTUAL, 100, on_vel_changed)
-    watcher.start()
-
-    ...
-
-
-Axis listing
+Axes listing
 ------------
 
 ::
