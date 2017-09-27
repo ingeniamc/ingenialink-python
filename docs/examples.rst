@@ -4,6 +4,11 @@ Examples
 It is always better to show off some illustrative examples other than presenting
 never-ending API docs. So here we go.
 
+.. note:: You can also find full-featured examples in the `repo`_ ``examples``
+          folder.
+          
+.. _repo: https://github.com/ingeniamc/ingenialink-python
+
 Read/Write
 ----------
 
