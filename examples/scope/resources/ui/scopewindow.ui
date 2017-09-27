@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Scope</string>
   </property>
   <property name="unifiedTitleAndToolBarOnMac">
    <bool>true</bool>
@@ -25,6 +25,9 @@
       </property>
       <widget class="QWidget" name="verticalLayoutWidget">
        <layout class="QVBoxLayout" name="vboxScope">
+        <property name="leftMargin">
+         <number>10</number>
+        </property>
         <property name="rightMargin">
          <number>10</number>
         </property>
@@ -49,6 +52,9 @@
       <widget class="QWidget" name="verticalLayoutWidget_3">
        <layout class="QVBoxLayout" name="vboxControl">
         <property name="leftMargin">
+         <number>10</number>
+        </property>
+        <property name="rightMargin">
          <number>10</number>
         </property>
         <item>
@@ -91,18 +97,33 @@
           </property>
           <property name="minimumSize">
            <size>
-            <width>300</width>
+            <width>350</width>
             <height>0</height>
            </size>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>2</number>
           </property>
           <widget class="QWidget" name="tabHoming">
            <attribute name="title">
             <string>Homing</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout">
+            <property name="spacing">
+             <number>6</number>
+            </property>
+            <property name="leftMargin">
+             <number>9</number>
+            </property>
+            <property name="topMargin">
+             <number>9</number>
+            </property>
+            <property name="rightMargin">
+             <number>9</number>
+            </property>
+            <property name="bottomMargin">
+             <number>9</number>
+            </property>
             <item>
              <widget class="QPushButton" name="btnHoming">
               <property name="text">
@@ -130,8 +151,23 @@
             <string>Position</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout_4">
+            <property name="spacing">
+             <number>6</number>
+            </property>
+            <property name="leftMargin">
+             <number>9</number>
+            </property>
+            <property name="topMargin">
+             <number>9</number>
+            </property>
+            <property name="rightMargin">
+             <number>9</number>
+            </property>
+            <property name="bottomMargin">
+             <number>9</number>
+            </property>
             <item>
-             <widget class="QPushButton" name="btnPositionPower">
+             <widget class="QPushButton" name="btnPosition">
               <property name="text">
                <string>Enable</string>
               </property>
@@ -169,8 +205,23 @@
             <string>Velocity</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout_3">
+            <property name="spacing">
+             <number>6</number>
+            </property>
+            <property name="leftMargin">
+             <number>9</number>
+            </property>
+            <property name="topMargin">
+             <number>9</number>
+            </property>
+            <property name="rightMargin">
+             <number>9</number>
+            </property>
+            <property name="bottomMargin">
+             <number>9</number>
+            </property>
             <item>
-             <widget class="QPushButton" name="btnVelocityPower">
+             <widget class="QPushButton" name="btnVelocity">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                 <horstretch>0</horstretch>
