@@ -78,7 +78,16 @@ class RegisterWatcher(QObject):
     def onTimerExpired(self):
         """ Triggers the updater on each timer expiration. """
 
-        self._updater.update()
+        self._thread = QThread()
+        self._updater = RegisterUpdater(self._axis, self._watched,
+                                        self._base_period)
+        self._updater.moveToThread(self._thread)
+        self._thread.started.connect(self._updater.update)
+        self._updater.finished.connect(self.onUpdaterFinished)
+        self._updater.finished.connect(self._thread.quit)
+        self._updater.finished.connect(self._updater.deleteLater)
+        self._thread.finished.connect(self._thread.deleteLater)
+        self._thread.start()
 
     def start(self, base_period):
         """ Starts the register watcher.
@@ -90,13 +99,8 @@ class RegisterWatcher(QObject):
         if self._running:
             raise RuntimeError('Watcher already started')
 
-        self._thread = QThread()
-        self._updater = RegisterUpdater(self._axis, self._watched, base_period)
-        self._updater.finished.connect(self.onUpdaterFinished)
-        self._updater.moveToThread(self._thread)
-        self._thread.start()
-
-        self._timer.start(base_period)
+        self._base_period = base_period
+        self._timer.start(self._base_period)
 
         self._running = True
 
@@ -105,10 +109,6 @@ class RegisterWatcher(QObject):
 
         if self._running:
             self._timer.stop()
-
-            self._thread.exit()
-            self._thread.wait()
-
             self._running = False
 
     def add(self, reg, period, item):
