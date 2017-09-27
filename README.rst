@@ -42,7 +42,9 @@ The recommended way to install is by using ``pip``, i.e::
 
     pip install ingenialink
 
-Binary wheels are provided for most popular platforms and Python versions.
+Binary wheels are provided for most popular platforms and Python versions. In
+case they are not, you will need to have the requirements listed
+`here <http://ingenialink.readthedocs.io/en/latest/building.html>`_ installed.
 
 Examples
 --------
