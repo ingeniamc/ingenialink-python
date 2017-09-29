@@ -23,11 +23,6 @@ class IngeniaLinkMemoryError(IngeniaLinkError):
     pass
 
 
-class IngeniaLinkFaultError(IngeniaLinkError):
-    """ IngeniaLink fault error. """
-    pass
-
-
 class IngeniaLinkDisconnectionError(IngeniaLinkError):
     """ IngeniaLink disconnection error. """
     pass
