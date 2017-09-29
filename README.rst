@@ -55,7 +55,7 @@ glimpse of the ``scope`` and ``monitor`` examples:
 .. image:: https://s3.eu-central-1.amazonaws.com/ingeniamc-cdn/images/examples-scope.gif
      :alt: Scope example
 
-.. image:: https://s3.eu-central-1.amazonaws.com/ingeniamc-cdn/images/examples-monitor.svg
+.. image:: https://s3.eu-central-1.amazonaws.com/ingeniamc-cdn/images/example-monitor.png
      :alt: Monitor example
 
 Documentation
