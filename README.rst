@@ -49,11 +49,14 @@ case they are not, you will need to have the requirements listed
 Examples
 --------
 
-You can find some usage examples on the ``examples`` folder. Below, a screencast
-of the ``scope`` example:
+You can find some usage examples on the ``examples`` folder. Below you have a
+glimpse of the ``scope`` and ``monitor`` examples:
 
 .. image:: https://s3.eu-central-1.amazonaws.com/ingeniamc-cdn/images/examples-scope.gif
      :alt: Scope example
+
+.. image:: https://s3.eu-central-1.amazonaws.com/ingeniamc-cdn/images/examples-monitor.svg
+     :alt: Monitor example
 
 Documentation
 -------------

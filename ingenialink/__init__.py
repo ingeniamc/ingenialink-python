@@ -136,6 +136,36 @@ _UNITS_ACC_ALL = (UNITS_ACC_NATIVE, UNITS_ACC_REV_S2, UNITS_ACC_RAD_S2,
                   UNITS_ACC_M_S2)
 """ tuple: All acceleration units. """
 
+MONITOR_CH_1 = lib.IL_MONITOR_CH_1
+""" int: Monitor channel, 1. """
+MONITOR_CH_2 = lib.IL_MONITOR_CH_2
+""" int: Monitor channel, 2. """
+MONITOR_CH_3 = lib.IL_MONITOR_CH_3
+""" int: Monitor channel, 3. """
+MONITOR_CH_4 = lib.IL_MONITOR_CH_4
+""" int: Monitor channel, 4. """
+
+_MONITOR_CH_ALL = (MONITOR_CH_1, MONITOR_CH_2, MONITOR_CH_3, MONITOR_CH_4)
+""" tuple: All monitor channels. """
+
+MONITOR_TRIGGER_IMMEDIATE = lib.IL_MONITOR_TRIGGER_IMMEDIATE
+""" int: Monitor trigger, immediate. """
+MONITOR_TRIGGER_MOTION = lib.IL_MONITOR_TRIGGER_MOTION
+""" int: Monitor trigger, motion start. """
+MONITOR_TRIGGER_POS = lib.IL_MONITOR_TRIGGER_POS
+""" int: Monitor trigger, positive. """
+MONITOR_TRIGGER_NEG = lib.IL_MONITOR_TRIGGER_NEG
+""" int: Monitor trigger, negative. """
+MONITOR_TRIGGER_WINDOW = lib.IL_MONITOR_TRIGGER_WINDOW
+""" int: Monitor trigger, exit window. """
+MONITOR_TRIGGER_DIN = lib.IL_MONITOR_TRIGGER_DIN
+""" int: Monitor trigger, digital input. """
+
+_MONITOR_TRIGGER_ALL = (MONITOR_TRIGGER_IMMEDIATE, MONITOR_TRIGGER_MOTION,
+                        MONITOR_TRIGGER_POS, MONITOR_TRIGGER_NEG,
+                        MONITOR_TRIGGER_WINDOW, MONITOR_TRIGGER_DIN)
+""" tuple: All monitor triggers. """
+
 EVT_ADDED = 0
 """ int: Device added event. """
 EVT_REMOVED = 1
@@ -200,8 +230,6 @@ def _raise_err(code):
         raise exc.IngeniaLinkTimeoutError(msg)
     elif code == lib.IL_ENOMEM:
         raise exc.IngeniaLinkMemoryError(msg)
-    elif code == lib.IL_EFAULT:
-        raise exc.IngeniaLinkFaultError(msg)
     elif code == lib.IL_EDISCONN:
         raise exc.IngeniaLinkDisconnectionError(msg)
     elif code == lib.IL_EACCESS:
@@ -308,15 +336,15 @@ class Network(object):
             IngeniaLinkCreationError: If the network cannot be created.
     """
 
+    _net = None
+
     def __init__(self, port, timeout=100):
         self._net = lib.il_net_create(_cstr(port))
         _raise_null(self._net)
 
     def __del__(self):
-        try:
+        if self._net:
             lib.il_net_destroy(self._net)
-        except:
-            pass
 
     def axes(self, on_found=None):
         """ Obtain a list of attached axes.
@@ -370,15 +398,15 @@ class NetworkMonitor(object):
             IngeniaLinkCreationError: If the monitor cannot be created.
     """
 
+    _mon = None
+
     def __init__(self):
         self._mon = lib.il_net_dev_mon_create()
         _raise_null(self._mon)
 
     def __del__(self):
-        try:
+        if self._mon:
             lib.il_net_dev_mon_destroy(self._mon)
-        except:
-            pass
 
     def start(self, on_evt):
         """ Start the monitor.
@@ -411,6 +439,8 @@ class Axis(object):
             IngeniaLinkCreationError: If the axis cannot be created.
     """
 
+    _axis = None
+
     def __init__(self, net, axis_id, timeout=1000):
         # keep network reference
         self._net = net
@@ -419,10 +449,8 @@ class Axis(object):
         _raise_null(self._axis)
 
     def __del__(self):
-        try:
+        if self._axis:
             lib.il_axis_destroy(self._axis)
-        except:
-            pass
 
     def raw_read(self, reg):
         """ Raw read from axis.
@@ -752,10 +780,8 @@ class Poller(object):
         self._lost = ffi.new('int *')
 
     def __del__(self):
-        try:
+        if self._poller:
             lib.il_poller_destroy(self._poller)
-        except:
-            pass
 
     def start(self):
         """ Start poller. """
@@ -784,3 +810,140 @@ class Poller(object):
         cnt = self._cnt[0]
 
         return list(t[0:cnt]), list(d[0:cnt])
+
+
+class Monitor(object):
+    """ Monitor.
+
+        Args:
+            axis (Axis): Axis instance.
+    """
+
+    _monitor = None
+
+    def __init__(self, axis):
+        self._axis = axis
+
+        self._monitor = lib.il_monitor_create(axis._axis)
+        _raise_null(self._monitor)
+
+        self._acq = ffi.new('il_monitor_acq_t **')
+
+    def __del__(self):
+        if self._monitor:
+            lib.il_monitor_destroy(self._monitor)
+
+    def start(self):
+        """ Start the monitor. """
+
+        r = lib.il_monitor_start(self._monitor)
+        _raise_err(r)
+
+    def stop(self):
+        """ Stop the monitor. """
+
+        r = lib.il_monitor_stop(self._monitor)
+        _raise_err(r)
+
+    def wait(self, timeout):
+        """ Wait until the current acquisition finishes.
+
+            Args:
+                timeout (int): Timeout (ms).
+        """
+
+        r = lib.il_monitor_wait(self._monitor, timeout)
+        _raise_err(r)
+
+    @property
+    def data(self):
+        """ list: Current acquisition data list for all channels. """
+
+        lib.il_monitor_data_get(self._monitor, self._acq)
+        acq = ffi.cast('il_monitor_acq_t *', self._acq[0])
+
+        samples = []
+        for ch in _MONITOR_CH_ALL:
+            if acq.samples[ch] != ffi.NULL:
+                samples.append(list(acq.samples[ch][0:acq.n_samples]))
+            else:
+                samples.append(None)
+
+        return samples
+
+    def configure(self, t_s, delay_samples=0, max_samples=0):
+        """ Configure the monitor parameters.
+
+            Args:
+                t_s (int, float): Sampling period (resolution: 100 us).
+                delay_samples (int, optional): Delay samples.
+                max_samples (int, optional): Maximum acquisition samples.
+        """
+
+        r = lib.il_monitor_configure(self._monitor, t_s, delay_samples,
+                                     max_samples)
+        _raise_err(r)
+
+    def ch_configure(self, ch, reg):
+        """ Configure a channel mapping.
+
+            Args:
+                ch (int): Channel.
+                reg (Register): Register to be mapped to the given channel.
+        """
+
+        if ch not in _MONITOR_CH_ALL:
+            raise ValueError('Invalid channel')
+
+        if not isinstance(reg, Register):
+            raise TypeError('Invalid register')
+
+        r = lib.il_monitor_ch_configure(self._monitor, ch, reg._reg)
+        _raise_err(r)
+
+    def ch_disable(self, ch):
+        """ Disable a channel. """
+
+        if ch not in _MONITOR_CH_ALL:
+            raise ValueError('Invalid channel')
+
+        r = lib.il_monitor_ch_disable(self._monitor, ch)
+        _raise_err(r)
+
+    def ch_disable_all(self):
+        """ Disable all channels. """
+
+        r = lib.il_monitor_ch_disable_all(self._monitor)
+        _raise_err(r)
+
+    def trigger_configure(self, mode, delay_samples=0, source=None, th_pos=0.,
+                          th_neg=0., din_msk=0):
+        """ Configure the trigger.
+
+            Args:
+                mode (int): Trigger mode.
+                delay_samples (int, optional): Delay samples.
+                source (Register, optional): Source register, required for
+                    MONITOR_TRIGGER_POS, MONITOR_TRIGGER_NEG and
+                    MONITOR_TRIGGER_WINDOW.
+                th_pos (int, float, optional): Positive threshold, used for
+                    MONITOR_TRIGGER_POS, MONITOR_TRIGGER_WINDOW
+                th_neg (int, float, optional): Negative threshold, used for
+                    MONITOR_TRIGGER_NEG, MONITOR_TRIGGER_WINDOW
+                din_msk (int, optional): Digital input mask, used for
+                    MONITOR_TRIGGER_DIN
+        """
+
+        _source_required = (MONITOR_TRIGGER_POS, MONITOR_TRIGGER_NEG,
+                            MONITOR_TRIGGER_WINDOW)
+
+        if mode not in _MONITOR_TRIGGER_ALL:
+            raise ValueError('Invalid trigger mode')
+
+        if mode in _source_required and not isinstance(source, Register):
+            raise ValueError('Register required for the selected mode')
+
+        r = lib.il_monitor_trigger_configure(
+                self._monitor, mode, delay_samples, source._reg, th_pos,
+                th_neg, din_msk)
+        _raise_err(r)
