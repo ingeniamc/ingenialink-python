@@ -53,6 +53,10 @@ PHY_ACC = lib.IL_REG_PHY_ACC
 _PHY_ALL = (PHY_NONE, PHY_TORQUE, PHY_POS, PHY_VEL, PHY_ACC)
 """ tuple: All physical units. """
 
+MODE_OLV = lib.IL_AXIS_MODE_OLV
+""" int: Open loop (vector mode). """
+MODE_OLS = lib.IL_AXIS_MODE_OLS
+""" int: Open loop (scalar mode). """
 MODE_PP = lib.IL_AXIS_MODE_PP
 """ int: Profile position mode. """
 MODE_PV = lib.IL_AXIS_MODE_PV
@@ -62,7 +66,7 @@ MODE_PT = lib.IL_AXIS_MODE_PT
 MODE_HOMING = lib.IL_AXIS_MODE_HOMING
 """ int: Homing mode. """
 
-_MODE_ALL = (MODE_PP, MODE_PV, MODE_PT, MODE_HOMING)
+_MODE_ALL = (MODE_OLV, MODE_OLS, MODE_PP, MODE_PV, MODE_PT, MODE_HOMING)
 """ tuple: All operation modes. """
 
 UNITS_TORQUE_NATIVE = lib.IL_UNITS_TORQUE_NATIVE
@@ -646,6 +650,40 @@ class Axis(object):
         """
 
         r = lib.il_axis_homing_wait(self._axis, timeout)
+        _raise_err(r)
+
+    @property
+    def ol_voltage(self):
+        """ float: Open loop voltage (% relative to DC-bus, -1...1). """
+
+        voltage = ffi.new('double *')
+        r = lib.il_axis_ol_voltage_get(self._axis, voltage)
+        _raise_err(r)
+
+        return voltage[0]
+
+    @ol_voltage.setter
+    def ol_voltage(self, voltage):
+        """ Set the open loop voltage (% relative to DC-bus, -1...1). """
+
+        r = lib.il_axis_ol_voltage_set(self._axis, voltage)
+        _raise_err(r)
+
+    @property
+    def ol_frequency(self):
+        """ float: Open loop frequency (mHz). """
+
+        frequency = ffi.new('double *')
+        r = lib.il_axis_ol_frequency_get(self._axis, frequency)
+        _raise_err(r)
+
+        return frequency[0]
+
+    @ol_frequency.setter
+    def ol_frequency(self, frequency):
+        """ Set the open loop frequency (mHz). """
+
+        r = lib.il_axis_ol_frequency_set(self._axis, frequency)
         _raise_err(r)
 
     @property
