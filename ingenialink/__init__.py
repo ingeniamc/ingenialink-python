@@ -53,6 +53,23 @@ PHY_ACC = lib.IL_REG_PHY_ACC
 _PHY_ALL = (PHY_NONE, PHY_TORQUE, PHY_POS, PHY_VEL, PHY_ACC)
 """ tuple: All physical units. """
 
+STATE_NRDY = lib.IL_AXIS_STATE_NRDY
+""" int: PDS state, Not ready to switch on. """
+STATE_DISABLED = lib.IL_AXIS_STATE_DISABLED
+""" int: PDS state, Switch on disabled. """
+STATE_RDY = lib.IL_AXIS_STATE_RDY
+""" int: PDS state, Ready to be switched on. """
+STATE_ON = lib.IL_AXIS_STATE_ON
+""" int: PDS state, Power switched on. """
+STATE_ENABLED = lib.IL_AXIS_STATE_ENABLED
+""" int: PDS state, Enabled. """
+STATE_QSTOP = lib.IL_AXIS_STATE_QSTOP
+""" int: PDS state, Quick stop. """
+STATE_FAULTR = lib.IL_AXIS_STATE_FAULTR
+""" int: PDS state, Fault reactive. """
+STATE_FAULT = lib.IL_AXIS_STATE_FAULT
+""" int: PDS state, Fault. """
+
 MODE_OLV = lib.IL_AXIS_MODE_OLV
 """ int: Open loop (vector mode). """
 MODE_OLS = lib.IL_AXIS_MODE_OLS
@@ -599,16 +616,40 @@ class Axis(object):
 
         lib.il_axis_units_acc_set(self._axis, units)
 
-    def enable(self):
-        """ Enable PDS. """
+    @property
+    def state(self):
+        """ int: PDS state. """
 
-        r = lib.il_axis_enable(self._axis)
-        _raise_err(r)
+        return lib.il_axis_state_get(self._axis)
 
     def disable(self):
         """ Disable PDS. """
 
         r = lib.il_axis_disable(self._axis)
+        _raise_err(r)
+
+    def switch_on(self, timeout=1000):
+        """ Switch on PDS.
+
+            This function switches on the PDS but it does not enable the motor.
+            For most application cases, you should only use the `enable`
+            function.
+
+            Args:
+                timeout (int, optional): Timeout (ms).
+        """
+
+        r = lib.il_axis_switch_on(self._axis, timeout)
+        _raise_err(r)
+
+    def enable(self, timeout=1000):
+        """ Enable PDS.
+
+            Args:
+                timeout (int, optional): Timeout (ms).
+        """
+
+        r = lib.il_axis_enable(self._axis, timeout)
         _raise_err(r)
 
     def fault_reset(self):
