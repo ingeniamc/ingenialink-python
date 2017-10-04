@@ -28,6 +28,6 @@ setup(name='ingenialink',
           'Topic :: Communications',
           'Topic :: Software Development :: Libraries'
       ],
-      setup_requires=["cffi>=1.0.0"],
-      cffi_modules=["ingenialink/ingenialink_build.py:ffibuilder"],
-      install_requires=["cffi>=1.0.0"])
+      setup_requires=['cffi>=1.0.0,<=1.11.0'],
+      cffi_modules=['ingenialink/ingenialink_build.py:ffibuilder'],
+      install_requires=['cffi>=1.0.0,<=1.11.0'])
