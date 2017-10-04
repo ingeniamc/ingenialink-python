@@ -20,4 +20,5 @@ def _load():
 
             module.__dict__[name] = Register._from_register(reg)
 
+
 _load()
