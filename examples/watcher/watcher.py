@@ -6,13 +6,7 @@ from qtpy.QtWidgets import (QApplication, QDialog, QFormLayout, QLabel,
                             QDataWidgetMapper, QLineEdit)
 
 import ingenialink as il
-
-
-POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_POS)
-""" Register: actual position. """
-
-VEL_ACTUAL = il.Register(0x606C, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_VEL)
-""" Register: actual velocity. """
+from ingenialink import regs
 
 
 class RegisterUpdater(QObject):
@@ -173,8 +167,8 @@ class WatcherDialog(QDialog):
 
         # configure and start watcher
         self._watcher = RegisterWatcher(self._axis)
-        self._watcher.add(POS_ACTUAL, 500, pos)
-        self._watcher.add(VEL_ACTUAL, 100, vel)
+        self._watcher.add(regs.POS_ACT, 500, pos)
+        self._watcher.add(regs.VEL_ACT, 100, vel)
         self._watcher.start(100)
 
         # map model fields to widgets

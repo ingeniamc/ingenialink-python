@@ -292,6 +292,18 @@ class Register(object):
                              'access': access,
                              'phy': phy})
 
+    def __repr__(self):
+        return '<Register (0x{:04x}, 0x{:02x})>'.format(self.idx, self.sidx)
+
+    @classmethod
+    def _from_register(cls, reg):
+        """ Create a new class instance from an existing register. """
+
+        inst = cls.__new__(cls)
+        inst._reg = reg
+
+        return inst
+
     @property
     def idx(self):
         """ int: Register index. """

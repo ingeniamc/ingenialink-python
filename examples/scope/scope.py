@@ -13,16 +13,11 @@ import qtmodern.windows
 
 import numpy as np
 import ingenialink as il
+from ingenialink import regs
 
 
 _RESOURCES = join(dirname(abspath(__file__)), 'resources')
 """ str: Resources folder. """
-
-POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_POS)
-""" Register: actual position. """
-
-VEL_ACTUAL = il.Register(0x606C, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_VEL)
-""" Register: actual velocity. """
 
 
 class HomingRunner(QObject):
@@ -276,7 +271,7 @@ class ScopeWindow(QMainWindow):
             axis.units_pos = il.UNITS_POS_DEG
             axis.enable()
 
-            self.enableScope(axis, POS_ACTUAL)
+            self.enableScope(axis, regs.POS_ACT)
             self.setState(self.statePosition)
         else:
             self.disableScope()
@@ -297,7 +292,7 @@ class ScopeWindow(QMainWindow):
             axis.units_vel = il.UNITS_VEL_RPS
             axis.enable()
 
-            self.enableScope(axis, VEL_ACTUAL)
+            self.enableScope(axis, regs.VEL_ACT)
             self.setState(self.stateVelocity)
         else:
             self.disableScope()
