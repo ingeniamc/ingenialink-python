@@ -42,9 +42,16 @@ The recommended way to install is by using ``pip``, i.e::
 
     pip install ingenialink
 
-Binary wheels are provided for most popular platforms and Python versions. In
-case they are not, you will need to have the requirements listed
+Windows binary wheels are provided for all supported Python versions. For Linux
+and macOS, `pip` will automatically compile and install the library provided you
+have the requirements listed
 `here <http://ingenialink.readthedocs.io/en/latest/building.html>`_ installed.
+On recent versions of Debian/Ubuntu this translates to::
+
+    sudo apt install python-dev python3-dev libffi-dev libudev-dev build-essential cmake git
+
+where you can remove either ``python-dev`` or ``python3-dev`` if you are just
+installing for one of the Python versions.
 
 Examples
 --------
