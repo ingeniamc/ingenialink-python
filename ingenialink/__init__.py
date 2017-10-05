@@ -49,8 +49,10 @@ PHY_VEL = lib.IL_REG_PHY_VEL
 """ int: Velocity units. """
 PHY_ACC = lib.IL_REG_PHY_ACC
 """ int: Acceleration units. """
+PHY_VOLT_REL = lib.IL_REG_PHY_VOLT_REL
+""" int: Relative voltage (DC) units. """
 
-_PHY_ALL = (PHY_NONE, PHY_TORQUE, PHY_POS, PHY_VEL, PHY_ACC)
+_PHY_ALL = (PHY_NONE, PHY_TORQUE, PHY_POS, PHY_VEL, PHY_ACC, PHY_VOLT_REL)
 """ tuple: All physical units. """
 
 STATE_NRDY = lib.IL_AXIS_STATE_NRDY
@@ -300,7 +302,9 @@ class Register(object):
         """ Create a new class instance from an existing register. """
 
         inst = cls.__new__(cls)
-        inst._reg = reg
+
+        inst._reg_p = ffi.new('il_reg_t *', reg)
+        inst._reg = inst._reg_p
 
         return inst
 
@@ -369,15 +373,9 @@ class Network(object):
             IngeniaLinkCreationError: If the network cannot be created.
     """
 
-    _net = None
-
     def __init__(self, port, timeout=100):
-        self._net = lib.il_net_create(_cstr(port))
+        self._net = ffi.gc(lib.il_net_create(_cstr(port)), lib.il_net_destroy)
         _raise_null(self._net)
-
-    def __del__(self):
-        if self._net:
-            lib.il_net_destroy(self._net)
 
     def axes(self, on_found=None):
         """ Obtain a list of attached axes.
@@ -431,15 +429,10 @@ class NetworkMonitor(object):
             IngeniaLinkCreationError: If the monitor cannot be created.
     """
 
-    _mon = None
-
     def __init__(self):
-        self._mon = lib.il_net_dev_mon_create()
+        self._mon = ffi.gc(lib.il_net_dev_mon_create(),
+                           lib.il_net_dev_mon_destroy)
         _raise_null(self._mon)
-
-    def __del__(self):
-        if self._mon:
-            lib.il_net_dev_mon_destroy(self._mon)
 
     def start(self, on_evt):
         """ Start the monitor.
@@ -480,20 +473,16 @@ class Axis(object):
             IngeniaLinkCreationError: If the axis cannot be created.
     """
 
-    _axis = None
-
     def __init__(self, net, axis_id, timeout=1000):
         # keep network reference
         self._net = net
 
-        self._axis = lib.il_axis_create(self._net._net, axis_id, timeout)
+        self._axis = ffi.gc(lib.il_axis_create(self._net._net, axis_id,
+                                               timeout),
+                            lib.il_axis_destroy)
         _raise_null(self._axis)
 
         self._emcy_cb = {}
-
-    def __del__(self):
-        if self._axis:
-            lib.il_axis_destroy(self._axis)
 
     def emcy_subscribe(self, cb):
         """ Subscribe to emergency messages.
@@ -899,22 +888,18 @@ class Poller(object):
             IngeniaLinkCreationError: If the poller cannot be created.
     """
 
-    _poller = None
-
     def __init__(self, axis, reg, period, sz):
         self._axis = axis
 
-        self._poller = lib.il_poller_create(axis._axis, reg._reg, period, sz)
+        self._poller = ffi.gc(lib.il_poller_create(axis._axis, reg._reg,
+                                                   period, sz),
+                              lib.il_poller_destroy)
         _raise_null(self._poller)
 
         self._t = ffi.new('double **')
         self._d = ffi.new('double **')
         self._cnt = ffi.new('size_t *')
         self._lost = ffi.new('int *')
-
-    def __del__(self):
-        if self._poller:
-            lib.il_poller_destroy(self._poller)
 
     def start(self):
         """ Start poller. """
@@ -952,19 +937,14 @@ class Monitor(object):
             axis (Axis): Axis instance.
     """
 
-    _monitor = None
-
     def __init__(self, axis):
         self._axis = axis
 
-        self._monitor = lib.il_monitor_create(axis._axis)
+        self._monitor = ffi.gc(lib.il_monitor_create(axis._axis),
+                               lib.il_monitor_destroy)
         _raise_null(self._monitor)
 
         self._acq = ffi.new('il_monitor_acq_t **')
-
-    def __del__(self):
-        if self._monitor:
-            lib.il_monitor_destroy(self._monitor)
 
     def start(self):
         """ Start the monitor. """

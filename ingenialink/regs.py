@@ -16,9 +16,7 @@ def _load():
         m = reg_pattern.match(k)
         if m:
             name = m.groups()[0]
-            reg = ffi.new('il_reg_t *', lib.__dict__[k])
-
-            module.__dict__[name] = Register._from_register(reg)
+            module.__dict__[name] = Register._from_register(lib.__dict__[k])
 
 
 _load()
