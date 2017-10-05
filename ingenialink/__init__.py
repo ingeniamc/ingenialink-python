@@ -460,6 +460,14 @@ class NetworkMonitor(object):
         lib.il_net_dev_mon_stop(self._mon)
 
 
+@ffi.def_extern()
+def _on_emcy_cb(ctx, code):
+    """ On emergency callback shim. """
+
+    cb = ffi.from_handle(ctx)
+    cb(code)
+
+
 class Axis(object):
     """ IngeniaLink network axis.
 
@@ -481,9 +489,43 @@ class Axis(object):
         self._axis = lib.il_axis_create(self._net._net, axis_id, timeout)
         _raise_null(self._axis)
 
+        self._emcy_cb = {}
+
     def __del__(self):
         if self._axis:
             lib.il_axis_destroy(self._axis)
+
+    def emcy_subscribe(self, cb):
+        """ Subscribe to emergency messages.
+
+            Args:
+                cb: Callback
+
+            Returns:
+                int: Assigned slot.
+        """
+
+        cb_handle = ffi.new_handle(cb)
+
+        slot = lib.il_axis_emcy_subscribe(self._axis, lib._on_emcy_cb,
+                                          cb_handle)
+        if slot < 0:
+            _raise_err(slot)
+
+        self._emcy_cb[slot] = cb_handle
+
+        return slot
+
+    def emcy_unsubscribe(self, slot):
+        """ Unsubscribe from emergency messages.
+
+            Args:
+                slot (int): Assigned slot when subscribed.
+        """
+
+        lib.il_axis_emcy_unsubscribe(self._axis, self._emcy_cb[slot])
+
+        del self._emcy_cb[slot]
 
     def raw_read(self, reg):
         """ Raw read from axis.
