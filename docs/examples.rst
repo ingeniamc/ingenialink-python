@@ -20,12 +20,12 @@ Read/Write
     POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_POS)
 
     net = il.Network('/dev/ttyACM0')
-    axis = il.Axis(net, 0x20)
+    servo = il.Servo(net, 0x20)
 
     ...
-    axis.raw_write(POS_TARGET, 1000)
+    servo.raw_write(POS_TARGET, 1000)
     ...
-    print('Actual position (counts):', axis.raw_read(POS_ACTUAL))
+    print('Actual position (counts):', servo.raw_read(POS_ACTUAL))
 
 Motion control
 --------------
@@ -35,17 +35,17 @@ Motion control
     import ingenialink as il
 
     net = il.Network('/dev/ttyACM0')
-    axis = il.Axis(net, 0x20)
+    servo = il.Servo(net, 0x20)
 
     # set position units to degrees
-    axis.units_pos = il.UNITS_POS_DEG
+    servo.units_pos = il.UNITS_POS_DEG
 
-    axis.disable()
-    axis.mode = il.MODE_PP
-    axis.enable()
+    servo.disable()
+    servo.mode = il.MODE_PP
+    servo.enable()
 
-    axis.position = 90
-    axis.wait_reached(timeout=500)
+    servo.position = 90
+    servo.wait_reached(timeout=500)
 
 Register polling
 ----------------
@@ -57,38 +57,38 @@ Register polling
     POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_POS)
 
     net = il.Network('/dev/ttyACM0')
-    axis = il.Axis(net, 0x20)
+    servo = il.Servo(net, 0x20)
 
-    axis.units_pos = il.UNITS_POS_DEG
+    servo.units_pos = il.UNITS_POS_DEG
 
-    poller = il.Poller(axis, POS_ACTUAL, 2, 1000)
+    poller = il.Poller(servo, POS_ACTUAL, 2, 1000)
 
-    axis.disable()
-    axis.mode = il.MODE_PP
-    axis.enable()
+    servo.disable()
+    servo.mode = il.MODE_PP
+    servo.enable()
 
     poller.start()
-    axis.position = 180
-    axis.wait_reached(timeout=500)
+    servo.position = 180
+    servo.wait_reached(timeout=500)
     poller.stop()
 
     t, d = poller.data
     ...
 
 
-Axes listing
-------------
+Servos listing
+--------------
 
 ::
 
     import ingenialink as il
 
     net = il.Network('COM1')
-    axes = net.axes()
+    servos = net.servos()
 
-    print('Available axes:')
-    for axis in axes:
-        print(axis)
+    print('Available servos:')
+    for servo in servos:
+        print(servo)
 
 Device listing and monitoring
 -----------------------------

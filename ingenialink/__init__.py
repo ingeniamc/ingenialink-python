@@ -1,5 +1,3 @@
-import warnings
-
 from ._ingenialink import ffi, lib
 from ._utils import _cstr, _pstr
 from . import exceptions as exc
@@ -49,20 +47,43 @@ PHY_VEL = lib.IL_REG_PHY_VEL
 """ int: Velocity units. """
 PHY_ACC = lib.IL_REG_PHY_ACC
 """ int: Acceleration units. """
+PHY_VOLT_REL = lib.IL_REG_PHY_VOLT_REL
+""" int: Relative voltage (DC) units. """
 
-_PHY_ALL = (PHY_NONE, PHY_TORQUE, PHY_POS, PHY_VEL, PHY_ACC)
+_PHY_ALL = (PHY_NONE, PHY_TORQUE, PHY_POS, PHY_VEL, PHY_ACC, PHY_VOLT_REL)
 """ tuple: All physical units. """
 
-MODE_PP = lib.IL_AXIS_MODE_PP
+STATE_NRDY = lib.IL_SERVO_STATE_NRDY
+""" int: PDS state, Not ready to switch on. """
+STATE_DISABLED = lib.IL_SERVO_STATE_DISABLED
+""" int: PDS state, Switch on disabled. """
+STATE_RDY = lib.IL_SERVO_STATE_RDY
+""" int: PDS state, Ready to be switched on. """
+STATE_ON = lib.IL_SERVO_STATE_ON
+""" int: PDS state, Power switched on. """
+STATE_ENABLED = lib.IL_SERVO_STATE_ENABLED
+""" int: PDS state, Enabled. """
+STATE_QSTOP = lib.IL_SERVO_STATE_QSTOP
+""" int: PDS state, Quick stop. """
+STATE_FAULTR = lib.IL_SERVO_STATE_FAULTR
+""" int: PDS state, Fault reactive. """
+STATE_FAULT = lib.IL_SERVO_STATE_FAULT
+""" int: PDS state, Fault. """
+
+MODE_OLV = lib.IL_SERVO_MODE_OLV
+""" int: Open loop (vector mode). """
+MODE_OLS = lib.IL_SERVO_MODE_OLS
+""" int: Open loop (scalar mode). """
+MODE_PP = lib.IL_SERVO_MODE_PP
 """ int: Profile position mode. """
-MODE_PV = lib.IL_AXIS_MODE_PV
+MODE_PV = lib.IL_SERVO_MODE_PV
 """ int: Profile velocity mode. """
-MODE_PT = lib.IL_AXIS_MODE_PT
+MODE_PT = lib.IL_SERVO_MODE_PT
 """ int: Profile torque mode. """
-MODE_HOMING = lib.IL_AXIS_MODE_HOMING
+MODE_HOMING = lib.IL_SERVO_MODE_HOMING
 """ int: Homing mode. """
 
-_MODE_ALL = (MODE_PP, MODE_PV, MODE_PT, MODE_HOMING)
+_MODE_ALL = (MODE_OLV, MODE_OLS, MODE_PP, MODE_PV, MODE_PT, MODE_HOMING)
 """ tuple: All operation modes. """
 
 UNITS_TORQUE_NATIVE = lib.IL_UNITS_TORQUE_NATIVE
@@ -171,24 +192,24 @@ EVT_ADDED = 0
 EVT_REMOVED = 1
 """ int: Device removed event. """
 
-_raw_read = {DTYPE_U8: ['uint8_t *', lib.il_axis_raw_read_u8],
-             DTYPE_S8: ['int8_t *', lib.il_axis_raw_read_s8],
-             DTYPE_U16: ['uint16_t *', lib.il_axis_raw_read_u16],
-             DTYPE_S16: ['int16_t *', lib.il_axis_raw_read_s16],
-             DTYPE_U32: ['uint32_t *', lib.il_axis_raw_read_u32],
-             DTYPE_S32: ['int32_t *', lib.il_axis_raw_read_s32],
-             DTYPE_U64: ['uint64_t *', lib.il_axis_raw_read_u64],
-             DTYPE_S64: ['int64_t *', lib.il_axis_raw_read_s64]}
+_raw_read = {DTYPE_U8: ['uint8_t *', lib.il_servo_raw_read_u8],
+             DTYPE_S8: ['int8_t *', lib.il_servo_raw_read_s8],
+             DTYPE_U16: ['uint16_t *', lib.il_servo_raw_read_u16],
+             DTYPE_S16: ['int16_t *', lib.il_servo_raw_read_s16],
+             DTYPE_U32: ['uint32_t *', lib.il_servo_raw_read_u32],
+             DTYPE_S32: ['int32_t *', lib.il_servo_raw_read_s32],
+             DTYPE_U64: ['uint64_t *', lib.il_servo_raw_read_u64],
+             DTYPE_S64: ['int64_t *', lib.il_servo_raw_read_s64]}
 """ dict: Data buffer and function mappings for raw read operation. """
 
-_raw_write = {DTYPE_U8: lib.il_axis_raw_write_u8,
-              DTYPE_S8: lib.il_axis_raw_write_s8,
-              DTYPE_U16: lib.il_axis_raw_write_u16,
-              DTYPE_S16: lib.il_axis_raw_write_s16,
-              DTYPE_U32: lib.il_axis_raw_write_u32,
-              DTYPE_S32: lib.il_axis_raw_write_s32,
-              DTYPE_U64: lib.il_axis_raw_write_u64,
-              DTYPE_S64: lib.il_axis_raw_write_s64}
+_raw_write = {DTYPE_U8: lib.il_servo_raw_write_u8,
+              DTYPE_S8: lib.il_servo_raw_write_s8,
+              DTYPE_U16: lib.il_servo_raw_write_u16,
+              DTYPE_S16: lib.il_servo_raw_write_s16,
+              DTYPE_U32: lib.il_servo_raw_write_u32,
+              DTYPE_S32: lib.il_servo_raw_write_s32,
+              DTYPE_U64: lib.il_servo_raw_write_u64,
+              DTYPE_S64: lib.il_servo_raw_write_s64}
 """ dict: Function mappings for raw write operation. """
 
 
@@ -271,6 +292,20 @@ class Register(object):
                              'access': access,
                              'phy': phy})
 
+    def __repr__(self):
+        return '<Register (0x{:04x}, 0x{:02x})>'.format(self.idx, self.sidx)
+
+    @classmethod
+    def _from_register(cls, reg):
+        """ Create a new class instance from an existing register. """
+
+        inst = cls.__new__(cls)
+
+        inst._reg_p = ffi.new('il_reg_t *', reg)
+        inst._reg = inst._reg_p
+
+        return inst
+
     @property
     def idx(self):
         """ int: Register index. """
@@ -319,11 +354,11 @@ def devices():
 
 
 @ffi.def_extern()
-def _on_found_cb(ctx, axis_id):
+def _on_found_cb(ctx, servo_id):
     """ On found callback shim. """
 
     self = ffi.from_handle(ctx)
-    self._on_found(int(axis_id))
+    self._on_found(int(servo_id))
 
 
 class Network(object):
@@ -336,24 +371,20 @@ class Network(object):
             IngeniaLinkCreationError: If the network cannot be created.
     """
 
-    _net = None
-
     def __init__(self, port, timeout=100):
-        self._net = lib.il_net_create(_cstr(port))
-        _raise_null(self._net)
+        net = lib.il_net_create(_cstr(port))
+        _raise_null(net)
 
-    def __del__(self):
-        if self._net:
-            lib.il_net_destroy(self._net)
+        self._net = ffi.gc(net, lib.il_net_destroy)
 
-    def axes(self, on_found=None):
-        """ Obtain a list of attached axes.
+    def servos(self, on_found=None):
+        """ Obtain a list of attached servos.
 
             Args:
-                on_found (callback, optional): Axis found callback.
+                on_found (callback, optional): Servo found callback.
 
             Returns:
-                list: List of attached axes.
+                list: List of attached servos.
         """
 
         if on_found:
@@ -367,16 +398,16 @@ class Network(object):
             callback = ffi.NULL
             handle = ffi.NULL
 
-        axes = lib.il_net_axes_list_get(self._net, callback, handle)
+        servos = lib.il_net_servos_list_get(self._net, callback, handle)
 
         found = []
-        curr = axes
+        curr = servos
 
         while curr:
             found.append(int(curr.id))
             curr = curr.next
 
-        lib.il_net_axes_list_destroy(axes)
+        lib.il_net_servos_list_destroy(servos)
 
         return found
 
@@ -398,15 +429,11 @@ class NetworkMonitor(object):
             IngeniaLinkCreationError: If the monitor cannot be created.
     """
 
-    _mon = None
-
     def __init__(self):
-        self._mon = lib.il_net_dev_mon_create()
-        _raise_null(self._mon)
+        mon = lib.il_net_dev_mon_create()
+        _raise_null(mon)
 
-    def __del__(self):
-        if self._mon:
-            lib.il_net_dev_mon_destroy(self._mon)
+        self._mon = ffi.gc(mon, lib.il_net_dev_mon_destroy)
 
     def start(self, on_evt):
         """ Start the monitor.
@@ -427,33 +454,71 @@ class NetworkMonitor(object):
         lib.il_net_dev_mon_stop(self._mon)
 
 
-class Axis(object):
-    """ IngeniaLink network axis.
+@ffi.def_extern()
+def _on_emcy_cb(ctx, code):
+    """ On emergency callback shim. """
+
+    cb = ffi.from_handle(ctx)
+    cb(code)
+
+
+class Servo(object):
+    """ IngeniaLink network servo.
 
         Args:
             net (Network): Network instance.
-            id (int): Axis id.
+            id (int): Servo id.
             timeout (int, optional): Communications timeout (ms).
 
         Raises:
-            IngeniaLinkCreationError: If the axis cannot be created.
+            IngeniaLinkCreationError: If the servo cannot be created.
     """
 
-    _axis = None
-
-    def __init__(self, net, axis_id, timeout=1000):
+    def __init__(self, net, servo_id, timeout=1000):
         # keep network reference
         self._net = net
 
-        self._axis = lib.il_axis_create(self._net._net, axis_id, timeout)
-        _raise_null(self._axis)
+        servo = lib.il_servo_create(self._net._net, servo_id, timeout)
+        _raise_null(servo)
 
-    def __del__(self):
-        if self._axis:
-            lib.il_axis_destroy(self._axis)
+        self._servo = ffi.gc(servo, lib.il_servo_destroy)
+
+        self._emcy_cb = {}
+
+    def emcy_subscribe(self, cb):
+        """ Subscribe to emergency messages.
+
+            Args:
+                cb: Callback
+
+            Returns:
+                int: Assigned slot.
+        """
+
+        cb_handle = ffi.new_handle(cb)
+
+        slot = lib.il_servo_emcy_subscribe(
+                self._servo, lib._on_emcy_cb, cb_handle)
+        if slot < 0:
+            _raise_err(slot)
+
+        self._emcy_cb[slot] = cb_handle
+
+        return slot
+
+    def emcy_unsubscribe(self, slot):
+        """ Unsubscribe from emergency messages.
+
+            Args:
+                slot (int): Assigned slot when subscribed.
+        """
+
+        lib.il_servo_emcy_unsubscribe(self._servo, self._emcy_cb[slot])
+
+        del self._emcy_cb[slot]
 
     def raw_read(self, reg):
-        """ Raw read from axis.
+        """ Raw read from servo.
 
             Args:
                 reg (Register): Register.
@@ -472,13 +537,13 @@ class Axis(object):
         t, f = _raw_read[reg.dtype]
         v = ffi.new(t)
 
-        r = f(self._axis, reg._reg, v)
+        r = f(self._servo, reg._reg, v)
         _raise_err(r)
 
         return v[0]
 
     def read(self, reg):
-        """ Read from axis.
+        """ Read from servo.
 
             Args:
                 reg (Register): Register.
@@ -494,13 +559,13 @@ class Axis(object):
             raise TypeError('Invalid register type')
 
         v = ffi.new('double *')
-        r = lib.il_axis_read(self._axis, reg._reg, v)
+        r = lib.il_servo_read(self._servo, reg._reg, v)
         _raise_err(r)
 
         return v[0]
 
     def raw_write(self, reg, data):
-        """ Raw write to axis.
+        """ Raw write to servo.
 
             Args:
                 reg (Register): Register.
@@ -523,11 +588,11 @@ class Axis(object):
         # obtain function to call
         f = _raw_write[reg.dtype]
 
-        r = f(self._axis, reg._reg, data)
+        r = f(self._servo, reg._reg, data)
         _raise_err(r)
 
     def write(self, reg, data):
-        """ Write to axis.
+        """ Write to servo.
 
             Args:
                 reg (Register): Register.
@@ -544,73 +609,97 @@ class Axis(object):
         if not isinstance(data, (int, float)):
             raise TypeError('Unsupported data type')
 
-        r = lib.il_axis_write(self._axis, reg._reg, data)
+        r = lib.il_servo_write(self._servo, reg._reg, data)
         _raise_err(r)
 
     @property
     def units_torque(self):
         """ int: Torque units. """
-        return lib.il_axis_units_torque_get(self._axis)
+        return lib.il_servo_units_torque_get(self._servo)
 
     @units_torque.setter
     def units_torque(self, units):
         if units not in _UNITS_TORQUE_ALL:
             raise ValueError('Unsupported torque units')
 
-        lib.il_axis_units_torque_set(self._axis, units)
+        lib.il_servo_units_torque_set(self._servo, units)
 
     @property
     def units_pos(self):
         """ int: Position units. """
-        return lib.il_axis_units_pos_get(self._axis)
+        return lib.il_servo_units_pos_get(self._servo)
 
     @units_pos.setter
     def units_pos(self, units):
         if units not in _UNITS_POS_ALL:
             raise ValueError('Unsupported position units')
 
-        lib.il_axis_units_pos_set(self._axis, units)
+        lib.il_servo_units_pos_set(self._servo, units)
 
     @property
     def units_vel(self):
         """ int: Velocity units. """
-        return lib.il_axis_units_vel_get(self._axis)
+        return lib.il_servo_units_vel_get(self._servo)
 
     @units_vel.setter
     def units_vel(self, units):
         if units not in _UNITS_VEL_ALL:
             raise ValueError('Unsupported velocity units')
 
-        lib.il_axis_units_vel_set(self._axis, units)
+        lib.il_servo_units_vel_set(self._servo, units)
 
     @property
     def units_acc(self):
         """ int: Acceleration units. """
-        return lib.il_axis_units_acc_get(self._axis)
+        return lib.il_servo_units_acc_get(self._servo)
 
     @units_acc.setter
     def units_acc(self, units):
         if units not in _UNITS_ACC_ALL:
             raise ValueError('Unsupported acceleration units')
 
-        lib.il_axis_units_acc_set(self._axis, units)
+        lib.il_servo_units_acc_set(self._servo, units)
 
-    def enable(self):
-        """ Enable PDS. """
+    @property
+    def state(self):
+        """ int: PDS state. """
 
-        r = lib.il_axis_enable(self._axis)
-        _raise_err(r)
+        return lib.il_servo_state_get(self._servo)
 
     def disable(self):
         """ Disable PDS. """
 
-        r = lib.il_axis_disable(self._axis)
+        r = lib.il_servo_disable(self._servo)
+        _raise_err(r)
+
+    def switch_on(self, timeout=1000):
+        """ Switch on PDS.
+
+            This function switches on the PDS but it does not enable the motor.
+            For most application cases, you should only use the `enable`
+            function.
+
+            Args:
+                timeout (int, optional): Timeout (ms).
+        """
+
+        r = lib.il_servo_switch_on(self._servo, timeout)
+        _raise_err(r)
+
+    def enable(self, timeout=1000):
+        """ Enable PDS.
+
+            Args:
+                timeout (int, optional): Timeout (ms).
+        """
+
+        r = lib.il_servo_enable(self._servo, timeout)
         _raise_err(r)
 
     def fault_reset(self):
         """ Fault reset. """
 
-        r = lib.il_axis_fault_reset(self._axis)
+        r = lib.il_servo_fault_reset(self._servo)
         _raise_err(r)
 
     @property
@@ -623,13 +712,13 @@ class Axis(object):
         if mode not in _MODE_ALL:
             raise ValueError('Unsupported mode')
 
-        r = lib.il_axis_mode_set(self._axis, mode)
+        r = lib.il_servo_mode_set(self._servo, mode)
         _raise_err(r)
 
     def homing_start(self):
         """ Start the homing procedure. """
 
-        r = lib.il_axis_homing_start(self._axis)
+        r = lib.il_servo_homing_start(self._servo)
         _raise_err(r)
 
     def homing_wait(self, timeout):
@@ -645,7 +734,41 @@ class Axis(object):
                 timeout (int): Timeout (ms).
         """
 
-        r = lib.il_axis_homing_wait(self._axis, timeout)
+        r = lib.il_servo_homing_wait(self._servo, timeout)
+        _raise_err(r)
+
+    @property
+    def ol_voltage(self):
+        """ float: Open loop voltage (% relative to DC-bus, -1...1). """
+
+        voltage = ffi.new('double *')
+        r = lib.il_servo_ol_voltage_get(self._servo, voltage)
+        _raise_err(r)
+
+        return voltage[0]
+
+    @ol_voltage.setter
+    def ol_voltage(self, voltage):
+        """ Set the open loop voltage (% relative to DC-bus, -1...1). """
+
+        r = lib.il_servo_ol_voltage_set(self._servo, voltage)
+        _raise_err(r)
+
+    @property
+    def ol_frequency(self):
+        """ float: Open loop frequency (mHz). """
+
+        frequency = ffi.new('double *')
+        r = lib.il_servo_ol_frequency_get(self._servo, frequency)
+        _raise_err(r)
+
+        return frequency[0]
+
+    @ol_frequency.setter
+    def ol_frequency(self, frequency):
+        """ Set the open loop frequency (mHz). """
+
+        r = lib.il_servo_ol_frequency_set(self._servo, frequency)
         _raise_err(r)
 
     @property
@@ -653,7 +776,7 @@ class Axis(object):
         """ float: Actual torque. """
 
         torque = ffi.new('double *')
-        r = lib.il_axis_torque_get(self._axis, torque)
+        r = lib.il_servo_torque_get(self._servo, torque)
         _raise_err(r)
 
         return torque[0]
@@ -662,7 +785,7 @@ class Axis(object):
     def torque(self, torque):
         """ Set the target torque. """
 
-        r = lib.il_axis_torque_set(self._axis, torque)
+        r = lib.il_servo_torque_set(self._servo, torque)
         _raise_err(r)
 
     @property
@@ -670,7 +793,7 @@ class Axis(object):
         """ float: Actual position. """
 
         position = ffi.new('double *')
-        r = lib.il_axis_position_get(self._axis, position)
+        r = lib.il_servo_position_get(self._servo, position)
         _raise_err(r)
 
         return position[0]
@@ -684,7 +807,7 @@ class Axis(object):
                 containing in the first position the position, and in the
                 second a dictionary with the following options:
 
-                    - immediate (bool): If True, the axis will go to the
+                    - immediate (bool): If True, the servo will go to the
                       position immediately, otherwise it will push the position
                       to the buffer. Defaults to True.
                     - relative (bool): If True, the position will be taken as
@@ -707,7 +830,7 @@ class Axis(object):
 
             pos = pos[0]
 
-        r = lib.il_axis_position_set(self._axis, pos, immediate, relative)
+        r = lib.il_servo_position_set(self._servo, pos, immediate, relative)
         _raise_err(r)
 
     def position_wait_ack(self, timeout):
@@ -722,7 +845,7 @@ class Axis(object):
                 timeout (int): Timeout (ms).
         """
 
-        r = lib.il_axis_position_wait_ack(self._axis, timeout)
+        r = lib.il_servo_position_wait_ack(self._servo, timeout)
         _raise_err(r)
 
     @property
@@ -730,7 +853,7 @@ class Axis(object):
         """ float: Actual velocity. """
 
         velocity = ffi.new('double *')
-        r = lib.il_axis_velocity_get(self._axis, velocity)
+        r = lib.il_servo_velocity_get(self._servo, velocity)
         _raise_err(r)
 
         return velocity[0]
@@ -739,17 +862,17 @@ class Axis(object):
     def velocity(self, velocity):
         """ Set the target velocity. """
 
-        r = lib.il_axis_velocity_set(self._axis, velocity)
+        r = lib.il_servo_velocity_set(self._servo, velocity)
         _raise_err(r)
 
     def wait_reached(self, timeout):
-        """ Wait until the axis does a target reach.
+        """ Wait until the servo does a target reach.
 
             Args:
                 timeout (float): Timeout (ms).
         """
 
-        r = lib.il_axis_wait_reached(self._axis, timeout)
+        r = lib.il_servo_wait_reached(self._servo, timeout)
         _raise_err(r)
 
 
@@ -757,31 +880,23 @@ class Poller(object):
     """ Register poller.
 
         Args:
-            axis (Axis): Axis.
-            reg (Register): Register to be polled.
-            period (int): Polling period (ms).
-            sz (int): Buffer size.
+            servo (Servo): Servo.
+            n_ch (int): Number of channels.
 
         Raises:
             IngeniaLinkCreationError: If the poller cannot be created.
     """
 
-    _poller = None
+    def __init__(self, servo, n_ch):
+        self._servo = servo
 
-    def __init__(self, axis, reg, period, sz):
-        self._axis = axis
+        poller = lib.il_poller_create(servo._servo, n_ch)
+        _raise_null(poller)
 
-        self._poller = lib.il_poller_create(axis._axis, reg._reg, period, sz)
-        _raise_null(self._poller)
+        self._poller = ffi.gc(poller, lib.il_poller_destroy)
 
-        self._t = ffi.new('double **')
-        self._d = ffi.new('double **')
-        self._cnt = ffi.new('size_t *')
-        self._lost = ffi.new('int *')
-
-    def __del__(self):
-        if self._poller:
-            lib.il_poller_destroy(self._poller)
+        self._n_ch = n_ch
+        self._acq = ffi.new('il_poller_acq_t **')
 
     def start(self):
         """ Start poller. """
@@ -796,42 +911,85 @@ class Poller(object):
 
     @property
     def data(self):
-        """ tuple (list, list): Current time and data vectors. """
+        """ tuple (list, list, bool): Time vector, array of data vectors and a
+            flag indicating if data was lost.
+        """
 
-        r = lib.il_poller_data_get(self._poller, self._t, self._d, self._cnt,
-                                   self._lost)
+        lib.il_poller_data_get(self._poller, self._acq)
+        acq = ffi.cast('il_poller_acq_t *', self._acq[0])
+
+        t = list(acq.t[0:acq.cnt])
+
+        d = []
+        for ch in range(self._n_ch):
+            if acq.d[ch] != ffi.NULL:
+                d.append(list(acq.d[ch][0:acq.cnt]))
+            else:
+                d.append(None)
+
+        return t, d, bool(acq.lost)
+
+    def configure(self, t_s, sz):
+        """ Configure.
+
+            Args:
+                t_s (int): Polling period (ms).
+                sz (int): Buffer size.
+        """
+
+        r = lib.il_poller_configure(self._poller, t_s, sz)
         _raise_err(r)
 
-        if self._lost[0]:
-            warnings.warn('Data was lost (increase buffer or empty faster)')
+    def ch_configure(self, ch, reg):
+        """ Configure a poller channel mapping.
 
-        t = ffi.cast('double *', self._t[0])
-        d = ffi.cast('double *', self._d[0])
-        cnt = self._cnt[0]
+            Args:
+                ch (int): Channel to be configured.
+                reg (Register): Register to associate to the given channel.
 
-        return list(t[0:cnt]), list(d[0:cnt])
+            Raises:
+                TypeError: If the register is not valid.
+        """
+
+        if not isinstance(reg, Register):
+            raise TypeError('Invalid register')
+
+        r = lib.il_poller_ch_configure(self._poller, ch, reg._reg)
+        _raise_err(r)
+
+    def ch_disable(self, ch):
+        """ Disable a channel.
+
+            Args:
+                ch (int): Channel to be disabled.
+        """
+
+        r = lib.il_poller_ch_disable(self._poller, ch)
+        _raise_err(r)
+
+    def ch_disable_all(self):
+        """ Disable all channels. """
+
+        r = lib.il_poller_ch_disable_all(self._poller)
+        _raise_err(r)
 
 
 class Monitor(object):
     """ Monitor.
 
         Args:
-            axis (Axis): Axis instance.
+            servo (Servo): Servo instance.
     """
 
-    _monitor = None
+    def __init__(self, servo):
+        self._servo = servo
 
-    def __init__(self, axis):
-        self._axis = axis
+        monitor = lib.il_monitor_create(servo._servo)
+        _raise_null(monitor)
 
-        self._monitor = lib.il_monitor_create(axis._axis)
-        _raise_null(self._monitor)
+        self._monitor = ffi.gc(monitor, lib.il_monitor_destroy)
 
         self._acq = ffi.new('il_monitor_acq_t **')
-
-    def __del__(self):
-        if self._monitor:
-            lib.il_monitor_destroy(self._monitor)
 
     def start(self):
         """ Start the monitor. """

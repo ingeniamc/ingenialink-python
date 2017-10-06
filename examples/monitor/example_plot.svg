@@ -17,7 +17,7 @@ L 0 0
 z
 " style="fill:#ffffff;"/>
   </g>
-  <g id="axes_1">
+  <g id="servos_1">
    <g id="patch_2">
     <path d="M 108.5625 434.97 
 L 781.65 434.97 
@@ -1467,7 +1467,7 @@ L 781.65 48.33
 L 781.65 48.33 
 " style="fill:none;stroke:#000000;stroke-linecap:square;stroke-linejoin:miter;"/>
    </g>
-   <g id="matplotlib.axis_1">
+   <g id="matplotlib.servo_1">
     <g id="xtick_1">
      <g id="line2d_203">
       <defs>
@@ -1844,7 +1844,7 @@ Q 50.4375 47.3125 51.8125 41.796875
      </g>
     </g>
    </g>
-   <g id="matplotlib.axis_2">
+   <g id="matplotlib.servo_2">
     <g id="ytick_1">
      <g id="line2d_213">
       <defs>
