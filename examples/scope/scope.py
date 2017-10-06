@@ -229,8 +229,9 @@ class ScopeWindow(QMainWindow):
         return servo
 
     def enableScope(self, servo, reg):
-        self._poller = il.Poller(servo, reg, self._POLLER_T_S,
-                                 self._POLLER_BUF_SZ)
+        self._poller = il.Poller(servo, 1)
+        self._poller.configure(self._POLLER_T_S, self._POLLER_BUF_SZ)
+        self._poller.ch_configure(0, reg)
 
         self._data = np.zeros(self._N_SAMPLES)
         self._time = np.arange(-self._N_SAMPLES * self._POLLER_T_S / 1000,
@@ -307,14 +308,14 @@ class ScopeWindow(QMainWindow):
 
     @Slot()
     def on_timerPlotUpdate_expired(self):
-        t, d = self._poller.data
-        samples = len(d)
+        t, d, _ = self._poller.data
+        samples = len(t)
 
         if samples:
-            self._data = np.roll(self._data, -samples)
-            self._data[-samples:] = d
             self._time = np.roll(self._time, -samples)
             self._time[-samples:] = t
+            self._data = np.roll(self._data, -samples)
+            self._data[-samples:] = d[0]
 
             self._curve.setData(self._time, self._data)
 
