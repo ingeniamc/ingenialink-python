@@ -374,8 +374,10 @@ class Network(object):
     """
 
     def __init__(self, port, timeout=100):
-        self._net = ffi.gc(lib.il_net_create(_cstr(port)), lib.il_net_destroy)
-        _raise_null(self._net)
+        net = lib.il_net_create(_cstr(port))
+        _raise_null(net)
+
+        self._net = ffi.gc(net, lib.il_net_destroy)
 
     def servos(self, on_found=None):
         """ Obtain a list of attached servos.
@@ -430,9 +432,10 @@ class NetworkMonitor(object):
     """
 
     def __init__(self):
-        self._mon = ffi.gc(lib.il_net_dev_mon_create(),
-                           lib.il_net_dev_mon_destroy)
-        _raise_null(self._mon)
+        mon = lib.il_net_dev_mon_create()
+        _raise_null(mon)
+
+        self._mon = ffi.gc(mon, lib.il_net_dev_mon_destroy)
 
     def start(self, on_evt):
         """ Start the monitor.
@@ -477,10 +480,10 @@ class Servo(object):
         # keep network reference
         self._net = net
 
-        self._servo = ffi.gc(
-                lib.il_servo_create(self._net._net, servo_id, timeout),
-                lib.il_servo_destroy)
-        _raise_null(self._servo)
+        servo = lib.il_servo_create(self._net._net, servo_id, timeout)
+        _raise_null(servo)
+
+        self._servo = ffi.gc(servo, lib.il_servo_destroy)
 
         self._emcy_cb = {}
 
@@ -891,10 +894,10 @@ class Poller(object):
     def __init__(self, servo, reg, period, sz):
         self._servo = servo
 
-        self._poller = ffi.gc(lib.il_poller_create(servo._servo, reg._reg,
-                                                   period, sz),
-                              lib.il_poller_destroy)
-        _raise_null(self._poller)
+        poller = lib.il_poller_create(servo._servo, reg._reg, period, sz)
+        _raise_null(poller)
+
+        self._poller = ffi.gc(poller, lib.il_poller_destroy)
 
         self._t = ffi.new('double **')
         self._d = ffi.new('double **')
@@ -940,9 +943,10 @@ class Monitor(object):
     def __init__(self, servo):
         self._servo = servo
 
-        self._monitor = ffi.gc(lib.il_monitor_create(servo._servo),
-                               lib.il_monitor_destroy)
-        _raise_null(self._monitor)
+        monitor = lib.il_monitor_create(servo._servo)
+        _raise_null(monitor)
+
+        self._monitor = ffi.gc(monitor, lib.il_monitor_destroy)
 
         self._acq = ffi.new('il_monitor_acq_t **')
 
