@@ -58,14 +58,14 @@
          <number>10</number>
         </property>
         <item>
-         <widget class="QLabel" name="lblAxes">
+         <widget class="QLabel" name="lblServos">
           <property name="text">
-           <string>Axes</string>
+           <string>Servos</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QComboBox" name="cboxAxes">
+         <widget class="QComboBox" name="cboxServos">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
             <horstretch>0</horstretch>

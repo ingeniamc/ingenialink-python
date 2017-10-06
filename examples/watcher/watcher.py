@@ -13,7 +13,7 @@ class RegisterUpdater(QObject):
     """ Register updater.
 
         Args:
-            axis (Axis): Axis instance.
+            servo (Servo): Servo instance.
             watched (dict): Dictionary of watched registers.
             base_period (int, float): Updater base period.
     """
@@ -21,10 +21,10 @@ class RegisterUpdater(QObject):
     finished = Signal()
     """ Signal: Update finished signal. """
 
-    def __init__(self, axis, watched, base_period):
+    def __init__(self, servo, watched, base_period):
         QObject.__init__(self)
 
-        self._axis = axis
+        self._servo = servo
         self._watched = watched
         self._base_period = base_period
 
@@ -36,7 +36,7 @@ class RegisterUpdater(QObject):
             cfg['current'] += self._base_period
 
             if cfg['current'] >= cfg['period']:
-                cfg['curr_data'] = str(self._axis.read(reg))
+                cfg['curr_data'] = str(self._servo.read(reg))
                 cfg['current'] = 0
 
         self.finished.emit()
@@ -46,13 +46,13 @@ class RegisterWatcher(QObject):
     """ Register watcher.
 
         Args:
-            axis (Axis): Axis instance.
+            servo (Servo): Servo instance.
     """
 
-    def __init__(self, axis):
+    def __init__(self, servo):
         QObject.__init__(self)
 
-        self._axis = axis
+        self._servo = servo
 
         self._watched = {}
         self._running = False
@@ -73,7 +73,7 @@ class RegisterWatcher(QObject):
         """ Triggers the updater on each timer expiration. """
 
         self._thread = QThread()
-        self._updater = RegisterUpdater(self._axis, self._watched,
+        self._updater = RegisterUpdater(self._servo, self._watched,
                                         self._base_period)
         self._updater.moveToThread(self._thread)
         self._thread.started.connect(self._updater.update)
@@ -138,8 +138,8 @@ class RegisterWatcher(QObject):
 class WatcherDialog(QDialog):
     """ Watcher Dialog. """
 
-    _AXIS_TIMEOUT = 100
-    """ int: Default axis timeout (ms). """
+    _SERVO_TIMEOUT = 100
+    """ int: Default servo timeout (ms). """
 
     _DEV = '/dev/ttyACM0'
     """ str: Default device. """
@@ -154,10 +154,10 @@ class WatcherDialog(QDialog):
         self.editVelocity = QLineEdit('')
         self.form.addRow(QLabel('Velocity'), self.editVelocity)
 
-        # configure network (take first available axis)
+        # configure network (take first available servo)
         self._net = il.Network(self._DEV)
-        self._axis = il.Axis(self._net, self._net.axes()[0],
-                             self._AXIS_TIMEOUT)
+        self._servo = il.Servo(self._net, self._net.servos()[0],
+                             self._SERVO_TIMEOUT)
 
         # create data model
         model = QStandardItemModel()
@@ -166,7 +166,7 @@ class WatcherDialog(QDialog):
         model.appendRow([pos, vel])
 
         # configure and start watcher
-        self._watcher = RegisterWatcher(self._axis)
+        self._watcher = RegisterWatcher(self._servo)
         self._watcher.add(regs.POS_ACT, 500, pos)
         self._watcher.add(regs.VEL_ACT, 100, vel)
         self._watcher.start(100)

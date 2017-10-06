@@ -7,9 +7,9 @@ binding is built as a native Python extension thanks to cffi_ and it offers the
 same functionality as the C library, which summarizes to:
 
 * Basic motion control support
-* Read and write axis registers
-* Register polling
-* Scan for axes in the network
+* Read and write servo registers
+* Register polling and monitoring
+* Scan for servos on the network
 * Network devices discovery and monitor
 
 .. _ingenialink: https://github.com/ingeniamc/ingenialink

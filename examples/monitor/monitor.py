@@ -20,13 +20,13 @@ VEL_TGT = 20.
 def main():
     # setup network and connect to the first available device
     net = il.Network(DEV)
-    axes = net.axes()
-    axis = il.Axis(net, axes[0])
+    servos = net.servos()
+    servo = il.Servo(net, servos[0])
 
-    axis.units_vel = il.UNITS_VEL_RPS
+    servo.units_vel = il.UNITS_VEL_RPS
 
     # configure monitor (trigger: 90% of the target velocity)
-    monitor = il.Monitor(axis)
+    monitor = il.Monitor(servo)
 
     monitor.configure(t_s=T_S, max_samples=MAX_SAMPLES)
     monitor.ch_disable_all()
@@ -34,20 +34,20 @@ def main():
     monitor.trigger_configure(il.MONITOR_TRIGGER_POS, source=regs.VEL_ACT,
                               th_pos=VEL_TGT * 0.9)
 
-    # enable axis in PV mode
-    axis.disable()
-    axis.mode = il.MODE_PV
-    axis.enable()
+    # enable servo in PV mode
+    servo.disable()
+    servo.mode = il.MODE_PV
+    servo.enable()
 
     # start monitor, set target velocity
     monitor.start()
-    axis.velocity = VEL_TGT
+    servo.velocity = VEL_TGT
 
     # wait until acquisition finishes
     monitor.wait(MONITOR_TIMEOUT)
     data = monitor.data
 
-    axis.disable()
+    servo.disable()
 
     # plot the obtained data
     d = data[il.MONITOR_CH_1]

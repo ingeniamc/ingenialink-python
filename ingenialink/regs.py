@@ -1,7 +1,7 @@
 import sys
 import re
 
-from ._ingenialink import ffi, lib
+from ._ingenialink import lib
 from . import Register
 
 

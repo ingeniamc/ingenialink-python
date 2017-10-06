@@ -110,7 +110,7 @@ def _gen_cffi_header():
     headers = [join(_INC_DIR, 'ingenialink', 'err.h'),
                join(_INC_DIR, 'ingenialink', 'registers.h'),
                join(_INC_DIR, 'ingenialink', 'net.h'),
-               join(_INC_DIR, 'ingenialink', 'axis.h'),
+               join(_INC_DIR, 'ingenialink', 'servo.h'),
                join(_INC_DIR, 'ingenialink', 'poller.h'),
                join(_INC_DIR, 'ingenialink', 'monitor.h'),
                join(_INC_DIR, 'ingenialink', 'version.h')]

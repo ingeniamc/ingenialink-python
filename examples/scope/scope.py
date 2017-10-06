@@ -26,35 +26,35 @@ class HomingRunner(QObject):
     finished = Signal(str)
     """ Signal: Finished signal. """
 
-    def __init__(self, axis, timeout):
+    def __init__(self, servo, timeout):
         QObject.__init__(self)
 
-        self._axis = axis
+        self._servo = servo
         self._timeout = timeout
 
     def run(self):
         try:
-            self._axis.mode = il.MODE_HOMING
-            self._axis.enable()
+            self._servo.mode = il.MODE_HOMING
+            self._servo.enable()
         except Exception as exc:
             self.finished.emit('Error: ' + str(exc))
 
         try:
-            self._axis.homing_start()
-            self._axis.homing_wait(self._timeout)
+            self._servo.homing_start()
+            self._servo.homing_wait(self._timeout)
 
             self.finished.emit('Finished')
         except Exception as exc:
             self.finished.emit('Error: ' + str(exc))
         finally:
-            self._axis.disable()
+            self._servo.disable()
 
 
 class ScopeWindow(QMainWindow):
     """ Scope Window. """
 
-    _AXIS_TIMEOUT = 100
-    """ int: Default axis timeout (ms). """
+    _SERVO_TIMEOUT = 100
+    """ int: Default servo timeout (ms). """
 
     _FPS = 30
     """ int: Plot refresh rate (fps). """
@@ -95,9 +95,9 @@ class ScopeWindow(QMainWindow):
         self._enabled = False
 
         # TODO: should be done asynchronously!
-        self.loadAxes()
+        self.loadServos()
 
-    def loadAxes(self):
+    def loadServos(self):
         model = QStandardItemModel()
 
         devs = il.devices()
@@ -107,22 +107,23 @@ class ScopeWindow(QMainWindow):
             except il.exceptions.IngeniaLinkCreationError:
                 continue
 
-            found = net.axes()
-            for axis_id in found:
+            found = net.servos()
+            for servo_id in found:
                 try:
-                    axis = il.Axis(net, axis_id, timeout=self._AXIS_TIMEOUT)
+                    servo = il.Servo(
+                            net, servo_id, timeout=self._SERVO_TIMEOUT)
                 except il.exceptions.IngeniaLinkCreationError:
                     continue
 
-                item = QStandardItem('0x{:02x} ({})'.format(axis_id, dev))
-                item.setData(axis, Qt.UserRole)
+                item = QStandardItem('0x{:02x} ({})'.format(servo_id, dev))
+                item.setData(servo, Qt.UserRole)
 
                 image = QImage(join(_RESOURCES, 'images', 'triton-core.png'))
                 item.setData(QPixmap.fromImage(image), Qt.DecorationRole)
 
                 model.appendRow([item])
 
-        self.cboxAxes.setModel(model)
+        self.cboxServos.setModel(model)
 
     def setState(self, state):
         if state == self.stateInit:
@@ -171,7 +172,7 @@ class ScopeWindow(QMainWindow):
             self._curve.setPen(color='y', width=2)
 
         elif state == self.stateIdle:
-            self.cboxAxes.setEnabled(True)
+            self.cboxServos.setEnabled(True)
 
             self.tabHoming.setEnabled(True)
             self.btnHoming.setEnabled(True)
@@ -185,7 +186,7 @@ class ScopeWindow(QMainWindow):
             self.btnVelocity.setText('Enable')
 
         elif state == self.stateHoming:
-            self.cboxAxes.setEnabled(False)
+            self.cboxServos.setEnabled(False)
 
             self.tabPosition.setEnabled(False)
             self.tabVelocity.setEnabled(False)
@@ -198,7 +199,7 @@ class ScopeWindow(QMainWindow):
             self._plot.setRange(yRange=[-(self._PRANGE + 10),
                                         self._PRANGE + 10])
 
-            self.cboxAxes.setEnabled(False)
+            self.cboxServos.setEnabled(False)
 
             self.tabHoming.setEnabled(False)
             self.tabVelocity.setEnabled(False)
@@ -211,7 +212,7 @@ class ScopeWindow(QMainWindow):
             self._plot.setRange(yRange=[-(self._VRANGE + 10),
                                         self._VRANGE + 10])
 
-            self.cboxAxes.setEnabled(False)
+            self.cboxServos.setEnabled(False)
 
             self.tabHoming.setEnabled(False)
             self.tabPosition.setEnabled(False)
@@ -221,14 +222,14 @@ class ScopeWindow(QMainWindow):
 
         self._state = state
 
-    def currentAxis(self):
-        index = self.cboxAxes.model().index(self.cboxAxes.currentIndex(), 0)
-        axis = self.cboxAxes.model().data(index, Qt.UserRole)
+    def currentServo(self):
+        index = self.cboxServos.model().index(self.cboxServos.currentIndex(), 0)
+        servo = self.cboxServos.model().data(index, Qt.UserRole)
 
-        return axis
+        return servo
 
-    def enableScope(self, axis, reg):
-        self._poller = il.Poller(axis, reg, self._POLLER_T_S,
+    def enableScope(self, servo, reg):
+        self._poller = il.Poller(servo, reg, self._POLLER_T_S,
                                  self._POLLER_BUF_SZ)
 
         self._data = np.zeros(self._N_SAMPLES)
@@ -253,7 +254,7 @@ class ScopeWindow(QMainWindow):
         self.setState(self.stateHoming)
 
         self._thread = QThread()
-        self._runner = HomingRunner(self.currentAxis(), self._HOMING_TIMEOUT)
+        self._runner = HomingRunner(self.currentServo(), self._HOMING_TIMEOUT)
         self._runner.moveToThread(self._thread)
         self._thread.started.connect(self._runner.run)
         self._runner.finished.connect(self.onHomingFinished)
@@ -264,45 +265,45 @@ class ScopeWindow(QMainWindow):
 
     @Slot()
     def on_btnPosition_clicked(self):
-        axis = self.currentAxis()
+        servo = self.currentServo()
 
         if self._state == self.stateIdle:
-            axis.mode = il.MODE_PP
-            axis.units_pos = il.UNITS_POS_DEG
-            axis.enable()
+            servo.mode = il.MODE_PP
+            servo.units_pos = il.UNITS_POS_DEG
+            servo.enable()
 
-            self.enableScope(axis, regs.POS_ACT)
+            self.enableScope(servo, regs.POS_ACT)
             self.setState(self.statePosition)
         else:
             self.disableScope()
-            axis.disable()
+            servo.disable()
 
             self.setState(self.stateIdle)
 
     @Slot(int)
     def on_dialPosition_valueChanged(self, value):
-        self.currentAxis().position = value
+        self.currentServo().position = value
 
     @Slot()
     def on_btnVelocity_clicked(self):
-        axis = self.currentAxis()
+        servo = self.currentServo()
 
         if self._state == self.stateIdle:
-            axis.mode = il.MODE_PV
-            axis.units_vel = il.UNITS_VEL_RPS
-            axis.enable()
+            servo.mode = il.MODE_PV
+            servo.units_vel = il.UNITS_VEL_RPS
+            servo.enable()
 
-            self.enableScope(axis, regs.VEL_ACT)
+            self.enableScope(servo, regs.VEL_ACT)
             self.setState(self.stateVelocity)
         else:
             self.disableScope()
-            axis.disable()
+            servo.disable()
 
             self.setState(self.stateIdle)
 
     @Slot(int)
     def on_dialVelocity_valueChanged(self, value):
-        self.currentAxis().velocity = value
+        self.currentServo().velocity = value
 
     @Slot()
     def on_timerPlotUpdate_expired(self):
