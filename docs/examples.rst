@@ -6,7 +6,7 @@ never-ending API docs. So here we go.
 
 .. note:: You can also find full-featured examples in the `repo`_ ``examples``
           folder.
-          
+
 .. _repo: https://github.com/ingeniamc/ingenialink-python
 
 Read/Write
@@ -15,17 +15,15 @@ Read/Write
 ::
 
     import ingenialink as il
-
-    POS_TARGET = il.Register(0x607A, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_POS)
-    POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_POS)
+    from ingenialink import regs
 
     net = il.Network('/dev/ttyACM0')
     servo = il.Servo(net, 0x20)
 
     ...
-    servo.raw_write(POS_TARGET, 1000)
+    servo.write(regs.POS_TGT, 1000)
     ...
-    print('Actual position (counts):', servo.raw_read(POS_ACTUAL))
+    print('Actual position (counts):', servo.read(regs.POS_ACT))
 
 Motion control
 --------------
@@ -53,15 +51,16 @@ Register polling
 ::
 
     import ingenialink as il
-
-    POS_ACTUAL = il.Register(0x6064, 0x00, il.DTYPE_S32, il.ACCESS_RW, il.PHY_POS)
+    from ingenialink import regs
 
     net = il.Network('/dev/ttyACM0')
     servo = il.Servo(net, 0x20)
 
     servo.units_pos = il.UNITS_POS_DEG
 
-    poller = il.Poller(servo, POS_ACTUAL, 2, 1000)
+    poller = il.Poller(servo, n_ch=1)
+    poller.configure(t_s=2, sz=1000)
+    poller.ch_configure(0, regs.POS_ACT)
 
     servo.disable()
     servo.mode = il.MODE_PP
@@ -72,7 +71,7 @@ Register polling
     servo.wait_reached(timeout=500)
     poller.stop()
 
-    t, d = poller.data
+    t, d, lost = poller.data
     ...
 
 
