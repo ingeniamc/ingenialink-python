@@ -513,7 +513,7 @@ class Servo(object):
                 slot (int): Assigned slot when subscribed.
         """
 
-        lib.il_servo_emcy_unsubscribe(self._servo, self._emcy_cb[slot])
+        lib.il_servo_emcy_unsubscribe(self._servo, slot)
 
         del self._emcy_cb[slot]
 
