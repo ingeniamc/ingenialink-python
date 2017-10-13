@@ -257,6 +257,8 @@ def _raise_err(code):
         raise exc.IngeniaLinkAccessError(msg)
     elif code == lib.IL_ESTATE:
         raise exc.IngeniaLinkStateError(msg)
+    elif code == lib.IL_EIO:
+        raise exc.IngeniaLinkIOError(msg)
     else:
         raise exc.IngeniaLinkError(msg)
 
@@ -564,12 +566,13 @@ class Servo(object):
 
         return v[0]
 
-    def raw_write(self, reg, data):
+    def raw_write(self, reg, data, confirm=False):
         """ Raw write to servo.
 
             Args:
                 reg (Register): Register.
                 data (int): Data.
+                confirm (bool, optional): Confirm write.
 
             Raises:
                 TypeError: If any of the arguments type is not valid or
@@ -588,15 +591,16 @@ class Servo(object):
         # obtain function to call
         f = _raw_write[reg.dtype]
 
-        r = f(self._servo, reg._reg, data)
+        r = f(self._servo, reg._reg, data, confirm)
         _raise_err(r)
 
-    def write(self, reg, data):
+    def write(self, reg, data, confirm=False):
         """ Write to servo.
 
             Args:
                 reg (Register): Register.
                 data (int): Data.
+                confirm (bool, optional): Confirm write.
 
             Raises:
                 TypeError: If any of the arguments type is not valid or
@@ -609,7 +613,7 @@ class Servo(object):
         if not isinstance(data, (int, float)):
             raise TypeError('Unsupported data type')
 
-        r = lib.il_servo_write(self._servo, reg._reg, data)
+        r = lib.il_servo_write(self._servo, reg._reg, data, confirm)
         _raise_err(r)
 
     @property
