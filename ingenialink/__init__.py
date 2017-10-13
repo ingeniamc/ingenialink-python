@@ -257,6 +257,8 @@ def _raise_err(code):
         raise exc.IngeniaLinkAccessError(msg)
     elif code == lib.IL_ESTATE:
         raise exc.IngeniaLinkStateError(msg)
+    elif code == lib.IL_EIO:
+        raise exc.IngeniaLinkIOError(msg)
     else:
         raise exc.IngeniaLinkError(msg)
 
@@ -475,10 +477,7 @@ class Servo(object):
     """
 
     def __init__(self, net, servo_id, timeout=1000):
-        # keep network reference
-        self._net = net
-
-        servo = lib.il_servo_create(self._net._net, servo_id, timeout)
+        servo = lib.il_servo_create(net._net, servo_id, timeout)
         _raise_null(servo)
 
         self._servo = ffi.gc(servo, lib.il_servo_destroy)
@@ -513,7 +512,7 @@ class Servo(object):
                 slot (int): Assigned slot when subscribed.
         """
 
-        lib.il_servo_emcy_unsubscribe(self._servo, self._emcy_cb[slot])
+        lib.il_servo_emcy_unsubscribe(self._servo, slot)
 
         del self._emcy_cb[slot]
 
@@ -564,12 +563,13 @@ class Servo(object):
 
         return v[0]
 
-    def raw_write(self, reg, data):
+    def raw_write(self, reg, data, confirm=False):
         """ Raw write to servo.
 
             Args:
                 reg (Register): Register.
                 data (int): Data.
+                confirm (bool, optional): Confirm write.
 
             Raises:
                 TypeError: If any of the arguments type is not valid or
@@ -588,15 +588,16 @@ class Servo(object):
         # obtain function to call
         f = _raw_write[reg.dtype]
 
-        r = f(self._servo, reg._reg, data)
+        r = f(self._servo, reg._reg, data, confirm)
         _raise_err(r)
 
-    def write(self, reg, data):
+    def write(self, reg, data, confirm=False):
         """ Write to servo.
 
             Args:
                 reg (Register): Register.
                 data (int): Data.
+                confirm (bool, optional): Confirm write.
 
             Raises:
                 TypeError: If any of the arguments type is not valid or
@@ -609,7 +610,7 @@ class Servo(object):
         if not isinstance(data, (int, float)):
             raise TypeError('Unsupported data type')
 
-        r = lib.il_servo_write(self._servo, reg._reg, data)
+        r = lib.il_servo_write(self._servo, reg._reg, data, confirm)
         _raise_err(r)
 
     @property
@@ -888,8 +889,6 @@ class Poller(object):
     """
 
     def __init__(self, servo, n_ch):
-        self._servo = servo
-
         poller = lib.il_poller_create(servo._servo, n_ch)
         _raise_null(poller)
 
@@ -982,8 +981,6 @@ class Monitor(object):
     """
 
     def __init__(self, servo):
-        self._servo = servo
-
         monitor = lib.il_monitor_create(servo._servo)
         _raise_null(monitor)
 

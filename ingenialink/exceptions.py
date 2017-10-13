@@ -36,3 +36,8 @@ class IngeniaLinkAccessError(IngeniaLinkError):
 class IngeniaLinkStateError(IngeniaLinkError):
     """ IngeniaLink state error. """
     pass
+
+
+class IngeniaLinkIOError(IngeniaLinkError):
+    """ IngeniaLink I/O error. """
+    pass
