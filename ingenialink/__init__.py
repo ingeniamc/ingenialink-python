@@ -3,7 +3,7 @@ from ._utils import _cstr, _pstr
 from . import exceptions as exc
 
 
-__version__ = '3.1.0'
+__version__ = '3.1.1'
 
 
 DTYPE_U8 = lib.IL_REG_DTYPE_U8
