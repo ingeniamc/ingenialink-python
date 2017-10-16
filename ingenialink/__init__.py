@@ -476,7 +476,7 @@ class Servo(object):
             IngeniaLinkCreationError: If the servo cannot be created.
     """
 
-    def __init__(self, net, servo_id, timeout=1000):
+    def __init__(self, net, servo_id, timeout=100):
         servo = lib.il_servo_create(net._net, servo_id, timeout)
         _raise_null(servo)
 
