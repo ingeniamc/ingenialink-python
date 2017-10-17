@@ -107,7 +107,8 @@ def _gen_cffi_header():
               '#include.*',
               '.+foreach.+\n.*']
 
-    headers = [join(_INC_DIR, 'ingenialink', 'err.h'),
+    headers = [join(_INC_DIR, 'ingenialink', 'const.h'),
+               join(_INC_DIR, 'ingenialink', 'err.h'),
                join(_INC_DIR, 'ingenialink', 'registers.h'),
                join(_INC_DIR, 'ingenialink', 'net.h'),
                join(_INC_DIR, 'ingenialink', 'servo.h'),

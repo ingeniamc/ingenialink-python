@@ -7,3 +7,6 @@ API documentation
 
 .. automodule:: ingenialink.exceptions
     :members:
+
+.. automodule:: ingenialink.const
+    :members:
