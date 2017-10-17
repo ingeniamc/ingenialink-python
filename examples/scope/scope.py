@@ -26,22 +26,23 @@ class HomingRunner(QObject):
     finished = Signal(str)
     """ Signal: Finished signal. """
 
-    def __init__(self, servo, timeout):
+    def __init__(self, servo, en_timeout, h_timeout):
         QObject.__init__(self)
 
         self._servo = servo
-        self._timeout = timeout
+        self._en_timeout = en_timeout
+        self._h_timeout = h_timeout
 
     def run(self):
         try:
             self._servo.mode = il.MODE_HOMING
-            self._servo.enable()
+            self._servo.enable(self._en_timeout)
         except Exception as exc:
             self.finished.emit('Error: ' + str(exc))
 
         try:
             self._servo.homing_start()
-            self._servo.homing_wait(self._timeout)
+            self._servo.homing_wait(self._h_timeout)
 
             self.finished.emit('Finished')
         except Exception as exc:
@@ -73,6 +74,9 @@ class ScopeWindow(QMainWindow):
 
     _VRANGE = 40
     """ int: Velocity range (+/-) rps. """
+
+    _ENABLE_TIMEOUT = 2000
+    """ int: Enable timeout (ms). """
 
     _HOMING_TIMEOUT = 150000
     """ int: Default homing timeout (ms). """
@@ -255,7 +259,8 @@ class ScopeWindow(QMainWindow):
         self.setState(self.stateHoming)
 
         self._thread = QThread()
-        self._runner = HomingRunner(self.currentServo(), self._HOMING_TIMEOUT)
+        self._runner = HomingRunner(self.currentServo(), self._ENABLE_TIMEOUT,
+                                    self._HOMING_TIMEOUT)
         self._runner.moveToThread(self._thread)
         self._thread.started.connect(self._runner.run)
         self._runner.finished.connect(self.onHomingFinished)
@@ -271,7 +276,7 @@ class ScopeWindow(QMainWindow):
         if self._state == self.stateIdle:
             servo.mode = il.MODE_PP
             servo.units_pos = il.UNITS_POS_DEG
-            servo.enable()
+            servo.enable(self._ENABLE_TIMEOUT)
 
             self.enableScope(servo, regs.POS_ACT)
             self.setState(self.statePosition)
@@ -292,7 +297,7 @@ class ScopeWindow(QMainWindow):
         if self._state == self.stateIdle:
             servo.mode = il.MODE_PV
             servo.units_vel = il.UNITS_VEL_RPS
-            servo.enable()
+            servo.enable(self._ENABLE_TIMEOUT)
 
             self.enableScope(servo, regs.VEL_ACT)
             self.setState(self.stateVelocity)
