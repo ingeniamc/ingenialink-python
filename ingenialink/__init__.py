@@ -563,7 +563,7 @@ class Servo(object):
 
         return v[0]
 
-    def raw_write(self, reg, data, confirm=False):
+    def raw_write(self, reg, data, confirm=True):
         """ Raw write to servo.
 
             Args:
@@ -591,7 +591,7 @@ class Servo(object):
         r = f(self._servo, reg._reg, data, confirm)
         _raise_err(r)
 
-    def write(self, reg, data, confirm=False):
+    def write(self, reg, data, confirm=True):
         """ Write to servo.
 
             Args:
