@@ -82,3 +82,40 @@ POS_SENSOR_SIMULATED = lib.IL_POS_SENSOR_SIMULATED
 """ int: Position sensor, Simulated. """
 POS_SENSOR_TACHOMETER = lib.IL_POS_SENSOR_TACHOMETER
 """ int: Position sensor, Digital tachometer. """
+
+# Digital encoder / SinCos parameters
+
+DENC_SINCOS_NSWAPPED = lib.IL_DENC_SINCOS_NSWAPPED
+""" int: Digital encoder/SinCos is not swapped. """
+DENC_SINCOS_SWAPPED = lib.IL_DENC_SINCOS_SWAPPED
+""" int: Digital encoder/SinCis is swapped. """
+
+DENC_SINCOS_TYPE_NONE = lib.IL_DENC_SINCOS_TYPE_NONE
+""" int: No encoder. """
+DENC_SINCOS_TYPE_2CH_S = lib.IL_DENC_SINCOS_TYPE_2CH_S
+""" int: 2 channels encoder (single ended). """
+DENC_SINCOS_TYPE_2CH_S_IDX = lib.IL_DENC_SINCOS_TYPE_2CH_S_IDX
+""" int: 2 channels + index encoder (single ended). """
+DENC_SINCOS_TYPE_2CH_D = lib.IL_DENC_SINCOS_TYPE_2CH_D
+""" int: 2 channels encoder (differential). """
+DENC_SINCOS_TYPE_2CH_D_IDX = lib.IL_DENC_SINCOS_TYPE_2CH_D_IDX
+""" int: 2 channels + index encoder (differential). """
+
+DENC_SINCOS_FILTER_30MHZ = lib.IL_DENC_SINCOS_FILTER_30MHZ
+""" int: Maximum encoder frequency, 30 MHz. """
+DENC_SINCOS_FILTER_10MHZ = lib.IL_DENC_SINCOS_FILTER_10MHZ
+""" int: Maximum encoder frequency, 10 MHz. """
+DENC_SINCOS_FILTER_5MHZ = lib.IL_DENC_SINCOS_FILTER_5MHZ
+""" int: Maximum encoder frequency, 5 MHz. """
+DENC_SINCOS_FILTER_2MHZ = lib.IL_DENC_SINCOS_FILTER_2MHZ
+""" int: Maximum encoder frequency, 2 MHz. """
+DENC_SINCOS_FILTER_1MHZ = lib.IL_DENC_SINCOS_FILTER_1MHZ
+""" int: Maximum encoder frequency, 1 MHz. """
+DENC_SINCOS_FILTER_625KHZ = lib.IL_DENC_SINCOS_FILTER_625KHZ
+""" int: Maximum encoder frequency, 625 KHz. """
+DENC_SINCOS_FILTER_312_5KHZ = lib.IL_DENC_SINCOS_FILTER_312_5KHZ
+""" int: Maximum encoder frequency, 312,5 KHz. """
+DENC_SINCOS_FILTER_156_25KHZ = lib.IL_DENC_SINCOS_FILTER_156_25KHZ
+""" int: Maximum encoder frequency, 156,25 KHz. """
+DENC_SINCOS_FILTER_39_06KHZ = lib.IL_DENC_SINCOS_FILTER_39_06KHZ
+""" int: Maximum encoder frequency, 39,06 KHz. """
