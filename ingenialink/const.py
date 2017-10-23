@@ -83,6 +83,15 @@ POS_SENSOR_SIMULATED = lib.IL_POS_SENSOR_SIMULATED
 POS_SENSOR_TACHOMETER = lib.IL_POS_SENSOR_TACHOMETER
 """ int: Position sensor, Digital tachometer. """
 
+# Initial angle determination methods
+
+IANGLE_METHOD_FORCED_ALIGN = lib.IL_IANGLE_METHOD_FORCED_ALIGN
+""" int: Forced alignment method. """
+IANGLE_METHOD_NINCR_SENSOR = lib.IL_IANGLE_METHOD_NINCR_SENSOR
+""" int: Non incremental sensor used. """
+IANGLE_METHOD_POS_KNOWN = lib.IL_IANGLE_METHOD_POS_KNOWN
+""" int: Initial rotor position known. """
+
 # Digital encoder / SinCos parameters
 
 DENC_SINCOS_NSWAPPED = lib.IL_DENC_SINCOS_NSWAPPED
