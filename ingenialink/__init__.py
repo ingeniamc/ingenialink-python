@@ -563,7 +563,7 @@ class Servo(object):
 
         return v[0]
 
-    def raw_write(self, reg, data, confirm=False):
+    def raw_write(self, reg, data, confirm=True):
         """ Raw write to servo.
 
             Args:
@@ -591,7 +591,7 @@ class Servo(object):
         r = f(self._servo, reg._reg, data, confirm)
         _raise_err(r)
 
-    def write(self, reg, data, confirm=False):
+    def write(self, reg, data, confirm=True):
         """ Write to servo.
 
             Args:
@@ -612,6 +612,30 @@ class Servo(object):
 
         r = lib.il_servo_write(self._servo, reg._reg, data, confirm)
         _raise_err(r)
+
+    def units_update(self):
+        """ Update units scaling factors.
+
+            Notes:
+                This must be called if any encoder parameter, rated torque or
+                pole pitch are changed, otherwise, the readings conversions
+                will not be correct.
+        """
+
+        r = lib.il_servo_units_update(self._servo)
+        _raise_err(r)
+
+    def units_factor(self, reg):
+        """ Obtain units scale factor for the given register.
+
+            Args:
+                reg (Register): Register.
+
+            Returns:
+                float: Scale factor for the given register.
+        """
+
+        return lib.il_servo_units_factor(self._servo, reg._reg)
 
     @property
     def units_torque(self):
@@ -850,6 +874,16 @@ class Servo(object):
         _raise_err(r)
 
     @property
+    def position_res(self):
+        """ int: Position resolution (c/rev/s, c/ppitch/s). """
+
+        res = ffi.new('uint32_t *')
+        r = lib.il_servo_position_res_get(self._servo, res)
+        _raise_err(r)
+
+        return res[0]
+
+    @property
     def velocity(self):
         """ float: Actual velocity. """
 
@@ -865,6 +899,16 @@ class Servo(object):
 
         r = lib.il_servo_velocity_set(self._servo, velocity)
         _raise_err(r)
+
+    @property
+    def velocity_res(self):
+        """ int: Velocity resolution (c/rev, c/ppitch). """
+
+        res = ffi.new('uint32_t *')
+        r = lib.il_servo_velocity_res_get(self._servo, res)
+        _raise_err(r)
+
+        return res[0]
 
     def wait_reached(self, timeout):
         """ Wait until the servo does a target reach.
