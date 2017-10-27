@@ -502,6 +502,22 @@ class Servo(object):
         r = lib.il_servo_name_set(self._servo, name_)
         _raise_err(r)
 
+    @property
+    def info(self):
+        """ dict: Servo information. """
+
+        info = ffi.new('il_servo_info_t *')
+
+        r = lib.il_servo_info_get(self._servo, info)
+        _raise_err(r)
+
+        return {'serial': info.serial,
+                'name': _pstr(info.name),
+                'sw_version': _pstr(info.sw_version),
+                'hw_variant': _pstr(info.hw_variant),
+                'prod_code': info.prod_code,
+                'revision': info.revision}
+
     def store_all(self):
         """ Store all servo current parameters to the NVM. """
 
