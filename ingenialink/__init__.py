@@ -484,6 +484,24 @@ class Servo(object):
 
         self._emcy_cb = {}
 
+    def store_all(self):
+        """ Store all servo current parameters to the NVM. """
+
+        r = lib.il_servo_store_all(self._servo)
+        _raise_err(r)
+
+    def store_comm(self):
+        """ Store all servo current communications to the NVM. """
+
+        r = lib.il_servo_store_comm(self._servo)
+        _raise_err(r)
+
+    def store_app(self):
+        """ Store all servo current application parameters to the NVM. """
+
+        r = lib.il_servo_store_app(self._servo)
+        _raise_err(r)
+
     def emcy_subscribe(self, cb):
         """ Subscribe to emergency messages.
 
