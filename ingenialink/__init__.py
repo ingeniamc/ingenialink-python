@@ -782,7 +782,13 @@ class Servo(object):
     @property
     def mode(self):
         """ int: Operation mode. """
-        pass
+
+        mode = ffi.new('il_servo_mode_t *')
+
+        r = lib.il_servo_mode_get(self._servo, mode)
+        _raise_err(r)
+
+        return mode[0]
 
     @mode.setter
     def mode(self, mode):
