@@ -484,6 +484,24 @@ class Servo(object):
 
         self._emcy_cb = {}
 
+    @property
+    def name(self):
+        """ str: Name. """
+
+        name = ffi.new('char []', lib.IL_SERVO_NAME_SZ)
+
+        r = lib.il_servo_name_get(self._servo, name, ffi.sizeof(name))
+        _raise_err(r)
+
+        return _pstr(name)
+
+    @name.setter
+    def name(self, name):
+        name_ = ffi.new('char []', _cstr(name))
+
+        r = lib.il_servo_name_set(self._servo, name_)
+        _raise_err(r)
+
     def store_all(self):
         """ Store all servo current parameters to the NVM. """
 
