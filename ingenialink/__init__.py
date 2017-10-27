@@ -484,6 +484,58 @@ class Servo(object):
 
         self._emcy_cb = {}
 
+    @property
+    def name(self):
+        """ str: Name. """
+
+        name = ffi.new('char []', lib.IL_SERVO_NAME_SZ)
+
+        r = lib.il_servo_name_get(self._servo, name, ffi.sizeof(name))
+        _raise_err(r)
+
+        return _pstr(name)
+
+    @name.setter
+    def name(self, name):
+        name_ = ffi.new('char []', _cstr(name))
+
+        r = lib.il_servo_name_set(self._servo, name_)
+        _raise_err(r)
+
+    @property
+    def info(self):
+        """ dict: Servo information. """
+
+        info = ffi.new('il_servo_info_t *')
+
+        r = lib.il_servo_info_get(self._servo, info)
+        _raise_err(r)
+
+        return {'serial': info.serial,
+                'name': _pstr(info.name),
+                'sw_version': _pstr(info.sw_version),
+                'hw_variant': _pstr(info.hw_variant),
+                'prod_code': info.prod_code,
+                'revision': info.revision}
+
+    def store_all(self):
+        """ Store all servo current parameters to the NVM. """
+
+        r = lib.il_servo_store_all(self._servo)
+        _raise_err(r)
+
+    def store_comm(self):
+        """ Store all servo current communications to the NVM. """
+
+        r = lib.il_servo_store_comm(self._servo)
+        _raise_err(r)
+
+    def store_app(self):
+        """ Store all servo current application parameters to the NVM. """
+
+        r = lib.il_servo_store_app(self._servo)
+        _raise_err(r)
+
     def emcy_subscribe(self, cb):
         """ Subscribe to emergency messages.
 
