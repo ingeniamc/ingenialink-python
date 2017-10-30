@@ -168,18 +168,6 @@ _UNITS_ACC_ALL = (UNITS_ACC_NATIVE, UNITS_ACC_REV_S2, UNITS_ACC_RAD_S2,
                   UNITS_ACC_M_S2)
 """ tuple: All acceleration units. """
 
-MONITOR_CH_1 = lib.IL_MONITOR_CH_1
-""" int: Monitor channel, 1. """
-MONITOR_CH_2 = lib.IL_MONITOR_CH_2
-""" int: Monitor channel, 2. """
-MONITOR_CH_3 = lib.IL_MONITOR_CH_3
-""" int: Monitor channel, 3. """
-MONITOR_CH_4 = lib.IL_MONITOR_CH_4
-""" int: Monitor channel, 4. """
-
-_MONITOR_CH_ALL = (MONITOR_CH_1, MONITOR_CH_2, MONITOR_CH_3, MONITOR_CH_4)
-""" tuple: All monitor channels. """
-
 MONITOR_TRIGGER_IMMEDIATE = lib.IL_MONITOR_TRIGGER_IMMEDIATE
 """ int: Monitor trigger, immediate. """
 MONITOR_TRIGGER_MOTION = lib.IL_MONITOR_TRIGGER_MOTION
@@ -1125,19 +1113,21 @@ class Monitor(object):
 
     @property
     def data(self):
-        """ list: Current acquisition data list for all channels. """
+        """ tuple: Current acquisition time and data for all channels. """
 
         lib.il_monitor_data_get(self._monitor, self._acq)
         acq = ffi.cast('il_monitor_acq_t *', self._acq[0])
 
-        samples = []
-        for ch in _MONITOR_CH_ALL:
-            if acq.samples[ch] != ffi.NULL:
-                samples.append(list(acq.samples[ch][0:acq.n_samples]))
-            else:
-                samples.append(None)
+        t = list(acq.t[0:acq.cnt])
 
-        return samples
+        d = []
+        for ch in range(lib.IL_MONITOR_CH_NUM):
+            if acq.d[ch] != ffi.NULL:
+                d.append(list(acq.d[ch][0:acq.cnt]))
+            else:
+                d.append(None)
+
+        return t, d
 
     def configure(self, t_s, delay_samples=0, max_samples=0):
         """ Configure the monitor parameters.
@@ -1160,9 +1150,6 @@ class Monitor(object):
                 reg (Register): Register to be mapped to the given channel.
         """
 
-        if ch not in _MONITOR_CH_ALL:
-            raise ValueError('Invalid channel')
-
         if not isinstance(reg, Register):
             raise TypeError('Invalid register')
 
@@ -1171,9 +1158,6 @@ class Monitor(object):
 
     def ch_disable(self, ch):
         """ Disable a channel. """
-
-        if ch not in _MONITOR_CH_ALL:
-            raise ValueError('Invalid channel')
 
         r = lib.il_monitor_ch_disable(self._monitor, ch)
         _raise_err(r)
