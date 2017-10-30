@@ -1208,10 +1208,15 @@ class Monitor(object):
         if mode not in _MONITOR_TRIGGER_ALL:
             raise ValueError('Invalid trigger mode')
 
-        if mode in _source_required and not isinstance(source, Register):
-            raise ValueError('Register required for the selected mode')
+        if mode in _source_required:
+            if not isinstance(source, Register):
+                raise ValueError('Register required for the selected mode')
+
+            reg = source._reg
+        else:
+            reg = ffi.NULL
 
         r = lib.il_monitor_trigger_configure(
-                self._monitor, mode, delay_samples, source._reg, th_pos,
-                th_neg, din_msk)
+                self._monitor, mode, delay_samples, reg, th_pos, th_neg,
+                din_msk)
         _raise_err(r)
