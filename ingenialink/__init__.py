@@ -76,14 +76,25 @@ MODE_OLS = lib.IL_SERVO_MODE_OLS
 """ int: Open loop (scalar mode). """
 MODE_PP = lib.IL_SERVO_MODE_PP
 """ int: Profile position mode. """
+MODE_VEL = lib.IL_SERVO_MODE_VEL
+""" int: Velocity mode. """
 MODE_PV = lib.IL_SERVO_MODE_PV
 """ int: Profile velocity mode. """
 MODE_PT = lib.IL_SERVO_MODE_PT
 """ int: Profile torque mode. """
 MODE_HOMING = lib.IL_SERVO_MODE_HOMING
 """ int: Homing mode. """
+MODE_IP = lib.IL_SERVO_MODE_IP
+""" int: Interpolated position mode. """
+MODE_CSP = lib.IL_SERVO_MODE_CSP
+""" int: Cyclic sync position mode. """
+MODE_CSV = lib.IL_SERVO_MODE_CSV
+""" int: Cyclic sync velocity mode. """
+MODE_CST = lib.IL_SERVO_MODE_CST
+""" int: Cyclic sync torque mode. """
 
-_MODE_ALL = (MODE_OLV, MODE_OLS, MODE_PP, MODE_PV, MODE_PT, MODE_HOMING)
+_MODE_ALL = (MODE_OLV, MODE_OLS, MODE_PP, MODE_VEL, MODE_PV, MODE_PT,
+             MODE_HOMING, MODE_IP, MODE_CSP, MODE_CSV, MODE_CST)
 """ tuple: All operation modes. """
 
 UNITS_TORQUE_NATIVE = lib.IL_UNITS_TORQUE_NATIVE
