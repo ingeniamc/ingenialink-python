@@ -30,7 +30,7 @@ def main():
 
     monitor.configure(t_s=T_S, max_samples=MAX_SAMPLES)
     monitor.ch_disable_all()
-    monitor.ch_configure(il.MONITOR_CH_1, regs.VEL_ACT)
+    monitor.ch_configure(0, regs.VEL_ACT)
     monitor.trigger_configure(il.MONITOR_TRIGGER_POS, source=regs.VEL_ACT,
                               th_pos=VEL_TGT * 0.9)
 
@@ -45,22 +45,19 @@ def main():
 
     # wait until acquisition finishes
     monitor.wait(MONITOR_TIMEOUT)
-    data = monitor.data
+    t, d = monitor.data
 
     servo.disable()
 
     # plot the obtained data
-    d = data[il.MONITOR_CH_1]
-    t = np.arange(0, len(d) * T_S / 1000., T_S / 1000.)
-
     plt.rc('font', family='serif')
-    plt.stem(t, d)
+    plt.stem(t, d[0])
     plt.title('Actual Velocity')
     plt.xlabel('Time (ms)')
     plt.ylabel('Velocity (rps)')
 
-    d_min = np.min(d)
-    d_max = np.max(d)
+    d_min = np.min(d[0])
+    d_max = np.max(d[0])
     offset = 0.05
     plt.ylim([d_min * (1 - offset), d_max * (1 + offset)])
 

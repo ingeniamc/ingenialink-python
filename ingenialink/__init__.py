@@ -76,14 +76,25 @@ MODE_OLS = lib.IL_SERVO_MODE_OLS
 """ int: Open loop (scalar mode). """
 MODE_PP = lib.IL_SERVO_MODE_PP
 """ int: Profile position mode. """
+MODE_VEL = lib.IL_SERVO_MODE_VEL
+""" int: Velocity mode. """
 MODE_PV = lib.IL_SERVO_MODE_PV
 """ int: Profile velocity mode. """
 MODE_PT = lib.IL_SERVO_MODE_PT
 """ int: Profile torque mode. """
 MODE_HOMING = lib.IL_SERVO_MODE_HOMING
 """ int: Homing mode. """
+MODE_IP = lib.IL_SERVO_MODE_IP
+""" int: Interpolated position mode. """
+MODE_CSP = lib.IL_SERVO_MODE_CSP
+""" int: Cyclic sync position mode. """
+MODE_CSV = lib.IL_SERVO_MODE_CSV
+""" int: Cyclic sync velocity mode. """
+MODE_CST = lib.IL_SERVO_MODE_CST
+""" int: Cyclic sync torque mode. """
 
-_MODE_ALL = (MODE_OLV, MODE_OLS, MODE_PP, MODE_PV, MODE_PT, MODE_HOMING)
+_MODE_ALL = (MODE_OLV, MODE_OLS, MODE_PP, MODE_VEL, MODE_PV, MODE_PT,
+             MODE_HOMING, MODE_IP, MODE_CSP, MODE_CSV, MODE_CST)
 """ tuple: All operation modes. """
 
 UNITS_TORQUE_NATIVE = lib.IL_UNITS_TORQUE_NATIVE
@@ -156,18 +167,6 @@ _UNITS_ACC_ALL = (UNITS_ACC_NATIVE, UNITS_ACC_REV_S2, UNITS_ACC_RAD_S2,
                   UNITS_ACC_UM_S2, UNITS_ACC_DEG_S2, UNITS_ACC_MM_S2,
                   UNITS_ACC_M_S2)
 """ tuple: All acceleration units. """
-
-MONITOR_CH_1 = lib.IL_MONITOR_CH_1
-""" int: Monitor channel, 1. """
-MONITOR_CH_2 = lib.IL_MONITOR_CH_2
-""" int: Monitor channel, 2. """
-MONITOR_CH_3 = lib.IL_MONITOR_CH_3
-""" int: Monitor channel, 3. """
-MONITOR_CH_4 = lib.IL_MONITOR_CH_4
-""" int: Monitor channel, 4. """
-
-_MONITOR_CH_ALL = (MONITOR_CH_1, MONITOR_CH_2, MONITOR_CH_3, MONITOR_CH_4)
-""" tuple: All monitor channels. """
 
 MONITOR_TRIGGER_IMMEDIATE = lib.IL_MONITOR_TRIGGER_IMMEDIATE
 """ int: Monitor trigger, immediate. """
@@ -782,7 +781,13 @@ class Servo(object):
     @property
     def mode(self):
         """ int: Operation mode. """
-        pass
+
+        mode = ffi.new('il_servo_mode_t *')
+
+        r = lib.il_servo_mode_get(self._servo, mode)
+        _raise_err(r)
+
+        return mode[0]
 
     @mode.setter
     def mode(self, mode):
@@ -890,10 +895,12 @@ class Servo(object):
                     - relative (bool): If True, the position will be taken as
                       relative, otherwise it will be taken as absolute.
                       Defaults to False.
+                    - sp_timeout (int): Set-point acknowledge timeout (ms).
         """
 
         immediate = 1
         relative = 0
+        sp_timeout = lib.IL_SERVO_SP_TIMEOUT_DEF
 
         if isinstance(pos, (tuple, list)):
             if len(pos) != 2 or not isinstance(pos[1], dict):
@@ -905,24 +912,13 @@ class Servo(object):
             if 'relative' in pos[1]:
                 relative = int(pos[1]['relative'])
 
+            if 'sp_timeout' in pos[1]:
+                sp_timeout = int(pos[1]['sp_timeout'])
+
             pos = pos[0]
 
-        r = lib.il_servo_position_set(self._servo, pos, immediate, relative)
-        _raise_err(r)
-
-    def position_wait_ack(self, timeout):
-        """ Wait until a position is acknowledged.
-
-            Notes:
-                This is only useful for multi-point movements, where the
-                set-point acknowledge bit can be kept high until the positions
-                buffer is empty.
-
-            Args:
-                timeout (int): Timeout (ms).
-        """
-
-        r = lib.il_servo_position_wait_ack(self._servo, timeout)
+        r = lib.il_servo_position_set(self._servo, pos, immediate, relative,
+                                      sp_timeout)
         _raise_err(r)
 
     @property
@@ -1108,19 +1104,21 @@ class Monitor(object):
 
     @property
     def data(self):
-        """ list: Current acquisition data list for all channels. """
+        """ tuple: Current acquisition time and data for all channels. """
 
         lib.il_monitor_data_get(self._monitor, self._acq)
         acq = ffi.cast('il_monitor_acq_t *', self._acq[0])
 
-        samples = []
-        for ch in _MONITOR_CH_ALL:
-            if acq.samples[ch] != ffi.NULL:
-                samples.append(list(acq.samples[ch][0:acq.n_samples]))
-            else:
-                samples.append(None)
+        t = list(acq.t[0:acq.cnt])
 
-        return samples
+        d = []
+        for ch in range(lib.IL_MONITOR_CH_NUM):
+            if acq.d[ch] != ffi.NULL:
+                d.append(list(acq.d[ch][0:acq.cnt]))
+            else:
+                d.append(None)
+
+        return t, d
 
     def configure(self, t_s, delay_samples=0, max_samples=0):
         """ Configure the monitor parameters.
@@ -1143,9 +1141,6 @@ class Monitor(object):
                 reg (Register): Register to be mapped to the given channel.
         """
 
-        if ch not in _MONITOR_CH_ALL:
-            raise ValueError('Invalid channel')
-
         if not isinstance(reg, Register):
             raise TypeError('Invalid register')
 
@@ -1154,9 +1149,6 @@ class Monitor(object):
 
     def ch_disable(self, ch):
         """ Disable a channel. """
-
-        if ch not in _MONITOR_CH_ALL:
-            raise ValueError('Invalid channel')
 
         r = lib.il_monitor_ch_disable(self._monitor, ch)
         _raise_err(r)
@@ -1191,10 +1183,15 @@ class Monitor(object):
         if mode not in _MONITOR_TRIGGER_ALL:
             raise ValueError('Invalid trigger mode')
 
-        if mode in _source_required and not isinstance(source, Register):
-            raise ValueError('Register required for the selected mode')
+        if mode in _source_required:
+            if not isinstance(source, Register):
+                raise ValueError('Register required for the selected mode')
+
+            reg = source._reg
+        else:
+            reg = ffi.NULL
 
         r = lib.il_monitor_trigger_configure(
-                self._monitor, mode, delay_samples, source._reg, th_pos,
-                th_neg, din_msk)
+                self._monitor, mode, delay_samples, reg, th_pos, th_neg,
+                din_msk)
         _raise_err(r)
