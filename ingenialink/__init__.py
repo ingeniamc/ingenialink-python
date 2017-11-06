@@ -895,10 +895,12 @@ class Servo(object):
                     - relative (bool): If True, the position will be taken as
                       relative, otherwise it will be taken as absolute.
                       Defaults to False.
+                    - sp_timeout (int): Set-point acknowledge timeout (ms).
         """
 
         immediate = 1
         relative = 0
+        sp_timeout = lib.IL_SERVO_SP_TIMEOUT_DEF
 
         if isinstance(pos, (tuple, list)):
             if len(pos) != 2 or not isinstance(pos[1], dict):
@@ -910,24 +912,13 @@ class Servo(object):
             if 'relative' in pos[1]:
                 relative = int(pos[1]['relative'])
 
+            if 'sp_timeout' in pos[1]:
+                sp_timeout = int(pos[1]['sp_timeout'])
+
             pos = pos[0]
 
-        r = lib.il_servo_position_set(self._servo, pos, immediate, relative)
-        _raise_err(r)
-
-    def position_wait_ack(self, timeout):
-        """ Wait until a position is acknowledged.
-
-            Notes:
-                This is only useful for multi-point movements, where the
-                set-point acknowledge bit can be kept high until the positions
-                buffer is empty.
-
-            Args:
-                timeout (int): Timeout (ms).
-        """
-
-        r = lib.il_servo_position_wait_ack(self._servo, timeout)
+        r = lib.il_servo_position_set(self._servo, pos, immediate, relative,
+                                      sp_timeout)
         _raise_err(r)
 
     @property
