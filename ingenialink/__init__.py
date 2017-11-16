@@ -354,6 +354,31 @@ def devices():
     return found
 
 
+def lucky():
+    """ Obtain an instance of the first available Servo.
+
+        Returns:
+            tuple:
+
+                - Network: Servo network instance.
+                - Servo: Servo instance.
+    """
+
+    net__ = ffi.new('il_net_t **')
+    servo__ = ffi.new('il_servo_t **')
+
+    r = lib.il_servo_lucky(net__, servo__)
+    _raise_err(r)
+
+    net_ = ffi.cast('il_net_t *', net__[0])
+    servo_ = ffi.cast('il_servo_t *', servo__[0])
+
+    net = Network._from_existing(net_)
+    servo = Servo._from_existing(servo_)
+
+    return net, servo
+
+
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
     """ On found callback shim. """
@@ -377,6 +402,15 @@ class Network(object):
         _raise_null(net)
 
         self._net = ffi.gc(net, lib.il_net_destroy)
+
+    @classmethod
+    def _from_existing(cls, net):
+        """ Create a new class instance from an existing network. """
+
+        inst = cls.__new__(cls)
+        inst._net = ffi.gc(net, lib.il_net_destroy)
+
+        return inst
 
     def servos(self, on_found=None):
         """ Obtain a list of attached servos.
@@ -482,6 +516,17 @@ class Servo(object):
         self._servo = ffi.gc(servo, lib.il_servo_destroy)
 
         self._emcy_cb = {}
+
+    @classmethod
+    def _from_existing(cls, servo):
+        """ Create a new class instance from an existing servo. """
+
+        inst = cls.__new__(cls)
+        inst._servo = ffi.gc(servo, lib.il_servo_destroy)
+
+        inst._emcy_cb = {}
+
+        return inst
 
     @property
     def name(self):
