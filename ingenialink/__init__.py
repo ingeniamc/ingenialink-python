@@ -186,6 +186,11 @@ _MONITOR_TRIGGER_ALL = (MONITOR_TRIGGER_IMMEDIATE, MONITOR_TRIGGER_MOTION,
                         MONITOR_TRIGGER_WINDOW, MONITOR_TRIGGER_DIN)
 """ tuple: All monitor triggers. """
 
+NET_STATE_OPERATIVE = lib.IL_NET_STATE_OPERATIVE
+""" int: Network state, operative. """
+NET_STATE_FAULTY = lib.IL_NET_STATE_FAULTY
+""" int: Network state, faulty. """
+
 EVT_ADDED = 0
 """ int: Device added event. """
 EVT_REMOVED = 1
@@ -411,6 +416,12 @@ class Network(object):
         inst._net = ffi.gc(net, lib.il_net_destroy)
 
         return inst
+
+    @property
+    def state(self):
+        """ int: Obtain network state. """
+
+        return lib.il_net_state_get(self._net)
 
     def servos(self, on_found=None):
         """ Obtain a list of attached servos.
