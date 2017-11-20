@@ -70,6 +70,27 @@ STATE_FAULTR = lib.IL_SERVO_STATE_FAULTR
 STATE_FAULT = lib.IL_SERVO_STATE_FAULT
 """ int: PDS state, Fault. """
 
+FLAG_TGT_REACHED = lib.IL_SERVO_FLAG_TGT_REACHED
+""" int: Flags, Target reached. """
+FLAG_ILIM_ACTIVE = lib.IL_SERVO_FLAG_ILIM_ACTIVE
+""" int: Flags, Internal limit active. """
+FLAG_HOMING_ATT = lib.IL_SERVO_FLAG_HOMING_ATT
+""" int: Flags, (Homing) attained. """
+FLAG_HOMING_ERR = lib.IL_SERVO_FLAG_HOMING_ERR
+""" int: Flags, (Homing) error. """
+FLAG_PV_VZERO = lib.IL_SERVO_FLAG_PV_VZERO
+""" int: Flags, (PV) Vocity speed is zero. """
+FLAG_PP_SPACK = lib.IL_SERVO_FLAG_PP_SPACK
+""" int: Flags, (PP) SP acknowledge. """
+FLAG_IP_ACTIVE = lib.IL_SERVO_FLAG_IP_ACTIVE
+""" int: Flags, (IP) active. """
+FLAG_CS_FOLLOWS = lib.IL_SERVO_FLAG_CS_FOLLOWS
+""" int: Flags, (CST/CSV/CSP) follow command value. """
+FLAG_FERR = lib.IL_SERVO_FLAG_FERR
+""" int: Flags, (CST/CSV/CSP/PV) following error. """
+FLAG_IANGLE_DET = lib.IL_SERVO_FLAG_IANGLE_DET
+""" int: Flags, Initial angle determination finished. """
+
 MODE_OLV = lib.IL_SERVO_MODE_OLV
 """ int: Open loop (vector mode). """
 MODE_OLS = lib.IL_SERVO_MODE_OLS
