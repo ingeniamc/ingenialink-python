@@ -501,6 +501,14 @@ class NetworkMonitor(object):
 
 
 @ffi.def_extern()
+def _on_state_change_cb(ctx, state, flags):
+    """ On state change callback shim. """
+
+    cb = ffi.from_handle(ctx)
+    cb(state, flags)
+
+
+@ffi.def_extern()
 def _on_emcy_cb(ctx, code):
     """ On emergency callback shim. """
 
@@ -526,6 +534,7 @@ class Servo(object):
 
         self._servo = ffi.gc(servo, lib.il_servo_destroy)
 
+        self._state_cb = {}
         self._emcy_cb = {}
 
     @classmethod
@@ -535,9 +544,85 @@ class Servo(object):
         inst = cls.__new__(cls)
         inst._servo = ffi.gc(servo, lib.il_servo_destroy)
 
+        inst._state_cb = {}
         inst._emcy_cb = {}
 
         return inst
+
+    @property
+    def state(self):
+        """ tuple: Servo state and state flags. """
+
+        state = ffi.new('il_servo_state_t *')
+        flags = ffi.new('int *')
+
+        lib.il_servo_state_get(self._servo, state, flags)
+
+        return state[0], flags[0]
+
+    def state_subscribe(self, cb):
+        """ Subscribe to state changes.
+
+            Args:
+                cb: Callback
+
+            Returns:
+                int: Assigned slot.
+        """
+
+        cb_handle = ffi.new_handle(cb)
+
+        slot = lib.il_servo_state_subscribe(
+                self._servo, lib._on_state_change_cb, cb_handle)
+        if slot < 0:
+            _raise_err(slot)
+
+        self._state_cb[slot] = cb_handle
+
+        return slot
+
+    def state_unsubscribe(self, slot):
+        """ Unsubscribe from state changes.
+
+            Args:
+                slot (int): Assigned slot when subscribed.
+        """
+
+        lib.il_servo_state_unsubscribe(self._servo, slot)
+
+        del self._state_cb[slot]
+
+    def emcy_subscribe(self, cb):
+        """ Subscribe to emergency messages.
+
+            Args:
+                cb: Callback
+
+            Returns:
+                int: Assigned slot.
+        """
+
+        cb_handle = ffi.new_handle(cb)
+
+        slot = lib.il_servo_emcy_subscribe(
+                self._servo, lib._on_emcy_cb, cb_handle)
+        if slot < 0:
+            _raise_err(slot)
+
+        self._emcy_cb[slot] = cb_handle
+
+        return slot
+
+    def emcy_unsubscribe(self, slot):
+        """ Unsubscribe from emergency messages.
+
+            Args:
+                slot (int): Assigned slot when subscribed.
+        """
+
+        lib.il_servo_emcy_unsubscribe(self._servo, slot)
+
+        del self._emcy_cb[slot]
 
     @property
     def name(self):
@@ -590,38 +675,6 @@ class Servo(object):
 
         r = lib.il_servo_store_app(self._servo)
         _raise_err(r)
-
-    def emcy_subscribe(self, cb):
-        """ Subscribe to emergency messages.
-
-            Args:
-                cb: Callback
-
-            Returns:
-                int: Assigned slot.
-        """
-
-        cb_handle = ffi.new_handle(cb)
-
-        slot = lib.il_servo_emcy_subscribe(
-                self._servo, lib._on_emcy_cb, cb_handle)
-        if slot < 0:
-            _raise_err(slot)
-
-        self._emcy_cb[slot] = cb_handle
-
-        return slot
-
-    def emcy_unsubscribe(self, slot):
-        """ Unsubscribe from emergency messages.
-
-            Args:
-                slot (int): Assigned slot when subscribed.
-        """
-
-        lib.il_servo_emcy_unsubscribe(self._servo, slot)
-
-        del self._emcy_cb[slot]
 
     def raw_read(self, reg):
         """ Raw read from servo.
@@ -791,12 +844,6 @@ class Servo(object):
             raise ValueError('Unsupported acceleration units')
 
         lib.il_servo_units_acc_set(self._servo, units)
-
-    @property
-    def state(self):
-        """ int: PDS state. """
-
-        return lib.il_servo_state_get(self._servo)
 
     def disable(self):
         """ Disable PDS. """
