@@ -70,6 +70,27 @@ STATE_FAULTR = lib.IL_SERVO_STATE_FAULTR
 STATE_FAULT = lib.IL_SERVO_STATE_FAULT
 """ int: PDS state, Fault. """
 
+FLAG_TGT_REACHED = lib.IL_SERVO_FLAG_TGT_REACHED
+""" int: Flags, Target reached. """
+FLAG_ILIM_ACTIVE = lib.IL_SERVO_FLAG_ILIM_ACTIVE
+""" int: Flags, Internal limit active. """
+FLAG_HOMING_ATT = lib.IL_SERVO_FLAG_HOMING_ATT
+""" int: Flags, (Homing) attained. """
+FLAG_HOMING_ERR = lib.IL_SERVO_FLAG_HOMING_ERR
+""" int: Flags, (Homing) error. """
+FLAG_PV_VZERO = lib.IL_SERVO_FLAG_PV_VZERO
+""" int: Flags, (PV) Vocity speed is zero. """
+FLAG_PP_SPACK = lib.IL_SERVO_FLAG_PP_SPACK
+""" int: Flags, (PP) SP acknowledge. """
+FLAG_IP_ACTIVE = lib.IL_SERVO_FLAG_IP_ACTIVE
+""" int: Flags, (IP) active. """
+FLAG_CS_FOLLOWS = lib.IL_SERVO_FLAG_CS_FOLLOWS
+""" int: Flags, (CST/CSV/CSP) follow command value. """
+FLAG_FERR = lib.IL_SERVO_FLAG_FERR
+""" int: Flags, (CST/CSV/CSP/PV) following error. """
+FLAG_IANGLE_DET = lib.IL_SERVO_FLAG_IANGLE_DET
+""" int: Flags, Initial angle determination finished. """
+
 MODE_OLV = lib.IL_SERVO_MODE_OLV
 """ int: Open loop (vector mode). """
 MODE_OLS = lib.IL_SERVO_MODE_OLS
@@ -185,6 +206,11 @@ _MONITOR_TRIGGER_ALL = (MONITOR_TRIGGER_IMMEDIATE, MONITOR_TRIGGER_MOTION,
                         MONITOR_TRIGGER_POS, MONITOR_TRIGGER_NEG,
                         MONITOR_TRIGGER_WINDOW, MONITOR_TRIGGER_DIN)
 """ tuple: All monitor triggers. """
+
+NET_STATE_OPERATIVE = lib.IL_NET_STATE_OPERATIVE
+""" int: Network state, operative. """
+NET_STATE_FAULTY = lib.IL_NET_STATE_FAULTY
+""" int: Network state, faulty. """
 
 EVT_ADDED = 0
 """ int: Device added event. """
@@ -354,6 +380,31 @@ def devices():
     return found
 
 
+def lucky():
+    """ Obtain an instance of the first available Servo.
+
+        Returns:
+            tuple:
+
+                - Network: Servo network instance.
+                - Servo: Servo instance.
+    """
+
+    net__ = ffi.new('il_net_t **')
+    servo__ = ffi.new('il_servo_t **')
+
+    r = lib.il_servo_lucky(net__, servo__)
+    _raise_err(r)
+
+    net_ = ffi.cast('il_net_t *', net__[0])
+    servo_ = ffi.cast('il_servo_t *', servo__[0])
+
+    net = Network._from_existing(net_)
+    servo = Servo._from_existing(servo_)
+
+    return net, servo
+
+
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
     """ On found callback shim. """
@@ -377,6 +428,21 @@ class Network(object):
         _raise_null(net)
 
         self._net = ffi.gc(net, lib.il_net_destroy)
+
+    @classmethod
+    def _from_existing(cls, net):
+        """ Create a new class instance from an existing network. """
+
+        inst = cls.__new__(cls)
+        inst._net = ffi.gc(net, lib.il_net_destroy)
+
+        return inst
+
+    @property
+    def state(self):
+        """ int: Obtain network state. """
+
+        return lib.il_net_state_get(self._net)
 
     def servos(self, on_found=None):
         """ Obtain a list of attached servos.
@@ -456,6 +522,14 @@ class NetworkMonitor(object):
 
 
 @ffi.def_extern()
+def _on_state_change_cb(ctx, state, flags):
+    """ On state change callback shim. """
+
+    cb = ffi.from_handle(ctx)
+    cb(state, flags)
+
+
+@ffi.def_extern()
 def _on_emcy_cb(ctx, code):
     """ On emergency callback shim. """
 
@@ -481,7 +555,95 @@ class Servo(object):
 
         self._servo = ffi.gc(servo, lib.il_servo_destroy)
 
+        self._state_cb = {}
         self._emcy_cb = {}
+
+    @classmethod
+    def _from_existing(cls, servo):
+        """ Create a new class instance from an existing servo. """
+
+        inst = cls.__new__(cls)
+        inst._servo = ffi.gc(servo, lib.il_servo_destroy)
+
+        inst._state_cb = {}
+        inst._emcy_cb = {}
+
+        return inst
+
+    @property
+    def state(self):
+        """ tuple: Servo state and state flags. """
+
+        state = ffi.new('il_servo_state_t *')
+        flags = ffi.new('int *')
+
+        lib.il_servo_state_get(self._servo, state, flags)
+
+        return state[0], flags[0]
+
+    def state_subscribe(self, cb):
+        """ Subscribe to state changes.
+
+            Args:
+                cb: Callback
+
+            Returns:
+                int: Assigned slot.
+        """
+
+        cb_handle = ffi.new_handle(cb)
+
+        slot = lib.il_servo_state_subscribe(
+                self._servo, lib._on_state_change_cb, cb_handle)
+        if slot < 0:
+            _raise_err(slot)
+
+        self._state_cb[slot] = cb_handle
+
+        return slot
+
+    def state_unsubscribe(self, slot):
+        """ Unsubscribe from state changes.
+
+            Args:
+                slot (int): Assigned slot when subscribed.
+        """
+
+        lib.il_servo_state_unsubscribe(self._servo, slot)
+
+        del self._state_cb[slot]
+
+    def emcy_subscribe(self, cb):
+        """ Subscribe to emergency messages.
+
+            Args:
+                cb: Callback
+
+            Returns:
+                int: Assigned slot.
+        """
+
+        cb_handle = ffi.new_handle(cb)
+
+        slot = lib.il_servo_emcy_subscribe(
+                self._servo, lib._on_emcy_cb, cb_handle)
+        if slot < 0:
+            _raise_err(slot)
+
+        self._emcy_cb[slot] = cb_handle
+
+        return slot
+
+    def emcy_unsubscribe(self, slot):
+        """ Unsubscribe from emergency messages.
+
+            Args:
+                slot (int): Assigned slot when subscribed.
+        """
+
+        lib.il_servo_emcy_unsubscribe(self._servo, slot)
+
+        del self._emcy_cb[slot]
 
     @property
     def name(self):
@@ -534,38 +696,6 @@ class Servo(object):
 
         r = lib.il_servo_store_app(self._servo)
         _raise_err(r)
-
-    def emcy_subscribe(self, cb):
-        """ Subscribe to emergency messages.
-
-            Args:
-                cb: Callback
-
-            Returns:
-                int: Assigned slot.
-        """
-
-        cb_handle = ffi.new_handle(cb)
-
-        slot = lib.il_servo_emcy_subscribe(
-                self._servo, lib._on_emcy_cb, cb_handle)
-        if slot < 0:
-            _raise_err(slot)
-
-        self._emcy_cb[slot] = cb_handle
-
-        return slot
-
-    def emcy_unsubscribe(self, slot):
-        """ Unsubscribe from emergency messages.
-
-            Args:
-                slot (int): Assigned slot when subscribed.
-        """
-
-        lib.il_servo_emcy_unsubscribe(self._servo, slot)
-
-        del self._emcy_cb[slot]
 
     def raw_read(self, reg):
         """ Raw read from servo.
@@ -735,12 +865,6 @@ class Servo(object):
             raise ValueError('Unsupported acceleration units')
 
         lib.il_servo_units_acc_set(self._servo, units)
-
-    @property
-    def state(self):
-        """ int: PDS state. """
-
-        return lib.il_servo_state_get(self._servo)
 
     def disable(self):
         """ Disable PDS. """

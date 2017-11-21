@@ -30,7 +30,7 @@ if 'INGENIALINK_DIR' in os.environ:
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = '3.4.0'
+    _IL_VER = 'next'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
 
@@ -169,6 +169,9 @@ ffibuilder.cdef(
     extern "Python" void _on_found_cb(void *ctx, uint8_t node_id);
     extern "Python" void _on_evt_cb(void *ctx, il_net_dev_evt_t on_evt,
                                     const char *port);
+    extern "Python" void _on_state_change_cb(void *ctx,
+                                             il_servo_state_t state,
+                                             int flags);
     extern "Python" void _on_emcy_cb(void *ctx, uint32_t code);
 ''')
 
