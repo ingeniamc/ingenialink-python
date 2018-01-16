@@ -55,7 +55,7 @@ class Monitor(object):
         """ Wait until the current acquisition finishes.
 
             Args:
-                timeout (int): Timeout (s).
+                timeout (int, float): Timeout (s).
         """
 
         r = lib.il_monitor_wait(self._monitor, to_ms(timeout))

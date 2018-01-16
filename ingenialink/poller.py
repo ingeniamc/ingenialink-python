@@ -57,7 +57,7 @@ class Poller(object):
         """ Configure.
 
             Args:
-                t_s (int): Polling period (s).
+                t_s (int, float): Polling period (s).
                 sz (int): Buffer size.
         """
 

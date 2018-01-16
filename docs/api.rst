@@ -2,8 +2,7 @@
 API documentation
 =================
 
-.. automodule:: ingenialink
-    :members:
+.. toctree::
+    :glob:
 
-.. automodule:: ingenialink.exceptions
-    :members:
+    api/*

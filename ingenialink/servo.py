@@ -11,142 +11,142 @@ class SERVO_STATE(Enum):
     """ State. """
 
     NRDY = lib.IL_SERVO_STATE_NRDY
-    """ int: PDS state, Not ready to switch on. """
+    """ Not ready to switch on. """
     DISABLED = lib.IL_SERVO_STATE_DISABLED
-    """ int: PDS state, Switch on disabled. """
+    """ Switch on disabled. """
     RDY = lib.IL_SERVO_STATE_RDY
-    """ int: PDS state, Ready to be switched on. """
+    """ Ready to be switched on. """
     ON = lib.IL_SERVO_STATE_ON
-    """ int: PDS state, Power switched on. """
+    """ Power switched on. """
     ENABLED = lib.IL_SERVO_STATE_ENABLED
-    """ int: PDS state, Enabled. """
+    """ Enabled. """
     QSTOP = lib.IL_SERVO_STATE_QSTOP
-    """ int: PDS state, Quick stop. """
+    """ Quick stop. """
     FAULTR = lib.IL_SERVO_STATE_FAULTR
-    """ int: PDS state, Fault reactive. """
+    """ Fault reactive. """
     FAULT = lib.IL_SERVO_STATE_FAULT
-    """ int: PDS state, Fault. """
+    """ Fault. """
 
 
 class SERVO_FLAGS(object):
     """ Status Flags. """
 
     TGT_REACHED = lib.IL_SERVO_FLAG_TGT_REACHED
-    """ int: Flags, Target reached. """
+    """ Target reached. """
     ILIM_ACTIVE = lib.IL_SERVO_FLAG_ILIM_ACTIVE
-    """ int: Flags, Internal limit active. """
+    """ Internal limit active. """
     HOMING_ATT = lib.IL_SERVO_FLAG_HOMING_ATT
-    """ int: Flags, (Homing) attained. """
+    """ (Homing) attained. """
     HOMING_ERR = lib.IL_SERVO_FLAG_HOMING_ERR
-    """ int: Flags, (Homing) error. """
+    """ (Homing) error. """
     PV_VZERO = lib.IL_SERVO_FLAG_PV_VZERO
-    """ int: Flags, (PV) Vocity speed is zero. """
+    """ (PV) Vocity speed is zero. """
     PP_SPACK = lib.IL_SERVO_FLAG_PP_SPACK
-    """ int: Flags, (PP) SP acknowledge. """
+    """ (PP) SP acknowledge. """
     IP_ACTIVE = lib.IL_SERVO_FLAG_IP_ACTIVE
-    """ int: Flags, (IP) active. """
+    """ (IP) active. """
     CS_FOLLOWS = lib.IL_SERVO_FLAG_CS_FOLLOWS
-    """ int: Flags, (CST/CSV/CSP) follow command value. """
+    """ (CST/CSV/CSP) follow command value. """
     FERR = lib.IL_SERVO_FLAG_FERR
-    """ int: Flags, (CST/CSV/CSP/PV) following error. """
+    """ (CST/CSV/CSP/PV) following error. """
     IANGLE_DET = lib.IL_SERVO_FLAG_IANGLE_DET
-    """ int: Flags, Initial angle determination finished. """
+    """ Initial angle determination finished. """
 
 
 class SERVO_MODE(Enum):
     """ Operation Mode. """
 
     OLV = lib.IL_SERVO_MODE_OLV
-    """ int: Open loop (vector mode). """
+    """ Open loop (vector mode). """
     OLS = lib.IL_SERVO_MODE_OLS
-    """ int: Open loop (scalar mode). """
+    """ Open loop (scalar mode). """
     PP = lib.IL_SERVO_MODE_PP
-    """ int: Profile position mode. """
+    """ Profile position mode. """
     VEL = lib.IL_SERVO_MODE_VEL
-    """ int: Velocity mode. """
+    """ Velocity mode. """
     PV = lib.IL_SERVO_MODE_PV
-    """ int: Profile velocity mode. """
+    """ Profile velocity mode. """
     PT = lib.IL_SERVO_MODE_PT
-    """ int: Profile torque mode. """
+    """ Profile torque mode. """
     HOMING = lib.IL_SERVO_MODE_HOMING
-    """ int: Homing mode. """
+    """ Homing mode. """
     IP = lib.IL_SERVO_MODE_IP
-    """ int: Interpolated position mode. """
+    """ Interpolated position mode. """
     CSP = lib.IL_SERVO_MODE_CSP
-    """ int: Cyclic sync position mode. """
+    """ Cyclic sync position mode. """
     CSV = lib.IL_SERVO_MODE_CSV
-    """ int: Cyclic sync velocity mode. """
+    """ Cyclic sync velocity mode. """
     CST = lib.IL_SERVO_MODE_CST
-    """ int: Cyclic sync torque mode. """
+    """ Cyclic sync torque mode. """
 
 
 class SERVO_UNITS_TORQUE(Enum):
-    """ Torque. """
+    """ Torque Units. """
 
     NATIVE = lib.IL_UNITS_TORQUE_NATIVE
-    """ int: Torque units, Native """
+    """ Native """
     MN = lib.IL_UNITS_TORQUE_MN
-    """ int: Torque units, Millinewtons. """
+    """ Millinewtons. """
     N = lib.IL_UNITS_TORQUE_N
-    """ int: Torque units, Newtons. """
+    """ Newtons. """
 
 
 class SERVO_UNITS_POS(Enum):
-    """ Position. """
+    """ Position Units. """
     NATIVE = lib.IL_UNITS_POS_NATIVE
-    """ int: Position units, Native. """
+    """ Native. """
     REV = lib.IL_UNITS_POS_REV
-    """ int: Position units, Revolutions. """
+    """ Revolutions. """
     RAD = lib.IL_UNITS_POS_RAD
-    """ int: Position units, Radians. """
+    """ Radians. """
     DEG = lib.IL_UNITS_POS_DEG
-    """ int: Position units, Degrees. """
+    """ Degrees. """
     UM = lib.IL_UNITS_POS_UM
-    """ int: Position units, Micrometers. """
+    """ Micrometers. """
     MM = lib.IL_UNITS_POS_MM
-    """ int: Position units, Millimeters. """
+    """ Millimeters. """
     M = lib.IL_UNITS_POS_M
-    """ int: Position units, Meters. """
+    """ Meters. """
 
 
 class SERVO_UNITS_VEL(Enum):
-    """ Velocity. """
+    """ Velocity Units. """
 
     NATIVE = lib.IL_UNITS_VEL_NATIVE
-    """ int: Velocity units, Native. """
+    """ Native. """
     RPS = lib.IL_UNITS_VEL_RPS
-    """ int: Velocity units, Revolutions per second. """
+    """ Revolutions per second. """
     RPM = lib.IL_UNITS_VEL_RPM
-    """ int: Velocity units, Revolutions per minute. """
+    """ Revolutions per minute. """
     RAD_S = lib.IL_UNITS_VEL_RAD_S
-    """ int: Velocity units, Radians/second. """
+    """ Radians/second. """
     DEG_S = lib.IL_UNITS_VEL_DEG_S
-    """ int: Velocity units, Degrees/second. """
+    """ Degrees/second. """
     UM_S = lib.IL_UNITS_VEL_UM_S
-    """ int: Velocity units, Micrometers/second. """
+    """ Micrometers/second. """
     MM_S = lib.IL_UNITS_VEL_MM_S
-    """ int: Velocity units, Millimeters/second. """
+    """ Millimeters/second. """
     M_S = lib.IL_UNITS_VEL_M_S
-    """ int: Velocity units, Meters/second. """
+    """ Meters/second. """
 
 
 class SERVO_UNITS_ACC(Enum):
-    """ Acceleration. """
+    """ Acceleration Units. """
 
     NATIVE = lib.IL_UNITS_ACC_NATIVE
-    """ int: Acceleration units, Native. """
+    """ Native. """
     REV_S2 = lib.IL_UNITS_ACC_REV_S2
-    """ int: Acceleration units, Revolutions/second^2. """
+    """ Revolutions/second^2. """
     RAD_S2 = lib.IL_UNITS_ACC_RAD_S2
-    """ int: Acceleration units, Radians/second^2. """
+    """ Radians/second^2. """
     DEG_S2 = lib.IL_UNITS_ACC_DEG_S2
-    """ int: Acceleration units, Degrees/second^2. """
+    """ Degrees/second^2. """
     UM_S2 = lib.IL_UNITS_ACC_UM_S2
-    """ int: Acceleration units, Micrometers/second^2. """
+    """ Micrometers/second^2. """
     MM_S2 = lib.IL_UNITS_ACC_MM_S2
-    """ int: Acceleration units, Millimeters/second^2. """
+    """ Millimeters/second^2. """
     M_S2 = lib.IL_UNITS_ACC_M_S2
-    """ int: Acceleration units, Meters/second^2. """
+    """ Meters/second^2. """
 
 
 def lucky(dict_f=None):
@@ -200,7 +200,7 @@ class Servo(object):
         Args:
             net (Network): Network instance.
             id (int): Servo id.
-            timeout (int, optional): Communications timeout (s).
+            timeout (int, float, optional): Communications timeout (s).
 
         Raises:
             ILCreationError: If the servo cannot be created.
@@ -574,7 +574,7 @@ class Servo(object):
             function.
 
             Args:
-                timeout (int, optional): Timeout (s).
+                timeout (int, float, optional): Timeout (s).
         """
 
         r = lib.il_servo_switch_on(self._servo, to_ms(timeout))
@@ -584,7 +584,7 @@ class Servo(object):
         """ Enable PDS.
 
             Args:
-                timeout (int, optional): Timeout (s).
+                timeout (int, float, optional): Timeout (s).
         """
 
         r = lib.il_servo_enable(self._servo, to_ms(timeout))
@@ -628,7 +628,7 @@ class Servo(object):
                 should be >= than the programmed homing timeout.
 
             Args:
-                timeout (int): Timeout (s).
+                timeout (int, float): Timeout (s).
         """
 
         r = lib.il_servo_homing_wait(self._servo, to_ms(timeout))
@@ -710,7 +710,8 @@ class Servo(object):
                     - relative (bool): If True, the position will be taken as
                       relative, otherwise it will be taken as absolute.
                       Defaults to False.
-                    - sp_timeout (int): Set-point acknowledge timeout (s).
+                    - sp_timeout (int, float): Set-point acknowledge
+                      timeout (s).
         """
 
         immediate = 1
@@ -777,7 +778,7 @@ class Servo(object):
         """ Wait until the servo does a target reach.
 
             Args:
-                timeout (float): Timeout (s).
+                timeout (int, float): Timeout (s).
         """
 
         r = lib.il_servo_wait_reached(self._servo, to_ms(timeout))
