@@ -1,47 +1,47 @@
 import ingenialink as il
-from ingenialink import regs
 import numpy as np
 import matplotlib.pyplot as plt
 
-DEV = '/dev/ttyACM0'
-""" str: Network device. """
 
-T_S = 1000
-""" int: Sampling period (us). """
+T_S = 1e-3
+""" int: Sampling period (s). """
 MAX_SAMPLES = 200
 """ int: Maximum number of samples. """
-MONITOR_TIMEOUT = 5000
-""" int: Monitor timeout (ms). """
+MONITOR_TIMEOUT = 5
+""" int: Monitor timeout (s). """
 
-VEL_TGT = 20.
+VEL_TGT_VAL = 40.
 """ float: Target velocity (rps). """
+
+VEL_ACT = il.Register(address=0x00606C,
+                      dtype=il.REG_DTYPE.S32,
+                      access=il.REG_ACCESS.RW,
+                      phy=il.REG_PHY.VEL)
+""" Register: Velocity Actual. """
 
 
 def main():
     # setup network and connect to the first available device
-    net = il.Network(DEV)
-    servos = net.servos()
-    servo = il.Servo(net, servos[0])
+    net, servo = il.lucky()
 
-    servo.units_vel = il.UNITS_VEL_RPS
+    servo.units_vel = il.SERVO_UNITS_VEL.RPS
 
     # configure monitor (trigger: 90% of the target velocity)
     monitor = il.Monitor(servo)
 
     monitor.configure(t_s=T_S, max_samples=MAX_SAMPLES)
-    monitor.ch_disable_all()
-    monitor.ch_configure(0, regs.VEL_ACT)
-    monitor.trigger_configure(il.MONITOR_TRIGGER_POS, source=regs.VEL_ACT,
-                              th_pos=VEL_TGT * 0.9)
+    monitor.ch_configure(0, VEL_ACT)
+    monitor.trigger_configure(il.MONITOR_TRIGGER.POS, source=VEL_ACT,
+                              th_pos=VEL_TGT_VAL * 0.9)
 
     # enable servo in PV mode
     servo.disable()
-    servo.mode = il.MODE_PV
+    servo.mode = il.SERVO_MODE.PV
     servo.enable()
 
     # start monitor, set target velocity
     monitor.start()
-    servo.velocity = VEL_TGT
+    servo.velocity = VEL_TGT_VAL
 
     # wait until acquisition finishes
     monitor.wait(MONITOR_TIMEOUT)

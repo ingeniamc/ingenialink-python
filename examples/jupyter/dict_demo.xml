@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<IngeniaDictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="IngeniaDictionarySchema.xsd">
+  <Header>
+    <Version>1.0.0</Version>
+    <DefaultLanguage>en_US</DefaultLanguage>
+  </Header>
+  <Body>
+    <Device>
+      <Name>Demo</Name>
+      <Family>ECORE</Family>
+      <FirmwareVersion>2.5.2</FirmwareVersion>
+      <Registers>
+        <Register address="0x006072" id="TORQUE_MAX" access="rw" dtype="s16" phy="torque">
+          <Label lang="en_US">Max Torque</Label>
+        </Register>
+        <Register address="0x0060FF" id="VEL_TGT" access="rw" dtype="s32" phy="vel">
+          <Label lang="en_US">Target Velocity</Label>
+        </Register>
+        <Register address="0x00606C" id="VEL_ACT" access="rw" dtype="s32" phy="vel">
+            <Label lang="en_US">Actual Velocity</Label>
+        </Register>
+        <Register address="0x006064" id="POS_ACT" access="rw" dtype="s32" phy="pos">
+            <Label lang="en_US">Actual Position</Label>
+        </Register>
+        <Register address="0x032310" id="FB_POS_SENSOR" access="rw" dtype="s8">
+          <Label lang="en_US">Position sensor</Label>
+        </Register>
+      </Registers>
+    </Device>
+  </Body>
+</IngeniaDictionary>

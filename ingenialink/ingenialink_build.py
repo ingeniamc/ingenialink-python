@@ -25,13 +25,21 @@ else:
 
 _SER_BUILD = join(_BUILD_DIR, 'sercomm')
 
+if 'XML2_DIR' in os.environ:
+    _XML2_SRC = os.environ['XML2_DIR']
+else:
+    _XML2_SRC = join('external', 'libxml2')
+
+_XML2_BUILD = join(_BUILD_DIR, 'libxml2')
+
 if 'INGENIALINK_DIR' in os.environ:
     _IL_URL = None
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = 'next'
+    _IL_VER = 'feature-add-dictionary-support'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
+
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
 
 if sys.platform == 'win32':
@@ -74,6 +82,18 @@ def _build_deps():
     check_call([cmake, '--build', _SER_BUILD, '--config', 'Release',
                 '--target', 'install'])
 
+    # build libxml2 on Windows
+    if sys.platform == 'win32':
+        check_call([git, 'submodule', 'update', '--init'])
+
+        check_call([cmake, '-H' + _XML2_SRC, '-B' + _XML2_BUILD,
+                    '-G', _CMAKE_GENERATOR,
+                    '-DCMAKE_BUILD_TYPE=Release',
+                    '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
+                    '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
+        check_call([cmake, '--build', _IL_BUILD, '--config', 'Release',
+                    '--target', 'install'])
+
     # clone, build and install (locally) libingenialink
     if not exists(_IL_SRC) and _IL_URL:
         check_call([git, 'clone', '-b', _IL_VER, _IL_URL, _IL_SRC])
@@ -110,6 +130,7 @@ def _gen_cffi_header():
     headers = [join(_INC_DIR, 'ingenialink', 'const.h'),
                join(_INC_DIR, 'ingenialink', 'err.h'),
                join(_INC_DIR, 'ingenialink', 'registers.h'),
+               join(_INC_DIR, 'ingenialink', 'dict.h'),
                join(_INC_DIR, 'ingenialink', 'net.h'),
                join(_INC_DIR, 'ingenialink', 'servo.h'),
                join(_INC_DIR, 'ingenialink', 'poller.h'),
@@ -132,7 +153,7 @@ def _get_libs():
             list: List of libraries.
     """
 
-    libs = ['ingenialink', 'sercomm']
+    libs = ['ingenialink', 'sercomm', 'xml2']
 
     if sys.platform.startswith('linux'):
         libs.extend(['udev', 'rt', 'pthread'])
