@@ -1,20 +1,108 @@
 import sys
-from ._ingenialink import ffi
+
+from ._ingenialink import lib, ffi
+from . import exceptions as exc
+from .regs import Register
 
 
 if sys.version_info >= (3, 0):
-    def _cstr(v):
+    def cstr(v):
         """ Convert Python 3.x string to C compatible char *. """
+
         return v.encode('utf8')
 
-    def _pstr(v):
+    def pstr(v):
         """ Convert C string to Python 3.x compatible str. """
+
         return ffi.string(v).decode('utf8')
+
 else:
-    def _cstr(v):
+    def cstr(v):
         """ Convert Python 2.x string to C compatible char *. """
+
         return v
 
-    def _pstr(v):
+    def pstr(v):
         """ Convert C string to Python 2.x compatible str. """
+
         return ffi.string(v)
+
+
+def to_ms(s):
+    """ Convert from seconds to milliseconds.
+
+        Args:
+            s (float, int): Value in seconds.
+
+        Returns:
+            int: Value in milliseconds.
+    """
+
+    return int(s * 1e3)
+
+
+def raise_null(obj):
+    """ Raise exception if object is ffi.NULL.
+
+        Raises:
+            ILCreationError: If the object is NULL.
+    """
+
+    if obj == ffi.NULL:
+        msg = pstr(lib.ilerr_last())
+        raise exc.ILCreationError(msg)
+
+
+def raise_err(code):
+    """ Raise exception if the code is non-zero.
+
+        Raises:
+            ILValueError: if code is lib.IL_EINVAL
+            ILTimeoutError: if code is lib.IL_ETIMEDOUT
+            ILAlreadyInitializedError: if code is lib.IL_EALREADY
+            ILMemoryError: if code is lib.IL_ENOMEM
+            ILDisconnectionError: if code is lib.IL_EDISCONN
+            ILAccessError: if code is lib.IL_EACCESS
+            ILStateError: if code is lib.IL_ESTATE
+            ILError: if code is lib.IL_EFAULT
+    """
+
+    if code == 0:
+        return
+
+    # obtain message and raise its matching exception
+    msg = pstr(lib.ilerr_last())
+
+    if code == lib.IL_EINVAL:
+        raise exc.ILValueError(msg)
+    elif code == lib.IL_ETIMEDOUT:
+        raise exc.ILTimeoutError(msg)
+    elif code == lib.IL_EALREADY:
+        raise exc.ILAlreadyInitializedError(msg)
+    elif code == lib.IL_ENOMEM:
+        raise exc.ILMemoryError(msg)
+    elif code == lib.IL_EDISCONN:
+        raise exc.ILDisconnectionError(msg)
+    elif code == lib.IL_EACCESS:
+        raise exc.ILAccessError(msg)
+    elif code == lib.IL_ESTATE:
+        raise exc.ILStateError(msg)
+    elif code == lib.IL_EIO:
+        raise exc.ILIOError(msg)
+    else:
+        raise exc.ILError(msg)
+
+
+def get_reg_id(reg):
+    """ Obtain Register and ID.
+
+        Args:
+            reg (str, Register): Register.
+    """
+
+    if isinstance(reg, str):
+        return ffi.NULL, cstr(reg)
+    elif isinstance(reg, Register):
+        return reg._reg, ffi.NULL
+
+    raise TypeError('Unexpected register type')

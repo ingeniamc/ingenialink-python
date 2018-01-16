@@ -8,6 +8,7 @@ same functionality as the C library, which summarizes to:
 
 * Basic motion control support
 * Read and write servo registers
+* Support for dictionaries
 * Register polling and monitoring
 * Scan for servos on the network
 * Network devices discovery and monitor
@@ -21,6 +22,5 @@ Contents
 .. toctree::
     :maxdepth: 2
 
-    examples
     api
     building

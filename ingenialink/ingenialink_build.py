@@ -15,24 +15,29 @@ _INSTALL_DIR = '_install'
 _INC_DIR = join(_INSTALL_DIR, 'include')
 _LIB_DIR = join(_INSTALL_DIR, 'lib')
 
-if 'SERCOMM_DIR' in os.environ:
-    _SER_URL = None
-    _SER_SRC = os.environ['SERCOMM_DIR']
-else:
-    _SER_URL = 'https://github.com/ingeniamc/sercomm'
-    _SER_VER = '1.3.1'
-    _SER_SRC = join(_SRC_DIR, 'sercomm')
-
-_SER_BUILD = join(_BUILD_DIR, 'sercomm')
-
 if 'INGENIALINK_DIR' in os.environ:
     _IL_URL = None
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = 'next'
+    _IL_VER = 'feature-add-dictionary-support'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
+
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
+
+if 'SERCOMM_DIR' in os.environ:
+    _SER_SRC = os.environ['SERCOMM_DIR']
+else:
+    _SER_SRC = join(_IL_SRC, 'external', 'sercomm')
+
+_SER_BUILD = join(_BUILD_DIR, 'sercomm')
+
+if 'XML2_DIR' in os.environ:
+    _XML2_SRC = os.environ['XML2_DIR']
+else:
+    _XML2_SRC = join(_IL_SRC, 'external', 'libxml2')
+
+_XML2_BUILD = join(_BUILD_DIR, 'libxml2')
 
 if sys.platform == 'win32':
     if sys.version_info >= (3, 5):
@@ -62,10 +67,12 @@ def _build_deps():
     if not cmake:
         raise FileNotFoundError('CMake is not installed or in PATH')
 
-    # clone, build and install (locally) libsercomm
-    if not exists(_SER_SRC) and _SER_URL:
-        check_call([git, 'clone', '-b', _SER_VER, _SER_URL, _SER_SRC])
+    # clone
+    if not exists(_IL_SRC) and _IL_URL:
+        check_call([git, 'clone', '--recursive', '-b', _IL_VER, _IL_URL,
+                    _IL_SRC])
 
+    # deps: libsercomm
     check_call([cmake, '-H' + _SER_SRC, '-B' + _SER_BUILD,
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
@@ -74,10 +81,17 @@ def _build_deps():
     check_call([cmake, '--build', _SER_BUILD, '--config', 'Release',
                 '--target', 'install'])
 
-    # clone, build and install (locally) libingenialink
-    if not exists(_IL_SRC) and _IL_URL:
-        check_call([git, 'clone', '-b', _IL_VER, _IL_URL, _IL_SRC])
+    # deps: libxml2 (only on Windows)
+    if sys.platform == 'win32':
+        check_call([cmake, '-H' + _XML2_SRC, '-B' + _XML2_BUILD,
+                    '-G', _CMAKE_GENERATOR,
+                    '-DCMAKE_BUILD_TYPE=Release',
+                    '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
+                    '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
+        check_call([cmake, '--build', _XML2_BUILD, '--config', 'Release',
+                    '--target', 'install'])
 
+    # build
     check_call([cmake, '-H' + _IL_SRC, '-B' + _IL_BUILD,
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
@@ -110,6 +124,7 @@ def _gen_cffi_header():
     headers = [join(_INC_DIR, 'ingenialink', 'const.h'),
                join(_INC_DIR, 'ingenialink', 'err.h'),
                join(_INC_DIR, 'ingenialink', 'registers.h'),
+               join(_INC_DIR, 'ingenialink', 'dict.h'),
                join(_INC_DIR, 'ingenialink', 'net.h'),
                join(_INC_DIR, 'ingenialink', 'servo.h'),
                join(_INC_DIR, 'ingenialink', 'poller.h'),
@@ -132,14 +147,14 @@ def _get_libs():
             list: List of libraries.
     """
 
-    libs = ['ingenialink', 'sercomm']
+    libs = ['ingenialink', 'sercomm', 'xml2']
 
     if sys.platform.startswith('linux'):
         libs.extend(['udev', 'rt', 'pthread'])
     elif sys.platform == 'darwin':
         libs.extend(['pthread'])
     elif sys.platform == 'win32':
-        libs.extend(['user32', 'setupapi', 'advapi32'])
+        libs.extend(['user32', 'setupapi', 'advapi32', 'ws2_32'])
 
     return libs
 

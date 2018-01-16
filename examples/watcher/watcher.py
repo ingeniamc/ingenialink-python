@@ -6,7 +6,20 @@ from qtpy.QtWidgets import (QApplication, QDialog, QFormLayout, QLabel,
                             QDataWidgetMapper, QLineEdit)
 
 import ingenialink as il
-from ingenialink import regs
+
+
+POS_ACT = il.regs.Register(address=0x006064,
+                           dtype=il.REG_DTYPE.S32,
+                           access=il.REG_ACCESS.RW,
+                           phy=il.REG_PHY.POS)
+""" Register: Position Actual. """
+
+
+VEL_ACT = il.regs.Register(address=0x00606C,
+                           dtype=il.REG_DTYPE.S32,
+                           access=il.REG_ACCESS.RW,
+                           phy=il.REG_PHY.VEL)
+""" Register: Velocity Actual. """
 
 
 class RegisterUpdater(QObject):
@@ -138,12 +151,6 @@ class RegisterWatcher(QObject):
 class WatcherDialog(QDialog):
     """ Watcher Dialog. """
 
-    _SERVO_TIMEOUT = 100
-    """ int: Default servo timeout (ms). """
-
-    _DEV = '/dev/ttyACM0'
-    """ str: Default device. """
-
     def __init__(self):
         QDialog.__init__(self)
 
@@ -155,9 +162,7 @@ class WatcherDialog(QDialog):
         self.form.addRow(QLabel('Velocity'), self.editVelocity)
 
         # configure network (take first available servo)
-        self._net = il.Network(self._DEV)
-        self._servo = il.Servo(self._net, self._net.servos()[0],
-                             self._SERVO_TIMEOUT)
+        self._net, self._servo = il.lucky()
 
         # create data model
         model = QStandardItemModel()
@@ -167,8 +172,8 @@ class WatcherDialog(QDialog):
 
         # configure and start watcher
         self._watcher = RegisterWatcher(self._servo)
-        self._watcher.add(regs.POS_ACT, 500, pos)
-        self._watcher.add(regs.VEL_ACT, 100, vel)
+        self._watcher.add(POS_ACT, 500, pos)
+        self._watcher.add(VEL_ACT, 100, vel)
         self._watcher.start(100)
 
         # map model fields to widgets

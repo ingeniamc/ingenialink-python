@@ -13,11 +13,23 @@ import qtmodern.windows
 
 import numpy as np
 import ingenialink as il
-from ingenialink import regs
 
 
 _RESOURCES = join(dirname(abspath(__file__)), 'resources')
 """ str: Resources folder. """
+
+
+POS_ACT = il.regs.Register(address=0x006064,
+                           dtype=il.REG_DTYPE.S32,
+                           access=il.REG_ACCESS.RW,
+                           phy=il.REG_PHY.POS)
+""" Register: Position Actual. """
+
+VEL_ACT = il.regs.Register(address=0x00606C,
+                           dtype=il.REG_DTYPE.S32,
+                           access=il.REG_ACCESS.RW,
+                           phy=il.REG_PHY.VEL)
+""" Register: Velocity Actual. """
 
 
 class HomingRunner(QObject):
@@ -35,7 +47,7 @@ class HomingRunner(QObject):
 
     def run(self):
         try:
-            self._servo.mode = il.MODE_HOMING
+            self._servo.mode = il.SERVO_MODE.HOMING
             self._servo.enable(self._en_timeout)
         except Exception as exc:
             self.finished.emit('Error: ' + str(exc))
@@ -54,8 +66,8 @@ class HomingRunner(QObject):
 class ScopeWindow(QMainWindow):
     """ Scope Window. """
 
-    _SERVO_TIMEOUT = 100
-    """ int: Default servo timeout (ms). """
+    _SERVO_TIMEOUT = 0.1
+    """ int: Default servo timeout (s). """
 
     _FPS = 30
     """ int: Plot refresh rate (fps). """
@@ -63,8 +75,8 @@ class ScopeWindow(QMainWindow):
     _N_SAMPLES = 1000
     """ int: Number of samples. """
 
-    _POLLER_T_S = 10
-    """ int: Poller sampling period (ms). """
+    _POLLER_T_S = 10e-3
+    """ float: Poller sampling period (s). """
 
     _POLLER_BUF_SZ = 100
     """ int: Poller buffer size. """
@@ -75,11 +87,11 @@ class ScopeWindow(QMainWindow):
     _VRANGE = 40
     """ int: Velocity range (+/-) rps. """
 
-    _ENABLE_TIMEOUT = 2000
-    """ int: Enable timeout (ms). """
+    _ENABLE_TIMEOUT = 2
+    """ int: Enable timeout (s). """
 
-    _HOMING_TIMEOUT = 150000
-    """ int: Default homing timeout (ms). """
+    _HOMING_TIMEOUT = 15
+    """ int: Default homing timeout (s). """
 
     stateInit, stateIdle, stateHoming, statePosition, stateVelocity = range(5)
     """ States. """
@@ -108,15 +120,15 @@ class ScopeWindow(QMainWindow):
         for dev in devs:
             try:
                 net = il.Network(dev)
-            except il.exceptions.IngeniaLinkCreationError:
+            except il.exceptions.ILCreationError:
                 continue
 
             found = net.servos()
             for servo_id in found:
                 try:
-                    servo = il.Servo(
-                            net, servo_id, timeout=self._SERVO_TIMEOUT)
-                except il.exceptions.IngeniaLinkCreationError:
+                    servo = il.Servo(net, servo_id,
+                                     timeout=self._SERVO_TIMEOUT)
+                except il.exceptions.ILCreationError:
                     continue
 
                 item = QStandardItem('0x{:02x} ({})'.format(servo_id, dev))
@@ -233,13 +245,13 @@ class ScopeWindow(QMainWindow):
         return servo
 
     def enableScope(self, servo, reg):
-        self._poller = il.Poller(servo, 1)
+        self._poller = il.poller.Poller(servo, 1)
         self._poller.configure(self._POLLER_T_S, self._POLLER_BUF_SZ)
         self._poller.ch_configure(0, reg)
 
         self._data = np.zeros(self._N_SAMPLES)
-        self._time = np.arange(-self._N_SAMPLES * self._POLLER_T_S / 1000,
-                               0, self._POLLER_T_S / 1000)
+        self._time = np.arange(-self._N_SAMPLES * self._POLLER_T_S, 0,
+                               self._POLLER_T_S)
 
         self._timerPlotUpdate.start(1000 / self._FPS)
 
@@ -274,11 +286,11 @@ class ScopeWindow(QMainWindow):
         servo = self.currentServo()
 
         if self._state == self.stateIdle:
-            servo.mode = il.MODE_PP
-            servo.units_pos = il.UNITS_POS_DEG
+            servo.mode = il.SERVO_MODE.PP
+            servo.units_pos = il.SERVO_UNITS_POS.DEG
             servo.enable(self._ENABLE_TIMEOUT)
 
-            self.enableScope(servo, regs.POS_ACT)
+            self.enableScope(servo, POS_ACT)
             self.setState(self.statePosition)
         else:
             self.disableScope()
@@ -295,11 +307,11 @@ class ScopeWindow(QMainWindow):
         servo = self.currentServo()
 
         if self._state == self.stateIdle:
-            servo.mode = il.MODE_PV
-            servo.units_vel = il.UNITS_VEL_RPS
+            servo.mode = il.SERVO_MODE.PV
+            servo.units_vel = il.SERVO_UNITS_VEL.RPS
             servo.enable(self._ENABLE_TIMEOUT)
 
-            self.enableScope(servo, regs.VEL_ACT)
+            self.enableScope(servo, VEL_ACT)
             self.setState(self.stateVelocity)
         else:
             self.disableScope()

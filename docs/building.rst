@@ -10,11 +10,12 @@ following packages need to be installed on your system:
 * CMake (>= 3.0)
 * libffi development package (see `this`_)
 * Python development package
+* ``libxml2``
 * ``udev`` development package (``libudev-dev``) on Linux
 
 Then, simply use the ``setup.py`` to build as usual::
 
-        python setup.py build 
+        python setup.py build
 
 and to install::
 
@@ -28,9 +29,9 @@ Developers
 The builder script will automatically clone the underlying C libraries from
 their respective Git repos. However, when you are changing the C libraries you
 will likely not want that behavior. For this reason, you can *tell* to the
-building script the location of the libraries by setting the ``SERCOMM_DIR`` and
-``INGENIALINK_DIR`` environment variables. Furthermore, you can also make a
-build by directly calling the build script::
+building script the location of the libraries by setting the ``SERCOMM_DIR``,
+``XML2_DIR`` and ``INGENIALINK_DIR`` environment variables. Furthermore, you can
+also make a build by directly calling the build script::
 
         # use your local ingenialink C library
         export INGENIALINK_DIR=/path/to/your/local/ingenialink
