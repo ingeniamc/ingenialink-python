@@ -116,10 +116,10 @@ class ScopeWindow(QMainWindow):
     def loadServos(self):
         model = QStandardItemModel()
 
-        devs = il.devices()
+        devs = il.devices(il.NET_PROT.EUSB)
         for dev in devs:
             try:
-                net = il.Network(dev)
+                net = il.Network(il.NET_PROT.EUSB, dev)
             except il.exceptions.ILCreationError:
                 continue
 
