@@ -162,7 +162,7 @@ class WatcherDialog(QDialog):
         self.form.addRow(QLabel('Velocity'), self.editVelocity)
 
         # configure network (take first available servo)
-        self._net, self._servo = il.lucky()
+        self._net, self._servo = il.lucky(il.NET_PROT.EUSB)
 
         # create data model
         model = QStandardItemModel()

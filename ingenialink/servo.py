@@ -149,10 +149,11 @@ class SERVO_UNITS_ACC(Enum):
     """ Meters/second^2. """
 
 
-def lucky(dict_f=None):
+def lucky(prot, dict_f=None):
     """ Obtain an instance of the first available Servo.
 
         Args:
+            prot (NET_PROT): Network protocol.
             dict_f (str, optional): Dictionary.
 
         Returns:
@@ -166,7 +167,7 @@ def lucky(dict_f=None):
     servo__ = ffi.new('il_servo_t **')
     dict_f = cstr(dict_f) if dict_f else ffi.NULL
 
-    r = lib.il_servo_lucky(net__, servo__, dict_f)
+    r = lib.il_servo_lucky(prot.value, net__, servo__, dict_f)
     raise_err(r)
 
     net_ = ffi.cast('il_net_t *', net__[0])
@@ -200,7 +201,6 @@ class Servo(object):
         Args:
             net (Network): Network instance.
             id (int): Servo id.
-            timeout (int, float, optional): Communications timeout (s).
 
         Raises:
             ILCreationError: If the servo cannot be created.
@@ -213,7 +213,8 @@ class Servo(object):
                  REG_DTYPE.U32: ['uint32_t *', lib.il_servo_raw_read_u32],
                  REG_DTYPE.S32: ['int32_t *', lib.il_servo_raw_read_s32],
                  REG_DTYPE.U64: ['uint64_t *', lib.il_servo_raw_read_u64],
-                 REG_DTYPE.S64: ['int64_t *', lib.il_servo_raw_read_s64]}
+                 REG_DTYPE.S64: ['int64_t *', lib.il_servo_raw_read_s64],
+                 REG_DTYPE.FLOAT: ['float *', lib.il_servo_raw_read_float]}
     """ dict: Data buffer and function mappings for raw read operation. """
 
     _raw_write = {REG_DTYPE.U8: lib.il_servo_raw_write_u8,
@@ -223,12 +224,13 @@ class Servo(object):
                   REG_DTYPE.U32: lib.il_servo_raw_write_u32,
                   REG_DTYPE.S32: lib.il_servo_raw_write_s32,
                   REG_DTYPE.U64: lib.il_servo_raw_write_u64,
-                  REG_DTYPE.S64: lib.il_servo_raw_write_s64}
+                  REG_DTYPE.S64: lib.il_servo_raw_write_s64,
+                  REG_DTYPE.FLOAT: lib.il_servo_raw_write_float}
     """ dict: Function mappings for raw write operation. """
 
-    def __init__(self, net, servo_id, dict_f=None, timeout=0.5):
+    def __init__(self, net, servo_id, dict_f=None):
         dict_f = cstr(dict_f) if dict_f else ffi.NULL
-        servo = lib.il_servo_create(net._net, servo_id, dict_f, to_ms(timeout))
+        servo = lib.il_servo_create(net._net, servo_id, dict_f)
         raise_null(servo)
 
         self._servo = ffi.gc(servo, lib.il_servo_destroy)
@@ -470,11 +472,9 @@ class Servo(object):
         else:
             raise TypeError('Invalid register')
 
-        # validate data (auto cast floats)
-        if isinstance(data, float):
+        # auto cast floats if register is not float
+        if isinstance(data, float) and reg.dtype != REG_DTYPE.FLOAT:
             data = int(data)
-        elif not isinstance(data, int):
-            raise TypeError('Unsupported data type')
 
         # obtain function to call
         f = self._raw_write[_reg.dtype]

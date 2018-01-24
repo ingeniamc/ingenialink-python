@@ -66,9 +66,6 @@ class HomingRunner(QObject):
 class ScopeWindow(QMainWindow):
     """ Scope Window. """
 
-    _SERVO_TIMEOUT = 0.1
-    """ int: Default servo timeout (s). """
-
     _FPS = 30
     """ int: Plot refresh rate (fps). """
 
@@ -126,8 +123,7 @@ class ScopeWindow(QMainWindow):
             found = net.servos()
             for servo_id in found:
                 try:
-                    servo = il.Servo(net, servo_id,
-                                     timeout=self._SERVO_TIMEOUT)
+                    servo = il.Servo(net, servo_id)
                 except il.exceptions.ILCreationError:
                     continue
 
