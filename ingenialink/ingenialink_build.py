@@ -96,7 +96,8 @@ def _build_deps():
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
-                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
+                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PROT_MCB=ON',
+                '-DWITH_PIC=ON'])
     check_call([cmake, '--build', _IL_BUILD, '--config', 'Release',
                 '--target', 'install'])
 
