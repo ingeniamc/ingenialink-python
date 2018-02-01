@@ -24,6 +24,8 @@ class REG_DTYPE(Enum):
     """ Signed 64-bit integer. """
     FLOAT = lib.IL_REG_DTYPE_FLOAT
     """ Float. """
+    STR = lib.IL_REG_DTYPE_STR
+    """ String. """
 
 
 class REG_ACCESS(Enum):
