@@ -473,7 +473,7 @@ class Servo(object):
             raise TypeError('Invalid register')
 
         # auto cast floats if register is not float
-        if isinstance(data, float) and reg.dtype != REG_DTYPE.FLOAT:
+        if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
             data = int(data)
 
         # obtain function to call
