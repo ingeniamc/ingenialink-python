@@ -87,8 +87,10 @@ class Network(object):
         if not isinstance(prot, NET_PROT):
             raise TypeError('Invalid protocol')
 
+        port_ = ffi.new('char []', cstr(port))
         opts = ffi.new('il_net_opts_t *')
-        opts.port = ffi.new('char []', cstr(port))
+
+        opts.port = port_
         opts.timeout_rd = to_ms(timeout_rd)
         opts.timeout_wr = to_ms(timeout_wr)
 
