@@ -22,7 +22,7 @@ class NET_STATE(Enum):
     """ Faulty. """
 
 
-class NET_DEV_EVT:
+class NET_DEV_EVT(Enum):
     """ Device Event. """
 
     ADDED = lib.IL_NET_DEV_EVT_ADDED
