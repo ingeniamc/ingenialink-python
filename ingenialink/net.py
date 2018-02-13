@@ -109,6 +109,12 @@ class Network(object):
         return inst
 
     @property
+    def prot(self):
+        """ NET_PROT: Obtain network protocol. """
+
+        return NET_PROT(lib.il_net_prot_get(self._net))
+
+    @property
     def state(self):
         """ NET_STATE: Obtain network state. """
 
