@@ -54,6 +54,8 @@ class REG_PHY(Enum):
     """ Acceleration. """
     VOLT_REL = lib.IL_REG_PHY_VOLT_REL
     """ Relative voltage (DC). """
+    RAD = lib.IL_REG_PHY_RAD
+    """ Radians. """
 
 
 class Register(object):
