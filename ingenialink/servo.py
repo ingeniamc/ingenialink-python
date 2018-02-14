@@ -1,8 +1,8 @@
 from enum import Enum
 
 from ._ingenialink import ffi, lib
-from ._utils import cstr, pstr, raise_null, raise_err, get_reg_id, to_ms
-from .regs import Register, REG_DTYPE
+from ._utils import cstr, pstr, raise_null, raise_err, to_ms
+from .regs import Register, REG_DTYPE, _get_reg_id
 from .net import Network
 from .dictionary import Dictionary
 
@@ -440,7 +440,7 @@ class Servo(object):
                 TypeError: If the register type is not valid.
         """
 
-        _reg, _id = get_reg_id(reg)
+        _reg, _id = _get_reg_id(reg)
 
         v = ffi.new('double *')
         r = lib.il_servo_read(self._servo, _reg, _id, v)
@@ -495,7 +495,7 @@ class Servo(object):
                     unsupported.
         """
 
-        _reg, _id = get_reg_id(reg)
+        _reg, _id = _get_reg_id(reg)
 
         r = lib.il_servo_write(self._servo, _reg, _id, data, confirm)
         raise_err(r)

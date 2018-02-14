@@ -1,5 +1,6 @@
 from ._ingenialink import ffi, lib
-from ._utils import raise_null, raise_err, get_reg_id, to_ms
+from ._utils import raise_null, raise_err, to_ms
+from .regs import _get_reg_id
 
 
 class Poller(object):
@@ -75,7 +76,7 @@ class Poller(object):
                 TypeError: If the register is not valid.
         """
 
-        _reg, _id = get_reg_id(reg)
+        _reg, _id = _get_reg_id(reg)
         r = lib.il_poller_ch_configure(self._poller, ch, _reg, _id)
         raise_err(r)
 

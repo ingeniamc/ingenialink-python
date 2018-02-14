@@ -2,7 +2,6 @@ import sys
 
 from ._ingenialink import lib, ffi
 from . import exceptions as exc
-from .regs import Register
 
 
 if sys.version_info >= (3, 0):
@@ -91,18 +90,3 @@ def raise_err(code):
         raise exc.ILIOError(msg)
     else:
         raise exc.ILError(msg)
-
-
-def get_reg_id(reg):
-    """ Obtain Register and ID.
-
-        Args:
-            reg (str, Register): Register.
-    """
-
-    if isinstance(reg, str):
-        return ffi.NULL, cstr(reg)
-    elif isinstance(reg, Register):
-        return reg._reg, ffi.NULL
-
-    raise TypeError('Unexpected register type')
