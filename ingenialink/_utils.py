@@ -1,4 +1,5 @@
 import sys
+from enum import Enum
 
 from ._ingenialink import lib, ffi
 from . import exceptions as exc
@@ -38,6 +39,25 @@ def to_ms(s):
     """
 
     return int(s * 1e3)
+
+
+class INT_SIZES(Enum):
+    """ Integer sizes. """
+
+    S8_MIN = -128
+    S16_MIN = -32767 - 1
+    S32_MIN = -2147483647 - 1
+    S64_MIN = 9223372036854775807 - 1
+
+    S8_MAX = 127
+    S16_MAX = 32767
+    S32_MAX = 2147483647
+    S64_MAX = 9223372036854775807
+
+    U8_MAX = 255
+    U16_MAX = 65535
+    U32_MAX = 4294967295
+    U64_MAX = 18446744073709551615
 
 
 def raise_null(obj):
