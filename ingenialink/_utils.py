@@ -5,27 +5,16 @@ from ._ingenialink import lib, ffi
 from . import exceptions as exc
 
 
-if sys.version_info >= (3, 0):
-    def cstr(v):
-        """ Convert Python 3.x string to C compatible char *. """
+def cstr(v):
+    """ Convert Python 3.x string to C compatible char *. """
 
-        return v.encode('utf8')
+    return v.encode('utf8')
 
-    def pstr(v):
-        """ Convert C string to Python 3.x compatible str. """
 
-        return ffi.string(v).decode('utf8')
+def pstr(v):
+    """ Convert C string to Python 3.x compatible str. """
 
-else:
-    def cstr(v):
-        """ Convert Python 2.x string to C compatible char *. """
-
-        return v
-
-    def pstr(v):
-        """ Convert C string to Python 2.x compatible str. """
-
-        return ffi.string(v)
+    return ffi.string(v).decode('utf8')
 
 
 def to_ms(s):

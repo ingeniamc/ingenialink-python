@@ -42,10 +42,6 @@ _XML2_BUILD = join(_BUILD_DIR, 'libxml2')
 if sys.platform == 'win32':
     if sys.version_info >= (3, 5):
         _CMAKE_GENERATOR = 'Visual Studio 14 2015'
-    elif sys.version_info >= (3, 3):
-        _CMAKE_GENERATOR = 'Visual Studio 10 2010'
-    elif sys.version_info >= (2, 7):
-        _CMAKE_GENERATOR = 'Visual Studio 9 2008'
     else:
         raise ImportError('Unsupported Python version')
 
