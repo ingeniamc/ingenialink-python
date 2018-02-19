@@ -48,10 +48,7 @@ have the requirements listed
 `here <http://ingenialink.readthedocs.io/en/latest/building.html>`_ installed.
 On recent versions of Debian/Ubuntu this translates to::
 
-    sudo apt install python-dev python3-dev libffi-dev libudev-dev libxml2-dev build-essential cmake git
-
-where you can remove either ``python-dev`` or ``python3-dev`` if you are just
-installing for one of the Python versions.
+    sudo apt install python3-dev libffi-dev libudev-dev libxml2-dev build-essential cmake git
 
 Examples
 --------
