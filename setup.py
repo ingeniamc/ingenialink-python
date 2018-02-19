@@ -31,4 +31,4 @@ setup(name='ingenialink',
       ],
       setup_requires=['cffi>=1.0.0'],
       cffi_modules=['ingenialink/ingenialink_build.py:ffibuilder'],
-      install_requires=['cffi>=1.0.0', 'enum34'])
+      install_requires=['cffi>=1.0.0'])

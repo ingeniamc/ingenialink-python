@@ -22,7 +22,7 @@ VEL_ACT = il.Register(address=0x00606C,
 
 def main():
     # setup network and connect to the first available device
-    net, servo = il.lucky()
+    net, servo = il.lucky(il.NET_PROT.EUSB)
 
     servo.units_vel = il.SERVO_UNITS_VEL.RPS
 

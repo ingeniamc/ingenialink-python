@@ -20,7 +20,7 @@ if 'INGENIALINK_DIR' in os.environ:
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = 'next'
+    _IL_VER = 'implement-multinet-and-multiservo'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
 
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
@@ -42,10 +42,6 @@ _XML2_BUILD = join(_BUILD_DIR, 'libxml2')
 if sys.platform == 'win32':
     if sys.version_info >= (3, 5):
         _CMAKE_GENERATOR = 'Visual Studio 14 2015'
-    elif sys.version_info >= (3, 3):
-        _CMAKE_GENERATOR = 'Visual Studio 10 2010'
-    elif sys.version_info >= (2, 7):
-        _CMAKE_GENERATOR = 'Visual Studio 9 2008'
     else:
         raise ImportError('Unsupported Python version')
 
@@ -96,7 +92,8 @@ def _build_deps():
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
-                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
+                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PROT_MCB=ON',
+                '-DWITH_PIC=ON'])
     check_call([cmake, '--build', _IL_BUILD, '--config', 'Release',
                 '--target', 'install'])
 

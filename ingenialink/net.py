@@ -1,7 +1,16 @@
 from enum import Enum
 
 from ._ingenialink import lib, ffi
-from ._utils import cstr, pstr, raise_null, raise_err
+from ._utils import cstr, pstr, raise_null, raise_err, to_ms
+
+
+class NET_PROT(Enum):
+    """ Network Protocol. """
+
+    EUSB = lib.IL_NET_PROT_EUSB
+    """ E-USB. """
+    MCB = lib.IL_NET_PROT_MCB
+    """ MCB. """
 
 
 class NET_STATE(Enum):
@@ -13,7 +22,7 @@ class NET_STATE(Enum):
     """ Faulty. """
 
 
-class NET_DEV_EVT:
+class NET_DEV_EVT(Enum):
     """ Device Event. """
 
     ADDED = lib.IL_NET_DEV_EVT_ADDED
@@ -22,14 +31,23 @@ class NET_DEV_EVT:
     """ Event. """
 
 
-def devices():
+def devices(prot):
     """ Obtain a list of network devices.
+
+        Args:
+            prot (NET_PROT): Protocol.
 
         Returns:
             list: List of network devices.
+
+        Raises:
+            TypeError: If the protocol type is invalid.
     """
 
-    devs = lib.il_net_dev_list_get()
+    if not isinstance(prot, NET_PROT):
+        raise TypeError('Invalid protocol')
+
+    devs = lib.il_net_dev_list_get(prot.value)
 
     found = []
     curr = devs
@@ -55,14 +73,28 @@ class Network(object):
     """ Network.
 
         Args:
+            prot (NET_PROT): Protocol.
             port (str): Network device port (e.g. COM1, /dev/ttyACM0, etc.).
+            timeout_rd (int, float, optional): Read timeout (s).
+            timeout_wr (int, float, optional): Write timeout (s).
 
         Raises:
+            TypeError: If the protocol type is invalid.
             ILCreationError: If the network cannot be created.
     """
 
-    def __init__(self, port):
-        net = lib.il_net_create(cstr(port))
+    def __init__(self, prot, port, timeout_rd=0.5, timeout_wr=0.5):
+        if not isinstance(prot, NET_PROT):
+            raise TypeError('Invalid protocol')
+
+        port_ = ffi.new('char []', cstr(port))
+        opts = ffi.new('il_net_opts_t *')
+
+        opts.port = port_
+        opts.timeout_rd = to_ms(timeout_rd)
+        opts.timeout_wr = to_ms(timeout_wr)
+
+        net = lib.il_net_create(prot.value, opts)
         raise_null(net)
 
         self._net = ffi.gc(net, lib.il_net_destroy)
@@ -75,6 +107,12 @@ class Network(object):
         inst._net = ffi.gc(net, lib.il_net_destroy)
 
         return inst
+
+    @property
+    def prot(self):
+        """ NET_PROT: Obtain network protocol. """
+
+        return NET_PROT(lib.il_net_prot_get(self._net))
 
     @property
     def state(self):
@@ -128,12 +166,19 @@ def _on_evt_cb(ctx, evt, port):
 class NetworkMonitor(object):
     """ Network Monitor.
 
+        Args:
+            prot (NET_PROT): Protocol.
+
         Raises:
+            TypeError: If the protocol type is invalid.
             ILCreationError: If the monitor cannot be created.
     """
 
-    def __init__(self):
-        mon = lib.il_net_dev_mon_create()
+    def __init__(self, prot):
+        if not isinstance(prot, NET_PROT):
+            raise TypeError('Invalid protocol')
+
+        mon = lib.il_net_dev_mon_create(prot.value)
         raise_null(mon)
 
         self._mon = ffi.gc(mon, lib.il_net_dev_mon_destroy)

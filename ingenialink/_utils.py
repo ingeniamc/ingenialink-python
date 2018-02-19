@@ -1,31 +1,20 @@
 import sys
+from enum import Enum
 
 from ._ingenialink import lib, ffi
 from . import exceptions as exc
-from .regs import Register
 
 
-if sys.version_info >= (3, 0):
-    def cstr(v):
-        """ Convert Python 3.x string to C compatible char *. """
+def cstr(v):
+    """ Convert Python 3.x string to C compatible char *. """
 
-        return v.encode('utf8')
+    return v.encode('utf8')
 
-    def pstr(v):
-        """ Convert C string to Python 3.x compatible str. """
 
-        return ffi.string(v).decode('utf8')
+def pstr(v):
+    """ Convert C string to Python 3.x compatible str. """
 
-else:
-    def cstr(v):
-        """ Convert Python 2.x string to C compatible char *. """
-
-        return v
-
-    def pstr(v):
-        """ Convert C string to Python 2.x compatible str. """
-
-        return ffi.string(v)
+    return ffi.string(v).decode('utf8')
 
 
 def to_ms(s):
@@ -39,6 +28,25 @@ def to_ms(s):
     """
 
     return int(s * 1e3)
+
+
+class INT_SIZES(Enum):
+    """ Integer sizes. """
+
+    S8_MIN = -128
+    S16_MIN = -32767 - 1
+    S32_MIN = -2147483647 - 1
+    S64_MIN = 9223372036854775807 - 1
+
+    S8_MAX = 127
+    S16_MAX = 32767
+    S32_MAX = 2147483647
+    S64_MAX = 9223372036854775807
+
+    U8_MAX = 255
+    U16_MAX = 65535
+    U32_MAX = 4294967295
+    U64_MAX = 18446744073709551615
 
 
 def raise_null(obj):
@@ -91,18 +99,3 @@ def raise_err(code):
         raise exc.ILIOError(msg)
     else:
         raise exc.ILError(msg)
-
-
-def get_reg_id(reg):
-    """ Obtain Register and ID.
-
-        Args:
-            reg (str, Register): Register.
-    """
-
-    if isinstance(reg, str):
-        return ffi.NULL, cstr(reg)
-    elif isinstance(reg, Register):
-        return reg._reg, ffi.NULL
-
-    raise TypeError('Unexpected register type')

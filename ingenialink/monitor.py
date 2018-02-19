@@ -1,7 +1,8 @@
 from enum import Enum
 
 from ._ingenialink import ffi, lib
-from ._utils import raise_null, raise_err, get_reg_id, to_ms
+from ._utils import raise_null, raise_err, to_ms
+from .regs import _get_reg_id
 
 
 class MONITOR_TRIGGER(Enum):
@@ -100,7 +101,7 @@ class Monitor(object):
                 reg (str, Register): Register to be mapped to the channel.
         """
 
-        _reg, _id = get_reg_id(reg)
+        _reg, _id = _get_reg_id(reg)
         r = lib.il_monitor_ch_configure(self._monitor, ch, _reg, _id)
         raise_err(r)
 
@@ -141,7 +142,7 @@ class Monitor(object):
                             MONITOR_TRIGGER.WINDOW)
 
         if mode in _source_required:
-            _reg, _id = get_reg_id(source)
+            _reg, _id = _get_reg_id(source)
         else:
             _reg, _id = ffi.NULL, ffi.NULL
 

@@ -26,7 +26,7 @@ This is a Python binding for the ingenialink_ C library. The binding is built as
 a native Python extension thanks to cffi_ and then exposed through an
 object-oriented API.
 
-Python versions 2.7, >=3.4 are supported.
+Python versions >=3.5 are supported.
 
 .. image:: https://s3.eu-central-1.amazonaws.com/ingeniamc-cdn/images/all-servodrives.png
      :target: http://www.ingeniamc.com
