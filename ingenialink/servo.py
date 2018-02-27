@@ -85,10 +85,10 @@ class SERVO_UNITS_TORQUE(Enum):
 
     NATIVE = lib.IL_UNITS_TORQUE_NATIVE
     """ Native """
-    MN = lib.IL_UNITS_TORQUE_MN
-    """ Millinewtons. """
-    N = lib.IL_UNITS_TORQUE_N
-    """ Newtons. """
+    MN = lib.IL_UNITS_TORQUE_MNM
+    """ Millinewtons*meter. """
+    N = lib.IL_UNITS_TORQUE_NM
+    """ Newtons*meter. """
 
 
 class SERVO_UNITS_POS(Enum):
