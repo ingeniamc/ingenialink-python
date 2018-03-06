@@ -1,0 +1,22 @@
+[[source]]
+
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+
+[packages]
+
+cffi = ">=1.0.0"
+
+
+[dev-packages]
+
+numpy = "*"
+pyqtgraph = "*"
+qtpy = "*"
+qtmodern = "*"
+qtawesome = "*"
+matplotlib = "*"
+"e1839a8" = {path = ".", editable = true}
+"pyqt5" = "*"

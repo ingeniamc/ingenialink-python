@@ -50,11 +50,20 @@ On recent versions of Debian/Ubuntu this translates to::
 
     sudo apt install python3-dev libffi-dev libudev-dev libxml2-dev build-essential cmake git
 
-Examples
---------
+Development and examples
+------------------------
 
-You can find some usage examples on the ``examples`` folder. Below you have a
-glimpse of the ``scope`` and ``monitor`` examples:
+`pipenv <https://docs.pipenv.org>`_ is used for package management. You can
+bring up a development environment like this::
+
+    pipenv install --dev
+
+After that, you can enter the environment shell like this::
+
+    pipenv shell
+
+and from there you can run any of the usage examples in the ``examples`` folder.
+Below you have a glimpse of the ``scope`` and ``monitor`` examples:
 
 .. image:: https://s3.eu-central-1.amazonaws.com/ingeniamc-cdn/images/examples-scope.gif
      :alt: Scope example
