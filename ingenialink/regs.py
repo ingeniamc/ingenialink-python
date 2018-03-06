@@ -180,29 +180,41 @@ class Register(object):
         self._reg.phy = phy.value
 
         if dtype == REG_DTYPE.S8:
-            self._reg.range.min.s8 = range[0] if range else INT_SIZES.S8_MIN
-            self._reg.range.max.s8 = range[1] if range else INT_SIZES.S8_MAX
+            self._reg.range.min.s8 = (range[0] if range else
+                                      INT_SIZES.S8_MIN.value)
+            self._reg.range.max.s8 = (range[1] if range else
+                                      INT_SIZES.S8_MAX.value)
         elif dtype == REG_DTYPE.U8:
             self._reg.range.min.u8 = range[0] if range else 0
-            self._reg.range.max.u8 = range[1] if range else INT_SIZES.U8_MAX
+            self._reg.range.max.u8 = (range[1] if range else
+                                      INT_SIZES.U8_MAX.value)
         if dtype == REG_DTYPE.S16:
-            self._reg.range.min.s16 = range[0] if range else INT_SIZES.S16_MIN
-            self._reg.range.max.s16 = range[1] if range else INT_SIZES.S16_MAX
+            self._reg.range.min.s16 = (range[0] if range else
+                                       INT_SIZES.S16_MIN.value)
+            self._reg.range.max.s16 = (range[1] if range else
+                                       INT_SIZES.S16_MAX.value)
         elif dtype == REG_DTYPE.U16:
             self._reg.range.min.u16 = range[0] if range else 0
-            self._reg.range.max.u16 = range[1] if range else INT_SIZES.U16_MAX
+            self._reg.range.max.u16 = (range[1] if range else
+                                       INT_SIZES.U16_MAX)
         if dtype == REG_DTYPE.S32:
-            self._reg.range.min.s32 = range[0] if range else INT_SIZES.S32_MIN
-            self._reg.range.max.s32 = range[1] if range else INT_SIZES.S32_MAX
+            self._reg.range.min.s32 = (range[0] if range else
+                                       INT_SIZES.S32_MIN.value)
+            self._reg.range.max.s32 = (range[1] if range else
+                                       INT_SIZES.S32_MAX.value)
         elif dtype == REG_DTYPE.U32:
             self._reg.range.min.u32 = range[0] if range else 0
-            self._reg.range.max.u32 = range[1] if range else INT_SIZES.U32_MAX
+            self._reg.range.max.u32 = (range[1] if range else
+                                       INT_SIZES.U32_MAX.value)
         if dtype == REG_DTYPE.S64:
-            self._reg.range.min.s64 = range[1] if range else INT_SIZES.S64_MIN
-            self._reg.range.max.s64 = range[1] if range else INT_SIZES.S64_MAX
+            self._reg.range.min.s64 = (range[0] if range else
+                                       INT_SIZES.S64_MIN.value)
+            self._reg.range.max.s64 = (range[1] if range else
+                                       INT_SIZES.S64_MAX.value)
         elif dtype == REG_DTYPE.U64:
             self._reg.range.min.u64 = range[0] if range else 0
-            self._reg.range.max.u64 = range[1] if range else INT_SIZES.U64_MAX
+            self._reg.range.max.u64 = (range[1] if range else
+                                       INT_SIZES.U64_MAX.value)
 
         self._labels = RegisterLabels(labels)
         self._reg.labels = self._labels._labels
