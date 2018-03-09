@@ -4,6 +4,8 @@ from enum import Enum
 from ._ingenialink import ffi, lib
 from ._utils import cstr, pstr, INT_SIZES, raise_null, raise_err
 
+from .dict_labels import LabelsDictionary
+
 
 class REG_DTYPE(Enum):
     """ Data Type. """
@@ -75,76 +77,6 @@ def _get_reg_id(reg):
     raise TypeError('Unexpected register type')
 
 
-class RegisterLabels(collections.MutableMapping):
-    """ Register Labels dictionary.
-
-        Args:
-            labels (dict, optional): Labels.
-
-        Raises:
-            ILCreationError: If the dictionary could not be created.
-    """
-
-    def __init__(self, labels=None):
-        _labels = lib.il_reg_labels_create()
-        raise_null(_labels)
-
-        self._labels = ffi.gc(_labels, lib.il_reg_labels_destroy)
-
-        if labels:
-            for lang, content in labels.items():
-                lib.il_reg_labels_set(self._labels, cstr(lang), cstr(content))
-
-            self._load_langs()
-
-    @classmethod
-    def _from_labels(cls, _labels):
-        """ Create a new class instance from an existing labels dictionary. """
-
-        inst = cls.__new__(cls)
-        inst._labels = _labels
-
-        inst._load_langs()
-
-        return inst
-
-    def _load_langs(self):
-        """ Load languages from dictionary (cache). """
-
-        langs = lib.il_reg_labels_langs_get(self._labels)
-
-        self._langs = []
-        i = 0
-        lang = langs[0]
-        while lang != ffi.NULL:
-            self._langs.append(pstr(lang))
-            i += 1
-            lang = langs[i]
-
-        lib.il_reg_labels_langs_destroy(langs)
-
-    def __getitem__(self, lang):
-        content_p = ffi.new('char **')
-        r = lib.il_reg_labels_get(self._labels, cstr(lang), content_p)
-        raise_err(r)
-
-        return pstr(content_p[0])
-
-    def __setitem__(self, lang, content):
-        lib.il_reg_labels_set(self._labels, cstr(lang), cstr(content))
-        self._langs.append(lang)
-
-    def __delitem__(self, lang):
-        lib.il_reg_labels_del(self._labels, cstr(lang))
-        self._langs.remove(lang)
-
-    def __len__(self):
-        return len(self._langs)
-
-    def __iter__(self):
-        return iter(self._langs)
-
-
 class Register(object):
     """ Register.
 
@@ -155,13 +87,14 @@ class Register(object):
             phy (REG_PHY, optional): Physical units.
             range (tuple, optional): Range (min, max).
             labels (dict, optional): Register labels.
+            cat_id (str, optional): Category ID.
 
         Raises:
             TypeError: If any of the parameters has invalid type.
     """
 
     def __init__(self, address, dtype, access, phy=REG_PHY.NONE, range=None,
-                 labels=None):
+                 labels=None, cat_id=None):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
@@ -216,8 +149,10 @@ class Register(object):
             self._reg.range.max.u64 = (range[1] if range else
                                        INT_SIZES.U64_MAX.value)
 
-        self._labels = RegisterLabels(labels)
+        self._labels = LabelsDictionary(labels)
         self._reg.labels = self._labels._labels
+
+        self._reg.cat_id = ffi.NULL if not cat_id else cstr(cat_id)
 
     def __repr__(self):
         return '<Register: 0x{:08x}, {}{}, {}, {}>'.format(
@@ -231,7 +166,7 @@ class Register(object):
 
         inst = cls.__new__(cls)
         inst._reg = reg
-        inst._labels = RegisterLabels._from_labels(reg.labels)
+        inst._labels = LabelsDictionary._from_labels(reg.labels)
 
         return inst
 
@@ -280,5 +215,13 @@ class Register(object):
 
     @property
     def labels(self):
-        """ RegisterLabels: Labels dictionary. """
+        """ LabelsDictionary: Labels dictionary. """
         return self._labels
+
+    @property
+    def cat_id(self):
+        """Category ID."""
+        if self._reg.cat_id != ffi.NULL:
+            return pstr(self._reg.cat_id)
+
+        return None

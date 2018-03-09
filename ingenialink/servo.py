@@ -2,9 +2,9 @@ from enum import Enum
 
 from ._ingenialink import ffi, lib
 from ._utils import cstr, pstr, raise_null, raise_err, to_ms
-from .regs import Register, REG_DTYPE, _get_reg_id
+from .registers import Register, REG_DTYPE, _get_reg_id
 from .net import Network
-from .dictionary import Dictionary
+from .dict_ import Dictionary
 
 
 class SERVO_STATE(Enum):

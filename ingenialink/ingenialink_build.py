@@ -20,7 +20,7 @@ if 'INGENIALINK_DIR' in os.environ:
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = 'next'
+    _IL_VER = 'add-support-for-categories'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
 
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
@@ -120,6 +120,7 @@ def _gen_cffi_header():
 
     headers = [join(_INC_DIR, 'ingenialink', 'const.h'),
                join(_INC_DIR, 'ingenialink', 'err.h'),
+               join(_INC_DIR, 'ingenialink', 'dict_labels.h'),
                join(_INC_DIR, 'ingenialink', 'registers.h'),
                join(_INC_DIR, 'ingenialink', 'dict.h'),
                join(_INC_DIR, 'ingenialink', 'net.h'),

@@ -1,6 +1,6 @@
 from ._ingenialink import ffi, lib
 from ._utils import raise_null, raise_err, to_ms
-from .regs import _get_reg_id
+from .registers import _get_reg_id
 
 
 class Poller(object):
