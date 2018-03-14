@@ -250,6 +250,16 @@ class Servo(object):
 
         return inst
 
+    def reset(self):
+        """Reset.
+
+        Notes:
+            You may need to reconnect the network after reset.
+        """
+
+        r = lib.il_servo_reset(self._servo)
+        raise_err(r)
+
     @property
     def state(self):
         """ tuple: Servo state and state flags. """
