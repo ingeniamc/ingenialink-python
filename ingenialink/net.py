@@ -16,8 +16,10 @@ class NET_PROT(Enum):
 class NET_STATE(Enum):
     """ Network State. """
 
-    OPERATIVE = lib.IL_NET_STATE_OPERATIVE
-    """ Operative. """
+    CONNECTED = lib.IL_NET_STATE_CONNECTED
+    """ Connected. """
+    DISCONNECTED = lib.IL_NET_STATE_DISCONNECTED
+    """ Disconnected. """
     FAULTY = lib.IL_NET_STATE_FAULTY
     """ Faulty. """
 
@@ -119,6 +121,24 @@ class Network(object):
         """ NET_STATE: Obtain network state. """
 
         return NET_STATE(lib.il_net_state_get(self._net))
+
+    @property
+    def port(self):
+        """ str: Obtain network port. """
+
+        port = lib.il_net_port_get(self._net)
+        return pstr(port)
+
+    def connect(self):
+        """ Connect network. """
+
+        r = lib.il_net_connect(self._net)
+        raise_err(r)
+
+    def disconnect(self):
+        """ Disconnect network. """
+
+        lib.il_net_disconnect(self._net)
 
     def servos(self, on_found=None):
         """ Obtain a list of attached servos.
