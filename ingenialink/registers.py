@@ -1,8 +1,7 @@
-import collections
 from enum import Enum
 
 from ._ingenialink import ffi, lib
-from ._utils import cstr, pstr, INT_SIZES, raise_null, raise_err
+from ._utils import cstr, pstr, INT_SIZES
 
 from .dict_labels import LabelsDictionary
 

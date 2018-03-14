@@ -115,8 +115,8 @@ class Dictionary(object):
         inst = cls.__new__(cls)
         inst._dict = dict_
 
-        self._rdict = RegistersDictionary(self._dict)
-        self._cdict = CategoriesDictionary(self._dict)
+        inst._rdict = RegistersDictionary(inst._dict)
+        inst._cdict = CategoriesDictionary(inst._dict)
 
         return inst
 
