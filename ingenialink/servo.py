@@ -424,7 +424,7 @@ class Servo(object):
             if not _dict:
                 raise ValueError('No dictionary loaded')
 
-            _reg = _dict[reg]
+            _reg = _dict.regs[reg]
         else:
             raise TypeError('Invalid register')
 
@@ -478,7 +478,7 @@ class Servo(object):
             if not _dict:
                 raise ValueError('No dictionary loaded')
 
-            _reg = _dict[reg]
+            _reg = _dict.regs[reg]
         else:
             raise TypeError('Invalid register')
 
