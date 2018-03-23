@@ -22,12 +22,13 @@ setup(name='ingenialink',
           'Operating System :: MacOS',
           'Operating System :: Microsoft :: Windows',
           'Programming Language :: C',
+          'Programming Language :: Python :: 2.7',
           'Programming Language :: Python :: 3.4',
           'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
           'Topic :: Communications',
           'Topic :: Software Development :: Libraries'
       ],
-      setup_requires=['cffi>=1.0.0,<=1.11.0'],
+      setup_requires=['cffi>=1.0.0'],
       cffi_modules=['ingenialink/ingenialink_build.py:ffibuilder'],
-      install_requires=['cffi>=1.0.0,<=1.11.0'])
+      install_requires=['cffi>=1.0.0'])

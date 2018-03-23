@@ -1,43 +1,48 @@
-class IngeniaLinkError(Exception):
+class ILError(Exception):
     """ IngeniaLink generic error. """
     pass
 
 
-class IngeniaLinkCreationError(IngeniaLinkError):
+class ILCreationError(ILError):
     """ IngeniaLink creation error. """
     pass
 
 
-class IngeniaLinkValueError(IngeniaLinkError):
+class ILValueError(ILError):
     """ IngeniaLink value error. """
     pass
 
 
-class IngeniaLinkTimeoutError(IngeniaLinkError):
+class ILTimeoutError(ILError):
     """ IngeniaLink timeout error. """
     pass
 
 
-class IngeniaLinkMemoryError(IngeniaLinkError):
+class ILAlreadyInitializedError(ILError):
+    """ InteniaLink already initialized error. """
+    pass
+
+
+class ILMemoryError(ILError):
     """ IngeniaLink memory error. """
     pass
 
 
-class IngeniaLinkDisconnectionError(IngeniaLinkError):
+class ILDisconnectionError(ILError):
     """ IngeniaLink disconnection error. """
     pass
 
 
-class IngeniaLinkAccessError(IngeniaLinkError):
+class ILAccessError(ILError):
     """ IngeniaLink access error. """
     pass
 
 
-class IngeniaLinkStateError(IngeniaLinkError):
+class ILStateError(ILError):
     """ IngeniaLink state error. """
     pass
 
 
-class IngeniaLinkIOError(IngeniaLinkError):
+class ILIOError(ILError):
     """ IngeniaLink I/O error. """
     pass

@@ -7,6 +7,7 @@
 build/
 dist/
 *.egg*
+.ipynb_checkpoints/
 
 # temp files
 _deps
