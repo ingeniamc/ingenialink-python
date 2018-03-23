@@ -8,17 +8,17 @@ from qtpy.QtWidgets import (QApplication, QDialog, QFormLayout, QLabel,
 import ingenialink as il
 
 
-POS_ACT = il.regs.Register(address=0x006064,
-                           dtype=il.REG_DTYPE.S32,
-                           access=il.REG_ACCESS.RW,
-                           phy=il.REG_PHY.POS)
+POS_ACT = il.Register(address=0x006064,
+                      dtype=il.REG_DTYPE.S32,
+                      access=il.REG_ACCESS.RW,
+                      phy=il.REG_PHY.POS)
 """ Register: Position Actual. """
 
 
-VEL_ACT = il.regs.Register(address=0x00606C,
-                           dtype=il.REG_DTYPE.S32,
-                           access=il.REG_ACCESS.RW,
-                           phy=il.REG_PHY.VEL)
+VEL_ACT = il.Register(address=0x00606C,
+                      dtype=il.REG_DTYPE.S32,
+                      access=il.REG_ACCESS.RW,
+                      phy=il.REG_PHY.VEL)
 """ Register: Velocity Actual. """
 
 

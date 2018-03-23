@@ -93,7 +93,7 @@ class Register(object):
     """
 
     def __init__(self, address, dtype, access, phy=REG_PHY.NONE, range=None,
-                 labels=None, cat_id=None):
+                 labels={}, cat_id=None):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
