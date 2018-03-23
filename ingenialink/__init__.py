@@ -22,4 +22,4 @@ __all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
            'LabelsDictionary']
 
 
-__version__ = '3.5.1'
+__version__ = '4.0.0'
