@@ -87,13 +87,14 @@ class Register(object):
             range (tuple, optional): Range (min, max).
             labels (dict, optional): Register labels.
             cat_id (str, optional): Category ID.
+            scat_id (str, optional): Sub-category ID.
 
         Raises:
             TypeError: If any of the parameters has invalid type.
     """
 
     def __init__(self, address, dtype, access, phy=REG_PHY.NONE, range=None,
-                 labels={}, cat_id=None):
+                 labels={}, cat_id=None, scat_id=None):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
@@ -128,7 +129,7 @@ class Register(object):
         elif dtype == REG_DTYPE.U16:
             self._reg.range.min.u16 = range[0] if range else 0
             self._reg.range.max.u16 = (range[1] if range else
-                                       INT_SIZES.U16_MAX)
+                                       INT_SIZES.U16_MAX.value)
         if dtype == REG_DTYPE.S32:
             self._reg.range.min.s32 = (range[0] if range else
                                        INT_SIZES.S32_MIN.value)
@@ -153,11 +154,24 @@ class Register(object):
 
         self._reg.cat_id = ffi.NULL if not cat_id else cstr(cat_id)
 
+        if not cat_id and scat_id:
+            raise ValueError('Sub-category requires a parent category')
+
+        self._reg.scat_id = ffi.NULL if not scat_id else cstr(scat_id)
+
     def __repr__(self):
-        return '<Register: 0x{:08x}, {}{}, {}, {}>'.format(
+        # obtain category/subcategory information
+        if self.cat_id:
+            cat_info = self.cat_id
+            if self.scat_id:
+                cat_info += ' + ' + self.scat_id
+        else:
+            cat_info = 'Uncategorized'
+
+        return '<Register: 0x{:08x}, {}{}, {}, {}, [{}]>'.format(
                 self.address, self.dtype,
                 ' ∊ ' + str(self.range) if self.range else '', self.access,
-                self.phy)
+                self.phy, cat_info)
 
     @classmethod
     def _from_register(cls, reg):
@@ -222,5 +236,13 @@ class Register(object):
         """Category ID."""
         if self._reg.cat_id != ffi.NULL:
             return pstr(self._reg.cat_id)
+
+        return None
+
+    @property
+    def scat_id(self):
+        """Sub-category ID."""
+        if self._reg.scat_id != ffi.NULL:
+            return pstr(self._reg.scat_id)
 
         return None

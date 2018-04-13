@@ -6,6 +6,20 @@
   </Header>
   <Body>
     <Device family="ECORE" firmwareVersion="2.4.13" name="Generic">
+      <Categories>
+        <Category id="MOTION">
+          <Labels>
+            <Label lang="en_US">Motion</Label>
+          </Labels>
+          <Subcategories>
+            <Subcategory id="VELOCITY">
+              <Labels>
+                 <Label lang="en_US">Velocity</Label>
+              </Labels>
+            </Subcategory>
+          </Subcategories>
+        </Category>
+      </Categories>
       <Registers>
         <Register access="r" address="001000" dtype="u32" id="DEVICE_TYPE" phy="none">
           <Labels>
@@ -4102,7 +4116,7 @@
             <Label lang="en_US">Velocity demand value</Label>
           </Labels>
         </Register>
-        <Register access="r" address="00606c" dtype="s32" id="VEL_ACT" phy="vel">
+        <Register access="r" address="00606c" dtype="s32" id="VEL_ACT" phy="vel" cat_id="MOTION" scat_id="VELOCITY">
           <Labels>
             <Label lang="en_US">Velocity actual</Label>
             <Label lang="es_ES">Velocidad actual</Label>
