@@ -352,6 +352,19 @@ class Servo(object):
         r = lib.il_servo_dict_load(self._servo, cstr(dict_f))
         raise_err(r)
 
+    def dict_storage_read(self):
+        """Read all dictionary registers content and put it to the dictionary
+        storage."""
+
+        r = lib.il_servo_dict_storage_read(self._servo)
+        raise_err(r)
+
+    def dict_storage_write(self):
+        """Write current dictionary storage to the servo drive."""
+
+        r = lib.il_servo_dict_storage_write(self._servo)
+        raise_err(r)
+
     @property
     def name(self):
         """ str: Name. """

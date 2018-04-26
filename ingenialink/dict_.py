@@ -3,7 +3,7 @@ import collections
 from ._ingenialink import ffi, lib
 from ._utils import cstr, pstr, raise_null, raise_err
 
-from .registers import Register
+from .registers import Register, REG_DTYPE
 from .dict_labels import LabelsDictionary
 
 
@@ -171,10 +171,55 @@ class Dictionary(object):
 
         return inst
 
+    def save(self, fname):
+        """Save dictionary.
+
+        Args:
+            fname (str): Output file name/path.
+        """
+
+        r = lib.il_dict_save(self._dict, cstr(fname))
+        raise_err(r)
+
     @property
     def regs(self):
         """RegistersDictionary: Registers dictionary."""
         return self._rdict
+
+    def reg_storage_update(self, id_, value):
+        """Update register storage.
+
+        Args:
+            id_ (str): Register ID.
+            value: Value.
+        """
+
+        reg = self.regs[id_]
+        value_ = ffi.new('il_reg_value_t')
+
+        if reg.dtype == REG_DTYPE.S8:
+            value_.storage.s8 = int(value)
+        elif reg.dtype == REG_DTYPE.U8:
+            value_.storage.u8 = int(value)
+        if reg.dtype == REG_DTYPE.S16:
+            value_.storage.s16 = int(value)
+        elif reg.dtype == REG_DTYPE.U16:
+            value_.storage.u16 = int(value)
+        if reg.dtype == REG_DTYPE.S32:
+            value_.storage.s32 = int(value)
+        elif reg.dtype == REG_DTYPE.U32:
+            value_.storage.u32 = int(value)
+        if reg.dtype == REG_DTYPE.S64:
+            value_.storage.s64 = int(value)
+        elif reg.dtype == REG_DTYPE.U64:
+            value_.storage.u64 = int(value)
+        elif reg.dtype == REG_DTYPE.FLOAT:
+            value_.storage.flt = float(value)
+        else:
+            raise ValueError('Unsupported register data type')
+
+        r = lib.il_dict_reg_storage_update(cstr(id_), value_)
+        raise_err(r)
 
     @property
     def cats(self):
