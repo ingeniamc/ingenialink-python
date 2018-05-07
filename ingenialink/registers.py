@@ -109,7 +109,7 @@ class Register(object):
         self._reg = ffi.new('il_reg_t *')
 
         # initialize register
-        self._reg.identifier = identifier
+        self._reg.identifier = cstr(identifier)
         self._reg.address = address
         self._reg.dtype = dtype.value
         self._reg.access = access.value
@@ -230,7 +230,7 @@ class Register(object):
     @property
     def identifier(self):
         """ str: Register identifier """
-        return self._reg.identifier
+        return pstr(self._reg.identifier)
 
     @property
     def address(self):
