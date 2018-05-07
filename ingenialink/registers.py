@@ -207,7 +207,8 @@ class Register(object):
         else:
             storage_info = 'No storage'
 
-        return '<Register: 0x{:08x}, {}{}, {}, {}, ST: {}, [{}]>'.format(
+        return '<Register: {}, 0x{:08x}, {}{}, {}, {}, ST: {}, [{}]>'.format(
+                self.identifier,
                 self.address,
                 self.dtype,
                 ' ∊ ' + str(self.range) if self.range else '',
