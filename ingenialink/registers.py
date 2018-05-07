@@ -80,6 +80,7 @@ class Register(object):
     """ Register.
 
         Args:
+            identifier (str): Identifier.
             address (int): Address.
             dtype (REG_DTYPE): Data type.
             access (REG_ACCESS): Access type.
@@ -94,7 +95,7 @@ class Register(object):
             TypeError: If any of the parameters has invalid type.
     """
 
-    def __init__(self, address, dtype, access, phy=REG_PHY.NONE, storage=None,
+    def __init__(self, identifier, address, dtype, access, phy=REG_PHY.NONE, storage=None,
                  range=None, labels={}, cat_id=None, scat_id=None):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
@@ -108,6 +109,7 @@ class Register(object):
         self._reg = ffi.new('il_reg_t *')
 
         # initialize register
+        self._reg.identifier = identifier
         self._reg.address = address
         self._reg.dtype = dtype.value
         self._reg.access = access.value
@@ -223,6 +225,11 @@ class Register(object):
         inst._labels = LabelsDictionary._from_labels(reg.labels)
 
         return inst
+
+    @property
+    def identifier(self):
+        """ str: Register identifier """
+        return self._reg.identifier
 
     @property
     def address(self):
