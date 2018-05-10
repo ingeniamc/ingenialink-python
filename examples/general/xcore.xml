@@ -1,0 +1,968 @@
+<?xml version="1.0"?>
+<IngeniaDictionary>
+  <Header>
+    <Version>1</Version>
+    <DefaultLanguage>en_US</DefaultLanguage>
+  </Header>
+  <Body>
+    <Device family="XCORE" firmwareVersion="2.4.13" name="Generic">
+      <Registers>
+        <Register access="r" address="0x000F" dtype="s32" id="LAST_ERROR" phy="none">
+          <Labels>
+            <Label lang="en_US">Last error</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0010" dtype="u16" id="CONTROL_WORD" phy="none">
+          <Labels>
+            <Label lang="en_US">Control word</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0011" dtype="u16" id="STATUS_WORD" phy="none">
+          <Labels>
+            <Label lang="en_US">Status word</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0014" dtype="u16" id="OPERATION_MODE" phy="none">
+          <Labels>
+            <Label lang="en_US">Operation mode</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0015" dtype="u16" id="OPERATION_MODE_DISPLAY" phy="none">
+          <Labels>
+            <Label lang="en_US">Operation mode display</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0018" dtype="s32" id="VOLTAGE_SET-POINT_Q" phy="none">
+          <Labels>
+            <Label lang="en_US">Voltage set-point Q</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0019" dtype="s32" id="VOLTAGE_SET-POINT_D" phy="none">
+          <Labels>
+            <Label lang="en_US">Voltage set-point D</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x001A" dtype="s32" id="CURRENT_SET-POINT_Q" phy="none">
+          <Labels>
+            <Label lang="en_US">Current set-point Q</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x001B" dtype="s32" id="CURRENT_SET-POINT_D" phy="none">
+          <Labels>
+            <Label lang="en_US">Current set-point D</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x001C" dtype="s32" id="CURRENT_SET-POINT_U" phy="none">
+          <Labels>
+            <Label lang="en_US">Current set-point U</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x001D" dtype="s32" id="CURRENT_SET-POINT_V" phy="none">
+          <Labels>
+            <Label lang="en_US">Current set-point V</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0020" dtype="s32" id="POSITION_SET-POINT" phy="none">
+          <Labels>
+            <Label lang="en_US">Position set-point</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0021" dtype="s32" id="VELOCITY_SET-POINT" phy="none">
+          <Labels>
+            <Label lang="en_US">Velocity set-point</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0028" dtype="s32" id="GENERATOR_CMD._VALUE" phy="none">
+          <Labels>
+            <Label lang="en_US">Generator cmd. value</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0030" dtype="s32" id="ACTUAL_POSITION" phy="none">
+          <Labels>
+            <Label lang="en_US">Actual position</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0031" dtype="s32" id="ACTUAL_VELOCITY" phy="none">
+          <Labels>
+            <Label lang="en_US">Actual velocity</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0038" dtype="s32" id="CURRENT_A" phy="none">
+          <Labels>
+            <Label lang="en_US">Current A</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0039" dtype="s32" id="CURRENT_B" phy="none">
+          <Labels>
+            <Label lang="en_US">Current B</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x003A" dtype="s32" id="CURRENT_C" phy="none">
+          <Labels>
+            <Label lang="en_US">Current C</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x003B" dtype="s32" id="CURRENT_Q" phy="none">
+          <Labels>
+            <Label lang="en_US">Current Q</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x003C" dtype="s32" id="CURRENT_D" phy="none">
+          <Labels>
+            <Label lang="en_US">Current D</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x003D" dtype="u16" id="CURRENT_A_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Current A counts</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x003E" dtype="u16" id="CURRENT_B_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Current B counts</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x003F" dtype="u16" id="CURRENT_C_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Current C counts</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0040" dtype="s32" id="ANGLE_READINGS" phy="none">
+          <Labels>
+            <Label lang="en_US">Angle readings</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0041" dtype="s32" id="REFERENCE_ANGLE" phy="none">
+          <Labels>
+            <Label lang="en_US">Reference angle</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0042" dtype="u16" id="RESOLVER_SINE_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver sine counts</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0043" dtype="u16" id="RESOLVER_COSINE_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver cosine counts</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0044" dtype="s32" id="RESOLVER_ANGLE" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver angle</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0045" dtype="s32" id="RESOLVER_VELOCITY" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver velocity</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0046" dtype="u16" id="RESOLVER_STATUS" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver status</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0047" dtype="s32" id="RESOLVER_SINE" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver sine</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0048" dtype="s32" id="RESOLVER_COSINE" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver cosine</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x004A" dtype="s32" id="SSI_POSITION" phy="none">
+          <Labels>
+            <Label lang="en_US">SSI position</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0050" dtype="s32" id="GENERATOR_VALUE" phy="none">
+          <Labels>
+            <Label lang="en_US">Generator value</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x005F" dtype="u16" id="BUS_VOLTAGE_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Bus voltage counts</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0060" dtype="u32" id="BUS_VOLTAGE_READINGS" phy="none">
+          <Labels>
+            <Label lang="en_US">Bus voltage readings</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0061" dtype="s32" id="TEMPERATURE_READINGS" phy="none">
+          <Labels>
+            <Label lang="en_US">Temperature readings</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0062" dtype="u16" id="TEMPERATURE_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Temperature counts</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0068" dtype="u32" id="GEN._VOLTAGE_PHASE_A" phy="none">
+          <Labels>
+            <Label lang="en_US">Gen. Voltage phase A</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0069" dtype="u32" id="GEN._VOLTAGE_PHASE_B" phy="none">
+          <Labels>
+            <Label lang="en_US">Gen. Voltage phase B</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x006A" dtype="u32" id="GEN._VOLTAGE_PHASE_C" phy="none">
+          <Labels>
+            <Label lang="en_US">Gen. Voltage phase C</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x006B" dtype="u16" id="VOLTAGE_PHASE_A_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Voltage phase A counts</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x006C" dtype="u16" id="VOLTAGE_PHASE_B_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Voltage phase B counts</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x006D" dtype="u16" id="VOLTAGE_PHASE_C_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Voltage phase C counts</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0070" dtype="s32" id="VOLTAGE_DEMAND_Q" phy="none">
+          <Labels>
+            <Label lang="en_US">Voltage demand Q</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0071" dtype="s32" id="VOLTAGE_DEMAND_D" phy="none">
+          <Labels>
+            <Label lang="en_US">Voltage demand D</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0072" dtype="s32" id="CURRENT_DEMAND_Q" phy="none">
+          <Labels>
+            <Label lang="en_US">Current demand Q</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0073" dtype="s32" id="CURRENT_DEMAND_D" phy="none">
+          <Labels>
+            <Label lang="en_US">Current demand D</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0074" dtype="s32" id="CURRENT_DEMAND_U" phy="none">
+          <Labels>
+            <Label lang="en_US">Current demand U</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0075" dtype="s32" id="CURRENT_DEMAND_V" phy="none">
+          <Labels>
+            <Label lang="en_US">Current demand V</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0078" dtype="s32" id="POSITION_DEMAND" phy="none">
+          <Labels>
+            <Label lang="en_US">Position demand</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0079" dtype="s32" id="VELOCITY_DEMAND" phy="none">
+          <Labels>
+            <Label lang="en_US">Velocity demand</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0081" dtype="u16" id="ANALOG_1_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Analog 1 counts</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0083" dtype="u16" id="ANALOG_2_COUNTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Analog 2 counts</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0100" dtype="u32" id="RATED_CURRENT" phy="none">
+          <Labels>
+            <Label lang="en_US">Rated current</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0101" dtype="u32" id="PEAK_CURRENT" phy="none">
+          <Labels>
+            <Label lang="en_US">Peak current</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0102" dtype="u32" id="PEAK_CURRENT_TIME" phy="none">
+          <Labels>
+            <Label lang="en_US">Peak current time</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0106" dtype="s16" id="MOTOR_PAIR_POLES" phy="none">
+          <Labels>
+            <Label lang="en_US">Motor pair poles</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0120" dtype="u32" id="SHUNT_ENABLE_VOLTAGE" phy="none">
+          <Labels>
+            <Label lang="en_US">Shunt Enable voltage</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0121" dtype="u32" id="SHUNT_DISABLE_VOLTAGE" phy="none">
+          <Labels>
+            <Label lang="en_US">Shunt Disable voltage</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0125" dtype="u16" id="BRAKE_DUTY" phy="none">
+          <Labels>
+            <Label lang="en_US">Brake Duty</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0150" dtype="s32" id="ANGLE_OFFSET" phy="none">
+          <Labels>
+            <Label lang="en_US">Angle offset</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0151" dtype="u16" id="COMMUTATION_FEEDBACK" phy="none">
+          <Labels>
+            <Label lang="en_US">Commutation feedback</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0152" dtype="s32" id="REFERENCE_OFFSET" phy="none">
+          <Labels>
+            <Label lang="en_US">Reference offset</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0153" dtype="u16" id="REFERENCE_FEEDBACK" phy="none">
+          <Labels>
+            <Label lang="en_US">Reference feedback</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0154" dtype="u16" id="PHASING_MODE" phy="none">
+          <Labels>
+            <Label lang="en_US">Phasing mode</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x01E0" dtype="u32" id="MAX_CURRENT" phy="none">
+          <Labels>
+            <Label lang="en_US">Max current</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x01E8" dtype="u32" id="MAX_VELOCITY" phy="none">
+          <Labels>
+            <Label lang="en_US">Max velocity</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x01EA" dtype="s32" id="MIN._POSITION" phy="none">
+          <Labels>
+            <Label lang="en_US">Min. position</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x01EB" dtype="s32" id="MAX._POSITION" phy="none">
+          <Labels>
+            <Label lang="en_US">Max. position</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x02E0" dtype="u16" id="COMMAND_SOURCE" phy="none">
+          <Labels>
+            <Label lang="en_US">Command source</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x02E8" dtype="s32" id="ANALOG_1_GAIN" phy="none">
+          <Labels>
+            <Label lang="en_US">Analog 1 Gain</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x02E9" dtype="s32" id="ANALOG_1_OFFSET" phy="none">
+          <Labels>
+            <Label lang="en_US">Analog 1 Offset</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x02EC" dtype="s32" id="ANALOG_2_GAIN" phy="none">
+          <Labels>
+            <Label lang="en_US">Analog 2 Gain</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x02ED" dtype="s32" id="ANALOG_2_OFFSET" phy="none">
+          <Labels>
+            <Label lang="en_US">Analog 2 Offset</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x02F0" dtype="u16" id="GEN._CMD._MODE" phy="none">
+          <Labels>
+            <Label lang="en_US">Gen. cmd. mode</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x02F1" dtype="u32" id="GEN._CMD._FREQUENCY" phy="none">
+          <Labels>
+            <Label lang="en_US">Gen. cmd. frequency</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x02F2" dtype="s32" id="GEN._CMD._GAIN" phy="none">
+          <Labels>
+            <Label lang="en_US">Gen. cmd. gain</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x02F3" dtype="s32" id="GEN._CMD._OFFSET" phy="none">
+          <Labels>
+            <Label lang="en_US">Gen. cmd. offset</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x02F4" dtype="u32" id="GEN._CMD._CYCLE_NUMBER" phy="none">
+          <Labels>
+            <Label lang="en_US">Gen. cmd. cycle number</Label>
+          </Labels>
+        </Register>
+        <Register access="w" address="0x02F5" dtype="u16" id="GEN._CMD._REARM" phy="none">
+          <Labels>
+            <Label lang="en_US">Gen. cmd. rearm</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x035F" dtype="u32" id="ENABLED_FEEDBACKS_MASK" phy="none">
+          <Labels>
+            <Label lang="en_US">Enabled feedbacks mask</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0360" dtype="u16" id="VELOCITY_FEEDBACK" phy="none">
+          <Labels>
+            <Label lang="en_US">Velocity feedback</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0361" dtype="u16" id="POSITION_FEEDBACK" phy="none">
+          <Labels>
+            <Label lang="en_US">Position feedback</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0368" dtype="u16" id="RESOLVER_PAIR_POLES" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver pair poles</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0369" dtype="s32" id="RESOLVER_MAX._SPEED" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver Max. speed</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x036A" dtype="u32" id="RESOLVER_EXCITATION_AMPLITUDE" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver excitation amplitude</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x036B" dtype="s32" id="RESOLVER_ERROR_FILTER_CORNER" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver error filter corner</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x036C" dtype="s32" id="RESOLVER_PI_ZERO_FREQ." phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver PI zero freq.</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x036D" dtype="s32" id="RESOLVER_PI_PROPORTIONAL" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver PI proportional</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x036E" dtype="u16" id="RESOLVER_POLARITY" phy="none">
+          <Labels>
+            <Label lang="en_US">Resolver Polarity</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0370" dtype="u16" id="SSI_BITS_SIZE" phy="none">
+          <Labels>
+            <Label lang="en_US">SSI bits size</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0371" dtype="u16" id="SSI_ERROR_TOLERANCE" phy="none">
+          <Labels>
+            <Label lang="en_US">SSI error tolerance</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0372" dtype="u16" id="SSI_WAIT_CYCLES" phy="none">
+          <Labels>
+            <Label lang="en_US">SSI wait cycles</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0373" dtype="u16" id="SSI_POLARITY" phy="none">
+          <Labels>
+            <Label lang="en_US">SSI polarity</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0380" dtype="u16" id="GENERATOR_MODE" phy="none">
+          <Labels>
+            <Label lang="en_US">Generator mode</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0381" dtype="u32" id="GENERATOR_FREQUENCY" phy="none">
+          <Labels>
+            <Label lang="en_US">Generator frequency</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0382" dtype="float" id="GENERATOR_GAIN" phy="none">
+          <Labels>
+            <Label lang="en_US">Generator gain</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0383" dtype="s32" id="GENERATOR_OFFSET" phy="none">
+          <Labels>
+            <Label lang="en_US">Generator offset</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0384" dtype="u32" id="GENERATOR_CYCLE_NUMBER" phy="none">
+          <Labels>
+            <Label lang="en_US">Generator cycle number</Label>
+          </Labels>
+        </Register>
+        <Register access="w" address="0x0385" dtype="u16" id="GENERATOR_REARM" phy="none">
+          <Labels>
+            <Label lang="en_US">Generator rearm</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0388" dtype="u32" id="DIG./AN._ENCODER_RESOLUTION" phy="none">
+          <Labels>
+            <Label lang="en_US">Dig./An. encoder resolution</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0389" dtype="u16" id="DIG./AN._ENCODER_POLARITY" phy="none">
+          <Labels>
+            <Label lang="en_US">Dig./An. encoder polarity</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x038A" dtype="u16" id="DIG./AN._ENCODER_FILTER" phy="none">
+          <Labels>
+            <Label lang="en_US">Dig./An. encoder filter</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0390" dtype="u16" id="HALL_POLARITY" phy="none">
+          <Labels>
+            <Label lang="en_US">Hall polarity</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0391" dtype="u16" id="HALL_FILTER" phy="none">
+          <Labels>
+            <Label lang="en_US">Hall filter</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0392" dtype="u16" id="HALL_PAIR_POLES" phy="none">
+          <Labels>
+            <Label lang="en_US">Hall pair poles</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x04FF" dtype="u16" id="CURRENT_SCALING_GAIN" phy="none">
+          <Labels>
+            <Label lang="en_US">Current scaling gain</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0500" dtype="s32" id="CURRENT_Q/A_KP" phy="none">
+          <Labels>
+            <Label lang="en_US">Current Q/A Kp</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0501" dtype="s32" id="CURRENT_Q/A_KI" phy="none">
+          <Labels>
+            <Label lang="en_US">Current Q/A Ki</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0502" dtype="s32" id="CURRENT_Q/A_UMAX" phy="none">
+          <Labels>
+            <Label lang="en_US">Current Q/A Umax</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0503" dtype="s32" id="CURRENT_Q/A_UMIN" phy="none">
+          <Labels>
+            <Label lang="en_US">Current Q/A Umin</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0504" dtype="s32" id="CURRENT_Q/A_KR" phy="none">
+          <Labels>
+            <Label lang="en_US">Current Q/A Kr</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0505" dtype="s32" id="CURRENT_D/B_KP" phy="none">
+          <Labels>
+            <Label lang="en_US">Current D/B Kp</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0506" dtype="s32" id="CURRENT_D/B_KI" phy="none">
+          <Labels>
+            <Label lang="en_US">Current D/B Ki</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0507" dtype="s32" id="CURRENT_D/B_UMAX" phy="none">
+          <Labels>
+            <Label lang="en_US">Current D/B Umax</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0508" dtype="s32" id="CURRENT_D/B_UMIN" phy="none">
+          <Labels>
+            <Label lang="en_US">Current D/B Umin</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0509" dtype="s32" id="CURRENT_D/B_KR" phy="none">
+          <Labels>
+            <Label lang="en_US">Current D/B Kr</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x050A" dtype="s32" id="VELOCITY_KP" phy="none">
+          <Labels>
+            <Label lang="en_US">Velocity Kp</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x050B" dtype="s32" id="VELOCITY_KI" phy="none">
+          <Labels>
+            <Label lang="en_US">Velocity Ki</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x050C" dtype="s32" id="VELOCITY_KD" phy="none">
+          <Labels>
+            <Label lang="en_US">Velocity Kd</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x050D" dtype="s32" id="VELOCITY_KD_FILTER" phy="none">
+          <Labels>
+            <Label lang="en_US">Velocity Kd filter</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x050E" dtype="s32" id="VELOCITY_UMAX" phy="none">
+          <Labels>
+            <Label lang="en_US">Velocity Umax</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x050F" dtype="s32" id="VELOCITY_UMIN" phy="none">
+          <Labels>
+            <Label lang="en_US">Velocity Umin</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0511" dtype="s32" id="POSITION_KP" phy="none">
+          <Labels>
+            <Label lang="en_US">Position Kp</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0512" dtype="s32" id="POSITION_KI" phy="none">
+          <Labels>
+            <Label lang="en_US">Position Ki</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0513" dtype="s32" id="POSITION_KD" phy="none">
+          <Labels>
+            <Label lang="en_US">Position Kd</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0514" dtype="s32" id="POSITION_KD_FILTER" phy="none">
+          <Labels>
+            <Label lang="en_US">Position Kd filter</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0515" dtype="s32" id="POSITION_UMAX" phy="none">
+          <Labels>
+            <Label lang="en_US">Position Umax</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0516" dtype="s32" id="POSITION_UMIN" phy="none">
+          <Labels>
+            <Label lang="en_US">Position Umin</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x05FC" dtype="u16" id="MAP_OUTPUT_1" phy="none">
+          <Labels>
+            <Label lang="en_US">Map output 1</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x05FD" dtype="u16" id="MAP_OUTPUT_2" phy="none">
+          <Labels>
+            <Label lang="en_US">Map output 2</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x05FE" dtype="u16" id="MAP_OUTPUT_3" phy="none">
+          <Labels>
+            <Label lang="en_US">Map output 3</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x05FF" dtype="u16" id="MAP_OUTPUT_4" phy="none">
+          <Labels>
+            <Label lang="en_US">Map output 4</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0600" dtype="u32" id="DIGITAL_INPUTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Digital inputs</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0601" dtype="u32" id="DIGITAL_OUTPUTS" phy="none">
+          <Labels>
+            <Label lang="en_US">Digital outputs</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0640" dtype="u16" id="COMMUNICATION_STATE_CONTROL" phy="none">
+          <Labels>
+            <Label lang="en_US">Communication state control</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x064D" dtype="u16" id="ERROR_TOTAL_NUMBER" phy="none">
+          <Labels>
+            <Label lang="en_US">Error total number</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x064E" dtype="u16" id="ERROR_LIST_LOCATION_REQUEST" phy="none">
+          <Labels>
+            <Label lang="en_US">Error list location request</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x064F" dtype="s32" id="ERROR_LIST_REQUESTED_CODE" phy="none">
+          <Labels>
+            <Label lang="en_US">Error list requested code</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0650" dtype="u16" id="RX_MAPPED_REGISTERS" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx mapped registers</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0651" dtype="u32" id="RX_MAPPING_1" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 1</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0652" dtype="u32" id="RX_MAPPING_2" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 2</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0653" dtype="u32" id="RX_MAPPING_3" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 3</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0654" dtype="u32" id="RX_MAPPING_4" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 4</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0655" dtype="u32" id="RX_MAPPING_5" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 5</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0656" dtype="u32" id="RX_MAPPING_6" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 6</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0657" dtype="u32" id="RX_MAPPING_7" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 7</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0658" dtype="u32" id="RX_MAPPING_8" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 8</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0659" dtype="u32" id="RX_MAPPING_9" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 9</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x065A" dtype="u32" id="RX_MAPPING_10" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 10</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x065B" dtype="u32" id="RX_MAPPING_11" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 11</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x065C" dtype="u32" id="RX_MAPPING_12" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 12</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x065D" dtype="u32" id="RX_MAPPING_13" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 13</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x065E" dtype="u32" id="RX_MAPPING_14" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 14</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x065F" dtype="u32" id="RX_MAPPING_15" phy="none">
+          <Labels>
+            <Label lang="en_US">Rx Mapping 15</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0660" dtype="u16" id="TX_MAPPED_REGISTERS" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx mapped registers</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0661" dtype="u32" id="TX_MAPPING_1" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 1</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0662" dtype="u32" id="TX_MAPPING_2" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 2</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0663" dtype="u32" id="TX_MAPPING_3" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 3</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0664" dtype="u32" id="TX_MAPPING_4" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 4</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0665" dtype="u32" id="TX_MAPPING_5" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 5</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0666" dtype="u32" id="TX_MAPPING_6" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 6</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0667" dtype="u32" id="TX_MAPPING_7" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 7</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0668" dtype="u32" id="TX_MAPPING_8" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 8</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x0669" dtype="u32" id="TX_MAPPING_9" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 9</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x066A" dtype="u32" id="TX_MAPPING_10" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 10</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x066B" dtype="u32" id="TX_MAPPING_11" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 11</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x066C" dtype="u32" id="TX_MAPPING_12" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 12</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x066D" dtype="u32" id="TX_MAPPING_13" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 13</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x066E" dtype="u32" id="TX_MAPPING_14" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 14</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x066F" dtype="u32" id="TX_MAPPING_15" phy="none">
+          <Labels>
+            <Label lang="en_US">Tx Mapping 15</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x06A0" dtype="u16" id="START_APP" phy="none">
+          <Labels>
+            <Label lang="en_US">Start app</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x06A1" dtype="u16" id="START_AFTER_POWER_ON" phy="none">
+          <Labels>
+            <Label lang="en_US">Start after power on</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x06A2" dtype="u16" id="STORED_APP" phy="none">
+          <Labels>
+            <Label lang="en_US">Stored app</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x06DB" dtype="u32" id="STORE_ALL" phy="none">
+          <Labels>
+            <Label lang="en_US">Store all</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address="0x06DC" dtype="u32" id="RESTORE_ALL" phy="none">
+          <Labels>
+            <Label lang="en_US">Restore all</Label>
+          </Labels>
+        </Register>
+        <Register access="w" address="0x06DD" dtype="u32" id="DICT._ACCESS_PASSWORD" phy="none">
+          <Labels>
+            <Label lang="en_US">Dict. access password</Label>
+          </Labels>
+        </Register>
+        <Register access="w" address="0x06DE" dtype="u32" id="BOOT_MODE" phy="none">
+          <Labels>
+            <Label lang="en_US">Boot mode</Label>
+          </Labels>
+        </Register>
+        <Register access="w" address="0x06DF" dtype="u32" id="SYSTEM_RESET" phy="none">
+          <Labels>
+            <Label lang="en_US">System reset</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x06E0" dtype="u32" id="VENDOR_ID" phy="none">
+          <Labels>
+            <Label lang="en_US">Vendor ID</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x06E1" dtype="u32" id="PRODUCT_CODE" phy="none">
+          <Labels>
+            <Label lang="en_US">Product code</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x06E2" dtype="u32" id="REVISION_NUMBER" phy="none">
+          <Labels>
+            <Label lang="en_US">Revision number</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x06E3" dtype="u32" id="SERIAL_NUMBER" phy="none">
+          <Labels>
+            <Label lang="en_US">Serial number</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x06E4" dtype="str" id="SOFTWARE_VERSION" phy="none">
+          <Labels>
+            <Label lang="en_US">Software version</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x06E5" dtype="str" id="INGENIA_WEB" phy="none">
+          <Labels>
+            <Label lang="en_US">Ingenia Web</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0710" dtype="s32" id="OVER-TEMPERATURE_LEVEL" phy="none">
+          <Labels>
+            <Label lang="en_US">Over-Temperature level</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0711" dtype="s32" id="UNDER-TEMPERATURE_LEVEL" phy="none">
+          <Labels>
+            <Label lang="en_US">Under-Temperature level</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0712" dtype="u32" id="OVER-VOLTAGE_LEVEL" phy="none">
+          <Labels>
+            <Label lang="en_US">Over-Voltage level</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address="0x0713" dtype="u32" id="UNDER-VOLTAGE_LEVEL" phy="none">
+          <Labels>
+            <Label lang="en_US">Under-Voltage level</Label>
+          </Labels>
+        </Register>
+      </Registers>
+    </Device>
+  </Body>
+</IngeniaDictionary>
