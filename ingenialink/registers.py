@@ -85,6 +85,7 @@ class Register(object):
             dtype (REG_DTYPE): Data type.
             access (REG_ACCESS): Access type.
             phy (REG_PHY, optional): Physical units.
+            subnode (int): Subnode
             storage (any, optional): Storage.
             range (tuple, optional): Range (min, max).
             labels (dict, optional): Register labels.
@@ -95,7 +96,7 @@ class Register(object):
             TypeError: If any of the parameters has invalid type.
     """
 
-    def __init__(self, identifier, address, dtype, access, phy=REG_PHY.NONE, storage=None,
+    def __init__(self, identifier, address, dtype, access, phy=REG_PHY.NONE, subnode=1, storage=None,
                  range=None, labels={}, cat_id=None, scat_id=None):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
@@ -111,6 +112,7 @@ class Register(object):
         # initialize register
         self._reg.identifier = ffi.new("char[]", cstr(identifier))
         self._reg.address = address
+        self._reg.subnode = subnode
         self._reg.dtype = dtype.value
         self._reg.access = access.value
         self._reg.phy = phy.value
@@ -207,9 +209,10 @@ class Register(object):
         else:
             storage_info = 'No storage'
 
-        return '<Register: {}, 0x{:08x}, {}{}, {}, {}, ST: {}, [{}]>'.format(
+        return '<Register: {}, 0x{:08x},{}, {}{}, {}, {}, ST: {}, [{}]>'.format(
                 self.identifier,
                 self.address,
+                self.subnode,
                 self.dtype,
                 ' ∊ ' + str(self.range) if self.range else '',
                 self.access,
@@ -239,6 +242,11 @@ class Register(object):
     def address(self):
         """ int: Register address. """
         return self._reg.address
+
+    @property
+    def subnode(self):
+        """ int: Register subnode. """
+        return self._reg.subnode
 
     @property
     def dtype(self):
