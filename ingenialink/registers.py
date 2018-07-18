@@ -112,7 +112,7 @@ class Register(object):
 
         # initialize register
         self._reg.identifier = ffi.new("char[]", cstr(identifier))
-        self._reg.units = ffi.new("units[]", cstr(units))
+        self._reg.units = ffi.new("char[]", cstr(units))
         self._reg.address = address
         self._reg.subnode = subnode
         self._reg.dtype = dtype.value
