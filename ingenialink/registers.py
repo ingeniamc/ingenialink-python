@@ -98,7 +98,7 @@ class Register(object):
     """
 
     def __init__(self, identifier, units, address, dtype, access, phy=REG_PHY.NONE, subnode=1, storage=None,
-                 range=None, labels={}, cat_id=None, scat_id=None):
+                 range=None, labels={}, enums=[], cat_id=None, scat_id=None):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
@@ -190,6 +190,14 @@ class Register(object):
         self._labels = LabelsDictionary(labels)
         self._reg.labels = self._labels._labels
 
+        self._enums = []
+        for enum in enums:
+            en = {}
+            en['value'] = enum.value
+            en['label'] = ffi.new("char[]", cstr(enum.label))
+            self._enums.append(en)
+        self._reg.enums = self._enums
+
         self._reg.cat_id = ffi.NULL if not cat_id else cstr(cat_id)
 
         if not cat_id and scat_id:
@@ -211,7 +219,7 @@ class Register(object):
         else:
             storage_info = 'No storage'
 
-        return '<Register: {}, {}, {}, 0x{:08x}, {}{}, {}, {}, ST: {}, [{}]>'.format(
+        return '<Register: {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [],ST: {}, [{}]>'.format(
                 self.identifier,
                 self.units,
                 self.subnode,
@@ -220,6 +228,7 @@ class Register(object):
                 ' ∊ ' + str(self.range) if self.range else '',
                 self.access,
                 self.phy,
+                self.enums,
                 storage_info,
                 cat_info)
 
@@ -326,6 +335,21 @@ class Register(object):
     def labels(self):
         """ LabelsDictionary: Labels dictionary. """
         return self._labels
+
+    @property
+    def enums(self):
+        """ Enumerations list. """
+        self._enums = []
+        for enum in self._reg.enums:
+            if str(enum.label) != "<cdata 'char *' NULL>":
+                en = {}
+                en['value'] = enum.value
+                try:
+                    en['label'] = pstr(enum.label)
+                    self._enums.append(en)
+                except:
+                    pass
+        return self._enums
 
     @property
     def cat_id(self):
