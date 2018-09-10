@@ -98,7 +98,7 @@ class Register(object):
     """
 
     def __init__(self, identifier, units, address, dtype, access, phy=REG_PHY.NONE, subnode=1, storage=None,
-                 range=None, labels={}, enums=[], cat_id=None, scat_id=None):
+                 range=None, labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
@@ -197,6 +197,7 @@ class Register(object):
             en['label'] = ffi.new("char[]", cstr(enum.label))
             self._enums.append(en)
         self._reg.enums = self._enums
+        self._reg.enums_count = enums_count
 
         self._reg.cat_id = ffi.NULL if not cat_id else cstr(cat_id)
 
@@ -219,7 +220,7 @@ class Register(object):
         else:
             storage_info = 'No storage'
 
-        return '<Register: {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [],ST: {}, [{}]>'.format(
+        return '<Register: {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [], {},ST: {}, [{}]>'.format(
                 self.identifier,
                 self.units,
                 self.subnode,
@@ -229,6 +230,7 @@ class Register(object):
                 self.access,
                 self.phy,
                 self.enums,
+                self.enums_count,
                 storage_info,
                 cat_info)
 
@@ -350,6 +352,11 @@ class Register(object):
                 except:
                     pass
         return self._enums
+
+    @property
+    def enums_count(self):
+        """ int: Register Enumerations count. """
+        return self._reg.enums_count
 
     @property
     def cat_id(self):
