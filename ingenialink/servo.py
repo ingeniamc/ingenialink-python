@@ -6,6 +6,8 @@ from .registers import Register, REG_DTYPE, _get_reg_id
 from .net import Network
 from .dict_ import Dictionary
 
+import xml.etree.ElementTree as ET
+
 
 class SERVO_STATE(Enum):
     """ State. """
@@ -174,7 +176,7 @@ def lucky(prot, dict_f=None):
     servo_ = ffi.cast('il_servo_t *', servo__[0])
 
     net = Network._from_existing(net_)
-    servo = Servo._from_existing(servo_)
+    servo = Servo._from_existing(servo_, dict_f)
 
     return net, servo
 
@@ -237,9 +239,10 @@ class Servo(object):
 
         self._state_cb = {}
         self._emcy_cb = {}
+        self._errors = []
 
     @classmethod
-    def _from_existing(cls, servo):
+    def _from_existing(cls, servo, dict_f):
         """ Create a new class instance from an existing servo. """
 
         inst = cls.__new__(cls)
@@ -247,8 +250,19 @@ class Servo(object):
 
         inst._state_cb = {}
         inst._emcy_cb = {}
+        inst._errors = inst._get_all_errors(dict_f)
 
         return inst
+
+    def _get_all_errors(self, dict_f):
+        errors = []
+        tree = ET.parse(dict_f)
+        for error in tree.iter("Error"):
+            for label in error.iter("Label"):
+                error.attrib['label'] = label.text
+            errors.append(error.attrib)
+        return errors
+
 
     def reset(self):
         """Reset.
@@ -334,6 +348,10 @@ class Servo(object):
         lib.il_servo_emcy_unsubscribe(self._servo, slot)
 
         del self._emcy_cb[slot]
+
+    @property
+    def errors(self):
+        return self._errors
 
     @property
     def dict(self):
