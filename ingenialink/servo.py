@@ -239,7 +239,7 @@ class Servo(object):
 
         self._state_cb = {}
         self._emcy_cb = {}
-        self._errors = []
+        self._errors = self._get_all_errors(dict_f)
 
     @classmethod
     def _from_existing(cls, servo, dict_f):
