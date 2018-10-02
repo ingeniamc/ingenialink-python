@@ -11,6 +11,8 @@ class NET_PROT(Enum):
     """ E-USB. """
     MCB = lib.IL_NET_PROT_MCB
     """ MCB. """
+    ETH = lib.IL_NET_PROT_ETH
+    """ ETH. """
     VIRTUAL = lib.IL_NET_PROT_VIRTUAL
     """ VIRTUAL. """
 

@@ -169,7 +169,7 @@ def lucky(prot, dict_f=None):
     servo__ = ffi.new('il_servo_t **')
     dict_f = cstr(dict_f) if dict_f else ffi.NULL
 
-    r = lib.il_servo_lucky(prot.value, net__, servo__, dict_f)
+    r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f)
     raise_err(r)
 
     net_ = ffi.cast('il_net_t *', net__[0])
