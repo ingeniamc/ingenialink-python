@@ -151,7 +151,7 @@ class SERVO_UNITS_ACC(Enum):
     """ Meters/second^2. """
 
 
-def lucky(prot, dict_f=None):
+def lucky(prot, dict_f=None, address_ip=None):
     """ Obtain an instance of the first available Servo.
 
         Args:
@@ -168,8 +168,12 @@ def lucky(prot, dict_f=None):
     net__ = ffi.new('il_net_t **')
     servo__ = ffi.new('il_servo_t **')
     dict_f = cstr(dict_f) if dict_f else ffi.NULL
+    address_ip = cstr(address_ip) if address_ip else ffi.NULL
 
-    r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f)
+    if prot.value == 2:
+        r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f, address_ip)
+    else:
+        r = lib.il_servo_lucky(prot.value, net__, servo__, dict_f)
     raise_err(r)
 
     net_ = ffi.cast('il_net_t *', net__[0])
