@@ -189,14 +189,6 @@ class Register(object):
 
         self._labels = LabelsDictionary(labels)
         self._reg.labels = self._labels._labels
-
-        self._enums = []
-        for enum in enums:
-            en = {}
-            en['value'] = enum.value
-            en['label'] = ffi.new("char[]", cstr(enum.label))
-            self._enums.append(en)
-        self._reg.enums = self._enums
         self._reg.enums_count = enums_count
 
         self._reg.cat_id = ffi.NULL if not cat_id else cstr(cat_id)
@@ -341,16 +333,14 @@ class Register(object):
     @property
     def enums(self):
         """ Enumerations list. """
-        self._enums = []
-        for enum in self._reg.enums:
-            if str(enum.label) != "<cdata 'char *' NULL>":
-                en = {}
-                en['value'] = enum.value
-                try:
-                    en['label'] = pstr(enum.label)
-                    self._enums.append(en)
-                except:
-                    pass
+        if not hasattr(self, '_enums'):
+            self._enums = []
+            for i in range(0, self._reg.enums_count):
+                dict = {
+                    'label': pstr(self._reg.enums[i].label),
+                    'value': self._reg.enums[i].value
+                }
+                self._enums.append(dict)
         return self._enums
 
     @property
