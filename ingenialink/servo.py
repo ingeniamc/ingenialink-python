@@ -239,8 +239,8 @@ class Servo(object):
 
         self._state_cb = {}
         self._emcy_cb = {}
-        self._errors = {}
-        # self._errors = self._get_all_errors(dict_f)
+        if not hasattr(self, '_errors') or not self._errors:
+            self._errors = self._get_all_errors(dict_f)
 
     @classmethod
     def _from_existing(cls, servo, dict_f):
@@ -251,18 +251,24 @@ class Servo(object):
 
         inst._state_cb = {}
         inst._emcy_cb = {}
-        inst._errors = {}
-        # inst._errors = inst._get_all_errors(dict_f)
+        if not hasattr(inst, '_errors') or not inst._errors:
+            inst._errors = inst._get_all_errors(dict_f)
 
         return inst
 
     def _get_all_errors(self, dict_f):
-        errors = []
-        tree = ET.parse(dict_f)
-        for error in tree.iter("Error"):
-            for label in error.iter("Label"):
-                error.attrib['label'] = label.text
-            errors.append(error.attrib)
+        errors = dict()
+        if str(dict_f) != "<cdata 'void *' NULL>":
+            tree = ET.parse(dict_f)
+            for error in tree.iter("Error"):
+                label = error.find(".//Label")
+                id = int(error.attrib['id'], 0)
+                errors[id] = [
+                    error.attrib['id'],
+                    error.attrib['affected_module'],
+                    error.attrib['error_type'].capitalize(),
+                    label.text
+                ]
         return errors
 
 
@@ -370,6 +376,8 @@ class Servo(object):
         """
 
         r = lib.il_servo_dict_load(self._servo, cstr(dict_f))
+        if not hasattr(self, '_errors') or not self._errors:
+            self._errors = self._get_all_errors(dict_f)
         raise_err(r)
 
     def dict_storage_read(self):
