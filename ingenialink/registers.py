@@ -189,14 +189,6 @@ class Register(object):
 
         self._labels = LabelsDictionary(labels)
         self._reg.labels = self._labels._labels
-
-        # self._enums = enums
-        # for enum in enums:
-        #     en = {}
-        #     en['value'] = enum.value
-        #     en['label'] = ffi.new("char[]", cstr(enum.label))
-        #     self._enums.append(en)
-        # self._reg.enums = self._enums
         self._reg.enums_count = enums_count
 
         self._reg.cat_id = ffi.NULL if not cat_id else cstr(cat_id)
