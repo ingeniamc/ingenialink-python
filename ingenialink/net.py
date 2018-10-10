@@ -98,10 +98,10 @@ class Network(object):
         opts.timeout_rd = to_ms(timeout_rd)
         opts.timeout_wr = to_ms(timeout_wr)
 
-        net = lib.il_net_create(prot.value, opts)
-        raise_null(net)
+        self._net = lib.il_net_create(prot.value, opts)
 
-        self._net = ffi.gc(net, lib.il_net_destroy)
+        raise_null(self._net)
+        # self._net = ffi.gc(self._net, lib.il_net_destroy)
 
     @classmethod
     def _from_existing(cls, net):
