@@ -1,4 +1,5 @@
 from enum import Enum
+from time import sleep
 
 from ._ingenialink import lib, ffi
 from ._utils import cstr, pstr, raise_null, raise_err, to_ms
@@ -127,6 +128,12 @@ class Network(object):
         return NET_STATE(lib.il_net_state_get(self._net))
 
     @property
+    def status(self):
+        """ NET_STATUS: Obtain network status. """
+
+        return lib.il_net_status_get(self._net)
+
+    @property
     def port(self):
         """ str: Obtain network port. """
 
@@ -177,6 +184,18 @@ class Network(object):
         lib.il_net_servos_list_destroy(servos)
 
         return found
+
+    def net_mon_status(self, on_evt):
+        if self.prot == NET_PROT.ETH:
+            status = self.status
+            while True:
+                if status != self.status:
+                    if self.status == 0:
+                        on_evt(NET_DEV_EVT.ADDED)
+                    else:
+                        on_evt(NET_DEV_EVT.REMOVED)
+                    status = self.status
+                sleep(1)
 
 
 @ffi.def_extern()
