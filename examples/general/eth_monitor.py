@@ -12,7 +12,11 @@ def run_example_eth_monitor():
     ip = "192.168.2.5"
     net, servo = il.lucky(protocol, "xcore-enums.xml", ip)
 
+    net.net_mon_stop()
     net.net_mon_status(on_evt)
+    sleep(5)
+    r = net.net_mon_stop()
+    print(r)
 
     while True:
         sleep(0.5)
