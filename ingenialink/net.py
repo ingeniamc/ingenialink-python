@@ -200,6 +200,9 @@ class Network(object):
     def net_mon_stop(self):
         lib.il_net_mon_stop(self._net)
 
+    def destroy(self):
+        lib.il_net_destroy(self._net)
+
 @ffi.def_extern()
 def _on_evt_cb(ctx, evt, port):
     """ On event callback shim. """
