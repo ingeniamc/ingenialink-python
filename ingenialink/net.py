@@ -133,6 +133,16 @@ class Network(object):
         port = lib.il_net_port_get(self._net)
         return pstr(port)
 
+    @property
+    def monitoring_data(self):
+        """ arr: Obtain monitoring data. """
+
+        monitoring_data = lib.il_net_monitornig_data_get(self._net)
+        ret_arr = []
+        for i in range(0, 1024):
+            ret_arr.append(monitoring_data[i])
+        return ret_arr
+
     def connect(self):
         """ Connect network. """
 
