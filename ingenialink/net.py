@@ -138,10 +138,17 @@ class Network(object):
         """ arr: Obtain monitoring data. """
 
         monitoring_data = lib.il_net_monitornig_data_get(self._net)
+        size = int(self.monitoring_data_size / 2)
         ret_arr = []
-        for i in range(0, 1024):
+        for i in range(0, size):
             ret_arr.append(monitoring_data[i])
         return ret_arr
+
+    @property
+    def monitoring_data_size(self):
+        """ int: Obtain monitoring data size """
+
+        return lib.il_net_monitornig_data_size_get(self._net)
 
     def connect(self):
         """ Connect network. """
