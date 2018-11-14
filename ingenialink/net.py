@@ -2,6 +2,7 @@ from enum import Enum
 
 from ._ingenialink import lib, ffi
 from ._utils import cstr, pstr, raise_null, raise_err, to_ms
+import numpy as np
 
 
 class NET_PROT(Enum):
@@ -149,6 +150,30 @@ class Network(object):
         """ int: Obtain monitoring data size """
 
         return lib.il_net_monitornig_data_size_get(self._net)
+
+    @property
+    def disturbance_data(self):
+        disturbance_data = lib.il_net_disturbance_data_get(self._net)
+        size = int(self.disturbance_data_size / 2)
+        ret_arr = []
+        for i in range(0, size):
+            ret_arr.append(disturbance_data[i])
+        return ret_arr
+
+    @disturbance_data.setter
+    def disturbance_data(self, value):
+        disturbance_arr = value
+        disturbance_arr = np.pad(disturbance_arr, (0, int(self.disturbance_data_size / 2) - len(value)), 'constant')
+        lib.il_net_disturbance_data_set(self._net, disturbance_arr.tolist())
+
+    @property
+    def disturbance_data_size(self):
+        return lib.il_net_disturbance_data_size_get(self._net)
+
+    @disturbance_data_size.setter
+    def disturbance_data_size(self, value):
+        lib.il_net_disturbance_data_size_set(self._net, value)
+
 
     def connect(self):
         """ Connect network. """
