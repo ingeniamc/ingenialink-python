@@ -503,13 +503,14 @@ class Servo(object):
 
         return v[0]
 
-    def raw_write(self, reg, data, confirm=True):
+    def raw_write(self, reg, data, confirm=True, extended=0):
         """ Raw write to servo.
 
             Args:
                 reg (Register): Register.
                 data (int): Data.
                 confirm (bool, optional): Confirm write.
+                extended (int, optional): Extended frame.
 
             Raises:
                 TypeError: If any of the arguments type is not valid or
@@ -534,16 +535,17 @@ class Servo(object):
         # obtain function to call
         f = self._raw_write[_reg.dtype]
 
-        r = f(self._servo, _reg._reg, ffi.NULL, data, confirm)
+        r = f(self._servo, _reg._reg, ffi.NULL, data, confirm, extended)
         raise_err(r)
 
-    def write(self, reg, data, confirm=True):
+    def write(self, reg, data, confirm=True, extended=0):
         """ Write to servo.
 
             Args:
                 reg (Register): Register.
                 data (int): Data.
                 confirm (bool, optional): Confirm write.
+                extended (int, optional): Extended frame.
 
             Raises:
                 TypeError: If any of the arguments type is not valid or
@@ -552,7 +554,7 @@ class Servo(object):
 
         _reg, _id = _get_reg_id(reg)
 
-        r = lib.il_servo_write(self._servo, _reg, _id, data, confirm)
+        r = lib.il_servo_write(self._servo, _reg, _id, data, confirm, extended)
         raise_err(r)
 
     def units_update(self):
