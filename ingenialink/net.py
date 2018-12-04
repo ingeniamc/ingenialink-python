@@ -142,6 +142,13 @@ class Network(object):
         return pstr(port)
 
     @property
+    def extended_buffer(self):
+        """" str: Obtain extended buffer. """
+        ext_buff = lib.il_net_extended_buffer_get(self._net)
+        return pstr(ext_buff)
+
+
+    @property
     def monitoring_data(self):
         """ arr: Obtain monitoring data. """
 

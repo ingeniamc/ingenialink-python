@@ -181,6 +181,7 @@ def lucky(prot, dict_f=None, address_ip=None):
 
     net = Network._from_existing(net_)
     servo = Servo._from_existing(servo_, dict_f)
+    servo.net = net
 
     return net, servo
 
@@ -220,7 +221,8 @@ class Servo(object):
                  REG_DTYPE.S32: ['int32_t *', lib.il_servo_raw_read_s32],
                  REG_DTYPE.U64: ['uint64_t *', lib.il_servo_raw_read_u64],
                  REG_DTYPE.S64: ['int64_t *', lib.il_servo_raw_read_s64],
-                 REG_DTYPE.FLOAT: ['float *', lib.il_servo_raw_read_float]}
+                 REG_DTYPE.FLOAT: ['float *', lib.il_servo_raw_read_float],
+                 REG_DTYPE.STR: ['uint32_t *', lib.il_servo_raw_read_str]}
     """ dict: Data buffer and function mappings for raw read operation. """
 
     _raw_write = {REG_DTYPE.U8: lib.il_servo_raw_write_u8,
@@ -240,6 +242,7 @@ class Servo(object):
         raise_null(servo)
 
         self._servo = ffi.gc(servo, lib.il_servo_destroy)
+        self._net = net
 
         self._state_cb = {}
         self._emcy_cb = {}
@@ -366,6 +369,14 @@ class Servo(object):
         return self._errors
 
     @property
+    def net(self):
+        return self._net
+
+    @net.setter
+    def net(self, value):
+        self._net = value
+
+    @property
     def dict(self):
         """ Dictionary: Dictionary. """
         _dict = lib.il_servo_dict_get(self._servo)
@@ -480,7 +491,11 @@ class Servo(object):
         r = f(self._servo, _reg._reg, ffi.NULL, v)
         raise_err(r)
 
-        return v[0]
+        _reg = self.dict.regs[reg]
+        if _reg.dtype == REG_DTYPE.STR:
+            return self._net.extended_buffer
+        else:
+            return v[0]
 
     def read(self, reg):
         """ Read from servo.
@@ -501,7 +516,11 @@ class Servo(object):
         r = lib.il_servo_read(self._servo, _reg, _id, v)
         raise_err(r)
 
-        return v[0]
+        _reg = self.dict.regs[reg]
+        if _reg.dtype == REG_DTYPE.STR:
+            return self._net.extended_buffer
+        else:
+            return v[0]
 
     def raw_write(self, reg, data, confirm=True, extended=0):
         """ Raw write to servo.
