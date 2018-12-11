@@ -4,6 +4,7 @@ from time import sleep
 from ._ingenialink import lib, ffi
 from ._utils import cstr, pstr, raise_null, raise_err, to_ms
 import numpy as np
+from .registers import REG_DTYPE
 
 
 class NET_PROT(Enum):
@@ -107,6 +108,7 @@ class Network(object):
         raise_null(self._net)
         # self._net = ffi.gc(self._net, lib.il_net_destroy)
 
+
     @classmethod
     def _from_existing(cls, net):
         """ Create a new class instance from an existing network. """
@@ -116,6 +118,36 @@ class Network(object):
 
         return inst
 
+    def monitoring_channel_data(self, channel, dtype):
+        data_arr = []
+        if dtype == REG_DTYPE.U16:
+            data_arr = lib.il_net_monitoring_channel_u16(self._net, channel)
+        elif dtype == REG_DTYPE.S16:
+            data_arr = lib.il_net_monitoring_channel_s16(self._net, channel)
+        elif dtype == REG_DTYPE.U32:
+            data_arr = lib.il_net_monitoring_channel_u32(self._net, channel)
+        elif dtype == REG_DTYPE.S32:
+            data_arr = lib.il_net_monitoring_channel_s32(self._net, channel)
+        elif dtype == REG_DTYPE.FLOAT:
+            data_arr = lib.il_net_monitoring_channel_flt(self._net, channel)
+        return data_arr
+
+    def monitoring_remove_all_mapped_registers(self):
+        return lib.il_net_remove_all_mapped_registers(self._net)
+
+    def monitoring_set_mapped_register(self, channel, reg_idx, dtype):
+        return lib.il_net_set_mapped_register(self._net, channel, reg_idx, dtype)
+
+    def monitoring_enable(self):
+        return lib.il_net_enable_monitoring(self._net)
+
+    def monitoring_disable(self):
+        return lib.il_net_disable_monitoring(self._net)
+
+    def monitoring_read_data(self):
+        return lib.il_net_read_monitoring_data(self._net)
+
+    # Properties
     @property
     def prot(self):
         """ NET_PROT: Obtain network protocol. """
@@ -151,7 +183,6 @@ class Network(object):
     @property
     def monitoring_data(self):
         """ arr: Obtain monitoring data. """
-
         monitoring_data = lib.il_net_monitornig_data_get(self._net)
         size = int(self.monitoring_data_size / 2)
         ret_arr = []
@@ -162,7 +193,6 @@ class Network(object):
     @property
     def monitoring_data_size(self):
         """ int: Obtain monitoring data size """
-
         return lib.il_net_monitornig_data_size_get(self._net)
 
     @property
