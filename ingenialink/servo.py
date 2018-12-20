@@ -150,6 +150,13 @@ class SERVO_UNITS_ACC(Enum):
     M_S2 = lib.IL_UNITS_ACC_M_S2
     """ Meters/second^2. """
 
+def servo_is_connected(address_ip):
+    """ 
+
+    """
+    net__ = ffi.new('il_net_t **')
+    address_ip = cstr(address_ip) if address_ip else ffi.NULL
+    return lib.il_servo_is_connected(net__, address_ip)
 
 def lucky(prot, dict_f=None, address_ip=None):
     """ Obtain an instance of the first available Servo.
@@ -184,6 +191,7 @@ def lucky(prot, dict_f=None, address_ip=None):
     servo.net = net
 
     return net, servo
+
 
 
 @ffi.def_extern()
