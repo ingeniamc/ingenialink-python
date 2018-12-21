@@ -151,7 +151,13 @@ class SERVO_UNITS_ACC(Enum):
     """ Meters/second^2. """
 
 def servo_is_connected(address_ip):
-    """ 
+    """ Obtain boolean with result of search a servo into ip.
+
+        Args:
+            address_ip: IP Address.
+
+        Returns:
+            bool
 
     """
     net__ = ffi.new('il_net_t **')
