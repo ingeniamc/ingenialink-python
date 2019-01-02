@@ -97,7 +97,7 @@ class Register(object):
             TypeError: If any of the parameters has invalid type.
     """
 
-    def __init__(self, identifier, units, address, dtype, access, phy=REG_PHY.NONE, subnode=1, storage=None,
+    def __init__(self, identifier, units, cyclic, address, dtype, access, phy=REG_PHY.NONE, subnode=1, storage=None,
                  range=None, labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
@@ -115,6 +115,7 @@ class Register(object):
         self._reg.units = ffi.new("char[]", cstr(units))
         self._reg.address = address
         self._reg.subnode = subnode
+        self._reg.cyclic = ffi.new("char[]", cstr(cyclic))
         self._reg.dtype = dtype.value
         self._reg.access = access.value
         self._reg.phy = phy.value
@@ -212,10 +213,11 @@ class Register(object):
         else:
             storage_info = 'No storage'
 
-        return '<Register: {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [], {},ST: {}, [{}]>'.format(
+        return '<Register: {}, {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [], {},ST: {}, [{}]>'.format(
                 self.identifier,
                 self.units,
                 self.subnode,
+                self.cyclic,
                 self.address,
                 self.dtype,
                 ' ∊ ' + str(self.range) if self.range else '',
@@ -259,6 +261,12 @@ class Register(object):
     def subnode(self):
         """ int: Register subnode. """
         return self._reg.subnode
+
+    @property
+    def cyclic(self):
+        """ str: Register cyclic type. """
+        if self._reg.cyclic != ffi.NULL:
+            return pstr(self._reg.cyclic)
 
     @property
     def dtype(self):
