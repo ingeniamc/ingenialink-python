@@ -271,7 +271,7 @@ class Network(object):
                 if status != self.status:
                     if self.status == 0:
                         on_evt(NET_DEV_EVT.ADDED)
-                    else:
+                    elif self.status == 1:
                         on_evt(NET_DEV_EVT.REMOVED)
                     status = self.status
                 sleep(1)
