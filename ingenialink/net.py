@@ -120,17 +120,26 @@ class Network(object):
 
     def monitoring_channel_data(self, channel, dtype):
         data_arr = []
+        size = int(self.monitoring_data_size)
         if dtype == REG_DTYPE.U16:
             data_arr = lib.il_net_monitoring_channel_u16(self._net, channel)
+            size = int(size / 2)
         elif dtype == REG_DTYPE.S16:
             data_arr = lib.il_net_monitoring_channel_s16(self._net, channel)
+            size = int(size / 2)
         elif dtype == REG_DTYPE.U32:
             data_arr = lib.il_net_monitoring_channel_u32(self._net, channel)
+            size = int(size / 4)
         elif dtype == REG_DTYPE.S32:
             data_arr = lib.il_net_monitoring_channel_s32(self._net, channel)
+            size = int(size / 4)
         elif dtype == REG_DTYPE.FLOAT:
             data_arr = lib.il_net_monitoring_channel_flt(self._net, channel)
-        return data_arr
+            size = int(size / 4)
+        ret_arr = []
+        for i in range(0, size):
+            ret_arr.append(data_arr[i])
+        return ret_arr
 
     def monitoring_remove_all_mapped_registers(self):
         return lib.il_net_remove_all_mapped_registers(self._net)
