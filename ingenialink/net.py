@@ -133,7 +133,7 @@ class Network(object):
         elif dtype == REG_DTYPE.FLOAT:
             data_arr = lib.il_net_monitoring_channel_flt(self._net, channel)
         ret_arr = []
-        for i in range(0, size / bytes_per_block):
+        for i in range(0, int(size / bytes_per_block)):
             ret_arr.append(data_arr[i])
         return ret_arr
 
