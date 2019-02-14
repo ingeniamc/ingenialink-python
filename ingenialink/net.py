@@ -121,23 +121,19 @@ class Network(object):
     def monitoring_channel_data(self, channel, dtype):
         data_arr = []
         size = int(self.monitoring_data_size)
+        bytes_per_block = self.monitoring_get_bytes_per_block()
         if dtype == REG_DTYPE.U16:
             data_arr = lib.il_net_monitoring_channel_u16(self._net, channel)
-            size = int(size / 2)
         elif dtype == REG_DTYPE.S16:
             data_arr = lib.il_net_monitoring_channel_s16(self._net, channel)
-            size = int(size / 2)
         elif dtype == REG_DTYPE.U32:
             data_arr = lib.il_net_monitoring_channel_u32(self._net, channel)
-            size = int(size / 4)
         elif dtype == REG_DTYPE.S32:
             data_arr = lib.il_net_monitoring_channel_s32(self._net, channel)
-            size = int(size / 4)
         elif dtype == REG_DTYPE.FLOAT:
             data_arr = lib.il_net_monitoring_channel_flt(self._net, channel)
-            size = int(size / 4)
         ret_arr = []
-        for i in range(0, size):
+        for i in range(0, size / bytes_per_block):
             ret_arr.append(data_arr[i])
         return ret_arr
 
@@ -147,6 +143,9 @@ class Network(object):
     def monitoring_set_mapped_register(self, channel, reg_idx, dtype):
         return lib.il_net_set_mapped_register(self._net, channel, reg_idx, dtype)
 
+    def monitoring_get_num_mapped_registers(self):
+        return lib.il_net_num_mapped_registers_get(self._net)
+
     def monitoring_enable(self):
         return lib.il_net_enable_monitoring(self._net)
 
@@ -155,6 +154,9 @@ class Network(object):
 
     def monitoring_read_data(self):
         return lib.il_net_read_monitoring_data(self._net)
+
+    def monitoring_get_bytes_per_block(self):
+        return lib.il_net_monitornig_bytes_per_block_get(self._net)
 
     # Properties
     @property
