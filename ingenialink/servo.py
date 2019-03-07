@@ -449,7 +449,7 @@ class Servo(object):
         r = lib.il_servo_info_get(self._servo, info)
         raise_err(r)
 
-        PRODUCT_ID_REG = Register(identifier='PRODUCT_CODE', address=0x06E1,
+        PRODUCT_ID_REG = Register(identifier=str('PRODUCT_CODE'), address=0x06E1,
                                      dtype=REG_DTYPE.U32,
                                      access=REG_ACCESS.RO, cyclic='CONFIG', units='0')
 
@@ -511,8 +511,11 @@ class Servo(object):
         r = f(self._servo, _reg._reg, ffi.NULL, v)
         raise_err(r)
 
-        if self.dict:
-            _reg = self.dict.regs[reg]
+        try:
+            if self.dict:
+                _reg = self.dict.regs[reg]
+        except:
+            pass
         if _reg.dtype == REG_DTYPE.STR:
             return self._net.extended_buffer
         else:
