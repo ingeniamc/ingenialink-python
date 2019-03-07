@@ -2,7 +2,7 @@ from enum import Enum
 
 from ._ingenialink import ffi, lib
 from ._utils import cstr, pstr, raise_null, raise_err, to_ms
-from .registers import Register, REG_DTYPE, _get_reg_id
+from .registers import Register, REG_DTYPE, _get_reg_id, REG_ACCESS
 from .net import Network
 from .dict_ import Dictionary
 
@@ -449,11 +449,17 @@ class Servo(object):
         r = lib.il_servo_info_get(self._servo, info)
         raise_err(r)
 
+        PRODUCT_ID_REG = Register(identifier='PRODUCT_CODE', address=0x06E1,
+                                     dtype=REG_DTYPE.U32,
+                                     access=REG_ACCESS.RO, cyclic='CONFIG', units='0')
+
+        product_id = self.raw_read(PRODUCT_ID_REG)
+
         return {'serial': info.serial,
                 'name': pstr(info.name),
                 'sw_version': pstr(info.sw_version),
                 'hw_variant': pstr(info.hw_variant),
-                'prod_code': info.prod_code,
+                'prod_code': product_id,
                 'revision': info.revision}
 
     def store_all(self):
@@ -505,7 +511,8 @@ class Servo(object):
         r = f(self._servo, _reg._reg, ffi.NULL, v)
         raise_err(r)
 
-        _reg = self.dict.regs[reg]
+        if self.dict:
+            _reg = self.dict.regs[reg]
         if _reg.dtype == REG_DTYPE.STR:
             return self._net.extended_buffer
         else:
