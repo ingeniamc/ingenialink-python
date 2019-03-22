@@ -92,13 +92,14 @@ class Register(object):
             labels (dict, optional): Register labels.
             cat_id (str, optional): Category ID.
             scat_id (str, optional): Sub-category ID.
+            internal_use (int, optional): Internal use.
 
         Raises:
             TypeError: If any of the parameters has invalid type.
     """
 
     def __init__(self, identifier, units, cyclic, address, dtype, access, phy=REG_PHY.NONE, subnode=1, storage=None,
-                 range=None, labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None):
+                 range=None, labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None, internal_use=0):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
@@ -119,6 +120,7 @@ class Register(object):
         self._reg.dtype = dtype.value
         self._reg.access = access.value
         self._reg.phy = phy.value
+        self._reg.internal_use = internal_use
 
         self._reg.storage_valid = 0 if not storage else 1
 
@@ -213,7 +215,7 @@ class Register(object):
         else:
             storage_info = 'No storage'
 
-        return '<Register: {}, {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [], {},ST: {}, [{}]>'.format(
+        return '<Register: {}, {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [], {},ST: {}, [{}], {}>'.format(
                 self.identifier,
                 self.units,
                 self.subnode,
@@ -226,7 +228,9 @@ class Register(object):
                 self.enums,
                 self.enums_count,
                 storage_info,
-                cat_info)
+                cat_info,
+                self.internal_use
+        )
 
     @classmethod
     def _from_register(cls, reg):
@@ -369,5 +373,9 @@ class Register(object):
         """Sub-category ID."""
         if self._reg.scat_id != ffi.NULL:
             return pstr(self._reg.scat_id)
-
         return None
+
+    @property
+    def internal_use(self):
+        """ int: Register internal_use. """
+        return self._reg.internal_use
