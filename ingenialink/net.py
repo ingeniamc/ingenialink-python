@@ -158,6 +158,26 @@ class Network(object):
     def monitoring_get_bytes_per_block(self):
         return lib.il_net_monitornig_bytes_per_block_get(self._net)
 
+    # Disturbance
+    def disturbance_channel_data(self, channel, dtype, data_arr):
+        if dtype == REG_DTYPE.U16:
+            lib.il_net_disturbance_data_u16_set(self._net, channel, data_arr)
+        elif dtype == REG_DTYPE.S16:
+            lib.il_net_disturbance_data_s16_set(self._net, channel, data_arr)
+        elif dtype == REG_DTYPE.U32:
+            lib.il_net_disturbance_data_u32_set(self._net, channel, data_arr)
+        elif dtype == REG_DTYPE.S32:
+            lib.il_net_disturbance_data_s32_set(self._net, channel, data_arr)
+        elif dtype == REG_DTYPE.FLOAT:
+            lib.il_net_disturbance_data_flt_set(self._net, channel, data_arr)
+        return 0
+
+    def disturbance_remove_all_mapped_registers(self):
+        return lib.il_net_disturbance_remove_all_mapped_registers(self._net)
+
+    def disturbance_set_mapped_register(self, channel, address, dtype):
+        return lib.il_net_disturbance_set_mapped_register(self._net, channel, address, dtype);
+
     # Properties
     @property
     def prot(self):
