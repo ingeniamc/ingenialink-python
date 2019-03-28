@@ -249,6 +249,8 @@ class Network(object):
     def disturbance_data_size(self, value):
         lib.il_net_disturbance_data_size_set(self._net, value)
 
+    def close_socket(self):
+        return lib.il_net_close_socket(self._net)
 
     def connect(self):
         """ Connect network. """
