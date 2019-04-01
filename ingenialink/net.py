@@ -176,7 +176,7 @@ class Network(object):
         return lib.il_net_disturbance_remove_all_mapped_registers(self._net)
 
     def disturbance_set_mapped_register(self, channel, address, dtype):
-        return lib.il_net_disturbance_set_mapped_register(self._net, channel, address, dtype);
+        return lib.il_net_disturbance_set_mapped_register(self._net, channel, address, dtype)
 
     # Properties
     @property
