@@ -114,7 +114,7 @@ class Network(object):
         """ Create a new class instance from an existing network. """
 
         inst = cls.__new__(cls)
-        inst._net = ffi.gc(net, lib.il_net_destroy)
+        inst._net = ffi.gc(net, lib.il_net_fake_destroy)
 
         return inst
 

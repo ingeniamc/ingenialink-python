@@ -268,7 +268,7 @@ class Servo(object):
         """ Create a new class instance from an existing servo. """
 
         inst = cls.__new__(cls)
-        inst._servo = ffi.gc(servo, lib.il_servo_destroy)
+        inst._servo = ffi.gc(servo, lib.il_servo_fake_destroy)
 
         inst._state_cb = {}
         inst._emcy_cb = {}
@@ -292,6 +292,9 @@ class Servo(object):
                 ]
         return errors
 
+    def destroy(self):
+        r = lib.il_servo_destroy(self._servo)
+        return r
 
     def reset(self):
         """Reset.
