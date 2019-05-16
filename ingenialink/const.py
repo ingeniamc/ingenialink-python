@@ -4,6 +4,10 @@ import re
 from ._ingenialink import lib
 
 
+DIST_FRAME_SIZE_BYTES = 252
+DIST_FRAME_SIZE = 1010
+
+
 def _load():
     """ Load IngeniaLink constants to this module. """
 

@@ -6,6 +6,8 @@ from .registers import Register, REG_DTYPE, _get_reg_id, REG_ACCESS
 from .net import Network
 from .dict_ import Dictionary
 
+from .const import *
+
 import xml.etree.ElementTree as ET
 
 
@@ -886,3 +888,21 @@ class Servo(object):
 
         r = lib.il_servo_wait_reached(self._servo, to_ms(timeout))
         raise_err(r)
+
+
+    def disturbance_write_data(self, channel, dtype, data_arr):
+        self.write('DIST_NUMBER_SAMPLES', len(data_arr))
+        actual_size = int(len(data_arr))
+        actual_pos = 0
+        while actual_size > DIST_FRAME_SIZE_BYTES:
+            next_pos = actual_pos + DIST_FRAME_SIZE_BYTES
+            self.net.disturbance_channel_data(0, dtype, data_arr[actual_pos: next_pos])
+            self.net.disturbance_data_size = DIST_FRAME_SIZE
+            self.write('DIST_DATA', DIST_FRAME_SIZE, False, 1)
+            actual_pos = next_pos
+            actual_size -= DIST_FRAME_SIZE_BYTES
+
+        # Last disturbance frame
+        self.net.disturbance_channel_data(0, dtype, data_arr[actual_pos: actual_pos + actual_size])
+        self.net.disturbance_data_size = actual_size * 4
+        self.write('DIST_DATA', actual_size * 4, False, 1)
