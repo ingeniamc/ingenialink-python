@@ -545,9 +545,12 @@ class Servo(object):
         r = lib.il_servo_read(self._servo, _reg, _id, v)
         raise_err(r)
 
-        _reg = self.dict.regs[reg]
-        if _reg.dtype == REG_DTYPE.STR:
-            return self._net.extended_buffer
+        if self.dict:
+            _reg = self.dict.regs[reg]
+            if _reg.dtype == REG_DTYPE.STR:
+                return self._net.extended_buffer
+            else:
+                return v[0]
         else:
             return v[0]
 
