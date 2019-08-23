@@ -2,9 +2,11 @@ from enum import Enum
 
 from ._ingenialink import ffi, lib
 from ._utils import cstr, pstr, raise_null, raise_err, to_ms
-from .registers import Register, REG_DTYPE, _get_reg_id
+from .registers import Register, REG_DTYPE, _get_reg_id, REG_ACCESS
 from .net import Network
 from .dict_ import Dictionary
+
+from .const import *
 
 import xml.etree.ElementTree as ET
 
@@ -150,8 +152,21 @@ class SERVO_UNITS_ACC(Enum):
     M_S2 = lib.IL_UNITS_ACC_M_S2
     """ Meters/second^2. """
 
+def servo_is_connected(address_ip):
+    """ Obtain boolean with result of search a servo into ip.
 
-def lucky(prot, dict_f=None):
+        Args:
+            address_ip: IP Address.
+
+        Returns:
+            bool
+
+    """
+    net__ = ffi.new('il_net_t **')
+    address_ip = cstr(address_ip) if address_ip else ffi.NULL
+    return lib.il_servo_is_connected(net__, address_ip)
+
+def lucky(prot, dict_f=None, address_ip=None, port_ip=23):
     """ Obtain an instance of the first available Servo.
 
         Args:
@@ -168,8 +183,12 @@ def lucky(prot, dict_f=None):
     net__ = ffi.new('il_net_t **')
     servo__ = ffi.new('il_servo_t **')
     dict_f = cstr(dict_f) if dict_f else ffi.NULL
+    address_ip = cstr(address_ip) if address_ip else ffi.NULL
 
-    r = lib.il_servo_lucky(prot.value, net__, servo__, dict_f)
+    if prot.value == 2:
+        r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f, address_ip, port_ip)
+    else:
+        r = lib.il_servo_lucky(prot.value, net__, servo__, dict_f)
     raise_err(r)
 
     net_ = ffi.cast('il_net_t *', net__[0])
@@ -177,8 +196,10 @@ def lucky(prot, dict_f=None):
 
     net = Network._from_existing(net_)
     servo = Servo._from_existing(servo_, dict_f)
+    servo.net = net
 
     return net, servo
+
 
 
 @ffi.def_extern()
@@ -216,7 +237,8 @@ class Servo(object):
                  REG_DTYPE.S32: ['int32_t *', lib.il_servo_raw_read_s32],
                  REG_DTYPE.U64: ['uint64_t *', lib.il_servo_raw_read_u64],
                  REG_DTYPE.S64: ['int64_t *', lib.il_servo_raw_read_s64],
-                 REG_DTYPE.FLOAT: ['float *', lib.il_servo_raw_read_float]}
+                 REG_DTYPE.FLOAT: ['float *', lib.il_servo_raw_read_float],
+                 REG_DTYPE.STR: ['uint32_t *', lib.il_servo_raw_read_str]}
     """ dict: Data buffer and function mappings for raw read operation. """
 
     _raw_write = {REG_DTYPE.U8: lib.il_servo_raw_write_u8,
@@ -236,6 +258,7 @@ class Servo(object):
         raise_null(servo)
 
         self._servo = ffi.gc(servo, lib.il_servo_destroy)
+        self._net = net
 
         self._state_cb = {}
         self._emcy_cb = {}
@@ -247,7 +270,7 @@ class Servo(object):
         """ Create a new class instance from an existing servo. """
 
         inst = cls.__new__(cls)
-        inst._servo = ffi.gc(servo, lib.il_servo_destroy)
+        inst._servo = ffi.gc(servo, lib.il_servo_fake_destroy)
 
         inst._state_cb = {}
         inst._emcy_cb = {}
@@ -271,6 +294,9 @@ class Servo(object):
                 ]
         return errors
 
+    def destroy(self):
+        r = lib.il_servo_destroy(self._servo)
+        return r
 
     def reset(self):
         """Reset.
@@ -362,6 +388,14 @@ class Servo(object):
         return self._errors
 
     @property
+    def net(self):
+        return self._net
+
+    @net.setter
+    def net(self, value):
+        self._net = value
+
+    @property
     def dict(self):
         """ Dictionary: Dictionary. """
         _dict = lib.il_servo_dict_get(self._servo)
@@ -420,11 +454,17 @@ class Servo(object):
         r = lib.il_servo_info_get(self._servo, info)
         raise_err(r)
 
+        PRODUCT_ID_REG = Register(identifier=str('PRODUCT_CODE'), address=0x06E1,
+                                     dtype=REG_DTYPE.U32,
+                                     access=REG_ACCESS.RO, cyclic='CONFIG', units='0')
+
+        product_id = self.raw_read(PRODUCT_ID_REG)
+
         return {'serial': info.serial,
                 'name': pstr(info.name),
                 'sw_version': pstr(info.sw_version),
                 'hw_variant': pstr(info.hw_variant),
-                'prod_code': info.prod_code,
+                'prod_code': product_id,
                 'revision': info.revision}
 
     def store_all(self):
@@ -476,7 +516,15 @@ class Servo(object):
         r = f(self._servo, _reg._reg, ffi.NULL, v)
         raise_err(r)
 
-        return v[0]
+        try:
+            if self.dict:
+                _reg = self.dict.regs[reg]
+        except:
+            pass
+        if _reg.dtype == REG_DTYPE.STR:
+            return self._net.extended_buffer
+        else:
+            return v[0]
 
     def read(self, reg):
         """ Read from servo.
@@ -497,15 +545,23 @@ class Servo(object):
         r = lib.il_servo_read(self._servo, _reg, _id, v)
         raise_err(r)
 
-        return v[0]
+        if self.dict:
+            _reg = self.dict.regs[reg]
+            if _reg.dtype == REG_DTYPE.STR:
+                return self._net.extended_buffer
+            else:
+                return v[0]
+        else:
+            return v[0]
 
-    def raw_write(self, reg, data, confirm=True):
+    def raw_write(self, reg, data, confirm=True, extended=0):
         """ Raw write to servo.
 
             Args:
                 reg (Register): Register.
                 data (int): Data.
                 confirm (bool, optional): Confirm write.
+                extended (int, optional): Extended frame.
 
             Raises:
                 TypeError: If any of the arguments type is not valid or
@@ -530,16 +586,17 @@ class Servo(object):
         # obtain function to call
         f = self._raw_write[_reg.dtype]
 
-        r = f(self._servo, _reg._reg, ffi.NULL, data, confirm)
+        r = f(self._servo, _reg._reg, ffi.NULL, data, confirm, extended)
         raise_err(r)
 
-    def write(self, reg, data, confirm=True):
+    def write(self, reg, data, confirm=True, extended=0):
         """ Write to servo.
 
             Args:
                 reg (Register): Register.
                 data (int): Data.
                 confirm (bool, optional): Confirm write.
+                extended (int, optional): Extended frame.
 
             Raises:
                 TypeError: If any of the arguments type is not valid or
@@ -548,7 +605,7 @@ class Servo(object):
 
         _reg, _id = _get_reg_id(reg)
 
-        r = lib.il_servo_write(self._servo, _reg, _id, data, confirm)
+        r = lib.il_servo_write(self._servo, _reg, _id, data, confirm, extended)
         raise_err(r)
 
     def units_update(self):
@@ -834,3 +891,21 @@ class Servo(object):
 
         r = lib.il_servo_wait_reached(self._servo, to_ms(timeout))
         raise_err(r)
+
+
+    def disturbance_write_data(self, channel, dtype, data_arr):
+        self.write('DIST_NUMBER_SAMPLES', len(data_arr))
+        actual_size = int(len(data_arr))
+        actual_pos = 0
+        while actual_size > DIST_FRAME_SIZE_BYTES:
+            next_pos = actual_pos + DIST_FRAME_SIZE_BYTES
+            self.net.disturbance_channel_data(0, dtype, data_arr[actual_pos: next_pos])
+            self.net.disturbance_data_size = DIST_FRAME_SIZE
+            self.write('DIST_DATA', DIST_FRAME_SIZE, False, 1)
+            actual_pos = next_pos
+            actual_size -= DIST_FRAME_SIZE_BYTES
+
+        # Last disturbance frame
+        self.net.disturbance_channel_data(0, dtype, data_arr[actual_pos: actual_pos + actual_size])
+        self.net.disturbance_data_size = actual_size * 4
+        self.write('DIST_DATA', actual_size * 4, False, 1)
