@@ -4,8 +4,8 @@ import re
 from ._ingenialink import lib
 
 
-DIST_FRAME_SIZE_BYTES = 252
-DIST_FRAME_SIZE = 1010
+DIST_FRAME_SIZE_BYTES = 128
+DIST_FRAME_SIZE = 512
 
 
 def _load():
