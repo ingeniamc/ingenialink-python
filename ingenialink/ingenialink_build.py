@@ -3,7 +3,7 @@ import re
 import os
 from os.path import join, exists
 from distutils.spawn import find_executable
-from subprocess import check_call
+from subprocess import check_call, call
 
 from cffi import FFI
 
@@ -20,7 +20,7 @@ if 'INGENIALINK_DIR' in os.environ:
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = 'next'
+    _IL_VER = 'feature/ecat-implementation'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
 
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
@@ -38,6 +38,12 @@ else:
     _XML2_SRC = join(_IL_SRC, 'external', 'libxml2')
 
 _XML2_BUILD = join(_BUILD_DIR, 'libxml2')
+
+# SOEM dirname
+_SOEM_URL = 'https://github.com/OpenEtherCATsociety/SOEM'
+_SOEM_VER = 'master'
+_SOEM_SRC = join(_IL_SRC, 'external', 'SOEM')
+_SOEM_BUILD = join(_SOEM_SRC, _BUILD_DIR)
 
 if sys.platform == 'win32':
     if sys.version_info >= (3, 5):
@@ -68,6 +74,8 @@ def _build_deps():
         check_call([git, 'clone', '--recursive', '-b', _IL_VER, _IL_URL,
                     _IL_SRC])
 
+        check_call([git, 'clone', '-b', _SOEM_VER, _SOEM_URL, _SOEM_SRC])
+
     # deps: libsercomm
     check_call([cmake, '-H' + _SER_SRC, '-B' + _SER_BUILD,
                 '-G', _CMAKE_GENERATOR,
@@ -86,6 +94,13 @@ def _build_deps():
                     '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
         check_call([cmake, '--build', _XML2_BUILD, '--config', 'Release',
                     '--target', 'install'])
+
+    # deps: SOEM
+    check_call([cmake, '-H' + _SOEM_SRC, '-G', "NMake Makefiles",
+                '-B' + _SOEM_BUILD])
+
+    call('cd', shell=True, cwd=".\\_deps\\ingenialink\\external\\SOEM\\_build")
+    check_call(['nmake'])
 
     # build
     check_call([cmake, '-H' + _IL_SRC, '-B' + _IL_BUILD,
@@ -130,6 +145,8 @@ def _gen_cffi_header():
                join(_INC_DIR, 'ingenialink', 'monitor.h'),
                join(_INC_DIR, 'ingenialink', 'version.h')]
 
+
+
     h_stripped = ''
 
     for header in headers:
@@ -146,7 +163,7 @@ def _get_libs():
             list: List of libraries.
     """
 
-    libs = ['ingenialink', 'sercomm', 'xml2']
+    libs = ['ingenialink', 'sercomm', 'xml2', 'soem']
 
     if sys.platform.startswith('linux'):
         libs.extend(['udev', 'rt', 'pthread'])
