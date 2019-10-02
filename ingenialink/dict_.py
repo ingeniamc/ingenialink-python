@@ -106,17 +106,17 @@ class RegistersDictionary(collections.Mapping):
         dict_ (il_dict_t *): Ingenia dictionary instance.
     """
 
-    def __init__(self, dict_):
+    def __init__(self, dict_, subnode):
         self._dict = dict_
+        self._subnode = subnode
 
         self._load_reg_ids()
 
     def _load_reg_ids(self):
         """Load register IDs from dictionary."""
-
-        ids = lib.il_dict_reg_ids_get(self._dict)
-
         self._ids = []
+        ids = lib.il_dict_reg_ids_get(self._dict, self._subnode)
+
         i = 0
         _id = ids[0]
         while _id != ffi.NULL:
@@ -128,7 +128,7 @@ class RegistersDictionary(collections.Mapping):
 
     def __getitem__(self, _id):
         reg_p = ffi.new('il_reg_t **')
-        r = lib.il_dict_reg_get(self._dict, cstr(_id), reg_p)
+        r = lib.il_dict_reg_get(self._dict, cstr(_id), reg_p, self._subnode)
         raise_err(r)
 
         return Register._from_register(reg_p[0])
@@ -156,7 +156,10 @@ class Dictionary(object):
 
         self._dict = ffi.gc(dict_, lib.il_dict_destroy)
 
-        self._rdict = RegistersDictionary(self._dict)
+        # self._rdict = RegistersDictionary(self._dict)
+        self._rdict_0 = RegistersDictionary(self._dict, 0)
+        self._rdict_1 = RegistersDictionary(self._dict, 1)
+        self._rdict_2 = RegistersDictionary(self._dict, 2)
         self._cats = Categories(self._dict)
 
     @classmethod
@@ -166,7 +169,10 @@ class Dictionary(object):
         inst = cls.__new__(cls)
         inst._dict = dict_
 
-        inst._rdict = RegistersDictionary(inst._dict)
+        # inst._rdict = RegistersDictionary(inst._dict)
+        inst._rdict_0 = RegistersDictionary(inst._dict, 0)
+        inst._rdict_1 = RegistersDictionary(inst._dict, 1)
+        inst._rdict_2 = RegistersDictionary(inst._dict, 2)
         inst._cats = Categories(inst._dict)
 
         return inst
@@ -181,10 +187,18 @@ class Dictionary(object):
         r = lib.il_dict_save(self._dict, cstr(fname))
         raise_err(r)
 
-    @property
-    def regs(self):
-        """RegistersDictionary: Registers dictionary."""
-        return self._rdict
+    def get_regs(self, subnode):
+        if subnode == 0:
+            return self._rdict_0
+        elif subnode == 1:
+            return self._rdict_1
+        else:
+            return self._rdict_2
+
+    # @property
+    # def regs(self):
+    #     """RegistersDictionary: Registers dictionary."""
+    #     return self._rdict
 
     def reg_storage_update(self, id_, value):
         """Update register storage.

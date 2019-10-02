@@ -20,7 +20,7 @@ if 'INGENIALINK_DIR' in os.environ:
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = 'udp-protocol'
+    _IL_VER = 'feature/multislave'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
 
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
@@ -93,7 +93,7 @@ def _build_deps():
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
                 '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PROT_MCB=ON',
-                '-DWITH_PROT_VIRTUAL=ON',
+                '-DWITH_PROT_VIRTUAL=OFF',
                 '-DWITH_PIC=ON'])
     check_call([cmake, '--build', _IL_BUILD, '--config', 'Release',
                 '--target', 'install'])

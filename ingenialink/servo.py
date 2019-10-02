@@ -395,6 +395,7 @@ class Servo(object):
     def net(self, value):
         self._net = value
 
+
     @property
     def dict(self):
         """ Dictionary: Dictionary. """
@@ -485,7 +486,7 @@ class Servo(object):
         r = lib.il_servo_store_app(self._servo)
         raise_err(r)
 
-    def raw_read(self, reg):
+    def raw_read(self, reg, subnode=1):
         """ Raw read from servo.
 
             Args:
@@ -505,7 +506,7 @@ class Servo(object):
             if not _dict:
                 raise ValueError('No dictionary loaded')
 
-            _reg = _dict.regs[reg]
+            _reg = _dict.get_regs(subnode)[reg]
         else:
             raise TypeError('Invalid register')
 
@@ -518,7 +519,7 @@ class Servo(object):
 
         try:
             if self.dict:
-                _reg = self.dict.regs[reg]
+                _reg = self.dict.get_regs(subnode)[reg]
         except:
             pass
         if _reg.dtype == REG_DTYPE.STR:
@@ -526,7 +527,7 @@ class Servo(object):
         else:
             return v[0]
 
-    def read(self, reg):
+    def read(self, reg, subnode=1):
         """ Read from servo.
 
             Args:
@@ -539,19 +540,19 @@ class Servo(object):
                 TypeError: If the register type is not valid.
         """
 
-        _reg, _id = _get_reg_id(reg)
+        _reg, _id = _get_reg_id(reg, subnode)
 
         v = ffi.new('double *')
         r = lib.il_servo_read(self._servo, _reg, _id, v)
         raise_err(r)
 
-        _reg = self.dict.regs[reg]
+        _reg = self.dict.get_regs(subnode)[reg]
         if _reg.dtype == REG_DTYPE.STR:
             return self._net.extended_buffer
         else:
             return v[0]
 
-    def raw_write(self, reg, data, confirm=True, extended=0):
+    def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
         """ Raw write to servo.
 
             Args:
@@ -572,7 +573,7 @@ class Servo(object):
             if not _dict:
                 raise ValueError('No dictionary loaded')
 
-            _reg = _dict.regs[reg]
+            _reg = _dict.get_regs(subnode)[reg]
         else:
             raise TypeError('Invalid register')
 
@@ -586,7 +587,7 @@ class Servo(object):
         r = f(self._servo, _reg._reg, ffi.NULL, data, confirm, extended)
         raise_err(r)
 
-    def write(self, reg, data, confirm=True, extended=0):
+    def write(self, reg, data, confirm=True, extended=0, subnode=1):
         """ Write to servo.
 
             Args:
@@ -600,7 +601,7 @@ class Servo(object):
                     unsupported.
         """
 
-        _reg, _id = _get_reg_id(reg)
+        _reg, _id = _get_reg_id(reg, subnode)
 
         r = lib.il_servo_write(self._servo, _reg, _id, data, confirm, extended)
         raise_err(r)
