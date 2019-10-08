@@ -75,11 +75,17 @@ def devices(prot):
 def master_startup(ifname):
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
-    return lib.il_net_master_startup(net__, ifname)
+    return lib.il_net_master_startup(net__, ifname), net__
 
-def master_stop():
+def master_stop(net):
+    # net__ = ffi.new('il_net_t **')
+    return lib.il_net_master_stop(net)
+
+def update_firmware(ifname, filename):
     net__ = ffi.new('il_net_t **')
-    return lib.il_net_master_stop(net__)
+    ifname = cstr(ifname) if ifname else ffi.NULL
+    filename = cstr(filename) if filename else ffi.NULL
+    return lib.il_net_update_firmware(net__, ifname, 1, filename)
 
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
@@ -127,8 +133,15 @@ class Network(object):
 
         return inst
 
+    def master_startup(self, ifname):
+        net__ = ffi.new('il_net_t **')
+        ifname = cstr(ifname) if ifname else ffi.NULL
+        slaves_count = lib.il_net_master_startup(net__, ifname)
+        return slaves_count, net__
 
-
+    def master_stop(self):
+        net__ = ffi.new('il_net_t **')
+        return lib.il_net_master_stop(net__)
 
     def monitoring_channel_data(self, channel, dtype):
         data_arr = []
@@ -169,8 +182,6 @@ class Network(object):
 
     def monitoring_get_bytes_per_block(self):
         return lib.il_net_monitornig_bytes_per_block_get(self._net)
-
-
 
     # Disturbance
     def disturbance_channel_data(self, channel, dtype, data_arr):
