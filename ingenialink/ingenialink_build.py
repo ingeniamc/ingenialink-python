@@ -3,7 +3,7 @@ import re
 import os
 from os.path import join, exists
 from distutils.spawn import find_executable
-from subprocess import check_call
+from subprocess import check_call, call, Popen, PIPE
 
 from cffi import FFI
 
@@ -20,7 +20,7 @@ if 'INGENIALINK_DIR' in os.environ:
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = 'next'
+    _IL_VER = 'feature/ecat-implementation'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
 
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
@@ -38,6 +38,12 @@ else:
     _XML2_SRC = join(_IL_SRC, 'external', 'libxml2')
 
 _XML2_BUILD = join(_BUILD_DIR, 'libxml2')
+
+# SOEM dirname
+# _SOEM_URL = 'https://github.com/OpenEtherCATsociety/SOEM'
+# _SOEM_VER = 'master'
+# _SOEM_SRC = join(_IL_SRC, 'external', 'SOEM')
+# _SOEM_BUILD = join(_SOEM_SRC, _BUILD_DIR)
 
 if sys.platform == 'win32':
     if sys.version_info >= (3, 5):
@@ -68,6 +74,8 @@ def _build_deps():
         check_call([git, 'clone', '--recursive', '-b', _IL_VER, _IL_URL,
                     _IL_SRC])
 
+        # check_call([git, 'clone', '-b', _SOEM_VER, _SOEM_URL, _SOEM_SRC])
+
     # deps: libsercomm
     check_call([cmake, '-H' + _SER_SRC, '-B' + _SER_BUILD,
                 '-G', _CMAKE_GENERATOR,
@@ -87,12 +95,22 @@ def _build_deps():
         check_call([cmake, '--build', _XML2_BUILD, '--config', 'Release',
                     '--target', 'install'])
 
-    # build
+    # deps: SOEM
+    # print("[INFO] SOEM")
+    # print("[INFO] ====================================")
+    # check_call([cmake, '-H' + _SOEM_SRC, '-G', "NMake Makefiles",
+    #             '-B' + _SOEM_BUILD])
+    # print("[INFO] nmake")
+    # Popen(["cd", ".\\_deps\\ingenialink\\external\\SOEM\\_build", "&&", "nmake"], stdout=PIPE, shell=True)
+
+
+
+    print("[INFO] Ingenialink build")
     check_call([cmake, '-H' + _IL_SRC, '-B' + _IL_BUILD,
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
-                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PROT_MCB=ON',
+                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PROT_MCB=ON', '-DWITH_PROT_ECAT=ON',
                 '-DWITH_PROT_VIRTUAL=ON',
                 '-DWITH_PIC=ON'])
     check_call([cmake, '--build', _IL_BUILD, '--config', 'Release',
@@ -130,6 +148,8 @@ def _gen_cffi_header():
                join(_INC_DIR, 'ingenialink', 'monitor.h'),
                join(_INC_DIR, 'ingenialink', 'version.h')]
 
+
+
     h_stripped = ''
 
     for header in headers:
@@ -153,7 +173,7 @@ def _get_libs():
     elif sys.platform == 'darwin':
         libs.extend(['pthread'])
     elif sys.platform == 'win32':
-        libs.extend(['user32', 'setupapi', 'advapi32', 'ws2_32'])
+        libs.extend(['user32', 'setupapi', 'advapi32', 'wpcap', 'ws2_32', 'winmm', 'gdi32', 'dxguid'])
 
     return libs
 
