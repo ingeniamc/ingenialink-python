@@ -8,7 +8,7 @@ name = "pypi"
 [packages]
 
 cffi = "==1.12.2"
-
+canopen = "*"
 
 [dev-packages]
 
@@ -20,3 +20,4 @@ qtawesome = "*"
 matplotlib = "*"
 "e1839a8" = {path = ".", editable = true}
 "pyqt5" = "*"
+

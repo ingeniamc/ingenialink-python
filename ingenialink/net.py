@@ -21,6 +21,7 @@ class NET_PROT(Enum):
     """ ECAT. """
     VIRTUAL = lib.IL_NET_PROT_VIRTUAL
     """ VIRTUAL. """
+    CAN = 5
 
 
 class NET_STATE(Enum):
