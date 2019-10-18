@@ -2,6 +2,8 @@ import canopen
 from enum import Enum
 import time
 
+from .servo_node import Servo
+
 
 class CAN_DEVICE(Enum):
     """ CAN Device. """
@@ -19,24 +21,18 @@ class Network(object):
         self.__servos = []
         self.__device = device
         self.__network = canopen.Network()
-        self.__network.connect(bustype='kvaser', channel=0, bitrate=1000000)
+        self.__network.connect(bustype='pcan', channel='PCAN_USBBUS1', bitrate=1000000)
 
-    def scan(self, eds_filepath, dict_filepath):
+    def scan(self, eds, dict):
         self.__network.scanner.search()
         time.sleep(0.05)
         for node_id in self.__network.scanner.nodes:
             print("Found node %d!" % node_id)
-            node = self.__network.add_node(node_id, eds_filepath)
-            print(node)
-            for obj in node.object_dictionary.values():
-                print('0x%X: %s' % (obj.index, obj.name))
-                if isinstance(obj, canopen.objectdictionary.Record):
-                    for subobj in obj.values():
-                        print('  %d: %s' % (subobj.subindex, subobj.name))
-
-
+            node = self.__network.add_node(node_id, eds)
+            self.__servos.append(Servo(self, node, dict))
 
     def disconnect(self):
+        self.__network.bus.shutdown()
         self.__network.disconnect()
 
     @property
