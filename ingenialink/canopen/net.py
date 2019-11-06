@@ -13,8 +13,6 @@ class CAN_DEVICE(Enum):
     """ Peak. """
     IXXAT   =   ('ixxat', 0)
     """ Ixxat. """
-    NICAN   =   ('nican', 'CAN0')
-    """ Nican. """
 
 class Network(object):
     def __init__(self, device=None):
