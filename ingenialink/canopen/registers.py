@@ -58,7 +58,6 @@ class REG_PHY(Enum):
     """ Relative voltage (DC). """
     RAD = lib.IL_REG_PHY_RAD
     """ Radians. """
-HOLA_VALUE = 3
 
 class Register(object):
     """ Register.
@@ -83,7 +82,7 @@ class Register(object):
     """
 
     def __init__(self, identifier, units, cyclic, idx, subidx, dtype, access, phy=REG_PHY.NONE, subnode=1, storage=None,
-                 range=None, labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None, internal_use=0):
+                 range=(None, None), labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None, internal_use=0):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
@@ -105,85 +104,78 @@ class Register(object):
         self.__phy = phy.value
         self.__internal_use = internal_use
         self.__storage = storage
+        self.__storage_valid = 0 if not storage else 1
+        self.__range = (None, None) if not range else range
 
-        self__storage_valid = 0 if not storage else 1
+        if dtype == REG_DTYPE.S8:
+            if storage:
+                self.__storage = int(storage)
 
-        # if dtype == REG_DTYPE.S8:
-        #     if storage:
-        #         self.__storage.s8 = int(storage)
-        #
-        #     self.__range.min.s8 = (range[0] if range else
-        #                               INT_SIZES.S8_MIN.value)
-        #     self._reg.range.max.s8 = (range[1] if range else
-        #                               INT_SIZES.S8_MAX.value)
-        # elif dtype == REG_DTYPE.U8:
-        #     if storage:
-        #         self._reg.storage.u8 = int(storage)
-        #
-        #     self._reg.range.min.u8 = range[0] if range else 0
-        #     self._reg.range.max.u8 = (range[1] if range else
-        #                               INT_SIZES.U8_MAX.value)
-        # if dtype == REG_DTYPE.S16:
-        #     if storage:
-        #         self._reg.storage.s16 = int(storage)
-        #
-        #     self._reg.range.min.s16 = (range[0] if range else
-        #                                INT_SIZES.S16_MIN.value)
-        #     self._reg.range.max.s16 = (range[1] if range else
-        #                                INT_SIZES.S16_MAX.value)
-        # elif dtype == REG_DTYPE.U16:
-        #     if storage:
-        #         self._reg.storage.u16 = int(storage)
-        #
-        #     self._reg.range.min.u16 = range[0] if range else 0
-        #     self._reg.range.max.u16 = (range[1] if range else
-        #                                INT_SIZES.U16_MAX.value)
-        # if dtype == REG_DTYPE.S32:
-        #     if storage:
-        #         self._reg.storage.s32 = int(storage)
-        #
-        #     self._reg.range.min.s32 = (range[0] if range else
-        #                                INT_SIZES.S32_MIN.value)
-        #     self._reg.range.max.s32 = (range[1] if range else
-        #                                INT_SIZES.S32_MAX.value)
-        # elif dtype == REG_DTYPE.U32:
-        #     if storage:
-        #         self._reg.storage.u32 = int(storage)
-        #
-        #     self._reg.range.min.u32 = range[0] if range else 0
-        #     self._reg.range.max.u32 = (range[1] if range else
-        #                                INT_SIZES.U32_MAX.value)
-        # if dtype == REG_DTYPE.S64:
-        #     if storage:
-        #         self._reg.storage.s64 = int(storage)
-        #
-        #     self._reg.range.min.s64 = (range[0] if range else
-        #                                INT_SIZES.S64_MIN.value)
-        #     self._reg.range.max.s64 = (range[1] if range else
-        #                                INT_SIZES.S64_MAX.value)
-        # elif dtype == REG_DTYPE.U64:
-        #     if storage:
-        #         self._reg.storage.u64 = int(storage)
-        #
-        #     self._reg.range.min.u64 = range[0] if range else 0
-        #     self._reg.range.max.u64 = (range[1] if range else
-        #                                INT_SIZES.U64_MAX.value)
-        # elif dtype == REG_DTYPE.FLOAT:
-        #     if storage:
-        #         self._reg.storage.flt = float(storage)
-        # else:
-        #     self._reg.storage_valid = 0
+            range_min = (range[0] if range[0] else INT_SIZES.S8_MIN.value)
+            range_max = (range[1] if range[1] else INT_SIZES.S8_MAX.value)
+            self.__range = (range_min, range_max)
+        elif dtype == REG_DTYPE.U8:
+            if storage:
+                self.__storage = int(storage)
 
-        # self._labels = LabelsDictionary(labels)
-        # self._reg.labels = self._labels._labels
-        # self._reg.enums_count = enums_count
-        #
-        # self._reg.cat_id = ffi.NULL if not cat_id else cstr(cat_id)
-        #
-        # if not cat_id and scat_id:
-        #     raise ValueError('Sub-category requires a parent category')
-        #
-        # self._reg.scat_id = ffi.NULL if not scat_id else cstr(scat_id)
+            range_min = range[0] if range[0] else 0
+            range_max = (range[1] if range[1] else INT_SIZES.U8_MAX.value)
+            self.__range = (range_min, range_max)
+        if dtype == REG_DTYPE.S16:
+            if storage:
+                self.__storage = int(storage)
+
+            range_min = (range[0] if range[0] else INT_SIZES.S16_MIN.value)
+            range_max = (range[1] if range[1] else INT_SIZES.S16_MAX.value)
+            self.__range = (range_min, range_max)
+        elif dtype == REG_DTYPE.U16:
+            if storage:
+                self.__storage = int(storage)
+
+            range_min = range[0] if range[0] else 0
+            range_max = (range[1] if range[1] else INT_SIZES.U16_MAX.value)
+            self.__range = (range_min, range_max)
+        if dtype == REG_DTYPE.S32:
+            if storage:
+                self.__storage = int(storage)
+
+            range_min = (range[0] if range[0] else INT_SIZES.S32_MIN.value)
+            range_max = (range[1] if range[1] else INT_SIZES.S32_MAX.value)
+            self.__range = (range_min, range_max)
+        elif dtype == REG_DTYPE.U32:
+            if storage:
+                self.__storage = int(storage)
+
+            range_min = range[0] if range[0] else 0
+            range_max = (range[1] if range[1] else INT_SIZES.U32_MAX.value)
+            self.__range = (range_min, range_max)
+        if dtype == REG_DTYPE.S64:
+            if storage:
+                self.__storage = int(storage)
+
+            range_min = (range[0] if range[0] else INT_SIZES.S64_MIN.value)
+            range_max = (range[1] if range[1] else INT_SIZES.S64_MAX.value)
+            self.__range = (range_min, range_max)
+        elif dtype == REG_DTYPE.U64:
+            if storage:
+                self.__storage = int(storage)
+
+            range_min = range[0] if range[0] else 0
+            range_max = (range[1] if range[1] else INT_SIZES.U64_MAX.value)
+            self.__range = (range_min, range_max)
+        elif dtype == REG_DTYPE.FLOAT:
+            if storage:
+                self.__storage = float(storage)
+        else:
+            self.__storage_valid = 0
+
+        self.__labels = labels
+        self.__enums = enums
+        self.__enums_count = enums_count
+
+        self.__cat_id = cat_id
+        self.__scat_id = scat_id
+
 
     @property
     def identifier(self):
@@ -238,86 +230,77 @@ class Register(object):
             return None
 
         if self.dtype == REG_DTYPE.S8:
-            return self.__storage.s8
+            return self.__storage
         elif self.dtype == REG_DTYPE.U8:
-            return self.__storage.u8
+            return self.__storage
         if self.dtype == REG_DTYPE.S16:
-            return self.__storage.s16
+            return self.__storage
         elif self.dtype == REG_DTYPE.U16:
-            return self.__storage.u16
+            return self.__storage
         if self.dtype == REG_DTYPE.S32:
-            return self.__storage.s32
+            return self.__storage
         elif self.dtype == REG_DTYPE.U32:
-            return self.__storage.u32
+            return self.__storage
         if self.dtype == REG_DTYPE.S64:
-            return self.__storage.s64
+            return self.__storage
         elif self.dtype == REG_DTYPE.U64:
-            return self.__storage.u64
+            return self.__storage
         elif self.dtype == REG_DTYPE.FLOAT:
-            return self.__storage.flt
+            return self.__storage
         else:
             return None
 
-    # @property
-    # def range(self):
-    #     """ tuple: Register range (min, max), None if undefined. """
-    #
-    #     if self.dtype == REG_DTYPE.S8:
-    #         return (self.__range.min.s8, self.__range.max.s8)
-    #     elif self.dtype == REG_DTYPE.U8:
-    #         return (self.__range.min.u8, self.__range.max.u8)
-    #     if self.dtype == REG_DTYPE.S16:
-    #         return (self.__range.min.s16, self.__range.max.s16)
-    #     elif self.dtype == REG_DTYPE.U16:
-    #         return (self.__range.min.u16, self.__range.max.u16)
-    #     if self.dtype == REG_DTYPE.S32:
-    #         return (self._reg.range.min.s32, self.__range.max.s32)
-    #     elif self.dtype == REG_DTYPE.U32:
-    #         return (self.__range.min.u32, self.__range.max.u32)
-    #     if self.dtype == REG_DTYPE.S64:
-    #         return (self.__range.min.s64, self.__range.max.s64)
-    #     elif self.dtype == REG_DTYPE.U64:
-    #         return (self.__range.min.u64, self.__range.max.u64)
-    #
-    #     return None
+    @storage.setter
+    def storage(self, value):
+        self.__storage = value
 
-    # @property
-    # def labels(self):
-    #     """ LabelsDictionary: Labels dictionary. """
-    #     return self._labels
+    @property
+    def storage_valid(self):
+        return self.__storage_valid
+
+    @storage_valid.setter
+    def storage_valid(self, value):
+        self.__storage_valid = value
+
+    @property
+    def range(self):
+        """ tuple: Register range (min, max), None if undefined. """
+        if self.__range:
+            return (self.__range[0], self.__range[1])
+        return None
+
+    @property
+    def labels(self):
+        """ LabelsDictionary: Labels dictionary. """
+        return self.__labels
+
+    @property
+    def enums(self):
+        """ Enumerations list. """
+        # if not hasattr(self, '__enums'):
+        #     self._enums = []
+        #     for i in range(0, self.__reg.enums_count):
+        #         dict = {
+        #             'label': pstr(self._reg.enums[i].label),
+        #             'value': self._reg.enums[i].value
+        #         }
+        #         self._enums.append(dict)
+        return self.__enums
     #
     # @property
-    # def enums(self):
-    #     """ Enumerations list. """
-    #     if not hasattr(self, '_enums'):
-    #         self._enums = []
-    #         for i in range(0, self._reg.enums_count):
-    #             dict = {
-    #                 'label': pstr(self._reg.enums[i].label),
-    #                 'value': self._reg.enums[i].value
-    #             }
-    #             self._enums.append(dict)
-    #     return self._enums
-    #
-    # @property
-    # def enums_count(self):
-    #     """ int: Register Enumerations count. """
-    #     return self._reg.enums_count
-    #
-    # @property
-    # def cat_id(self):
-    #     """Category ID."""
-    #     if self._reg.cat_id != ffi.NULL:
-    #         return pstr(self._reg.cat_id)
-    #
-    #     return None
-    #
-    # @property
-    # def scat_id(self):
-    #     """Sub-category ID."""
-    #     if self._reg.scat_id != ffi.NULL:
-    #         return pstr(self._reg.scat_id)
-    #     return None
+    def enums_count(self):
+        """ int: Register Enumerations count. """
+        return self.__enums_count
+
+    @property
+    def cat_id(self):
+        """Category ID."""
+        return self.__cat_id
+
+    @property
+    def scat_id(self):
+        """Sub-category ID."""
+        return self.__scat_id
 
     @property
     def internal_use(self):
