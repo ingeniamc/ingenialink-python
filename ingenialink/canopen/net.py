@@ -30,8 +30,11 @@ class Network(object):
             self.__servos.append(Servo(self, node, dict))
 
     def disconnect(self):
-        self.__network.bus.shutdown()
-        self.__network.disconnect()
+        try:
+            self.__network.bus.shutdown()
+            self.__network.disconnect()
+        except Exception as e:
+            print(e)
 
     @property
     def servos(self):
