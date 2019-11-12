@@ -191,7 +191,8 @@ class DictionaryCANOpen(object):
                                internal_use=internal_use)
                 self.__regs[identifier] = reg
             except:
-                print("FAIL reading a register")
+                # print("FAIL reading a register "+ identifier)
+                pass
 
         # Closing xml file
         xml_file.close()
