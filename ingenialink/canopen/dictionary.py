@@ -24,7 +24,9 @@ class Categories(object):
 
         for element in root.findall('./Body/Device/Categories/Category'):
             self._cat_ids.append(element.attrib['id'])
-            self._categories[element.attrib['id']] = element.getchildren()[0].getchildren()[0].text
+            self._categories[element.attrib['id']] = {
+                'en_US': element.getchildren()[0].getchildren()[0].text
+            }
 
     @property
     def cat_ids(self):
@@ -224,4 +226,3 @@ class DictionaryCANOpen(object):
     @errors.setter
     def errors(self, value):
         self._errors = value
-

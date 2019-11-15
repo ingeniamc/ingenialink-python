@@ -14,12 +14,30 @@ class CAN_DEVICE(Enum):
     IXXAT   =   ('ixxat', 0)
     """ Ixxat. """
 
+
+class CAN_BAUDRATE(Enum):
+    """ Baudrates. """
+    Baudrate_1M = 1000000
+    """ 1 Mbit/s """
+    BRate_500K = 500000
+    """ 500 Kbit/s """
+    BRate_250K = 250000
+    """ 250 Kbit/s """
+    BRate_125K = 125000
+    """ 150 Kbit/s """
+    BRate_100K = 100000
+    """ 100 Kbit/s """
+    BRate_50K = 50000
+    """ 50 Kbit/s """
+
+
 class Network(object):
-    def __init__(self, device=None):
+    def __init__(self, device=None, baudrate=CAN_BAUDRATE.Baudrate_1M):
         self.__servos = []
         self.__device = device
         self.__network = canopen.Network()
-        self.__network.connect(bustype='pcan', channel='PCAN_USBBUS1', bitrate=1000000)
+        if device is not None:
+            self.__network.connect(bustype=device.value[0], channel=device.value[1], bitrate=baudrate.value)
 
     def scan(self, eds, dict):
         self.__network.scanner.search()
@@ -47,6 +65,3 @@ class Network(object):
     @property
     def _network(self):
         return self.__network
-
-
-

@@ -2,6 +2,7 @@ import canopen
 import struct
 import xml.etree.ElementTree as ET
 
+from .._ingenialink import ffi, lib
 from .dictionary import DictionaryCANOpen
 from .registers import Register, REG_DTYPE, REG_ACCESS
 
@@ -10,6 +11,25 @@ class Servo(object):
         self.__net = net
         self.__node = node
         self.__dict = DictionaryCANOpen(dict)
+        self.__info = {}
+        self.init_info()
+
+    def init_info(self):
+        name = "Drive"
+        serial_number = self.raw_read('SERIAL_NUMBER')
+        product_code = self.raw_read('PRODUCT_CODE')
+        sw_version = self.raw_read('SOFTWARE_VERSION')
+        revision_number = self.raw_read('REVISION_NUMBER')
+        hw_variant = 'A'
+
+        self.__info = {
+            'serial': serial_number,
+            'name': name,
+            'sw_version': sw_version,
+            'hw_variant': hw_variant,
+            'prod_code': product_code,
+            'revision': revision_number
+        }
 
     def raw_read(self, reg):
         """ Raw read from servo.
@@ -188,3 +208,45 @@ class Servo(object):
         except:
             r = -1
         return r
+
+    def dict_load(self, dict_f):
+        """ Load dictionary.
+
+            Args:
+                dict_f (str): Dictionary.
+        """
+        try:
+            self.__dict = DictionaryCANOpen(dict_f)
+        except Exception as e:
+            print("Error loading a dictionary")
+
+    def state_subscribe(self, cb):
+        """ Subscribe to state changes.
+
+            Args:
+                cb: Callback
+
+            Returns:
+                int: Assigned slot.
+        """
+        return 0
+
+    @property
+    def dict(self):
+        """ Dictionary: Dictionary. """
+        return self.__dict
+
+    @property
+    def errors(self):
+        """ dict: Errors. """
+        return self.__dict.errors
+
+    @property
+    def info(self):
+        """ dict: Servo information. """
+        return self.__info
+
+    @property
+    def state(self):
+        """ tuple: Servo state and state flags. """
+        return lib.IL_SERVO_STATE_NRDY
