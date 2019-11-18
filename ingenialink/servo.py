@@ -468,10 +468,10 @@ class Servo(object):
                 'prod_code': product_id,
                 'revision': info.revision}
 
-    def store_all(self):
+    def store_all(self, subnode=1):
         """ Store all servo current parameters to the NVM. """
 
-        r = lib.il_servo_store_all(self._servo)
+        r = lib.il_servo_store_all(self._servo, subnode)
         raise_err(r)
 
     def store_comm(self):
