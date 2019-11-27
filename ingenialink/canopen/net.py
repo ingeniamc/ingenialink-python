@@ -1,9 +1,9 @@
+import time
 import canopen
 from enum import Enum
-import time
 
 from .servo_node import Servo
-
+from ..net import NET_PROT
 
 class CAN_DEVICE(Enum):
     """ CAN Device. """
@@ -65,3 +65,8 @@ class Network(object):
     @property
     def _network(self):
         return self.__network
+
+    @property
+    def prot(self):
+        """ NET_PROT: Obtain network protocol. """
+        return NET_PROT.CAN

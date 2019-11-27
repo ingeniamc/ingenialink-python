@@ -1,10 +1,14 @@
 import canopen
 import struct
+import time
 import xml.etree.ElementTree as ET
 
+from .._utils import *
+from .constants import *
 from .._ingenialink import ffi, lib
 from .dictionary import DictionaryCANOpen
 from .registers import Register, REG_DTYPE, REG_ACCESS
+
 
 class Servo(object):
     def __init__(self, net, node, dict):
@@ -230,6 +234,86 @@ class Servo(object):
                 int: Assigned slot.
         """
         return 0
+
+    def enable(self, timeout=2.):
+        """ Enable PDS.
+
+            Args:
+                timeout (int, float, optional): Timeout (s).
+        """
+
+        r = lib.il_servo_enable(self.__node, to_ms(timeout))
+        raise_err(r)
+
+    def status_word_decode(self, status_word):
+        state = lib.IL_SERVO_STATE_NRDY
+        if (status_word & IL_MC_PDS_STA_NRTSO_MSK) == IL_MC_PDS_STA_NRTSO:
+            state = lib.IL_SERVO_STATE_NRDY
+        elif (status_word & IL_MC_PDS_STA_SOD_MSK) == IL_MC_PDS_STA_SOD:
+            state = lib.IL_SERVO_STATE_DISABLED
+        elif (status_word & IL_MC_PDS_STA_RTSO_MSK) == IL_MC_PDS_STA_RTSO:
+            state = lib.IL_SERVO_STATE_RDY
+        elif (status_word & IL_MC_PDS_STA_SO_MSK) == IL_MC_PDS_STA_SO:
+            state = lib.IL_SERVO_STATE_ON
+        elif (status_word & IL_MC_PDS_STA_OE_MSK) == IL_MC_PDS_STA_OE:
+            state = lib.IL_SERVO_STATE_ENABLED
+        elif (status_word & IL_MC_PDS_STA_QSA_MSK) == IL_MC_PDS_STA_QSA:
+            state = lib.IL_SERVO_STATE_QSTOP
+        elif (status_word & IL_MC_PDS_STA_FRA_MSK) == IL_MC_PDS_STA_FRA:
+            state = lib.IL_SERVO_STATE_FAULTR
+        elif (status_word & IL_MC_PDS_STA_F_MSK) == IL_MC_PDS_STA_F:
+            state = lib.IL_SERVO_STATE_FAULT
+        return state
+
+    def status_word_wait_change(self, status_word, timeout):
+        r = 0
+        start_time = int(round(time.time() * 1000))
+        actual_status_word = self.raw_read('STATUS_WORD')
+        while actual_status_word == status_word or r != lib.IL_ETIMEDOUT:
+            current_time = int(round(time.time() * 1000))
+            if current_time - start_time > timeout:
+                r = lib.IL_ETIMEDOUT
+            actual_status_word = self.raw_read('STATUS_WORD')
+        return r
+
+    def fault_reset(self):
+        r = 0
+        retries = 0
+        status_word = self.raw_read('STATUS_WORD')
+        status_word_decoded = self.status_word_decode(status_word)
+        while status_word_decoded == lib.IL_SERVO_STATE_FAULT or status_word_decoded == lib.IL_SERVO_STATE_FAULTR:
+            # Check if faulty, if so try to reset (0->1)
+            if retries == FAULT_RESET_RETRIES:
+                return lib.IL_ESTATE
+            self.raw_write('CONTROL_WORD', 0)
+            self.raw_write('CONTROL_WORD', IL_MC_CW_FR)
+            # Wait until statusword changes
+            r = self.status_word_wait_change(PDS_TIMEOUT, status_word)
+            if r < 0:
+                return r
+            retries += 1
+        return r
+
+    def disable(self):
+        """ Disable PDS. """
+        r = 0
+        status_word = self.raw_read('STATUS_WORD')
+        status_word_decoded = self.status_word_decode(status_word)
+        while status_word_decoded != lib.IL_SERVO_STATE_DISABLED:
+            # Try fault reset if faulty
+            if status_word_decoded == lib.IL_SERVO_STATE_FAULT or status_word_decoded == lib.IL_SERVO_STATE_FAULTR:
+                r = self.fault_reset()
+                if r < 0:
+                    return r
+            elif status_word_decoded == lib.IL_SERVO_STATE_DISABLED:
+                self.raw_write('CONTROL_WORD', IL_MC_PDS_CMD_DV)
+                # Wait until statusword changes
+                r = self.status_word_wait_change(PDS_TIMEOUT, status_word)
+                if r < 0:
+                    return r
+            status_word = self.raw_read('STATUS_WORD')
+            status_word_decoded = self.status_word_decode(status_word)
+        raise_err(r)
 
     @property
     def dict(self):
