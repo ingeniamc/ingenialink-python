@@ -234,7 +234,7 @@ class Register(object):
         #         self._enums.append(dict)
         return self.__enums
     #
-    # @property
+    @property
     def enums_count(self):
         """ int: Register Enumerations count. """
         return self.__enums_count
