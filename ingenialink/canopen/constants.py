@@ -116,3 +116,24 @@ PDS_TIMEOUT = 1000
 FLAGS_SW_POS = 10
 # Number of retries to reset fault state
 FAULT_RESET_RETRIES = 20
+
+# General failure. */
+IL_EFAIL = -1
+# Invalid values. */
+IL_EINVAL = -2
+# Operation timed out. */
+IL_ETIMEDOUT = -3
+# Not enough memory. */
+IL_ENOMEM = -4
+# Already initialized. */
+IL_EALREADY = -5
+# Device disconnected. */
+IL_EDISCONN = -6
+# Access error. */
+IL_EACCESS = -7
+# State error. */
+IL_ESTATE = -8
+# I/O error. */
+IL_EIO = -9
+# Not supported. */
+IL_ENOTSUP = -10
