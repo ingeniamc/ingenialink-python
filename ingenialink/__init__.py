@@ -9,8 +9,7 @@ from .registers import Register, REG_DTYPE, REG_ACCESS, REG_PHY
 from .dict_ import Dictionary
 from .dict_labels import LabelsDictionary
 
-from .canopen.net import Network as CANOpenNetwork
-from .canopen.net import CAN_DEVICE
+from .canopen import *
 
 
 

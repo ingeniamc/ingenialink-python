@@ -8,7 +8,7 @@ _version = re.search(r'__version__\s+=\s+\'(.*)\'',
 
 setup(name='ingenialink',
       version=_version,
-      packages=['ingenialink'],
+      packages=['ingenialink', 'ingenialink.canopen'],
       description='IngeniaLink Communications Library',
       long_description=open('README.rst').read(),
       author='Ingenia Motion Control',

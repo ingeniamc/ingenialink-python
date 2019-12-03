@@ -26,5 +26,4 @@ def run_example():
         net.disconnect()
 if __name__ == '__main__':
     test = run_example()
-
     sys.exit()
