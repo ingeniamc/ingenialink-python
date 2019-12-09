@@ -42,6 +42,19 @@ class Servo(object):
             'revision': revision_number
         }
 
+    def get_reg(self, reg):
+        if isinstance(reg, Register):
+            _reg = reg
+        elif isinstance(reg, str):
+            _dict = self.__dict
+            if not _dict:
+                raise ValueError('No dictionary loaded')
+
+            _reg = _dict.regs[reg]
+        else:
+            raise TypeError('Invalid register')
+        return _reg
+
     def raw_read(self, reg):
         """ Raw read from servo.
 
@@ -54,16 +67,7 @@ class Servo(object):
             Raises:
                 TypeError: If the register type is not valid.
         """
-        if isinstance(reg, Register):
-            _reg = reg
-        elif isinstance(reg, str):
-            _dict = self.__dict
-            if not _dict:
-                raise ValueError('No dictionary loaded')
-
-            _reg = _dict.regs[reg]
-        else:
-            raise TypeError('Invalid register')
+        _reg = self.get_reg(reg)
 
         access = _reg.access
         if access == REG_ACCESS.WO:
@@ -93,6 +97,7 @@ class Servo(object):
             raise BaseException("Read error")
         finally:
             self.__lock.release()
+
         return value
 
     def read(self, reg):
@@ -126,16 +131,7 @@ class Servo(object):
                     unsupported.
         """
 
-        if isinstance(reg, Register):
-            _reg = reg
-        elif isinstance(reg, str):
-            _dict = self.__dict
-            if not _dict:
-                raise ValueError('No dictionary loaded')
-
-            _reg = _dict.regs[reg]
-        else:
-            raise TypeError('Invalid register')
+        _reg = self.get_reg(reg)
 
         if _reg.access == REG_ACCESS.RO:
             raise TypeError('Register is Read-only')

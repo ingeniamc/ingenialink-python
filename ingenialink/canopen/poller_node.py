@@ -1,12 +1,11 @@
 from .._utils import raise_null, raise_err, to_ms
-from ._ingenialink import ffi, lib
-from .registers import _get_reg_id
 from .constants import *
 
-from threading import Timer, Thread, Event
+from datetime import datetime
+from threading import Timer, Thread, Event, RLock
 
 
-class Timer():
+class PollerTimer():
     def __init__(self, time, cb):
         self.cb = cb
         self.time = time
@@ -22,6 +21,8 @@ class Timer():
 
     def cancel(self):
         self.thread.cancel()
+        if self.thread.is_alive():
+            self.thread.join()
 
 
 class Poller(object):
@@ -40,10 +41,14 @@ class Poller(object):
         self.__number_channels = number_channels
         self.__sz = 0
         self.__refresh_time = 0
+        self.__time_start = 0.0
+        self.__samples_count = 0
+        self.__samples_lost = False
         self.__timer = None
         self.__running = False
         self.__mappings = []
         self.__mappings_enabled = []
+        self.__lock = RLock()
         self.reset_acq()
 
     def reset_acq(self):
@@ -52,16 +57,57 @@ class Poller(object):
             "d": []
         }
 
+    def acquire_callback_poller_data(self):
+        time_diff = datetime.now()
+        delta = time_diff - self.__time_start
+
+        # Obtain current time
+        t = delta.total_seconds()
+
+        self.__lock.acquire()
+        # Acquire all configured channels
+        if self.__samples_count >= self.__sz:
+            self.__samples_lost = True
+        else:
+            self.__acq['t'][self.__samples_count] = t
+
+            # Acquire enabled channels, comprehension list indexes obtained
+            enabled_channel_indexes = [
+                channel_idx for channel_idx, is_enabled in enumerate(self.__mappings_enabled) if is_enabled
+            ]
+
+            for channel in enabled_channel_indexes:
+                register_identifier = self.__mappings[channel]
+                self.__acq['d'][channel][self.__samples_count] = self.__servo.raw_read(register_identifier)
+
+            # Increment samples count
+            self.__samples_count += 1
+
+        self.__lock.release()
+
     def start(self):
         """ Start poller. """
 
-        r = lib.il_poller_start(self._poller)
-        raise_err(r)
+        if self.__running:
+            print("Poller already running")
+            raise_err(IL_EALREADY)
+
+        # Activate timer
+        self.__timer = PollerTimer(self.__refresh_time, self.acquire_callback_poller_data)
+        self.__timer.start()
+        self.__time_start = datetime.now()
+
+        self.__running = True
+
+        return 0
 
     def stop(self):
         """ Stop poller. """
 
-        lib.il_poller_stop(self._poller)
+        if self.__running:
+            self.__timer.cancel()
+
+        self.__running = False
 
     @property
     def data(self):
@@ -69,19 +115,26 @@ class Poller(object):
             flag indicating if data was lost.
         """
 
-        lib.il_poller_data_get(self._poller, self._acq)
-        acq = ffi.cast('il_poller_acq_t *', self._acq[0])
-
-        t = list(acq.t[0:acq.cnt])
-
+        t = list(self.__acq['t'][0:self.__samples_count])
         d = []
-        for ch in range(self.__number_channels):
-            if acq.d[ch] != ffi.NULL:
-                d.append(list(acq.d[ch][0:acq.cnt]))
-            else:
-                d.append(None)
 
-        return t, d, bool(acq.lost)
+        # Acquire enabled channels, comprehension list indexes obtained
+        enabled_channel_indexes = [
+            channel_idx for channel_idx, is_enabled in enumerate(self.__mappings_enabled) if is_enabled
+        ]
+
+        for channel in range(0, self.__number_channels):
+            if self.__mappings_enabled[channel]:
+                d.append(list(self.__acq['d'][channel][0:self.__samples_count]))
+            else:
+                d.append(list(None))
+
+        self.__lock.acquire()
+        self.__samples_count = 0
+        self.__samples_lost = False
+        self.__lock.release()
+
+        return t, d, self.__samples_lost
 
     def configure(self, t_s, sz):
         """ Configure.
@@ -97,7 +150,7 @@ class Poller(object):
         # Configure data and sizes with empty data
         self.reset_acq()
         self.__sz = sz
-        self.__refresh_time = to_ms(t_s)
+        self.__refresh_time = t_s
         self.__acq['t'] = [0] * sz
         for channel in range(0, self.__number_channels):
             data_channel = [0] * sz
@@ -135,18 +188,31 @@ class Poller(object):
 
         return 0
 
-    def ch_disable(self, ch):
+    def ch_disable(self, channel):
         """ Disable a channel.
 
             Args:
-                ch (int): Channel to be disabled.
+                channel (int): Channel to be disabled.
         """
 
-        r = lib.il_poller_ch_disable(self._poller, ch)
-        raise_err(r)
+        if self.__running:
+            print("Poller is running")
+            raise_err(IL_ESTATE)
+
+        if channel > self.__number_channels:
+            print("Channel out of range")
+            raise_err(IL_EINVAL)
+
+        # Set channel required as disabled
+        self.__mappings_enabled[channel] = False
+
+        return 0
 
     def ch_disable_all(self):
         """ Disable all channels. """
 
-        r = lib.il_poller_ch_disable_all(self._poller)
-        raise_err(r)
+        for channel in range(0, self.__number_channels):
+            r = self.ch_disable(channel)
+            if r < 0:
+                raise_err(r)
+        return 0

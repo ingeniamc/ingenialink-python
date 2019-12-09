@@ -19,15 +19,15 @@ class CAN_BAUDRATE(Enum):
     """ Baudrates. """
     Baudrate_1M = 1000000
     """ 1 Mbit/s """
-    BRate_500K = 500000
+    Baudrate_500K = 500000
     """ 500 Kbit/s """
-    BRate_250K = 250000
+    Baudrate_250K = 250000
     """ 250 Kbit/s """
-    BRate_125K = 125000
+    Baudrate_125K = 125000
     """ 150 Kbit/s """
-    BRate_100K = 100000
+    Baudrate_100K = 100000
     """ 100 Kbit/s """
-    BRate_50K = 50000
+    Baudrate_50K = 50000
     """ 50 Kbit/s """
 
 
