@@ -49,7 +49,8 @@ class Servo(object):
             _dict = self.__dict
             if not _dict:
                 raise ValueError('No dictionary loaded')
-
+            if reg not in _dict.regs:
+                raise TypeError('Invalid register')
             _reg = _dict.regs[reg]
         else:
             raise TypeError('Invalid register')
@@ -73,30 +74,34 @@ class Servo(object):
         if access == REG_ACCESS.WO:
             raise TypeError('Register is Write-only')
 
+        value = None
         dtype = _reg.dtype
+        error_raised = None
         try:
             self.__lock.acquire()
             if dtype == REG_DTYPE.S8:
-                value = int.from_bytes(self.__node.sdo.upload(int(_reg.idx, 16), int(_reg.subidx, 16)), "little",
+                value = int.from_bytes(self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)), "little",
                                        signed=True)
             elif dtype == REG_DTYPE.S16:
-                value = int.from_bytes(self.__node.sdo.upload(int(_reg.idx, 16), int(_reg.subidx, 16)), "little",
+                value = int.from_bytes(self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)), "little",
                                        signed=True)
             elif dtype == REG_DTYPE.S32:
-                value = int.from_bytes(self.__node.sdo.upload(int(_reg.idx, 16), int(_reg.subidx, 16)), "little",
+                value = int.from_bytes(self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)), "little",
                                        signed=True)
             elif dtype == REG_DTYPE.FLOAT:
-                [value] = struct.unpack('f', self.__node.sdo.upload(int(_reg.idx, 16), int(_reg.subidx, 16)))
+                [value] = struct.unpack('f', self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)))
             elif dtype == REG_DTYPE.STR:
-                value = self.__node.sdo.upload(int(_reg.idx, 16), int(_reg.subidx, 16)).decode("utf-8")
+                value = self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)).decode("utf-8")
             else:
-                value = int.from_bytes(self.__node.sdo.upload(int(_reg.idx, 16), int(_reg.subidx, 16)), "little")
+                value = int.from_bytes(self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)), "little")
         except Exception as e:
-            self.__lock.release()
             print(_reg.identifier + " : " + e)
-            raise BaseException("Read error")
+            error_raised = BaseException("Read error")
         finally:
             self.__lock.release()
+
+        if error_raised is not None:
+            raise error_raised
 
         return value
 
@@ -140,10 +145,11 @@ class Servo(object):
         if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
             data = int(data)
 
+        error_raised = None
         try:
             self.__lock.acquire()
             if _reg.dtype == REG_DTYPE.FLOAT:
-                self.__node.sdo.download(int(_reg.idx, 16), int(_reg.subidx, 16),
+                self.__node.sdo.download(int(str(_reg.idx), 16), int(str(_reg.subidx), 16),
                                          struct.pack('f', data))
             else:
                 bytes_length = 2
@@ -159,14 +165,16 @@ class Servo(object):
                     bytes_length = 4
                     signed = True
 
-                self.__node.sdo.download(int(_reg.idx, 16), int(_reg.subidx, 16),
+                self.__node.sdo.download(int(str(_reg.idx), 16), int(str(_reg.subidx), 16),
                                          data.to_bytes(bytes_length, byteorder='little', signed=signed))
         except Exception as e:
-            self.__lock.release()
             print(_reg.identifier + " : " + e)
-            raise BaseException("Write error")
+            error_raised = BaseException("Write error")
         finally:
             self.__lock.release()
+
+        if error_raised is not None:
+            raise error_raised
 
     def get_all_registers(self):
         for obj in self.__node.object_dictionary.values():
