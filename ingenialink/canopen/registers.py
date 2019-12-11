@@ -120,6 +120,13 @@ class Register(object):
         self.__enums = enums
         self.__enums_count = enums_count
 
+        for enum in enums:
+            dict = {
+                'label': enum.value(),
+                'value': enum.key()
+            }
+            self.__enums.append(dict)
+
         self.__cat_id = cat_id
         self.__scat_id = scat_id
 
@@ -224,16 +231,8 @@ class Register(object):
     @property
     def enums(self):
         """ Enumerations list. """
-        # if not hasattr(self, '__enums'):
-        #     self._enums = []
-        #     for i in range(0, self.__reg.enums_count):
-        #         dict = {
-        #             'label': pstr(self._reg.enums[i].label),
-        #             'value': self._reg.enums[i].value
-        #         }
-        #         self._enums.append(dict)
         return self.__enums
-    #
+
     @property
     def enums_count(self):
         """ int: Register Enumerations count. """
