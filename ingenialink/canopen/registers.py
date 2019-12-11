@@ -117,15 +117,16 @@ class Register(object):
             self.__storage_valid = 0
 
         self.__labels = labels
-        self.__enums = enums
+        self.__enums = []
         self.__enums_count = enums_count
 
         for enum in enums:
-            dict = {
-                'label': enum.value(),
-                'value': enum.key()
-            }
-            self.__enums.append(dict)
+            for key, value in enum.items():
+                dictionary = {
+                    'label': value,
+                    'value': key
+                }
+                self.__enums.append(dictionary)
 
         self.__cat_id = cat_id
         self.__scat_id = scat_id
