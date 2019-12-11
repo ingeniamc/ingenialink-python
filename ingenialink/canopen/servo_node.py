@@ -95,7 +95,7 @@ class Servo(object):
             else:
                 value = int.from_bytes(self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)), "little")
         except Exception as e:
-            print(_reg.identifier + " : " + e)
+            print(_reg.identifier + " : " + str(e))
             error_raised = BaseException("Read error")
         finally:
             self.__lock.release()
