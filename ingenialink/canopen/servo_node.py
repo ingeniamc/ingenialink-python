@@ -168,7 +168,7 @@ class Servo(object):
                 self.__node.sdo.download(int(str(_reg.idx), 16), int(str(_reg.subidx), 16),
                                          data.to_bytes(bytes_length, byteorder='little', signed=signed))
         except Exception as e:
-            print(_reg.identifier + " : " + e)
+            print(_reg.identifier + " : " + str(e))
             error_raised = BaseException("Write error")
         finally:
             self.__lock.release()
