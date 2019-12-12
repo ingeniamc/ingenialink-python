@@ -37,15 +37,21 @@ class Network(object):
         self.__device = device
         self.__network = canopen.Network()
         if device is not None:
-            self.__network.connect(bustype=device.value[0], channel=device.value[1], bitrate=baudrate.value)
+            try:
+                self.__network.connect(bustype=device.value[0], channel=device.value[1], bitrate=baudrate.value)
+            except Exception as e:
+                print('Exception trying to connect: ', e)
 
     def scan(self, eds, dict):
-        self.__network.scanner.search()
-        time.sleep(0.05)
-        for node_id in self.__network.scanner.nodes:
-            print("Found node %d!" % node_id)
-            node = self.__network.add_node(node_id, eds)
-            self.__servos.append(Servo(self, node, dict))
+        try:
+            self.__network.scanner.search()
+            time.sleep(0.05)
+            for node_id in self.__network.scanner.nodes:
+                print("Found node %d!" % node_id)
+                node = self.__network.add_node(node_id, eds)
+                self.__servos.append(Servo(self, node, dict))
+        except Exception as e:
+            print('Exceptiontrying to scan: ', e)
 
     def disconnect(self):
         try:
