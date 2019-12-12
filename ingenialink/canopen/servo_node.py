@@ -218,9 +218,8 @@ class Servo(object):
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
                     self.raw_write(element.attrib['id'], float(element.attrib['storage']))
-            except Exception as e:
-                # print("Exception during dict_storage_write, register " + element.attrib['id'] + ": ", str(e))
-                pass
+            except BaseException as e:
+                print("Exception during dict_storage_write, register " + element.attrib['id'] + ": ", str(e))
 
     def store_all(self):
         """ Store all servo current parameters to the NVM. """
