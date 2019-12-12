@@ -10,6 +10,15 @@ from .const import *
 
 import xml.etree.ElementTree as ET
 
+DIST_NUMBER_SAMPLES = Register(
+    identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+)
+DIST_DATA = Register(
+    identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO, range=None
+)
+
 
 class SERVO_STATE(Enum):
     """ State. """
@@ -469,7 +478,7 @@ class Servo(object):
         r = lib.il_servo_info_get(self._servo, info)
         raise_err(r)
 
-        PRODUCT_ID_REG = Register(identifier=str('PRODUCT_CODE'), address=0x06E1,
+        PRODUCT_ID_REG = Register(identifier='', address=0x06E1,
                                      dtype=REG_DTYPE.U32,
                                      access=REG_ACCESS.RO, cyclic='CONFIG', units='0')
 
@@ -907,21 +916,20 @@ class Servo(object):
         r = lib.il_servo_wait_reached(self._servo, to_ms(timeout))
         raise_err(r)
 
-
     def disturbance_write_data(self, channel, dtype, data_arr):
-        self.write('DIST_NUMBER_SAMPLES', len(data_arr))
+        self.write(DIST_NUMBER_SAMPLES, len(data_arr))
         actual_size = int(len(data_arr))
         actual_pos = 0
         while actual_size > DIST_FRAME_SIZE_BYTES:
             next_pos = actual_pos + DIST_FRAME_SIZE_BYTES
             self.net.disturbance_channel_data(0, dtype, data_arr[actual_pos: next_pos])
             self.net.disturbance_data_size = DIST_FRAME_SIZE
-            self.write('DIST_DATA', DIST_FRAME_SIZE, False, 1)
+            self.write(DIST_DATA, DIST_FRAME_SIZE, False, 1)
             actual_pos = next_pos
             actual_size -= DIST_FRAME_SIZE_BYTES
 
         # Last disturbance frame
         self.net.disturbance_channel_data(0, dtype, data_arr[actual_pos: actual_pos + actual_size])
         self.net.disturbance_data_size = actual_size * 4
-        self.write('DIST_DATA', actual_size * 4, False, 1)
+        self.write(DIST_DATA, actual_size * 4, False, 1)
 
