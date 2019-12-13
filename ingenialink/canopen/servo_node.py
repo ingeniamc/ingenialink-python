@@ -201,9 +201,8 @@ class Servo(object):
                     reg = self.__dict.regs[element.attrib['id']]
                     reg.storage = storage
                     reg.storage_valid = 1
-            except Exception as e:
-                # print("Exception during dict_storage_read, register " + element.attrib['id'] + ": ", str(e))
-                pass
+            except BaseException as e:
+                print("Exception during dict_storage_read, register " + element.attrib['id'] + ": ", str(e))
 
         tree.write(new_path)
         xml_file.close()
@@ -377,6 +376,11 @@ class Servo(object):
     def dict(self):
         """ Dictionary: Dictionary. """
         return self.__dict
+
+    @property
+    def node(self):
+        """ int: Node. """
+        return self.__node
 
     @property
     def errors(self):
