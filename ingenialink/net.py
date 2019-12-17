@@ -72,10 +72,12 @@ def devices(prot):
 
     return found
 
-def master_startup(ifname):
+def master_startup(ifname, if_address_ip):
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
-    return lib.il_net_master_startup(net__, ifname), net__
+    if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
+
+    return lib.il_net_master_startup(net__, ifname, if_address_ip), net__
 
 def master_stop(net):
     # net__ = ffi.new('il_net_t **')
