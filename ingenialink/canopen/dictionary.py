@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 from .registers import Register, REG_ACCESS, REG_DTYPE, REG_PHY
 
+
 class Categories(object):
     """Categories.
 
@@ -38,6 +39,7 @@ class Categories(object):
 
         return self._categories[cat_id]
 
+
 class Errors(object):
     """Categories.
 
@@ -69,10 +71,12 @@ class Errors(object):
     def errors(self):
         return self._errors
 
+
 class DictionaryCANOpen(object):
     def __init__(self, dict):
         self.__dict = dict
         self.__regs = {}
+        self.__version = 1
         self._cats = None
         self.read_dictionary()
 
@@ -85,6 +89,11 @@ class DictionaryCANOpen(object):
 
         # Errors
         self._errors = Errors(self.__dict)
+
+        # Version
+        version_node = root.find('.Header/Version')
+        if version_node is not None:
+            self.__version = version_node.text
 
         # Registers
         for element in root.findall('./Body/Device/Registers/Register'):
@@ -202,6 +211,10 @@ class DictionaryCANOpen(object):
     @property
     def dict(self):
         return self.__dict
+
+    @property
+    def version(self):
+        return self.__version
 
     @property
     def regs(self):
