@@ -54,7 +54,7 @@ class HearbeatThread(Thread):
                     self.__parent.net_state = NET_STATE.CONNECTED
                     self.__state = NET_STATE.CONNECTED
                 self.__timestamp = self.__node.nmt.timestamp
-            sleep(1)
+            sleep(1.5)
 
     def activate_stop_flag(self):
         self.__stop = True

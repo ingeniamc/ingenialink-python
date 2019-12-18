@@ -124,7 +124,7 @@ class Register(object):
             for key, value in enum.items():
                 dictionary = {
                     'label': value,
-                    'value': key
+                    'value': int(key)
                 }
                 self.__enums.append(dictionary)
 
