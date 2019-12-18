@@ -76,7 +76,7 @@ class DictionaryCANOpen(object):
     def __init__(self, dict):
         self.__dict = dict
         self.__regs = {}
-        self.__version = 1
+        self.__version = '1'
         self._cats = None
         self.read_dictionary()
 
