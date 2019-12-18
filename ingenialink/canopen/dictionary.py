@@ -58,7 +58,7 @@ class Errors(object):
 
         for element in root.findall('./Body/Errors/Error'):
             label = element.getchildren()[0].getchildren()[0]
-            self._errors[element.attrib['id']] = [
+            self._errors[int(element.attrib['id'], 16)] = [
                 element.attrib['id'],
                 element.attrib['affected_module'],
                 element.attrib['error_type'].capitalize(),

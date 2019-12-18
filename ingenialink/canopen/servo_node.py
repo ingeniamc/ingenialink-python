@@ -21,6 +21,10 @@ class Servo(object):
         self.__state = lib.IL_SERVO_STATE_NRDY
         self.__observers = []
         self.__lock = threading.RLock()
+        self.__units_torque = None
+        self.__units_pos = None
+        self.__units_vel = None
+        self.__units_acc = None
         self.init_info()
 
     def init_info(self):
@@ -41,6 +45,12 @@ class Servo(object):
             'prod_code': product_code,
             'revision': revision_number
         }
+
+    def emcy_subscribe(self, callback):
+        pass
+
+    def emcy_unsubscribe(self, callback):
+        pass
 
     def get_reg(self, reg):
         if isinstance(reg, Register):
@@ -399,7 +409,7 @@ class Servo(object):
     @property
     def errors(self):
         """ dict: Errors. """
-        return self.__dict.errors
+        return self.__dict.errors.errors
 
     @property
     def info(self):
@@ -416,3 +426,39 @@ class Servo(object):
         self.__state = new_state
         for callback in self.__observers:
             callback(self.__state, None)
+
+    @property
+    def units_torque(self):
+        """ SERVO_UNITS_TORQUE: Torque units. """
+        return self.__units_torque
+
+    @units_torque.setter
+    def units_torque(self, units):
+        self.__units_torque = units
+
+    @property
+    def units_pos(self):
+        """ SERVO_UNITS_POS: Position units. """
+        return self.__units_pos
+
+    @units_pos.setter
+    def units_pos(self, units):
+        self.__units_pos = units
+
+    @property
+    def units_vel(self):
+        """ SERVO_UNITS_VEL: Velocity units. """
+        return self.__units_vel
+
+    @units_vel.setter
+    def units_vel(self, units):
+        self.__units_vel = units
+
+    @property
+    def units_acc(self):
+        """ SERVO_UNITS_ACC: Acceleration units. """
+        return self.__units_acc
+
+    @units_acc.setter
+    def units_acc(self, units):
+        self.__units_acc = units
