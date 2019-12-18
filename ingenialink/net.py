@@ -17,10 +17,7 @@ class NET_PROT(Enum):
     """ MCB. """
     ETH = lib.IL_NET_PROT_ETH
     """ ETH. """
-    ECAT = lib.IL_NET_PROT_ECAT
-    """ ECAT. """
-    VIRTUAL = lib.IL_NET_PROT_VIRTUAL
-    """ VIRTUAL. """
+    CAN = 5
 
 
 class NET_STATE(Enum):

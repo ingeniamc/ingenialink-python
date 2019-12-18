@@ -20,7 +20,7 @@ if 'INGENIALINK_DIR' in os.environ:
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = 'feature/ecat-implementation'
+    _IL_VER = 'next'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
 
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
@@ -173,7 +173,7 @@ def _get_libs():
     elif sys.platform == 'darwin':
         libs.extend(['pthread'])
     elif sys.platform == 'win32':
-        libs.extend(['user32', 'setupapi', 'advapi32', 'wpcap', 'ws2_32', 'winmm', 'gdi32', 'dxguid'])
+        libs.extend(['user32', 'setupapi', 'advapi32','ws2_32', 'winmm', 'gdi32', 'dxguid'])
 
     return libs
 
