@@ -80,20 +80,32 @@ class Servo(object):
         try:
             self.__lock.acquire()
             if dtype == REG_DTYPE.S8:
-                value = int.from_bytes(self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)), "little",
-                                       signed=True)
+                value = int.from_bytes(
+                    self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)),
+                    "little",
+                    signed=True
+                )
             elif dtype == REG_DTYPE.S16:
-                value = int.from_bytes(self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)), "little",
-                                       signed=True)
+                value = int.from_bytes(
+                    self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)),
+                    "little",
+                    signed=True
+                )
             elif dtype == REG_DTYPE.S32:
-                value = int.from_bytes(self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)), "little",
-                                       signed=True)
+                value = int.from_bytes(
+                    self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)),
+                    "little",
+                    signed=True
+                )
             elif dtype == REG_DTYPE.FLOAT:
                 [value] = struct.unpack('f', self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)))
             elif dtype == REG_DTYPE.STR:
                 value = self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)).decode("utf-8")
             else:
-                value = int.from_bytes(self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)), "little")
+                value = int.from_bytes(
+                    self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)),
+                    "little"
+                )
         except Exception as e:
             print(_reg.identifier + " : " + str(e))
             error_raised = BaseException("Read error")
@@ -142,7 +154,9 @@ class Servo(object):
             raise TypeError('Register is Read-only')
 
         # auto cast floats if register is not float
-        if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
+        if _reg.dtype == REG_DTYPE.FLOAT:
+            data = float(data)
+        else:
             data = int(data)
 
         error_raised = None
