@@ -81,7 +81,7 @@ class DictionaryCANOpen(object):
         self.read_dictionary()
 
     def read_dictionary(self):
-        with open(self.__dict, 'r') as xml_file:
+        with open(self.__dict, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
         # Categories
