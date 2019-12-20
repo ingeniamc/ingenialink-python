@@ -79,6 +79,46 @@ class Network(object):
             except Exception as e:
                 print('Exception trying to connect: ', e)
 
+    def change_node(self, target_node, new_node, new_baudrate, vendor_id, product_code, rev_number, serial_numeber):
+        print('Switching slave into CONFIGURATION state...')
+        print('')
+
+        bool_result = self.__network.lss.send_switch_state_selective(
+            vendor_id,
+            product_code,
+            rev_number,
+            serial_numeber,
+        )
+
+        if bool_result:
+            self.__network.lss.configure_bit_timing(new_baudrate)
+            sleep(0.1)
+            self.__network.lss.configure_node_id(new_node)
+            sleep(0.1)
+            self.__network.lss.store_configuration()
+            sleep(0.1)
+            print('Stored new configuration')
+            self.__network.lss.send_switch_state_global(self.__network.lss.WAITING_STATE)
+
+        print('')
+        print('Reseting node. Baudrate will be applied after power cycle')
+        print('Set properly the baudrate of all the nodes before power cycling the devices')
+        node_list[user_id - 1].node.nmt.send_command(0x82)
+
+        # Wait until node is reset
+        sleep(0.5)
+
+        self.__network.scanner.reset()
+        self.__network.scanner.search()
+        sleep(0.5)
+
+        for node_id in self.__network.scanner.nodes:
+            node = self.__network.add_node(node_id, eds)
+            node.nmt.start_node_guarding(1)
+
+        # Reset all nodes to default state
+        self.__net.lss.send_switch_state_global(self.__net.lss.WAITING_STATE)
+
     def reset_network(self):
         try:
             self.__network.disconnect()
