@@ -49,6 +49,8 @@ class HearbeatThread(Thread):
                 if self.__state != NET_STATE.DISCONNECTED:
                     self.__parent.net_state = NET_STATE.DISCONNECTED
                     self.__state = NET_STATE.DISCONNECTED
+                else:
+                    self.__parent.reset_network()
             else:
                 if self.__state != NET_STATE.CONNECTED:
                     self.__parent.net_state = NET_STATE.CONNECTED
@@ -64,15 +66,41 @@ class Network(object):
     def __init__(self, device=None, baudrate=CAN_BAUDRATE.Baudrate_1M):
         self.__servos = []
         self.__device = device
+        self.__baudrate = baudrate
         self.__network = canopen.Network()
         self.__net_state = NET_STATE.DISCONNECTED
         self.__observers = []
+        self.__eds = None
+        self.__dict = None
         self.__heartbeat_thread = None
         if device is not None:
             try:
                 self.__network.connect(bustype=device.value[0], channel=device.value[1], bitrate=baudrate.value)
             except Exception as e:
                 print('Exception trying to connect: ', e)
+
+    def reset_network(self):
+        try:
+            self.__network.disconnect()
+        except BaseException as e:
+            print("Cold not reset: Disconnection", e)
+
+        try:
+            for node in self.__network.scanner.nodes:
+                self.__network.nodes[node].nmt.stop_node_guarding()
+            if self._network.bus:
+                self.__network.bus.flush_tx_buffer()
+                print("Bus flushed")
+        except Exception as e:
+            print("Could not stop guarding: ", e)
+
+        try:
+            self.__network.connect(bustype=self.__device.value[0], channel=self.__device.value[1], bitrate=self.__baudrate.value)
+            for node_id in self.__network.scanner.nodes:
+                node = self.__network.add_node(node_id, self.__eds)
+                node.nmt.start_node_guarding(1)
+        except BaseException as e:
+            print("Could not reset: Connection", e)
 
     def scan(self, eds, dict):
         try:
@@ -83,6 +111,9 @@ class Network(object):
                 node = self.__network.add_node(node_id, eds)
 
                 node.nmt.start_node_guarding(1)
+
+                self.__eds = eds
+                self.__dict = dict
 
                 self.__heartbeat_thread = HearbeatThread(self, node)
                 self.__heartbeat_thread.start()
