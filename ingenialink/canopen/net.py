@@ -32,6 +32,21 @@ class CAN_BAUDRATE(Enum):
     Baudrate_50K = 50000
     """ 50 Kbit/s """
 
+class CAN_BIT_TIMMING(Enum):
+    """ Baudrates. """
+    Baudrate_1M = 0
+    """ 1 Mbit/s """
+    Baudrate_500K = 2
+    """ 500 Kbit/s """
+    Baudrate_250K = 3
+    """ 250 Kbit/s """
+    Baudrate_125K = 4
+    """ 150 Kbit/s """
+    Baudrate_100K = 5
+    """ 100 Kbit/s """
+    Baudrate_50K = 6
+    """ 50 Kbit/s """
+
 
 class HearbeatThread(Thread):
     def __init__(self, parent, node):
@@ -79,6 +94,56 @@ class Network(object):
             except Exception as e:
                 print('Exception trying to connect: ', e)
 
+    def change_node_baudrate(self, target_node, vendor_id, product_code, rev_number, serial_number, new_node=None, new_baudrate=None):
+        print('\nSwitching slave into CONFIGURATION state...\n')
+
+        bool_result = False
+        try:
+            bool_result = self.__network.lss.send_switch_state_selective(
+                vendor_id,
+                product_code,
+                rev_number,
+                serial_number,
+            )
+        except Exception as e:
+            print('Exception: LSS Timeout. ', e)
+
+        if bool_result:
+            if new_baudrate:
+                self.__network.lss.configure_bit_timing(CAN_BIT_TIMMING[new_baudrate].value)
+                sleep(0.1)
+            if new_node:
+                self.__network.lss.configure_node_id(new_node)
+                sleep(0.1)
+            self.__network.lss.store_configuration()
+            sleep(0.1)
+            print('Stored new configuration')
+            self.__network.lss.send_switch_state_global(self.__network.lss.WAITING_STATE)
+        else:
+            return False
+
+        print('')
+        print('Reseting node. Baudrate will be applied after power cycle')
+        print('Set properly the baudrate of all the nodes before power cycling the devices')
+        self.__network.nodes[target_node].nmt.send_command(0x82)
+
+        # Wait until node is reset
+        sleep(0.5)
+
+        self.__network.scanner.reset()
+        self.__network.scanner.search()
+        sleep(0.5)
+
+        for node_id in self.__network.scanner.nodes:
+            print('>> Node found: ', node_id)
+            node = self.__network.add_node(node_id, self.__eds)
+
+        # Reset all nodes to default state
+        self.__network.lss.send_switch_state_global(self.__network.lss.WAITING_STATE)
+
+        self.__network.nodes[target_node].nmt.start_node_guarding(1)
+        return True
+
     def reset_network(self):
         try:
             self.__network.disconnect()
@@ -104,6 +169,7 @@ class Network(object):
 
     def scan(self, eds, dict):
         try:
+            self.__network.scanner.reset()
             self.__network.scanner.search()
             time.sleep(0.05)
             for node_id in self.__network.scanner.nodes:
@@ -136,12 +202,15 @@ class Network(object):
         return r
 
     def stop_heartbeat(self):
-        for node_id, node_obj in self.__network.nodes.items():
-            node_obj.nmt.stop_node_guarding()
-            if self.__heartbeat_thread is not None and self.__heartbeat_thread.is_alive():
-                self.__heartbeat_thread.activate_stop_flag()
-                self.__heartbeat_thread.join()
-                self.__heartbeat_thread = None
+        try:
+            for node_id, node_obj in self.__network.nodes.items():
+                node_obj.nmt.stop_node_guarding()
+        except Exception as e:
+            print('Could not stop node guarding. ', e)
+        if self.__heartbeat_thread is not None and self.__heartbeat_thread.is_alive():
+            self.__heartbeat_thread.activate_stop_flag()
+            self.__heartbeat_thread.join()
+            self.__heartbeat_thread = None
 
     def disconnect(self):
         try:
@@ -157,6 +226,10 @@ class Network(object):
     @servos.setter
     def servos(self, value):
         self.__servos = value
+
+    @property
+    def baudrate(self):
+        return self.__baudrate
 
     @property
     def _network(self):
