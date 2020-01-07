@@ -169,6 +169,7 @@ class Network(object):
 
     def scan(self, eds, dict):
         try:
+            self.__network.scanner.reset()
             self.__network.scanner.search()
             time.sleep(0.05)
             for node_id in self.__network.scanner.nodes:
