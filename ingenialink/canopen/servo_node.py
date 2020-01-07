@@ -11,6 +11,34 @@ from .._ingenialink import ffi, lib
 from .dictionary import DictionaryCANOpen
 from .registers import Register, REG_DTYPE, REG_ACCESS
 
+SERIAL_NUMBER = Register(
+    identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00", cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+)
+PRODUCT_CODE = Register(
+    identifier='', units='', subnode=1, idx="0x26E1", subidx="0x00", cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+)
+SOFTWARE_VERSION = Register(
+    identifier='', units='', subnode=1, idx="0x26E4", subidx="0x00", cyclic='CONFIG',
+    dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+)
+REVISION_NUMBER = Register(
+    identifier='', units='', subnode=1, idx="0x26E2", subidx="0x00", cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+)
+STATUS_WORD = Register(
+    identifier='', units='', subnode=1, idx="0x6041", subidx="0x00", cyclic='CYCLIC_TX',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+)
+CONTROL_WORD = Register(
+    identifier='', units='', subnode=1, idx="0x2010", subidx="0x00", cyclic='CYCLIC_RX',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+STORE_ALL = Register(
+    identifier='', units='', subnode=1, idx="0x26DB", subidx="0x00", cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+)
 
 class Servo(object):
     def __init__(self, net, node, dict):
@@ -21,17 +49,21 @@ class Servo(object):
         self.__state = lib.IL_SERVO_STATE_NRDY
         self.__observers = []
         self.__lock = threading.RLock()
+        self.__units_torque = None
+        self.__units_pos = None
+        self.__units_vel = None
+        self.__units_acc = None
         self.init_info()
 
     def init_info(self):
         name = "Drive"
-        serial_number = self.raw_read('SERIAL_NUMBER')
-        product_code = self.raw_read('PRODUCT_CODE')
-        sw_version = self.raw_read('SOFTWARE_VERSION')
-        revision_number = self.raw_read('REVISION_NUMBER')
+        serial_number = self.raw_read(SERIAL_NUMBER)
+        product_code = self.raw_read(PRODUCT_CODE)
+        sw_version = self.raw_read(SOFTWARE_VERSION)
+        revision_number = self.raw_read(REVISION_NUMBER)
         hw_variant = 'A'
         # Set the current state of servo
-        status_word = self.raw_read('STATUS_WORD')
+        status_word = self.raw_read(STATUS_WORD)
         self.state = self.status_word_decode(status_word)
         self.__info = {
             'serial': serial_number,
@@ -41,6 +73,12 @@ class Servo(object):
             'prod_code': product_code,
             'revision': revision_number
         }
+
+    def emcy_subscribe(self, callback):
+        pass
+
+    def emcy_unsubscribe(self, callback):
+        pass
 
     def get_reg(self, reg):
         if isinstance(reg, Register):
@@ -238,7 +276,7 @@ class Servo(object):
         """ Store all servo current parameters to the NVM. """
         r = 0
         try:
-            self.raw_write("STORE_ALL", 0x65766173)
+            self.raw_write(STORE_ALL, 0x65766173)
         except:
             r = -1
         return r
@@ -291,29 +329,29 @@ class Servo(object):
     def status_word_wait_change(self, status_word, timeout):
         r = 0
         start_time = int(round(time.time() * 1000))
-        actual_status_word = self.raw_read('STATUS_WORD')
+        actual_status_word = self.raw_read(STATUS_WORD)
         while actual_status_word == status_word:
             current_time = int(round(time.time() * 1000))
             time_diff = (current_time - start_time)
             if time_diff > timeout:
                 r = lib.IL_ETIMEDOUT
                 return r
-            actual_status_word = self.raw_read('STATUS_WORD')
+            actual_status_word = self.raw_read(STATUS_WORD)
         return r
 
     def fault_reset(self):
         r = 0
         retries = 0
-        status_word = self.raw_read('STATUS_WORD')
+        status_word = self.raw_read(STATUS_WORD)
         self.status_word_decode(status_word)
         while self.state.value == lib.IL_SERVO_STATE_FAULT or self.state.value == lib.IL_SERVO_STATE_FAULTR:
             # Check if faulty, if so try to reset (0->1)
             if retries == FAULT_RESET_RETRIES:
                 return lib.IL_ESTATE
 
-            status_word = self.raw_read('STATUS_WORD')
-            self.raw_write('CONTROL_WORD', 0)
-            self.raw_write('CONTROL_WORD', IL_MC_CW_FR)
+            status_word = self.raw_read(STATUS_WORD)
+            self.raw_write(CONTROL_WORD, 0)
+            self.raw_write(CONTROL_WORD, IL_MC_CW_FR)
             # Wait until statusword changes
             r = self.status_word_wait_change(status_word, PDS_TIMEOUT)
             if r < 0:
@@ -325,7 +363,7 @@ class Servo(object):
         """ Enable PDS. """
         r = 0
 
-        status_word = self.raw_read('STATUS_WORD')
+        status_word = self.raw_read(STATUS_WORD)
         self.status_word_decode(status_word)
 
         # Try fault reset if faulty
@@ -348,7 +386,7 @@ class Servo(object):
                 elif self.state.value == lib.IL_SERVO_STATE_RDY:
                     cmd = IL_MC_PDS_CMD_SOEO
 
-                self.raw_write('CONTROL_WORD', cmd)
+                self.raw_write(CONTROL_WORD, cmd)
 
                 # Wait for state change
                 r = self.status_word_wait_change(status_word, PDS_TIMEOUT)
@@ -356,14 +394,14 @@ class Servo(object):
                     return r
 
                 # Read the current status word
-                status_word = self.raw_read('STATUS_WORD')
+                status_word = self.raw_read(STATUS_WORD)
         raise_err(r)
 
     def disable(self):
         """ Disable PDS. """
         r = 0
 
-        status_word = self.raw_read('STATUS_WORD')
+        status_word = self.raw_read(STATUS_WORD)
         self.status_word_decode(status_word)
 
         while self.state.value != lib.IL_SERVO_STATE_DISABLED:
@@ -374,16 +412,16 @@ class Servo(object):
                 r = self.fault_reset()
                 if r < 0:
                     return r
-                status_word = self.raw_read('STATUS_WORD')
+                status_word = self.raw_read(STATUS_WORD)
             elif self.state.value != lib.IL_SERVO_STATE_DISABLED:
                 # Check state and command action to reach disabled
-                self.raw_write('CONTROL_WORD', IL_MC_PDS_CMD_DV)
+                self.raw_write(CONTROL_WORD, IL_MC_PDS_CMD_DV)
 
                 # Wait until statusword changes
                 r = self.status_word_wait_change(status_word, PDS_TIMEOUT)
                 if r < 0:
                     return r
-                status_word = self.raw_read('STATUS_WORD')
+                status_word = self.raw_read(STATUS_WORD)
         raise_err(r)
 
     @property
@@ -399,7 +437,7 @@ class Servo(object):
     @property
     def errors(self):
         """ dict: Errors. """
-        return self.__dict.errors
+        return self.__dict.errors.errors
 
     @property
     def info(self):
@@ -416,3 +454,39 @@ class Servo(object):
         self.__state = new_state
         for callback in self.__observers:
             callback(self.__state, None)
+
+    @property
+    def units_torque(self):
+        """ SERVO_UNITS_TORQUE: Torque units. """
+        return self.__units_torque
+
+    @units_torque.setter
+    def units_torque(self, units):
+        self.__units_torque = units
+
+    @property
+    def units_pos(self):
+        """ SERVO_UNITS_POS: Position units. """
+        return self.__units_pos
+
+    @units_pos.setter
+    def units_pos(self, units):
+        self.__units_pos = units
+
+    @property
+    def units_vel(self):
+        """ SERVO_UNITS_VEL: Velocity units. """
+        return self.__units_vel
+
+    @units_vel.setter
+    def units_vel(self, units):
+        self.__units_vel = units
+
+    @property
+    def units_acc(self):
+        """ SERVO_UNITS_ACC: Acceleration units. """
+        return self.__units_acc
+
+    @units_acc.setter
+    def units_acc(self, units):
+        self.__units_acc = units

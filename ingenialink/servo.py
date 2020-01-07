@@ -932,4 +932,3 @@ class Servo(object):
         self.net.disturbance_channel_data(0, dtype, data_arr[actual_pos: actual_pos + actual_size])
         self.net.disturbance_data_size = actual_size * 4
         self.write(DIST_DATA, actual_size * 4, False, 1)
-
