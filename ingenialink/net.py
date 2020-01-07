@@ -17,8 +17,10 @@ class NET_PROT(Enum):
     """ MCB. """
     ETH = lib.IL_NET_PROT_ETH
     """ ETH. """
+    ECAT = lib.IL_NET_PROT_ECAT
+    """ ECAT. """
     CAN = 5
-
+    """ CAN. """
 
 class NET_STATE(Enum):
     """ Network State. """
