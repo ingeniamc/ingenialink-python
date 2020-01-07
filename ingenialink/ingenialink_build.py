@@ -173,7 +173,7 @@ def _get_libs():
     elif sys.platform == 'darwin':
         libs.extend(['pthread'])
     elif sys.platform == 'win32':
-        libs.extend(['user32', 'setupapi', 'advapi32','ws2_32', 'winmm', 'gdi32', 'dxguid'])
+        libs.extend(['user32', 'setupapi', 'advapi32', 'wpcap', 'ws2_32', 'winmm', 'gdi32', 'dxguid'])
 
     return libs
 
