@@ -6,6 +6,8 @@ from ._utils import cstr, pstr, raise_null, raise_err
 from .registers import Register, REG_DTYPE
 from .dict_labels import LabelsDictionary
 
+import xml.etree.ElementTree as ET
+
 
 class SubCategories(object):
     """Sub-categories.
@@ -154,9 +156,11 @@ class Dictionary(object):
         dict_ = lib.il_dict_create(cstr(dict_f))
         raise_null(dict_)
 
+        # Dictionary version
         self._dict = ffi.gc(dict_, lib.il_dict_destroy)
 
-        # self._rdict = RegistersDictionary(self._dict)
+        self._version = lib.il_dict_version_get(dict_)
+
         self._rdict_0 = RegistersDictionary(self._dict, 0)
         self._rdict_1 = RegistersDictionary(self._dict, 1)
         self._rdict_2 = RegistersDictionary(self._dict, 2)
@@ -169,13 +173,17 @@ class Dictionary(object):
         inst = cls.__new__(cls)
         inst._dict = dict_
 
-        # inst._rdict = RegistersDictionary(inst._dict)
+        inst._version = lib.il_dict_version_get(inst._dict)
+
         inst._rdict_0 = RegistersDictionary(inst._dict, 0)
         inst._rdict_1 = RegistersDictionary(inst._dict, 1)
         inst._rdict_2 = RegistersDictionary(inst._dict, 2)
         inst._cats = Categories(inst._dict)
 
         return inst
+
+    def version_get(self, dict_):
+        return lib.il_dict_version_get(dict_)
 
     def save(self, fname):
         """Save dictionary.
@@ -239,3 +247,8 @@ class Dictionary(object):
     def cats(self):
         """Categories: Categories."""
         return self._cats
+
+    @property
+    def version(self):
+        """Version: Version."""
+        return pstr(self._version)

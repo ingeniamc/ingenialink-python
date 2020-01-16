@@ -61,7 +61,7 @@ class REG_PHY(Enum):
     """ Radians. """
 
 
-def _get_reg_id(reg, subnode):
+def _get_reg_id(reg, subnode=1):
     """ Obtain Register and ID.
 
         Args:
