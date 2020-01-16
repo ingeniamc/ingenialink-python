@@ -678,10 +678,10 @@ class Servo(object):
     def units_acc(self, units):
         lib.il_servo_units_acc_set(self._servo, units.value)
 
-    def disable(self):
+    def disable(self, subnode=1):
         """ Disable PDS. """
 
-        r = lib.il_servo_disable(self._servo)
+        r = lib.il_servo_disable(self._servo, subnode)
         raise_err(r)
 
     def switch_on(self, timeout=2.):
@@ -698,20 +698,20 @@ class Servo(object):
         r = lib.il_servo_switch_on(self._servo, to_ms(timeout))
         raise_err(r)
 
-    def enable(self, timeout=2.):
+    def enable(self, timeout=2., subnode=1):
         """ Enable PDS.
 
             Args:
                 timeout (int, float, optional): Timeout (s).
         """
 
-        r = lib.il_servo_enable(self._servo, to_ms(timeout))
+        r = lib.il_servo_enable(self._servo, to_ms(timeout), subnode)
         raise_err(r)
 
-    def fault_reset(self):
+    def fault_reset(self, subnode=1):
         """ Fault reset. """
 
-        r = lib.il_servo_fault_reset(self._servo)
+        r = lib.il_servo_fault_reset(self._servo, subnode)
         raise_err(r)
 
     @property
