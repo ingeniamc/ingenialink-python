@@ -164,6 +164,7 @@ class Dictionary(object):
         self._rdict_0 = RegistersDictionary(self._dict, 0)
         self._rdict_1 = RegistersDictionary(self._dict, 1)
         self._rdict_2 = RegistersDictionary(self._dict, 2)
+        self._rdict_3 = RegistersDictionary(self._dict, 3)
         self._cats = Categories(self._dict)
 
     @classmethod
@@ -178,6 +179,7 @@ class Dictionary(object):
         inst._rdict_0 = RegistersDictionary(inst._dict, 0)
         inst._rdict_1 = RegistersDictionary(inst._dict, 1)
         inst._rdict_2 = RegistersDictionary(inst._dict, 2)
+        inst._rdict_3 = RegistersDictionary(inst._dict, 3)
         inst._cats = Categories(inst._dict)
 
         return inst
@@ -200,8 +202,10 @@ class Dictionary(object):
             return self._rdict_0
         elif subnode == 1:
             return self._rdict_1
-        else:
+        elif subnode == 2:
             return self._rdict_2
+        else:
+            return self._rdict_3
 
     # @property
     # def regs(self):

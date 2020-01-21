@@ -185,7 +185,7 @@ ffibuilder.cdef(
                                     const char *port);
     extern "Python" void _on_state_change_cb(void *ctx,
                                              il_servo_state_t state,
-                                             int flags);
+                                             int flags, uint8_t subnode);
     extern "Python" void _on_emcy_cb(void *ctx, uint32_t code);
 ''')
 

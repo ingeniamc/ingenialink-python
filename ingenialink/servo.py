@@ -212,11 +212,11 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23):
 
 
 @ffi.def_extern()
-def _on_state_change_cb(ctx, state, flags):
+def _on_state_change_cb(ctx, state, flags, subnode):
     """ On state change callback shim. """
 
     cb = ffi.from_handle(ctx)
-    cb(SERVO_STATE(state), flags)
+    cb(SERVO_STATE(state), flags, subnode)
 
 
 @ffi.def_extern()
