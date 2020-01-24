@@ -317,14 +317,13 @@ class Servo(object):
         r = lib.il_servo_reset(self._servo)
         raise_err(r)
 
-    @property
-    def state(self):
+    def get_state(self, subnode=1):
         """ tuple: Servo state and state flags. """
 
         state = ffi.new('il_servo_state_t *')
         flags = ffi.new('int *')
 
-        lib.il_servo_state_get(self._servo, state, flags)
+        lib.il_servo_state_get(self._servo, state, flags, subnode)
 
         return SERVO_STATE(state[0]), flags[0]
 
