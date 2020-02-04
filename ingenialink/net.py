@@ -86,7 +86,7 @@ def update_firmware(ifname, filename):
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
     filename = cstr(filename) if filename else ffi.NULL
-    return lib.il_net_update_firmware(net__, ifname, 1, filename)
+    return net__, lib.il_net_update_firmware(net__, ifname, 1, filename)
 
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
