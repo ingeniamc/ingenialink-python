@@ -46,7 +46,7 @@ def basic_motion(args):
         # Set Operation Mode
         servo.write('DRV_OP_CMD', op_mode)
 
-        # Generate an slow sine wave
+        # Generate an slow sine wave of 10 seconds
         time = np.arange(0, 10, sampling_time)
         amplitude = np.sin(time)
         print("Amplitude: ", amplitude)
