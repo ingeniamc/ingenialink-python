@@ -48,7 +48,6 @@ def basic_motion(args):
         amplitude = np.sin(time)
         print("Amplitude: ", amplitude)
 
-
         # Enable motor
         try:
             servo.enable()
@@ -56,17 +55,17 @@ def basic_motion(args):
             print("Cannot enable the motor")
             return -2
 
-
-
         # Start reading thread
         thread = threading.Thread(target=read_thread, args=(servo,))
         thread.start()
 
+        # Send the generated targets
         for value in amplitude:
             print("Target demanded: ", value*multiplier)
             servo.write(target_reg_id, int(value*multiplier))
-            sleep(1)
+            sleep(0.1)
 
+        # Stop the reading thread
         global stop_thread
         stop_thread = True
         thread.join()
@@ -86,6 +85,6 @@ if __name__ == '__main__':
     parser.add_argument('--ip', metavar="", type=str, help='the ip of the drive. 192.168.2.22 by default',
                         default='192.168.2.22')
     parser.add_argument('--op', metavar="", type=str, help='Operation mode to use [CSP, CSV]',
-                        default='CSP')
+                        default='CSV')
     args = parser.parse_args()
     basic_motion(args)
