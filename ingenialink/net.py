@@ -17,8 +17,10 @@ class NET_PROT(Enum):
     """ MCB. """
     ETH = lib.IL_NET_PROT_ETH
     """ ETH. """
+    ECAT = lib.IL_NET_PROT_ECAT
+    """ ECAT. """
     CAN = 5
-
+    """ CAN. """
 
 class NET_STATE(Enum):
     """ Network State. """
@@ -39,6 +41,23 @@ class NET_DEV_EVT(Enum):
     REMOVED = lib.IL_NET_DEV_EVT_REMOVED
     """ Event. """
 
+class EEPROM_TOOL_MODE(Enum):
+    """ EEPROM tool mode. """
+
+    MODE_NONE = 0
+    """ None. """
+    MODE_READBIN = 1
+    """ Read Binary. """
+    MODE_READINTEL = 2
+    """ Read Intelhex. """
+    MODE_WRITEBIN = 3
+    """ Write Binary. """
+    MODE_WRITEINTEL = 4
+    """ Write Intelhex. """
+    MODE_WRITEALIAS = 5
+    """ Write Alias. """
+    MODE_INFO = 6
+    """ Information. """
 
 def devices(prot):
     """ Obtain a list of network devices.
@@ -69,20 +88,34 @@ def devices(prot):
 
     return found
 
-def master_startup(ifname):
+
+def eeprom_tool(ifname, mode, filename):
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
-    return lib.il_net_master_startup(net__, ifname), net__
+    filename = cstr(filename) if filename else ffi.NULL
+
+    return lib.il_net_eeprom_tool(net__, ifname, 1, mode.value, filename)
+
+
+def master_startup(ifname, if_address_ip):
+    net__ = ffi.new('il_net_t **')
+    ifname = cstr(ifname) if ifname else ffi.NULL
+    if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
+
+    return lib.il_net_master_startup(net__, ifname, if_address_ip), net__
+
 
 def master_stop(net):
     # net__ = ffi.new('il_net_t **')
     return lib.il_net_master_stop(net)
 
+
 def update_firmware(ifname, filename):
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
     filename = cstr(filename) if filename else ffi.NULL
-    return lib.il_net_update_firmware(net__, ifname, 1, filename)
+    return net__, lib.il_net_update_firmware(net__, ifname, 1, filename)
+
 
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
