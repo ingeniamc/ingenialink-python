@@ -59,6 +59,14 @@ class EEPROM_TOOL_MODE(Enum):
     MODE_INFO = 6
     """ Information. """
 
+class NET_TRANS_PROT(Enum):
+    """ Protocol. """
+
+    TCP = 1
+    """ TCP. """
+    UDP = 2
+    """ UDP. """
+
 def devices(prot):
     """ Obtain a list of network devices.
 

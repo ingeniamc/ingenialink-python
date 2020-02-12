@@ -175,7 +175,7 @@ def servo_is_connected(address_ip):
     address_ip = cstr(address_ip) if address_ip else ffi.NULL
     return lib.il_servo_is_connected(net__, address_ip)
 
-def lucky(prot, dict_f=None, address_ip=None, port_ip=23):
+def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     """ Obtain an instance of the first available Servo.
 
         Args:
@@ -195,7 +195,7 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23):
     address_ip = cstr(address_ip) if address_ip else ffi.NULL
 
     if prot.value == 2:
-        r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f, address_ip, port_ip)
+        r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f, address_ip, port_ip, protocol)
     else:
         r = lib.il_servo_lucky(prot.value, net__, servo__, dict_f)
     raise_err(r)
