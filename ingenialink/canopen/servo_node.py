@@ -239,7 +239,7 @@ class Servo(object):
         """Read all dictionary registers content and put it to the dictionary
         storage."""
 
-        with open(self.__dict.dict, 'r+') as xml_file:
+        with open(self.__dict.dict, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
