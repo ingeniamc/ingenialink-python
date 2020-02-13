@@ -224,7 +224,7 @@ def connect_ecat(_net, dict_f, address_ip):
     servo = Servo._from_existing(servo_, dict_f)
     servo.net = net
 
-    return servo
+    return servo, net
 
 @ffi.def_extern()
 def _on_state_change_cb(ctx, state, flags):
