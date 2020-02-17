@@ -535,6 +535,20 @@ class Servo(object):
         else:
             return v[0]
 
+    def get_reg(self, reg, subnode):
+        _reg = ffi.NULL
+        _id = ffi.NULL
+        if isinstance(reg, Register):
+            _reg = reg._reg
+        elif isinstance(reg, str):
+            _dict = self.dict
+            if not _dict:
+                raise ValueError('No dictionary loaded')
+            _reg = _dict.get_regs(subnode)[reg]._reg
+        else:
+            raise TypeError('Invalid register')
+        return _reg, _id
+
     def read(self, reg, subnode=1):
         """ Read from servo.
 
@@ -548,7 +562,7 @@ class Servo(object):
                 TypeError: If the register type is not valid.
         """
 
-        _reg, _id = _get_reg_id(reg, subnode)
+        _reg, _id = self.get_reg(reg, subnode)
 
         v = ffi.new('double *')
         r = lib.il_servo_read(self._servo, _reg, _id, v)
@@ -611,8 +625,7 @@ class Servo(object):
                 TypeError: If any of the arguments type is not valid or
                     unsupported.
         """
-
-        _reg, _id = _get_reg_id(reg, subnode)
+        _reg, _id = self.get_reg(reg, subnode)
 
         r = lib.il_servo_write(self._servo, _reg, _id, data, confirm, extended)
         raise_err(r)
