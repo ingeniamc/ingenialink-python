@@ -7,6 +7,7 @@ import numpy as np
 from .registers import REG_DTYPE
 
 
+
 class NET_PROT(Enum):
     """ Network Protocol. """
 
@@ -16,9 +17,10 @@ class NET_PROT(Enum):
     """ MCB. """
     ETH = lib.IL_NET_PROT_ETH
     """ ETH. """
-    VIRTUAL = lib.IL_NET_PROT_VIRTUAL
-    """ VIRTUAL. """
-
+    ECAT = lib.IL_NET_PROT_ECAT
+    """ ECAT. """
+    CAN = 5
+    """ CAN. """
 
 class NET_STATE(Enum):
     """ Network State. """
@@ -39,6 +41,31 @@ class NET_DEV_EVT(Enum):
     REMOVED = lib.IL_NET_DEV_EVT_REMOVED
     """ Event. """
 
+class EEPROM_TOOL_MODE(Enum):
+    """ EEPROM tool mode. """
+
+    MODE_NONE = 0
+    """ None. """
+    MODE_READBIN = 1
+    """ Read Binary. """
+    MODE_READINTEL = 2
+    """ Read Intelhex. """
+    MODE_WRITEBIN = 3
+    """ Write Binary. """
+    MODE_WRITEINTEL = 4
+    """ Write Intelhex. """
+    MODE_WRITEALIAS = 5
+    """ Write Alias. """
+    MODE_INFO = 6
+    """ Information. """
+
+class NET_TRANS_PROT(Enum):
+    """ Protocol. """
+
+    TCP = 1
+    """ TCP. """
+    UDP = 2
+    """ UDP. """
 
 def devices(prot):
     """ Obtain a list of network devices.
@@ -70,6 +97,34 @@ def devices(prot):
     return found
 
 
+def eeprom_tool(ifname, mode, filename):
+    net__ = ffi.new('il_net_t **')
+    ifname = cstr(ifname) if ifname else ffi.NULL
+    filename = cstr(filename) if filename else ffi.NULL
+
+    return lib.il_net_eeprom_tool(net__, ifname, 1, mode.value, filename)
+
+
+def master_startup(ifname, if_address_ip):
+    net__ = ffi.new('il_net_t **')
+    ifname = cstr(ifname) if ifname else ffi.NULL
+    if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
+
+    return lib.il_net_master_startup(net__, ifname, if_address_ip), net__
+
+
+def master_stop(net):
+    # net__ = ffi.new('il_net_t **')
+    return lib.il_net_master_stop(net)
+
+
+def update_firmware(ifname, filename):
+    net__ = ffi.new('il_net_t **')
+    ifname = cstr(ifname) if ifname else ffi.NULL
+    filename = cstr(filename) if filename else ffi.NULL
+    return net__, lib.il_net_update_firmware(net__, ifname, 1, filename)
+
+
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
     """ On found callback shim. """
@@ -91,7 +146,6 @@ class Network(object):
             TypeError: If the protocol type is invalid.
             ILCreationError: If the network cannot be created.
     """
-
     def __init__(self, prot, port, timeout_rd=0.5, timeout_wr=0.5):
         if not isinstance(prot, NET_PROT):
             raise TypeError('Invalid protocol')
@@ -108,7 +162,6 @@ class Network(object):
         raise_null(self._net)
         # self._net = ffi.gc(self._net, lib.il_net_destroy)
 
-
     @classmethod
     def _from_existing(cls, net):
         """ Create a new class instance from an existing network. """
@@ -117,6 +170,16 @@ class Network(object):
         inst._net = ffi.gc(net, lib.il_net_fake_destroy)
 
         return inst
+
+    def master_startup(self, ifname):
+        net__ = ffi.new('il_net_t **')
+        ifname = cstr(ifname) if ifname else ffi.NULL
+        slaves_count = lib.il_net_master_startup(net__, ifname)
+        return slaves_count, net__
+
+    def master_stop(self):
+        net__ = ffi.new('il_net_t **')
+        return lib.il_net_master_stop(net__)
 
     def monitoring_channel_data(self, channel, dtype):
         data_arr = []

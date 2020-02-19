@@ -8,7 +8,10 @@ from .poller import Poller
 from .registers import Register, REG_DTYPE, REG_ACCESS, REG_PHY
 from .dict_ import Dictionary
 from .dict_labels import LabelsDictionary
-
+# from .canopen import *
+from .canopen.servo_node import Servo as CANOpenServo
+from .canopen.net import Network as CANOpenNetwork
+from .canopen.poller_node import Poller as CANOpenPoller
 
 __all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
            'NET_STATE',
@@ -19,7 +22,9 @@ __all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
            'Poller',
            'Register', 'REG_DTYPE', 'REG_ACCESS', 'REG_PHY',
            'Dictionary',
-           'LabelsDictionary']
+           'LabelsDictionary',
+           'CANOpenNetwork', 'CAN_DEVICE', 'CANOpenPoller', 'CANOpenServo']
+
+__version__ = '4.2.1.dev0'
 
 
-__version__ = '4.2.0.dev0'

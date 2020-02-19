@@ -175,7 +175,7 @@ def servo_is_connected(address_ip):
     address_ip = cstr(address_ip) if address_ip else ffi.NULL
     return lib.il_servo_is_connected(net__, address_ip)
 
-def lucky(prot, dict_f=None, address_ip=None, port_ip=23):
+def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     """ Obtain an instance of the first available Servo.
 
         Args:
@@ -195,7 +195,7 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23):
     address_ip = cstr(address_ip) if address_ip else ffi.NULL
 
     if prot.value == 2:
-        r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f, address_ip, port_ip)
+        r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f, address_ip, port_ip, protocol)
     else:
         r = lib.il_servo_lucky(prot.value, net__, servo__, dict_f)
     raise_err(r)
@@ -209,7 +209,24 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23):
 
     return net, servo
 
+def connect_ecat(_net, dict_f, address_ip):
+    servo__ = ffi.new('il_servo_t **')
+    dict_f = cstr(dict_f) if dict_f else ffi.NULL
+    address_ip = cstr(address_ip) if address_ip else ffi.NULL
+    r = None
+    r = lib.il_servo_connect_ecat(3, _net, servo__, dict_f, address_ip, 1061)
+    if r < 0:
+        servo = None
+        net = None
+    else:
+        net_ = ffi.cast('il_net_t *', _net[0])
+        servo_ = ffi.cast('il_servo_t *', servo__[0])
 
+        net = Network._from_existing(net_)
+        servo = Servo._from_existing(servo_, dict_f)
+        servo.net = net
+
+    return servo, net
 
 @ffi.def_extern()
 def _on_state_change_cb(ctx, state, flags, subnode):
@@ -403,6 +420,10 @@ class Servo(object):
     def net(self, value):
         self._net = value
 
+    @property
+    def subnodes(self):
+        """ SUBNODES: Number of subnodes. """
+        return int(ffi.cast('int', lib.il_servo_subnodes_get(self._servo)))
 
     @property
     def dict(self):
