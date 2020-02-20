@@ -261,7 +261,7 @@ class Servo(object):
 
     def dict_storage_write(self, path):
         """Write current dictionary storage to the servo drive."""
-        with open(path, 'r+') as xml_file:
+        with open(path, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
