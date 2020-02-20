@@ -160,11 +160,12 @@ class Dictionary(object):
         self._dict = ffi.gc(dict_, lib.il_dict_destroy)
 
         self._version = lib.il_dict_version_get(dict_)
+        self._subnodes = lib.il_dict_subnodes_get(dict_)
 
-        self._rdict_0 = RegistersDictionary(self._dict, 0)
-        self._rdict_1 = RegistersDictionary(self._dict, 1)
-        self._rdict_2 = RegistersDictionary(self._dict, 2)
-        self._rdict_3 = RegistersDictionary(self._dict, 3)
+        self._rdicts = []
+        for subnode in range(0, self._subnodes):
+            rdict = RegistersDictionary(self._dict, subnode)
+            self._rdicts.append(rdict)
         self._cats = Categories(self._dict)
 
     @classmethod
@@ -175,11 +176,12 @@ class Dictionary(object):
         inst._dict = dict_
 
         inst._version = lib.il_dict_version_get(inst._dict)
+        inst._subnodes = lib.il_dict_subnodes_get(inst._dict)
 
-        inst._rdict_0 = RegistersDictionary(inst._dict, 0)
-        inst._rdict_1 = RegistersDictionary(inst._dict, 1)
-        inst._rdict_2 = RegistersDictionary(inst._dict, 2)
-        inst._rdict_3 = RegistersDictionary(inst._dict, 3)
+        inst._rdicts = []
+        for subnode in range(0, inst._subnodes):
+            rdict = RegistersDictionary(inst._dict, subnode)
+            inst._rdicts.append(rdict)
         inst._cats = Categories(inst._dict)
 
         return inst
@@ -198,14 +200,8 @@ class Dictionary(object):
         raise_err(r)
 
     def get_regs(self, subnode):
-        if subnode == 0:
-            return self._rdict_0
-        elif subnode == 1:
-            return self._rdict_1
-        elif subnode == 2:
-            return self._rdict_2
-        else:
-            return self._rdict_3
+        if subnode < self._subnodes:
+            return self._rdicts[subnode]
 
     # @property
     # def regs(self):
@@ -256,3 +252,8 @@ class Dictionary(object):
     def version(self):
         """Version: Version."""
         return pstr(self._version)
+
+    @property
+    def subnodes(self):
+        """Subnodes: Subnodes."""
+        return self._subnodes
