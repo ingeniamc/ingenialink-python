@@ -424,6 +424,9 @@ class Servo(object):
                 status_word = self.raw_read(STATUS_WORD)
         raise_err(r)
 
+    def get_state(self, subnode=1):
+        return self.__state, None
+
     @property
     def dict(self):
         """ Dictionary: Dictionary. """
