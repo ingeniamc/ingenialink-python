@@ -208,6 +208,9 @@ class DictionaryCANOpen(object):
         # Closing xml file
         xml_file.close()
 
+    def get_regs(self, subnode):
+        return self.__regs
+
     @property
     def dict(self):
         return self.__dict
