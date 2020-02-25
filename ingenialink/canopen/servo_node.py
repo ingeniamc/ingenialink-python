@@ -493,3 +493,8 @@ class Servo(object):
     @units_acc.setter
     def units_acc(self, units):
         self.__units_acc = units
+
+    @property
+    def subnodes(self):
+        """ SUBNODES: Number of subnodes. """
+        return 1
