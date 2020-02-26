@@ -75,7 +75,7 @@ class Errors(object):
 class DictionaryCANOpen(object):
     def __init__(self, dict):
         self.__dict = dict
-        self.__regs = {}
+        self.__regs = [{}, {}]
         self.__version = '1'
         self._cats = None
         self.read_dictionary()
@@ -200,7 +200,7 @@ class DictionaryCANOpen(object):
                 reg = Register(identifier, units, cyclic, idx, subidx, dtype, access, subnode=subnode, storage=storage,
                                range=range, labels=labels, enums=enums, enums_count=len(enums), cat_id=cat_id,
                                internal_use=internal_use)
-                self.__regs[identifier] = reg
+                self.__regs[int(subnode)][identifier] = reg
             except:
                 # print("FAIL reading a register "+ identifier)
                 pass
@@ -209,7 +209,7 @@ class DictionaryCANOpen(object):
         xml_file.close()
 
     def get_regs(self, subnode):
-        return self.__regs
+        return self.__regs[subnode]
 
     @property
     def dict(self):

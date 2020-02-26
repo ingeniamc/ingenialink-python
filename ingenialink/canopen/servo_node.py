@@ -80,16 +80,16 @@ class Servo(object):
     def emcy_unsubscribe(self, callback):
         pass
 
-    def get_reg(self, reg):
+    def get_reg(self, reg, subnode=1):
         if isinstance(reg, Register):
             _reg = reg
         elif isinstance(reg, str):
             _dict = self.__dict
             if not _dict:
                 raise ValueError('No dictionary loaded')
-            if reg not in _dict.regs:
+            if reg not in _dict.regs[subnode]:
                 raise TypeError('Invalid register')
-            _reg = _dict.regs[reg]
+            _reg = _dict.regs[subnode][reg]
         else:
             raise TypeError('Invalid register')
         return _reg
@@ -106,7 +106,7 @@ class Servo(object):
             Raises:
                 TypeError: If the register type is not valid.
         """
-        _reg = self.get_reg(reg)
+        _reg = self.get_reg(reg, subnode)
 
         access = _reg.access
         if access == REG_ACCESS.WO:
@@ -186,7 +186,7 @@ class Servo(object):
                     unsupported.
         """
 
-        _reg = self.get_reg(reg)
+        _reg = self.get_reg(reg, subnode)
 
         if _reg.access == REG_ACCESS.RO:
             raise TypeError('Register is Read-only')
