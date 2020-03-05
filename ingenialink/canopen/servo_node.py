@@ -146,7 +146,7 @@ class Servo(object):
                 )
         except Exception as e:
             print(_reg.identifier + " : " + str(e))
-            error_raised = BaseException("Read error")
+            error_raised = Exception("Read error")
         finally:
             self.__lock.release()
 
@@ -221,7 +221,7 @@ class Servo(object):
                                          data.to_bytes(bytes_length, byteorder='little', signed=signed))
         except Exception as e:
             print(_reg.identifier + " : " + str(e))
-            error_raised = BaseException("Write error")
+            error_raised = Exception("Write error")
         finally:
             self.__lock.release()
 
