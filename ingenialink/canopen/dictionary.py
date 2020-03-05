@@ -75,15 +75,24 @@ class Errors(object):
 class DictionaryCANOpen(object):
     def __init__(self, dict):
         self.__dict = dict
-        self.__regs = [{}, {}]
         self.__version = '1'
         self._cats = None
+        self.__subnodes = 2
+        self.__regs = []
         self.read_dictionary()
 
     def read_dictionary(self):
         with open(self.__dict, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
+
+        # Subnodes
+        if root.findall('./Body/Device/Axes/'):
+            self.__subnodes = len(root.findall('./Body/Device/Axes/Axis'))
+
+        for subnode in range(0, self.__subnodes):
+            self.__regs.append({})
+
         # Categories
         self._cats = Categories(self.__dict)
 
@@ -95,118 +104,128 @@ class DictionaryCANOpen(object):
         if version_node is not None:
             self.__version = version_node.text
 
-        # Registers
-        for element in root.findall('./Body/Device/Registers/Register'):
-            try:
-                # Identifier
-                identifier = element.attrib['id']
-
-                # Units
-                units = element.attrib['units']
-
-                # Cyclic
-                if 'cyclic' in element.attrib:
-                    cyclic = element.attrib['cyclic']
-                else:
-                    cyclic = "CONFIG"
-
-                idx = element.attrib['address'][:6]
-                subidx = "0x" + element.attrib['address'][-2:]
-
-                # Data type
-                dtype = element.attrib['dtype']
-                if dtype == "u32":
-                    dtype = REG_DTYPE.U32
-                elif dtype == "float":
-                    dtype = REG_DTYPE.FLOAT
-                elif dtype == "u16":
-                    dtype = REG_DTYPE.U16
-                elif dtype == "s32":
-                    dtype = REG_DTYPE.S32
-                elif dtype == "s16":
-                    dtype = REG_DTYPE.S16
-                elif dtype == "str":
-                    dtype = REG_DTYPE.STR
-                else:
-                    raise Exception
-
-                # Access
-                access = element.attrib['access']
-                if access == "r":
-                    access = REG_ACCESS.RO
-                elif access == "w":
-                    access = REG_ACCESS.WO
-                elif access == "rw":
-                    access = REG_ACCESS.RW
-                else:
-                    raise Exception
-
-                # Subnode
-                if 'subnode' in element.attrib:
-                    subnode = element.attrib['subnode']
-                else:
-                    subnode = 1
-
-                # Storage
-                if 'storage' in element.attrib:
-                    storage = element.attrib['storage']
-                else:
-                    storage = None
-
-                if 'cat_id' in element.attrib:
-                    cat_id = element.attrib['cat_id']
-                else:
-                    cat_id = None
-
-                if 'internal_use' in element.attrib:
-                    internal_use = element.attrib['internal_use']
-                else:
-                    internal_use = 0
-
-                # Children
-                labels_elem = None
-                range_elem = None
-                enums_elem = None
-                for child in element.getchildren():
-                    if child.tag == 'Labels':
-                        labels_elem = child
-                    elif child.tag == 'Range':
-                        range_elem = child
-                    elif child.tag == 'Enumerations':
-                        enums_elem = child
-
-                # Labels
-                labels = {}
-                if labels_elem:
-                    for label in labels_elem.getchildren():
-                        labels[label.attrib['lang']] = label.text
-
-                # Range
-                range = (None, None)
-                if range_elem:
-                    range_min = range_elem.attrib['min']
-                    range_max = range_elem.attrib['max']
-                    range = (range_min, range_max)
-
-                # Enumerations
-                enums = []
-                if enums_elem:
-                    for enum in enums_elem.getchildren():
-                        enums.append({enum.attrib['value']: enum.text})
-
-                # (self, identifier, units, cyclic, idx, subidx, dtype, access, phy=REG_PHY.NONE, subnode=1, storage=None,
-                #                  range=None, labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None, internal_use=0)
-
-                reg = Register(identifier, units, cyclic, idx, subidx, dtype, access, subnode=subnode, storage=storage,
-                               range=range, labels=labels, enums=enums, enums_count=len(enums), cat_id=cat_id,
-                               internal_use=internal_use)
-                self.__regs[int(subnode)][identifier] = reg
-            except:
-                # print("FAIL reading a register "+ identifier)
-                pass
+        if root.findall('./Body/Device/Axes/'):
+            # For each axis
+            for axis in root.findall('./Body/Device/Axes/Axis/Registers'):
+                for register in axis.getchildren():
+                    self.read_register(register)
+        else:
+            for register in root.findall('./Body/Device/Registers/Register'):
+                self.read_register(register)
 
         # Closing xml file
         xml_file.close()
+
+    def read_register(self, register):
+        try:
+            # Identifier
+            identifier = register.attrib['id']
+
+            # Units
+            units = register.attrib['units']
+
+            # Cyclic
+            if 'cyclic' in register.attrib:
+                cyclic = register.attrib['cyclic']
+            else:
+                cyclic = "CONFIG"
+
+            idx = register.attrib['address'][:6]
+            subidx = "0x" + register.attrib['address'][-2:]
+
+            # Data type
+            dtype = register.attrib['dtype']
+            if dtype == "float":
+                dtype = REG_DTYPE.FLOAT
+            elif dtype == "s8":
+                dtype = REG_DTYPE.S8
+            elif dtype == "u8":
+                dtype = REG_DTYPE.U8
+            elif dtype == "u16":
+                dtype = REG_DTYPE.U16
+            elif dtype == "s16":
+                dtype = REG_DTYPE.S16
+            elif dtype == "s32":
+                dtype = REG_DTYPE.S32
+            elif dtype == "u32":
+                dtype = REG_DTYPE.U32
+            elif dtype == "str":
+                dtype = REG_DTYPE.STR
+            else:
+                raise Exception
+
+            # Access
+            access = register.attrib['access']
+            if access == "r":
+                access = REG_ACCESS.RO
+            elif access == "w":
+                access = REG_ACCESS.WO
+            elif access == "rw":
+                access = REG_ACCESS.RW
+            else:
+                raise Exception
+
+            # Subnode
+            if 'subnode' in register.attrib:
+                subnode = register.attrib['subnode']
+            else:
+                subnode = 1
+
+            # Storage
+            if 'storage' in register.attrib:
+                storage = register.attrib['storage']
+            else:
+                storage = None
+
+            if 'cat_id' in register.attrib:
+                cat_id = register.attrib['cat_id']
+            else:
+                cat_id = None
+
+            if 'internal_use' in register.attrib:
+                internal_use = register.attrib['internal_use']
+            else:
+                internal_use = 0
+
+            # Children
+            labels_elem = None
+            range_elem = None
+            enums_elem = None
+            for child in register.getchildren():
+                if child.tag == 'Labels':
+                    labels_elem = child
+                elif child.tag == 'Range':
+                    range_elem = child
+                elif child.tag == 'Enumerations':
+                    enums_elem = child
+
+            # Labels
+            labels = {}
+            if labels_elem:
+                for label in labels_elem.getchildren():
+                    labels[label.attrib['lang']] = label.text
+
+            # Range
+            reg_range = (None, None)
+            if range_elem:
+                range_min = range_elem.attrib['min']
+                range_max = range_elem.attrib['max']
+                reg_range = (range_min, range_max)
+
+            # Enumerations
+            enums = []
+            if enums_elem:
+                for enum in enums_elem.getchildren():
+                    enums.append({enum.attrib['value']: enum.text})
+
+            reg = Register(identifier, units, cyclic, idx, subidx, dtype, access, subnode=subnode,
+                           storage=storage,
+                           range=reg_range, labels=labels, enums=enums, enums_count=len(enums), cat_id=cat_id,
+                           internal_use=internal_use)
+            self.__regs[int(subnode)][identifier] = reg
+        except:
+            # print("FAIL reading a register "+ identifier)
+            pass
 
     def get_regs(self, subnode):
         return self.__regs[subnode]
@@ -222,6 +241,10 @@ class DictionaryCANOpen(object):
     @property
     def regs(self):
         return self.__regs
+
+    @property
+    def subnodes(self):
+        return self.__subnodes
 
     @regs.setter
     def regs(self, value):

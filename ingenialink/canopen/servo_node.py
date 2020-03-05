@@ -167,10 +167,10 @@ class Servo(object):
             Raises:
                 TypeError: If the register type is not valid.
         """
-        return self.raw_read(reg)
+        return self.raw_read(reg, subnode=subnode)
 
     def write(self, reg, data, confirm=True, extended=0, subnode=1):
-        return self.raw_write(reg, data, confirm=True, extended=0)
+        return self.raw_write(reg, data, confirm=True, extended=0, subnode=subnode)
 
     def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
         """ Raw write to servo.
@@ -246,11 +246,12 @@ class Servo(object):
         for element in root.findall('./Body/Device/Registers/Register'):
             try:
                 if element.attrib['access'] == 'rw':
-                    storage = self.raw_read(element.attrib['id'])
+                    subnode = int(element.attrib['subnode'])
+                    storage = self.raw_read(element.attrib['id'], subnode=subnode)
                     element.set('storage', str(storage))
 
                     # Update register object
-                    reg = self.__dict.regs[element.attrib['id']]
+                    reg = self.__dict.regs[subnode][element.attrib['id']]
                     reg.storage = storage
                     reg.storage_valid = 1
             except BaseException as e:
@@ -268,7 +269,7 @@ class Servo(object):
         for element in root.findall('./Body/Device/Registers/Register'):
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
-                    self.raw_write(element.attrib['id'], float(element.attrib['storage']))
+                    self.raw_write(element.attrib['id'], float(element.attrib['storage']), subnode=int(element.attrib['subnode']))
             except BaseException as e:
                 print("Exception during dict_storage_write, register " + element.attrib['id'] + ": ", str(e))
 
