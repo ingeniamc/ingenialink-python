@@ -7,6 +7,11 @@ from time import sleep
 from .servo_node import Servo
 from ..net import NET_PROT, NET_STATE
 
+import logging
+
+log = logging.getLogger(__name__)
+
+
 class CAN_DEVICE(Enum):
     """ CAN Device. """
     KVASER  =   ('kvaser', 0)
@@ -148,7 +153,7 @@ class Network(object):
         try:
             self.__network.disconnect()
         except BaseException as e:
-            print("Cold not reset: Disconnection", e)
+            print("Could not reset: Disconnection", e)
 
         try:
             for node in self.__network.scanner.nodes:
@@ -165,6 +170,7 @@ class Network(object):
                 node = self.__network.add_node(node_id, self.__eds)
                 node.nmt.start_node_guarding(1)
         except BaseException as e:
+            log.warning(e)
             print("Could not reset: Connection", e)
 
     def scan(self, eds, dict):
