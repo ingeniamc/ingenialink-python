@@ -41,7 +41,7 @@ STORE_ALL = Register(
 )
 
 class Servo(object):
-    def __init__(self, net, node, dict):
+    def __init__(self, net, node, dict, boot_mode=False):
         self.__net = net
         self.__node = node
         self.__dict = DictionaryCANOpen(dict)
@@ -53,7 +53,8 @@ class Servo(object):
         self.__units_pos = None
         self.__units_vel = None
         self.__units_acc = None
-        self.init_info()
+        if not boot_mode:
+            self.init_info()
 
     def init_info(self):
         name = "Drive"
@@ -169,6 +170,9 @@ class Servo(object):
         """
         return self.raw_read(reg, subnode=subnode)
 
+    def change_sdo_timeout(self, value):
+        self.__node.sdo.RESPONSE_TIMEOUT = value
+
     def write(self, reg, data, confirm=True, extended=0, subnode=1):
         return self.raw_write(reg, data, confirm=True, extended=0, subnode=subnode)
 
@@ -194,6 +198,8 @@ class Servo(object):
         # auto cast floats if register is not float
         if _reg.dtype == REG_DTYPE.FLOAT:
             data = float(data)
+        elif _reg.dtype == REG_DTYPE.DOMAIN:
+            pass
         else:
             data = int(data)
 
@@ -203,10 +209,17 @@ class Servo(object):
             if _reg.dtype == REG_DTYPE.FLOAT:
                 self.__node.sdo.download(int(str(_reg.idx), 16), int(str(_reg.subidx), 16),
                                          struct.pack('f', data))
+            elif _reg.dtype == REG_DTYPE.DOMAIN:
+                self.__node.sdo.download(int(str(_reg.idx), 16), int(str(_reg.subidx), 16), data)
             else:
                 bytes_length = 2
                 signed = False
-                if _reg.dtype == REG_DTYPE.U16:
+                if _reg.dtype == REG_DTYPE.U8:
+                    bytes_length = 1
+                elif _reg.dtype == REG_DTYPE.S8:
+                    bytes_length = 1
+                    signed = True
+                elif _reg.dtype == REG_DTYPE.U16:
                     bytes_length = 2
                 elif _reg.dtype == REG_DTYPE.S16:
                     bytes_length = 2
@@ -269,7 +282,9 @@ class Servo(object):
         for element in root.findall('./Body/Device/Registers/Register'):
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
-                    self.raw_write(element.attrib['id'], float(element.attrib['storage']), subnode=int(element.attrib['subnode']))
+                    self.raw_write(element.attrib['id'], float(element.attrib['storage']),
+                                   subnode=int(element.attrib['subnode'])
+                                   )
             except BaseException as e:
                 print("Exception during dict_storage_write, register " + element.attrib['id'] + ": ", str(e))
 
@@ -277,7 +292,7 @@ class Servo(object):
         """ Store all servo current parameters to the NVM. """
         r = 0
         try:
-            self.raw_write(STORE_ALL, 0x65766173)
+            self.raw_write(STORE_ALL, 0x65766173, subnode=subnode)
         except:
             r = -1
         return r
@@ -343,16 +358,16 @@ class Servo(object):
     def fault_reset(self, subnode=1):
         r = 0
         retries = 0
-        status_word = self.raw_read(STATUS_WORD)
+        status_word = self.raw_read(STATUS_WORD, subnode=subnode)
         self.status_word_decode(status_word)
         while self.state.value == lib.IL_SERVO_STATE_FAULT or self.state.value == lib.IL_SERVO_STATE_FAULTR:
             # Check if faulty, if so try to reset (0->1)
             if retries == FAULT_RESET_RETRIES:
                 return lib.IL_ESTATE
 
-            status_word = self.raw_read(STATUS_WORD)
-            self.raw_write(CONTROL_WORD, 0)
-            self.raw_write(CONTROL_WORD, IL_MC_CW_FR)
+            status_word = self.raw_read(STATUS_WORD, subnode=subnode)
+            self.raw_write(CONTROL_WORD, 0, subnode=subnode)
+            self.raw_write(CONTROL_WORD, IL_MC_CW_FR, subnode=subnode)
             # Wait until statusword changes
             r = self.status_word_wait_change(status_word, PDS_TIMEOUT)
             if r < 0:
@@ -364,12 +379,12 @@ class Servo(object):
         """ Enable PDS. """
         r = 0
 
-        status_word = self.raw_read(STATUS_WORD)
+        status_word = self.raw_read(STATUS_WORD, subnode=subnode)
         self.status_word_decode(status_word)
 
         # Try fault reset if faulty
         if self.state.value == lib.IL_SERVO_STATE_FAULT or self.state.value == lib.IL_SERVO_STATE_FAULTR:
-            r = self.fault_reset()
+            r = self.fault_reset(subnode=subnode)
             if r < 0:
                 return r
 
@@ -387,7 +402,7 @@ class Servo(object):
                 elif self.state.value == lib.IL_SERVO_STATE_RDY:
                     cmd = IL_MC_PDS_CMD_SOEO
 
-                self.raw_write(CONTROL_WORD, cmd)
+                self.raw_write(CONTROL_WORD, cmd, subnode=subnode)
 
                 # Wait for state change
                 r = self.status_word_wait_change(status_word, PDS_TIMEOUT)
@@ -395,14 +410,14 @@ class Servo(object):
                     return r
 
                 # Read the current status word
-                status_word = self.raw_read(STATUS_WORD)
+                status_word = self.raw_read(STATUS_WORD, subnode=subnode)
         raise_err(r)
 
     def disable(self, subnode=1):
         """ Disable PDS. """
         r = 0
 
-        status_word = self.raw_read(STATUS_WORD)
+        status_word = self.raw_read(STATUS_WORD, subnode=subnode)
         self.status_word_decode(status_word)
 
         while self.state.value != lib.IL_SERVO_STATE_DISABLED:
@@ -410,19 +425,19 @@ class Servo(object):
 
             if self.state.value == lib.IL_SERVO_STATE_FAULT or self.state.value == lib.IL_SERVO_STATE_FAULTR:
                 # Try fault reset if faulty
-                r = self.fault_reset()
+                r = self.fault_reset(subnode=subnode)
                 if r < 0:
                     return r
-                status_word = self.raw_read(STATUS_WORD)
+                status_word = self.raw_read(STATUS_WORD, subnode=subnode)
             elif self.state.value != lib.IL_SERVO_STATE_DISABLED:
                 # Check state and command action to reach disabled
-                self.raw_write(CONTROL_WORD, IL_MC_PDS_CMD_DV)
+                self.raw_write(CONTROL_WORD, IL_MC_PDS_CMD_DV, subnode=subnode)
 
                 # Wait until statusword changes
                 r = self.status_word_wait_change(status_word, PDS_TIMEOUT)
                 if r < 0:
                     return r
-                status_word = self.raw_read(STATUS_WORD)
+                status_word = self.raw_read(STATUS_WORD, subnode=subnode)
         raise_err(r)
 
     def get_state(self, subnode=1):

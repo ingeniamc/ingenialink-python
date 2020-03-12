@@ -7,6 +7,11 @@ from time import sleep
 from .servo_node import Servo
 from ..net import NET_PROT, NET_STATE
 
+import logging
+
+log = logging.getLogger(__name__)
+
+
 class CAN_DEVICE(Enum):
     """ CAN Device. """
     KVASER  =   ('kvaser', 0)
@@ -148,12 +153,12 @@ class Network(object):
         try:
             self.__network.disconnect()
         except BaseException as e:
-            print("Cold not reset: Disconnection", e)
+            print("Could not reset: Disconnection", e)
 
         try:
             for node in self.__network.scanner.nodes:
                 self.__network.nodes[node].nmt.stop_node_guarding()
-            if self._network.bus:
+            if self.__network.bus:
                 self.__network.bus.flush_tx_buffer()
                 print("Bus flushed")
         except Exception as e:
@@ -165,9 +170,10 @@ class Network(object):
                 node = self.__network.add_node(node_id, self.__eds)
                 node.nmt.start_node_guarding(1)
         except BaseException as e:
+            log.warning(e)
             print("Could not reset: Connection", e)
 
-    def scan(self, eds, dict):
+    def scan(self, eds, dict, boot_mode=False):
         try:
             self.__network.scanner.reset()
             self.__network.scanner.search()
@@ -181,10 +187,11 @@ class Network(object):
                 self.__eds = eds
                 self.__dict = dict
 
-                self.__heartbeat_thread = HearbeatThread(self, node)
-                self.__heartbeat_thread.start()
+                if not boot_mode:
+                    self.__heartbeat_thread = HearbeatThread(self, node)
+                    self.__heartbeat_thread.start()
 
-                self.__servos.append(Servo(self, node, dict))
+                self.__servos.append(Servo(self, node, dict, boot_mode=boot_mode))
         except Exception as e:
             print('Exception trying to scan: ', e)
 
@@ -215,9 +222,12 @@ class Network(object):
     def disconnect(self):
         try:
             self.stop_heartbeat()
+        except Exception as e:
+            print('Disconnect: Exception stop_heartbeat(). {}'.format(e))
+        try:
             self.__network.disconnect()
         except Exception as e:
-            print(e)
+            print('Disconnect: Exception network.disconnect(). {}'.format(e))
 
     @property
     def servos(self):
@@ -232,7 +242,7 @@ class Network(object):
         return self.__baudrate
 
     @property
-    def _network(self):
+    def network(self):
         return self.__network
 
     @property

@@ -5,6 +5,9 @@ from ._utils import cstr, pstr, INT_SIZES
 
 from .dict_labels import LabelsDictionary
 
+# CANOPEN DTYPES
+IL_REG_DTYPE_DOMAIN = 15
+
 
 class REG_DTYPE(Enum):
     """ Data Type. """
@@ -29,6 +32,8 @@ class REG_DTYPE(Enum):
     """ Float. """
     STR = lib.IL_REG_DTYPE_STR
     """ String. """
+    DOMAIN = IL_REG_DTYPE_DOMAIN
+    """ Domain. """
 
 
 class REG_ACCESS(Enum):
@@ -216,20 +221,20 @@ class Register(object):
             storage_info = 'No storage'
 
         return '<Register: {}, {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [], {},ST: {}, [{}], {}>'.format(
-                self.identifier,
-                self.units,
-                self.subnode,
-                self.cyclic,
-                self.address,
-                self.dtype,
-                ' ∊ ' + str(self.range) if self.range else '',
-                self.access,
-                self.phy,
-                self.enums,
-                self.enums_count,
-                storage_info,
-                cat_info,
-                self.internal_use
+            self.identifier,
+            self.units,
+            self.subnode,
+            self.cyclic,
+            self.address,
+            self.dtype,
+            ' ∊ ' + str(self.range) if self.range else '',
+            self.access,
+            self.phy,
+            self.enums,
+            self.enums_count,
+            storage_info,
+            cat_info,
+            self.internal_use
         )
 
     @classmethod
