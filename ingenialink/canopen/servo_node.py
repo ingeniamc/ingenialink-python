@@ -41,7 +41,7 @@ STORE_ALL = Register(
 )
 
 class Servo(object):
-    def __init__(self, net, node, dict):
+    def __init__(self, net, node, dict, boot_mode=False):
         self.__net = net
         self.__node = node
         self.__dict = DictionaryCANOpen(dict)
@@ -53,7 +53,8 @@ class Servo(object):
         self.__units_pos = None
         self.__units_vel = None
         self.__units_acc = None
-        self.init_info()
+        if not boot_mode:
+            self.init_info()
 
     def init_info(self):
         name = "Drive"
@@ -169,6 +170,9 @@ class Servo(object):
         """
         return self.raw_read(reg, subnode=subnode)
 
+    def change_sdo_timeout(self, value):
+        self.__node.sdo.RESPONSE_TIMEOUT = value
+
     def write(self, reg, data, confirm=True, extended=0, subnode=1):
         return self.raw_write(reg, data, confirm=True, extended=0, subnode=subnode)
 
@@ -194,6 +198,8 @@ class Servo(object):
         # auto cast floats if register is not float
         if _reg.dtype == REG_DTYPE.FLOAT:
             data = float(data)
+        elif _reg.dtype == REG_DTYPE.DOMAIN:
+            pass
         else:
             data = int(data)
 
@@ -203,10 +209,17 @@ class Servo(object):
             if _reg.dtype == REG_DTYPE.FLOAT:
                 self.__node.sdo.download(int(str(_reg.idx), 16), int(str(_reg.subidx), 16),
                                          struct.pack('f', data))
+            elif _reg.dtype == REG_DTYPE.DOMAIN:
+                self.__node.sdo.download(int(str(_reg.idx), 16), int(str(_reg.subidx), 16), data)
             else:
                 bytes_length = 2
                 signed = False
-                if _reg.dtype == REG_DTYPE.U16:
+                if _reg.dtype == REG_DTYPE.U8:
+                    bytes_length = 1
+                elif _reg.dtype == REG_DTYPE.S8:
+                    bytes_length = 1
+                    signed = True
+                elif _reg.dtype == REG_DTYPE.U16:
                     bytes_length = 2
                 elif _reg.dtype == REG_DTYPE.S16:
                     bytes_length = 2
