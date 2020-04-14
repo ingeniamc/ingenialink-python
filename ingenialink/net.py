@@ -124,6 +124,12 @@ def update_firmware(ifname, filename):
     filename = cstr(filename) if filename else ffi.NULL
     return net__, lib.il_net_update_firmware(net__, ifname, 1, filename)
 
+def force_error(ifname, if_address_ip):
+    net__ = ffi.new('il_net_t **')
+    ifname = cstr(ifname) if ifname else ffi.NULL
+    if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
+
+    return lib.il_net_force_error(net__, ifname, if_address_ip)
 
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
