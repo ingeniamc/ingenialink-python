@@ -12,15 +12,20 @@ import logging
 log = logging.getLogger(__name__)
 
 
+CAN_CHANNELS = {
+    'kvaser': (0, 1),
+    'pcan': ('PCAN_USBBUS1', 'PCAN_USBBUS2'),
+    'ixxat': (0, 1)
+}
+
 class CAN_DEVICE(Enum):
     """ CAN Device. """
-    KVASER  =   ('kvaser', 0)
+    KVASER  =   'kvaser'
     """ Kvaser. """
-    PCAN    =   ('pcan', 'PCAN_USBBUS1')
+    PCAN    =   'pcan'
     """ Peak. """
-    IXXAT   =   ('ixxat', 0)
+    IXXAT   =   'ixxat'
     """ Ixxat. """
-
 
 class CAN_BAUDRATE(Enum):
     """ Baudrates. """
@@ -31,7 +36,7 @@ class CAN_BAUDRATE(Enum):
     Baudrate_250K = 250000
     """ 250 Kbit/s """
     Baudrate_125K = 125000
-    """ 150 Kbit/s """
+    """ 125 Kbit/s """
     Baudrate_100K = 100000
     """ 100 Kbit/s """
     Baudrate_50K = 50000
@@ -83,10 +88,11 @@ class HearbeatThread(Thread):
 
 
 class Network(object):
-    def __init__(self, device=None, baudrate=CAN_BAUDRATE.Baudrate_1M):
+    def __init__(self, device=None, channel=0, baudrate=CAN_BAUDRATE.Baudrate_1M):
         self.__servos = []
-        self.__device = device
-        self.__baudrate = baudrate
+        self.__device = device.value
+        self.__channel = CAN_CHANNELS[self.__device][channel]
+        self.__baudrate = baudrate.value
         self.__network = canopen.Network()
         self.__net_state = NET_STATE.DISCONNECTED
         self.__observers = []
@@ -95,7 +101,7 @@ class Network(object):
         self.__heartbeat_thread = None
         if device is not None:
             try:
-                self.__network.connect(bustype=device.value[0], channel=device.value[1], bitrate=baudrate.value)
+                self.__network.connect(bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate)
             except Exception as e:
                 print('Exception trying to connect: ', e)
 
@@ -165,7 +171,7 @@ class Network(object):
             print("Could not stop guarding: ", e)
 
         try:
-            self.__network.connect(bustype=self.__device.value[0], channel=self.__device.value[1], bitrate=self.__baudrate.value)
+            self.__network.connect(bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate)
             for node_id in self.__network.scanner.nodes:
                 node = self.__network.add_node(node_id, self.__eds)
                 node.nmt.start_node_guarding(1)
@@ -194,6 +200,30 @@ class Network(object):
                 self.__servos.append(Servo(self, node, dict, boot_mode=boot_mode))
         except Exception as e:
             print('Exception trying to scan: ', e)
+
+    def connect_through_node(self, eds, dict, node_id, boot_mode=False):
+        try:
+            self.__network.scanner.reset()
+            self.__network.scanner.search()
+            time.sleep(0.05)
+
+            if node_id in self.__network.scanner.nodes:
+                node = self.__network.add_node(node_id, eds)
+
+                node.nmt.start_node_guarding(1)
+
+                self.__eds = eds
+                self.__dict = dict
+
+                if not boot_mode:
+                    self.__heartbeat_thread = HearbeatThread(self, node)
+                    self.__heartbeat_thread.start()
+
+                self.__servos.append(Servo(self, node, dict, boot_mode=boot_mode))
+            else:
+                log.warning('Node id not found')
+        except Exception as e:
+            print('Exception trying to connect ', e)
 
     def net_state_subscribe(self, cb):
         """ Subscribe to netowrk state changes.
