@@ -513,4 +513,4 @@ class Servo(object):
     @property
     def subnodes(self):
         """ SUBNODES: Number of subnodes. """
-        return 1
+        return self.__dict.subnodes
