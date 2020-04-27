@@ -179,6 +179,12 @@ class Network(object):
             log.warning(e)
             print("Could not reset: Connection", e)
 
+    def detect_nodes(self):
+        self.__network.scanner.reset()
+        self.__network.scanner.search()
+        time.sleep(0.05)
+        return self.__network.scanner.nodes
+
     def scan(self, eds, dict, boot_mode=False):
         try:
             self.__network.scanner.reset()
