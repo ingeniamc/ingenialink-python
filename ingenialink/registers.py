@@ -342,6 +342,8 @@ class Register(object):
             return (self._reg.range.min.s64, self._reg.range.max.s64)
         elif self.dtype == REG_DTYPE.U64:
             return (self._reg.range.min.u64, self._reg.range.max.u64)
+        elif self.dtype == REG_DTYPE.FLOAT:
+            return (self._reg.range.min.flt, self._reg.range.max.flt)
 
         return None
 
