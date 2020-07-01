@@ -193,8 +193,8 @@ class Register(object):
             if storage:
                 self._reg.storage.flt = float(storage)
 
-            self._reg.range.min.flt = (range[0] if range else -2147483648)
-            self._reg.range.max.flt = (range[1] if range else 2147483647)
+            self._reg.range.min.flt = (round(range[0], 3) if range else -2147483648)
+            self._reg.range.max.flt = (round(range[1], 3) if range else 2147483647)
         else:
             self._reg.storage_valid = 0
 
