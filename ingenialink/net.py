@@ -114,8 +114,8 @@ def master_startup(ifname, if_address_ip):
 
 
 def master_stop(net):
-    # net__ = ffi.new('il_net_t **')
-    return lib.il_net_master_stop(net)
+    net__ = ffi.new('il_net_t **')
+    return lib.il_net_master_stop(net__)
 
 
 def update_firmware(ifname, filename):
