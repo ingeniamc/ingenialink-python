@@ -118,11 +118,12 @@ def master_stop(net):
     return lib.il_net_master_stop(net)
 
 
-def update_firmware(ifname, filename):
+def update_firmware(ifname, filename, is_summit=False):
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
     filename = cstr(filename) if filename else ffi.NULL
-    return net__, lib.il_net_update_firmware(net__, ifname, 1, filename)
+    return net__, lib.il_net_update_firmware(net__, ifname, 1, filename, is_summit)
+
 
 def force_error(ifname, if_address_ip):
     net__ = ffi.new('il_net_t **')
