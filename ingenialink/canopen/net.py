@@ -103,6 +103,7 @@ class Network(object):
             try:
                 self.__network.connect(bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate)
             except Exception as e:
+                log.error(e)
                 print('Exception trying to connect: ', e)
 
     def change_node_baudrate(self, target_node, vendor_id, product_code, rev_number, serial_number, new_node=None, new_baudrate=None):
@@ -205,6 +206,7 @@ class Network(object):
 
                 self.__servos.append(Servo(self, node, dict, boot_mode=boot_mode))
         except Exception as e:
+            log.error(e)
             print('Exception trying to scan: ', e)
 
     def connect_through_node(self, eds, dict, node_id, boot_mode=False):
@@ -229,6 +231,7 @@ class Network(object):
             else:
                 log.warning('Node id not found')
         except Exception as e:
+            log.error(e)
             print('Exception trying to connect ', e)
 
     def net_state_subscribe(self, cb):
