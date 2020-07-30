@@ -113,6 +113,10 @@ class Register(object):
         elif dtype == REG_DTYPE.FLOAT:
             if storage:
                 self.__storage = float(storage)
+
+            range_min = (range[0] if range[0] else INT_SIZES.S32_MIN.value)
+            range_max = (range[1] if range[1] else INT_SIZES.S32_MAX.value)
+            self.__range = (range_min, range_max)
         else:
             self.__storage_valid = 0
 

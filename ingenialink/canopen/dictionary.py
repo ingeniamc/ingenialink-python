@@ -201,20 +201,20 @@ class DictionaryCANOpen(object):
 
             # Labels
             labels = {}
-            if labels_elem:
+            if labels_elem is not None:
                 for label in labels_elem.getchildren():
                     labels[label.attrib['lang']] = label.text
 
             # Range
             reg_range = (None, None)
-            if range_elem:
+            if range_elem is not None:
                 range_min = range_elem.attrib['min']
                 range_max = range_elem.attrib['max']
                 reg_range = (range_min, range_max)
 
             # Enumerations
             enums = []
-            if enums_elem:
+            if enums_elem is not None:
                 for enum in enums_elem.getchildren():
                     enums.append({enum.attrib['value']: enum.text})
 
