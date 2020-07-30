@@ -60,63 +60,63 @@ class Register(object):
 
             range_min = (range[0] if range[0] else INT_SIZES.S8_MIN.value)
             range_max = (range[1] if range[1] else INT_SIZES.S8_MAX.value)
-            self.__range = (range_min, range_max)
+            self.__range = (int(range_min), int(range_max))
         elif dtype == REG_DTYPE.U8:
             if storage:
                 self.__storage = int(storage)
 
             range_min = range[0] if range[0] else 0
             range_max = (range[1] if range[1] else INT_SIZES.U8_MAX.value)
-            self.__range = (range_min, range_max)
+            self.__range = (int(range_min), int(range_max))
         if dtype == REG_DTYPE.S16:
             if storage:
                 self.__storage = int(storage)
 
             range_min = (range[0] if range[0] else INT_SIZES.S16_MIN.value)
             range_max = (range[1] if range[1] else INT_SIZES.S16_MAX.value)
-            self.__range = (range_min, range_max)
+            self.__range = (int(range_min), int(range_max))
         elif dtype == REG_DTYPE.U16:
             if storage:
                 self.__storage = int(storage)
 
             range_min = range[0] if range[0] else 0
             range_max = (range[1] if range[1] else INT_SIZES.U16_MAX.value)
-            self.__range = (range_min, range_max)
+            self.__range = (int(range_min), int(range_max))
         if dtype == REG_DTYPE.S32:
             if storage:
                 self.__storage = int(storage)
 
             range_min = (range[0] if range[0] else INT_SIZES.S32_MIN.value)
             range_max = (range[1] if range[1] else INT_SIZES.S32_MAX.value)
-            self.__range = (range_min, range_max)
+            self.__range = (int(range_min), int(range_max))
         elif dtype == REG_DTYPE.U32:
             if storage:
                 self.__storage = int(storage)
 
             range_min = range[0] if range[0] else 0
             range_max = (range[1] if range[1] else INT_SIZES.U32_MAX.value)
-            self.__range = (range_min, range_max)
+            self.__range = (int(range_min), int(range_max))
         if dtype == REG_DTYPE.S64:
             if storage:
                 self.__storage = int(storage)
 
             range_min = (range[0] if range[0] else INT_SIZES.S64_MIN.value)
             range_max = (range[1] if range[1] else INT_SIZES.S64_MAX.value)
-            self.__range = (range_min, range_max)
+            self.__range = (int(range_min), int(range_max))
         elif dtype == REG_DTYPE.U64:
             if storage:
                 self.__storage = int(storage)
 
             range_min = range[0] if range[0] else 0
             range_max = (range[1] if range[1] else INT_SIZES.U64_MAX.value)
-            self.__range = (range_min, range_max)
+            self.__range = (int(range_min), int(range_max))
         elif dtype == REG_DTYPE.FLOAT:
             if storage:
                 self.__storage = float(storage)
 
             range_min = (range[0] if range[0] else INT_SIZES.S32_MIN.value)
             range_max = (range[1] if range[1] else INT_SIZES.S32_MAX.value)
-            self.__range = (range_min, range_max)
+            self.__range = (float(range_min), float(range_max))
         else:
             self.__storage_valid = 0
 
