@@ -186,7 +186,7 @@ class Network(object):
         time.sleep(0.05)
         return self.__network.scanner.nodes
 
-    def scan(self, eds, dict, boot_mode=False):
+    def scan(self, eds, dict, boot_mode=False, heartbeat=True):
         try:
             self.__network.scanner.reset()
             self.__network.scanner.search()
@@ -200,7 +200,7 @@ class Network(object):
                 self.__eds = eds
                 self.__dict = dict
 
-                if not boot_mode:
+                if heartbeat:
                     self.__heartbeat_thread = HearbeatThread(self, node)
                     self.__heartbeat_thread.start()
 
@@ -209,7 +209,7 @@ class Network(object):
             log.error(e)
             print('Exception trying to scan: ', e)
 
-    def connect_through_node(self, eds, dict, node_id, boot_mode=False):
+    def connect_through_node(self, eds, dict, node_id, boot_mode=False, heartbeat=True):
         try:
             self.__network.scanner.reset()
             self.__network.scanner.search()
@@ -223,7 +223,7 @@ class Network(object):
                 self.__eds = eds
                 self.__dict = dict
 
-                if not boot_mode:
+                if heartbeat:
                     self.__heartbeat_thread = HearbeatThread(self, node)
                     self.__heartbeat_thread.start()
 
