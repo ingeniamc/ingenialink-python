@@ -6,10 +6,16 @@ def run_example():
     net = None
     try:
         net = Network(device=CAN_DEVICE.PCAN)
-        net.scan('eve-net_canopen_1.4.2.eds', 'eve-xcr_canopen.xml')
+        nodes = net.detect_nodes()
+        net.scan('postmates_canopen_0.2.1.eds', 'registers_dictionary_canopen_raul.xdf')
         drives_connected = net.servos
         if len(drives_connected) > 0:
             drive = drives_connected[0]
+            try:
+                print(drive.raw_read("MOT_PAIR_POLES", subnode=2))
+            except:
+                pass
+            print("END")
             while 1:
                 try:
                     txt = input("Type the id of the register you want to read: ")

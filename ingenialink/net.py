@@ -185,8 +185,8 @@ class Network(object):
         return slaves_count, net__
 
     def master_stop(self):
-        net__ = ffi.new('il_net_t **')
-        return lib.il_net_master_stop(net__)
+        net___ = ffi.new('il_net_t **')
+        return lib.il_net_master_stop(net___)
 
     def monitoring_channel_data(self, channel, dtype):
         data_arr = []

@@ -4,7 +4,7 @@ from time import sleep
 import ingenialink as il
 
 
-def scan_port(drives, protocol, port, timeout, ip):
+def scan_port(drives, protocol, port):
     new_drives = drives
     try:
         network_in_use = False
@@ -21,14 +21,13 @@ def scan_port(drives, protocol, port, timeout, ip):
         pass
     return new_drives
 
-# XCORE
 def run_example_scan():
     protocol = il.NET_PROT.MCB
     drives = []
     while True:
         ports_to_scan = il.devices(protocol)
         for port in ports_to_scan:
-            drives = scan_port(drives, protocol, port, 0, None)
+            drives = scan_port(drives, protocol, port)
         print(drives)
         sleep(1)
 
