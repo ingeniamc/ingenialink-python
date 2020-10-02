@@ -9,6 +9,7 @@ from .dict_ import Dictionary
 from .const import *
 
 import xml.etree.ElementTree as ET
+import time
 
 DIST_NUMBER_SAMPLES = Register(
     identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
@@ -209,22 +210,28 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
 
     return net, servo
 
-def connect_ecat(_net, dict_f, address_ip):
+def connect_ecat(ifname, if_address_ip, dict_f, address_ip):
     servo__ = ffi.new('il_servo_t **')
+    net__ = ffi.new('il_net_t **')
     dict_f = cstr(dict_f) if dict_f else ffi.NULL
     address_ip = cstr(address_ip) if address_ip else ffi.NULL
-    r = None
-    r = lib.il_servo_connect_ecat(3, _net, servo__, dict_f, address_ip, 1061)
-    if r < 0:
+    ifname = cstr(ifname) if ifname else ffi.NULL
+    if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
+
+    r = lib.il_servo_connect_ecat(3, ifname, if_address_ip, net__, servo__, dict_f, address_ip, 1061)
+    time.sleep(2)
+    if r <= 0:
         servo = None
         net = None
     else:
-        net_ = ffi.cast('il_net_t *', _net[0])
+        net_ = ffi.cast('il_net_t *', net__[0])
         servo_ = ffi.cast('il_servo_t *', servo__[0])
 
         net = Network._from_existing(net_)
         servo = Servo._from_existing(servo_, dict_f)
         servo.net = net
+
+        servo.net.set_if_params(ifname, if_address_ip)
 
     return servo, net
 

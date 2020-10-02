@@ -165,7 +165,6 @@ class Network(object):
         opts.timeout_wr = to_ms(timeout_wr)
 
         self._net = lib.il_net_create(prot.value, opts)
-
         raise_null(self._net)
         # self._net = ffi.gc(self._net, lib.il_net_destroy)
 
@@ -183,6 +182,15 @@ class Network(object):
         ifname = cstr(ifname) if ifname else ffi.NULL
         slaves_count = lib.il_net_master_startup(net__, ifname)
         return slaves_count, net__
+
+    def master_startup(self, ifname, if_address_ip):
+        ifname = cstr(ifname) if ifname else ffi.NULL
+        if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
+
+        return lib.il_net_master_startup(self._net, ifname, if_address_ip)
+
+    def set_if_params(self, ifname, if_address_ip):
+        return lib.il_net_set_if_params(self._net, ifname, if_address_ip)
 
     def master_stop(self):
         net___ = ffi.new('il_net_t **')
@@ -368,7 +376,7 @@ class Network(object):
         return found
 
     def net_mon_status(self, on_evt):
-        if self.prot == NET_PROT.ETH:
+        if self.prot == NET_PROT.ETH or self.prot == NET_PROT.ECAT:
             status = self.status
             while True:
                 if status != self.status:
