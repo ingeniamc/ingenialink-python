@@ -7,7 +7,7 @@ def run_example():
     try:
         net = Network(device=CAN_DEVICE.PCAN)
         nodes = net.detect_nodes()
-        net.scan('postmates_canopen_0.2.1.eds', 'registers_dictionary_canopen.xdf')
+        net.scan('canopen_0.2.1.eds', 'registers_dictionary_canopen.xdf')
         drives_connected = net.servos
         if len(drives_connected) > 0:
             drive = drives_connected[0]
