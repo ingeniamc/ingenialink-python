@@ -13,7 +13,12 @@ def cstr(v):
 def pstr(v):
     """ Convert C string to Python 3.x compatible str. """
 
-    return ffi.string(v).decode('utf8')
+    convert = ""
+    try:
+        convert = ffi.string(v).decode('utf8')
+    except Exception as e:
+        print("Error converting C string to Python. Exception: {}".format(e))
+    return convert
 
 
 def to_ms(s):
