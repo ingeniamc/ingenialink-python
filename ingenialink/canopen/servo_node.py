@@ -265,7 +265,8 @@ class Servo(object):
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
-        if self.subnodes > 2:
+        axis = tree.findall('*/Device/Axes/Axis')
+        if axis:
             # Multiaxis
             registers = root.findall('./Body/Device/Axes/Axis/Registers/Register')
         else:
@@ -295,7 +296,8 @@ class Servo(object):
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
-        if self.subnodes > 2:
+        axis = tree.findall('*/Device/Axes/Axis')
+        if axis:
             # Multiaxis
             registers = root.findall('./Body/Device/Axes/Axis/Registers/Register')
         else:
