@@ -57,11 +57,11 @@ class Servo(object):
         self.__units_pos = None
         self.__units_vel = None
         self.__units_acc = None
+        self.__name = "Drive"
         if not boot_mode:
             self.init_info()
 
     def init_info(self):
-        name = "Drive"
         serial_number = self.raw_read(SERIAL_NUMBER)
         product_code = self.raw_read(PRODUCT_CODE)
         sw_version = self.raw_read(SOFTWARE_VERSION)
@@ -72,7 +72,7 @@ class Servo(object):
         self.status_word_decode(status_word)
         self.__info = {
             'serial': serial_number,
-            'name': name,
+            'name': self.__name,
             'sw_version': sw_version,
             'hw_variant': hw_variant,
             'prod_code': product_code,
@@ -472,6 +472,15 @@ class Servo(object):
 
     def get_state(self, subnode=1):
         return self.__state[subnode], None
+
+    @property
+    def name(self):
+        """ name: Drive name. """
+        return self.__name
+
+    @name.setter
+    def name(self, new_name):
+        self.__name = new_name
 
     @property
     def dict(self):
