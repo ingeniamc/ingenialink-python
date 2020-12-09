@@ -451,6 +451,10 @@ class Servo(object):
             self._errors = self._get_all_errors(dict_f)
         raise_err(r)
 
+    def reload_errors(self, dict_f):
+        """Force to reload all dictionary errors."""
+        self._errors = self._get_all_errors(dict_f)
+
     def dict_storage_read(self):
         """Read all dictionary registers content and put it to the dictionary
         storage."""
