@@ -269,6 +269,11 @@ class Network(object):
             self.__network.disconnect()
         except Exception as e:
             print('Disconnect: Exception network.disconnect(). {}'.format(e))
+        try:
+            for servo in self.__servos:
+                servo.stop_drive_status_thread()
+        except Exception as e:
+            print('Error stopping DriveStateThread. Exception: {}'.format(e))
 
     @property
     def servos(self):
