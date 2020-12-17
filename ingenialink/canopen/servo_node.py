@@ -83,15 +83,13 @@ class DriveStatusThread(threading.Thread):
 
     def run(self):
         while not self.__stop:
-            try:
-                for subnode in range(1, self.__parent.subnodes):
-                    current_state = self.__parent.state[subnode]
+            for subnode in range(1, self.__parent.subnodes):
+                try:
                     status_word = self.__parent.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
                     state = self.__parent.status_word_decode(status_word)
-                    if current_state != state:
-                        self.__parent.set_state(state, subnode=subnode)
-            except Exception as e:
-                print('IL: Error getting drive status. Exception: {}'.format(e))
+                    self.__parent.set_state(state, subnode=subnode)
+                except Exception as e:
+                    print('IL: Error getting drive status. Exception: {}'.format(e))
             time.sleep(1.5)
 
     def activate_stop_flag(self):
@@ -431,9 +429,11 @@ class Servo(object):
         return SERVO_STATE(state)
 
     def set_state(self, state, subnode):
-        self.state[subnode] = state
-        for callback in self.__observers:
-            callback(state, None, subnode)
+        current_state = self.__state[subnode]
+        if current_state != state:
+            self.state[subnode] = state
+            for callback in self.__observers:
+                callback(state, None, subnode)
 
     def status_word_wait_change(self, status_word, timeout, subnode=1):
         r = 0
@@ -484,6 +484,7 @@ class Servo(object):
                 return r
 
         while self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+            status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
             state = self.status_word_decode(status_word)
             self.set_state(state, subnode)
             if self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
@@ -507,6 +508,8 @@ class Servo(object):
 
                 # Read the current status word
                 status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+                state = self.status_word_decode(status_word)
+                self.set_state(state, subnode)
         raise_err(r)
 
     def disable(self, subnode=1):
@@ -527,6 +530,8 @@ class Servo(object):
                 if r < 0:
                     return r
                 status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+                state = self.status_word_decode(status_word)
+                self.set_state(state, subnode)
             elif self.state[subnode].value != lib.IL_SERVO_STATE_DISABLED:
                 # Check state and command action to reach disabled
                 self.raw_write(CONTROL_WORD_REGISTERS[subnode], IL_MC_PDS_CMD_DV, subnode=subnode)
@@ -536,6 +541,8 @@ class Servo(object):
                 if r < 0:
                     return r
                 status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+                state = self.status_word_decode(status_word)
+                self.set_state(state, subnode)
         raise_err(r)
 
     def get_state(self, subnode=1):
