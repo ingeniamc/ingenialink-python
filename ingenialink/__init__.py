@@ -25,6 +25,4 @@ __all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
            'LabelsDictionary',
            'CANOpenNetwork', 'CAN_DEVICE', 'CANOpenPoller', 'CANOpenServo']
 
-__version__ = '5.0.0'
-
-
+__version__ = '5.0.1'

@@ -46,18 +46,22 @@ class Servo(object):
         self.__node = node
         self.__dict = DictionaryCANOpen(dict)
         self.__info = {}
-        self.__state = lib.IL_SERVO_STATE_NRDY
+        self.__state = {
+            1: lib.IL_SERVO_STATE_NRDY,
+            2: lib.IL_SERVO_STATE_NRDY,
+            3: lib.IL_SERVO_STATE_NRDY
+        }
         self.__observers = []
         self.__lock = threading.RLock()
         self.__units_torque = None
         self.__units_pos = None
         self.__units_vel = None
         self.__units_acc = None
+        self.__name = "Drive"
         if not boot_mode:
             self.init_info()
 
     def init_info(self):
-        name = "Drive"
         serial_number = self.raw_read(SERIAL_NUMBER)
         product_code = self.raw_read(PRODUCT_CODE)
         sw_version = self.raw_read(SOFTWARE_VERSION)
@@ -65,15 +69,20 @@ class Servo(object):
         hw_variant = 'A'
         # Set the current state of servo
         status_word = self.raw_read(STATUS_WORD)
-        self.state = self.status_word_decode(status_word)
+        self.status_word_decode(status_word)
         self.__info = {
             'serial': serial_number,
-            'name': name,
+            'name': self.__name,
             'sw_version': sw_version,
             'hw_variant': hw_variant,
             'prod_code': product_code,
             'revision': revision_number
         }
+
+    def update_axis_state(self):
+        for subnode in range(1, self.subnodes):
+            status_word = self.raw_read(STATUS_WORD, subnode=subnode)
+            self.status_word_decode(status_word, subnode=subnode)
 
     def emcy_subscribe(self, callback):
         pass
@@ -256,7 +265,15 @@ class Servo(object):
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
-        for element in root.findall('./Body/Device/Registers/Register'):
+        axis = tree.findall('*/Device/Axes/Axis')
+        if axis:
+            # Multiaxis
+            registers = root.findall('./Body/Device/Axes/Axis/Registers/Register')
+        else:
+            # Single axis
+            registers = root.findall('./Body/Device/Registers/Register')
+
+        for element in registers:
             try:
                 if element.attrib['access'] == 'rw':
                     subnode = int(element.attrib['subnode'])
@@ -279,7 +296,15 @@ class Servo(object):
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
-        for element in root.findall('./Body/Device/Registers/Register'):
+        axis = tree.findall('*/Device/Axes/Axis')
+        if axis:
+            # Multiaxis
+            registers = root.findall('./Body/Device/Axes/Axis/Registers/Register')
+        else:
+            # Single axis
+            registers = root.findall('./Body/Device/Registers/Register')
+
+        for element in registers:
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
                     self.raw_write(element.attrib['id'], float(element.attrib['storage']),
@@ -321,7 +346,7 @@ class Servo(object):
         self.__observers.append(cb)
         return r
 
-    def status_word_decode(self, status_word):
+    def status_word_decode(self, status_word, subnode=1):
         if (status_word & IL_MC_PDS_STA_NRTSO_MSK) == IL_MC_PDS_STA_NRTSO:
             state = lib.IL_SERVO_STATE_NRDY
         elif (status_word & IL_MC_PDS_STA_SOD_MSK) == IL_MC_PDS_STA_SOD:
@@ -340,7 +365,12 @@ class Servo(object):
             state = lib.IL_SERVO_STATE_FAULT
         else:
             state = lib.IL_SERVO_STATE_NRDY
-        self.state = SERVO_STATE(state)
+        self.set_state(SERVO_STATE(state), subnode)
+
+    def set_state(self, state, subnode):
+        self.state[subnode] = state
+        for callback in self.__observers:
+            callback(state, None, subnode)
 
     def status_word_wait_change(self, status_word, timeout):
         r = 0
@@ -359,8 +389,8 @@ class Servo(object):
         r = 0
         retries = 0
         status_word = self.raw_read(STATUS_WORD, subnode=subnode)
-        self.status_word_decode(status_word)
-        while self.state.value == lib.IL_SERVO_STATE_FAULT or self.state.value == lib.IL_SERVO_STATE_FAULTR:
+        self.status_word_decode(status_word, subnode=subnode)
+        while self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
             # Check if faulty, if so try to reset (0->1)
             if retries == FAULT_RESET_RETRIES:
                 return lib.IL_ESTATE
@@ -380,26 +410,26 @@ class Servo(object):
         r = 0
 
         status_word = self.raw_read(STATUS_WORD, subnode=subnode)
-        self.status_word_decode(status_word)
+        self.status_word_decode(status_word, subnode=subnode)
 
         # Try fault reset if faulty
-        if self.state.value == lib.IL_SERVO_STATE_FAULT or self.state.value == lib.IL_SERVO_STATE_FAULTR:
+        if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
             r = self.fault_reset(subnode=subnode)
             if r < 0:
                 return r
 
-        while self.state.value != lib.IL_SERVO_STATE_ENABLED:
-            self.status_word_decode(status_word)
-            if self.state.value != lib.IL_SERVO_STATE_ENABLED:
+        while self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+            self.status_word_decode(status_word, subnode=subnode)
+            if self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
                 # Check state and commandaction to reach enabled
                 cmd = IL_MC_PDS_CMD_EO
-                if self.state.value == lib.IL_SERVO_STATE_FAULT:
+                if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT:
                     return lib.IL_ESTATE
-                elif self.state.value == lib.IL_SERVO_STATE_NRDY:
+                elif self.state[subnode].value == lib.IL_SERVO_STATE_NRDY:
                     cmd = IL_MC_PDS_CMD_DV
-                elif self.state.value == lib.IL_SERVO_STATE_DISABLED:
+                elif self.state[subnode].value == lib.IL_SERVO_STATE_DISABLED:
                     cmd = IL_MC_PDS_CMD_SD
-                elif self.state.value == lib.IL_SERVO_STATE_RDY:
+                elif self.state[subnode].value == lib.IL_SERVO_STATE_RDY:
                     cmd = IL_MC_PDS_CMD_SOEO
 
                 self.raw_write(CONTROL_WORD, cmd, subnode=subnode)
@@ -418,18 +448,18 @@ class Servo(object):
         r = 0
 
         status_word = self.raw_read(STATUS_WORD, subnode=subnode)
-        self.status_word_decode(status_word)
+        self.status_word_decode(status_word, subnode=subnode)
 
-        while self.state.value != lib.IL_SERVO_STATE_DISABLED:
-            self.status_word_decode(status_word)
+        while self.state[subnode].value != lib.IL_SERVO_STATE_DISABLED:
+            self.status_word_decode(status_word, subnode=subnode)
 
-            if self.state.value == lib.IL_SERVO_STATE_FAULT or self.state.value == lib.IL_SERVO_STATE_FAULTR:
+            if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
                 # Try fault reset if faulty
                 r = self.fault_reset(subnode=subnode)
                 if r < 0:
                     return r
                 status_word = self.raw_read(STATUS_WORD, subnode=subnode)
-            elif self.state.value != lib.IL_SERVO_STATE_DISABLED:
+            elif self.state[subnode].value != lib.IL_SERVO_STATE_DISABLED:
                 # Check state and command action to reach disabled
                 self.raw_write(CONTROL_WORD, IL_MC_PDS_CMD_DV, subnode=subnode)
 
@@ -441,7 +471,16 @@ class Servo(object):
         raise_err(r)
 
     def get_state(self, subnode=1):
-        return self.__state, None
+        return self.__state[subnode], None
+
+    @property
+    def name(self):
+        """ name: Drive name. """
+        return self.__name
+
+    @name.setter
+    def name(self, new_name):
+        self.__name = new_name
 
     @property
     def dict(self):
@@ -471,8 +510,6 @@ class Servo(object):
     @state.setter
     def state(self, new_state):
         self.__state = new_state
-        for callback in self.__observers:
-            callback(self.__state, None)
 
     @property
     def units_torque(self):
