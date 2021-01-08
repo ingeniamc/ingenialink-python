@@ -48,6 +48,7 @@ class Poller(object):
         self.__running = False
         self.__mappings = []
         self.__mappings_enabled = []
+        self.__subnode = None
         self.__lock = RLock()
         self.reset_acq()
 
@@ -78,7 +79,7 @@ class Poller(object):
 
             for channel in enabled_channel_indexes:
                 register_identifier = self.__mappings[channel]
-                self.__acq['d'][channel][self.__samples_count] = self.__servo.raw_read(register_identifier)
+                self.__acq['d'][channel][self.__samples_count] = self.__servo.raw_read(register_identifier, self.__subnode)
 
             # Increment samples count
             self.__samples_count += 1
@@ -185,6 +186,7 @@ class Poller(object):
         # Reg identifier obtained and set enabled
         self.__mappings[channel] = _reg.identifier
         self.__mappings_enabled[channel] = True
+        self.__subnode = int(_reg.subnode)
 
         return 0
 
