@@ -162,6 +162,7 @@ class SERVO_UNITS_ACC(Enum):
     M_S2 = lib.IL_UNITS_ACC_M_S2
     """ Meters/second^2. """
 
+
 def servo_is_connected(address_ip, port_ip=1061, protocol=1):
     """ Obtain boolean with result of search a servo into ip.
 
@@ -175,6 +176,7 @@ def servo_is_connected(address_ip, port_ip=1061, protocol=1):
     net__ = ffi.new('il_net_t **')
     address_ip = cstr(address_ip) if address_ip else ffi.NULL
     return lib.il_servo_is_connected(net__, address_ip, port_ip, protocol)
+
 
 def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     """ Obtain an instance of the first available Servo.
@@ -210,30 +212,24 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
 
     return net, servo
 
-def connect_ecat(ifname, if_address_ip, dict_f, address_ip):
-    servo__ = ffi.new('il_servo_t **')
-    net__ = ffi.new('il_net_t **')
-    dict_f = cstr(dict_f) if dict_f else ffi.NULL
-    address_ip = cstr(address_ip) if address_ip else ffi.NULL
-    ifname = cstr(ifname) if ifname else ffi.NULL
-    if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
 
-    r = lib.il_servo_connect_ecat(3, ifname, if_address_ip, net__, servo__, dict_f, address_ip, 1061)
-    time.sleep(2)
+def connect_ecat(prot, ifname, if_address_ip, dict_f, address_ip):
+    net = Network(prot=prot)
+    servo = Servo(net=net, dict_f=dict_f)
+
+    r = servo.connect_ecat(ifname=ifname, if_address_ip=if_address_ip, address_ip=address_ip)
+
     if r <= 0:
         servo = None
         net = None
     else:
-        net_ = ffi.cast('il_net_t *', net__[0])
-        servo_ = ffi.cast('il_servo_t *', servo__[0])
-
-        net = Network._from_existing(net_)
-        servo = Servo._from_existing(servo_, dict_f)
+        net._net = ffi.cast('il_net_t *', net._net[0])
+        servo._servo = ffi.cast('il_servo_t *', servo._servo[0])
         servo.net = net
-
-        servo.net.set_if_params(ifname, if_address_ip)
+        servo.net.set_if_params(servo.ifname, servo.if_address_ip)
 
     return servo, net
+
 
 @ffi.def_extern()
 def _on_state_change_cb(ctx, state, flags, subnode):
@@ -285,18 +281,24 @@ class Servo(object):
                   REG_DTYPE.FLOAT: lib.il_servo_raw_write_float}
     """ dict: Function mappings for raw write operation. """
 
-    def __init__(self, net, servo_id, dict_f=None):
-        dict_f = cstr(dict_f) if dict_f else ffi.NULL
-        servo = lib.il_servo_create(net._net, servo_id, dict_f)
-        raise_null(servo)
+    def __init__(self, net, servo_id=None, dict_f=None):
+        self.dict_f = cstr(dict_f) if dict_f else ffi.NULL
 
-        self._servo = ffi.gc(servo, lib.il_servo_destroy)
-        self._net = net
+        if servo_id:
+            servo = lib.il_servo_create(net._net, servo_id, self.dict_f)
+            raise_null(servo)
+
+            self._servo = ffi.gc(servo, lib.il_servo_destroy)
+            self._net = net
+
+        else:
+            self._net = net
+            self._servo = ffi.new('il_servo_t **')
 
         self._state_cb = {}
         self._emcy_cb = {}
         if not hasattr(self, '_errors') or not self._errors:
-            self._errors = self._get_all_errors(dict_f)
+            self._errors = self._get_all_errors(self.dict_f)
 
     @classmethod
     def _from_existing(cls, servo, dict_f):
@@ -311,6 +313,15 @@ class Servo(object):
             inst._errors = inst._get_all_errors(dict_f)
 
         return inst
+
+    def connect_ecat(self, address_ip, ifname, if_address_ip):
+        self.address_ip = cstr(address_ip) if address_ip else ffi.NULL
+        self.ifname = cstr(ifname) if ifname else ffi.NULL
+        self.if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
+
+        r = lib.il_servo_connect_ecat(3, self.ifname, self.if_address_ip, self.net._net, self._servo, self.dict_f, self.address_ip, 1061)
+        time.sleep(2)
+        return r
 
     def _get_all_errors(self, dict_f):
         errors = dict()
