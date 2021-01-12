@@ -3,7 +3,7 @@ from enum import Enum
 from ._ingenialink import ffi, lib
 from ._utils import cstr, pstr, raise_null, raise_err, to_ms
 from .registers import Register, REG_DTYPE, _get_reg_id, REG_ACCESS
-from .net import Network
+from .net import Network, NET_PROT
 from .dict_ import Dictionary
 
 from .const import *
@@ -213,8 +213,8 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     return net, servo
 
 
-def connect_ecat(prot, ifname, if_address_ip, dict_f, address_ip):
-    net = Network(prot=prot)
+def connect_ecat(ifname, if_address_ip, dict_f, address_ip):
+    net = Network(prot=NET_PROT.ECAT)
     servo = Servo(net=net, dict_f=dict_f)
 
     r = servo.connect_ecat(ifname=ifname, if_address_ip=if_address_ip, address_ip=address_ip)
