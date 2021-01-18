@@ -7,7 +7,6 @@ import numpy as np
 from .registers import REG_DTYPE
 
 
-
 class NET_PROT(Enum):
     """ Network Protocol. """
 
@@ -21,6 +20,7 @@ class NET_PROT(Enum):
     """ ECAT. """
     CAN = 5
     """ CAN. """
+
 
 class NET_STATE(Enum):
     """ Network State. """
@@ -41,6 +41,7 @@ class NET_DEV_EVT(Enum):
     REMOVED = lib.IL_NET_DEV_EVT_REMOVED
     """ Event. """
 
+
 class EEPROM_TOOL_MODE(Enum):
     """ EEPROM tool mode. """
 
@@ -59,6 +60,7 @@ class EEPROM_TOOL_MODE(Enum):
     MODE_INFO = 6
     """ Information. """
 
+
 class NET_TRANS_PROT(Enum):
     """ Protocol. """
 
@@ -66,6 +68,7 @@ class NET_TRANS_PROT(Enum):
     """ TCP. """
     UDP = 2
     """ UDP. """
+
 
 def devices(prot):
     """ Obtain a list of network devices.
@@ -114,8 +117,7 @@ def master_startup(ifname, if_address_ip):
 
 
 def master_stop(net):
-    net__ = ffi.new('il_net_t **')
-    return lib.il_net_master_stop(net__)
+    return lib.il_net_master_stop(net)
 
 
 def update_firmware(ifname, filename, is_summit=False, slave=1):
@@ -131,6 +133,7 @@ def force_error(ifname, if_address_ip):
     if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
 
     return lib.il_net_force_error(net__, ifname, if_address_ip)
+
 
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
@@ -153,20 +156,23 @@ class Network(object):
             TypeError: If the protocol type is invalid.
             ILCreationError: If the network cannot be created.
     """
-    def __init__(self, prot, port, timeout_rd=0.5, timeout_wr=0.5):
+    def __init__(self, prot, port=None, timeout_rd=0.5, timeout_wr=0.5):
         if not isinstance(prot, NET_PROT):
             raise TypeError('Invalid protocol')
 
-        port_ = ffi.new('char []', cstr(port))
-        opts = ffi.new('il_net_opts_t *')
+        if prot != NET_PROT.ECAT:
 
-        opts.port = port_
-        opts.timeout_rd = to_ms(timeout_rd)
-        opts.timeout_wr = to_ms(timeout_wr)
+            port_ = ffi.new('char []', cstr(port))
+            opts = ffi.new('il_net_opts_t *')
 
-        self._net = lib.il_net_create(prot.value, opts)
-        raise_null(self._net)
-        # self._net = ffi.gc(self._net, lib.il_net_destroy)
+            opts.port = port_
+            opts.timeout_rd = to_ms(timeout_rd)
+            opts.timeout_wr = to_ms(timeout_wr)
+
+            self._net = lib.il_net_create(prot.value, opts)
+            raise_null(self._net)
+        else:
+            self._net = ffi.new('il_net_t **')
 
     @classmethod
     def _from_existing(cls, net):
@@ -176,12 +182,6 @@ class Network(object):
         inst._net = ffi.gc(net, lib.il_net_fake_destroy)
 
         return inst
-
-    def master_startup(self, ifname):
-        net__ = ffi.new('il_net_t **')
-        ifname = cstr(ifname) if ifname else ffi.NULL
-        slaves_count = lib.il_net_master_startup(net__, ifname)
-        return slaves_count, net__
 
     def master_startup(self, ifname, if_address_ip):
         ifname = cstr(ifname) if ifname else ffi.NULL
@@ -193,8 +193,7 @@ class Network(object):
         return lib.il_net_set_if_params(self._net, ifname, if_address_ip)
 
     def master_stop(self):
-        net___ = ffi.new('il_net_t **')
-        return lib.il_net_master_stop(net___)
+        return lib.il_net_master_stop(self._net)
 
     def monitoring_channel_data(self, channel, dtype):
         data_arr = []
@@ -287,7 +286,6 @@ class Network(object):
         """" str: Obtain extended buffer. """
         ext_buff = lib.il_net_extended_buffer_get(self._net)
         return pstr(ext_buff)
-
 
     @property
     def monitoring_data(self):
@@ -392,6 +390,7 @@ class Network(object):
 
     def destroy_network(self):
         lib.il_net_destroy(self._net)
+
 
 @ffi.def_extern()
 def _on_evt_cb(ctx, evt, port):
