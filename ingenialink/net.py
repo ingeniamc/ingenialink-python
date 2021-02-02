@@ -116,6 +116,11 @@ def master_startup(ifname, if_address_ip):
     return lib.il_net_master_startup(net__, ifname, if_address_ip), net__
 
 
+def num_slaves_get(ifname):
+    ifname = cstr(ifname) if ifname else ffi.NULL
+    return lib.il_net_num_slaves_get(ifname)
+
+
 def master_stop(net):
     return lib.il_net_master_stop(net)
 

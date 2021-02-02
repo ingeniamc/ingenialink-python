@@ -213,11 +213,11 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     return net, servo
 
 
-def connect_ecat(ifname, if_address_ip, dict_f, address_ip):
+def connect_ecat(ifname, dict_f, slave=1):
     net = Network(prot=NET_PROT.ECAT)
     servo = Servo(net=net, dict_f=dict_f)
 
-    r = servo.connect_ecat(ifname=ifname, if_address_ip=if_address_ip, address_ip=address_ip)
+    r = servo.connect_ecat(ifname=ifname, slave=slave)
 
     if r <= 0:
         servo = None
@@ -226,7 +226,6 @@ def connect_ecat(ifname, if_address_ip, dict_f, address_ip):
         net._net = ffi.cast('il_net_t *', net._net[0])
         servo._servo = ffi.cast('il_servo_t *', servo._servo[0])
         servo.net = net
-        servo.net.set_if_params(servo.ifname, servo.if_address_ip)
 
     return servo, net
 
@@ -314,12 +313,11 @@ class Servo(object):
 
         return inst
 
-    def connect_ecat(self, address_ip, ifname, if_address_ip):
-        self.address_ip = cstr(address_ip) if address_ip else ffi.NULL
+    def connect_ecat(self, ifname, slave):
         self.ifname = cstr(ifname) if ifname else ffi.NULL
-        self.if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
+        self.slave = slave
 
-        r = lib.il_servo_connect_ecat(3, self.ifname, self.if_address_ip, self.net._net, self._servo, self.dict_f, self.address_ip, 1061)
+        r = lib.il_servo_connect_ecat(3, self.ifname, self.net._net, self._servo, self.dict_f, 1061, self.slave)
         time.sleep(2)
         return r
 
