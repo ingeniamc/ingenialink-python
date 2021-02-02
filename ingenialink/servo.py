@@ -222,6 +222,7 @@ def connect_ecat(ifname, dict_f, slave=1):
     if r <= 0:
         servo = None
         net = None
+        raise_err(r)
     else:
         net._net = ffi.cast('il_net_t *', net._net[0])
         servo._servo = ffi.cast('il_servo_t *', servo._servo[0])
