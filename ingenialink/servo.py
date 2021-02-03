@@ -214,7 +214,7 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
 
 
 def connect_ecat(ifname, dict_f, slave=1):
-    net = Network(prot=NET_PROT.ECAT)
+    net = Network(prot=NET_PROT.ECAT, slave=slave)
     servo = Servo(net=net, dict_f=dict_f)
 
     r = servo.connect_ecat(ifname=ifname, slave=slave)
