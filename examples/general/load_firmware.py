@@ -39,7 +39,7 @@ def main():
     if not args.file_path or not args.ethernet_index:
         print("Error: file_path and ethernet_index arguments are mandatory")
         return
-    if not args.is_everest:
+    if args.is_everest is None:
         print("Error: Mandatory define if it is an Everest: --is-everest or --no-is-everest")
         return
     ethernet = get_adapter_by_id(args.ethernet_index)
