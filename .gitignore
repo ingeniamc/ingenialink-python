@@ -1,5 +1,6 @@
 # editors
 **/*.swp
+.idea
 
 # python files
 **/*.pyc
@@ -21,3 +22,7 @@ _build
 
 # os
 .DS_Store
+
+# Pipenv
+Pipfile.lock
+pyproject.toml

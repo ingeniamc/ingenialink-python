@@ -7,7 +7,7 @@ def load_save_config():
     # Connection
     servo = None
     try:
-        _, servo = il.lucky(il.NET_PROT.ETH, "summit.xml", address_ip='192.168.2.22', port_ip=1061)
+        _, servo = il.lucky(il.NET_PROT.ETH, "summit.xml", address_ip='192.168.2.22', port_ip=1061, protocol=2)
     except Exception as e:
         print("Error trying to connect to the servo.", str(e))
     if servo is not None:
