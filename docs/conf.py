@@ -28,13 +28,25 @@ master_doc = 'index'
 
 pygments_style = 'sphinx'
 
+# html
+html_static_path = ['_static']
+html_theme = 'sphinx_rtd_theme'
+html_logo = '_static/images/logo.svg'
+html_theme_options = {
+    'logo_only': True,
+    'display_version': False,
+}
 
-# mocks
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-            return MagicMock()
+
+def setup(app):
+    app.add_stylesheet('css/custom.css')
 
 
-MOCK_MODULES = ['ingenialink._ingenialink']
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+# class Mock(MagicMock):
+#     @classmethod
+#     def __getattr__(cls, name):
+#             return MagicMock()
+
+
+# MOCK_MODULES = ['ingenialink._ingenialink']
+# sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
