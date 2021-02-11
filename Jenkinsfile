@@ -32,7 +32,7 @@ node('windows') {
 
 	stage('Archive whl package') {
 	    bat '''
-            archiveArtifacts artifacts: 'dist/*'
+            archiveArtifacts artifacts: 'dist/*.whl'
 	    '''
 	}
 }
