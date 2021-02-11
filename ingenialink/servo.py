@@ -198,7 +198,8 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     address_ip = cstr(address_ip) if address_ip else ffi.NULL
 
     if prot.value == 2:
-        r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f, address_ip, port_ip, protocol)
+        r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f,
+                                   address_ip, port_ip, protocol)
     else:
         r = lib.il_servo_lucky(prot.value, net__, servo__, dict_f)
     raise_err(r)
@@ -217,7 +218,8 @@ def connect_ecat(ifname, if_address_ip, dict_f, address_ip):
     net = Network(prot=NET_PROT.ECAT)
     servo = Servo(net=net, dict_f=dict_f)
 
-    r = servo.connect_ecat(ifname=ifname, if_address_ip=if_address_ip, address_ip=address_ip)
+    r = servo.connect_ecat(ifname=ifname, if_address_ip=if_address_ip,
+                           address_ip=address_ip)
 
     if r <= 0:
         servo = None
@@ -319,7 +321,9 @@ class Servo(object):
         self.ifname = cstr(ifname) if ifname else ffi.NULL
         self.if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
 
-        r = lib.il_servo_connect_ecat(3, self.ifname, self.if_address_ip, self.net._net, self._servo, self.dict_f, self.address_ip, 1061)
+        r = lib.il_servo_connect_ecat(3, self.ifname, self.if_address_ip,
+                                      self.net._net, self._servo, self.dict_f,
+                                      self.address_ip, 1061)
         time.sleep(2)
         return r
 
@@ -507,8 +511,9 @@ class Servo(object):
         raise_err(r)
 
         PRODUCT_ID_REG = Register(identifier='', address=0x06E1,
-                                     dtype=REG_DTYPE.U32,
-                                     access=REG_ACCESS.RO, cyclic='CONFIG', units='0')
+                                  dtype=REG_DTYPE.U32,
+                                  access=REG_ACCESS.RO, cyclic='CONFIG',
+                                  units='0')
 
         product_id = self.raw_read(PRODUCT_ID_REG)
 
@@ -571,7 +576,7 @@ class Servo(object):
         try:
             if self.dict:
                 _reg = self.dict.get_regs(subnode)[reg]
-        except:
+        except Exception as e:
             pass
         if _reg.dtype == REG_DTYPE.STR:
             return self._net.extended_buffer
@@ -963,13 +968,18 @@ class Servo(object):
         actual_pos = 0
         while actual_size > DIST_FRAME_SIZE_BYTES:
             next_pos = actual_pos + DIST_FRAME_SIZE_BYTES
-            self.net.disturbance_channel_data(channel, dtype, data_arr[actual_pos: next_pos])
+            self.net.disturbance_channel_data(channel, dtype,
+                                              data_arr[actual_pos: next_pos])
             self.net.disturbance_data_size = DIST_FRAME_SIZE
             self.write(DIST_DATA, DIST_FRAME_SIZE, False, 1, subnode=0)
             actual_pos = next_pos
             actual_size -= DIST_FRAME_SIZE_BYTES
 
         # Last disturbance frame
-        self.net.disturbance_channel_data(channel, dtype, data_arr[actual_pos: actual_pos + actual_size])
+        self.net.disturbance_channel_data(
+            channel,
+            dtype,
+            data_arr[actual_pos: actual_pos + actual_size]
+        )
         self.net.disturbance_data_size = actual_size * 4
         self.write(DIST_DATA, actual_size * 4, False, 1, subnode=0)

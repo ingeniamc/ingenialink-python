@@ -103,8 +103,10 @@ class Register(object):
             TypeError: If any of the parameters has invalid type.
     """
 
-    def __init__(self, identifier, units, cyclic, address, dtype, access, phy=REG_PHY.NONE, subnode=1, storage=None,
-                 range=None, labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None, internal_use=0):
+    def __init__(self, identifier, units, cyclic, address, dtype, access,
+                 phy=REG_PHY.NONE, subnode=1, storage=None, range=None,
+                 labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None,
+                 internal_use=0):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
@@ -223,22 +225,23 @@ class Register(object):
         else:
             storage_info = 'No storage'
 
-        return '<Register: {}, {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [], {},ST: {}, [{}], {}>'.format(
-            self.identifier,
-            self.units,
-            self.subnode,
-            self.cyclic,
-            self.address,
-            self.dtype,
-            ' ∊ ' + str(self.range) if self.range else '',
-            self.access,
-            self.phy,
-            self.enums,
-            self.enums_count,
-            storage_info,
-            cat_info,
-            self.internal_use
-        )
+        return '<Register: {}, {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [], {},' \
+               'ST: {}, [{}], {}>'.format(
+                    self.identifier,
+                    self.units,
+                    self.subnode,
+                    self.cyclic,
+                    self.address,
+                    self.dtype,
+                    ' ∊ ' + str(self.range) if self.range else '',
+                    self.access,
+                    self.phy,
+                    self.enums,
+                    self.enums_count,
+                    storage_info,
+                    cat_info,
+                    self.internal_use
+                )
 
     @classmethod
     def _from_register(cls, reg):

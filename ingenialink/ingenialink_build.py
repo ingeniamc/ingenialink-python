@@ -95,22 +95,14 @@ def _build_deps():
         check_call([cmake, '--build', _XML2_BUILD, '--config', 'Release',
                     '--target', 'install'])
 
-    # deps: SOEM
-    # print("[INFO] SOEM")
-    # print("[INFO] ====================================")
-    # check_call([cmake, '-H' + _SOEM_SRC, '-G', "NMake Makefiles",
-    #             '-B' + _SOEM_BUILD])
-    # print("[INFO] nmake")
-    # Popen(["cd", ".\\_deps\\ingenialink\\external\\SOEM\\_build", "&&", "nmake"], stdout=PIPE, shell=True)
-
-
-
     print("[INFO] Ingenialink build")
     check_call([cmake, '-H' + _IL_SRC, '-B' + _IL_BUILD,
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
-                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PROT_MCB=ON', '-DWITH_PROT_ECAT=ON',
+                '-DBUILD_SHARED_LIBS=OFF',
+                '-DWITH_PROT_MCB=ON',
+                '-DWITH_PROT_ECAT=ON',
                 '-DWITH_PROT_VIRTUAL=ON',
                 '-DWITH_PIC=ON'])
     check_call([cmake, '--build', _IL_BUILD, '--config', 'Release',
@@ -148,8 +140,6 @@ def _gen_cffi_header():
                join(_INC_DIR, 'ingenialink', 'monitor.h'),
                join(_INC_DIR, 'ingenialink', 'version.h')]
 
-
-
     h_stripped = ''
 
     for header in headers:
@@ -173,7 +163,8 @@ def _get_libs():
     elif sys.platform == 'darwin':
         libs.extend(['pthread'])
     elif sys.platform == 'win32':
-        libs.extend(['user32', 'setupapi', 'advapi32', 'wpcap', 'ws2_32', 'winmm', 'gdi32', 'dxguid'])
+        libs.extend(['user32', 'setupapi', 'advapi32', 'wpcap', 'ws2_32',
+                     'winmm', 'gdi32', 'dxguid'])
 
     return libs
 
