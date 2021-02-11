@@ -24,15 +24,13 @@ node('windows') {
         '''
     }
 
-	stage('Tests') {
+	stage('Generate documentation') {
 	    bat '''
-
+            pipenv run sphinx-build -b html docs _docs
 	    '''
 	}
 
 	stage('Archive whl package') {
-	    bat '''
-            archiveArtifacts artifacts: 'dist/*.whl'
-	    '''
+	    archiveArtifacts artifacts: 'dist/*'
 	}
 }
