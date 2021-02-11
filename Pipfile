@@ -9,10 +9,10 @@ name = "pypi"
 
 cffi = "==1.12.2"
 canopen = "*"
+numpy = "==1.17.2"
 
 [dev-packages]
 
-numpy = "*"
 pyqtgraph = "*"
 qtpy = "*"
 qtmodern = "*"
@@ -20,4 +20,5 @@ qtawesome = "*"
 matplotlib = "*"
 "e1839a8" = {path = ".", editable = true}
 "pyqt5" = "*"
+pycodestyle = "==2.6.0"
 
