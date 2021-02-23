@@ -473,10 +473,10 @@ class Servo(object):
         r = lib.il_servo_dict_storage_read(self._servo)
         raise_err(r)
 
-    def dict_storage_write(self, dict_f):
+    def dict_storage_write(self, dict_f, subnode=0):
         """Write current dictionary storage to the servo drive."""
 
-        r = lib.il_servo_dict_storage_write(self._servo, cstr(dict_f))
+        r = lib.il_servo_dict_storage_write(self._servo, cstr(dict_f), subnode)
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(dict_f)
         raise_err(r)
