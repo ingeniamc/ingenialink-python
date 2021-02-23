@@ -46,3 +46,8 @@ class ILStateError(ILError):
 class ILIOError(ILError):
     """ IngeniaLink I/O error. """
     pass
+
+
+class UDPException(Exception):
+    """ Exception on UDP action. """
+    pass

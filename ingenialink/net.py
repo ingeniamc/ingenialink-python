@@ -3,8 +3,17 @@ from time import sleep
 
 from ._ingenialink import lib, ffi
 from ._utils import cstr, pstr, raise_null, raise_err, to_ms
-import numpy as np
 from .registers import REG_DTYPE
+from .exceptions import *
+
+import numpy as np
+import socket
+import struct
+import binascii
+import os
+
+
+CMD_CHANGE_CPU = 0x67E4
 
 
 class NET_PROT(Enum):
@@ -120,6 +129,44 @@ def master_stop(net):
     return lib.il_net_master_stop(net)
 
 
+def update_firmware_moco(node, subnode, ip, port, moco_file):
+    r = 1
+    upd = UDP(port, ip)
+
+    if moco_file and os.path.isfile(moco_file):
+        moco_in = open(moco_file, "r")
+
+        print('Loading firmware...')
+        try:
+            for line in moco_in:
+                words = line.split()
+
+                # Get command and address
+                cmd = int(words[1] + words[0], 16)
+                data = b''
+                data_start_byte = 2
+                while data_start_byte in range(data_start_byte, len(words)):
+                    # Load UDP data
+                    data = data + bytes([int(words[data_start_byte], 16)])
+                    data_start_byte = data_start_byte + 1
+
+                # Send message
+                upd.raw_cmd(node, subnode, cmd, data)
+
+                if cmd == CMD_CHANGE_CPU:
+                    sleep(1)
+
+            print('Bootloading process succeeded!')
+        except Exception as e:
+            print('Error during bootloading process. {}'.format(e))
+            r = -2
+    else:
+        print('File not found')
+        r = -1
+
+    return r
+
+
 def update_firmware(ifname, filename, is_summit=False, slave=1):
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
@@ -141,6 +188,86 @@ def _on_found_cb(ctx, servo_id):
 
     self = ffi.from_handle(ctx)
     self._on_found(int(servo_id))
+
+
+class UDP(object):
+    def __init__(self, port, ip):
+        self.port = port
+        self.ip = ip
+        self.rcv_buffer_size = 512
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+        self.socket.settimeout(8)
+        self.socket.connect((ip, port))
+
+    def __del__(self):
+        try:
+            self.socket.close()
+        except Exception as e:
+            print('Socket already closed. Exception: '.format(e))
+
+    def close(self):
+        self.socket.close()
+        print('Socket closed')
+
+    def write(self, frame):
+        self.socket.sendto(frame, (self.ip, self.port))
+        self.check_ack()
+
+    def read(self):
+        data, address = self.socket.recvfrom(self.rcv_buffer_size)
+        return data
+
+    def check_ack(self):
+        rcv = self.read()
+        ret_cmd = self.unmsg(rcv)
+        if ret_cmd != 3:
+            self.socket.close()
+            raise Exception('No ACK received (command received %d)' % ret_cmd)
+        return ret_cmd
+
+    @staticmethod
+    def unmsg(in_frame):
+        # Base uart frame (subnode [4 bits], node [12 bits],
+        # Addr [12 bits], cmd [3 bits], pending [1 bit],
+        # Data [8 bytes]) and CRC [2 bytes] is 14 bytes long
+        header = in_frame[2:4]
+        cmd = struct.unpack('<H', header)[0] >> 1
+        cmd = cmd & 0x7
+
+        # CRC is computed with header and data (removing Tx CRC)
+        crc = binascii.crc_hqx(in_frame[0:12], 0)
+        crcread = struct.unpack('<H', in_frame[12:14])[0]
+        if crcread != crc:
+            raise UDPException('CRC error')
+
+        return cmd
+
+    @staticmethod
+    def raw_msg(node, subnode, cmd, data, size):
+        node_head = (node << 4) | (subnode & 0xf)
+        node_head = struct.pack('<H', node_head)
+
+        if size > 8:
+            cmd = cmd + 1
+            head = struct.pack('<H', cmd)
+            head_size = struct.pack('<H', size)
+            head_size = head_size + bytes([0] * (8 - len(head_size)))
+            ret = node_head + head + head_size + struct.pack('<H',
+                                                             binascii.crc_hqx(node_head + head + head_size, 0)) + data
+        else:
+            head = struct.pack('<H', cmd)
+            ret = node_head + head + data + struct.pack('<H', binascii.crc_hqx(node_head + head + data, 0))
+
+        return ret
+
+    def raw_cmd(self, node, subnode, cmd, data):
+        if len(data) > 8:
+            frame = self.raw_msg(node, subnode, cmd, data, len(data))
+        else:
+            data = data + bytes([0] * (8 - len(data)))
+            frame = self.raw_msg(node, subnode, cmd, data, len(data))
+
+        self.write(frame)
 
 
 class Network(object):
