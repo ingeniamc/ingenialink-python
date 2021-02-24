@@ -11,6 +11,7 @@ from .._ingenialink import ffi, lib
 from .dictionary import DictionaryCANOpen
 from .registers import Register, REG_DTYPE, REG_ACCESS
 
+
 SERIAL_NUMBER = Register(
     identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00", cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
@@ -318,7 +319,7 @@ class Servo(object):
                 for subobj in obj.values():
                     print('  %d: %s' % (subobj.subindex, subobj.name))
 
-    def dict_storage_read(self, new_path):
+    def dict_storage_read(self, new_path, subnode=0):
         """Read all dictionary registers content and put it to the dictionary
         storage."""
 
@@ -334,19 +335,24 @@ class Servo(object):
             # Single axis
             registers = root.findall('./Body/Device/Registers/Register')
 
-        for element in registers:
-            try:
-                if element.attrib['access'] == 'rw':
-                    subnode = int(element.attrib['subnode'])
-                    storage = self.raw_read(element.attrib['id'], subnode=subnode)
-                    element.set('storage', str(storage))
+        registers_category = root.find('Body/Device/Registers')
 
-                    # Update register object
-                    reg = self.__dict.regs[subnode][element.attrib['id']]
-                    reg.storage = storage
-                    reg.storage_valid = 1
+        for register in registers:
+            try:
+                element_subnode = int(register.attrib['subnode'])
+                if subnode == 0 or subnode == element_subnode:
+                    if register.attrib['access'] == 'rw':
+                        storage = self.raw_read(register.attrib['id'], subnode=element_subnode)
+                        register.set('storage', str(storage))
+
+                        # Update register object
+                        reg = self.__dict.regs[element_subnode][register.attrib['id']]
+                        reg.storage = storage
+                        reg.storage_valid = 1
+                else:
+                    registers_category.remove(register)
             except BaseException as e:
-                print("Exception during dict_storage_read, register " + element.attrib['id'] + ": ", str(e))
+                print("Exception during dict_storage_read, register " + register.attrib['id'] + ": ", str(e))
 
         tree.write(new_path)
         xml_file.close()
