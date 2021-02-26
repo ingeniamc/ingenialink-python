@@ -33,6 +33,6 @@ setup(name='ingenialink',
       cffi_modules=['ingenialink/ingenialink_build.py:ffibuilder'],
       install_requires=[
           'cffi>=1.0.0',
-          'numpy>=1.19.5',
+          'numpy<=1.19.5',
           'canopen>=1.0.0'
       ])
