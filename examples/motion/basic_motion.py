@@ -11,18 +11,25 @@ CSP_MODE = 36
 stop_thread = False
 sampling_time = 0.1
 
+
 def read_thread(servo, actual_val_reg_id):
     global stop_thread
     while not stop_thread:
         print("Actual value: ", servo.read(actual_val_reg_id))
 
+
 def slave_connection(ip):
     servo = None
     try:
-        _, servo = il.lucky(il.NET_PROT.ETH, "eve-xcr_1.5.2.xdf", address_ip=ip, port_ip=1061)
-    except:
+        _, servo = il.lucky(il.NET_PROT.ETH,
+                            "resources/eve-net_1.7.1.xdf",
+                            address_ip=ip,
+                            port_ip=1061,
+                            protocol=2)
+    except Exception as e:
         print("There was an error while scanning the network")
     return servo
+
 
 def basic_motion(args):
     servo = slave_connection(args.ip)

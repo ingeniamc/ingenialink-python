@@ -20,7 +20,7 @@ if 'INGENIALINK_DIR' in os.environ:
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = '5.1.0'
+    _IL_VER = 'develop'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
 
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
@@ -38,6 +38,13 @@ else:
     _XML2_SRC = join(_IL_SRC, 'external', 'libxml2')
 
 _XML2_BUILD = join(_BUILD_DIR, 'libxml2')
+
+if 'SOEM_DIR' in os.environ:
+    _SOEM_SRC = os.environ['SOEM_DIR']
+else:
+    _SOEM_SRC = join(_IL_SRC, 'external', 'soem')
+
+_SOEM_BUILD = join(_BUILD_DIR, 'soem')
 
 # SOEM dirname
 # _SOEM_URL = 'https://github.com/OpenEtherCATsociety/SOEM'
@@ -93,6 +100,15 @@ def _build_deps():
                     '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
                     '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
         check_call([cmake, '--build', _XML2_BUILD, '--config', 'Release',
+                    '--target', 'install'])
+
+    if sys.platform == 'win32':
+        check_call([cmake, '-H' + _SOEM_SRC, '-B' + _SOEM_BUILD,
+                    '-G', _CMAKE_GENERATOR,
+                    '-DCMAKE_BUILD_TYPE=Release',
+                    '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
+                    '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
+        check_call([cmake, '--build', _SOEM_BUILD, '--config', 'Release',
                     '--target', 'install'])
 
     print("[INFO] Ingenialink build")
@@ -156,7 +172,7 @@ def _get_libs():
             list: List of libraries.
     """
 
-    libs = ['ingenialink', 'sercomm', 'xml2']
+    libs = ['ingenialink', 'sercomm', 'xml2', 'soem']
 
     if sys.platform.startswith('linux'):
         libs.extend(['udev', 'rt', 'pthread'])
