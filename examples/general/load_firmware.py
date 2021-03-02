@@ -27,7 +27,8 @@ def get_adapters_list():
 
 
 def get_adapter_by_id(index):
-    return "\\Device\\NPF_{}".format(ifaddr.get_adapters()[index].name.decode("utf-8"))
+    return "\\Device\\NPF_{}".format(
+                            ifaddr.get_adapters()[index].name.decode("utf-8"))
 
 
 def main():
@@ -40,10 +41,14 @@ def main():
         print("Error: file_path and ethernet_index arguments are mandatory")
         return
     if args.is_everest is None:
-        print("Error: Mandatory define if it is an Everest: --is-everest or --no-is-everest")
+        print("Error: Mandatory define if it is an Everest: "
+              "--is-everest or --no-is-everest")
         return
     ethernet = get_adapter_by_id(args.ethernet_index)
-    net, r = il.net.update_firmware(ethernet, args.file_path, args.is_everest, slave=args.slave)
+    net, r = il.net.update_firmware(ethernet,
+                                    args.file_path,
+                                    args.is_everest,
+                                    slave=args.slave)
     if r < 0:
         print("Error: Firmware update fails.")
 
