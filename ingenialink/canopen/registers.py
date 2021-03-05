@@ -2,7 +2,7 @@ from enum import Enum
 
 from .._ingenialink import lib
 
-from .._utils import INT_SIZES
+from .._utils import *
 from ..registers import REG_DTYPE, REG_ACCESS, REG_PHY
 
 
@@ -33,13 +33,13 @@ class Register(object):
                  range=(None, None), labels={}, enums=[], enums_count=0,
                  cat_id=None, scat_id=None, internal_use=0):
         if not isinstance(dtype, REG_DTYPE):
-            raise TypeError('Invalid data type')
+            raise_err(lib.IL_EINVAL, 'Invalid data type')
 
         if not isinstance(access, REG_ACCESS):
-            raise TypeError('Invalid access type')
+            raise_err(lib.IL_EACCESS, 'Invalid access type')
 
         if not isinstance(phy, REG_PHY):
-            raise TypeError('Invalid physical units type')
+            raise_err(lib.IL_EINVAL, 'Invalid physical units type')
 
         # initialize register
         self.__identifier = identifier

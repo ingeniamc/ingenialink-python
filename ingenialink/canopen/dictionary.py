@@ -1,5 +1,7 @@
 import xml.etree.ElementTree as ET
 from .registers import Register, REG_ACCESS, REG_DTYPE, REG_PHY
+from .._utils import *
+from .._ingenialink import lib
 
 
 class Categories(object):
@@ -152,7 +154,7 @@ class DictionaryCANOpen(object):
             elif dtype == "str":
                 dtype = REG_DTYPE.STR
             else:
-                raise Exception
+                raise_err(lib.IL_EINVAL, 'Invalid data type')
 
             # Access
             access = register.attrib['access']
@@ -163,7 +165,7 @@ class DictionaryCANOpen(object):
             elif access == "rw":
                 access = REG_ACCESS.RW
             else:
-                raise Exception
+                raise_err(lib.IL_EACCESS, 'Invalid access type')
 
             # Subnode
             if 'subnode' in register.attrib:

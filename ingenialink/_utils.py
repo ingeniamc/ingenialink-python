@@ -65,7 +65,7 @@ def raise_null(obj):
         raise exc.ILCreationError(msg)
 
 
-def raise_err(code):
+def raise_err(code, msg=None):
     """ Raise exception if the code is non-zero.
 
         Raises:
@@ -83,7 +83,8 @@ def raise_err(code):
         return
 
     # obtain message and raise its matching exception
-    msg = pstr(lib.ilerr_last())
+    if not msg:
+        msg = pstr(lib.ilerr_last())
 
     if code == lib.IL_EINVAL:
         raise exc.ILValueError(msg)
