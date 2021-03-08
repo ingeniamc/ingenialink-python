@@ -30,5 +30,5 @@ __version__ = '5.1.0'
 
 try:
     __ingenialink_C_version__ = pstr(lib.il_version())
-except:
+except Exception as e:
     __ingenialink_C_version__ = '-'
