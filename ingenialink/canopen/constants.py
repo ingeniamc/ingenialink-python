@@ -22,14 +22,26 @@ IL_MC_SW_IANGLE = (1 << 14)
 
 # PDS FSA states
 # Masks for PDS FSA states
-IL_MC_PDS_STA_NRTSO_MSK = (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_SOD)
-IL_MC_PDS_STA_SOD_MSK = (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_SOD)
-IL_MC_PDS_STA_RTSO_MSK = (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_QS | IL_MC_SW_SOD)
-IL_MC_PDS_STA_SO_MSK = (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_QS | IL_MC_SW_SOD)
-IL_MC_PDS_STA_OE_MSK = (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_QS | IL_MC_SW_SOD)
-IL_MC_PDS_STA_QSA_MSK = (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_QS | IL_MC_SW_SOD)
-IL_MC_PDS_STA_FRA_MSK = (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_SOD)
-IL_MC_PDS_STA_F_MSK = (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_SOD)
+IL_MC_PDS_STA_NRTSO_MSK = \
+    (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_SOD)
+IL_MC_PDS_STA_SOD_MSK = \
+    (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_SOD)
+IL_MC_PDS_STA_RTSO_MSK = \
+    (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_QS
+     | IL_MC_SW_SOD)
+IL_MC_PDS_STA_SO_MSK = \
+    (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_QS
+     | IL_MC_SW_SOD)
+IL_MC_PDS_STA_OE_MSK = \
+    (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_QS
+     | IL_MC_SW_SOD)
+IL_MC_PDS_STA_QSA_MSK = \
+    (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_QS
+     | IL_MC_SW_SOD)
+IL_MC_PDS_STA_FRA_MSK = \
+    (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_SOD)
+IL_MC_PDS_STA_F_MSK = \
+    (IL_MC_SW_RTSO | IL_MC_SW_SO | IL_MC_SW_OE | IL_MC_SW_F | IL_MC_SW_SOD)
 # Not ready to switch on.
 IL_MC_PDS_STA_NRTSO = 0x0000
 # Switch on disabled.
@@ -81,19 +93,20 @@ IL_MC_HOMING_SW_ATT = (1 << 12)
 IL_MC_HOMING_SW_ERR = (1 << 13)
 # Homing states
 # Homing state mask.
-IL_MC_HOMING_STA_MSK= (IL_MC_SW_TR | IL_MC_HOMING_SW_ATT | IL_MC_HOMING_SW_ERR)
+IL_MC_HOMING_STA_MSK = (IL_MC_SW_TR | IL_MC_HOMING_SW_ATT |
+                        IL_MC_HOMING_SW_ERR)
 # Homing procedure is in progress.
 IL_MC_HOMING_STA_INPROG = 0x0000
 # Homing procedure is interrupted or not started.
-IL_MC_HOMING_STA_INT= (IL_MC_SW_TR)
+IL_MC_HOMING_STA_INT = (IL_MC_SW_TR)
 # Homing is attained, but target is not reached.
-IL_MC_HOMING_STA_ATT= (IL_MC_HOMING_SW_ATT)
+IL_MC_HOMING_STA_ATT = (IL_MC_HOMING_SW_ATT)
 # Homing procedure is completed successfully.
 IL_MC_HOMING_STA_SUCCESS = (IL_MC_SW_TR | IL_MC_HOMING_SW_ATT)
 # Homing error occurred, velocity not zero.
 IL_MC_HOMING_STA_ERR_VNZ = (IL_MC_HOMING_SW_ERR)
 # Homing error ocurred, velocity is zero.
-IL_MC_HOMING_STA_ERR_VZ= (IL_MC_SW_TR | IL_MC_HOMING_SW_ERR)
+IL_MC_HOMING_STA_ERR_VZ = (IL_MC_SW_TR | IL_MC_HOMING_SW_ERR)
 
 # Profile Position
 # Profile position controlword bits
@@ -102,7 +115,7 @@ IL_MC_PP_CW_NEWSP = (1 << 4)
 # Change set immediately
 IL_MC_PP_CW_IMMEDIATE = (1 << 5)
 # Target position is relative.
-IL_MC_PP_CW_REL= (1 << 6)
+IL_MC_PP_CW_REL = (1 << 6)
 # Profile position specific statusword bits
 # Set-point acknowledge.
 IL_MC_PP_SW_SPACK = (1 << 12)

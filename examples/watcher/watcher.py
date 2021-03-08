@@ -8,17 +8,24 @@ from qtpy.QtWidgets import (QApplication, QDialog, QFormLayout, QLabel,
 import ingenialink as il
 
 
-POS_ACT = il.Register(address=0x006064,
+POS_ACT = il.Register(address=0x0030,
+                      identifier="CL_POS_FBK_VALUE",
                       dtype=il.REG_DTYPE.S32,
                       access=il.REG_ACCESS.RW,
-                      phy=il.REG_PHY.POS)
+                      phy=il.REG_PHY.POS,
+                      units="",
+                      cyclic="")
 """ Register: Position Actual. """
 
 
-VEL_ACT = il.Register(address=0x00606C,
+VEL_ACT = il.Register(address=0x0031,
+                      identifier="CL_VEL_FBK_VALUE",
                       dtype=il.REG_DTYPE.S32,
                       access=il.REG_ACCESS.RW,
-                      phy=il.REG_PHY.VEL)
+                      phy=il.REG_PHY.VEL,
+                      units="",
+                      cyclic="")
+
 """ Register: Velocity Actual. """
 
 
@@ -49,7 +56,10 @@ class RegisterUpdater(QObject):
             cfg['current'] += self._base_period
 
             if cfg['current'] >= cfg['period']:
-                cfg['curr_data'] = str(self._servo.read(reg))
+                try:
+                    cfg['curr_data'] = self._servo.raw_read(reg.identifier)
+                except:
+                    pass
                 cfg['current'] = 0
 
         self.finished.emit()
@@ -106,7 +116,7 @@ class RegisterWatcher(QObject):
         if self._running:
             raise RuntimeError('Watcher already started')
 
-        self._base_period = base_period
+        self._base_period = 100
         self._timer.start(self._base_period)
 
         self._running = True
@@ -162,7 +172,11 @@ class WatcherDialog(QDialog):
         self.form.addRow(QLabel('Velocity'), self.editVelocity)
 
         # configure network (take first available servo)
-        self._net, self._servo = il.lucky(il.NET_PROT.EUSB)
+        self._net, self._servo = il.lucky(il.NET_PROT.ETH,
+                                          "resources/eve-net_1.7.1.xdf",
+                                          address_ip='192.168.2.22',
+                                          port_ip=1061,
+                                          protocol=2)
 
         # create data model
         model = QStandardItemModel()
@@ -172,8 +186,8 @@ class WatcherDialog(QDialog):
 
         # configure and start watcher
         self._watcher = RegisterWatcher(self._servo)
-        self._watcher.add(POS_ACT, 500, pos)
-        self._watcher.add(VEL_ACT, 100, vel)
+        self._watcher.add(POS_ACT, 1000, pos)
+        self._watcher.add(VEL_ACT, 1000, vel)
         self._watcher.start(100)
 
         # map model fields to widgets
