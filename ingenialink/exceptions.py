@@ -65,4 +65,8 @@ class ILWrongCRCError(ILError):
 
 class ILNACKError(ILError):
     """ IngeniaLink NACK error. """
+
+    
+class UDPException(Exception):
+    """ Exception on UDP action. """
     pass
