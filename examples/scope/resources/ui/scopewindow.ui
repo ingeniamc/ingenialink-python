@@ -104,48 +104,6 @@
           <property name="currentIndex">
            <number>2</number>
           </property>
-          <widget class="QWidget" name="tabHoming">
-           <attribute name="title">
-            <string>Homing</string>
-           </attribute>
-           <layout class="QVBoxLayout" name="verticalLayout">
-            <property name="spacing">
-             <number>6</number>
-            </property>
-            <property name="leftMargin">
-             <number>9</number>
-            </property>
-            <property name="topMargin">
-             <number>9</number>
-            </property>
-            <property name="rightMargin">
-             <number>9</number>
-            </property>
-            <property name="bottomMargin">
-             <number>9</number>
-            </property>
-            <item>
-             <widget class="QPushButton" name="btnHoming">
-              <property name="text">
-               <string>Go</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="lblHomingStatus">
-              <property name="text">
-               <string/>
-              </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
           <widget class="QWidget" name="tabPosition">
            <attribute name="title">
             <string>Position</string>

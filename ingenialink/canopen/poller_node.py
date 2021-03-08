@@ -73,12 +73,15 @@ class Poller(object):
 
             # Acquire enabled channels, comprehension list indexes obtained
             enabled_channel_indexes = [
-                channel_idx for channel_idx, is_enabled in enumerate(self.__mappings_enabled) if is_enabled
+                channel_idx for channel_idx, is_enabled in
+                enumerate(self.__mappings_enabled) if is_enabled
             ]
 
             for channel in enabled_channel_indexes:
-                for register_identifier, subnode in self.__mappings[channel].items():
-                    self.__acq['d'][channel][self.__samples_count] = self.__servo.raw_read(register_identifier, subnode)
+                for register_identifier, subnode in \
+                        self.__mappings[channel].items():
+                    self.__acq['d'][channel][self.__samples_count] = \
+                        self.__servo.raw_read(register_identifier, subnode)
 
             # Increment samples count
             self.__samples_count += 1
@@ -93,7 +96,8 @@ class Poller(object):
             raise_err(IL_EALREADY)
 
         # Activate timer
-        self.__timer = PollerTimer(self.__refresh_time, self.acquire_callback_poller_data)
+        self.__timer = PollerTimer(self.__refresh_time,
+                                   self.acquire_callback_poller_data)
         self.__timer.start()
         self.__time_start = datetime.now()
 
@@ -120,12 +124,15 @@ class Poller(object):
 
         # Acquire enabled channels, comprehension list indexes obtained
         enabled_channel_indexes = [
-            channel_idx for channel_idx, is_enabled in enumerate(self.__mappings_enabled) if is_enabled
+            channel_idx for channel_idx, is_enabled in
+            enumerate(self.__mappings_enabled) if is_enabled
         ]
 
         for channel in range(0, self.__number_channels):
             if self.__mappings_enabled[channel]:
-                d.append(list(self.__acq['d'][channel][0:self.__samples_count]))
+                d.append(
+                    list(self.__acq['d'][channel][0:self.__samples_count])
+                )
             else:
                 d.append(list(None))
 

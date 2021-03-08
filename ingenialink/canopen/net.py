@@ -18,14 +18,16 @@ CAN_CHANNELS = {
     'ixxat': (0, 1)
 }
 
+
 class CAN_DEVICE(Enum):
     """ CAN Device. """
-    KVASER  =   'kvaser'
+    KVASER = 'kvaser'
     """ Kvaser. """
-    PCAN    =   'pcan'
+    PCAN = 'pcan'
     """ Peak. """
-    IXXAT   =   'ixxat'
+    IXXAT = 'ixxat'
     """ Ixxat. """
+
 
 class CAN_BAUDRATE(Enum):
     """ Baudrates. """
@@ -41,6 +43,7 @@ class CAN_BAUDRATE(Enum):
     """ 100 Kbit/s """
     Baudrate_50K = 50000
     """ 50 Kbit/s """
+
 
 class CAN_BIT_TIMMING(Enum):
     """ Baudrates. """
@@ -88,7 +91,8 @@ class HearbeatThread(Thread):
 
 
 class Network(object):
-    def __init__(self, device=None, channel=0, baudrate=CAN_BAUDRATE.Baudrate_1M):
+    def __init__(self, device=None, channel=0,
+                 baudrate=CAN_BAUDRATE.Baudrate_1M):
         self.__servos = []
         self.__device = device.value
         self.__channel = CAN_CHANNELS[self.__device][channel]
@@ -101,14 +105,19 @@ class Network(object):
         self.__heartbeat_thread = None
         if device is not None:
             try:
-                self.__network.connect(bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate)
+                self.__network.connect(bustype=self.__device,
+                                       channel=self.__channel,
+                                       bitrate=self.__baudrate)
             except Exception as e:
                 print('Exception trying to connect: ', e)
                 if hasattr(e, 'winerror') and e.winerror == 126:
-                    e.strerror = 'Driver module not found. Drivers might not be properly installed.'
+                    e.strerror = 'Driver module not found.' \
+                                 ' Drivers might not be properly installed.'
                 log.error(e)
 
-    def change_node_baudrate(self, target_node, vendor_id, product_code, rev_number, serial_number, new_node=None, new_baudrate=None):
+    def change_node_baudrate(self, target_node, vendor_id, product_code,
+                             rev_number, serial_number, new_node=None,
+                             new_baudrate=None):
         print('\nSwitching slave into CONFIGURATION state...\n')
 
         bool_result = False
@@ -124,7 +133,9 @@ class Network(object):
 
         if bool_result:
             if new_baudrate:
-                self.__network.lss.configure_bit_timing(CAN_BIT_TIMMING[new_baudrate].value)
+                self.__network.lss.configure_bit_timing(
+                    CAN_BIT_TIMMING[new_baudrate].value
+                )
                 sleep(0.1)
             if new_node:
                 self.__network.lss.configure_node_id(new_node)
@@ -132,13 +143,16 @@ class Network(object):
             self.__network.lss.store_configuration()
             sleep(0.1)
             print('Stored new configuration')
-            self.__network.lss.send_switch_state_global(self.__network.lss.WAITING_STATE)
+            self.__network.lss.send_switch_state_global(
+                self.__network.lss.WAITING_STATE
+            )
         else:
             return False
 
         print('')
         print('Reseting node. Baudrate will be applied after power cycle')
-        print('Set properly the baudrate of all the nodes before power cycling the devices')
+        print('Set properly the baudrate of all the nodes before'
+              ' power cycling the devices')
         self.__network.nodes[target_node].nmt.send_command(0x82)
 
         # Wait until node is reset
@@ -153,7 +167,9 @@ class Network(object):
             node = self.__network.add_node(node_id, self.__eds)
 
         # Reset all nodes to default state
-        self.__network.lss.send_switch_state_global(self.__network.lss.WAITING_STATE)
+        self.__network.lss.send_switch_state_global(
+            self.__network.lss.WAITING_STATE
+        )
 
         self.__network.nodes[target_node].nmt.start_node_guarding(1)
         return True
@@ -174,7 +190,9 @@ class Network(object):
             print("Could not stop guarding: ", e)
 
         try:
-            self.__network.connect(bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate)
+            self.__network.connect(bustype=self.__device,
+                                   channel=self.__channel,
+                                   bitrate=self.__baudrate)
             for node_id in self.__network.scanner.nodes:
                 node = self.__network.add_node(node_id, self.__eds)
                 node.nmt.start_node_guarding(1)
@@ -206,12 +224,14 @@ class Network(object):
                     self.__heartbeat_thread = HearbeatThread(self, node)
                     self.__heartbeat_thread.start()
 
-                self.__servos.append(Servo(self, node, dict, boot_mode=boot_mode))
+                self.__servos.append(Servo(self, node, dict,
+                                           boot_mode=boot_mode))
         except Exception as e:
             log.error(e)
             print('Exception trying to scan: ', e)
 
-    def connect_through_node(self, eds, dict, node_id, boot_mode=False, heartbeat=True):
+    def connect_through_node(self, eds, dict, node_id, boot_mode=False,
+                             heartbeat=True):
         try:
             self.__network.scanner.reset()
             self.__network.scanner.search()
@@ -229,7 +249,8 @@ class Network(object):
                     self.__heartbeat_thread = HearbeatThread(self, node)
                     self.__heartbeat_thread.start()
 
-                self.__servos.append(Servo(self, node, dict, boot_mode=boot_mode))
+                self.__servos.append(Servo(self, node, dict,
+                                           boot_mode=boot_mode))
             else:
                 log.warning('Node id not found')
         except Exception as e:
@@ -255,7 +276,8 @@ class Network(object):
                 node_obj.nmt.stop_node_guarding()
         except Exception as e:
             print('Could not stop node guarding. ', e)
-        if self.__heartbeat_thread is not None and self.__heartbeat_thread.is_alive():
+        if self.__heartbeat_thread is not None and \
+                self.__heartbeat_thread.is_alive():
             self.__heartbeat_thread.activate_stop_flag()
             self.__heartbeat_thread.join()
             self.__heartbeat_thread = None

@@ -26,9 +26,9 @@ __all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
            'LabelsDictionary',
            'CANOpenNetwork', 'CAN_DEVICE', 'CANOpenPoller', 'CANOpenServo']
 
-__version__ = '5.2.0'
+__version__ = '5.1.0'
 
 try:
     __ingenialink_C_version__ = pstr(lib.il_version())
-except:
+except Exception as e:
     __ingenialink_C_version__ = '-'

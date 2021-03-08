@@ -129,7 +129,8 @@ def update_firmware(ifname, filename, is_summit=False, slave=1):
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
     filename = cstr(filename) if filename else ffi.NULL
-    return net__, lib.il_net_update_firmware(net__, ifname, slave, filename, is_summit)
+    return net__, lib.il_net_update_firmware(net__, ifname, slave,
+                                             filename, is_summit)
 
 
 def force_error(ifname, if_address_ip):
@@ -224,7 +225,8 @@ class Network(object):
         return lib.il_net_remove_all_mapped_registers(self._net)
 
     def monitoring_set_mapped_register(self, channel, reg_idx, dtype):
-        return lib.il_net_set_mapped_register(self._net, channel, reg_idx, dtype)
+        return lib.il_net_set_mapped_register(self._net, channel,
+                                              reg_idx, dtype)
 
     def monitoring_get_num_mapped_registers(self):
         return lib.il_net_num_mapped_registers_get(self._net)
@@ -259,7 +261,8 @@ class Network(object):
         return lib.il_net_disturbance_remove_all_mapped_registers(self._net)
 
     def disturbance_set_mapped_register(self, channel, address, dtype):
-        return lib.il_net_disturbance_set_mapped_register(self._net, channel, address, dtype)
+        return lib.il_net_disturbance_set_mapped_register(self._net, channel,
+                                                          address, dtype)
 
     # Properties
     @property
@@ -320,7 +323,10 @@ class Network(object):
     @disturbance_data.setter
     def disturbance_data(self, value):
         disturbance_arr = value
-        disturbance_arr = np.pad(disturbance_arr, (0, int(self.disturbance_data_size / 2) - len(value)), 'constant')
+        disturbance_arr = \
+            np.pad(disturbance_arr,
+                   (0, int(self.disturbance_data_size / 2) - len(value)),
+                   'constant')
         lib.il_net_disturbance_data_set(self._net, disturbance_arr.tolist())
 
     @property

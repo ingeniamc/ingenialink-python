@@ -14,54 +14,41 @@ import qtmodern.windows
 import numpy as np
 import ingenialink as il
 
+from enum import IntEnum
+
 
 _RESOURCES = join(dirname(abspath(__file__)), 'resources')
 """ str: Resources folder. """
 
 
-POS_ACT = il.Register(address=0x006064,
+POS_ACT = il.Register(address=0x0030,
+                      identifier="POSITION_ACTUAL",
                       dtype=il.REG_DTYPE.S32,
                       access=il.REG_ACCESS.RW,
-                      phy=il.REG_PHY.POS)
+                      phy=il.REG_PHY.POS,
+                      units="",
+                      cyclic="")
 """ Register: Position Actual. """
 
-VEL_ACT = il.Register(address=0x00606C,
+VEL_ACT = il.Register(address=0x0031,
+                      identifier="VELOCITY_ACTUAL",
                       dtype=il.REG_DTYPE.S32,
                       access=il.REG_ACCESS.RW,
-                      phy=il.REG_PHY.VEL)
+                      phy=il.REG_PHY.VEL,
+                      units="",
+                      cyclic="")
 """ Register: Velocity Actual. """
 
-
-class HomingRunner(QObject):
-    """ Homing runner. """
-
-    finished = Signal(str)
-    """ Signal: Finished signal. """
-
-    def __init__(self, servo, en_timeout, h_timeout):
-        QObject.__init__(self)
-
-        self._servo = servo
-        self._en_timeout = en_timeout
-        self._h_timeout = h_timeout
-
-    def run(self):
-        try:
-            self._servo.mode = il.SERVO_MODE.HOMING
-            self._servo.enable(self._en_timeout)
-        except Exception as exc:
-            self.finished.emit('Error: ' + str(exc))
-
-        try:
-            self._servo.homing_start()
-            self._servo.homing_wait(self._h_timeout)
-
-            self.finished.emit('Finished')
-        except Exception as exc:
-            self.finished.emit('Error: ' + str(exc))
-        finally:
-            self._servo.disable()
-
+class SERVO_MODE(IntEnum):
+    """ Operation Mode. """
+    VOLTAGE = 0,
+    VELOCITY = 3,
+    CYCLIC_VELOCITY = 35,
+    PROFILE_VELOCITY = 19,
+    POSITION = 4,
+    CYCLIC_POSITION = 36,
+    PROFILE_POSITION = 20,
+    PROFILE_POSITION_S_CURVE = 68
 
 class ScopeWindow(QMainWindow):
     """ Scope Window. """
@@ -87,13 +74,10 @@ class ScopeWindow(QMainWindow):
     _ENABLE_TIMEOUT = 2
     """ int: Enable timeout (s). """
 
-    _HOMING_TIMEOUT = 15
-    """ int: Default homing timeout (s). """
-
-    stateInit, stateIdle, stateHoming, statePosition, stateVelocity = range(5)
+    stateInit, stateIdle, statePosition, stateVelocity = range(4)
     """ States. """
 
-    tabHomingIndex, tabPositionIndex, tabVelocityIndex = range(3)
+    tabPositionIndex, tabVelocityIndex = range(2)
     """ Motion control tabs. """
 
     def __init__(self):
@@ -113,29 +97,22 @@ class ScopeWindow(QMainWindow):
     def loadServos(self):
         model = QStandardItemModel()
 
-        devs = il.devices(il.NET_PROT.EUSB)
-        for dev in devs:
-            try:
-                net = il.Network(il.NET_PROT.EUSB, dev)
-            except il.exceptions.ILCreationError:
-                continue
+        net, servo = il.lucky(il.NET_PROT.ETH,
+                              "resources/eve-net_1.7.1.xdf",
+                              address_ip='192.168.2.22',
+                              port_ip=1061,
+                              protocol=2)
 
-            found = net.servos()
-            for servo_id in found:
-                try:
-                    servo = il.Servo(net, servo_id)
-                except il.exceptions.ILCreationError:
-                    continue
+        if net is not None and servo is not None:
+            item = QStandardItem('0x{:02x} ({})'.format(1, "Everest"))
+            item.setData(servo, Qt.UserRole)
 
-                item = QStandardItem('0x{:02x} ({})'.format(servo_id, dev))
-                item.setData(servo, Qt.UserRole)
+            image = QImage(join(_RESOURCES, 'images', 'eve-xcr.png'))
+            item.setData(QPixmap.fromImage(image), Qt.DecorationRole)
 
-                image = QImage(join(_RESOURCES, 'images', 'triton-core.png'))
-                item.setData(QPixmap.fromImage(image), Qt.DecorationRole)
+            model.appendRow([item])
 
-                model.appendRow([item])
-
-        self.cboxServos.setModel(model)
+            self.cboxServos.setModel(model)
 
     def setState(self, state):
         if state == self.stateInit:
@@ -144,14 +121,11 @@ class ScopeWindow(QMainWindow):
             self.splitter.setStretchFactor(0, 1)
             self.splitter.setStretchFactor(1, 0)
 
-            self.tabsMotionControl.setCurrentIndex(self.tabHomingIndex)
+            self.tabsMotionControl.setCurrentIndex(self.tabPositionIndex)
 
             palette = QApplication.instance().palette()
             iconsColor = palette.color(QPalette.Text)
 
-            self.tabsMotionControl.setTabIcon(
-                    self.tabHomingIndex,
-                    qta.icon('fa.home', color=iconsColor))
             self.tabsMotionControl.setTabIcon(
                     self.tabPositionIndex,
                     qta.icon('fa.arrows', color=iconsColor))
@@ -186,9 +160,6 @@ class ScopeWindow(QMainWindow):
         elif state == self.stateIdle:
             self.cboxServos.setEnabled(True)
 
-            self.tabHoming.setEnabled(True)
-            self.btnHoming.setEnabled(True)
-
             self.tabPosition.setEnabled(True)
             self.dialPosition.setEnabled(False)
             self.btnPosition.setText('Enable')
@@ -197,15 +168,6 @@ class ScopeWindow(QMainWindow):
             self.dialVelocity.setEnabled(False)
             self.btnVelocity.setText('Enable')
 
-        elif state == self.stateHoming:
-            self.cboxServos.setEnabled(False)
-
-            self.tabPosition.setEnabled(False)
-            self.tabVelocity.setEnabled(False)
-
-            self.btnHoming.setEnabled(False)
-            self.lblHomingStatus.setText('Running...')
-
         elif state == self.statePosition:
             self._plot.setLabel('left', 'Position', 'deg')
             self._plot.setRange(yRange=[-(self._PRANGE + 10),
@@ -213,7 +175,6 @@ class ScopeWindow(QMainWindow):
 
             self.cboxServos.setEnabled(False)
 
-            self.tabHoming.setEnabled(False)
             self.tabVelocity.setEnabled(False)
 
             self.btnPosition.setText('Disable')
@@ -226,7 +187,6 @@ class ScopeWindow(QMainWindow):
 
             self.cboxServos.setEnabled(False)
 
-            self.tabHoming.setEnabled(False)
             self.tabPosition.setEnabled(False)
 
             self.btnVelocity.setText('Disable')
@@ -257,33 +217,12 @@ class ScopeWindow(QMainWindow):
         self._poller.stop()
         self._timerPlotUpdate.stop()
 
-    @Slot(str)
-    def onHomingFinished(self, result):
-        self.lblHomingStatus.setText(result)
-        self.setState(self.stateIdle)
-
-    @Slot()
-    def on_btnHoming_clicked(self):
-        self.setState(self.stateHoming)
-
-        self._thread = QThread()
-        self._runner = HomingRunner(self.currentServo(), self._ENABLE_TIMEOUT,
-                                    self._HOMING_TIMEOUT)
-        self._runner.moveToThread(self._thread)
-        self._thread.started.connect(self._runner.run)
-        self._runner.finished.connect(self.onHomingFinished)
-        self._runner.finished.connect(self._thread.quit)
-        self._runner.finished.connect(self._runner.deleteLater)
-        self._thread.finished.connect(self._thread.deleteLater)
-        self._thread.start()
-
     @Slot()
     def on_btnPosition_clicked(self):
         servo = self.currentServo()
 
         if self._state == self.stateIdle:
-            servo.mode = il.SERVO_MODE.PP
-            servo.units_pos = il.SERVO_UNITS_POS.DEG
+            servo.raw_write("DRV_OP_CMD", 20)  # Profile Position
             servo.enable(self._ENABLE_TIMEOUT)
 
             self.enableScope(servo, POS_ACT)
@@ -296,15 +235,14 @@ class ScopeWindow(QMainWindow):
 
     @Slot(int)
     def on_dialPosition_valueChanged(self, value):
-        self.currentServo().position = value
+        self.currentServo().raw_write("CL_POS_SET_POINT_VALUE", value)
 
     @Slot()
     def on_btnVelocity_clicked(self):
         servo = self.currentServo()
 
         if self._state == self.stateIdle:
-            servo.mode = il.SERVO_MODE.PV
-            servo.units_vel = il.SERVO_UNITS_VEL.RPS
+            servo.raw_write("DRV_OP_CMD", 19)   # Profile Velocity
             servo.enable(self._ENABLE_TIMEOUT)
 
             self.enableScope(servo, VEL_ACT)
@@ -317,7 +255,7 @@ class ScopeWindow(QMainWindow):
 
     @Slot(int)
     def on_dialVelocity_valueChanged(self, value):
-        self.currentServo().velocity = value
+        self.currentServo().raw_write("CL_VEL_SET_POINT_VALUE", value)
 
     @Slot()
     def on_timerPlotUpdate_expired(self):

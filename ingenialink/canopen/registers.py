@@ -4,7 +4,7 @@ from .._ingenialink import lib
 
 from .._utils import INT_SIZES
 from ..registers import REG_DTYPE, REG_ACCESS, REG_PHY
-# from .dict_labels import LabelsDictionary
+
 
 class Register(object):
     """ Register.
@@ -28,8 +28,10 @@ class Register(object):
             TypeError: If any of the parameters has invalid type.
     """
 
-    def __init__(self, identifier, units, cyclic, idx, subidx, dtype, access, phy=REG_PHY.NONE, subnode=1, storage=None,
-                 range=(None, None), labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None, internal_use=0):
+    def __init__(self, identifier, units, cyclic, idx, subidx, dtype,
+                 access, phy=REG_PHY.NONE, subnode=1, storage=None,
+                 range=(None, None), labels={}, enums=[], enums_count=0,
+                 cat_id=None, scat_id=None, internal_use=0):
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
@@ -135,7 +137,6 @@ class Register(object):
         self.__cat_id = cat_id
         self.__scat_id = scat_id
 
-
     @property
     def identifier(self):
         """ str: Register identifier """
@@ -145,7 +146,6 @@ class Register(object):
     def units(self):
         """ str: Register units """
         return self.__units
-
 
     @property
     def idx(self):
