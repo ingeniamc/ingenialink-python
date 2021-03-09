@@ -125,6 +125,11 @@ def master_startup(ifname, if_address_ip):
     return lib.il_net_master_startup(net__, ifname, if_address_ip), net__
 
 
+def num_slaves_get(ifname):
+    ifname = cstr(ifname) if ifname else ffi.NULL
+    return lib.il_net_num_slaves_get(ifname)
+
+
 def master_stop(net):
     return lib.il_net_master_stop(net)
 
@@ -284,7 +289,7 @@ class Network(object):
             TypeError: If the protocol type is invalid.
             ILCreationError: If the network cannot be created.
     """
-    def __init__(self, prot, port=None, timeout_rd=0.5, timeout_wr=0.5):
+    def __init__(self, prot, port=None, slave=1, timeout_rd=0.5, timeout_wr=0.5):
         if not isinstance(prot, NET_PROT):
             raise TypeError('Invalid protocol')
 
@@ -300,6 +305,7 @@ class Network(object):
             self._net = lib.il_net_create(prot.value, opts)
             raise_null(self._net)
         else:
+            self.slave = slave
             self._net = ffi.new('il_net_t **')
 
     @classmethod
