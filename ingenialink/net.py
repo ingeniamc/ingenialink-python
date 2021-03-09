@@ -530,6 +530,12 @@ class Network(object):
     def destroy_network(self):
         lib.il_net_destroy(self._net)
 
+    def set_reconnection_retries(self, retries):
+        return lib.il_net_set_reconnection_retries(self._net, retries)
+
+    def set_recv_timeout(self, timeout):
+        return lib.il_net_set_recv_timeout(self._net, timeout)
+
 
 @ffi.def_extern()
 def _on_evt_cb(ctx, evt, port):
