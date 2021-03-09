@@ -9,7 +9,10 @@ from .dict_ import Dictionary
 from .const import *
 
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 import time
+import io
+
 
 DIST_NUMBER_SAMPLES = Register(
     identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
@@ -466,12 +469,30 @@ class Servo(object):
         """Force to reload all dictionary errors."""
         self._errors = self._get_all_errors(dict_f)
 
-    def dict_storage_read(self):
+    def dict_storage_read(self, new_path, subnode=0):
         """Read all dictionary registers content and put it to the dictionary
         storage."""
 
         r = lib.il_servo_dict_storage_read(self._servo)
         raise_err(r)
+
+        self.dict.save(new_path)
+
+        tree = ET.parse(new_path)
+        xml_data = tree.getroot()
+
+        if subnode > 0:
+            registers_category = xml_data.find('Body/Device/Registers')
+            registers = xml_data.findall('Body/Device/Registers/Register')
+            for register in registers:
+                if register.attrib['subnode'] != str(subnode):
+                    registers_category.remove(register)
+
+        xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(indent="  ", newl='')
+
+        config_file = io.open(new_path, "w", encoding='utf8')
+        config_file.write(xmlstr)
+        config_file.close()
 
     def dict_storage_write(self, dict_f, subnode=0):
         """Write current dictionary storage to the servo drive."""
