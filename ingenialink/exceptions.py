@@ -48,6 +48,25 @@ class ILIOError(ILError):
     pass
 
 
+class ILNotSupportedError(ILError):
+    """ IngeniaLink Not supported error. """
+    pass
+
+
+class ILWrongRegisterError(ILError):
+    """ IngeniaLink Wrong register error. """
+    pass
+
+
+class ILWrongCRCError(ILError):
+    """ IngeniaLink Wrong CRC error. """
+    pass
+
+
+class ILNACKError(ILError):
+    """ IngeniaLink NACK error. """
+
+    
 class UDPException(Exception):
     """ Exception on UDP action. """
     pass

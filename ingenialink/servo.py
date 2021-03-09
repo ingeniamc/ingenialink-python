@@ -498,10 +498,12 @@ class Servo(object):
         config_file.write(xmlstr)
         config_file.close()
 
-    def dict_storage_write(self):
+    def dict_storage_write(self, dict_f, subnode=0):
         """Write current dictionary storage to the servo drive."""
 
-        r = lib.il_servo_dict_storage_write(self._servo)
+        r = lib.il_servo_dict_storage_write(self._servo, cstr(dict_f), subnode)
+        if not hasattr(self, '_errors') or not self._errors:
+            self._errors = self._get_all_errors(dict_f)
         raise_err(r)
 
     @property

@@ -162,12 +162,12 @@ class Servo(object):
         elif isinstance(reg, str):
             _dict = self.__dict
             if not _dict:
-                raise ValueError('No dictionary loaded')
+                raise_err(lib.IL_EIO, 'No dictionary loaded')
             if reg not in _dict.regs[subnode]:
-                raise TypeError('Invalid register')
+                raise_err(lib.IL_EWRONGREG, 'Invalid register')
             _reg = _dict.regs[subnode][reg]
         else:
-            raise TypeError('Invalid register')
+            raise_err(lib.IL_EWRONGREG, 'Invalid register')
         return _reg
 
     def raw_read(self, reg, subnode=1):
@@ -186,7 +186,7 @@ class Servo(object):
 
         access = _reg.access
         if access == REG_ACCESS.WO:
-            raise TypeError('Register is Write-only')
+            raise_err(lib.IL_EACCESS, 'Register is Write-only')
 
         value = None
         dtype = _reg.dtype
@@ -233,12 +233,12 @@ class Servo(object):
                 )
         except Exception as e:
             print(_reg.identifier + " : " + str(e))
-            error_raised = Exception("Read error")
+            error_raised = "Error reading {}".format(_reg.identifier)
         finally:
             self.__lock.release()
 
         if error_raised is not None:
-            raise error_raised
+            raise_err(lib.IL_EIO, error_raised)
 
         return value
 
@@ -280,7 +280,7 @@ class Servo(object):
         _reg = self.get_reg(reg, subnode)
 
         if _reg.access == REG_ACCESS.RO:
-            raise TypeError('Register is Read-only')
+            raise_err(lib.IL_EACCESS, 'Register is Read-only')
 
         # auto cast floats if register is not float
         if _reg.dtype == REG_DTYPE.FLOAT:
@@ -326,12 +326,12 @@ class Servo(object):
                                                        signed=signed))
         except Exception as e:
             print(_reg.identifier + " : " + str(e))
-            error_raised = Exception("Write error")
+            error_raised = "Error writing {}".format(_reg.identifier)
         finally:
             self.__lock.release()
 
         if error_raised is not None:
-            raise error_raised
+            raise_err(lib.IL_EIO, error_raised)
 
     def get_all_registers(self):
         for obj in self.__node.object_dictionary.values():
@@ -380,7 +380,7 @@ class Servo(object):
         tree.write(new_path)
         xml_file.close()
 
-    def dict_storage_write(self, path):
+    def dict_storage_write(self, path, subnode=0):
         """Write current dictionary storage to the servo drive."""
         with open(path, 'r') as xml_file:
             tree = ET.parse(xml_file)
@@ -398,12 +398,11 @@ class Servo(object):
 
         for element in registers:
             try:
-                if 'storage' in element.attrib and \
-                        element.attrib['access'] == 'rw':
-                    self.raw_write(element.attrib['id'],
-                                   float(element.attrib['storage']),
-                                   subnode=int(element.attrib['subnode'])
-                                   )
+                if 'storage' in element.attrib and element.attrib['access'] == 'rw':
+                    if subnode == 0 or subnode == int(element.attrib['subnode']):
+                        self.raw_write(element.attrib['id'], float(element.attrib['storage']),
+                                       subnode=int(element.attrib['subnode'])
+                                       )
             except BaseException as e:
                 print("Exception during dict_storage_write, register " +
                       element.attrib['id'] + ": ", str(e))
