@@ -376,7 +376,7 @@ class Servo(object):
         tree.write(new_path)
         xml_file.close()
 
-    def dict_storage_write(self, path):
+    def dict_storage_write(self, path, subnode=0):
         """Write current dictionary storage to the servo drive."""
         with open(path, 'r') as xml_file:
             tree = ET.parse(xml_file)
@@ -394,12 +394,11 @@ class Servo(object):
 
         for element in registers:
             try:
-                if 'storage' in element.attrib and \
-                        element.attrib['access'] == 'rw':
-                    self.raw_write(element.attrib['id'],
-                                   float(element.attrib['storage']),
-                                   subnode=int(element.attrib['subnode'])
-                                   )
+                if 'storage' in element.attrib and element.attrib['access'] == 'rw':
+                    if subnode == 0 or subnode == int(element.attrib['subnode']):
+                        self.raw_write(element.attrib['id'], float(element.attrib['storage']),
+                                       subnode=int(element.attrib['subnode'])
+                                       )
             except BaseException as e:
                 print("Exception during dict_storage_write, register " +
                       element.attrib['id'] + ": ", str(e))
