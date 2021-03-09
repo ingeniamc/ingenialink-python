@@ -13,7 +13,7 @@ _BUILD_DIR = '_build'
 _INSTALL_DIR = '_install'
 
 _INC_DIR = join(_INSTALL_DIR, 'include')
-_LIB_DIR = join(_INSTALL_DIR, 'lib')-
+_LIB_DIR = join(_INSTALL_DIR, 'lib')
 
 if 'INGENIALINK_DIR' in os.environ:
     _IL_URL = None
