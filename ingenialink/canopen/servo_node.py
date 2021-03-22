@@ -607,8 +607,8 @@ class Servo(object):
         return self.__net
 
     @net.setter
-    def net(self, new_name):
-        self.__net = new_name
+    def net(self, net):
+        self.__net = net
 
     @property
     def name(self):
