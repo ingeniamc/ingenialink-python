@@ -600,6 +600,15 @@ class Servo(object):
 
     def get_state(self, subnode=1):
         return self.__state[subnode], None
+    
+    @property
+    def net(self):
+        """ net: CANopen Network. """
+        return self.__net
+
+    @net.setter
+    def net(self, net):
+        self.__net = net
 
     @property
     def name(self):
