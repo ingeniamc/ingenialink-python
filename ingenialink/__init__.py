@@ -11,6 +11,7 @@ from .dict_labels import LabelsDictionary
 from .canopen.servo_node import Servo as CANOpenServo
 from .canopen.net import Network as CANOpenNetwork
 from .canopen.poller_node import Poller as CANOpenPoller
+from .err import err_ipb_last
 from ._ingenialink import lib
 from ._utils import pstr
 
@@ -24,11 +25,12 @@ __all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
            'Register', 'REG_DTYPE', 'REG_ACCESS', 'REG_PHY',
            'Dictionary',
            'LabelsDictionary',
-           'CANOpenNetwork', 'CAN_DEVICE', 'CANOpenPoller', 'CANOpenServo']
+           'CANOpenNetwork', 'CAN_DEVICE', 'CANOpenPoller', 'CANOpenServo',
+           'err_ipb_last']
 
-__version__ = '5.1.0'
+__version__ = '5.2.0'
 
 try:
     __ingenialink_C_version__ = pstr(lib.il_version())
-except:
+except Exception as e:
     __ingenialink_C_version__ = '-'

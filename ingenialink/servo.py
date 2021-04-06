@@ -9,7 +9,10 @@ from .dict_ import Dictionary
 from .const import *
 
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 import time
+import io
+
 
 DIST_NUMBER_SAMPLES = Register(
     identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
@@ -198,7 +201,8 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     address_ip = cstr(address_ip) if address_ip else ffi.NULL
 
     if prot.value == 2:
-        r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f, address_ip, port_ip, protocol)
+        r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f,
+                                   address_ip, port_ip, protocol)
     else:
         r = lib.il_servo_lucky(prot.value, net__, servo__, dict_f)
     raise_err(r)
@@ -213,20 +217,20 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     return net, servo
 
 
-def connect_ecat(ifname, if_address_ip, dict_f, address_ip):
-    net = Network(prot=NET_PROT.ECAT)
+def connect_ecat(ifname, dict_f, slave=1):
+    net = Network(prot=NET_PROT.ECAT, slave=slave)
     servo = Servo(net=net, dict_f=dict_f)
 
-    r = servo.connect_ecat(ifname=ifname, if_address_ip=if_address_ip, address_ip=address_ip)
+    r = servo.connect_ecat(ifname=ifname, slave=slave)
 
     if r <= 0:
         servo = None
         net = None
+        raise_err(r)
     else:
         net._net = ffi.cast('il_net_t *', net._net[0])
         servo._servo = ffi.cast('il_servo_t *', servo._servo[0])
         servo.net = net
-        servo.net.set_if_params(servo.ifname, servo.if_address_ip)
 
     return servo, net
 
@@ -314,12 +318,11 @@ class Servo(object):
 
         return inst
 
-    def connect_ecat(self, address_ip, ifname, if_address_ip):
-        self.address_ip = cstr(address_ip) if address_ip else ffi.NULL
+    def connect_ecat(self, ifname, slave):
         self.ifname = cstr(ifname) if ifname else ffi.NULL
-        self.if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
+        self.slave = slave
 
-        r = lib.il_servo_connect_ecat(3, self.ifname, self.if_address_ip, self.net._net, self._servo, self.dict_f, self.address_ip, 1061)
+        r = lib.il_servo_connect_ecat(3, self.ifname, self.net._net, self._servo, self.dict_f, 1061, self.slave)
         time.sleep(2)
         return r
 
@@ -466,17 +469,37 @@ class Servo(object):
         """Force to reload all dictionary errors."""
         self._errors = self._get_all_errors(dict_f)
 
-    def dict_storage_read(self):
+    def dict_storage_read(self, new_path, subnode=0):
         """Read all dictionary registers content and put it to the dictionary
         storage."""
 
         r = lib.il_servo_dict_storage_read(self._servo)
         raise_err(r)
 
-    def dict_storage_write(self):
+        self.dict.save(new_path)
+
+        tree = ET.parse(new_path)
+        xml_data = tree.getroot()
+
+        if subnode > 0:
+            registers_category = xml_data.find('Body/Device/Registers')
+            registers = xml_data.findall('Body/Device/Registers/Register')
+            for register in registers:
+                if register.attrib['subnode'] != str(subnode):
+                    registers_category.remove(register)
+
+        xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(indent="  ", newl='')
+
+        config_file = io.open(new_path, "w", encoding='utf8')
+        config_file.write(xmlstr)
+        config_file.close()
+
+    def dict_storage_write(self, dict_f, subnode=0):
         """Write current dictionary storage to the servo drive."""
 
-        r = lib.il_servo_dict_storage_write(self._servo)
+        r = lib.il_servo_dict_storage_write(self._servo, cstr(dict_f), subnode)
+        if not hasattr(self, '_errors') or not self._errors:
+            self._errors = self._get_all_errors(dict_f)
         raise_err(r)
 
     @property
@@ -507,8 +530,9 @@ class Servo(object):
         raise_err(r)
 
         PRODUCT_ID_REG = Register(identifier='', address=0x06E1,
-                                     dtype=REG_DTYPE.U32,
-                                     access=REG_ACCESS.RO, cyclic='CONFIG', units='0')
+                                  dtype=REG_DTYPE.U32,
+                                  access=REG_ACCESS.RO, cyclic='CONFIG',
+                                  units='0')
 
         product_id = self.raw_read(PRODUCT_ID_REG)
 
@@ -571,7 +595,7 @@ class Servo(object):
         try:
             if self.dict:
                 _reg = self.dict.get_regs(subnode)[reg]
-        except:
+        except Exception as e:
             pass
         if _reg.dtype == REG_DTYPE.STR:
             return self._net.extended_buffer
@@ -963,13 +987,18 @@ class Servo(object):
         actual_pos = 0
         while actual_size > DIST_FRAME_SIZE_BYTES:
             next_pos = actual_pos + DIST_FRAME_SIZE_BYTES
-            self.net.disturbance_channel_data(channel, dtype, data_arr[actual_pos: next_pos])
+            self.net.disturbance_channel_data(channel, dtype,
+                                              data_arr[actual_pos: next_pos])
             self.net.disturbance_data_size = DIST_FRAME_SIZE
             self.write(DIST_DATA, DIST_FRAME_SIZE, False, 1, subnode=0)
             actual_pos = next_pos
             actual_size -= DIST_FRAME_SIZE_BYTES
 
         # Last disturbance frame
-        self.net.disturbance_channel_data(channel, dtype, data_arr[actual_pos: actual_pos + actual_size])
+        self.net.disturbance_channel_data(
+            channel,
+            dtype,
+            data_arr[actual_pos: actual_pos + actual_size]
+        )
         self.net.disturbance_data_size = actual_size * 4
         self.write(DIST_DATA, actual_size * 4, False, 1, subnode=0)

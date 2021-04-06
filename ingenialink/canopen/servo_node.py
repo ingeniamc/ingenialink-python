@@ -11,65 +11,66 @@ from .._ingenialink import ffi, lib
 from .dictionary import DictionaryCANOpen
 from .registers import Register, REG_DTYPE, REG_ACCESS
 
+
 SERIAL_NUMBER = Register(
-    identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00", cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00",
+    cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 PRODUCT_CODE = Register(
-    identifier='', units='', subnode=1, idx="0x26E1", subidx="0x00", cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    identifier='', units='', subnode=1, idx="0x26E1", subidx="0x00",
+    cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 SOFTWARE_VERSION = Register(
-    identifier='', units='', subnode=1, idx="0x26E4", subidx="0x00", cyclic='CONFIG',
-    dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+    identifier='', units='', subnode=1, idx="0x26E4", subidx="0x00",
+    cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
 )
 REVISION_NUMBER = Register(
-    identifier='', units='', subnode=1, idx="0x26E2", subidx="0x00", cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    identifier='', units='', subnode=1, idx="0x26E2", subidx="0x00",
+    cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 
 STATUS_WORD_REGISTERS = {
     1: Register(
-        identifier='', units='', subnode=1, idx="0x6041", subidx="0x00", cyclic='CYCLIC_TX',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        identifier='', units='', subnode=1, idx="0x6041", subidx="0x00",
+        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     ),
     2: Register(
-        identifier='', units='', subnode=2, idx="0x6841", subidx="0x00", cyclic='CYCLIC_TX',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        identifier='', units='', subnode=2, idx="0x6841", subidx="0x00",
+        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     ),
     3: Register(
-        identifier='', units='', subnode=3, idx="0x7041", subidx="0x00", cyclic='CYCLIC_TX',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        identifier='', units='', subnode=3, idx="0x7041", subidx="0x00",
+        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     )
 }
 
 CONTROL_WORD_REGISTERS = {
     1: Register(
-        identifier='', units='', subnode=1, idx="0x2010", subidx="0x00", cyclic='CYCLIC_RX',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+        identifier='', units='', subnode=1, idx="0x2010", subidx="0x00",
+        cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     ),
     2: Register(
-        identifier='', units='', subnode=2, idx="0x2810", subidx="0x00", cyclic='CYCLIC_RX',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+        identifier='', units='', subnode=2, idx="0x2810", subidx="0x00",
+        cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     ),
     3: Register(
-        identifier='', units='', subnode=3, idx="0x3010", subidx="0x00", cyclic='CYCLIC_RX',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+        identifier='', units='', subnode=3, idx="0x3010", subidx="0x00",
+        cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     )
 }
 
 STORE_ALL_REGISTERS = {
     1: Register(
-        identifier='', units='', subnode=1, idx="0x26DB", subidx="0x00", cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        identifier='', units='', subnode=1, idx="0x26DB", subidx="0x00",
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     2: Register(
-        identifier='', units='', subnode=2, idx="0x2EDB", subidx="0x00", cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        identifier='', units='', subnode=2, idx="0x2EDB", subidx="0x00",
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     3: Register(
-        identifier='', units='', subnode=3, idx="0x36DB", subidx="0x00", cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        identifier='', units='', subnode=3, idx="0x36DB", subidx="0x00",
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
 }
 
@@ -85,11 +86,14 @@ class DriveStatusThread(threading.Thread):
         while not self.__stop:
             for subnode in range(1, self.__parent.subnodes):
                 try:
-                    status_word = self.__parent.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+                    status_word = self.__parent.raw_read(
+                        STATUS_WORD_REGISTERS[subnode], subnode=subnode
+                    )
                     state = self.__parent.status_word_decode(status_word)
                     self.__parent.set_state(state, subnode=subnode)
                 except Exception as e:
-                    print('IL: Error getting drive status. Exception: {}'.format(e))
+                    print('IL: Error getting drive status. '
+                          'Exception: {}'.format(e))
             time.sleep(1.5)
 
     def activate_stop_flag(self):
@@ -140,7 +144,8 @@ class Servo(object):
         self.__drive_status_thread.start()
 
     def stop_drive_status_thread(self):
-        if self.__drive_status_thread is not None and self.__drive_status_thread.is_alive():
+        if self.__drive_status_thread is not None and \
+                self.__drive_status_thread.is_alive():
             self.__drive_status_thread.activate_stop_flag()
             self.__drive_status_thread.join()
             self.__drive_status_thread = None
@@ -157,12 +162,12 @@ class Servo(object):
         elif isinstance(reg, str):
             _dict = self.__dict
             if not _dict:
-                raise ValueError('No dictionary loaded')
+                raise_err(lib.IL_EIO, 'No dictionary loaded')
             if reg not in _dict.regs[subnode]:
-                raise TypeError('Invalid register')
+                raise_err(lib.IL_EWRONGREG, 'Invalid register')
             _reg = _dict.regs[subnode][reg]
         else:
-            raise TypeError('Invalid register')
+            raise_err(lib.IL_EWRONGREG, 'Invalid register')
         return _reg
 
     def raw_read(self, reg, subnode=1):
@@ -181,7 +186,7 @@ class Servo(object):
 
         access = _reg.access
         if access == REG_ACCESS.WO:
-            raise TypeError('Register is Write-only')
+            raise_err(lib.IL_EACCESS, 'Register is Write-only')
 
         value = None
         dtype = _reg.dtype
@@ -190,39 +195,50 @@ class Servo(object):
             self.__lock.acquire()
             if dtype == REG_DTYPE.S8:
                 value = int.from_bytes(
-                    self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)),
+                    self.__node.sdo.upload(int(str(_reg.idx), 16),
+                                           int(str(_reg.subidx), 16)),
                     "little",
                     signed=True
                 )
             elif dtype == REG_DTYPE.S16:
                 value = int.from_bytes(
-                    self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)),
+                    self.__node.sdo.upload(int(str(_reg.idx), 16),
+                                           int(str(_reg.subidx), 16)),
                     "little",
                     signed=True
                 )
             elif dtype == REG_DTYPE.S32:
                 value = int.from_bytes(
-                    self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)),
+                    self.__node.sdo.upload(int(str(_reg.idx), 16),
+                                           int(str(_reg.subidx), 16)),
                     "little",
                     signed=True
                 )
             elif dtype == REG_DTYPE.FLOAT:
-                [value] = struct.unpack('f', self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)))
+                [value] = struct.unpack('f',
+                                        self.__node.sdo.upload(
+                                            int(str(_reg.idx), 16),
+                                            int(str(_reg.subidx), 16))
+                                        )
             elif dtype == REG_DTYPE.STR:
-                value = self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)).decode("utf-8")
+                value = self.__node.sdo.upload(
+                            int(str(_reg.idx), 16),
+                            int(str(_reg.subidx), 16)
+                        ).decode("utf-8")
             else:
                 value = int.from_bytes(
-                    self.__node.sdo.upload(int(str(_reg.idx), 16), int(str(_reg.subidx), 16)),
+                    self.__node.sdo.upload(int(str(_reg.idx), 16),
+                                           int(str(_reg.subidx), 16)),
                     "little"
                 )
         except Exception as e:
             print(_reg.identifier + " : " + str(e))
-            error_raised = Exception("Read error")
+            error_raised = "Error reading {}".format(_reg.identifier)
         finally:
             self.__lock.release()
 
         if error_raised is not None:
-            raise error_raised
+            raise_err(lib.IL_EIO, error_raised)
 
         return value
 
@@ -244,7 +260,8 @@ class Servo(object):
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
     def write(self, reg, data, confirm=True, extended=0, subnode=1):
-        return self.raw_write(reg, data, confirm=True, extended=0, subnode=subnode)
+        return self.raw_write(reg, data, confirm=True,
+                              extended=0, subnode=subnode)
 
     def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
         """ Raw write to servo.
@@ -263,7 +280,7 @@ class Servo(object):
         _reg = self.get_reg(reg, subnode)
 
         if _reg.access == REG_ACCESS.RO:
-            raise TypeError('Register is Read-only')
+            raise_err(lib.IL_EACCESS, 'Register is Read-only')
 
         # auto cast floats if register is not float
         if _reg.dtype == REG_DTYPE.FLOAT:
@@ -277,10 +294,12 @@ class Servo(object):
         try:
             self.__lock.acquire()
             if _reg.dtype == REG_DTYPE.FLOAT:
-                self.__node.sdo.download(int(str(_reg.idx), 16), int(str(_reg.subidx), 16),
+                self.__node.sdo.download(int(str(_reg.idx), 16),
+                                         int(str(_reg.subidx), 16),
                                          struct.pack('f', data))
             elif _reg.dtype == REG_DTYPE.DOMAIN:
-                self.__node.sdo.download(int(str(_reg.idx), 16), int(str(_reg.subidx), 16), data)
+                self.__node.sdo.download(int(str(_reg.idx), 16),
+                                         int(str(_reg.subidx), 16), data)
             else:
                 bytes_length = 2
                 signed = False
@@ -300,16 +319,19 @@ class Servo(object):
                     bytes_length = 4
                     signed = True
 
-                self.__node.sdo.download(int(str(_reg.idx), 16), int(str(_reg.subidx), 16),
-                                         data.to_bytes(bytes_length, byteorder='little', signed=signed))
+                self.__node.sdo.download(int(str(_reg.idx), 16),
+                                         int(str(_reg.subidx), 16),
+                                         data.to_bytes(bytes_length,
+                                                       byteorder='little',
+                                                       signed=signed))
         except Exception as e:
             print(_reg.identifier + " : " + str(e))
-            error_raised = Exception("Write error")
+            error_raised = "Error writing {}".format(_reg.identifier)
         finally:
             self.__lock.release()
 
         if error_raised is not None:
-            raise error_raised
+            raise_err(lib.IL_EIO, error_raised)
 
     def get_all_registers(self):
         for obj in self.__node.object_dictionary.values():
@@ -318,7 +340,7 @@ class Servo(object):
                 for subobj in obj.values():
                     print('  %d: %s' % (subobj.subindex, subobj.name))
 
-    def dict_storage_read(self, new_path):
+    def dict_storage_read(self, new_path, subnode=0):
         """Read all dictionary registers content and put it to the dictionary
         storage."""
 
@@ -329,29 +351,36 @@ class Servo(object):
         axis = tree.findall('*/Device/Axes/Axis')
         if axis:
             # Multiaxis
-            registers = root.findall('./Body/Device/Axes/Axis/Registers/Register')
+            registers = root.findall(
+                './Body/Device/Axes/Axis/Registers/Register'
+            )
         else:
             # Single axis
             registers = root.findall('./Body/Device/Registers/Register')
 
-        for element in registers:
-            try:
-                if element.attrib['access'] == 'rw':
-                    subnode = int(element.attrib['subnode'])
-                    storage = self.raw_read(element.attrib['id'], subnode=subnode)
-                    element.set('storage', str(storage))
+        registers_category = root.find('Body/Device/Registers')
 
-                    # Update register object
-                    reg = self.__dict.regs[subnode][element.attrib['id']]
-                    reg.storage = storage
-                    reg.storage_valid = 1
+        for register in registers:
+            try:
+                element_subnode = int(register.attrib['subnode'])
+                if subnode == 0 or subnode == element_subnode:
+                    if register.attrib['access'] == 'rw':
+                        storage = self.raw_read(register.attrib['id'], subnode=element_subnode)
+                        register.set('storage', str(storage))
+
+                        # Update register object
+                        reg = self.__dict.regs[element_subnode][register.attrib['id']]
+                        reg.storage = storage
+                        reg.storage_valid = 1
+                else:
+                    registers_category.remove(register)
             except BaseException as e:
-                print("Exception during dict_storage_read, register " + element.attrib['id'] + ": ", str(e))
+                print("Exception during dict_storage_read, register " + register.attrib['id'] + ": ", str(e))
 
         tree.write(new_path)
         xml_file.close()
 
-    def dict_storage_write(self, path):
+    def dict_storage_write(self, path, subnode=0):
         """Write current dictionary storage to the servo drive."""
         with open(path, 'r') as xml_file:
             tree = ET.parse(xml_file)
@@ -360,7 +389,9 @@ class Servo(object):
         axis = tree.findall('*/Device/Axes/Axis')
         if axis:
             # Multiaxis
-            registers = root.findall('./Body/Device/Axes/Axis/Registers/Register')
+            registers = root.findall(
+                './Body/Device/Axes/Axis/Registers/Register'
+            )
         else:
             # Single axis
             registers = root.findall('./Body/Device/Registers/Register')
@@ -368,18 +399,21 @@ class Servo(object):
         for element in registers:
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
-                    self.raw_write(element.attrib['id'], float(element.attrib['storage']),
-                                   subnode=int(element.attrib['subnode'])
-                                   )
+                    if subnode == 0 or subnode == int(element.attrib['subnode']):
+                        self.raw_write(element.attrib['id'], float(element.attrib['storage']),
+                                       subnode=int(element.attrib['subnode'])
+                                       )
             except BaseException as e:
-                print("Exception during dict_storage_write, register " + element.attrib['id'] + ": ", str(e))
+                print("Exception during dict_storage_write, register " +
+                      element.attrib['id'] + ": ", str(e))
 
     def store_all(self, subnode=1):
         """ Store all servo current parameters to the NVM. """
         r = 0
         try:
-            self.raw_write(STORE_ALL_REGISTERS[subnode], 0x65766173, subnode=subnode)
-        except:
+            self.raw_write(STORE_ALL_REGISTERS[subnode], 0x65766173,
+                           subnode=subnode)
+        except Exception as e:
             r = -1
         return r
 
@@ -438,32 +472,39 @@ class Servo(object):
     def status_word_wait_change(self, status_word, timeout, subnode=1):
         r = 0
         start_time = int(round(time.time() * 1000))
-        actual_status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=1)
+        actual_status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
+                                           subnode=1)
         while actual_status_word == status_word:
             current_time = int(round(time.time() * 1000))
             time_diff = (current_time - start_time)
             if time_diff > timeout:
                 r = lib.IL_ETIMEDOUT
                 return r
-            actual_status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=1)
+            actual_status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
+                                               subnode=1)
         return r
 
     def fault_reset(self, subnode=1):
         r = 0
         retries = 0
-        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
         state = self.status_word_decode(status_word)
         self.set_state(state, subnode)
-        while self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
+        while self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
+                self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
             # Check if faulty, if so try to reset (0->1)
             if retries == FAULT_RESET_RETRIES:
                 return lib.IL_ESTATE
 
-            status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+            status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
             self.raw_write(CONTROL_WORD_REGISTERS[subnode], 0, subnode=subnode)
-            self.raw_write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR, subnode=subnode)
+            self.raw_write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR,
+                           subnode=subnode)
             # Wait until statusword changes
-            r = self.status_word_wait_change(status_word, PDS_TIMEOUT, subnode=1)
+            r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
+                                             subnode=1)
             if r < 0:
                 return r
             retries += 1
@@ -473,18 +514,21 @@ class Servo(object):
         """ Enable PDS. """
         r = 0
 
-        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
         state = self.status_word_decode(status_word)
         self.set_state(state, subnode)
 
         # Try fault reset if faulty
-        if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
+        if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
+                self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
             r = self.fault_reset(subnode=subnode)
             if r < 0:
                 return r
 
         while self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
-            status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+            status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
             state = self.status_word_decode(status_word)
             self.set_state(state, subnode)
             if self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
@@ -499,15 +543,18 @@ class Servo(object):
                 elif self.state[subnode].value == lib.IL_SERVO_STATE_RDY:
                     cmd = IL_MC_PDS_CMD_SOEO
 
-                self.raw_write(CONTROL_WORD_REGISTERS[subnode], cmd, subnode=subnode)
+                self.raw_write(CONTROL_WORD_REGISTERS[subnode], cmd,
+                               subnode=subnode)
 
                 # Wait for state change
-                r = self.status_word_wait_change(status_word, PDS_TIMEOUT, subnode=1)
+                r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
+                                                 subnode=1)
                 if r < 0:
                     return r
 
                 # Read the current status word
-                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
+                                            subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self.set_state(state, subnode)
         raise_err(r)
@@ -516,7 +563,8 @@ class Servo(object):
         """ Disable PDS. """
         r = 0
 
-        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
         state = self.status_word_decode(status_word)
         self.set_state(state, subnode)
 
@@ -524,29 +572,43 @@ class Servo(object):
             state = self.status_word_decode(status_word)
             self.set_state(state, subnode)
 
-            if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
+            if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
+                    self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
                 # Try fault reset if faulty
                 r = self.fault_reset(subnode=subnode)
                 if r < 0:
                     return r
-                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
+                                            subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self.set_state(state, subnode)
             elif self.state[subnode].value != lib.IL_SERVO_STATE_DISABLED:
                 # Check state and command action to reach disabled
-                self.raw_write(CONTROL_WORD_REGISTERS[subnode], IL_MC_PDS_CMD_DV, subnode=subnode)
+                self.raw_write(CONTROL_WORD_REGISTERS[subnode],
+                               IL_MC_PDS_CMD_DV, subnode=subnode)
 
                 # Wait until statusword changes
-                r = self.status_word_wait_change(status_word, PDS_TIMEOUT, subnode=1)
+                r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
+                                                 subnode=1)
                 if r < 0:
                     return r
-                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode], subnode=subnode)
+                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
+                                            subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self.set_state(state, subnode)
         raise_err(r)
 
     def get_state(self, subnode=1):
         return self.__state[subnode], None
+    
+    @property
+    def net(self):
+        """ net: CANopen Network. """
+        return self.__net
+
+    @net.setter
+    def net(self, net):
+        self.__net = net
 
     @property
     def name(self):

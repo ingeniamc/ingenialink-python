@@ -1,5 +1,7 @@
 import xml.etree.ElementTree as ET
 from .registers import Register, REG_ACCESS, REG_DTYPE, REG_PHY
+from .._utils import *
+from .._ingenialink import lib
 
 
 class Categories(object):
@@ -152,7 +154,7 @@ class DictionaryCANOpen(object):
             elif dtype == "str":
                 dtype = REG_DTYPE.STR
             else:
-                raise Exception
+                raise_err(lib.IL_EINVAL, 'Invalid data type')
 
             # Access
             access = register.attrib['access']
@@ -163,7 +165,7 @@ class DictionaryCANOpen(object):
             elif access == "rw":
                 access = REG_ACCESS.RW
             else:
-                raise Exception
+                raise_err(lib.IL_EACCESS, 'Invalid access type')
 
             # Subnode
             if 'subnode' in register.attrib:
@@ -218,12 +220,14 @@ class DictionaryCANOpen(object):
                 for enum in enums_elem.getchildren():
                     enums.append({enum.attrib['value']: enum.text})
 
-            reg = Register(identifier, units, cyclic, idx, subidx, dtype, access, subnode=subnode,
-                           storage=storage,
-                           range=reg_range, labels=labels, enums=enums, enums_count=len(enums), cat_id=cat_id,
+            reg = Register(identifier, units, cyclic, idx, subidx, dtype,
+                           access, subnode=subnode,
+                           storage=storage, range=reg_range,
+                           labels=labels, enums=enums,
+                           enums_count=len(enums), cat_id=cat_id,
                            internal_use=internal_use)
             self.__regs[int(subnode)][identifier] = reg
-        except:
+        except Exception as e:
             # print("FAIL reading a register "+ identifier)
             pass
 

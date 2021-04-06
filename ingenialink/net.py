@@ -3,8 +3,17 @@ from time import sleep
 
 from ._ingenialink import lib, ffi
 from ._utils import cstr, pstr, raise_null, raise_err, to_ms
-import numpy as np
 from .registers import REG_DTYPE
+from .exceptions import *
+
+import numpy as np
+import socket
+import struct
+import binascii
+import os
+
+
+CMD_CHANGE_CPU = 0x67E4
 
 
 class NET_PROT(Enum):
@@ -116,15 +125,59 @@ def master_startup(ifname, if_address_ip):
     return lib.il_net_master_startup(net__, ifname, if_address_ip), net__
 
 
+def num_slaves_get(ifname):
+    ifname = cstr(ifname) if ifname else ffi.NULL
+    return lib.il_net_num_slaves_get(ifname)
+
+
 def master_stop(net):
     return lib.il_net_master_stop(net)
+
+
+def update_firmware_moco(node, subnode, ip, port, moco_file):
+    r = 1
+    upd = UDP(port, ip)
+
+    if moco_file and os.path.isfile(moco_file):
+        moco_in = open(moco_file, "r")
+
+        print('Loading firmware...')
+        try:
+            for line in moco_in:
+                words = line.split()
+
+                # Get command and address
+                cmd = int(words[1] + words[0], 16)
+                data = b''
+                data_start_byte = 2
+                while data_start_byte in range(data_start_byte, len(words)):
+                    # Load UDP data
+                    data = data + bytes([int(words[data_start_byte], 16)])
+                    data_start_byte = data_start_byte + 1
+
+                # Send message
+                upd.raw_cmd(node, subnode, cmd, data)
+
+                if cmd == CMD_CHANGE_CPU:
+                    sleep(1)
+
+            print('Bootloading process succeeded!')
+        except Exception as e:
+            print('Error during bootloading process. {}'.format(e))
+            r = -2
+    else:
+        print('File not found')
+        r = -1
+
+    return r
 
 
 def update_firmware(ifname, filename, is_summit=False, slave=1):
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
     filename = cstr(filename) if filename else ffi.NULL
-    return net__, lib.il_net_update_firmware(net__, ifname, slave, filename, is_summit)
+    return net__, lib.il_net_update_firmware(net__, ifname, slave,
+                                             filename, is_summit)
 
 
 def force_error(ifname, if_address_ip):
@@ -143,6 +196,86 @@ def _on_found_cb(ctx, servo_id):
     self._on_found(int(servo_id))
 
 
+class UDP(object):
+    def __init__(self, port, ip):
+        self.port = port
+        self.ip = ip
+        self.rcv_buffer_size = 512
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+        self.socket.settimeout(8)
+        self.socket.connect((ip, port))
+
+    def __del__(self):
+        try:
+            self.socket.close()
+        except Exception as e:
+            print('Socket already closed. Exception: '.format(e))
+
+    def close(self):
+        self.socket.close()
+        print('Socket closed')
+
+    def write(self, frame):
+        self.socket.sendto(frame, (self.ip, self.port))
+        self.check_ack()
+
+    def read(self):
+        data, address = self.socket.recvfrom(self.rcv_buffer_size)
+        return data
+
+    def check_ack(self):
+        rcv = self.read()
+        ret_cmd = self.unmsg(rcv)
+        if ret_cmd != 3:
+            self.socket.close()
+            raise Exception('No ACK received (command received %d)' % ret_cmd)
+        return ret_cmd
+
+    @staticmethod
+    def unmsg(in_frame):
+        # Base uart frame (subnode [4 bits], node [12 bits],
+        # Addr [12 bits], cmd [3 bits], pending [1 bit],
+        # Data [8 bytes]) and CRC [2 bytes] is 14 bytes long
+        header = in_frame[2:4]
+        cmd = struct.unpack('<H', header)[0] >> 1
+        cmd = cmd & 0x7
+
+        # CRC is computed with header and data (removing Tx CRC)
+        crc = binascii.crc_hqx(in_frame[0:12], 0)
+        crcread = struct.unpack('<H', in_frame[12:14])[0]
+        if crcread != crc:
+            raise UDPException('CRC error')
+
+        return cmd
+
+    @staticmethod
+    def raw_msg(node, subnode, cmd, data, size):
+        node_head = (node << 4) | (subnode & 0xf)
+        node_head = struct.pack('<H', node_head)
+
+        if size > 8:
+            cmd = cmd + 1
+            head = struct.pack('<H', cmd)
+            head_size = struct.pack('<H', size)
+            head_size = head_size + bytes([0] * (8 - len(head_size)))
+            ret = node_head + head + head_size + struct.pack('<H',
+                                                             binascii.crc_hqx(node_head + head + head_size, 0)) + data
+        else:
+            head = struct.pack('<H', cmd)
+            ret = node_head + head + data + struct.pack('<H', binascii.crc_hqx(node_head + head + data, 0))
+
+        return ret
+
+    def raw_cmd(self, node, subnode, cmd, data):
+        if len(data) > 8:
+            frame = self.raw_msg(node, subnode, cmd, data, len(data))
+        else:
+            data = data + bytes([0] * (8 - len(data)))
+            frame = self.raw_msg(node, subnode, cmd, data, len(data))
+
+        self.write(frame)
+
+
 class Network(object):
     """ Network.
 
@@ -156,7 +289,7 @@ class Network(object):
             TypeError: If the protocol type is invalid.
             ILCreationError: If the network cannot be created.
     """
-    def __init__(self, prot, port=None, timeout_rd=0.5, timeout_wr=0.5):
+    def __init__(self, prot, port=None, slave=1, timeout_rd=0.5, timeout_wr=0.5):
         if not isinstance(prot, NET_PROT):
             raise TypeError('Invalid protocol')
 
@@ -172,6 +305,7 @@ class Network(object):
             self._net = lib.il_net_create(prot.value, opts)
             raise_null(self._net)
         else:
+            self.slave = slave
             self._net = ffi.new('il_net_t **')
 
     @classmethod
@@ -218,7 +352,8 @@ class Network(object):
         return lib.il_net_remove_all_mapped_registers(self._net)
 
     def monitoring_set_mapped_register(self, channel, reg_idx, dtype):
-        return lib.il_net_set_mapped_register(self._net, channel, reg_idx, dtype)
+        return lib.il_net_set_mapped_register(self._net, channel,
+                                              reg_idx, dtype)
 
     def monitoring_get_num_mapped_registers(self):
         return lib.il_net_num_mapped_registers_get(self._net)
@@ -253,7 +388,8 @@ class Network(object):
         return lib.il_net_disturbance_remove_all_mapped_registers(self._net)
 
     def disturbance_set_mapped_register(self, channel, address, dtype):
-        return lib.il_net_disturbance_set_mapped_register(self._net, channel, address, dtype)
+        return lib.il_net_disturbance_set_mapped_register(self._net, channel,
+                                                          address, dtype)
 
     # Properties
     @property
@@ -314,7 +450,10 @@ class Network(object):
     @disturbance_data.setter
     def disturbance_data(self, value):
         disturbance_arr = value
-        disturbance_arr = np.pad(disturbance_arr, (0, int(self.disturbance_data_size / 2) - len(value)), 'constant')
+        disturbance_arr = \
+            np.pad(disturbance_arr,
+                   (0, int(self.disturbance_data_size / 2) - len(value)),
+                   'constant')
         lib.il_net_disturbance_data_set(self._net, disturbance_arr.tolist())
 
     @property
@@ -390,6 +529,12 @@ class Network(object):
 
     def destroy_network(self):
         lib.il_net_destroy(self._net)
+
+    def set_reconnection_retries(self, retries):
+        return lib.il_net_set_reconnection_retries(self._net, retries)
+
+    def set_recv_timeout(self, timeout):
+        return lib.il_net_set_recv_timeout(self._net, timeout)
 
 
 @ffi.def_extern()
