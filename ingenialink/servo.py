@@ -429,6 +429,9 @@ class Servo(object):
 
         del self._emcy_cb[slot]
 
+    def state_subs_stop(self, stop):
+        return lib.il_servo_state_subs_stop(self._servo, stop)
+
     @property
     def errors(self):
         return self._errors
