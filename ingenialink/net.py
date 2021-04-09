@@ -536,8 +536,8 @@ class Network(object):
     def set_recv_timeout(self, timeout):
         return lib.il_net_set_recv_timeout(self._net, timeout)
 
-    def set_status_check(self, status_check):
-        return lib.il_net_set_status_check(self._net, status_check)
+    def set_status_check_stop(self, stop):
+        return lib.il_net_set_status_check_stop(self._net, stop)
 
 
 @ffi.def_extern()
