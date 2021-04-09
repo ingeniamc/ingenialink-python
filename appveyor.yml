@@ -26,7 +26,7 @@ install:
   - cmd: '%PYTHON% -m pip install --upgrade pip setuptools wheel twine'
 
 build_script:
-  - cmd: '%PYTHON% setup.py build sdist bdist_wheel'
+  - cmd: '%PYTHON% setup.py bdist_app build sdist bdist_wheel bclean_app'
 
 deploy_script:
   - cmd: 'if defined APPVEYOR_REPO_TAG_NAME %PYTHON% -m twine upload -u %pypi_user% -p %pypi_pass% --skip-existing dist/*'
