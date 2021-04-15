@@ -377,6 +377,10 @@ class Servo(object):
             except BaseException as e:
                 print("Exception during dict_storage_read, register " + register.attrib['id'] + ": ", str(e))
 
+        image = xml_data.find('./DriveImage')
+        if image is not None:
+            xml_data.remove(image)
+
         tree.write(new_path)
         xml_file.close()
 
