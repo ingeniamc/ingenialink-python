@@ -9,8 +9,9 @@ DIST_FRAME_SIZE = 512
 
 
 def _load():
-    """ Load IngeniaLink constants to this module. """
-
+    """
+    Load IngeniaLink constants to this module.
+    """
     module = sys.modules[__name__]
     const_pattern = re.compile('ILK_(.*)')
 

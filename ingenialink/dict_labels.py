@@ -5,7 +5,8 @@ from ._utils import cstr, pstr, raise_null, raise_err
 
 
 class LabelsDictionary(collections.MutableMapping):
-    """Labels dictionary.
+    """
+    Labels dictionary.
 
     Args:
         labels (dict, optional): Labels.
@@ -13,7 +14,6 @@ class LabelsDictionary(collections.MutableMapping):
     Raises:
         ILCreationError: If the dictionary could not be created.
     """
-
     def __init__(self, labels={}):
         _labels = lib.il_dict_labels_create()
         raise_null(_labels)
@@ -27,8 +27,9 @@ class LabelsDictionary(collections.MutableMapping):
 
     @classmethod
     def _from_labels(cls, _labels):
-        """Create a new class instance from an existing labels dictionary."""
-
+        """
+        Create a new class instance from an existing labels dictionary.
+        """
         inst = cls.__new__(cls)
         inst._labels = _labels
 
@@ -37,8 +38,9 @@ class LabelsDictionary(collections.MutableMapping):
         return inst
 
     def _load_langs(self):
-        """Load languages from dictionary (cache)."""
-
+        """
+        Load languages from dictionary (cache).
+        """
         langs = lib.il_dict_labels_langs_get(self._labels)
 
         self._langs = []

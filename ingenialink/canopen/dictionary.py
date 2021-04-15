@@ -5,12 +5,12 @@ from .._ingenialink import lib
 
 
 class Categories(object):
-    """Categories.
+    """
+    Categories.
 
     Args:
         dict_ (il_dict_t *): Ingenia dictionary instance.
     """
-
     def __init__(self, dict_):
         self._dict = dict_
         self._cat_ids = []
@@ -19,8 +19,9 @@ class Categories(object):
         self.load_cat_ids()
 
     def load_cat_ids(self):
-        """Load category IDs from dictionary."""
-
+        """
+        Load category IDs from dictionary.
+        """
         with open(self._dict, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -33,21 +34,31 @@ class Categories(object):
 
     @property
     def cat_ids(self):
-        """list: Category IDs."""
+        """
+        Obtain category identifiers.
+
+        Returns:
+            list: Category IDs.
+        """
         return self._cat_ids
 
     def labels(self, cat_id):
-        """Obtain labels for a certain category ID."""
+        """
+        Obtain labels for a certain category ID.
 
+        Returns:
+            dict: Labels dictionary.
+        """
         return self._categories[cat_id]
 
 
 class Errors(object):
-    """Categories.
+    """
+    Categories.
 
-        Args:
-            dict_ (il_dict_t *): Ingenia dictionary instance.
-        """
+    Args:
+        dict_ (il_dict_t *): Ingenia dictionary instance.
+    """
 
     def __init__(self, dict_):
         self._dict = dict_
@@ -56,6 +67,9 @@ class Errors(object):
         self.load_errors()
 
     def load_errors(self):
+        """
+        Load errors from dictionary.
+        """
         with open(self._dict, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -71,6 +85,12 @@ class Errors(object):
 
     @property
     def errors(self):
+        """
+        Obtain all errors.
+
+        Returns:
+            dict: Errors dictionary.
+        """
         return self._errors
 
 

@@ -17,8 +17,9 @@ CMD_CHANGE_CPU = 0x67E4
 
 
 class NET_PROT(Enum):
-    """ Network Protocol. """
-
+    """
+    Network Protocol.
+    """
     EUSB = lib.IL_NET_PROT_EUSB
     """ E-USB. """
     MCB = lib.IL_NET_PROT_MCB
@@ -32,8 +33,9 @@ class NET_PROT(Enum):
 
 
 class NET_STATE(Enum):
-    """ Network State. """
-
+    """
+    Network State.
+    """
     CONNECTED = lib.IL_NET_STATE_CONNECTED
     """ Connected. """
     DISCONNECTED = lib.IL_NET_STATE_DISCONNECTED
@@ -43,8 +45,9 @@ class NET_STATE(Enum):
 
 
 class NET_DEV_EVT(Enum):
-    """ Device Event. """
-
+    """
+    Device Event.
+    """
     ADDED = lib.IL_NET_DEV_EVT_ADDED
     """ Added. """
     REMOVED = lib.IL_NET_DEV_EVT_REMOVED
@@ -52,8 +55,9 @@ class NET_DEV_EVT(Enum):
 
 
 class EEPROM_TOOL_MODE(Enum):
-    """ EEPROM tool mode. """
-
+    """
+    EEPROM tool mode.
+    """
     MODE_NONE = 0
     """ None. """
     MODE_READBIN = 1
@@ -71,8 +75,9 @@ class EEPROM_TOOL_MODE(Enum):
 
 
 class NET_TRANS_PROT(Enum):
-    """ Protocol. """
-
+    """
+    Protocol.
+    """
     TCP = 1
     """ TCP. """
     UDP = 2
@@ -92,7 +97,6 @@ def devices(prot):
     Raises:
         TypeError: If the protocol type is invalid.
     """
-
     if not isinstance(prot, NET_PROT):
         raise TypeError('Invalid protocol')
 
@@ -255,8 +259,9 @@ def force_error(ifname, if_address_ip):
 
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
-    """ On found callback shim. """
-
+    """
+    On found callback shim.
+    """
     self = ffi.from_handle(ctx)
     self._on_found(int(servo_id))
 
@@ -342,17 +347,18 @@ class UDP(object):
 
 
 class Network(object):
-    """ Network.
+    """
+    Network.
 
-        Args:
-            prot (NET_PROT): Protocol.
-            port (str): Network device port (e.g. COM1, /dev/ttyACM0, etc.).
-            timeout_rd (int, float, optional): Read timeout (s).
-            timeout_wr (int, float, optional): Write timeout (s).
+    Args:
+        prot (NET_PROT): Protocol.
+        port (str): Network device port (e.g. COM1, /dev/ttyACM0, etc.).
+        timeout_rd (int, float, optional): Read timeout (s).
+        timeout_wr (int, float, optional): Write timeout (s).
 
-        Raises:
-            TypeError: If the protocol type is invalid.
-            ILCreationError: If the network cannot be created.
+    Raises:
+        TypeError: If the protocol type is invalid.
+        ILCreationError: If the network cannot be created.
     """
     def __init__(self, prot, port=None, slave=1, timeout_rd=0.5, timeout_wr=0.5):
         if not isinstance(prot, NET_PROT):
@@ -385,7 +391,6 @@ class Network(object):
             Network: New instanced class.
 
         """
-
         inst = cls.__new__(cls)
         inst._net = ffi.gc(net, lib.il_net_fake_destroy)
 
@@ -433,13 +438,12 @@ class Network(object):
         """
         Obtain processed monitoring data of a channel.
 
-
         Args:
             channel (int): Identity channel number.
             dtype (REG_DTYPE): Data type of the register to map.
 
         Returns:
-
+            array: Monitoring data.
         """
         data_arr = []
         size = int(self.monitoring_data_size)
@@ -560,7 +564,6 @@ class Network(object):
 
         Returns:
             int: Return code.
-
         """
         return lib.il_net_disturbance_remove_all_mapped_registers(self._net)
 
@@ -711,26 +714,28 @@ class Network(object):
         return lib.il_net_close_socket(self._net)
 
     def connect(self):
-        """ Connect network. """
-
+        """
+        Connect network.
+        """
         r = lib.il_net_connect(self._net)
         raise_err(r)
 
     def disconnect(self):
-        """ Disconnect network. """
-
+        """
+        Disconnect network.
+        """
         lib.il_net_disconnect(self._net)
 
     def servos(self, on_found=None):
-        """ Obtain a list of attached servos.
-
-            Args:
-                on_found (callback, optional): Servo found callback.
-
-            Returns:
-                list: List of attached servos.
         """
+        Obtain a list of attached servos.
 
+        Args:
+            on_found (callback, optional): Servo found callback.
+
+        Returns:
+            list: List of attached servos.
+        """
         if on_found:
             self._on_found = on_found
 
@@ -802,6 +807,8 @@ class Network(object):
 
         Args:
             timeout (int): Timeout in ms.
+        Returns:
+            int: Result code.
         """
         return lib.il_net_set_recv_timeout(self._net, timeout)
 
@@ -811,29 +818,32 @@ class Network(object):
 
         Args:
             stop (int): 0 to START, 1 to STOP.
+        Returns:
+            int: Result code.
         """
         return lib.il_net_set_status_check_stop(self._net, stop)
 
 
 @ffi.def_extern()
 def _on_evt_cb(ctx, evt, port):
-    """ On event callback shim. """
-
+    """
+    On event callback shim.
+    """
     self = ffi.from_handle(ctx)
     self._on_evt(NET_DEV_EVT(evt), pstr(port))
 
 
 class NetworkMonitor(object):
-    """ Network Monitor.
-
-        Args:
-            prot (NET_PROT): Protocol.
-
-        Raises:
-            TypeError: If the protocol type is invalid.
-            ILCreationError: If the monitor cannot be created.
     """
+    Network Monitor.
 
+    Args:
+        prot (NET_PROT): Protocol.
+
+    Raises:
+        TypeError: If the protocol type is invalid.
+        ILCreationError: If the monitor cannot be created.
+    """
     def __init__(self, prot):
         if not isinstance(prot, NET_PROT):
             raise TypeError('Invalid protocol')
@@ -844,12 +854,12 @@ class NetworkMonitor(object):
         self._mon = ffi.gc(mon, lib.il_net_dev_mon_destroy)
 
     def start(self, on_evt):
-        """ Start the monitor.
-
-            Args:
-                on_evt (callback): Callback function.
         """
+        Start the monitor.
 
+        Args:
+            on_evt (callback): Callback function.
+        """
         self._on_evt = on_evt
         self._handle = ffi.new_handle(self)
 
@@ -857,6 +867,7 @@ class NetworkMonitor(object):
         raise_err(r)
 
     def stop(self):
-        """ Stop the monitor. """
-
+        """
+        Stop the monitor.
+        """
         lib.il_net_dev_mon_stop(self._mon)
