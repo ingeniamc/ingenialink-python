@@ -491,6 +491,10 @@ class Servo(object):
                 if register.attrib['subnode'] != str(subnode):
                     registers_category.remove(register)
 
+        image = xml_data.find('./DriveImage')
+        if image is not None:
+            xml_data.remove(image)
+
         xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(indent="  ", newl='')
 
         config_file = io.open(new_path, "w", encoding='utf8')
