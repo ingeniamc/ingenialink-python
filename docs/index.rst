@@ -24,3 +24,4 @@ Contents
 
     api
     building
+    examples

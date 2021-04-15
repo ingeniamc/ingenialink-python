@@ -6,7 +6,9 @@ from .registers import _get_reg_id
 
 
 class MONITOR_TRIGGER(Enum):
-    """ Monitor Trigger Types. """
+    """
+    Monitor Trigger Types.
+    """
 
     IMMEDIATE = lib.IL_MONITOR_TRIGGER_IMMEDIATE
     """ Immediate. """
@@ -41,22 +43,27 @@ class Monitor(object):
         self._acq = ffi.new('il_monitor_acq_t **')
 
     def start(self):
-        """ Start the monitor. """
+        """
+        Start the monitor.
+        """
 
         r = lib.il_monitor_start(self._monitor)
         raise_err(r)
 
     def stop(self):
-        """ Stop the monitor. """
+        """
+        Stop the monitor.
+        """
 
         r = lib.il_monitor_stop(self._monitor)
         raise_err(r)
 
     def wait(self, timeout):
-        """ Wait until the current acquisition finishes.
+        """
+        Wait until the current acquisition finishes.
 
-            Args:
-                timeout (int, float): Timeout (s).
+        Args:
+            timeout (int, float): Timeout (s).
         """
 
         r = lib.il_monitor_wait(self._monitor, to_ms(timeout))
@@ -64,7 +71,12 @@ class Monitor(object):
 
     @property
     def data(self):
-        """ tuple: Current acquisition time and data for all channels. """
+        """
+        Obtain configured data.
+
+        Returns:
+            tuple: Current acquisition time and data for all channels.
+        """
 
         lib.il_monitor_data_get(self._monitor, self._acq)
         acq = ffi.cast('il_monitor_acq_t *', self._acq[0])
@@ -81,12 +93,13 @@ class Monitor(object):
         return t, d
 
     def configure(self, t_s, delay_samples=0, max_samples=0):
-        """ Configure the monitor parameters.
+        """
+        Configure the monitor parameters.
 
-            Args:
-                t_s (int, float): Sampling period (s, resolution: 1e-4 s).
-                delay_samples (int, optional): Delay samples.
-                max_samples (int, optional): Maximum acquisition samples.
+        Args:
+            t_s (int, float): Sampling period (s, resolution: 1e-4 s).
+            delay_samples (int, optional): Delay samples.
+            max_samples (int, optional): Maximum acquisition samples.
         """
 
         r = lib.il_monitor_configure(self._monitor, int(t_s * 1e6),
@@ -94,11 +107,12 @@ class Monitor(object):
         raise_err(r)
 
     def ch_configure(self, ch, reg):
-        """ Configure a channel mapping.
+        """
+        Configure a channel mapping.
 
-            Args:
-                ch (int): Channel.
-                reg (str, Register): Register to be mapped to the channel.
+        Args:
+            ch (int): Channel.
+            reg (str, Register): Register to be mapped to the channel.
         """
 
         _reg, _id = _get_reg_id(reg)
@@ -106,33 +120,41 @@ class Monitor(object):
         raise_err(r)
 
     def ch_disable(self, ch):
-        """ Disable a channel. """
+        """
+        Disable a channel.
+
+        Args:
+            ch (int): Channel identifier.
+        """
 
         r = lib.il_monitor_ch_disable(self._monitor, ch)
         raise_err(r)
 
     def ch_disable_all(self):
-        """ Disable all channels. """
+        """
+        Disable all channels.
+        """
 
         r = lib.il_monitor_ch_disable_all(self._monitor)
         raise_err(r)
 
     def trigger_configure(self, mode, delay_samples=0, source=None, th_pos=0.,
                           th_neg=0., din_msk=0):
-        """ Configure the trigger.
+        """
+        Configure the trigger.
 
-            Args:
-                mode (MONITOR_TRIGGER): Trigger mode.
-                delay_samples (int, optional): Delay samples.
-                source (str, Register, optional): Source register, required for
-                    MONITOR_TRIGGER.POS, MONITOR_TRIGGER.NEG and
-                    MONITOR_TRIGGER.WINDOW.
-                th_pos (int, float, optional): Positive threshold, used for
-                    MONITOR_TRIGGER.POS, MONITOR_TRIGGER.WINDOW
-                th_neg (int, float, optional): Negative threshold, used for
-                    MONITOR_TRIGGER.NEG, MONITOR_TRIGGER.WINDOW
-                din_msk (int, optional): Digital input mask, used for
-                    MONITOR_TRIGGER.DIN
+        Args:
+            mode (MONITOR_TRIGGER): Trigger mode.
+            delay_samples (int, optional): Delay samples.
+            source (str, Register, optional): Source register, required for
+                MONITOR_TRIGGER.POS, MONITOR_TRIGGER.NEG and
+                MONITOR_TRIGGER.WINDOW.
+            th_pos (int, float, optional): Positive threshold, used for
+                MONITOR_TRIGGER.POS, MONITOR_TRIGGER.WINDOW
+            th_neg (int, float, optional): Negative threshold, used for
+                MONITOR_TRIGGER.NEG, MONITOR_TRIGGER.WINDOW
+            din_msk (int, optional): Digital input mask, used for
+                MONITOR_TRIGGER.DIN
         """
 
         if not isinstance(mode, MONITOR_TRIGGER):

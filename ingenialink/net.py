@@ -17,8 +17,9 @@ CMD_CHANGE_CPU = 0x67E4
 
 
 class NET_PROT(Enum):
-    """ Network Protocol. """
-
+    """
+    Network Protocol.
+    """
     EUSB = lib.IL_NET_PROT_EUSB
     """ E-USB. """
     MCB = lib.IL_NET_PROT_MCB
@@ -32,8 +33,9 @@ class NET_PROT(Enum):
 
 
 class NET_STATE(Enum):
-    """ Network State. """
-
+    """
+    Network State.
+    """
     CONNECTED = lib.IL_NET_STATE_CONNECTED
     """ Connected. """
     DISCONNECTED = lib.IL_NET_STATE_DISCONNECTED
@@ -43,8 +45,9 @@ class NET_STATE(Enum):
 
 
 class NET_DEV_EVT(Enum):
-    """ Device Event. """
-
+    """
+    Device Event.
+    """
     ADDED = lib.IL_NET_DEV_EVT_ADDED
     """ Added. """
     REMOVED = lib.IL_NET_DEV_EVT_REMOVED
@@ -52,8 +55,9 @@ class NET_DEV_EVT(Enum):
 
 
 class EEPROM_TOOL_MODE(Enum):
-    """ EEPROM tool mode. """
-
+    """
+    EEPROM tool mode.
+    """
     MODE_NONE = 0
     """ None. """
     MODE_READBIN = 1
@@ -71,8 +75,9 @@ class EEPROM_TOOL_MODE(Enum):
 
 
 class NET_TRANS_PROT(Enum):
-    """ Protocol. """
-
+    """
+    Protocol.
+    """
     TCP = 1
     """ TCP. """
     UDP = 2
@@ -80,18 +85,18 @@ class NET_TRANS_PROT(Enum):
 
 
 def devices(prot):
-    """ Obtain a list of network devices.
-
-        Args:
-            prot (NET_PROT): Protocol.
-
-        Returns:
-            list: List of network devices.
-
-        Raises:
-            TypeError: If the protocol type is invalid.
     """
+    Obtain a list of network devices.
 
+    Args:
+        prot (NET_PROT): Protocol.
+
+    Returns:
+        list: List of network devices.
+
+    Raises:
+        TypeError: If the protocol type is invalid.
+    """
     if not isinstance(prot, NET_PROT):
         raise TypeError('Invalid protocol')
 
@@ -110,6 +115,18 @@ def devices(prot):
 
 
 def eeprom_tool(ifname, mode, filename):
+    """
+    Tool to modify and verify drive EEPROM.
+
+    Args:
+        ifname (str): Interface name.
+        mode (int): EEPROM tool mode.
+        filename (str): Path to the EEPROM file.
+
+    Returns:
+        int: Result code.
+
+    """
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
     filename = cstr(filename) if filename else ffi.NULL
@@ -118,6 +135,16 @@ def eeprom_tool(ifname, mode, filename):
 
 
 def master_startup(ifname, if_address_ip):
+    """
+    Start SOEM master.
+
+    Args:
+        ifname (str): Interface name.
+        if_address_ip (str): Interface address IP.
+
+    Returns:
+        int: Result code.
+    """
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
     if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
@@ -131,10 +158,29 @@ def num_slaves_get(ifname):
 
 
 def master_stop(net):
+    """
+    Stop SOEM master.
+
+    Returns:
+        int: Result code.
+    """
     return lib.il_net_master_stop(net)
 
 
 def update_firmware_moco(node, subnode, ip, port, moco_file):
+    """
+    Update MOCO firmware through UDP protocol.
+
+    Args:
+        node: Network node.
+        subnode: Drive subnode.
+        ip: Drive address IP.
+        port: Drive port.
+        moco_file: Path to the firmware file.
+
+    Returns:
+        int: Result code.
+    """
     r = 1
     upd = UDP(port, ip)
 
@@ -173,6 +219,19 @@ def update_firmware_moco(node, subnode, ip, port, moco_file):
 
 
 def update_firmware(ifname, filename, is_summit=False, slave=1):
+    """
+    Update firmware through FoE.
+
+    Args:
+        ifname: Interface name.
+        filename: Path to the firmware file.
+        is_summit:  [true] -> Everest
+                    [false] -> Capitan or Low-Power drives
+        slave: Slave number in the network.
+
+    Returns:
+        int: Result code.
+    """
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
     filename = cstr(filename) if filename else ffi.NULL
@@ -181,6 +240,16 @@ def update_firmware(ifname, filename, is_summit=False, slave=1):
 
 
 def force_error(ifname, if_address_ip):
+    """
+    Force state machine error.
+
+    Args:
+        ifname: Interface name.
+        if_address_ip: Interface address IP.
+
+    Returns:
+        int: Result code.
+    """
     net__ = ffi.new('il_net_t **')
     ifname = cstr(ifname) if ifname else ffi.NULL
     if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
@@ -190,8 +259,9 @@ def force_error(ifname, if_address_ip):
 
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
-    """ On found callback shim. """
-
+    """
+    On found callback shim.
+    """
     self = ffi.from_handle(ctx)
     self._on_found(int(servo_id))
 
@@ -277,17 +347,18 @@ class UDP(object):
 
 
 class Network(object):
-    """ Network.
+    """
+    Network.
 
-        Args:
-            prot (NET_PROT): Protocol.
-            port (str): Network device port (e.g. COM1, /dev/ttyACM0, etc.).
-            timeout_rd (int, float, optional): Read timeout (s).
-            timeout_wr (int, float, optional): Write timeout (s).
+    Args:
+        prot (NET_PROT): Protocol.
+        port (str): Network device port (e.g. COM1, /dev/ttyACM0, etc.).
+        timeout_rd (int, float, optional): Read timeout (s).
+        timeout_wr (int, float, optional): Write timeout (s).
 
-        Raises:
-            TypeError: If the protocol type is invalid.
-            ILCreationError: If the network cannot be created.
+    Raises:
+        TypeError: If the protocol type is invalid.
+        ILCreationError: If the network cannot be created.
     """
     def __init__(self, prot, port=None, slave=1, timeout_rd=0.5, timeout_wr=0.5):
         if not isinstance(prot, NET_PROT):
@@ -310,26 +381,70 @@ class Network(object):
 
     @classmethod
     def _from_existing(cls, net):
-        """ Create a new class instance from an existing network. """
+        """
+        Create a new class instance from an existing network.
 
+        Args:
+            net (Network): Instance to copy.
+
+        Returns:
+            Network: New instanced class.
+
+        """
         inst = cls.__new__(cls)
         inst._net = ffi.gc(net, lib.il_net_fake_destroy)
 
         return inst
 
     def master_startup(self, ifname, if_address_ip):
+        """
+        Start SOEM master.
+
+        Args:
+            ifname (str): Interface name.
+            if_address_ip (str): Interface address IP.
+
+        Returns:
+            int: Result code.
+        """
         ifname = cstr(ifname) if ifname else ffi.NULL
         if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
 
         return lib.il_net_master_startup(self._net, ifname, if_address_ip)
 
     def set_if_params(self, ifname, if_address_ip):
+        """
+        Set ethernet interface parameters.
+
+        Args:
+            ifname (str): Interface name.
+            if_address_ip (str): Interface address IP.
+
+        Returns:
+
+        """
         return lib.il_net_set_if_params(self._net, ifname, if_address_ip)
 
     def master_stop(self):
+        """
+        Stop SOEM master.
+
+        Returns:
+            int: Result code.
+        """
         return lib.il_net_master_stop(self._net)
 
     def monitoring_channel_data(self, channel, dtype):
+        """
+        Obtain processed monitoring data of a channel.
+
+        Args:
+            channel (int): Identity channel number.
+            dtype (REG_DTYPE): Data type of the register to map.
+
+        Returns:
+            array: Monitoring data.
+        """
         data_arr = []
         size = int(self.monitoring_data_size)
         bytes_per_block = self.monitoring_get_bytes_per_block()
@@ -349,29 +464,88 @@ class Network(object):
         return ret_arr
 
     def monitoring_remove_all_mapped_registers(self):
+        """
+        Remove all monitoring mapped registers.
+
+        Returns:
+            int: Result code.
+        """
         return lib.il_net_remove_all_mapped_registers(self._net)
 
     def monitoring_set_mapped_register(self, channel, reg_idx, dtype):
+        """
+        Set monitoring mapped register.
+
+        Args:
+            channel (int): Identity channel number.
+            reg_idx (int): Register address to map.
+            dtype (REG_DTYPE): Data type of the register to map.
+
+        Returns:
+            int: Result code.
+        """
         return lib.il_net_set_mapped_register(self._net, channel,
                                               reg_idx, dtype)
 
     def monitoring_get_num_mapped_registers(self):
+        """
+        Obtain the number of mapped registers.
+
+        Returns:
+            int: Actual number of mapped registers.
+        """
         return lib.il_net_num_mapped_registers_get(self._net)
 
     def monitoring_enable(self):
+        """
+        Enable monitoring process.
+
+        Returns:
+            int: Result code.
+        """
         return lib.il_net_enable_monitoring(self._net)
 
     def monitoring_disable(self):
+        """
+        Disable monitoring process.
+
+        Returns:
+            int: Result code.
+        """
         return lib.il_net_disable_monitoring(self._net)
 
     def monitoring_read_data(self):
+        """
+        Obtain processed monitoring data.
+
+        Returns:
+            array: Actual processed monitoring data.
+        """
         return lib.il_net_read_monitoring_data(self._net)
 
     def monitoring_get_bytes_per_block(self):
+        """
+        Obtain Bytes x Block configured.
+
+        Returns:
+            int: Actual number of Bytes x Block configured.
+        """
         return lib.il_net_monitornig_bytes_per_block_get(self._net)
 
     # Disturbance
     def disturbance_channel_data(self, channel, dtype, data_arr):
+        """
+        Send disturbance data.
+
+        Args:
+            channel (int): Identity channel number.
+            dtype (REG_DTYPE): Data type of the register mapped.
+            data_arr (array): Data that will be sent to the drive.
+
+        Returns:
+            int: Return code.
+
+        """
         if dtype == REG_DTYPE.U16:
             lib.il_net_disturbance_data_u16_set(self._net, channel, data_arr)
         elif dtype == REG_DTYPE.S16:
@@ -385,47 +559,90 @@ class Network(object):
         return 0
 
     def disturbance_remove_all_mapped_registers(self):
+        """
+        Remove all disturbance mapped registers.
+
+        Returns:
+            int: Return code.
+        """
         return lib.il_net_disturbance_remove_all_mapped_registers(self._net)
 
     def disturbance_set_mapped_register(self, channel, address, dtype):
+        """
+        Set disturbance mapped register.
+
+        Args:
+            channel (int): Identity channel number.
+            address (int): Register address to map.
+            dtype (REG_DTYPE): Data type of the register to map.
+
+        Returns:
+            int: Return code.
+        """
         return lib.il_net_disturbance_set_mapped_register(self._net, channel,
                                                           address, dtype)
 
     # Properties
     @property
     def prot(self):
-        """ NET_PROT: Obtain network protocol. """
+        """
+        Obtain network protocol.
 
+        Returns:
+            str: Current network protocol used.
+        """
         return NET_PROT(lib.il_net_prot_get(self._net))
 
     @property
     def state(self):
-        """ NET_STATE: Obtain network state. """
+        """
+        Obtain network state.
 
+        Returns:
+            str: Current network state.
+        """
         return NET_STATE(lib.il_net_state_get(self._net))
 
     @property
     def status(self):
-        """ NET_STATUS: Obtain network status. """
+        """
+        Obtain network status.
 
+        Returns:
+            str: Current network status.
+        """
         return lib.il_net_status_get(self._net)
 
     @property
     def port(self):
-        """ str: Obtain network port. """
+        """
+        Obtain network port.
 
+        Returns:
+            str: Current network port.
+        """
         port = lib.il_net_port_get(self._net)
         return pstr(port)
 
     @property
     def extended_buffer(self):
-        """" str: Obtain extended buffer. """
+        """
+        Obtain extended buffer data.
+
+        Returns:
+            str: Current extended buffer data.
+        """
         ext_buff = lib.il_net_extended_buffer_get(self._net)
         return pstr(ext_buff)
 
     @property
     def monitoring_data(self):
-        """ arr: Obtain monitoring data. """
+        """
+        Obtain monitoring data.
+
+        Returns:
+            array: Current monitoring data.
+        """
         monitoring_data = lib.il_net_monitornig_data_get(self._net)
         size = int(self.monitoring_data_size / 2)
         ret_arr = []
@@ -435,11 +652,22 @@ class Network(object):
 
     @property
     def monitoring_data_size(self):
-        """ int: Obtain monitoring data size """
+        """
+        Obtain monitoring data size.
+
+        Returns:
+            int: Current monitoring data size.
+        """
         return lib.il_net_monitornig_data_size_get(self._net)
 
     @property
     def disturbance_data(self):
+        """
+        Obtain disturbance data.
+
+        Returns:
+            array: Current disturbance data.
+        """
         disturbance_data = lib.il_net_disturbance_data_get(self._net)
         size = int(self.disturbance_data_size / 2)
         ret_arr = []
@@ -449,6 +677,12 @@ class Network(object):
 
     @disturbance_data.setter
     def disturbance_data(self, value):
+        """
+        Set disturbance data.
+
+        Args:
+            value (array): Array with the disturbance to send.
+        """
         disturbance_arr = value
         disturbance_arr = \
             np.pad(disturbance_arr,
@@ -458,36 +692,50 @@ class Network(object):
 
     @property
     def disturbance_data_size(self):
+        """
+        Obtain disturbance data size.
+
+        Returns:
+            int: Current disturbance data size.
+        """
         return lib.il_net_disturbance_data_size_get(self._net)
 
     @disturbance_data_size.setter
     def disturbance_data_size(self, value):
+        """
+        Set disturbance data size.
+
+        Args:
+            value (int): Disturbance data size in bytes.
+        """
         lib.il_net_disturbance_data_size_set(self._net, value)
 
     def close_socket(self):
         return lib.il_net_close_socket(self._net)
 
     def connect(self):
-        """ Connect network. """
-
+        """
+        Connect network.
+        """
         r = lib.il_net_connect(self._net)
         raise_err(r)
 
     def disconnect(self):
-        """ Disconnect network. """
-
+        """
+        Disconnect network.
+        """
         lib.il_net_disconnect(self._net)
 
     def servos(self, on_found=None):
-        """ Obtain a list of attached servos.
-
-            Args:
-                on_found (callback, optional): Servo found callback.
-
-            Returns:
-                list: List of attached servos.
         """
+        Obtain a list of attached servos.
 
+        Args:
+            on_found (callback, optional): Servo found callback.
+
+        Returns:
+            list: List of attached servos.
+        """
         if on_found:
             self._on_found = on_found
 
@@ -513,6 +761,14 @@ class Network(object):
         return found
 
     def net_mon_status(self, on_evt):
+        """
+        Calls given function everytime a connection/disconnection event is
+        raised.
+
+        Args:
+            on_evt (Callback): Function that will be called every time an event
+                            is raised.
+        """
         if self.prot == NET_PROT.ETH or self.prot == NET_PROT.ECAT:
             status = self.status
             while True:
@@ -525,40 +781,69 @@ class Network(object):
                 sleep(1)
 
     def net_mon_stop(self):
+        """
+        Stop monitoring network events.
+        """
         lib.il_net_mon_stop(self._net)
 
     def destroy_network(self):
+        """
+        Destroy network instance.
+        """
         lib.il_net_destroy(self._net)
 
     def set_reconnection_retries(self, retries):
+        """
+        Set the number of reconnection retries in our application.
+
+        Args:
+            retries (int): Number of reconnection retries.
+        """
         return lib.il_net_set_reconnection_retries(self._net, retries)
 
     def set_recv_timeout(self, timeout):
+        """
+        Set receive communications timeout.
+
+        Args:
+            timeout (int): Timeout in ms.
+        Returns:
+            int: Result code.
+        """
         return lib.il_net_set_recv_timeout(self._net, timeout)
 
     def set_status_check_stop(self, stop):
+        """
+        Start/Stop the internal monitor of the drive status.
+
+        Args:
+            stop (int): 0 to START, 1 to STOP.
+        Returns:
+            int: Result code.
+        """
         return lib.il_net_set_status_check_stop(self._net, stop)
 
 
 @ffi.def_extern()
 def _on_evt_cb(ctx, evt, port):
-    """ On event callback shim. """
-
+    """
+    On event callback shim.
+    """
     self = ffi.from_handle(ctx)
     self._on_evt(NET_DEV_EVT(evt), pstr(port))
 
 
 class NetworkMonitor(object):
-    """ Network Monitor.
-
-        Args:
-            prot (NET_PROT): Protocol.
-
-        Raises:
-            TypeError: If the protocol type is invalid.
-            ILCreationError: If the monitor cannot be created.
     """
+    Network Monitor.
 
+    Args:
+        prot (NET_PROT): Protocol.
+
+    Raises:
+        TypeError: If the protocol type is invalid.
+        ILCreationError: If the monitor cannot be created.
+    """
     def __init__(self, prot):
         if not isinstance(prot, NET_PROT):
             raise TypeError('Invalid protocol')
@@ -569,12 +854,12 @@ class NetworkMonitor(object):
         self._mon = ffi.gc(mon, lib.il_net_dev_mon_destroy)
 
     def start(self, on_evt):
-        """ Start the monitor.
-
-            Args:
-                on_evt (callback): Callback function.
         """
+        Start the monitor.
 
+        Args:
+            on_evt (callback): Callback function.
+        """
         self._on_evt = on_evt
         self._handle = ffi.new_handle(self)
 
@@ -582,6 +867,7 @@ class NetworkMonitor(object):
         raise_err(r)
 
     def stop(self):
-        """ Stop the monitor. """
-
+        """
+        Stop the monitor.
+        """
         lib.il_net_dev_mon_stop(self._mon)

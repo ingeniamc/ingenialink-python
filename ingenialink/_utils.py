@@ -5,14 +5,16 @@ from . import exceptions as exc
 
 
 def cstr(v):
-    """ Convert Python 3.x string to C compatible char *. """
-
+    """
+    Convert Python 3.x string to C compatible char *.
+    """
     return v.encode('utf8')
 
 
 def pstr(v):
-    """ Convert C string to Python 3.x compatible str. """
-
+    """
+    Convert C string to Python 3.x compatible str.
+    """
     convert = ""
     try:
         convert = ffi.string(v).decode('utf8')
@@ -22,21 +24,22 @@ def pstr(v):
 
 
 def to_ms(s):
-    """ Convert from seconds to milliseconds.
-
-        Args:
-            s (float, int): Value in seconds.
-
-        Returns:
-            int: Value in milliseconds.
     """
+    Convert from seconds to milliseconds.
 
+    Args:
+        s (float, int): Value in seconds.
+
+    Returns:
+        int: Value in milliseconds.
+    """
     return int(s * 1e3)
 
 
 class INT_SIZES(Enum):
-    """ Integer sizes. """
-
+    """
+    Integer sizes.
+    """
     S8_MIN = -128
     S16_MIN = -32767 - 1
     S32_MIN = -2147483647 - 1
@@ -54,31 +57,31 @@ class INT_SIZES(Enum):
 
 
 def raise_null(obj):
-    """ Raise exception if object is ffi.NULL.
-
-        Raises:
-            ILCreationError: If the object is NULL.
     """
+    Raise exception if object is ffi.NULL.
 
+    Raises:
+        ILCreationError: If the object is NULL.
+    """
     if obj == ffi.NULL:
         msg = pstr(lib.ilerr_last())
         raise exc.ILCreationError(msg)
 
 
 def raise_err(code, msg=None):
-    """ Raise exception if the code is non-zero.
-
-        Raises:
-            ILValueError: if code is lib.IL_EINVAL
-            ILTimeoutError: if code is lib.IL_ETIMEDOUT
-            ILAlreadyInitializedError: if code is lib.IL_EALREADY
-            ILMemoryError: if code is lib.IL_ENOMEM
-            ILDisconnectionError: if code is lib.IL_EDISCONN
-            ILAccessError: if code is lib.IL_EACCESS
-            ILStateError: if code is lib.IL_ESTATE
-            ILError: if code is lib.IL_EFAULT
     """
+    Raise exception if the code is non-zero.
 
+    Raises:
+        ILValueError: if code is lib.IL_EINVAL
+        ILTimeoutError: if code is lib.IL_ETIMEDOUT
+        ILAlreadyInitializedError: if code is lib.IL_EALREADY
+        ILMemoryError: if code is lib.IL_ENOMEM
+        ILDisconnectionError: if code is lib.IL_EDISCONN
+        ILAccessError: if code is lib.IL_EACCESS
+        ILStateError: if code is lib.IL_ESTATE
+        ILError: if code is lib.IL_EFAULT
+    """
     if code == 0:
         return
 

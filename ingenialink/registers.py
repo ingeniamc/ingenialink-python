@@ -10,8 +10,9 @@ IL_REG_DTYPE_DOMAIN = 15
 
 
 class REG_DTYPE(Enum):
-    """ Data Type. """
-
+    """
+    Data Type.
+    """
     U8 = lib.IL_REG_DTYPE_U8
     """ Unsigned 8-bit integer. """
     S8 = lib.IL_REG_DTYPE_S8
@@ -37,8 +38,9 @@ class REG_DTYPE(Enum):
 
 
 class REG_ACCESS(Enum):
-    """ Access Type. """
-
+    """
+    Access Type.
+    """
     RW = lib.IL_REG_ACCESS_RW
     """ Read/Write. """
     RO = lib.IL_REG_ACCESS_RO
@@ -48,8 +50,9 @@ class REG_ACCESS(Enum):
 
 
 class REG_PHY(Enum):
-    """ Physical Units. """
-
+    """
+    Physical Units.
+    """
     NONE = lib.IL_REG_PHY_NONE
     """ None. """
     TORQUE = lib.IL_REG_PHY_TORQUE
@@ -67,12 +70,12 @@ class REG_PHY(Enum):
 
 
 def _get_reg_id(reg, subnode=1):
-    """ Obtain Register and ID.
-
-        Args:
-            reg (str, Register): Register.
     """
+    Obtain Register and ID.
 
+    Args:
+        reg (str, Register): Register.
+    """
     if isinstance(reg, str):
         return ffi.NULL, cstr(reg)
     elif isinstance(reg, Register):
@@ -82,27 +85,28 @@ def _get_reg_id(reg, subnode=1):
 
 
 class Register(object):
-    """ Register.
-
-        Args:
-            identifier (str): Identifier.
-            units (str): Units.
-            address (int): Address.
-            dtype (REG_DTYPE): Data type.
-            access (REG_ACCESS): Access type.
-            phy (REG_PHY, optional): Physical units.
-            subnode (int): Subnode
-            storage (any, optional): Storage.
-            range (tuple, optional): Range (min, max).
-            labels (dict, optional): Register labels.
-            cat_id (str, optional): Category ID.
-            scat_id (str, optional): Sub-category ID.
-            internal_use (int, optional): Internal use.
-
-        Raises:
-            TypeError: If any of the parameters has invalid type.
     """
+    Register.
 
+    Args:
+        identifier (str): Identifier.
+        units (str): Units.
+        address (int): Address.
+        dtype (REG_DTYPE): Data type.
+        access (REG_ACCESS): Access type.
+        phy (REG_PHY, optional): Physical units.
+        subnode (int): Subnode
+        storage (any, optional): Storage.
+        range (tuple, optional): Range (min, max).
+        labels (dict, optional): Register labels.
+        enums (dict, optional): Enumeration values.
+        cat_id (str, optional): Category ID.
+        scat_id (str, optional): Sub-category ID.
+        internal_use (int, optional): Internal use.
+
+    Raises:
+        TypeError: If any of the parameters has invalid type.
+    """
     def __init__(self, identifier, units, cyclic, address, dtype, access,
                  phy=REG_PHY.NONE, subnode=1, storage=None, range=None,
                  labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None,
@@ -212,6 +216,12 @@ class Register(object):
         self._reg.scat_id = ffi.NULL if not scat_id else cstr(scat_id)
 
     def __repr__(self):
+        """
+        Obtain register object.
+
+        Returns:
+            str: Register information.
+        """
         # obtain category/subcategory information
         if self.cat_id:
             cat_info = self.cat_id
@@ -245,8 +255,15 @@ class Register(object):
 
     @classmethod
     def _from_register(cls, reg):
-        """ Create a new class instance from an existing register. """
+        """
+        Create a new class instance from an existing register.
 
+        Args:
+            reg (Register): Register instance.
+
+        Returns:
+            Register: Register object instance copied.
+        """
         inst = cls.__new__(cls)
         inst._reg = reg
         inst._labels = LabelsDictionary._from_labels(reg.labels)
@@ -255,7 +272,12 @@ class Register(object):
 
     @property
     def identifier(self):
-        """ str: Register identifier """
+        """
+        Obtain register identifier.
+
+        Returns:
+            str: Register identifier
+        """
         if self._reg.identifier != ffi.NULL:
             return pstr(self._reg.identifier)
 
@@ -263,44 +285,84 @@ class Register(object):
 
     @property
     def units(self):
-        """ str: Register units """
+        """
+        Obtain register units.
+
+        Returns:
+            str: Register units
+        """
         if self._reg.units != ffi.NULL:
             return pstr(self._reg.units)
 
     @property
     def address(self):
-        """ int: Register address. """
+        """
+        Obtain register address.
+
+        Returns:
+            int: Register address.
+        """
         return self._reg.address
 
     @property
     def subnode(self):
-        """ int: Register subnode. """
+        """
+        Obtain register subnode.
+
+        Returns:
+            int: Register subnode.
+        """
         return self._reg.subnode
 
     @property
     def cyclic(self):
-        """ str: Register cyclic type. """
+        """
+        Obtain register cyclic.
+
+        Returns:
+            str: Register cyclic type.
+        """
         if self._reg.cyclic != ffi.NULL:
             return pstr(self._reg.cyclic)
 
     @property
     def dtype(self):
-        """ int: Register data type. """
+        """
+        Obtain register dtype.
+
+        Returns:
+            int: Register data type.
+        """
         return REG_DTYPE(self._reg.dtype)
 
     @property
     def access(self):
-        """ int: Register access type. """
+        """
+        Obtain register access.
+
+        Returns:
+            int: Register access type.
+        """
         return REG_ACCESS(self._reg.access)
 
     @property
     def phy(self):
-        """ int: Register physical units. """
+        """
+        Obtain register physical units.
+
+        Returns:
+            int: Register physical units.
+        """
         return REG_PHY(self._reg.phy)
 
     @property
     def storage(self):
-        """ Register storage. """
+        """
+        Obtain register storage.
+
+        Returns:
+             int: Register storage.
+        """
         if not self._reg.storage_valid:
             return None
 
@@ -327,8 +389,12 @@ class Register(object):
 
     @property
     def range(self):
-        """ tuple: Register range (min, max), None if undefined. """
+        """
+        Obtains register range.
 
+        Returns:
+            tuple: Register range (min, max), None if undefined.
+        """
         if self.dtype == REG_DTYPE.S8:
             return (self._reg.range.min.s8, self._reg.range.max.s8)
         elif self.dtype == REG_DTYPE.U8:
@@ -352,12 +418,22 @@ class Register(object):
 
     @property
     def labels(self):
-        """ LabelsDictionary: Labels dictionary. """
+        """
+        Obtains register labels.
+
+        Returns:
+            LabelsDictionary: Labels dictionary.
+        """
         return self._labels
 
     @property
     def enums(self):
-        """ Enumerations list. """
+        """
+        Obtain enumerations list of the register.
+
+        Returns:
+            array: Enumerations of the register.
+        """
         if not hasattr(self, '_enums'):
             self._enums = []
             for i in range(0, self._reg.enums_count):
@@ -370,12 +446,22 @@ class Register(object):
 
     @property
     def enums_count(self):
-        """ int: Register Enumerations count. """
+        """
+        Obtain number of enumerations of the register.
+
+        Returns:
+            int: Register Enumerations count.
+        """
         return self._reg.enums_count
 
     @property
     def cat_id(self):
-        """Category ID."""
+        """
+        Category identifier.
+
+        Returns:
+            str | None: Current category identifier.
+        """
         if self._reg.cat_id != ffi.NULL:
             return pstr(self._reg.cat_id)
 
@@ -383,12 +469,22 @@ class Register(object):
 
     @property
     def scat_id(self):
-        """Sub-category ID."""
+        """
+        Subcategory identifier.
+
+        Returns:
+            str | None: Current subcategory identifier.
+        """
         if self._reg.scat_id != ffi.NULL:
             return pstr(self._reg.scat_id)
         return None
 
     @property
     def internal_use(self):
-        """ int: Register internal_use. """
+        """
+        Internal use check.
+
+        Returns:
+            int: Register internal_use.
+        """
         return self._reg.internal_use
