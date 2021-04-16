@@ -11,6 +11,8 @@ from .._ingenialink import ffi, lib
 from .dictionary import DictionaryCANOpen
 from .registers import Register, REG_DTYPE, REG_ACCESS
 
+import ingenialogger
+logger = ingenialogger.getLogger(__name__)
 
 SERIAL_NUMBER = Register(
     identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00",
@@ -92,8 +94,8 @@ class DriveStatusThread(threading.Thread):
                     state = self.__parent.status_word_decode(status_word)
                     self.__parent.set_state(state, subnode=subnode)
                 except Exception as e:
-                    print('IL: Error getting drive status. '
-                          'Exception: {}'.format(e))
+                    logger.error("Error getting drive status. "
+                                 "Exception : %s", str(e))
             time.sleep(1.5)
 
     def activate_stop_flag(self):
@@ -232,7 +234,8 @@ class Servo(object):
                     "little"
                 )
         except Exception as e:
-            print(_reg.identifier + " : " + str(e))
+            logger.error("Failed reading %s. Exception: %s",
+                         str(_reg.identifier), str(e))
             error_raised = "Error reading {}".format(_reg.identifier)
         finally:
             self.__lock.release()
@@ -325,7 +328,8 @@ class Servo(object):
                                                        byteorder='little',
                                                        signed=signed))
         except Exception as e:
-            print(_reg.identifier + " : " + str(e))
+            logger.error("Failed reading %s. Exception: %s",
+                         str(_reg.identifier), str(e))
             error_raised = "Error writing {}".format(_reg.identifier)
         finally:
             self.__lock.release()
@@ -335,10 +339,10 @@ class Servo(object):
 
     def get_all_registers(self):
         for obj in self.__node.object_dictionary.values():
-            print('0x%X: %s' % (obj.index, obj.name))
+            logger.debug('0x%X: %s' % (obj.index, obj.name))
             if isinstance(obj, canopen.objectdictionary.Record):
                 for subobj in obj.values():
-                    print('  %d: %s' % (subobj.subindex, subobj.name))
+                    logger.debug('  %d: %s' % (subobj.subindex, subobj.name))
 
     def dict_storage_read(self, new_path, subnode=0):
         """Read all dictionary registers content and put it to the dictionary
@@ -365,7 +369,8 @@ class Servo(object):
                 element_subnode = int(register.attrib['subnode'])
                 if subnode == 0 or subnode == element_subnode:
                     if register.attrib['access'] == 'rw':
-                        storage = self.raw_read(register.attrib['id'], subnode=element_subnode)
+                        storage = self.raw_read(register.attrib['id'],
+                                                subnode=element_subnode)
                         register.set('storage', str(storage))
 
                         # Update register object
@@ -375,7 +380,9 @@ class Servo(object):
                 else:
                     registers_category.remove(register)
             except BaseException as e:
-                print("Exception during dict_storage_read, register " + register.attrib['id'] + ": ", str(e))
+                logger.error("Exception during dict_storage_read, "
+                             "register %s: %s",
+                             str(register.attrib['id'], str(e)))
 
         image = xml_data.find('./DriveImage')
         if image is not None:
@@ -404,12 +411,13 @@ class Servo(object):
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
                     if subnode == 0 or subnode == int(element.attrib['subnode']):
-                        self.raw_write(element.attrib['id'], float(element.attrib['storage']),
+                        self.raw_write(element.attrib['id'],
+                                       float(element.attrib['storage']),
                                        subnode=int(element.attrib['subnode'])
                                        )
             except BaseException as e:
-                print("Exception during dict_storage_write, register " +
-                      element.attrib['id'] + ": ", str(e))
+                logger.error("Exception during dict_storage_write, register "
+                             "%s: %s", str(element.attrib['id']), str(e))
 
     def store_all(self, subnode=1):
         """ Store all servo current parameters to the NVM. """
@@ -430,7 +438,7 @@ class Servo(object):
         try:
             self.__dict = DictionaryCANOpen(dict_f)
         except Exception as e:
-            print("Error loading a dictionary")
+            logger.error("Error loading a dictionary. Exception: %s", str(e))
 
     def state_subscribe(self, cb):
         """ Subscribe to state changes.
