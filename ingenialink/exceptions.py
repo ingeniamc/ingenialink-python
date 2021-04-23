@@ -80,6 +80,13 @@ class ILWrongRegisterError(ILError):
     pass
 
 
+class ILRegisterNotFoundError(ILError):
+    """
+    IngeniaLink register not found in dictionary.
+    """
+    pass
+
+
 class ILWrongCRCError(ILError):
     """
     IngeniaLink Wrong CRC error.

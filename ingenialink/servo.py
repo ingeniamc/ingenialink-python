@@ -716,7 +716,8 @@ class Servo(object):
             _dict = self.dict
             if not _dict:
                 raise ValueError('No dictionary loaded')
-
+            if reg not in _dict.get_regs(subnode):
+                raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
             _reg = _dict.get_regs(subnode)[reg]
         else:
             raise TypeError('Invalid register')
@@ -758,6 +759,8 @@ class Servo(object):
             _dict = self.dict
             if not _dict:
                 raise ValueError('No dictionary loaded')
+            if reg not in _dict.get_regs(subnode):
+                raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
             _reg = _dict.get_regs(subnode)[reg]._reg
         else:
             raise TypeError('Invalid register')
@@ -811,7 +814,8 @@ class Servo(object):
             _dict = self.dict
             if not _dict:
                 raise ValueError('No dictionary loaded')
-
+            if reg not in _dict.get_regs(subnode):
+                raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
             _reg = _dict.get_regs(subnode)[reg]
         else:
             raise TypeError('Invalid register')

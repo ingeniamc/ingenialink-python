@@ -164,7 +164,7 @@ class Servo(object):
             if not _dict:
                 raise_err(lib.IL_EIO, 'No dictionary loaded')
             if reg not in _dict.regs[subnode]:
-                raise_err(lib.IL_EWRONGREG, 'Invalid register')
+                raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
             _reg = _dict.regs[subnode][reg]
         else:
             raise_err(lib.IL_EWRONGREG, 'Invalid register')
