@@ -2,6 +2,7 @@ import sys
 import re
 from os.path import abspath, join, dirname
 from datetime import datetime
+import os
 
 # try:
 #     from unittest.mock import MagicMock
@@ -9,8 +10,7 @@ from datetime import datetime
 #     from mock import Mock as MagicMock
 
 
-sys.path.append(abspath(join(dirname(__file__), '..')))
-
+sys.path.insert(0, os.path.abspath('..'))
 
 # options
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
