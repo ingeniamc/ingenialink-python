@@ -9,23 +9,26 @@ from ..registers import REG_DTYPE, REG_ACCESS, REG_PHY
 class Register(object):
     """ Register.
 
-        Args:
-            identifier (str): Identifier.
-            units (str): Units.
-            address (int): Address.
-            dtype (REG_DTYPE): Data type.
-            access (REG_ACCESS): Access type.
-            phy (REG_PHY, optional): Physical units.
-            subnode (int): Subnode
-            storage (any, optional): Storage.
-            range (tuple, optional): Range (min, max).
-            labels (dict, optional): Register labels.
-            cat_id (str, optional): Category ID.
-            scat_id (str, optional): Sub-category ID.
-            internal_use (int, optional): Internal use.
+    Args:
+        identifier (str): Identifier.
+        units (str): Units.
+        address (int): Address.
+        dtype (REG_DTYPE): Data type.
+        access (REG_ACCESS): Access type.
+        phy (REG_PHY, optional): Physical units.
+        subnode (int): Subnode
+        storage (any, optional): Storage.
+        range (tuple, optional): Range (min, max).
+        labels (dict, optional): Register labels.
+        cat_id (str, optional): Category ID.
+        scat_id (str, optional): Sub-category ID.
+        internal_use (int, optional): Internal use.
 
-        Raises:
-            TypeError: If any of the parameters has invalid type.
+    Raises:
+        TypeError: If any of the parameters has invalid type.
+        ILValueError: If the register is invalid.
+        ILAccessError: Register with wrong access type.
+
     """
 
     def __init__(self, identifier, units, cyclic, idx, subidx, dtype,
@@ -41,7 +44,7 @@ class Register(object):
         if not isinstance(phy, REG_PHY):
             raise_err(lib.IL_EINVAL, 'Invalid physical units type')
 
-        # initialize register
+        # Initialize register
         self.__identifier = identifier
         self.__units = units
         self.__idx = idx
@@ -215,6 +218,7 @@ class Register(object):
 
     @property
     def storage_valid(self):
+        """ int: If storage is valid """
         return self.__storage_valid
 
     @storage_valid.setter
@@ -245,12 +249,12 @@ class Register(object):
 
     @property
     def cat_id(self):
-        """Category ID."""
+        """ Category ID."""
         return self.__cat_id
 
     @property
     def scat_id(self):
-        """Sub-category ID."""
+        """ Sub-category ID."""
         return self.__scat_id
 
     @property

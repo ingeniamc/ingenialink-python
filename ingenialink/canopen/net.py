@@ -62,8 +62,13 @@ class CAN_BIT_TIMMING(Enum):
 
 
 class HearbeatThread(Thread):
+    """ Heartbeat thread to check if the drive is alive.
+
+    Args:
+        parent (Network): network instance of the CANopen communication.
+        node (int): Identifier for the targeted node ID.
+    """
     def __init__(self, parent, node):
-        """ Constructor, setting initial variables """
         super(HearbeatThread, self).__init__()
         self.__parent = parent
         self.__node = node
@@ -91,6 +96,13 @@ class HearbeatThread(Thread):
 
 
 class Network(object):
+    """ Network of the CANopen communication.
+
+    Args:
+        device (CAN_DEVICE): Targeted device to connect.
+        channel (int): Targeted channel number of the transciever.
+        baudrate (CAN_BAUDRATE): Baudrate to communicate through.
+    """
     def __init__(self, device=None, channel=0,
                  baudrate=CAN_BAUDRATE.Baudrate_1M):
         self.__servos = []
@@ -118,6 +130,20 @@ class Network(object):
     def change_node_baudrate(self, target_node, vendor_id, product_code,
                              rev_number, serial_number, new_node=None,
                              new_baudrate=None):
+        """ Changes the node ID and the baurdrate of a targeted drive.
+
+        Args:
+            target_node (int): Node ID of the targeted device.
+            vendor_id (int): Vendor ID of the targeted device.
+            product_code (int): Product code of the targeted device.
+            rev_number (int): Revision number of the targeted device.
+            serial_number (int): Serial number of the targeted device.
+            new_node (int): New node ID for the targeted device.
+            new_baudrate (int): New baudrate for the targeted device.
+        
+        Returns:
+            bool: Result of the operation.
+        """
         print('\nSwitching slave into CONFIGURATION state...\n')
 
         bool_result = False
@@ -175,6 +201,7 @@ class Network(object):
         return True
 
     def reset_network(self):
+        """ Resets the stablished CANopen network. """
         try:
             self.__network.disconnect()
         except BaseException as e:
@@ -201,12 +228,25 @@ class Network(object):
             print("Could not reset: Connection", e)
 
     def detect_nodes(self):
+        """ Scans for nodes in the network.
+
+        Returns:
+            list: Containing all the detected node IDs.
+        """
         self.__network.scanner.reset()
         self.__network.scanner.search()
         time.sleep(0.05)
         return self.__network.scanner.nodes
 
     def scan(self, eds, dict, boot_mode=False, heartbeat=True):
+        """ Scans the network and automatically connects to the first detected node ID.
+
+        Args:
+            eds (str): Path to the EDS file.
+            dict (str): Path to the dictionary file.
+            boot_mode (bool): Value to avoid reading unnecessary regtisters when connecting.
+            heartbeat (bool): Value to initialize the HeartBeatThread.
+        """
         try:
             self.__network.scanner.reset()
             self.__network.scanner.search()
@@ -232,6 +272,15 @@ class Network(object):
 
     def connect_through_node(self, eds, dict, node_id, boot_mode=False,
                              heartbeat=True):
+        """ Connects to a drive through a given node ID.
+
+        Args:
+            eds (str): Path to the EDS file.
+            dict (str): Path to the dictionary file.
+            node_id (int): Targeted node ID to be connected.
+            boot_mode (bool): Value to avoid reading unnecessary regtisters when connecting.
+            heartbeat (bool): Value to initialize the HeartBeatThread.
+        """
         try:
             self.__network.scanner.reset()
             self.__network.scanner.search()
@@ -260,17 +309,18 @@ class Network(object):
     def net_state_subscribe(self, cb):
         """ Subscribe to netowrk state changes.
 
-            Args:
-                cb: Callback
+        Args:
+            cb: Callback
 
-            Returns:
-                int: Assigned slot.
+        Returns:
+            int: Assigned slot.
         """
         r = len(self.__observers)
         self.__observers.append(cb)
         return r
 
     def stop_heartbeat(self):
+        """ Stops the HeartBeatThread from listening to the drive. """
         try:
             for node_id, node_obj in self.__network.nodes.items():
                 node_obj.nmt.stop_node_guarding()
@@ -283,6 +333,7 @@ class Network(object):
             self.__heartbeat_thread = None
 
     def disconnect(self):
+        """ Disconnects the already stablished network. """
         try:
             self.stop_heartbeat()
         except Exception as e:
@@ -299,6 +350,7 @@ class Network(object):
 
     @property
     def servos(self):
+        """ list: Servos available in the network. """
         return self.__servos
 
     @servos.setter
@@ -307,10 +359,12 @@ class Network(object):
 
     @property
     def baudrate(self):
+        """ int: Current baudrate of the network. """
         return self.__baudrate
 
     @property
     def network(self):
+        """ canopen.Network: Returns the instance of the CANopen Network. """
         return self.__network
 
     @property
@@ -320,7 +374,7 @@ class Network(object):
 
     @property
     def net_state(self):
-        """ Network state. """
+        """ NET_STATE: Network state."""
         return self.__net_state
 
     @net_state.setter
