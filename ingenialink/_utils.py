@@ -109,6 +109,8 @@ def raise_err(code, msg=None):
         raise exc.ILNotSupportedError(msg)
     elif code == lib.IL_EWRONGREG:
         raise exc.ILWrongRegisterError(msg)
+    elif code == lib.IL_REGNOTFOUND:
+        raise exc.ILRegisterNotFoundError(msg)
     elif code == lib.IL_EWRONGCRC:
         raise exc.ILWrongCRCError(msg)
     elif code == lib.IL_ENACK:
