@@ -4,6 +4,8 @@ from .constants import *
 from datetime import datetime
 from threading import Timer, Thread, Event, RLock
 
+import ingenialogger
+logger = ingenialogger.getLogger(__name__)
 
 class PollerTimer():
     def __init__(self, time, cb):
@@ -92,7 +94,7 @@ class Poller(object):
         """ Start poller. """
 
         if self.__running:
-            print("Poller already running")
+            logger.warning("Poller already running")
             raise_err(IL_EALREADY)
 
         # Activate timer
@@ -151,7 +153,7 @@ class Poller(object):
                 sz (int): Buffer size.
         """
         if self.__running:
-            print("Poller is running")
+            logger.warning("Poller is running")
             raise_err(IL_ESTATE)
 
         # Configure data and sizes with empty data
@@ -179,11 +181,11 @@ class Poller(object):
         """
 
         if self.__running:
-            print("Poller is running")
+            logger.warning("Poller is running")
             raise_err(IL_ESTATE)
 
         if channel > self.__number_channels:
-            print("Channel out of range")
+            logger.error("Channel out of range")
             raise_err(IL_EINVAL)
 
         # Obtain register
@@ -204,11 +206,11 @@ class Poller(object):
         """
 
         if self.__running:
-            print("Poller is running")
+            logger.warning("Poller is running")
             raise_err(IL_ESTATE)
 
         if channel > self.__number_channels:
-            print("Channel out of range")
+            logger.error("Channel out of range")
             raise_err(IL_EINVAL)
 
         # Set channel required as disabled
