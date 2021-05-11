@@ -117,33 +117,33 @@ def raise_err(code, msg=None):
     elif code == lib.IL_ENACK:
         last_err = err_ipb_last()
         if last_err == CONFIGURATION_ERRORS.INCORRECT_ACCESS_TYPE:
-            raise exc.ILIncorrectAccessType
+            raise exc.ILIncorrectAccessType(msg)
         elif last_err == CONFIGURATION_ERRORS.OBJECT_NOT_EXIST:
-            raise exc.ILObjectNotExist
+            raise exc.ILObjectNotExist(msg)
         elif last_err == CONFIGURATION_ERRORS.OBJECT_NOT_CYCLIC_MAPPABLE:
-            raise exc.ILObjectNotCyclicMappable
+            raise exc.ILObjectNotCyclicMappable(msg)
         elif last_err == CONFIGURATION_ERRORS.CYCLIC_MAPPING_TOO_LARGE:
-            raise exc.ILCyclicMappingTooLarge
+            raise exc.ILCyclicMappingTooLarge(msg)
         elif last_err == CONFIGURATION_ERRORS.WRONG_CYCLIC_KEY:
-            raise exc.ILWrongCyclicKey
+            raise exc.ILWrongCyclicKey(msg)
         elif last_err == CONFIGURATION_ERRORS.WRONG_CYCLIC_REGISTER_SIZE:
-            raise exc.ILWrongCyclicRegisterSize
+            raise exc.ILWrongCyclicRegisterSize(msg)
         elif last_err == CONFIGURATION_ERRORS.COMMUNICATION_STATE_UNREACHABLE:
-            raise exc.ILCommunicationStateUnreachable
+            raise exc.ILCommunicationStateUnreachable(msg)
         elif last_err == CONFIGURATION_ERRORS.COMMUNICATION_NOT_MODIFIABLE:
-            raise exc.ILCommunicationNotModifiable
+            raise exc.ILCommunicationNotModifiable(msg)
         elif last_err == CONFIGURATION_ERRORS.UNSUPPORTED_REGISTER_VALUE:
-            raise exc.ILUnsupportedRegisterValue
+            raise exc.ILUnsupportedRegisterValue(msg)
         elif last_err == CONFIGURATION_ERRORS.INVALID_COMMAND:
-            raise exc.ILInvalidCommand
+            raise exc.ILInvalidCommand(msg)
         elif last_err == CONFIGURATION_ERRORS.CRC_ERROR:
-            raise exc.ILCRCError
+            raise exc.ILCRCError(msg)
         elif last_err == CONFIGURATION_ERRORS.UNSUPPORTED_SYNCHRONIZATION:
-            raise exc.ILUnsupportedSynchronization
+            raise exc.ILUnsupportedSynchronization(msg)
         elif last_err == CONFIGURATION_ERRORS.ACTIVE_FEEDBACKS_HIGHER_THAN_ALLOWED:
-            raise exc.ILActiveFeedbacksHigherThanAllowed
+            raise exc.ILActiveFeedbacksHigherThanAllowed(msg)
         elif last_err == CONFIGURATION_ERRORS.COMKIT_TIMEOUT:
-            raise exc.ILCOMKITTimeout
+            raise exc.ILCOMKITTimeout(msg)
         else:
             raise exc.ILNACKError(msg)
     else:
