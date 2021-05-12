@@ -3,12 +3,16 @@ import canopen
 from enum import Enum
 from threading import Thread
 from time import sleep
+from can.interfaces.pcan.pcan import PcanError
+from can.interfaces.ixxat.exceptions import VCIDeviceNotFoundError
 
+from .._utils import *
+from .._ingenialink import lib
 from .servo_node import Servo
 from ..net import NET_PROT, NET_STATE
 
 import ingenialogger
-logger = ingenialogger.getLogger(__name__)
+logger = ingenialogger.get_logger(__name__)
 
 
 CAN_CHANNELS = {
@@ -119,12 +123,18 @@ class Network(object):
                 self.__network.connect(bustype=self.__device,
                                        channel=self.__channel,
                                        bitrate=self.__baudrate)
-            except Exception as e:
-                logger.error('Failed trying to connect. Exception: %s', str(e))
+            except (PcanError, VCIDeviceNotFoundError) as e:
+                logger.error('Transciever not found in network. Exception: %s', str(e))
+                raise_err(lib.IL_EFAIL, 'Error connecting to the transceiver. Please verify the transceiver is properly connected.')
+            except OSError as e:
+                logger.error('Transciever drivers not properly installed. Exception: %s', str(e))
                 if hasattr(e, 'winerror') and e.winerror == 126:
                     e.strerror = 'Driver module not found.' \
                                  ' Drivers might not be properly installed.'
-                logger.error(e)
+                raise_err(lib.IL_EFAIL, e)
+            except Exception as e:
+                logger.error('Failed trying to connect. Exception: %s', str(e))
+                raise_err(lib.IL_EFAIL, 'Failed trying to connect. {}'.format(e))
 
     def change_node_baudrate(self, target_node, vendor_id, product_code,
                              rev_number, serial_number, new_node=None,
@@ -242,11 +252,12 @@ class Network(object):
             boot_mode (bool): Value to avoid reading unnecessary regtisters when connecting.
             heartbeat (bool): Value to initialize the HeartBeatThread.
         """
-        try:
-            self.__network.scanner.reset()
-            self.__network.scanner.search()
-            time.sleep(0.05)
-            for node_id in self.__network.scanner.nodes:
+        nodes = self.detect_nodes()
+        if len(nodes) < 1:
+            raise_err(lib.IL_EFAIL, 'Could not find any nodes in the network. Please check the connection settings.')
+
+        for node_id in nodes:
+            try:
                 logger.info("Found node %d!", node_id)
                 node = self.__network.add_node(node_id, eds)
 
@@ -260,9 +271,10 @@ class Network(object):
                     self.__heartbeat_thread.start()
 
                 self.__servos.append(Servo(self, node, dict,
-                                           boot_mode=boot_mode))
-        except Exception as e:
-            logger.error("Scan failed. Exception: %s", str(e))
+                                       boot_mode=boot_mode))
+            except Exception as e:
+                logger.error("Scan failed. Exception: %s", str(e))
+                raise_err(lib.IL_EFAIL, 'Failed scanning the network.')
 
     def connect_through_node(self, eds, dict, node_id, boot_mode=False,
                              heartbeat=True):
@@ -275,12 +287,12 @@ class Network(object):
             boot_mode (bool): Value to avoid reading unnecessary regtisters when connecting.
             heartbeat (bool): Value to initialize the HeartBeatThread.
         """
-        try:
-            self.__network.scanner.reset()
-            self.__network.scanner.search()
-            time.sleep(0.05)
+        nodes = self.detect_nodes()
+        if len (nodes) < 1:
+            raise_err(lib.IL_EFAIL, 'Could not find any nodes in the network')
 
-            if node_id in self.__network.scanner.nodes:
+        if node_id in nodes:
+            try:
                 node = self.__network.add_node(node_id, eds)
 
                 node.nmt.start_node_guarding(1)
@@ -294,11 +306,15 @@ class Network(object):
 
                 self.__servos.append(Servo(self, node, dict,
                                            boot_mode=boot_mode))
-            else:
-                logger.warning('Node id not found')
-        except Exception as e:
-            logger.error("Failed connecting to node %i. Exception: %s",
-                         node_id, str(e))
+            except Exception as e:
+                logger.error("Failed connecting to node %i. Exception: %s",
+                             node_id, str(e))
+                raise_err(lib.IL_EFAIL,
+                          'Failed connecting to node {}. Please check the connection settings and verify the transceiver is properly connected.'.format(
+                              node_id))
+        else:
+            logger.error('Node id not found')
+            raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(node_id))
 
     def net_state_subscribe(self, cb):
         """ Subscribe to netowrk state changes.
@@ -333,17 +349,20 @@ class Network(object):
         except Exception as e:
             logger.error('Failed stopping heartbeat. Exception: %s',
                          str(e))
-        try:
-            self.__network.disconnect()
-        except Exception as e:
-            logger.error('Failed disconnecting. Exception: %s',
-                         str(e))
+        
         try:
             for servo in self.__servos:
                 servo.stop_drive_status_thread()
         except Exception as e:
             logger.error('Failed stopping drive status thread. Exception: %s',
                          str(e))
+        
+        try:
+            self.__network.disconnect()
+        except Exception as e:
+            logger.error('Failed disconnecting. Exception: %s',
+                         str(e))
+            raise_err(lib.IL_EFAIL, 'Failed disconnecting.')
 
     @property
     def servos(self):

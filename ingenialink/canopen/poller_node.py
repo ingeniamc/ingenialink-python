@@ -5,7 +5,7 @@ from datetime import datetime
 from threading import Timer, Thread, Event, RLock
 
 import ingenialogger
-logger = ingenialogger.getLogger(__name__)
+logger = ingenialogger.get_logger(__name__)
 
 class PollerTimer():
     """ Custom timer for the Poller.

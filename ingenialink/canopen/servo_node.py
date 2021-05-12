@@ -7,12 +7,13 @@ import xml.etree.ElementTree as ET
 from .._utils import *
 from .constants import *
 from ..servo import SERVO_STATE
-from .._ingenialink import ffi, lib
+from .._ingenialink import lib
 from .dictionary import DictionaryCANOpen
 from .registers import Register, REG_DTYPE, REG_ACCESS
 
 import ingenialogger
-logger = ingenialogger.getLogger(__name__)
+logger = ingenialogger.get_logger(__name__)
+
 
 SERIAL_NUMBER = Register(
     identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00",
@@ -486,10 +487,7 @@ class Servo(object):
             Args:
                 dict_f (str): Dictionary to be laoded.
         """
-        try:
-            self.__dict = DictionaryCANOpen(dict_f)
-        except Exception as e:
-            logger.error("Error loading a dictionary. Exception: %s", str(e))
+        self.__dict = DictionaryCANOpen(dict_f)
 
     def state_subscribe(self, cb):
         """ Subscribe to state changes.
