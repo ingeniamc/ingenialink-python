@@ -8,9 +8,9 @@ class ILConfigurationError(ILError):
     pass
 
 
-class UDPException(Exception):
+class ILUDPException(Exception):
     """
-    Exception on UDP action.
+    Ingenialink exception on UDP action.
     """
     pass
 

@@ -316,7 +316,7 @@ class UDP(object):
         crc = binascii.crc_hqx(in_frame[0:12], 0)
         crcread = struct.unpack('<H', in_frame[12:14])[0]
         if crcread != crc:
-            raise UDPException('CRC error')
+            raise ILUDPException('CRC error')
 
         return cmd
 
