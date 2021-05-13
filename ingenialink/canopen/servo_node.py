@@ -100,7 +100,7 @@ class DriveStatusThread(threading.Thread):
                     self.__parent.set_state(state, subnode=subnode)
                 except Exception as e:
                     logger.error("Error getting drive status. "
-                                 "Exception : %s", str(e))
+                                 "Exception : %s", e)
             time.sleep(1.5)
 
     def activate_stop_flag(self):
@@ -265,7 +265,7 @@ class Servo(object):
                 )
         except Exception as e:
             logger.error("Failed reading %s. Exception: %s",
-                         str(_reg.identifier), str(e))
+                         str(_reg.identifier), e)
             error_raised = "Error reading {}".format(_reg.identifier)
         finally:
             self.__lock.release()
@@ -363,7 +363,7 @@ class Servo(object):
                                                        signed=signed))
         except Exception as e:
             logger.error("Failed reading %s. Exception: %s",
-                         str(_reg.identifier), str(e))
+                         str(_reg.identifier), e)
             error_raised = "Error writing {}".format(_reg.identifier)
         finally:
             self.__lock.release()
@@ -422,7 +422,7 @@ class Servo(object):
             except BaseException as e:
                 logger.error("Exception during dict_storage_read, "
                              "register %s: %s",
-                             str(register.attrib['id'], str(e)))
+                             str(register.attrib['id'], e))
 
         image = xml_data.find('./DriveImage')
         if image is not None:
@@ -462,7 +462,7 @@ class Servo(object):
                                        )
             except BaseException as e:
                 logger.error("Exception during dict_storage_write, register "
-                             "%s: %s", str(element.attrib['id']), str(e))
+                             "%s: %s", str(element.attrib['id']), e)
 
     def store_all(self, subnode=1):
         """ Store all servo current parameters to the NVM. 

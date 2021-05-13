@@ -211,7 +211,7 @@ def update_firmware_moco(node, subnode, ip, port, moco_file):
 
             logger.info("Bootloading process succeeded")
         except Exception as e:
-            logger.error('Error during bootloading process. %s', str(e))
+            logger.error('Error during bootloading process. %s', e)
             r = -2
     else:
         logger.error('File not found')
@@ -281,7 +281,7 @@ class UDP(object):
         try:
             self.socket.close()
         except Exception as e:
-            logger.error('Socket already closed. Exception: %s', str(e))
+            logger.error('Socket already closed. Exception: %s', e)
 
     def close(self):
         self.socket.close()
