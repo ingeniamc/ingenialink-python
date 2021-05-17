@@ -779,22 +779,10 @@ class Servo(object):
         Raises:
             TypeError: If the register type is not valid.
         """
-        _reg, _id = self.get_reg(reg, subnode)
-
-        v = ffi.new('double *')
-        r = lib.il_servo_read(self._servo, _reg, _id, v)
-        raise_err(r)
-
-        if self.dict:
-            _reg = self.dict.get_regs(subnode)[reg]
-            if _reg.dtype == REG_DTYPE.STR:
-                value =  self._net.extended_buffer
-            else:
-                value =  v[0]
-        else:
-            value =  v[0]
-        
-        return value.replace('\x00', '')
+        value = self.raw_read(reg, subnode=subnode)
+        if isinstance(value, str):
+            value = value.replace('\x00', '')
+        return  value
 
     def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
         """
@@ -846,10 +834,7 @@ class Servo(object):
             TypeError: If any of the arguments type is not valid or
                 unsupported.
         """
-        _reg, _id = self.get_reg(reg, subnode)
-
-        r = lib.il_servo_write(self._servo, _reg, _id, data, confirm, extended)
-        raise_err(r)
+        return self.raw_write(reg, data, confirm, extended, subnode)
 
     def units_update(self):
         """

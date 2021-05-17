@@ -285,7 +285,10 @@ class Servo(object):
             ILAccessError: Wrong acces to the register.
             ILIOError: Error reading the register.
         """
-        return self.raw_read(reg, subnode=subnode).replace('\x00', '')
+        value = self.raw_read(reg, subnode=subnode)
+        if isinstance(value, str):
+            value = value.replace('\x00', '')
+        return  value
 
     def change_sdo_timeout(self, value):
         self.__node.sdo.RESPONSE_TIMEOUT = value
