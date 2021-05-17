@@ -788,11 +788,13 @@ class Servo(object):
         if self.dict:
             _reg = self.dict.get_regs(subnode)[reg]
             if _reg.dtype == REG_DTYPE.STR:
-                return self._net.extended_buffer
+                value =  self._net.extended_buffer
             else:
-                return v[0]
+                value =  v[0]
         else:
-            return v[0]
+            value =  v[0]
+        
+        return value.replace('\x00', '')
 
     def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
         """
