@@ -200,11 +200,28 @@ class Servo(object):
             raise_err(lib.IL_EWRONGREG, 'Invalid register')
         return _reg
 
+    @deprecated(new_func_name='read')
     def raw_read(self, reg, subnode=1):
         """ Raw read from servo.
 
         Args:
             reg (Register): Register.
+
+        Returns:
+            int: Error code of the read operation.
+
+        Raises:
+            TypeError: If the register type is not valid.
+            ILAccessError: Wrong acces to the register.
+            ILIOError: Error reading the register.
+        """
+        return self.read(reg, subnode)
+
+    def read(self, reg, subnode=1):
+        """ Read from servo.
+
+        Args:
+            reg (str, Register): Register.
 
         Returns:
             int: Error code of the read operation.
@@ -273,47 +290,14 @@ class Servo(object):
         if error_raised is not None:
             raise_err(lib.IL_EIO, error_raised)
 
-        return value
-
-    def read(self, reg, subnode=1):
-        """ Read from servo.
-
-        Args:
-            reg (str, Register): Register.
-
-        Returns:
-            int: Error code of the read operation.
-
-        Raises:
-            TypeError: If the register type is not valid.
-            ILAccessError: Wrong acces to the register.
-            ILIOError: Error reading the register.
-        """
-        return self.raw_read(reg, subnode=subnode)
+        if isinstance(value, str):
+            value = value.replace('\x00', '')
+        return  value
 
     def change_sdo_timeout(self, value):
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
     def write(self, reg, data, confirm=True, extended=0, subnode=1):
-        return self.raw_write(reg, data, confirm=True,
-                              extended=0, subnode=subnode)
-
-    def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
-        """ Raw write to servo.
-
-            Args:
-                reg (Register): Register.
-                data (int): Data.
-                confirm (bool, optional): Confirm write.
-                extended (int, optional): Extended frame.
-
-            Raises:
-                TypeError: If any of the arguments type is not valid or
-                    unsupported.
-                ILAccessError: Wrong acces to the register.
-                ILIOError: Error reading the register.
-        """
-
         _reg = self.get_reg(reg, subnode)
 
         if _reg.access == REG_ACCESS.RO:
@@ -370,6 +354,25 @@ class Servo(object):
 
         if error_raised is not None:
             raise_err(lib.IL_EIO, error_raised)
+
+    @deprecated(new_func_name='write')
+    def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
+        """ Raw write to servo.
+
+            Args:
+                reg (Register): Register.
+                data (int): Data.
+                confirm (bool, optional): Confirm write.
+                extended (int, optional): Extended frame.
+
+            Raises:
+                TypeError: If any of the arguments type is not valid or
+                    unsupported.
+                ILAccessError: Wrong acces to the register.
+                ILIOError: Error reading the register.
+        """
+
+        self.write(reg, data, confirm, extended, subnode)
 
     def get_all_registers(self):
         """ Prints all registers from the dictionary. """

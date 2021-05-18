@@ -57,7 +57,7 @@ class RegisterUpdater(QObject):
 
             if cfg['current'] >= cfg['period']:
                 try:
-                    cfg['curr_data'] = self._servo.raw_read(reg.identifier)
+                    cfg['curr_data'] = self._servo.read(reg.identifier)
                 except:
                     pass
                 cfg['current'] = 0
