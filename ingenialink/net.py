@@ -12,6 +12,8 @@ import struct
 import binascii
 import os
 
+import ingenialogger
+logger = ingenialogger.get_logger(__name__)
 
 CMD_CHANGE_CPU = 0x67E4
 
@@ -187,7 +189,7 @@ def update_firmware_moco(node, subnode, ip, port, moco_file):
     if moco_file and os.path.isfile(moco_file):
         moco_in = open(moco_file, "r")
 
-        print('Loading firmware...')
+        logger.info("Loading firmware...")
         try:
             for line in moco_in:
                 words = line.split()
@@ -207,12 +209,12 @@ def update_firmware_moco(node, subnode, ip, port, moco_file):
                 if cmd == CMD_CHANGE_CPU:
                     sleep(1)
 
-            print('Bootloading process succeeded!')
+            logger.info("Bootloading process succeeded")
         except Exception as e:
-            print('Error during bootloading process. {}'.format(e))
+            logger.error('Error during bootloading process. %s', e)
             r = -2
     else:
-        print('File not found')
+        logger.error('File not found')
         r = -1
 
     return r
@@ -279,11 +281,11 @@ class UDP(object):
         try:
             self.socket.close()
         except Exception as e:
-            print('Socket already closed. Exception: '.format(e))
+            logger.error('Socket already closed. Exception: %s', e)
 
     def close(self):
         self.socket.close()
-        print('Socket closed')
+        logger.info('Socket closed')
 
     def write(self, frame):
         self.socket.sendto(frame, (self.ip, self.port))
@@ -314,7 +316,7 @@ class UDP(object):
         crc = binascii.crc_hqx(in_frame[0:12], 0)
         crcread = struct.unpack('<H', in_frame[12:14])[0]
         if crcread != crc:
-            raise UDPException('CRC error')
+            raise ILUDPException('CRC error')
 
         return cmd
 
