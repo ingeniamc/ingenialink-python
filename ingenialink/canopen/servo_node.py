@@ -197,7 +197,7 @@ class Servo(object):
             raise_err(lib.IL_EWRONGREG, 'Invalid register')
         return _reg
 
-    @deprecated(new_func='read')
+    @deprecated(new_func_name='read')
     def raw_read(self, reg, subnode=1):
         """ Raw read from servo.
 
@@ -350,7 +350,7 @@ class Servo(object):
         if error_raised is not None:
             raise_err(lib.IL_EIO, error_raised)
 
-    @deprecated(new_func='write')
+    @deprecated(new_func_name='write')
     def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
         """ Raw write to servo.
 
