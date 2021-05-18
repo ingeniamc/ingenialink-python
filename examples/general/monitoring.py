@@ -38,7 +38,7 @@ def monitoring():
         # Enable monitoring
         servo.net.monitoring_enable()
         # Check monitoring status
-        monitor_status = servo.raw_read('MON_DIST_STATUS', subnode=0)
+        monitor_status = servo.read('MON_DIST_STATUS', subnode=0)
         if (monitor_status & 0x1) != 1:
             print("ERROR MONITOR STATUS: ", monitor_status)
         read_process_finished = False
@@ -47,7 +47,7 @@ def monitoring():
 
         while not read_process_finished:
             try:
-                monit_nmb_blocks = servo.raw_read('MON_CFG_CYCLES_VALUE',
+                monit_nmb_blocks = servo.read('MON_CFG_CYCLES_VALUE',
                                                   subnode=0)
                 print("MON_CFG_CYCLES_VALUE ", monit_nmb_blocks)
                 if not read_process_finished:

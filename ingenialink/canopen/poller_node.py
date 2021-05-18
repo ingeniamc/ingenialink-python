@@ -89,7 +89,7 @@ class Poller(object):
                 for register_identifier, subnode in \
                         self.__mappings[channel].items():
                     self.__acq['d'][channel][self.__samples_count] = \
-                        self.__servo.raw_read(register_identifier, subnode)
+                        self.__servo.read(register_identifier, subnode)
 
             # Increment samples count
             self.__samples_count += 1

@@ -222,7 +222,7 @@ class ScopeWindow(QMainWindow):
         servo = self.currentServo()
 
         if self._state == self.stateIdle:
-            servo.raw_write("DRV_OP_CMD", 20)  # Profile Position
+            servo.write("DRV_OP_CMD", 20)  # Profile Position
             servo.enable(self._ENABLE_TIMEOUT)
 
             self.enableScope(servo, POS_ACT)
@@ -235,14 +235,14 @@ class ScopeWindow(QMainWindow):
 
     @Slot(int)
     def on_dialPosition_valueChanged(self, value):
-        self.currentServo().raw_write("CL_POS_SET_POINT_VALUE", value)
+        self.currentServo().write("CL_POS_SET_POINT_VALUE", value)
 
     @Slot()
     def on_btnVelocity_clicked(self):
         servo = self.currentServo()
 
         if self._state == self.stateIdle:
-            servo.raw_write("DRV_OP_CMD", 19)   # Profile Velocity
+            servo.write("DRV_OP_CMD", 19)   # Profile Velocity
             servo.enable(self._ENABLE_TIMEOUT)
 
             self.enableScope(servo, VEL_ACT)
@@ -255,7 +255,7 @@ class ScopeWindow(QMainWindow):
 
     @Slot(int)
     def on_dialVelocity_valueChanged(self, value):
-        self.currentServo().raw_write("CL_VEL_SET_POINT_VALUE", value)
+        self.currentServo().write("CL_VEL_SET_POINT_VALUE", value)
 
     @Slot()
     def on_timerPlotUpdate_expired(self):

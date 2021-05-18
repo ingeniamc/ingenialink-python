@@ -664,7 +664,7 @@ class Servo(object):
                                   access=REG_ACCESS.RO, cyclic='CONFIG',
                                   units='0')
 
-        product_id = self.raw_read(PRODUCT_ID_REG)
+        product_id = self.read(PRODUCT_ID_REG)
 
         return {'serial': info.serial,
                 'name': pstr(info.name),
@@ -1202,7 +1202,7 @@ class Servo(object):
             dtype (int): Data type.
             data_arr (array): Data array.
         """
-        self.raw_write(DIST_NUMBER_SAMPLES, len(data_arr), subnode=0)
+        self.write(DIST_NUMBER_SAMPLES, len(data_arr), subnode=0)
         actual_size = int(len(data_arr))
         actual_pos = 0
         while actual_size > DIST_FRAME_SIZE_BYTES:
