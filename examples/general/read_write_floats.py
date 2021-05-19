@@ -18,12 +18,12 @@ def run_example():
                           port_ip=1061,
                           protocol=2)
 
-    servo.raw_write(GENERATOR_GAIN_REG, 1.666)
-    print(servo.raw_read(GENERATOR_GAIN_REG))
-    servo.raw_write(GENERATOR_GAIN_REG, 0.123)
-    print(servo.raw_read(GENERATOR_GAIN_REG))
-    servo.raw_write(GENERATOR_GAIN_REG, -0.123)
-    print(servo.raw_read(GENERATOR_GAIN_REG))
+    servo.write(GENERATOR_GAIN_REG, 1.666)
+    print(servo.read(GENERATOR_GAIN_REG))
+    servo.write(GENERATOR_GAIN_REG, 0.123)
+    print(servo.read(GENERATOR_GAIN_REG))
+    servo.write(GENERATOR_GAIN_REG, -0.123)
+    print(servo.read(GENERATOR_GAIN_REG))
 
 
 if __name__ == '__main__':

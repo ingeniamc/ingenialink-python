@@ -3,6 +3,18 @@ class ILError(Exception):
     pass
 
 
+class ILConfigurationError(ILError):
+    """ IngeniaLink IPB protocol configuration error. """
+    pass
+
+
+class ILUDPException(Exception):
+    """
+    Ingenialink exception on UDP action.
+    """
+    pass
+
+
 class ILCreationError(ILError):
     """
     IngeniaLink creation error.
@@ -80,6 +92,13 @@ class ILWrongRegisterError(ILError):
     pass
 
 
+class ILRegisterNotFoundError(ILError):
+    """
+    IngeniaLink register not found in dictionary.
+    """
+    pass
+
+
 class ILWrongCRCError(ILError):
     """
     IngeniaLink Wrong CRC error.
@@ -92,9 +111,102 @@ class ILNACKError(ILError):
     IngeniaLink NACK error.
     """
 
-    
-class UDPException(Exception):
+
+# Configuration error
+class ILIncorrectAccessType(ILConfigurationError):
     """
-    Exception on UDP action.
+    Incorrect access type configuration error.
+    """
+    pass
+
+
+class ILObjectNotExist(ILConfigurationError):
+    """
+    Object doesn't exist configuration error.
+    """
+    pass
+
+
+class ILObjectNotCyclicMappable(ILConfigurationError):
+    """
+    Object isn't cyclic mappable as requested configuration error.
+    """
+    pass
+
+
+class ILCyclicMappingTooLarge(ILConfigurationError):
+    """
+    Cyclic mapping is too large configuration error.
+    """
+    pass
+
+
+class ILWrongCyclicKey(ILConfigurationError):
+    """
+    Cyclic mapping key is wrong configuration error.
+    """
+    pass
+
+
+class ILWrongCyclicRegisterSize(ILConfigurationError):
+    """
+    Mapped cyclic register size is wrong configuration error.
+    """
+    pass
+
+
+class ILCommunicationStateUnreachable(ILConfigurationError):
+    """
+    Communication state is unreachable configuration error.
+    """
+    pass
+
+
+class ILCommunicationNotModifiable(ILConfigurationError):
+    """
+    Communication setting is not modifiable in the current state configuration
+    error.
+    """
+    pass
+
+
+class ILUnsupportedRegisterValue(ILConfigurationError):
+    """
+    Unsupported value introduced in register configuration error.
+    """
+    pass
+
+
+class ILInvalidCommand(ILConfigurationError):
+    """
+    Invalid command configuration error.
+    """
+    pass
+
+
+class ILCRCError(ILConfigurationError):
+    """
+    CRC error configuration error.
+    """
+    pass
+
+
+class ILUnsupportedSynchronization(ILConfigurationError):
+    """
+    Unsupported synchronization method configuration error.
+    """
+    pass
+
+
+class ILActiveFeedbacksHigherThanAllowed(ILConfigurationError):
+    """
+    Number of active feedbacks is higher than allowed configuration error.
+    """
+    pass
+
+
+class ILCOMKITTimeout(ILConfigurationError):
+    """
+    COMKIT Timeout. CORE device is not properly connected configuration error.
     """
     pass

@@ -6,10 +6,10 @@ name = "pypi"
 
 
 [packages]
-
 cffi = "==1.12.2"
 canopen = "*"
 numpy = "==1.17.2"
+ingenialogger = ">=0.1.0"
 
 [dev-packages]
 

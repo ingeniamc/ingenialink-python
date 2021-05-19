@@ -12,7 +12,7 @@ def run_example():
         if len(drives_connected) > 0:
             drive = drives_connected[0]
             try:
-                print(drive.raw_read("MOT_PAIR_POLES", subnode=2))
+                print(drive.read("MOT_PAIR_POLES", subnode=2))
             except:
                 pass
             print("END")
@@ -21,7 +21,7 @@ def run_example():
                     txt = input("Type the id of the register you want to read: ")
                     if txt == "exit":
                         break
-                    print(txt + ": " + str(drive.raw_read(txt)))
+                    print(txt + ": " + str(drive.read(txt)))
                 except Exception as e:
                     print(e)
         else:

@@ -2,6 +2,28 @@ from enum import Enum
 
 from ._ingenialink import lib, ffi
 from . import exceptions as exc
+from .err import *
+
+import warnings
+import functools
+
+
+def deprecated(new_func_name):
+    def wrap(func):
+        """This is a decorator which can be used to mark functions
+        as deprecated. It will result in a warning being emitted
+        when the function is used."""
+        @functools.wraps(func)
+        def wrapped_method(*args, **kwargs):
+            warnings.simplefilter('always', DeprecationWarning)  # Turn off filter
+            warnings.warn('Call to deprecated function "{}". Please, use "{}" function instead.'.format(
+                func.__name__, new_func_name),
+                          category=DeprecationWarning,
+                          stacklevel=2)
+            warnings.simplefilter('ignore', DeprecationWarning)  # Reset filter
+            return func(*args, **kwargs)
+        return wrapped_method
+    return wrap
 
 
 def cstr(v):
@@ -109,9 +131,41 @@ def raise_err(code, msg=None):
         raise exc.ILNotSupportedError(msg)
     elif code == lib.IL_EWRONGREG:
         raise exc.ILWrongRegisterError(msg)
+    elif code == lib.IL_REGNOTFOUND:
+        raise exc.ILRegisterNotFoundError(msg)
     elif code == lib.IL_EWRONGCRC:
         raise exc.ILWrongCRCError(msg)
     elif code == lib.IL_ENACK:
-        raise exc.ILNACKError(msg)
+        last_err = err_ipb_last()
+        if last_err == CONFIGURATION_ERRORS.INCORRECT_ACCESS_TYPE:
+            raise exc.ILIncorrectAccessType(msg)
+        elif last_err == CONFIGURATION_ERRORS.OBJECT_NOT_EXIST:
+            raise exc.ILObjectNotExist(msg)
+        elif last_err == CONFIGURATION_ERRORS.OBJECT_NOT_CYCLIC_MAPPABLE:
+            raise exc.ILObjectNotCyclicMappable(msg)
+        elif last_err == CONFIGURATION_ERRORS.CYCLIC_MAPPING_TOO_LARGE:
+            raise exc.ILCyclicMappingTooLarge(msg)
+        elif last_err == CONFIGURATION_ERRORS.WRONG_CYCLIC_KEY:
+            raise exc.ILWrongCyclicKey(msg)
+        elif last_err == CONFIGURATION_ERRORS.WRONG_CYCLIC_REGISTER_SIZE:
+            raise exc.ILWrongCyclicRegisterSize(msg)
+        elif last_err == CONFIGURATION_ERRORS.COMMUNICATION_STATE_UNREACHABLE:
+            raise exc.ILCommunicationStateUnreachable(msg)
+        elif last_err == CONFIGURATION_ERRORS.COMMUNICATION_NOT_MODIFIABLE:
+            raise exc.ILCommunicationNotModifiable(msg)
+        elif last_err == CONFIGURATION_ERRORS.UNSUPPORTED_REGISTER_VALUE:
+            raise exc.ILUnsupportedRegisterValue(msg)
+        elif last_err == CONFIGURATION_ERRORS.INVALID_COMMAND:
+            raise exc.ILInvalidCommand(msg)
+        elif last_err == CONFIGURATION_ERRORS.CRC_ERROR:
+            raise exc.ILCRCError(msg)
+        elif last_err == CONFIGURATION_ERRORS.UNSUPPORTED_SYNCHRONIZATION:
+            raise exc.ILUnsupportedSynchronization(msg)
+        elif last_err == CONFIGURATION_ERRORS.ACTIVE_FEEDBACKS_HIGHER_THAN_ALLOWED:
+            raise exc.ILActiveFeedbacksHigherThanAllowed(msg)
+        elif last_err == CONFIGURATION_ERRORS.COMKIT_TIMEOUT:
+            raise exc.ILCOMKITTimeout(msg)
+        else:
+            raise exc.ILNACKError(msg)
     else:
         raise exc.ILError(msg)

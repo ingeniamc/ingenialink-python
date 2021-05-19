@@ -4,8 +4,16 @@ from .constants import *
 from datetime import datetime
 from threading import Timer, Thread, Event, RLock
 
+import ingenialogger
+logger = ingenialogger.get_logger(__name__)
 
 class PollerTimer():
+    """ Custom timer for the Poller.
+
+    Args:
+        time (int): Timeout to use for the timer.
+        cb (function): Callback.
+    """
     def __init__(self, time, cb):
         self.cb = cb
         self.time = time
@@ -28,12 +36,12 @@ class PollerTimer():
 class Poller(object):
     """ Register poller for CANOpen communications.
 
-        Args:
-            servo (Servo): Servo.
-            number_channels (int): Number of channels.
+    Args:
+        servo (Servo): Servo.
+        number_channels (int): Number of channels.
 
-        Raises:
-            ILCreationError: If the poller could not be created.
+    Raises:
+        ILCreationError: If the poller could not be created.
     """
 
     def __init__(self, servo, number_channels):
@@ -52,12 +60,14 @@ class Poller(object):
         self.reset_acq()
 
     def reset_acq(self):
+        """ Resets the aquired channels. """
         self.__acq = {
             "t": [],
             "d": []
         }
 
     def acquire_callback_poller_data(self):
+        """ Aquire callback for poller data. """
         time_diff = datetime.now()
         delta = time_diff - self.__time_start
 
@@ -81,7 +91,7 @@ class Poller(object):
                 for register_identifier, subnode in \
                         self.__mappings[channel].items():
                     self.__acq['d'][channel][self.__samples_count] = \
-                        self.__servo.raw_read(register_identifier, subnode)
+                        self.__servo.read(register_identifier, subnode)
 
             # Increment samples count
             self.__samples_count += 1
@@ -89,10 +99,10 @@ class Poller(object):
         self.__lock.release()
 
     def start(self):
-        """ Start poller. """
+        "" "Start poller. """
 
         if self.__running:
-            print("Poller already running")
+            logger.warning("Poller already running")
             raise_err(IL_EALREADY)
 
         # Activate timer
@@ -106,7 +116,7 @@ class Poller(object):
         return 0
 
     def stop(self):
-        """ Stop poller. """
+        """Stop poller."""
 
         if self.__running:
             self.__timer.cancel()
@@ -144,14 +154,20 @@ class Poller(object):
         return t, d, self.__samples_lost
 
     def configure(self, t_s, sz):
-        """ Configure.
+        """ Configure data.
 
-            Args:
-                t_s (int, float): Polling period (s).
-                sz (int): Buffer size.
+        Args:
+            t_s (int, float): Polling period (s).
+            sz (int): Buffer size.
+        
+        Returns:
+            int: Status code.
+
+        Raises:
+            ILStateError: The poller is already running.
         """
         if self.__running:
-            print("Poller is running")
+            logger.warning("Poller is running")
             raise_err(IL_ESTATE)
 
         # Configure data and sizes with empty data
@@ -170,20 +186,25 @@ class Poller(object):
     def ch_configure(self, channel, reg):
         """ Configure a poller channel mapping.
 
-            Args:
-                channel (int): Channel to be configured.
-                reg (Register): Register to associate to the given channel.
+        Args:
+            channel (int): Channel to be configured.
+            reg (Register): Register to associate to the given channel.
 
-            Raises:
-                TypeError: If the register is not valid.
+        Returns:
+            int: Status code.
+
+        Raises:
+            ILStateError: The poller is already running.
+            ILValueError: Channel out of range.
+            TypeError: If the register is not valid.
         """
 
         if self.__running:
-            print("Poller is running")
+            logger.warning("Poller is running")
             raise_err(IL_ESTATE)
 
         if channel > self.__number_channels:
-            print("Channel out of range")
+            logger.error("Channel out of range")
             raise_err(IL_EINVAL)
 
         # Obtain register
@@ -199,16 +220,23 @@ class Poller(object):
     def ch_disable(self, channel):
         """ Disable a channel.
 
-            Args:
-                channel (int): Channel to be disabled.
+        Args:
+            channel (int): Channel to be disabled.
+        
+        Raises:
+            ILStateError: The poller is already running.
+            ILValueError: Channel out of range.
+
+        Returns:
+            int: Status code.
         """
 
         if self.__running:
-            print("Poller is running")
+            logger.warning("Poller is running")
             raise_err(IL_ESTATE)
 
         if channel > self.__number_channels:
-            print("Channel out of range")
+            logger.error("Channel out of range")
             raise_err(IL_EINVAL)
 
         # Set channel required as disabled
@@ -217,7 +245,11 @@ class Poller(object):
         return 0
 
     def ch_disable_all(self):
-        """ Disable all channels. """
+        """ Disable all channels.
+         
+        Returns:
+            int: Status code.
+        """
 
         for channel in range(0, self.__number_channels):
             r = self.ch_disable(channel)

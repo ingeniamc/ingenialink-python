@@ -5,11 +5,10 @@ from .._ingenialink import lib
 
 
 class Categories(object):
-    """
-    Categories.
+    """ Contains all categories from a CANopen Dictionary.
 
     Args:
-        dict_ (il_dict_t *): Ingenia dictionary instance.
+        dict_ (str): Path to the Ingenia dictionary.
     """
     def __init__(self, dict_):
         self._dict = dict_
@@ -19,9 +18,7 @@ class Categories(object):
         self.load_cat_ids()
 
     def load_cat_ids(self):
-        """
-        Load category IDs from dictionary.
-        """
+        """Load category IDs from dictionary."""
         with open(self._dict, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -34,17 +31,11 @@ class Categories(object):
 
     @property
     def cat_ids(self):
-        """
-        Obtain category identifiers.
-
-        Returns:
-            list: Category IDs.
-        """
+        """ list: Category IDs. """
         return self._cat_ids
 
     def labels(self, cat_id):
-        """
-        Obtain labels for a certain category ID.
+        """ Obtain labels for a certain category ID.
 
         Returns:
             dict: Labels dictionary.
@@ -53,11 +44,10 @@ class Categories(object):
 
 
 class Errors(object):
-    """
-    Categories.
+    """ Categories.
 
     Args:
-        dict_ (il_dict_t *): Ingenia dictionary instance.
+        dict_ (str): Path to the Ingenia dictionary.
     """
 
     def __init__(self, dict_):
@@ -85,18 +75,18 @@ class Errors(object):
 
     @property
     def errors(self):
-        """
-        Obtain all errors.
-
-        Returns:
-            dict: Errors dictionary.
-        """
+        """ dict: Errors dictionary. """
         return self._errors
 
 
 class DictionaryCANOpen(object):
-    def __init__(self, dict):
-        self.__dict = dict
+    """ Contains all registers and information of a CANopen dictionary.
+
+    Args:
+        dict_ (str): Path to the Ingenia dictionary.
+    """
+    def __init__(self, dict_):
+        self.__dict = dict_
         self.__version = '1'
         self._cats = None
         self.__subnodes = 2
@@ -104,6 +94,7 @@ class DictionaryCANOpen(object):
         self.read_dictionary()
 
     def read_dictionary(self):
+        """ Reads the dictionary file and initializes all its components. """
         with open(self.__dict, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -139,6 +130,11 @@ class DictionaryCANOpen(object):
         xml_file.close()
 
     def read_register(self, register):
+        """ Reads a register from the dictionary and creates a Register instance.
+
+        Args:
+            register (str): Register instance from the dictionary. 
+        """
         try:
             # Identifier
             identifier = register.attrib['id']
@@ -252,22 +248,34 @@ class DictionaryCANOpen(object):
             pass
 
     def get_regs(self, subnode):
+        """ Gets the register dictionary to the targeted subnode.
+        
+        Args:
+            subnode (int): Identifier for the subnode.
+        
+        Returns:
+            dict: Dictionary of all the registers for a subnode.
+        """
         return self.__regs[subnode]
 
     @property
     def dict(self):
+        """ dict: Returns the path of the loaded dictionary. """
         return self.__dict
 
     @property
     def version(self):
+        """ int: Returns the version of the dictionary """
         return self.__version
 
     @property
     def regs(self):
+        """ dict: Returns the dictionary containing all registers instances. """
         return self.__regs
 
     @property
     def subnodes(self):
+        """ int: Returns the total amount of subnodes. """
         return self.__subnodes
 
     @regs.setter
@@ -276,6 +284,7 @@ class DictionaryCANOpen(object):
 
     @property
     def cats(self):
+        """ dict: Returns the dictionary containing all categories of the dictionary. """
         return self._cats
 
     @cats.setter
@@ -284,6 +293,7 @@ class DictionaryCANOpen(object):
 
     @property
     def errors(self):
+        """ dict: Returns a dictionary with all the errors. """
         return self._errors
 
     @errors.setter
