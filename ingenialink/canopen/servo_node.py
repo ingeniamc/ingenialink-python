@@ -423,11 +423,11 @@ class Servo(object):
             except BaseException as e:
                 logger.error("Exception during dict_storage_read, "
                              "register %s: %s",
-                             str(register.attrib['id'], e))
+                             str(register.attrib['id']), e)
 
-        image = xml_data.find('./DriveImage')
+        image = root.find('./DriveImage')
         if image is not None:
-            xml_data.remove(image)
+            root.remove(image)
 
         tree.write(new_path)
         xml_file.close()
