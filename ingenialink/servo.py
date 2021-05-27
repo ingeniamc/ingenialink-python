@@ -701,7 +701,6 @@ class Servo(object):
         r = lib.il_servo_store_app(self._servo)
         raise_err(r)
 
-    @deprecated(new_func_name='read')
     def raw_read(self, reg, subnode=1):
         """
         Raw read from servo.
@@ -790,7 +789,6 @@ class Servo(object):
             value = value.replace('\x00', '')
         return  value
 
-    @deprecated(new_func_name='write')
     def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
         """
         Raw write to servo.
