@@ -217,7 +217,7 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     return net, servo
 
 
-def connect_ecat(ifname, dict_f, slave=1):
+def connect_ecat(ifname, dict_f, slave=1, use_eoe_comms=1):
     """
     Connect the drive through SOEM communications.
 
@@ -225,6 +225,7 @@ def connect_ecat(ifname, dict_f, slave=1):
         ifname: Interface name.
         dict_f: Dictionary path.
         slave: Slave number.
+        use_eoe_comms: Use of EoE communications or communicate via SDOs.
 
     Returns:
         tuple: Servo and Network.
@@ -233,7 +234,9 @@ def connect_ecat(ifname, dict_f, slave=1):
     net = Network(prot=NET_PROT.ECAT, slave=slave)
     servo = Servo(net=net, dict_f=dict_f)
 
-    r = servo.connect_ecat(ifname=ifname, slave=slave)
+    r = servo.connect_ecat(ifname=ifname,
+                           slave=slave,
+                           use_eoe_comms=use_eoe_comms)
 
     if r <= 0:
         servo = None
@@ -341,13 +344,14 @@ class Servo(object):
 
         return inst
 
-    def connect_ecat(self, ifname, slave):
+    def connect_ecat(self, ifname, slave, use_eoe_comms):
         """
         Connect drive through SOEM communications.
 
         Args:
             ifname: Interface name.
             slave: Slave number.
+            use_eoe_comms: Use of EoE communications or communicate via SDOs.
 
         Returns:
             int: Result code.
@@ -356,7 +360,7 @@ class Servo(object):
         self.ifname = cstr(ifname) if ifname else ffi.NULL
         self.slave = slave
 
-        r = lib.il_servo_connect_ecat(3, self.ifname, self.net._net, self._servo, self.dict_f, 1061, self.slave)
+        r = lib.il_servo_connect_ecat(3, self.ifname, self.net._net, self._servo, self.dict_f, 1061, self.slave, use_eoe_comms)
         time.sleep(2)
         return r
 
