@@ -584,6 +584,50 @@ class Network(object):
         return lib.il_net_disturbance_set_mapped_register(self._net, channel,
                                                           address, dtype)
 
+    # SDOs
+    def read_sdo(self, idx, subidx, dtype, subnode=1):
+        """
+        Read SDO from network.
+
+        Args:
+            idx (int): Register index.
+            subidx (int): Register subindex.
+            dtype (REG_DTYPE): Register data type.
+            subnode (int, Optional): Register subnode.
+
+        Returns:
+            float: Obtained value
+
+        Raises:
+            TypeError: If the register type is not valid.
+        """
+        v = ffi.new('double *')
+        r = lib.il_net_SDO_read(self._net, subnode, idx, subidx, dtype, v)
+        raise_err(r)
+
+        value = v[0]
+        return value
+
+    def write_sdo(self, idx, subidx, dtype, value, subnode=1):
+        """
+        Write SDO from network.
+
+        Args:
+            idx (int): Register index.
+            subidx (int): Register subindex.
+            dtype (REG_DTYPE): Register data type.
+            value (float): Value to write.
+            subnode (int, Optional): Register subnode.
+
+        Returns:
+            float: Obtained value
+
+        Raises:
+            TypeError: If the register type is not valid.
+        """
+        r = lib.il_net_SDO_write(self._net, subnode, idx, subidx, dtype, value)
+        raise_err(r)
+
     # Properties
     @property
     def prot(self):
