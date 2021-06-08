@@ -584,6 +584,73 @@ class Network(object):
         return lib.il_net_disturbance_set_mapped_register(self._net, channel,
                                                           address, dtype)
 
+    # SDOs
+    def read_sdo(self, idx, subidx, dtype, slave=1):
+        """
+        Read SDO from network.
+
+        Args:
+            idx (int): Register index.
+            subidx (int): Register subindex.
+            dtype (REG_DTYPE): Register data type.
+            slave (int, Optional): Identifier of an slave in the network.
+
+        Returns:
+            float: Obtained value
+
+        Raises:
+            TypeError: If the register type is not valid.
+        """
+        v = ffi.new('double *')
+        r = lib.il_net_SDO_read(self._net, slave, idx, subidx, dtype, v)
+        raise_err(r)
+
+        value = v[0]
+        return value
+
+    def read_string_sdo(self, idx, subidx, size, slave=1):
+        """
+        Read string SDO from network.
+
+        Args:
+            idx (int): Register index.
+            subidx (int): Register subindex.
+            size (int): Size in bytes to read.
+            slave (int, Optional): Identifier of an slave in the network.
+
+        Returns:
+            str: Obtained value
+
+        Raises:
+            TypeError: If the register type is not valid.
+        """
+        v = ffi.new("char[" + str(size) + "]")
+        r = lib.il_net_SDO_read_string(self._net, slave, idx, subidx, size, v)
+        raise_err(r)
+
+        value = pstr(v)
+        return value
+
+    def write_sdo(self, idx, subidx, dtype, value, slave=1):
+        """
+        Write SDO from network.
+
+        Args:
+            idx (int): Register index.
+            subidx (int): Register subindex.
+            dtype (REG_DTYPE): Register data type.
+            value (float): Value to write.
+            slave (int, Optional): Identifier of an slave in the network.
+
+        Returns:
+            float: Obtained value
+
+        Raises:
+            TypeError: If the register type is not valid.
+        """
+        r = lib.il_net_SDO_write(self._net, slave, idx, subidx, dtype, value)
+        raise_err(r)
+
     # Properties
     @property
     def prot(self):
