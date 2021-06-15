@@ -65,6 +65,8 @@ setup(name='ingenialink',
           'Programming Language :: Python :: 3.4',
           'Programming Language :: Python :: 3.5',
           'Programming Language :: Python :: 3.6',
+          'Programming Language :: Python :: 3.7',
+          'Programming Language :: Python :: 3.8',
           'Topic :: Communications',
           'Topic :: Software Development :: Libraries'
       ],
@@ -78,7 +80,7 @@ setup(name='ingenialink',
           'cffi==1.12.2',
           'numpy<=1.19.5',
           'canopen>=1.0.0',
-          'ingenialogger>=0.1.0'
+          'ingenialogger>=0.2.1'
       ],
       include_package_data = True
 
