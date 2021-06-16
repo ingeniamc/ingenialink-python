@@ -304,6 +304,7 @@ class Servo(object):
 
     def __init__(self, net, servo_id=None, dict_f=None):
         self.dict_f = cstr(dict_f) if dict_f else ffi.NULL
+        self.full_name = None
 
         if servo_id:
             servo = lib.il_servo_create(net._net, servo_id, self.dict_f)

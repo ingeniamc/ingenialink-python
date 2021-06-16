@@ -134,6 +134,7 @@ class Servo(object):
         self.__units_acc = None
         self.__name = "Drive"
         self.__drive_status_thread = None
+        self.full_name = None
         if not boot_mode:
             self.init_info()
 
