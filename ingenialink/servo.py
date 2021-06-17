@@ -591,12 +591,24 @@ class Servo(object):
         tree = ET.parse(new_path)
         xml_data = tree.getroot()
 
-        if subnode > 0:
-            registers_category = xml_data.find('Body/Device/Registers')
-            registers = xml_data.findall('Body/Device/Registers/Register')
-            for register in registers:
-                if register.attrib['subnode'] != str(subnode):
-                    registers_category.remove(register)
+        body = xml_data.find('Body')
+        device = xml_data.find('Body/Device')
+        categories = xml_data.find('Body/Device/Categories')
+        errors = xml_data.find('Body/Errors')
+
+        registers_category = xml_data.find('Body/Device/Registers')
+        registers = xml_data.findall('Body/Device/Registers/Register')
+        if registers_category is None:
+            registers_category = xml_data.find('Body/Device/Axes/Axis/Registers')
+            registers = xml_data.findall('Body/Device/Axes/Axis/Registers/Register')
+
+        for register in registers:
+            if register.attrib['subnode'] != str(subnode) and subnode > 0 and register in registers_category:
+                registers_category.remove(register)
+            cleanup_register(register)
+
+        device.remove(categories)
+        body.remove(errors)
 
         image = xml_data.find('./DriveImage')
         if image is not None:
