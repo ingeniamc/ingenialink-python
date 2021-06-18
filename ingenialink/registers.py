@@ -69,6 +69,21 @@ class REG_PHY(Enum):
     """ Radians. """
 
 
+def dtype_size(dtype):
+    sizes = {
+        REG_DTYPE.U8: 1,
+        REG_DTYPE.S8: 1,
+        REG_DTYPE.U16: 2,
+        REG_DTYPE.S16: 2,
+        REG_DTYPE.U32: 4,
+        REG_DTYPE.S32: 4,
+        REG_DTYPE.U64: 8,
+        REG_DTYPE.S64: 8,
+        REG_DTYPE.FLOAT: 4
+    }
+    return sizes[dtype]
+
+
 def _get_reg_id(reg, subnode=1):
     """
     Obtain Register and ID.

@@ -2,7 +2,7 @@ from enum import Enum
 
 from ._ingenialink import ffi, lib
 from ._utils import cstr, pstr, raise_null, raise_err, to_ms, deprecated
-from .registers import Register, REG_DTYPE, _get_reg_id, REG_ACCESS
+from .registers import Register, REG_DTYPE, dtype_size, REG_ACCESS
 from .net import Network, NET_PROT
 from .dict_ import Dictionary
 
@@ -1199,32 +1199,41 @@ class Servo(object):
         r = lib.il_servo_wait_reached(self._servo, to_ms(timeout))
         raise_err(r)
 
-    def disturbance_write_data(self, channel, dtype, data_arr):
+    def disturbance_write_data(self, channels, dtypes, data_arr):
         """
         Write disturbance data.
 
         Args:
-            channel (int): Channel identifier.
-            dtype (int): Data type.
-            data_arr (array): Data array.
+            channels (int or list of int): Channel identifier.
+            dtypes (int or list of int): Data type.
+            data_arr (list or list of list): Data array.
         """
-        self.write(DIST_NUMBER_SAMPLES, len(data_arr), subnode=0)
-        actual_size = int(len(data_arr))
-        actual_pos = 0
-        while actual_size > DIST_FRAME_SIZE_BYTES:
-            next_pos = actual_pos + DIST_FRAME_SIZE_BYTES
-            self.net.disturbance_channel_data(channel, dtype,
-                                              data_arr[actual_pos: next_pos])
-            self.net.disturbance_data_size = DIST_FRAME_SIZE
-            self.write(DIST_DATA, DIST_FRAME_SIZE, False, 1, subnode=0)
-            actual_pos = next_pos
-            actual_size -= DIST_FRAME_SIZE_BYTES
-
-        # Last disturbance frame
-        self.net.disturbance_channel_data(
-            channel,
-            dtype,
-            data_arr[actual_pos: actual_pos + actual_size]
-        )
-        self.net.disturbance_data_size = actual_size * 4
-        self.write(DIST_DATA, actual_size * 4, False, 1, subnode=0)
+        if not isinstance(channels, list):
+            channels = [channels]
+        if not isinstance(dtypes, list):
+            dtypes = [dtypes]
+        if not isinstance(data_arr[0], list):
+            data_arr = [data_arr]
+        num_samples = len(data_arr[0])
+        self.write(DIST_NUMBER_SAMPLES, num_samples, subnode=0)
+        sample_size = 0
+        for dtype_val in dtypes:
+            sample_size += dtype_size(dtype_val)
+        samples_for_write = DIST_FRAME_SIZE // sample_size
+        number_writes = num_samples // samples_for_write
+        rest_samples = num_samples % samples_for_write
+        for i in range(number_writes):
+            for index, channel in enumerate(channels):
+                self.net.disturbance_channel_data(
+                    channel,
+                    dtypes[index],
+                    data_arr[index][i*samples_for_write:(i+1)*samples_for_write])
+            self.net.disturbance_data_size = sample_size*samples_for_write
+            self.write(DIST_DATA, sample_size*samples_for_write, False, 1, subnode=0)
+        for index, channel in enumerate(channels):
+            self.net.disturbance_channel_data(
+                channel,
+                dtypes[index],
+                data_arr[index][number_writes*samples_for_write:num_samples])
+        self.net.disturbance_data_size = rest_samples * sample_size
+        self.write(DIST_DATA, rest_samples * sample_size, False, 1, subnode=0)
