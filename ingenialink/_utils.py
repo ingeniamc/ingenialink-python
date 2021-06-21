@@ -13,16 +13,19 @@ def deprecated(new_func_name):
         """This is a decorator which can be used to mark functions
         as deprecated. It will result in a warning being emitted
         when the function is used."""
+
         @functools.wraps(func)
         def wrapped_method(*args, **kwargs):
             warnings.simplefilter('always', DeprecationWarning)  # Turn off filter
             warnings.warn('Call to deprecated function "{}". Please, use "{}" function instead.'.format(
                 func.__name__, new_func_name),
-                          category=DeprecationWarning,
-                          stacklevel=2)
+                category=DeprecationWarning,
+                stacklevel=2)
             warnings.simplefilter('ignore', DeprecationWarning)  # Reset filter
             return func(*args, **kwargs)
+
         return wrapped_method
+
     return wrap
 
 
@@ -56,6 +59,54 @@ def to_ms(s):
         int: Value in milliseconds.
     """
     return int(s * 1e3)
+
+
+def remove_xml_subelement(element, subelement):
+    """
+    Removes a subelement from the given element the element contains the subelement
+
+    Args:
+        element (Element): Element to be extracted from.
+        subelement (Element): Element to be extracted.
+    """
+    if subelement is not None and subelement in element:
+        element.remove(subelement)
+
+
+def pop_element(dictionary, element):
+    """
+    Pops an element from a dictionary only if it is contained in it
+
+    Args:
+        dictionary (dict): Dictionary containing all the elment.s
+        element (str): Element to be poped from the dictionary.
+    """
+    if element in dictionary:
+        dictionary.pop(element)
+
+
+def cleanup_register(register):
+    """
+    Cleans a ElementTree register to remove all unnecessary fields for a configuration file
+
+    Args:
+        register (Register): Register to be cleaned.
+    """
+    labels = register.find('./Labels')
+    range = register.find('./Range')
+    enums = register.find('./Enumerations')
+
+    remove_xml_subelement(register, labels)
+    remove_xml_subelement(register, enums)
+    remove_xml_subelement(register, range)
+
+    pop_element(register.attrib, 'desc')
+    pop_element(register.attrib, 'cat_id')
+    pop_element(register.attrib, 'cyclic')
+    pop_element(register.attrib, 'units')
+    pop_element(register.attrib, 'address_type')
+
+    register.text = ''
 
 
 class INT_SIZES(Enum):

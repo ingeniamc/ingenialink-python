@@ -384,7 +384,7 @@ class Servo(object):
     def dict_storage_read(self, new_path, subnode=0):
         """ Read all dictionary registers content and put it to the dictionary
         storage. 
-        
+
         Args:
             new_path (str): Destination path for the configuration file.
             subnode (int): Subnode of the drive.
@@ -393,6 +393,14 @@ class Servo(object):
         with open(self.__dict.dict, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
+
+        body = root.find('Body')
+        device = root.find('Body/Device')
+        categories = root.find('Body/Device/Categories')
+        errors = root.find('Body/Errors')
+
+        device.remove(categories)
+        body.remove(errors)
 
         axis = tree.findall('*/Device/Axes/Axis')
         if axis:
@@ -425,6 +433,7 @@ class Servo(object):
                 logger.error("Exception during dict_storage_read, "
                              "register %s: %s",
                              str(register.attrib['id']), e)
+            cleanup_register(register)
 
         image = root.find('./DriveImage')
         if image is not None:
