@@ -12,8 +12,8 @@ from .servo_node import Servo
 from ..net import NET_PROT, NET_STATE
 
 import ingenialogger
-logger = ingenialogger.get_logger(__name__)
 
+logger = ingenialogger.get_logger(__name__)
 
 CAN_CHANNELS = {
     'kvaser': (0, 1),
@@ -71,6 +71,7 @@ class HearbeatThread(Thread):
         parent (Network): network instance of the CANopen communication.
         node (int): Identifier for the targeted node ID.
     """
+
     def __init__(self, parent, node):
         super(HearbeatThread, self).__init__()
         self.__parent = parent
@@ -106,6 +107,7 @@ class Network(object):
         channel (int): Targeted channel number of the transciever.
         baudrate (CAN_BAUDRATE): Baudrate to communicate through.
     """
+
     def __init__(self, device=None, channel=0,
                  baudrate=CAN_BAUDRATE.Baudrate_1M):
         self.__servos = []
@@ -125,7 +127,8 @@ class Network(object):
                                        bitrate=self.__baudrate)
             except (PcanError, VCIDeviceNotFoundError) as e:
                 logger.error('Transciever not found in network. Exception: %s', e)
-                raise_err(lib.IL_EFAIL, 'Error connecting to the transceiver. Please verify the transceiver is properly connected.')
+                raise_err(lib.IL_EFAIL, 'Error connecting to the transceiver. '
+                                        'Please verify the transceiver is properly connected.')
             except OSError as e:
                 logger.error('Transciever drivers not properly installed. Exception: %s', e)
                 if hasattr(e, 'winerror') and e.winerror == 126:
@@ -149,7 +152,7 @@ class Network(object):
             serial_number (int): Serial number of the targeted device.
             new_node (int): New node ID for the targeted device.
             new_baudrate (int): New baudrate for the targeted device.
-        
+
         Returns:
             bool: Result of the operation.
         """
@@ -189,12 +192,10 @@ class Network(object):
         logger.debug("Wait until node is reset")
         sleep(0.5)
 
-        logger.debug("Resetting network...")
-        self.__network.scanner.reset()
-        self.__network.scanner.search()
-        sleep(0.5)
+        logger.debug("Searching for nodes...")
+        nodes = self.detect_nodes()
 
-        for node_id in self.__network.scanner.nodes:
+        for node_id in nodes:
             logger.info('Node found: %i', node_id)
             node = self.__network.add_node(node_id, self.__eds)
 
@@ -239,7 +240,12 @@ class Network(object):
             list: Containing all the detected node IDs.
         """
         self.__network.scanner.reset()
-        self.__network.scanner.search()
+        try:
+            self.__network.scanner.search()
+        except Exception as e:
+            logger.error("Error searching for nodes. Exception: {}".format(e))
+            logger.info("Reseting bus")
+            self.__network.bus.reset()
         time.sleep(0.05)
         return self.__network.scanner.nodes
 
@@ -271,7 +277,7 @@ class Network(object):
                     self.__heartbeat_thread.start()
 
                 self.__servos.append(Servo(self, node, dict,
-                                       boot_mode=boot_mode))
+                                           boot_mode=boot_mode))
             except Exception as e:
                 logger.error("Scan failed. Exception: %s", e)
                 raise_err(lib.IL_EFAIL, 'Failed scanning the network.')
@@ -288,7 +294,7 @@ class Network(object):
             heartbeat (bool): Value to initialize the HeartBeatThread.
         """
         nodes = self.detect_nodes()
-        if len (nodes) < 1:
+        if len(nodes) < 1:
             raise_err(lib.IL_EFAIL, 'Could not find any nodes in the network')
 
         if node_id in nodes:
@@ -310,8 +316,8 @@ class Network(object):
                 logger.error("Failed connecting to node %i. Exception: %s",
                              node_id, e)
                 raise_err(lib.IL_EFAIL,
-                          'Failed connecting to node {}. Please check the connection settings and verify the transceiver is properly connected.'.format(
-                              node_id))
+                          'Failed connecting to node {}. Please check the connection settings and verify '
+                          'the transceiver is properly connected.'.format(node_id))
         else:
             logger.error('Node id not found')
             raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(node_id))
@@ -347,21 +353,18 @@ class Network(object):
         try:
             self.stop_heartbeat()
         except Exception as e:
-            logger.error('Failed stopping heartbeat. Exception: %s',
-                         e)
-        
+            logger.error('Failed stopping heartbeat. Exception: %s', e)
+
         try:
             for servo in self.__servos:
                 servo.stop_drive_status_thread()
         except Exception as e:
-            logger.error('Failed stopping drive status thread. Exception: %s',
-                         e)
-        
+            logger.error('Failed stopping drive status thread. Exception: %s', e)
+
         try:
             self.__network.disconnect()
         except Exception as e:
-            logger.error('Failed disconnecting. Exception: %s',
-                         e)
+            logger.error('Failed disconnecting. Exception: %s', e)
             raise_err(lib.IL_EFAIL, 'Failed disconnecting.')
 
     @property
