@@ -28,7 +28,7 @@ __all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
            'CANOpenNetwork', 'CAN_DEVICE', 'CANOpenPoller', 'CANOpenServo',
            'err_ipb_last']
 
-__version__ = '5.3.7'
+__version__ = '5.3.8'
 
 try:
     __ingenialink_C_version__ = pstr(lib.il_version())
