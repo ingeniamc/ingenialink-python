@@ -109,6 +109,32 @@ def cleanup_register(register):
     register.text = ''
 
 
+def get_drive_identification(servo, subnode=0):
+    """
+    Gets the identification information of a given subnode.
+
+    Args:
+        servo: Instance of the servo Class.
+        subnode: subnode to be targeted.
+
+    Returns:
+        int, int: Product code and revision number of the targeted subnode.
+    """
+    prod_code = None
+    re_number = None
+    try:
+        if subnode == 0:
+            prod_code = servo.read('DRV_ID_PRODUCT_CODE_COCO', subnode)
+            re_number = servo.read('DRV_ID_REVISION_NUMBER_COCO', subnode)
+        else:
+            prod_code = servo.read('DRV_ID_PRODUCT_CODE', subnode=subnode)
+            re_number = servo.read('DRV_ID_REVISION_NUMBER', subnode)
+    except Exception as e:
+        pass
+
+    return prod_code, re_number
+
+
 class INT_SIZES(Enum):
     """
     Integer sizes.

@@ -584,6 +584,8 @@ class Servo(object):
             new_path (str): Dictionary.
 
         """
+        prod_code, rev_number = get_drive_identification(self, subnode)
+
         r = lib.il_servo_dict_storage_read(self._servo)
         raise_err(r)
 
@@ -596,6 +598,11 @@ class Servo(object):
         device = xml_data.find('Body/Device')
         categories = xml_data.find('Body/Device/Categories')
         errors = xml_data.find('Body/Errors')
+
+        if 'ProductCode' in device.attrib and prod_code is not None:
+            device.attrib['ProductCode'] = str(prod_code)
+        if 'RevisionNumber' in device.attrib and rev_number is not None:
+            device.attrib['RevisionNumber'] = str(rev_number)
 
         registers_category = xml_data.find('Body/Device/Registers')
         registers = xml_data.findall('Body/Device/Registers/Register')
