@@ -389,6 +389,7 @@ class Servo(object):
             new_path (str): Destination path for the configuration file.
             subnode (int): Subnode of the drive.
         """
+        prod_code, rev_number = get_drive_identification(self, subnode)
 
         with open(self.__dict.dict, 'r') as xml_file:
             tree = ET.parse(xml_file)
@@ -401,6 +402,11 @@ class Servo(object):
 
         device.remove(categories)
         body.remove(errors)
+
+        if 'ProductCode' in device.attrib and prod_code is not None:
+            device.attrib['ProductCode'] = str(prod_code)
+        if 'RevisionNumber' in device.attrib and rev_number is not None:
+            device.attrib['RevisionNumber'] = str(rev_number)
 
         axis = tree.findall('*/Device/Axes/Axis')
         if axis:
