@@ -2,7 +2,7 @@ from enum import Enum
 from time import sleep
 
 from ._ingenialink import lib, ffi
-from ._utils import cstr, pstr, raise_null, raise_err, to_ms
+from ._utils import cstr, pstr, raise_null, raise_err, to_ms, deprecated
 from .registers import REG_DTYPE
 from .exceptions import *
 
@@ -348,6 +348,7 @@ class UDP(object):
         self.write(frame)
 
 
+
 class Network(object):
     """
     Network.
@@ -363,25 +364,26 @@ class Network(object):
         ILCreationError: If the network cannot be created.
     """
 
-    def __init__(self):
-        pass
-    # def __init__(self, prot, port=None, slave=1, timeout_rd=0.5, timeout_wr=0.5):
-    #     if not isinstance(prot, NET_PROT):
-    #         raise TypeError('Invalid protocol')
-    #
-    #     if prot != NET_PROT.ECAT:
-    #         port_ = ffi.new('char []', cstr(port))
-    #         opts = ffi.new('il_net_opts_t *')
-    #
-    #         opts.port = port_
-    #         opts.timeout_rd = to_ms(timeout_rd)
-    #         opts.timeout_wr = to_ms(timeout_wr)
-    #
-    #         self._net = lib.il_net_create(prot.value, opts)
-    #         raise_null(self._net)
-    #     else:
-    #         self.slave = slave
-    #         self._net = ffi.new('il_net_t **')
+    @deprecated("You should use the subclass of the protocol you want to "
+                "connect")
+    def __init__(self, prot, port=None, slave=1, timeout_rd=0.5, timeout_wr=0.5):
+        print("holaa nen")
+        if not isinstance(prot, NET_PROT):
+            raise TypeError('Invalid protocol')
+
+        if prot != NET_PROT.ECAT:
+            port_ = ffi.new('char []', cstr(port))
+            opts = ffi.new('il_net_opts_t *')
+
+            opts.port = port_
+            opts.timeout_rd = to_ms(timeout_rd)
+            opts.timeout_wr = to_ms(timeout_wr)
+
+            self._net = lib.il_net_create(prot.value, opts)
+            raise_null(self._net)
+        else:
+            self.slave = slave
+            self._net = ffi.new('il_net_t **')
 
     @classmethod
     def _from_existing(cls, net):

@@ -7,6 +7,31 @@ class MCBNetwork(Network):
         self.__timeout_rd = timeout_rd
         self.__timeout_wr = timeout_wr
 
+    def load_firmware(self, fw_file):
+        # TODO: Implement FTP fw loader
+        raise NotImplementedError
+
+    def scan_nodes(self):
+        raise NotImplementedError
+
+    def connect(self):
+        raise NotImplementedError
+
+    def disconnect(self):
+        raise NotImplementedError
+
+    def is_alive(self):
+        raise NotImplementedError
+
+    def restore_parameters(self):
+        raise NotImplementedError
+
+    def store_parameters(self):
+        raise NotImplementedError
+
+    def load_configuration(self):
+        raise NotImplementedError
+
     # Properties
     @property
     def port(self):

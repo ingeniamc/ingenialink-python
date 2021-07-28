@@ -11,9 +11,6 @@ class EthercatNetwork(Network):
 
         self._net = ffi.new('il_net_t **')
 
-    def load_firmware(self, if_name, dict_f, slave, is_summit):
-        pass
-
     def load_firmware(self, fw_file):
         # TODO: Implement FTP fw loader
         raise NotImplementedError
@@ -25,7 +22,7 @@ class EthercatNetwork(Network):
         raise NotImplementedError
 
     def disconnect(self):
-        raise NotImplementedError
+        return lib.il_net_master_stop(self._net)
 
     def is_alive(self):
         raise NotImplementedError

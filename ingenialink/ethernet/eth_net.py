@@ -5,7 +5,7 @@ from .._ingenialink import lib, ffi
 
 
 class EthernetNetwork(Network):
-    def __init__(self, address_ip=None, dict_f=None, port_ip=23, protocol=2):
+    def __init__(self, address_ip=None, dict_f=None, port_ip=1061, protocol=2):
         self.__address_ip = address_ip
         self.__dict_f = dict_f
         self.__port_ip = port_ip
@@ -45,7 +45,7 @@ class EthernetNetwork(Network):
         self.__net = net
         self.__servos.append(servo)
 
-        return net, servo
+        return r, servo
 
     def disconnect(self):
         raise NotImplementedError
