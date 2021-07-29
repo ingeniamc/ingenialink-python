@@ -575,6 +575,7 @@ class Servo(object):
         """
         self._errors = self._get_all_errors(dict_f)
 
+    @deprecated
     def dict_storage_read(self, new_path, subnode=0):
         """
         Read all dictionary registers content and put it to the dictionary
@@ -628,6 +629,7 @@ class Servo(object):
         config_file.write(xmlstr)
         config_file.close()
 
+    @deprecated
     def dict_storage_write(self, dict_f, subnode=0):
         """
         Write current dictionary storage to the servo drive.
@@ -641,6 +643,77 @@ class Servo(object):
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(dict_f)
         raise_err(r)
+
+    def load_configuration(self, dict_f, subnode=0):
+        """
+        Load configuration from dictionary file to the servo drive.
+
+        Args:
+            dict_f (str): Dictionary.
+            subnode (int, optional): Subnode.
+
+        """
+        r = lib.il_servo_dict_storage_write(self._servo, cstr(dict_f), subnode)
+        if not hasattr(self, '_errors') or not self._errors:
+            self._errors = self._get_all_errors(dict_f)
+        raise_err(r)
+
+    def save_configuration(self, new_path, subnode=0):
+        """
+            Read all dictionary registers content and save it to a
+            new dictionary.
+
+            Args:
+                new_path (str): Dictionary.
+
+        """
+        prod_code, rev_number = get_drive_identification(self, subnode)
+
+        r = lib.il_servo_dict_storage_read(self._servo)
+        raise_err(r)
+
+        self.dict.save(new_path)
+
+        tree = ET.parse(new_path)
+        xml_data = tree.getroot()
+
+        body = xml_data.find('Body')
+        device = xml_data.find('Body/Device')
+        categories = xml_data.find('Body/Device/Categories')
+        errors = xml_data.find('Body/Errors')
+
+        if 'ProductCode' in device.attrib and prod_code is not None:
+            device.attrib['ProductCode'] = str(prod_code)
+        if 'RevisionNumber' in device.attrib and rev_number is not None:
+            device.attrib['RevisionNumber'] = str(rev_number)
+
+        registers_category = xml_data.find('Body/Device/Registers')
+        registers = xml_data.findall('Body/Device/Registers/Register')
+        if registers_category is None:
+            registers_category = xml_data.find(
+                'Body/Device/Axes/Axis/Registers')
+            registers = xml_data.findall(
+                'Body/Device/Axes/Axis/Registers/Register')
+
+        for register in registers:
+            if register.attrib['subnode'] != str(
+                    subnode) and subnode > 0 and register in registers_category:
+                registers_category.remove(register)
+            cleanup_register(register)
+
+        device.remove(categories)
+        body.remove(errors)
+
+        image = xml_data.find('./DriveImage')
+        if image is not None:
+            xml_data.remove(image)
+
+        xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(
+            indent="  ", newl='')
+
+        config_file = io.open(new_path, "w", encoding='utf8')
+        config_file.write(xmlstr)
+        config_file.close()
 
     @property
     def name(self):

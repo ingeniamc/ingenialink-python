@@ -50,17 +50,9 @@ class EthernetNetwork(Network):
     def disconnect(self):
         raise NotImplementedError
 
-    def is_alive(self):
-        raise NotImplementedError
 
-    def restore_parameters(self):
-        raise NotImplementedError
 
-    def store_parameters(self):
-        raise NotImplementedError
 
-    def load_configuration(self):
-        raise NotImplementedError
 
     # Properties
     @property
