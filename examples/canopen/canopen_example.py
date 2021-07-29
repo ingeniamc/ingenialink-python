@@ -1,11 +1,11 @@
 import sys
 
-from ingenialink.canopen.net import Network, CAN_DEVICE
+from ingenialink.canopen.can_net import Network, CAN_DEVICE
 
 def run_example():
     net = None
     try:
-        net = Network(device=CAN_DEVICE.PCAN)
+        net = CanopenNetwork(device=CAN_DEVICE.PCAN)
         nodes = net.detect_nodes()
         net.scan('canopen_0.2.1.eds', 'registers_dictionary_canopen.xdf')
         drives_connected = net.servos

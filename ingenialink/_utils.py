@@ -8,19 +8,22 @@ import warnings
 import functools
 
 
-def deprecated(new_func_name):
+def deprecated(custom_msg=None, new_func_name=None):
+    """ This is a decorator which can be used to mark functions as deprecated. It will
+    result in a warning being emitted when the function is used. We use this decorator instead
+    of any deprecation library because all libraries raise a DeprecationWarning but since by
+    default this warning is hidden, we use this decorator to manually activate DeprecationWarning
+    and turning it off after the warn has been done. """
     def wrap(func):
-        """This is a decorator which can be used to mark functions
-        as deprecated. It will result in a warning being emitted
-        when the function is used."""
-
         @functools.wraps(func)
         def wrapped_method(*args, **kwargs):
             warnings.simplefilter('always', DeprecationWarning)  # Turn off filter
-            warnings.warn('Call to deprecated function "{}". Please, use "{}" function instead.'.format(
-                func.__name__, new_func_name),
-                category=DeprecationWarning,
-                stacklevel=2)
+            msg = 'Call to deprecated function "{}".'.format(func.__name__)
+            if new_func_name:
+                msg += ' Please, use "{}" function instead.'.format(new_func_name)
+            if custom_msg:
+                msg = custom_msg
+            warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
             warnings.simplefilter('ignore', DeprecationWarning)  # Reset filter
             return func(*args, **kwargs)
 

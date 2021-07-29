@@ -575,7 +575,7 @@ class Servo(object):
         """
         self._errors = self._get_all_errors(dict_f)
 
-    @deprecated
+    @deprecated(new_func_name='save_configuration')
     def dict_storage_read(self, new_path, subnode=0):
         """
         Read all dictionary registers content and put it to the dictionary
@@ -629,7 +629,7 @@ class Servo(object):
         config_file.write(xmlstr)
         config_file.close()
 
-    @deprecated
+    @deprecated(new_func_name='load_configuration')
     def dict_storage_write(self, dict_f, subnode=0):
         """
         Write current dictionary storage to the servo drive.

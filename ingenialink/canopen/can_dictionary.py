@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from .registers import Register, REG_ACCESS, REG_DTYPE, REG_PHY
+from .can_register import Register, REG_ACCESS, REG_DTYPE, REG_PHY
 from .._utils import *
 from .._ingenialink import lib
 
@@ -79,7 +79,7 @@ class Errors(object):
         return self._errors
 
 
-class DictionaryCANOpen(object):
+class CanopenDictionary(object):
     """ Contains all registers and information of a CANopen dictionary.
 
     Args:

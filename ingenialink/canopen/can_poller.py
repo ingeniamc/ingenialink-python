@@ -7,8 +7,9 @@ from threading import Timer, Thread, Event, RLock
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
+
 class PollerTimer():
-    """ Custom timer for the Poller.
+    """ Custom timer for the CanopenPoller.
 
     Args:
         time (int): Timeout to use for the timer.
@@ -33,7 +34,7 @@ class PollerTimer():
             self.thread.join()
 
 
-class Poller(object):
+class CanopenPoller(object):
     """ Register poller for CANOpen communications.
 
     Args:

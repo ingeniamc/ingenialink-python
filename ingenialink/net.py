@@ -348,7 +348,6 @@ class UDP(object):
         self.write(frame)
 
 
-
 class Network(object):
     """
     Network.
@@ -364,10 +363,9 @@ class Network(object):
         ILCreationError: If the network cannot be created.
     """
 
-    @deprecated("You should use the subclass of the protocol you want to "
-                "connect")
+    @deprecated("Deprecated call. Please, use the network subclass of the protocol "
+                "you want to connect")
     def __init__(self, prot, port=None, slave=1, timeout_rd=0.5, timeout_wr=0.5):
-        print("holaa nen")
         if not isinstance(prot, NET_PROT):
             raise TypeError('Invalid protocol')
 

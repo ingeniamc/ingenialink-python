@@ -8,8 +8,8 @@ from .._utils import *
 from .constants import *
 from ..servo import SERVO_STATE
 from .._ingenialink import lib
-from .dictionary import DictionaryCANOpen
-from .registers import Register, REG_DTYPE, REG_ACCESS
+from .can_dictionary import CanopenDictionary
+from .can_register import Register, REG_DTYPE, REG_ACCESS
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -78,14 +78,14 @@ STORE_ALL_REGISTERS = {
 }
 
 
-class DriveStatusThread(threading.Thread):
+class ServoStatusListener(threading.Thread):
     """ Reads the status word to check if the drive is alive.
 
     Args:
         parent (Servo): Servo instance of the drive.
     """
     def __init__(self, parent):
-        super(DriveStatusThread, self).__init__()
+        super(ServoStatusListener, self).__init__()
         self.__parent = parent
         self.__stop = False
 
@@ -107,19 +107,19 @@ class DriveStatusThread(threading.Thread):
         self.__stop = True
 
 
-class Servo(object):
+class CanopenServo(object):
     """ Servo.
 
     Args:
         net (Network): Ingenialink Network of the drive.
         node (int): Node ID of the drive.
-        dict_ (str): Path to the dictionary.
-        boot_mode (bool): Booloan to avoid reading registers initially.
+        dictionary (str): Path to the dictionary.
+        servo_status_listener (bool): Boolean to initialize the ServoStatusListener and check the drive status.
     """
-    def __init__(self, net, node, dict_, boot_mode=False):
+    def __init__(self, net, node, dictionary, servo_status_listener=False):
         self.__net = net
         self.__node = node
-        self.__dict = DictionaryCANOpen(dict_)
+        self.__dict = CanopenDictionary(dictionary)
         self.__info = {}
         self.__state = {
             1: lib.IL_SERVO_STATE_NRDY,
@@ -133,46 +133,30 @@ class Servo(object):
         self.__units_vel = None
         self.__units_acc = None
         self.__name = "Drive"
-        self.__drive_status_thread = None
         self.full_name = None
-        if not boot_mode:
-            self.init_info()
+        self.__servo_status_listener = None
 
-    def init_info(self):
-        """ Initializes the basic identification info of the drive. """
-        serial_number = self.raw_read(SERIAL_NUMBER)
-        product_code = self.raw_read(PRODUCT_CODE)
-        sw_version = self.raw_read(SOFTWARE_VERSION)
-        revision_number = self.raw_read(REVISION_NUMBER)
-        hw_variant = 'A'
-        # Set the current state of servo
-        status_word = self.raw_read(STATUS_WORD_REGISTERS[1])
-        state = self.status_word_decode(status_word)
-        self.set_state(state, 1)
-        self.__info = {
-            'serial': serial_number,
-            'name': self.__name,
-            'sw_version': sw_version,
-            'hw_variant': hw_variant,
-            'prod_code': product_code,
-            'revision': revision_number
-        }
-        self.__drive_status_thread = DriveStatusThread(self)
-        self.__drive_status_thread.start()
+        if servo_status_listener:
+            status_word = self.raw_read(STATUS_WORD_REGISTERS[1])
+            state = self.status_word_decode(status_word)
+            self.set_state(state, 1)
 
-    def stop_drive_status_thread(self):
-        """ Stops the DriveStatusThread. """
-        if self.__drive_status_thread is not None and \
-                self.__drive_status_thread.is_alive():
-            self.__drive_status_thread.activate_stop_flag()
-            self.__drive_status_thread.join()
-            self.__drive_status_thread = None
+            self.__servo_status_listener = ServoStatusListener(self)
+            self.__servo_status_listener.start()
+
+    def stop_status_listener(self):
+        """ Stops the ServoStatusListener. """
+        if self.__servo_status_listener is not None and \
+                self.__servo_status_listener.is_alive():
+            self.__servo_status_listener.activate_stop_flag()
+            self.__servo_status_listener.join()
+            self.__servo_status_listener = None
 
     def emcy_subscribe(self, callback):
-        pass
+        raise NotImplementedError
 
     def emcy_unsubscribe(self, callback):
-        pass
+        raise NotImplementedError
 
     def get_reg(self, reg, subnode=1):
         """ Validates a register.
@@ -201,6 +185,7 @@ class Servo(object):
             raise_err(lib.IL_EWRONGREG, 'Invalid register')
         return _reg
 
+    @deprecated(new_func_name='read')
     def raw_read(self, reg, subnode=1):
         """ Raw read from servo.
 
@@ -292,7 +277,7 @@ class Servo(object):
 
         if isinstance(value, str):
             value = value.replace('\x00', '')
-        return  value
+        return value
 
     def change_sdo_timeout(self, value):
         self.__node.sdo.RESPONSE_TIMEOUT = value
@@ -355,6 +340,7 @@ class Servo(object):
         if error_raised is not None:
             raise_err(lib.IL_EIO, error_raised)
 
+    @deprecated(new_func_name='write')
     def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
         """ Raw write to servo.
 
@@ -381,6 +367,7 @@ class Servo(object):
                 for subobj in obj.values():
                     logger.debug('  %d: %s' % (subobj.subindex, subobj.name))
 
+    @deprecated(new_func_name='save_configuration')
     def dict_storage_read(self, new_path, subnode=0):
         """ Read all dictionary registers content and put it to the dictionary
         storage. 
@@ -448,6 +435,74 @@ class Servo(object):
         tree.write(new_path)
         xml_file.close()
 
+    def save_configuration(self, new_path, subnode=0):
+        """ Read all dictionary registers content and put it to the dictionary
+        storage.
+
+        Args:
+            new_path (str): Destination path for the configuration file.
+            subnode (int): Subnode of the drive.
+        """
+        prod_code, rev_number = get_drive_identification(self, subnode)
+
+        with open(self.__dict.dict, 'r') as xml_file:
+            tree = ET.parse(xml_file)
+        root = tree.getroot()
+
+        body = root.find('Body')
+        device = root.find('Body/Device')
+        categories = root.find('Body/Device/Categories')
+        errors = root.find('Body/Errors')
+
+        device.remove(categories)
+        body.remove(errors)
+
+        if 'ProductCode' in device.attrib and prod_code is not None:
+            device.attrib['ProductCode'] = str(prod_code)
+        if 'RevisionNumber' in device.attrib and rev_number is not None:
+            device.attrib['RevisionNumber'] = str(rev_number)
+
+        axis = tree.findall('*/Device/Axes/Axis')
+        if axis:
+            # Multiaxis
+            registers = root.findall(
+                './Body/Device/Axes/Axis/Registers/Register'
+            )
+        else:
+            # Single axis
+            registers = root.findall('./Body/Device/Registers/Register')
+
+        registers_category = root.find('Body/Device/Registers')
+
+        for register in registers:
+            try:
+                element_subnode = int(register.attrib['subnode'])
+                if subnode == 0 or subnode == element_subnode:
+                    if register.attrib['access'] == 'rw':
+                        storage = self.raw_read(register.attrib['id'],
+                                                subnode=element_subnode)
+                        register.set('storage', str(storage))
+
+                        # Update register object
+                        reg = self.__dict.regs[element_subnode][register.attrib['id']]
+                        reg.storage = storage
+                        reg.storage_valid = 1
+                else:
+                    registers_category.remove(register)
+            except BaseException as e:
+                logger.error("Exception during dict_storage_read, "
+                             "register %s: %s",
+                             str(register.attrib['id']), e)
+            cleanup_register(register)
+
+        image = root.find('./DriveImage')
+        if image is not None:
+            root.remove(image)
+
+        tree.write(new_path)
+        xml_file.close()
+
+    @deprecated(new_func_name='load_configuration')
     def dict_storage_write(self, path, subnode=0):
         """ Write current dictionary storage to the servo drive. 
         
@@ -481,6 +536,46 @@ class Servo(object):
                 logger.error("Exception during dict_storage_write, register "
                              "%s: %s", str(element.attrib['id']), e)
 
+    def load_configuration(self, path, subnode=0):
+        """ Write current dictionary storage to the servo drive.
+
+        Args:
+            path (str): Path to the dictionary.
+            subnode (int): Subnode of the drive.
+        """
+        with open(path, 'r') as xml_file:
+            tree = ET.parse(xml_file)
+        root = tree.getroot()
+
+        axis = tree.findall('*/Device/Axes/Axis')
+        if axis:
+            # Multiaxis
+            registers = root.findall(
+                './Body/Device/Axes/Axis/Registers/Register'
+            )
+        else:
+            # Single axis
+            registers = root.findall('./Body/Device/Registers/Register')
+
+        for element in registers:
+            try:
+                if 'storage' in element.attrib and element.attrib['access'] == 'rw':
+                    if subnode == 0 or subnode == int(element.attrib['subnode']):
+                        self.raw_write(element.attrib['id'],
+                                       float(element.attrib['storage']),
+                                       subnode=int(element.attrib['subnode'])
+                                       )
+            except BaseException as e:
+                logger.error("Exception during dict_storage_write, register "
+                             "%s: %s", str(element.attrib['id']), e)
+
+    def store_parameters(self, subnode=1):
+        raise NotImplementedError
+
+    def restore_parameters(self):
+        raise NotImplementedError
+
+    @deprecated(new_func_name='store_parameters')
     def store_all(self, subnode=1):
         """ Store all servo current parameters to the NVM. 
         
@@ -498,13 +593,22 @@ class Servo(object):
             r = -1
         return r
 
+    @deprecated(new_func_name='update_dictionary')
     def dict_load(self, dict_f):
         """ Load dictionary.
 
             Args:
-                dict_f (str): Dictionary to be laoded.
+                dict_f (str): Dictionary to be loaded.
         """
-        self.__dict = DictionaryCANOpen(dict_f)
+        self.__dict = CanopenDictionary(dict_f)
+
+    def update_dictionary(self, dictionary):
+        """ Update dictionary.
+
+            Args:
+                dict_f (str): Dictionary to be loaded.
+        """
+        self.__dict = CanopenDictionary(dictionary)
 
     def state_subscribe(self, cb):
         """ Subscribe to state changes.
@@ -763,7 +867,22 @@ class Servo(object):
     @property
     def info(self):
         """ dict: Servo information. """
-        return self.__info
+        serial_number = self.raw_read(SERIAL_NUMBER)
+        product_code = self.raw_read(PRODUCT_CODE)
+        sw_version = self.raw_read(SOFTWARE_VERSION)
+        revision_number = self.raw_read(REVISION_NUMBER)
+        hw_variant = 'A'
+
+        info = {
+            'serial': serial_number,
+            'name': self.__name,
+            'sw_version': sw_version,
+            'hw_variant': hw_variant,
+            'prod_code': product_code,
+            'revision': revision_number
+        }
+
+        return info
 
     @property
     def state(self):
