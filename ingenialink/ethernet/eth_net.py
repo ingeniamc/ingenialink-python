@@ -1,5 +1,5 @@
 from ..net import Network, NET_PROT, NET_TRANS_PROT
-from ..servo import Servo
+from .eth_servo import EthernetServo
 from .._utils import cstr, pstr, raise_null, raise_err, to_ms
 from .._ingenialink import lib, ffi
 
@@ -39,7 +39,7 @@ class EthernetNetwork(Network):
         servo_ = ffi.cast('il_servo_t *', servo__[0])
 
         net = Network._from_existing(net_)
-        servo = Servo._from_existing(servo_, dict_f)
+        servo = EthernetServo._from_existing(servo_, dict_f)
         servo.net = net
 
         self.__net = net
@@ -49,10 +49,6 @@ class EthernetNetwork(Network):
 
     def disconnect(self):
         raise NotImplementedError
-
-
-
-
 
     # Properties
     @property

@@ -657,6 +657,7 @@ class Servo(object):
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(dict_f)
         raise_err(r)
+        return r
 
     def save_configuration(self, new_path, subnode=0):
         """
@@ -714,6 +715,8 @@ class Servo(object):
         config_file = io.open(new_path, "w", encoding='utf8')
         config_file.write(xmlstr)
         config_file.close()
+
+        return r
 
     @property
     def name(self):
