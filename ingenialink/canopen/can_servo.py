@@ -556,7 +556,7 @@ class CanopenServo(object):
         """ Update dictionary.
 
             Args:
-                dict_f (str): Dictionary to be loaded.
+                dictionary (str): Dictionary to be loaded.
         """
         self.__dict = CanopenDictionary(dictionary)
 
