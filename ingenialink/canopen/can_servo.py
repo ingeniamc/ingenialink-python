@@ -9,14 +9,15 @@ from .constants import *
 from ..servo import SERVO_STATE
 from .._ingenialink import lib
 from .can_dictionary import CanopenDictionary
-from .can_net import CANOPEN_SDO_RESPONSE_TIMEOUT
 from .can_register import Register, REG_DTYPE, REG_ACCESS
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
 PASSWORD_STORE_ALL = 0x65766173
+PASSWORD_RESTORE_ALL = 0x64616F6C
 SINGLE_AXIS_MINIMUM_SUBNODES = 2
+CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
 SERIAL_NUMBER = Register(
     identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00",
@@ -631,9 +632,9 @@ class CanopenServo(object):
     def restore_parameters(self):
         r = 0
         try:
-            self.write(reg=STORE_MOCO_ALL_REGISTERS[1],
-                       data=PASSWORD_STORE_ALL,
-                       subnode=1)
+            self.write(reg=RESTORE_ALL,
+                       data=PASSWORD_RESTORE_ALL,
+                       subnode=0)
             logger.info('Restore all successfully done.')
         except Exception as e:
             logger.exception(e)

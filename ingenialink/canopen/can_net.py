@@ -15,7 +15,6 @@ import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
-CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 CAN_CHANNELS = {
     'kvaser': (0, 1),
     'pcan': ('PCAN_USBBUS1', 'PCAN_USBBUS2'),
