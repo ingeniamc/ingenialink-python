@@ -116,8 +116,9 @@ class CanopenServo(object):
         dictionary (str): Path to the dictionary.
         servo_status_listener (bool): Boolean to initialize the ServoStatusListener and check the drive status.
     """
-    def __init__(self, net, node, dictionary, servo_status_listener=False):
+    def __init__(self, net, target, node, dictionary, servo_status_listener=False):
         self.__net = net
+        self.__target = target
         self.__node = node
         self.__dict = CanopenDictionary(dictionary)
         self.__info = {}
@@ -839,6 +840,15 @@ class CanopenServo(object):
     @net.setter
     def net(self, net):
         self.__net = net
+
+    @property
+    def target(self):
+        """ str: Target. """
+        return self.__target
+
+    @target.setter
+    def target(self, value):
+        self.__target = value
 
     @property
     def name(self):

@@ -113,7 +113,7 @@ class CanopenNetwork(Network):
         self.__device = device.value
         self.__channel = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
-        self.__network = canopen.Network()
+        self.__connection = None
         self.__net_state = NET_STATE.DISCONNECTED
         self.__observers = []
         self.__eds = None
@@ -140,7 +140,7 @@ class CanopenNetwork(Network):
         logger.debug("Switching slave into CONFIGURATION state...")
         bool_result = False
         try:
-            bool_result = self.__network.lss.send_switch_state_selective(
+            bool_result = self.__connection.lss.send_switch_state_selective(
                 vendor_id,
                 product_code,
                 rev_number,
@@ -151,23 +151,23 @@ class CanopenNetwork(Network):
 
         if bool_result:
             if new_baudrate:
-                self.__network.lss.configure_bit_timing(
+                self.__connection.lss.configure_bit_timing(
                     CAN_BIT_TIMMING[new_baudrate].value
                 )
                 sleep(0.1)
             if new_node:
-                self.__network.lss.configure_node_id(new_node)
+                self.__connection.lss.configure_node_id(new_node)
                 sleep(0.1)
-            self.__network.lss.store_configuration()
+            self.__connection.lss.store_configuration()
             sleep(0.1)
             logger.info('Stored new configuration')
-            self.__network.lss.send_switch_state_global(
-                self.__network.lss.WAITING_STATE
+            self.__connection.lss.send_switch_state_global(
+                self.__connection.lss.WAITING_STATE
             )
         else:
             return False
 
-        self.__network.nodes[target_node].nmt.send_command(0x82)
+        self.__connection.nodes[target_node].nmt.send_command(0x82)
 
         logger.debug("Wait until node is reset")
         sleep(0.5)
@@ -177,38 +177,38 @@ class CanopenNetwork(Network):
 
         for node_id in nodes:
             logger.info('Node found: %i', node_id)
-            node = self.__network.add_node(node_id, self.__eds)
+            node = self.__connection.add_node(node_id, self.__eds)
 
         # Reset all nodes to default state
-        self.__network.lss.send_switch_state_global(
-            self.__network.lss.WAITING_STATE
+        self.__connection.lss.send_switch_state_global(
+            self.__connection.lss.WAITING_STATE
         )
 
-        self.__network.nodes[target_node].nmt.start_node_guarding(1)
+        self.__connection.nodes[target_node].nmt.start_node_guarding(1)
         return True
 
     def reset_network(self):
         """ Resets the established CANopen network. """
         try:
-            self.__network.disconnect()
+            self.__connection.disconnect()
         except BaseException as e:
             logger.error("Disconnection failed. Exception: %", e)
 
         try:
-            for node in self.__network.scanner.nodes:
-                self.__network.nodes[node].nmt.stop_node_guarding()
-            if self.__network.bus:
-                self.__network.bus.flush_tx_buffer()
+            for node in self.__connection.scanner.nodes:
+                self.__connection.nodes[node].nmt.stop_node_guarding()
+            if self.__connection.bus:
+                self.__connection.bus.flush_tx_buffer()
                 logger.info("Bus flushed")
         except Exception as e:
             logger.error("Could not stop guarding. Exception: %", e)
 
         try:
-            self.__network.connect(bustype=self.__device,
-                                   channel=self.__channel,
-                                   bitrate=self.__baudrate)
-            for node_id in self.__network.scanner.nodes:
-                node = self.__network.add_node(node_id, self.__eds)
+            self.__connection.connect(bustype=self.__device,
+                                      channel=self.__channel,
+                                      bitrate=self.__baudrate)
+            for node_id in self.__connection.scanner.nodes:
+                node = self.__connection.add_node(node_id, self.__eds)
                 node.nmt.start_node_guarding(1)
         except BaseException as e:
             logger.error("Connection failed. Exception: %s", e)
@@ -220,15 +220,15 @@ class CanopenNetwork(Network):
         Returns:
             list: Containing all the detected node IDs.
         """
-        self.__network.scanner.reset()
+        self.__connection.scanner.reset()
         try:
-            self.__network.scanner.search()
+            self.__connection.scanner.search()
         except Exception as e:
             logger.error("Error searching for nodes. Exception: {}".format(e))
             logger.info("Resetting bus")
-            self.__network.bus.reset()
+            self.__connection.bus.reset()
         time.sleep(0.05)
-        return self.__network.scanner.nodes
+        return self.__connection.scanner.nodes
 
     def scan_nodes(self):
         """ Scans for nodes in the network.
@@ -236,31 +236,31 @@ class CanopenNetwork(Network):
         Returns:
             list: Containing all the detected node IDs.
         """
-        self.__network.scanner.reset()
+        self.setup_connection()
+
+        self.__connection.scanner.reset()
         try:
-            self.__network.scanner.search()
+            self.__connection.scanner.search()
         except Exception as e:
             logger.error("Error searching for nodes. Exception: {}".format(e))
             logger.info("Resetting bus")
-            self.__network.bus.reset()
+            self.__connection.bus.reset()
         time.sleep(0.05)
-        return self.__network.scanner.nodes
 
-    def connect(self, eds, dictionary, node_id, servo_status_listener=False, net_status_listener=True):
-        """ Connects to a drive through a given node ID.
+        nodes = self.__connection.scanner.nodes
 
-        Args:
-            eds (str): Path to the EDS file.
-            dictionary (str): Path to the dictionary file.
-            node_id (int): Targeted node ID to be connected.
-            servo_status_listener (bool): Boolean to initialize the ServoStatusListener and check the drive status.
-            net_status_listener (bool): Value to initialize the NetStatusListener.
-        """
-        if self.__device is not None:
+        self.teardown_connection()
+
+        return nodes
+
+    def setup_connection(self):
+        if self.__device is not None and self.__connection is None:
+            self.__connection = canopen.Network()
+
             try:
-                self.__network.connect(bustype=self.__device,
-                                       channel=self.__channel,
-                                       bitrate=self.__baudrate)
+                self.__connection.connect(bustype=self.__device,
+                                          channel=self.__channel,
+                                          bitrate=self.__baudrate)
             except (PcanError, VCIDeviceNotFoundError) as e:
                 logger.error('Transceiver not found in network. Exception: %s', e)
                 raise_err(lib.IL_EFAIL, 'Error connecting to the transceiver. '
@@ -274,14 +274,30 @@ class CanopenNetwork(Network):
             except Exception as e:
                 logger.error('Failed trying to connect. Exception: %s', e)
                 raise_err(lib.IL_EFAIL, 'Failed trying to connect. {}'.format(e))
-        
-        nodes = self.detect_nodes()
+
+    def teardown_connection(self):
+        self.__connection.disconnect()
+        # TODO: del connection object
+        self.__connection = None
+
+    def connect_to_slave(self, target, dictionary, eds, servo_status_listener=False, net_status_listener=True):
+        """ Connects to a drive through a given node ID.
+
+        Args:
+            eds (str): Path to the EDS file.
+            dictionary (str): Path to the dictionary file.
+            target (int): Targeted node ID to be connected.
+            servo_status_listener (bool): Boolean to initialize the ServoStatusListener and check the drive status.
+            net_status_listener (bool): Value to initialize the NetStatusListener.
+        """
+        nodes = self.scan_nodes()
         if len(nodes) < 1:
             raise_err(lib.IL_EFAIL, 'Could not find any nodes in the network')
 
-        if node_id in nodes:
+        self.setup_connection()
+        if target in nodes:
             try:
-                node = self.__network.add_node(node_id, eds)
+                node = self.__connection.add_node(target, eds)
 
                 node.nmt.start_node_guarding(1)
 
@@ -292,17 +308,19 @@ class CanopenNetwork(Network):
                     self.__net_status_listener = NetStatusListener(self, node)
                     self.__net_status_listener.start()
 
-                self.__servos.append(CanopenServo(self, node, dictionary,
-                                                  servo_status_listener=servo_status_listener))
+                servo = CanopenServo(self, target, node, dictionary,
+                                     servo_status_listener=servo_status_listener)
+                self.__servos.append(servo)
+                return servo
             except Exception as e:
                 logger.error("Failed connecting to node %i. Exception: %s",
-                             node_id, e)
+                             target, e)
                 raise_err(lib.IL_EFAIL,
                           'Failed connecting to node {}. Please check the connection settings and verify '
-                          'the transceiver is properly connected.'.format(node_id))
+                          'the transceiver is properly connected.'.format(target))
         else:
             logger.error('Node id not found')
-            raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(node_id))
+            raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(target))
 
     @deprecated('connect')
     def connect_through_node(self, eds, dict, node_id, servo_status_listener=False,
@@ -322,7 +340,7 @@ class CanopenNetwork(Network):
 
         if node_id in nodes:
             try:
-                node = self.__network.add_node(node_id, eds)
+                node = self.__connection.add_node(node_id, eds)
 
                 node.nmt.start_node_guarding(1)
 
@@ -361,7 +379,7 @@ class CanopenNetwork(Network):
     def stop_net_status_listener(self):
         """ Stops the NetStatusListener from listening to the drive. """
         try:
-            for node_id, node_obj in self.__network.nodes.items():
+            for node_id, node_obj in self.__connection.nodes.items():
                 node_obj.nmt.stop_node_guarding()
         except Exception as e:
             logger.error('Could not stop node guarding. Exception: %s', e)
@@ -371,21 +389,22 @@ class CanopenNetwork(Network):
             self.__net_status_listener.join()
             self.__net_status_listener = None
 
-    def disconnect(self):
-        """ Disconnects the already stablished network. """
+    def disconnect_from_slave(self, servo):
+        """ Disconnects the already established network. """
         try:
             self.stop_net_status_listener()
         except Exception as e:
             logger.error('Failed stopping net_status_listener. Exception: %s', e)
 
         try:
-            for servo in self.__servos:
-                servo.stop_status_listener()
+            servo.stop_status_listener()
         except Exception as e:
             logger.error('Failed stopping drive status thread. Exception: %s', e)
 
+        # TODO: Delete servo instance from servos list
+
         try:
-            self.__network.disconnect()
+            self.__connection.disconnect()
         except Exception as e:
             logger.error('Failed disconnecting. Exception: %s', e)
             raise_err(lib.IL_EFAIL, 'Failed disconnecting.')
@@ -407,7 +426,7 @@ class CanopenNetwork(Network):
     @property
     def network(self):
         """ canopen.Network: Returns the instance of the CANopen Network. """
-        return self.__network
+        return self.__connection
 
     @property
     def prot(self):
