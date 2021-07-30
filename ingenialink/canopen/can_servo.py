@@ -65,8 +65,13 @@ CONTROL_WORD_REGISTERS = {
     )
 }
 
-STORE_COCO_ALL = Register(
+STORE_ALL = Register(
     identifier='', units='', subnode=0, idx="0x1010", subidx="0x01", cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+)
+
+RESTORE_ALL = Register(
+    identifier='', units='', subnode=0, idx="0x1011", subidx="0x01", cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
@@ -575,7 +580,7 @@ class CanopenServo(object):
         if subnode == 0:
             # Store all
             try:
-                self.write(reg=STORE_COCO_ALL,
+                self.write(reg=STORE_ALL,
                            data=PASSWORD_STORE_ALL,
                            subnode=subnode)
                 logger.info('Store all successfully done.')
@@ -624,7 +629,17 @@ class CanopenServo(object):
         return r
 
     def restore_parameters(self):
-        raise NotImplementedError
+        r = 0
+        try:
+            self.write(reg=STORE_MOCO_ALL_REGISTERS[1],
+                       data=PASSWORD_STORE_ALL,
+                       subnode=1)
+            logger.info('Restore all successfully done.')
+        except Exception as e:
+            logger.exception(e)
+            r = -1
+
+        return r
 
     def change_sdo_timeout(self, value):
         self.__node.sdo.RESPONSE_TIMEOUT = value
@@ -637,7 +652,7 @@ class CanopenServo(object):
         """ Sets the state internally.
 
         Args:
-            state (SERVO_STATE): Curretn servo state.
+            state (SERVO_STATE): Current servo state.
             subnode (int): Subnode of the drive.
         """
         current_state = self.__state[subnode]
