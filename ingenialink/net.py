@@ -363,27 +363,26 @@ class Network(object):
         TypeError: If the protocol type is invalid.
         ILCreationError: If the network cannot be created.
     """
-
-    @deprecated("You should use the subclass of the protocol you want to "
-                "connect")
-    def __init__(self, prot, port=None, slave=1, timeout_rd=0.5, timeout_wr=0.5):
-        print("holaa nen")
-        if not isinstance(prot, NET_PROT):
-            raise TypeError('Invalid protocol')
-
-        if prot != NET_PROT.ECAT:
-            port_ = ffi.new('char []', cstr(port))
-            opts = ffi.new('il_net_opts_t *')
-
-            opts.port = port_
-            opts.timeout_rd = to_ms(timeout_rd)
-            opts.timeout_wr = to_ms(timeout_wr)
-
-            self._net = lib.il_net_create(prot.value, opts)
-            raise_null(self._net)
-        else:
-            self.slave = slave
-            self._net = ffi.new('il_net_t **')
+    def __init__(self):
+        self.__servos = []
+        # def __init__(self, prot, port=None, slave=1, timeout_rd=0.5,
+        #              timeout_wr=0.5):
+        # if not isinstance(prot, NET_PROT):
+        #     raise TypeError('Invalid protocol')
+        #
+        # if prot != NET_PROT.ECAT:
+        #     port_ = ffi.new('char []', cstr(port))
+        #     opts = ffi.new('il_net_opts_t *')
+        #
+        #     opts.port = port_
+        #     opts.timeout_rd = to_ms(timeout_rd)
+        #     opts.timeout_wr = to_ms(timeout_wr)
+        #
+        #     self._net = lib.il_net_create(prot.value, opts)
+        #     raise_null(self._net)
+        # else:
+        #     self.slave = slave
+        #     self._net = ffi.new('il_net_t **')
 
     @classmethod
     def _from_existing(cls, net):
@@ -783,9 +782,18 @@ class Network(object):
         """
         lib.il_net_disturbance_data_size_set(self._net, value)
 
+    @property
+    def servos(self):
+        return self.__servos
+
+    @servos.setter
+    def servos(self, value):
+        self.__servos = value
+
     def close_socket(self):
         return lib.il_net_close_socket(self._net)
 
+    @deprecated
     def connect(self):
         """
         Connect network.
@@ -793,45 +801,46 @@ class Network(object):
         r = lib.il_net_connect(self._net)
         raise_err(r)
 
+    @deprecated
     def disconnect(self):
         """
         Disconnect network.
         """
         lib.il_net_disconnect(self._net)
 
-    def servos(self, on_found=None):
-        """
-        Obtain a list of attached servos.
-
-        Args:
-            on_found (callback, optional): Servo found callback.
-
-        Returns:
-            list: List of attached servos.
-        """
-        if on_found:
-            self._on_found = on_found
-
-            callback = lib._on_found_cb
-            handle = ffi.new_handle(self)
-        else:
-            self._on_found = ffi.NULL
-
-            callback = ffi.NULL
-            handle = ffi.NULL
-
-        servos = lib.il_net_servos_list_get(self._net, callback, handle)
-
-        found = []
-        curr = servos
-
-        while curr:
-            found.append(int(curr.id))
-            curr = curr.next
-
-        lib.il_net_servos_list_destroy(servos)
-
-        return found
+    # def servos(self, on_found=None):
+    #     """
+    #     Obtain a list of attached servos.
+    #
+    #     Args:
+    #         on_found (callback, optional): Servo found callback.
+    #
+    #     Returns:
+    #         list: List of attached servos.
+    #     """
+    #     if on_found:
+    #         self._on_found = on_found
+    #
+    #         callback = lib._on_found_cb
+    #         handle = ffi.new_handle(self)
+    #     else:
+    #         self._on_found = ffi.NULL
+    #
+    #         callback = ffi.NULL
+    #         handle = ffi.NULL
+    #
+    #     servos = lib.il_net_servos_list_get(self._net, callback, handle)
+    #
+    #     found = []
+    #     curr = servos
+    #
+    #     while curr:
+    #         found.append(int(curr.id))
+    #         curr = curr.next
+    #
+    #     lib.il_net_servos_list_destroy(servos)
+    #
+    #     return found
 
     def net_mon_status(self, on_evt):
         """
@@ -944,3 +953,6 @@ class NetworkMonitor(object):
         Stop the monitor.
         """
         lib.il_net_dev_mon_stop(self._mon)
+
+
+
