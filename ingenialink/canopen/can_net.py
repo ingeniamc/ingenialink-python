@@ -87,7 +87,7 @@ class NetStatusListener(Thread):
                     self.__parent.net_state = NET_STATE.DISCONNECTED
                     self.__state = NET_STATE.DISCONNECTED
                 else:
-                    self.__parent.reset_network()
+                    self.__parent.reset_connection()
             else:
                 if self.__state != NET_STATE.CONNECTED:
                     self.__parent.net_state = NET_STATE.CONNECTED
@@ -119,6 +119,153 @@ class CanopenNetwork(Network):
         self.__eds = None
         self.__dict = None
         self.__net_status_listener = None
+
+    def scan_slaves(self):
+        """ Scans for nodes in the network.
+
+        Returns:
+            list: Containing all the detected node IDs.
+        """
+        self.setup_connection()
+
+        self.__connection.scanner.reset()
+        try:
+            self.__connection.scanner.search()
+        except Exception as e:
+            logger.error("Error searching for nodes. Exception: {}".format(e))
+            logger.info("Resetting bus")
+            self.__connection.bus.reset()
+        time.sleep(0.05)
+
+        nodes = self.__connection.scanner.nodes
+
+        self.teardown_connection()
+
+        return nodes
+    
+    def connect_to_slave(self, target, dictionary, eds, servo_status_listener=False, net_status_listener=True):
+        """ Connects to a drive through a given target node ID.
+
+        Args:
+            target: Targeted node ID to be connected.
+            dictionary (str): Path to the dictionary file.
+            eds (str): Path to the EDS file.
+            servo_status_listener (bool): Toggle the listener of the servo for its status (errors, faults, etc).
+            net_status_listener (bool): Toggle the listener of the network status (connection and disconnection)
+        """
+        nodes = self.scan_slaves()
+        if len(nodes) < 1:
+            raise_err(lib.IL_EFAIL, 'Could not find any nodes in the network')
+
+        self.setup_connection()
+        if target in nodes:
+            try:
+                node = self.__connection.add_node(target, eds)
+
+                node.nmt.start_node_guarding(1)
+
+                self.__eds = eds
+                self.__dict = dictionary
+
+                if net_status_listener:
+                    self.__net_status_listener = NetStatusListener(self, node)
+                    self.__net_status_listener.start()
+
+                servo = CanopenServo(self, target, node, dictionary,
+                                     servo_status_listener=servo_status_listener)
+                self.servos.append(servo)
+                return servo
+            except Exception as e:
+                logger.error("Failed connecting to node %i. Exception: %s",
+                             target, e)
+                raise_err(lib.IL_EFAIL,
+                          'Failed connecting to node {}. Please check the connection settings and verify '
+                          'the transceiver is properly connected.'.format(target))
+        else:
+            logger.error('Node id not found')
+            raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(target))
+    
+    def disconnect_from_slave(self, servo):
+        """ Disconnects the already established network. """
+        try:
+            self.stop_net_status_listener()
+        except Exception as e:
+            logger.error('Failed stopping net_status_listener. Exception: %s', e)
+
+        try:
+            servo.stop_status_listener()
+        except Exception as e:
+            logger.error('Failed stopping drive status thread. Exception: %s', e)
+
+        self.servos.remove(servo)
+
+        try:
+            self.__connection.disconnect()
+        except Exception as e:
+            logger.error('Failed disconnecting. Exception: %s', e)
+            raise_err(lib.IL_EFAIL, 'Failed disconnecting.')
+
+    def setup_connection(self):
+        """ Establishes an empty connection with all the network attributes
+        already specified. """
+        if self.__connection is None:
+            self.__connection = canopen.Network()
+
+            try:
+                self.__connection.connect(bustype=self.__device,
+                                          channel=self.__channel,
+                                          bitrate=self.__baudrate)
+            except (PcanError, VCIDeviceNotFoundError) as e:
+                logger.error('Transceiver not found in network. Exception: %s', e)
+                raise_err(lib.IL_EFAIL, 'Error connecting to the transceiver. '
+                                        'Please verify the transceiver is properly connected.')
+            except OSError as e:
+                logger.error('Transceiver drivers not properly installed. Exception: %s', e)
+                if hasattr(e, 'winerror') and e.winerror == 126:
+                    e.strerror = 'Driver module not found.' \
+                                 ' Drivers might not be properly installed.'
+                raise_err(lib.IL_EFAIL, e)
+            except Exception as e:
+                logger.error('Failed trying to connect. Exception: %s', e)
+                raise_err(lib.IL_EFAIL, 'Failed trying to connect. {}'.format(e))
+        else:
+            logger.info('Connection already established')
+    
+    def teardown_connection(self):
+        """ Tears down the already established connection. """
+        self.__connection.disconnect()
+        del self.__connection
+        self.__connection = None
+        logger.info('Tear down connection.')
+
+    def reset_connection(self):
+        """ Resets the established CANopen network. """
+        try:
+            self.__connection.disconnect()
+        except BaseException as e:
+            logger.error("Disconnection failed. Exception: %", e)
+
+        try:
+            for node in self.__connection.scanner.nodes:
+                self.__connection.nodes[node].nmt.stop_node_guarding()
+            if self.__connection.bus:
+                self.__connection.bus.flush_tx_buffer()
+                logger.info("Bus flushed")
+        except Exception as e:
+            logger.error("Could not stop guarding. Exception: %", e)
+
+        try:
+            self.__connection.connect(bustype=self.__device,
+                                      channel=self.__channel,
+                                      bitrate=self.__baudrate)
+            for node_id in self.__connection.scanner.nodes:
+                node = self.__connection.add_node(node_id, self.__eds)
+                node.nmt.start_node_guarding(1)
+        except BaseException as e:
+            logger.error("Connection failed. Exception: %s", e)
+
+    def load_firmware(self, target, fw_file):
+        raise NotImplementedError
 
     def change_baudrate(self, target_node, vendor_id, product_code,
                         rev_number, serial_number, new_target_baudrate=None):
@@ -248,6 +395,32 @@ class CanopenNetwork(Network):
 
         self.__connection.nodes[target_node].nmt.start_node_guarding(1)
 
+    def net_state_subscribe(self, cb):
+        """ Subscribe to netowrk state changes.
+
+        Args:
+            cb: Callback
+
+        Returns:
+            int: Assigned slot.
+        """
+        r = len(self.__observers)
+        self.__observers.append(cb)
+        return r
+
+    def stop_net_status_listener(self):
+        """ Stops the NetStatusListener from listening to the drive. """
+        try:
+            for node_id, node_obj in self.__connection.nodes.items():
+                node_obj.nmt.stop_node_guarding()
+        except Exception as e:
+            logger.error('Could not stop node guarding. Exception: %s', e)
+        if self.__net_status_listener is not None and \
+                self.__net_status_listener.is_alive():
+            self.__net_status_listener.activate_stop_flag()
+            self.__net_status_listener.join()
+            self.__net_status_listener = None
+
     @deprecated('change_node_id and change_baudrate')
     def change_node_baudrate(self, target_node, vendor_id, product_code,
                              rev_number, serial_number, new_node=None,
@@ -317,32 +490,6 @@ class CanopenNetwork(Network):
         self.__connection.nodes[target_node].nmt.start_node_guarding(1)
         return True
 
-    def reset_network(self):
-        """ Resets the established CANopen network. """
-        try:
-            self.__connection.disconnect()
-        except BaseException as e:
-            logger.error("Disconnection failed. Exception: %", e)
-
-        try:
-            for node in self.__connection.scanner.nodes:
-                self.__connection.nodes[node].nmt.stop_node_guarding()
-            if self.__connection.bus:
-                self.__connection.bus.flush_tx_buffer()
-                logger.info("Bus flushed")
-        except Exception as e:
-            logger.error("Could not stop guarding. Exception: %", e)
-
-        try:
-            self.__connection.connect(bustype=self.__device,
-                                      channel=self.__channel,
-                                      bitrate=self.__baudrate)
-            for node_id in self.__connection.scanner.nodes:
-                node = self.__connection.add_node(node_id, self.__eds)
-                node.nmt.start_node_guarding(1)
-        except BaseException as e:
-            logger.error("Connection failed. Exception: %s", e)
-
     @deprecated(new_func_name='scan_slaves')
     def detect_nodes(self):
         """ Scans for nodes in the network.
@@ -359,104 +506,6 @@ class CanopenNetwork(Network):
             self.__connection.bus.reset()
         time.sleep(0.05)
         return self.__connection.scanner.nodes
-
-    def scan_slaves(self):
-        """ Scans for nodes in the network.
-
-        Returns:
-            list: Containing all the detected node IDs.
-        """
-        self.setup_connection()
-
-        self.__connection.scanner.reset()
-        try:
-            self.__connection.scanner.search()
-        except Exception as e:
-            logger.error("Error searching for nodes. Exception: {}".format(e))
-            logger.info("Resetting bus")
-            self.__connection.bus.reset()
-        time.sleep(0.05)
-
-        nodes = self.__connection.scanner.nodes
-
-        self.teardown_connection()
-
-        return nodes
-
-    def setup_connection(self):
-        """ Establishes an empty connection with all the network attributes
-        already specified. """
-        if self.__connection is None:
-            self.__connection = canopen.Network()
-
-            try:
-                self.__connection.connect(bustype=self.__device,
-                                          channel=self.__channel,
-                                          bitrate=self.__baudrate)
-            except (PcanError, VCIDeviceNotFoundError) as e:
-                logger.error('Transceiver not found in network. Exception: %s', e)
-                raise_err(lib.IL_EFAIL, 'Error connecting to the transceiver. '
-                                        'Please verify the transceiver is properly connected.')
-            except OSError as e:
-                logger.error('Transceiver drivers not properly installed. Exception: %s', e)
-                if hasattr(e, 'winerror') and e.winerror == 126:
-                    e.strerror = 'Driver module not found.' \
-                                 ' Drivers might not be properly installed.'
-                raise_err(lib.IL_EFAIL, e)
-            except Exception as e:
-                logger.error('Failed trying to connect. Exception: %s', e)
-                raise_err(lib.IL_EFAIL, 'Failed trying to connect. {}'.format(e))
-        else:
-            logger.info('Connection already established')
-
-    def teardown_connection(self):
-        """ Tears down the already established connection. """
-        self.__connection.disconnect()
-        del self.__connection
-        self.__connection = None
-        logger.info('Tear down connection.')
-
-    def connect_to_slave(self, target, dictionary, eds, servo_status_listener=False, net_status_listener=True):
-        """ Connects to a drive through a given target node ID.
-
-        Args:
-            target: Targeted node ID to be connected.
-            dictionary (str): Path to the dictionary file.
-            eds (str): Path to the EDS file.
-            servo_status_listener (bool): Toggle the listener of the servo for its status (errors, faults, etc).
-            net_status_listener (bool): Toggle the listener of the network status (connection and disconnection)
-        """
-        nodes = self.scan_slaves()
-        if len(nodes) < 1:
-            raise_err(lib.IL_EFAIL, 'Could not find any nodes in the network')
-
-        self.setup_connection()
-        if target in nodes:
-            try:
-                node = self.__connection.add_node(target, eds)
-
-                node.nmt.start_node_guarding(1)
-
-                self.__eds = eds
-                self.__dict = dictionary
-
-                if net_status_listener:
-                    self.__net_status_listener = NetStatusListener(self, node)
-                    self.__net_status_listener.start()
-
-                servo = CanopenServo(self, target, node, dictionary,
-                                     servo_status_listener=servo_status_listener)
-                self.servos.append(servo)
-                return servo
-            except Exception as e:
-                logger.error("Failed connecting to node %i. Exception: %s",
-                             target, e)
-                raise_err(lib.IL_EFAIL,
-                          'Failed connecting to node {}. Please check the connection settings and verify '
-                          'the transceiver is properly connected.'.format(target))
-        else:
-            logger.error('Node id not found')
-            raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(target))
 
     @deprecated('connect_to_slave')
     def connect_through_node(self, eds, dict, node_id, servo_status_listener=False,
@@ -487,8 +536,8 @@ class CanopenNetwork(Network):
                     self.__net_status_listener = NetStatusListener(self, node)
                     self.__net_status_listener.start()
 
-                self.servos.append(CanopenServo(self, node, dict,
-                                                  servo_status_listener=servo_status_listener))
+                self.servos.append(CanopenServo(self, node_id, node, dict,
+                                                servo_status_listener=servo_status_listener))
             except Exception as e:
                 logger.error("Failed connecting to node %i. Exception: %s",
                              node_id, e)
@@ -498,32 +547,6 @@ class CanopenNetwork(Network):
         else:
             logger.error('Node id not found')
             raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(node_id))
-
-    def net_state_subscribe(self, cb):
-        """ Subscribe to netowrk state changes.
-
-        Args:
-            cb: Callback
-
-        Returns:
-            int: Assigned slot.
-        """
-        r = len(self.__observers)
-        self.__observers.append(cb)
-        return r
-
-    def stop_net_status_listener(self):
-        """ Stops the NetStatusListener from listening to the drive. """
-        try:
-            for node_id, node_obj in self.__connection.nodes.items():
-                node_obj.nmt.stop_node_guarding()
-        except Exception as e:
-            logger.error('Could not stop node guarding. Exception: %s', e)
-        if self.__net_status_listener is not None and \
-                self.__net_status_listener.is_alive():
-            self.__net_status_listener.activate_stop_flag()
-            self.__net_status_listener.join()
-            self.__net_status_listener = None
 
     @deprecated('disconnect_from_slave')
     def disconnect(self):
@@ -539,34 +562,12 @@ class CanopenNetwork(Network):
         except Exception as e:
             logger.error('Failed stopping drive status thread. Exception: %s', e)
 
-        # TODO: Delete servo instance from servos list
-
         try:
             self.__connection.disconnect()
         except Exception as e:
             logger.error('Failed disconnecting. Exception: %s', e)
             raise_err(lib.IL_EFAIL, 'Failed disconnecting.')
-
-    def disconnect_from_slave(self, servo):
-        """ Disconnects the already established network. """
-        try:
-            self.stop_net_status_listener()
-        except Exception as e:
-            logger.error('Failed stopping net_status_listener. Exception: %s', e)
-
-        try:
-            servo.stop_status_listener()
-        except Exception as e:
-            logger.error('Failed stopping drive status thread. Exception: %s', e)
-
-        self.servos.remove(servo)
-
-        try:
-            self.__connection.disconnect()
-        except Exception as e:
-            logger.error('Failed disconnecting. Exception: %s', e)
-            raise_err(lib.IL_EFAIL, 'Failed disconnecting.')
-
+    
     @property
     def baudrate(self):
         """ int: Current baudrate of the network. """
