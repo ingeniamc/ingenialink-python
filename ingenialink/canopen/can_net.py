@@ -108,8 +108,8 @@ class CanopenNetwork(Network):
         baudrate (CAN_BAUDRATE): Baudrate to communicate through.
     """
 
-    def __init__(self, device=None, channel=0, baudrate=CAN_BAUDRATE.Baudrate_1M):
-        self.__servos = []
+    def __init__(self, device, channel=0, baudrate=CAN_BAUDRATE.Baudrate_1M):
+        super(CanopenNetwork, self).__init__()
         self.__device = device.value
         self.__channel = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
@@ -120,6 +120,135 @@ class CanopenNetwork(Network):
         self.__dict = None
         self.__net_status_listener = None
 
+    def change_baudrate(self, target_node, vendor_id, product_code,
+                        rev_number, serial_number, new_target_baudrate=None):
+        """ Changes the node ID of a given target node ID.
+
+        Args:
+            target_node (int): Node ID of the targeted device.
+            vendor_id (int): Vendor ID of the targeted device.
+            product_code (int): Product code of the targeted device.
+            rev_number (int): Revision number of the targeted device.
+            serial_number (int): Serial number of the targeted device.
+            new_target_baudrate (int): New baudrate for the targeted device.
+
+        Returns:
+            bool: Indicates if the operation was successful.
+
+        """
+        r = self.lss_switch_state_selective(vendor_id, product_code,
+                                            rev_number, serial_number)
+        if r:
+            self.__connection.lss.configure_bit_timing(
+                CAN_BIT_TIMMING[new_target_baudrate].value
+            )
+            sleep(0.1)
+
+            self.lss_store_configuration()
+
+        else:
+            return False
+
+        self.lss_reset_connection_nodes(target_node)
+        logger.info('Baudrate changed to {}'.format(new_target_baudrate))
+        return True
+
+    def change_node_id(self, target_node, vendor_id, product_code,
+                       rev_number, serial_number, new_target_node=None):
+        """ Changes the node ID of a given target node ID.
+
+        Args:
+            target_node (int): Node ID of the targeted device.
+            vendor_id (int): Vendor ID of the targeted device.
+            product_code (int): Product code of the targeted device.
+            rev_number (int): Revision number of the targeted device.
+            serial_number (int): Serial number of the targeted device.
+            new_target_node (int): New node ID for the targeted device.
+
+        Returns:
+            bool: Indicates if the operation was successful.
+
+        """
+        r = self.lss_switch_state_selective(vendor_id, product_code,
+                                            rev_number, serial_number)
+
+        if r:
+            self.__connection.lss.configure_node_id(new_target_node)
+            sleep(0.1)
+
+            self.lss_store_configuration()
+
+        else:
+            return False
+
+        self.lss_reset_connection_nodes(target_node)
+        logger.info('Node ID changed to {}'.format(new_target_node))
+        return True
+
+    def lss_store_configuration(self):
+        """ Stores the current configuration of the LSS"""
+        self.__connection.lss.store_configuration()
+        sleep(0.1)
+        logger.info('Stored new configuration')
+        self.__connection.lss.send_switch_state_global(
+            self.__connection.lss.WAITING_STATE
+        )
+
+    def lss_switch_state_selective(self, vendor_id, product_code, rev_number, serial_number):
+        """ Switches the state of the LSS to configuration state.
+        
+        Args:
+            vendor_id (int): Vendor ID of the targeted device.
+            product_code (int): Product code of the targeted device.
+            rev_number (int): Revision number of the targeted device.
+            serial_number (int): Serial number of the targeted device.
+
+        Returns:
+            bool: Boolean indicating if the operation was successful.
+
+        """
+        logger.debug("Switching LSS into CONFIGURATION state...")
+        
+        r = False
+        try:
+            r = self.__connection.lss.send_lss_switch_state_selective(
+                vendor_id,
+                product_code,
+                rev_number,
+                serial_number,
+            )
+        except Exception as e:
+            logger.error('LSS Timeout. Exception: %s', e)
+
+        return r
+
+    def lss_reset_connection_nodes(self, target_node):
+        """ Resets the connection and starts node guarding for the connection nodes.
+
+        Args:
+            target_node (int): Node ID of the targeted device.
+
+        """
+        self.__connection.nodes[target_node].nmt.send_command(0x82)
+
+        logger.debug("Wait until node is reset")
+        sleep(0.5)
+
+        logger.debug("Searching for nodes...")
+        nodes = self.scan_slaves()
+
+        for node_id in nodes:
+            logger.info('Node found: %i', node_id)
+            node = self.__connection.add_node(node_id, self.__eds)
+
+        # Reset all nodes to default state
+        self.__connection.lss.send_switch_state_global(
+            self.__connection.lss.WAITING_STATE
+        )
+
+        self.__connection.nodes[target_node].nmt.start_node_guarding(1)
+
+    @deprecated('change_node_id and change_baudrate')
     def change_node_baudrate(self, target_node, vendor_id, product_code,
                              rev_number, serial_number, new_node=None,
                              new_baudrate=None):
@@ -136,11 +265,12 @@ class CanopenNetwork(Network):
 
         Returns:
             bool: Result of the operation.
+
         """
         logger.debug("Switching slave into CONFIGURATION state...")
         bool_result = False
         try:
-            bool_result = self.__connection.lss.send_switch_state_selective(
+            bool_result = self.__connection.lss.send_lss_switch_state_selective(
                 vendor_id,
                 product_code,
                 rev_number,
@@ -213,7 +343,7 @@ class CanopenNetwork(Network):
         except BaseException as e:
             logger.error("Connection failed. Exception: %s", e)
 
-    @deprecated(new_func_name='scan_nodes')
+    @deprecated(new_func_name='scan_slaves')
     def detect_nodes(self):
         """ Scans for nodes in the network.
 
@@ -230,7 +360,7 @@ class CanopenNetwork(Network):
         time.sleep(0.05)
         return self.__connection.scanner.nodes
 
-    def scan_nodes(self):
+    def scan_slaves(self):
         """ Scans for nodes in the network.
 
         Returns:
@@ -254,7 +384,9 @@ class CanopenNetwork(Network):
         return nodes
 
     def setup_connection(self):
-        if self.__device is not None and self.__connection is None:
+        """ Establishes an empty connection with all the network attributes
+        already specified. """
+        if self.__connection is None:
             self.__connection = canopen.Network()
 
             try:
@@ -274,23 +406,27 @@ class CanopenNetwork(Network):
             except Exception as e:
                 logger.error('Failed trying to connect. Exception: %s', e)
                 raise_err(lib.IL_EFAIL, 'Failed trying to connect. {}'.format(e))
+        else:
+            logger.info('Connection already established')
 
     def teardown_connection(self):
+        """ Tears down the already established connection. """
         self.__connection.disconnect()
-        # TODO: del connection object
+        del self.__connection
         self.__connection = None
+        logger.info('Tear down connection.')
 
     def connect_to_slave(self, target, dictionary, eds, servo_status_listener=False, net_status_listener=True):
-        """ Connects to a drive through a given node ID.
+        """ Connects to a drive through a given target node ID.
 
         Args:
-            eds (str): Path to the EDS file.
+            target: Targeted node ID to be connected.
             dictionary (str): Path to the dictionary file.
-            target (int): Targeted node ID to be connected.
-            servo_status_listener (bool): Boolean to initialize the ServoStatusListener and check the drive status.
-            net_status_listener (bool): Value to initialize the NetStatusListener.
+            eds (str): Path to the EDS file.
+            servo_status_listener (bool): Toggle the listener of the servo for its status (errors, faults, etc).
+            net_status_listener (bool): Toggle the listener of the network status (connection and disconnection)
         """
-        nodes = self.scan_nodes()
+        nodes = self.scan_slaves()
         if len(nodes) < 1:
             raise_err(lib.IL_EFAIL, 'Could not find any nodes in the network')
 
@@ -310,7 +446,7 @@ class CanopenNetwork(Network):
 
                 servo = CanopenServo(self, target, node, dictionary,
                                      servo_status_listener=servo_status_listener)
-                self.__servos.append(servo)
+                self.servos.append(servo)
                 return servo
             except Exception as e:
                 logger.error("Failed connecting to node %i. Exception: %s",
@@ -322,7 +458,7 @@ class CanopenNetwork(Network):
             logger.error('Node id not found')
             raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(target))
 
-    @deprecated('connect')
+    @deprecated('connect_to_slave')
     def connect_through_node(self, eds, dict, node_id, servo_status_listener=False,
                              net_status_listener=True):
         """ Connects to a drive through a given node ID.
@@ -351,7 +487,7 @@ class CanopenNetwork(Network):
                     self.__net_status_listener = NetStatusListener(self, node)
                     self.__net_status_listener.start()
 
-                self.__servos.append(CanopenServo(self, node, dict,
+                self.servos.append(CanopenServo(self, node, dict,
                                                   servo_status_listener=servo_status_listener))
             except Exception as e:
                 logger.error("Failed connecting to node %i. Exception: %s",
@@ -389,6 +525,28 @@ class CanopenNetwork(Network):
             self.__net_status_listener.join()
             self.__net_status_listener = None
 
+    @deprecated('disconnect_from_slave')
+    def disconnect(self):
+        """ Disconnects the already established network. """
+        try:
+            self.stop_net_status_listener()
+        except Exception as e:
+            logger.error('Failed stopping net_status_listener. Exception: %s', e)
+
+        try:
+            for servo in self.servos:
+                servo.stop_status_listener()
+        except Exception as e:
+            logger.error('Failed stopping drive status thread. Exception: %s', e)
+
+        # TODO: Delete servo instance from servos list
+
+        try:
+            self.__connection.disconnect()
+        except Exception as e:
+            logger.error('Failed disconnecting. Exception: %s', e)
+            raise_err(lib.IL_EFAIL, 'Failed disconnecting.')
+
     def disconnect_from_slave(self, servo):
         """ Disconnects the already established network. """
         try:
@@ -401,22 +559,13 @@ class CanopenNetwork(Network):
         except Exception as e:
             logger.error('Failed stopping drive status thread. Exception: %s', e)
 
-        # TODO: Delete servo instance from servos list
+        self.servos.remove(servo)
 
         try:
             self.__connection.disconnect()
         except Exception as e:
             logger.error('Failed disconnecting. Exception: %s', e)
             raise_err(lib.IL_EFAIL, 'Failed disconnecting.')
-
-    @property
-    def servos(self):
-        """ list: Servos available in the network. """
-        return self.__servos
-
-    @servos.setter
-    def servos(self, value):
-        self.__servos = value
 
     @property
     def baudrate(self):

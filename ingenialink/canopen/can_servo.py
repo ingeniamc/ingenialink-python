@@ -134,7 +134,7 @@ class CanopenServo(object):
         self.__units_vel = None
         self.__units_acc = None
         self.__name = "Drive"
-        self.full_name = None
+        self.__full_name = None
         self.__servo_status_listener = None
 
         if servo_status_listener:
@@ -717,7 +717,7 @@ class CanopenServo(object):
             self.raw_write(CONTROL_WORD_REGISTERS[subnode], 0, subnode=subnode)
             self.raw_write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR,
                            subnode=subnode)
-            # Wait until statusword changes
+            # Wait until status word changes
             r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
                                              subnode=1)
             if r < 0:
@@ -858,6 +858,15 @@ class CanopenServo(object):
     @name.setter
     def name(self, new_name):
         self.__name = new_name
+
+    @property
+    def full_name(self):
+        """ str: Drive full name. """
+        return self.__full_name
+
+    @full_name.setter
+    def full_name(self, new_name):
+        self.__full_name = new_name
 
     @property
     def dict(self):
