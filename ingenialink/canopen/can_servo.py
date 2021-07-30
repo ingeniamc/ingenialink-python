@@ -600,7 +600,7 @@ class CanopenServo(object):
                     try:
                         self.write(reg=STORE_MOCO_ALL_REGISTERS[1],
                                    data=PASSWORD_STORE_ALL,
-                                   subnode=subnode)
+                                   subnode=1)
                         logger.info('Store all successfully done.')
                     except Exception as e:
                         logger.exception(e)
