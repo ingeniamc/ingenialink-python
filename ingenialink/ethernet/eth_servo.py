@@ -24,3 +24,35 @@ class EthernetServo(Servo):
     @net.setter
     def net(self, value):
         self.__net = value
+
+    @property
+    def target(self):
+        return self.__target
+
+    @target.setter
+    def target(self, value):
+        self.__target = value
+
+    @property
+    def dictionary(self):
+        return self.__dictionary
+
+    @dictionary.setter
+    def dictionary(self, value):
+        self.__dictionary = value
+
+    @property
+    def port(self):
+        return self.__port
+
+    @port.setter
+    def port(self, value):
+        self.__port = value
+
+    @property
+    def communication_protocol(self):
+        return self.__communication_protocol
+
+    @communication_protocol.setter
+    def communication_protocol(self, value):
+        self.__communication_protocol = value
