@@ -285,7 +285,7 @@ class CanopenNetwork(Network):
         """
         r = self.lss_switch_state_selective(vendor_id, product_code,
                                             rev_number, serial_number)
-        if r:
+        if r < 0:
             self.__connection.lss.configure_bit_timing(
                 CAN_BIT_TIMMING[new_target_baudrate].value
             )
@@ -294,11 +294,11 @@ class CanopenNetwork(Network):
             self.lss_store_configuration()
 
         else:
-            return False
+            return -1
 
         self.lss_reset_connection_nodes(target_node)
         logger.info('Baudrate changed to {}'.format(new_target_baudrate))
-        return True
+        return 0
 
     def change_node_id(self, target_node, vendor_id, product_code,
                        rev_number, serial_number, new_target_node=None):
@@ -319,18 +319,18 @@ class CanopenNetwork(Network):
         r = self.lss_switch_state_selective(vendor_id, product_code,
                                             rev_number, serial_number)
 
-        if r:
+        if r < 0:
             self.__connection.lss.configure_node_id(new_target_node)
             sleep(0.1)
 
             self.lss_store_configuration()
 
         else:
-            return False
+            return -1
 
         self.lss_reset_connection_nodes(target_node)
         logger.info('Node ID changed to {}'.format(new_target_node))
-        return True
+        return 0
 
     def lss_store_configuration(self):
         """ Stores the current configuration of the LSS"""
@@ -355,8 +355,7 @@ class CanopenNetwork(Network):
 
         """
         logger.debug("Switching LSS into CONFIGURATION state...")
-        
-        r = False
+
         try:
             r = self.__connection.lss.send_lss_switch_state_selective(
                 vendor_id,
@@ -365,6 +364,7 @@ class CanopenNetwork(Network):
                 serial_number,
             )
         except Exception as e:
+            r = -1
             logger.error('LSS Timeout. Exception: %s', e)
 
         return r
