@@ -1,11 +1,17 @@
 from enum import Enum
 
-from ._ingenialink import lib, ffi
+from .._ingenialink import lib, ffi
 from ingenialink import exceptions as exc
 from ingenialink.err import *
+from time import sleep
 
 import warnings
 import functools
+import ingenialogger
+
+logger = ingenialogger.get_logger(__name__)
+
+POLLING_MAX_TRIES = 5       # Seconds
 
 
 def deprecated(custom_msg=None, new_func_name=None):
@@ -62,6 +68,41 @@ def to_ms(s):
         int: Value in milliseconds.
     """
     return int(s * 1e3)
+
+
+def wait_for_register_value(servo, subnode, register, expected_value):
+    logger.debug('Waiting for register {} to return <{}>'.format(register, expected_value))
+    num_tries = 0
+    r = -2
+    while num_tries < POLLING_MAX_TRIES:
+
+        value = None
+        try:
+            value = servo.read(register, subnode=subnode)
+            r = 0
+        except Exception as e:
+            r = -1
+
+        if r >= 0:
+            if value == expected_value:
+                logger.debug('Success. Read value {}.'.format(value))
+                break
+            else:
+                r = -2
+        num_tries += 1
+        logger.debug('Trying again {}. r: {}. value {}.'.format(num_tries, r, value))
+        sleep(1)
+
+    return r
+
+
+def count_file_lines(file_path):
+    file = open(file_path, "r")
+    total_lines = 0
+    for _ in file:
+        total_lines += 1
+    file.close()
+    return total_lines
 
 
 def remove_xml_subelement(element, subelement):

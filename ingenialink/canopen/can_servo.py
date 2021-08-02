@@ -14,6 +14,8 @@ from .can_register import Register, REG_DTYPE, REG_ACCESS
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
+CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
+
 
 SERIAL_NUMBER = Register(
     identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00",
@@ -116,18 +118,21 @@ class CanopenServo(object):
         dictionary (str): Path to the dictionary.
         servo_status_listener (bool): Boolean to initialize the ServoStatusListener and check the drive status.
     """
-    def __init__(self, net, target, node, dictionary, servo_status_listener=False):
+    def __init__(self, net, target, node, dictionary=None, servo_status_listener=False):
         self.__net = net
         self.__target = target
         self.__node = node
-        self.__dict = CanopenDictionary(dictionary)
+        if dictionary is not None:
+            self.__dict = CanopenDictionary(dictionary)
+        else:
+            self.__dict = None
         self.__info = {}
         self.__state = {
             1: lib.IL_SERVO_STATE_NRDY,
             2: lib.IL_SERVO_STATE_NRDY,
             3: lib.IL_SERVO_STATE_NRDY
         }
-        self.__observers = []
+        self.__servo_state_observers = []
         self.__lock = threading.RLock()
         self.__units_torque = None
         self.__units_pos = None
@@ -567,6 +572,7 @@ class CanopenServo(object):
         raise NotImplementedError
 
     def change_sdo_timeout(self, value):
+        """ Changes the SDO timeout of the node. """
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
     def get_state(self, subnode=1):
@@ -583,7 +589,7 @@ class CanopenServo(object):
         current_state = self.__state[subnode]
         if current_state != state:
             self.state[subnode] = state
-            for callback in self.__observers:
+            for callback in self.__servo_state_observers:
                 callback(state, None, subnode)
 
     def state_subscribe(self, cb):
@@ -595,8 +601,8 @@ class CanopenServo(object):
             Returns:
                 int: Assigned slot.
         """
-        r = len(self.__observers)
-        self.__observers.append(cb)
+        r = len(self.__servo_state_observers)
+        self.__servo_state_observers.append(cb)
         return r
 
     def status_word_decode(self, status_word):
