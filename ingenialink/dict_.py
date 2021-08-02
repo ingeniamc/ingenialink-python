@@ -1,7 +1,7 @@
 import collections
 
 from ._ingenialink import ffi, lib
-from ._utils import cstr, pstr, raise_null, raise_err
+from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err
 
 from .registers import Register, REG_DTYPE
 from .dict_labels import LabelsDictionary

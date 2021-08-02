@@ -1,8 +1,8 @@
 from enum import Enum
 
 from ._ingenialink import lib, ffi
-from . import exceptions as exc
-from .err import *
+from ingenialink import exceptions as exc
+from ingenialink.err import *
 
 import warnings
 import functools

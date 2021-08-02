@@ -6,7 +6,7 @@ from time import sleep
 from can.interfaces.pcan.pcan import PcanError
 from can.interfaces.ixxat.exceptions import VCIDeviceNotFoundError
 
-from .._utils import *
+from ingenialink.utils._utils import *
 from .._ingenialink import lib
 from .can_servo import CanopenServo
 from ..net import NET_PROT, NET_STATE, Network

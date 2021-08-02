@@ -4,7 +4,7 @@ import canopen
 import struct
 import xml.etree.ElementTree as ET
 
-from .._utils import *
+from ingenialink.utils._utils import *
 from .constants import *
 from ..servo import SERVO_STATE
 from .._ingenialink import lib
