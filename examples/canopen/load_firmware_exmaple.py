@@ -64,6 +64,6 @@ def load_firmware_example_2():
 
 
 if __name__ == '__main__':
-    # load_firmware_example_1()
+    load_firmware_example_1()
     load_firmware_example_2()
     sys.exit()
