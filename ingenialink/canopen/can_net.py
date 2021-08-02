@@ -833,7 +833,7 @@ class CanopenNetwork(Network):
             for node_id, node_obj in self.__connection.nodes.items():
                 node_obj.nmt.stop_node_guarding()
         except Exception as e:
-            logger.error('Could not stop node guarding. Exception: %s', e)
+            logger.error('Could not stop node guarding. Exception: %s', str(e))
         if self.__net_status_listener is not None and \
                 self.__net_status_listener.is_alive():
             self.__net_status_listener.activate_stop_flag()
