@@ -34,7 +34,7 @@ def load_firmware_example_1():
                                      eds='eve-net-c_1.8.1.eds')
 
         fw_version = servo.read('DRV_ID_SOFTWARE_VERSION')
-        print(fw_version)
+        print('Firmware version before loading new firmware', fw_version)
 
         net.subscribe_to_load_firmware_process(callback_status_msg=print_status_message,
                                                callback_progress=print_progress,
@@ -43,7 +43,7 @@ def load_firmware_example_1():
         net.load_firmware(nodes[0], 'eve-net-c_1.8.1.sfu')
 
         fw_version = servo.read('DRV_ID_SOFTWARE_VERSION')
-        print(fw_version)
+        print('Firmware version after loading new firmware', fw_version)
 
         net.disconnect_from_slave(servo)
     else:
