@@ -9,7 +9,7 @@ from .constants import *
 from ..servo import SERVO_STATE
 from .._ingenialink import lib
 from .can_dictionary import CanopenDictionary
-from .can_register import Register, REG_DTYPE, REG_ACCESS
+from .can_register import CanopenRegister, REG_DTYPE, REG_ACCESS
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -17,63 +17,63 @@ logger = ingenialogger.get_logger(__name__)
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
 
-SERIAL_NUMBER = Register(
+SERIAL_NUMBER = CanopenRegister(
     identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00",
     cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
-PRODUCT_CODE = Register(
+PRODUCT_CODE = CanopenRegister(
     identifier='', units='', subnode=1, idx="0x26E1", subidx="0x00",
     cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
-SOFTWARE_VERSION = Register(
+SOFTWARE_VERSION = CanopenRegister(
     identifier='', units='', subnode=1, idx="0x26E4", subidx="0x00",
     cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
 )
-REVISION_NUMBER = Register(
+REVISION_NUMBER = CanopenRegister(
     identifier='', units='', subnode=1, idx="0x26E2", subidx="0x00",
     cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 
 STATUS_WORD_REGISTERS = {
-    1: Register(
+    1: CanopenRegister(
         identifier='', units='', subnode=1, idx="0x6041", subidx="0x00",
         cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     ),
-    2: Register(
+    2: CanopenRegister(
         identifier='', units='', subnode=2, idx="0x6841", subidx="0x00",
         cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     ),
-    3: Register(
+    3: CanopenRegister(
         identifier='', units='', subnode=3, idx="0x7041", subidx="0x00",
         cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     )
 }
 
 CONTROL_WORD_REGISTERS = {
-    1: Register(
+    1: CanopenRegister(
         identifier='', units='', subnode=1, idx="0x2010", subidx="0x00",
         cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     ),
-    2: Register(
+    2: CanopenRegister(
         identifier='', units='', subnode=2, idx="0x2810", subidx="0x00",
         cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     ),
-    3: Register(
+    3: CanopenRegister(
         identifier='', units='', subnode=3, idx="0x3010", subidx="0x00",
         cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     )
 }
 
 STORE_ALL_REGISTERS = {
-    1: Register(
+    1: CanopenRegister(
         identifier='', units='', subnode=1, idx="0x26DB", subidx="0x00",
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
-    2: Register(
+    2: CanopenRegister(
         identifier='', units='', subnode=2, idx="0x2EDB", subidx="0x00",
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
-    3: Register(
+    3: CanopenRegister(
         identifier='', units='', subnode=3, idx="0x36DB", subidx="0x00",
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
@@ -158,13 +158,13 @@ class CanopenServo(object):
             subnode (int): Subnode for the register.
 
         Returns:
-            Register: Instance of the desired register from the dictionary.
+            CanopenRegister: Instance of the desired register from the dictionary.
 
         Raises:
             ILIOError: If the dictionary is not loaded.
             ILWrongRegisterError: If the register has invalid format.
         """
-        if isinstance(reg, Register):
+        if isinstance(reg, CanopenRegister):
             _reg = reg
         elif isinstance(reg, str):
             _dict = self.__dict
@@ -678,7 +678,7 @@ class CanopenServo(object):
         """ Raw write to servo.
 
             Args:
-                reg (Register): Register.
+                reg (CanopenRegister): Register.
                 data (int): Data.
                 confirm (bool, optional): Confirm write.
                 extended (int, optional): Extended frame.
@@ -697,7 +697,7 @@ class CanopenServo(object):
         """ Raw read from servo.
 
         Args:
-            reg (Register): Register.
+            reg (CanopenRegister): Register.
 
         Returns:
             int: Error code of the read operation.

@@ -6,7 +6,7 @@ from ingenialink.utils._utils import *
 from ..registers import REG_DTYPE, REG_ACCESS, REG_PHY
 
 
-class Register(object):
+class CanopenRegister(object):
     """ Register.
 
     Args:

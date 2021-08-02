@@ -2,7 +2,7 @@ from enum import Enum
 from time import sleep, time
 from threading import Thread
 from .._ingenialink import lib
-from .can_register import Register
+from .can_register import CanopenRegister
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import *
 from ..exceptions import ILFirmwareLoadError
@@ -19,20 +19,20 @@ import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
-PROG_STAT_1 = Register(
+PROG_STAT_1 = CanopenRegister(
     identifier='', units='', subnode=0, idx="0x1F51", subidx="0x01", cyclic='CONFIG',
     dtype=REG_DTYPE.U8, access=REG_ACCESS.RW
 )
-PROG_DL_1 = Register(
+PROG_DL_1 = CanopenRegister(
     identifier='', units='', subnode=0, idx="0x1F50", subidx="0x01", cyclic='CONFIG',
     dtype=REG_DTYPE.DOMAIN, access=REG_ACCESS.RW
 )
-FORCE_BOOT = Register(
+FORCE_BOOT = CanopenRegister(
     identifier='', units='', subnode=0, idx="0x5EDE", subidx="0x00", cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.WO
 )
 
-CIA301_DRV_ID_DEVICE_TYPE = Register(
+CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
     identifier='', units='', subnode=0, idx="0x1000", subidx="0x00", cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
