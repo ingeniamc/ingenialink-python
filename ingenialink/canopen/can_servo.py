@@ -14,6 +14,10 @@ from .can_register import Register, REG_DTYPE, REG_ACCESS
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
+PASSWORD_STORE_ALL = 0x65766173
+PASSWORD_RESTORE_ALL = 0x64616F6C
+SINGLE_AXIS_MINIMUM_SUBNODES = 2
+CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
 SERIAL_NUMBER = Register(
     identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00",
@@ -62,7 +66,17 @@ CONTROL_WORD_REGISTERS = {
     )
 }
 
-STORE_ALL_REGISTERS = {
+STORE_ALL = Register(
+    identifier='', units='', subnode=0, idx="0x1010", subidx="0x01", cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+)
+
+RESTORE_ALL = Register(
+    identifier='', units='', subnode=0, idx="0x1011", subidx="0x01", cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+)
+
+STORE_MOCO_ALL_REGISTERS = {
     1: Register(
         identifier='', units='', subnode=1, idx="0x26DB", subidx="0x00",
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
@@ -560,11 +574,73 @@ class CanopenServo(object):
         """
         self.__dict = CanopenDictionary(dictionary)
 
-    def store_parameters(self, subnode=1):
-        raise NotImplementedError
+    def store_parameters(self, subnode=1, sdo_timeout=3):
+        r = 0
+        self.change_sdo_timeout(sdo_timeout)
+
+        if subnode == 0:
+            # Store all
+            try:
+                self.write(reg=STORE_ALL,
+                           data=PASSWORD_STORE_ALL,
+                           subnode=subnode)
+                logger.info('Store all successfully done.')
+            except Exception as e:
+                logger.warning('Store all COCO failed. Trying MOCO...')
+                r = -1
+            if r < 0:
+                if self.__dict.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
+                    # Multiaxis
+                    for dict_subnode in self.__dict.subnodes:
+                        try:
+                            self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
+                                       data=PASSWORD_STORE_ALL,
+                                       subnode=dict_subnode)
+                            logger.info('Store axis {} successfully done.'.format(dict_subnode))
+                        except Exception as e:
+                            r = -1
+                            logger.exception(e)
+                            break
+                else:
+                    # Single axis
+                    try:
+                        self.write(reg=STORE_MOCO_ALL_REGISTERS[1],
+                                   data=PASSWORD_STORE_ALL,
+                                   subnode=1)
+                        logger.info('Store all successfully done.')
+                    except Exception as e:
+                        logger.exception(e)
+                        r = -1
+        elif subnode > 0:
+            # Store axis
+            try:
+                self.write(reg=STORE_MOCO_ALL_REGISTERS[subnode],
+                           data=PASSWORD_STORE_ALL,
+                           subnode=subnode)
+                logger.info('Store axis {} successfully done.'.format(subnode))
+            except Exception as e:
+                logger.exception(e)
+                r = -1
+        else:
+            logger.error('Invalid subnode')
+            r = -2
+
+        self.change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
+
+        return r
 
     def restore_parameters(self):
-        raise NotImplementedError
+        r = 0
+        try:
+            self.write(reg=RESTORE_ALL,
+                       data=PASSWORD_RESTORE_ALL,
+                       subnode=0)
+            logger.info('Restore all successfully done.')
+        except Exception as e:
+            logger.exception(e)
+            r = -1
+
+        return r
 
     def change_sdo_timeout(self, value):
         self.__node.sdo.RESPONSE_TIMEOUT = value
@@ -577,7 +653,7 @@ class CanopenServo(object):
         """ Sets the state internally.
 
         Args:
-            state (SERVO_STATE): Curretn servo state.
+            state (SERVO_STATE): Current servo state.
             subnode (int): Subnode of the drive.
         """
         current_state = self.__state[subnode]
@@ -826,7 +902,7 @@ class CanopenServo(object):
         """
         r = 0
         try:
-            self.raw_write(STORE_ALL_REGISTERS[subnode], 0x65766173,
+            self.raw_write(STORE_MOCO_ALL_REGISTERS[subnode], PASSWORD_STORE_ALL,
                            subnode=subnode)
         except Exception as e:
             r = -1
