@@ -370,7 +370,7 @@ class CanopenNetwork(Network):
                 logger.info('Connecting to drive')
                 self.set_fw_load_progress(25)
                 try:
-                    servo = self.connect_to_slave(target, servo_status_listener=False, net_status_listener=False)
+                    servo = self.connect_to_slave(target, servo_status_listener=False)
                     self.set_fw_load_progress(75)
                 except Exception as e:
                     logger.error('Error connecting to drive through CAN: %s', e)
