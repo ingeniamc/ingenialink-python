@@ -8,12 +8,12 @@ from .poller import Poller
 from .registers import Register, REG_DTYPE, REG_ACCESS, REG_PHY
 from .dict_ import Dictionary
 from .dict_labels import LabelsDictionary
-from .canopen.servo_node import Servo as CANOpenServo
-from .canopen.net import Network as CANOpenNetwork
-from .canopen.poller_node import Poller as CANOpenPoller
+from .canopen.can_servo import CanopenServo
+from .canopen.can_net import CanopenNetwork, CAN_DEVICE
+from .canopen.can_poller import CanopenPoller
 from .err import err_ipb_last
 from ._ingenialink import lib
-from ._utils import pstr
+from ingenialink.utils._utils import pstr
 
 __all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
            'NET_STATE',
@@ -25,7 +25,7 @@ __all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
            'Register', 'REG_DTYPE', 'REG_ACCESS', 'REG_PHY',
            'Dictionary',
            'LabelsDictionary',
-           'CANOpenNetwork', 'CAN_DEVICE', 'CANOpenPoller', 'CANOpenServo',
+           'CanopenNetwork', 'CAN_DEVICE', 'CanopenPoller', 'CanopenServo',
            'err_ipb_last']
 
 __version__ = '5.3.9'

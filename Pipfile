@@ -10,7 +10,6 @@ cffi = "==1.12.2"
 canopen = "*"
 numpy = "==1.17.2"
 ingenialogger = ">=0.2.1"
-deprecated = "==1.2.12"
 
 [dev-packages]
 pyqtgraph = "*"

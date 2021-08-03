@@ -2,7 +2,7 @@ from enum import Enum
 from time import sleep
 
 from ._ingenialink import lib, ffi
-from ._utils import cstr, pstr, raise_null, raise_err, to_ms, deprecated
+from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err, to_ms, deprecated
 from .registers import REG_DTYPE
 from .exceptions import *
 
@@ -348,7 +348,6 @@ class UDP(object):
         self.write(frame)
 
 
-
 class Network(object):
     """
     Network.
@@ -383,6 +382,7 @@ class Network(object):
         # else:
         #     self.slave = slave
         #     self._net = ffi.new('il_net_t **')
+
 
     @classmethod
     def _from_existing(cls, net):

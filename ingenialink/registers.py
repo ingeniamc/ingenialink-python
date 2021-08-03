@@ -1,7 +1,7 @@
 from enum import Enum
 
 from ._ingenialink import ffi, lib
-from ._utils import cstr, pstr, INT_SIZES
+from ingenialink.utils._utils import cstr, pstr, INT_SIZES
 
 from .dict_labels import LabelsDictionary
 
