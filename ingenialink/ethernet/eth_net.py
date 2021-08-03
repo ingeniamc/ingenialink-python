@@ -4,7 +4,7 @@ from .._utils import cstr, pstr, raise_null, raise_err, to_ms
 from .._ingenialink import lib, ffi
 
 from ftplib import FTP
-from os import system, remove
+from os import system, remove, path
 
 FTP_SESSION_OK_CODE = "220"
 FTP_LOGIN_OK_CODE = "230"
@@ -76,7 +76,7 @@ class EthernetNetwork(Network):
                     ftp.set_pasv(
                         False)  # This command does not return any output
                     ftp_output = ftp.storbinary(
-                        "STOR {}".format(file), file)
+                        "STOR {}".format(path.basename(file.name)), file)
                     print(ftp_output)
                     if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
                         raise_err(
@@ -84,35 +84,14 @@ class EthernetNetwork(Network):
 
                 # Close FTP session.
                 if not self.msg:
-                    try:
-                        ftp_output = ftp.quit()
-                        print(ftp_output)
-                        if FTP_CLOSE_OK_CODE not in ftp_output:
-                            raise_err(
-                                "Unable to close the FTP session")
-                    except Exception as e:
-                        print("Expected when flashing CoCo: {}".format(e))
-                        ftp_output = ftp.close()  # This command does not return any output
+                    print("Closing FTP session.")
+                    ftp.close()
 
                 # Close the temporal file
                 file.close()
-                remove(self.temp_path)
 
         except Exception as e:
-            self.add_error("Exception when flashing drive: {}".format(e))
-
-        # Wait until FW is programmed (check Com-Kit LEDs)
-        if not self.msg:
-            try:
-                title = "Programming FW"
-                description = "Please wait until ETH LED of Com-Kit turns OFF\n" \
-                              "and only GREEN LED (+5V) remains ON"
-                self.interface.ask_done(title, description)
-                print(
-                    "Firmware flashed into drive. Done.                     \n")
-            except Exception as e:
-                self.add_error(
-                    "Exception when flashing firmware into DUT: {}".format(e))
+            raise_err("Exception when flashing drive: {}".format(e))
 
     def scan_nodes(self):
         raise NotImplementedError
