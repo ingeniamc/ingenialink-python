@@ -128,7 +128,8 @@ class CanopenServo(object):
         net (Network): Ingenialink Network of the drive.
         node (int): Node ID of the drive.
         dictionary (str): Path to the dictionary.
-        servo_status_listener (bool): Boolean to initialize the ServoStatusListener and check the drive status.
+        servo_status_listener (bool): Boolean to initialize the ServoStatusListener and
+        check the drive status.
     """
     def __init__(self, net, target, node, dictionary=None, servo_status_listener=False):
         self.__net = net
@@ -599,7 +600,8 @@ class CanopenServo(object):
                             self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
                                        data=PASSWORD_STORE_ALL,
                                        subnode=dict_subnode)
-                            logger.info('Store axis {} successfully done.'.format(dict_subnode))
+                            logger.info('Store axis {} successfully done.'.format(
+                                dict_subnode))
                         except Exception as e:
                             r = -1
                             logger.exception(e)

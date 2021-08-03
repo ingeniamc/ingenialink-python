@@ -244,7 +244,6 @@ class CanopenDictionary(object):
                                   internal_use=internal_use)
             self.__regs[int(subnode)][identifier] = reg
         except Exception as e:
-            # print("FAIL reading a register "+ identifier)
             pass
 
     def get_regs(self, subnode):
@@ -284,7 +283,8 @@ class CanopenDictionary(object):
 
     @property
     def cats(self):
-        """ dict: Returns the dictionary containing all categories of the dictionary. """
+        """ dict: Returns the dictionary containing all categories of
+        the dictionary. """
         return self._cats
 
     @cats.setter

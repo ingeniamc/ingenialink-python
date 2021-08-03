@@ -229,7 +229,7 @@ class CanopenRegister(object):
     def range(self):
         """ tuple: Register range (min, max), None if undefined. """
         if self.__range:
-            return (self.__range[0], self.__range[1])
+            return self.__range[0], self.__range[1]
         return None
 
     @property
