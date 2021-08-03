@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
-from .registers import Register, REG_ACCESS, REG_DTYPE, REG_PHY
-from .._utils import *
+from .can_register import CanopenRegister, REG_ACCESS, REG_DTYPE, REG_PHY
+from ingenialink.utils._utils import *
 from .._ingenialink import lib
 
 
@@ -79,7 +79,7 @@ class Errors(object):
         return self._errors
 
 
-class DictionaryCANOpen(object):
+class CanopenDictionary(object):
     """ Contains all registers and information of a CANopen dictionary.
 
     Args:
@@ -236,15 +236,14 @@ class DictionaryCANOpen(object):
                 for enum in enums_elem.getchildren():
                     enums.append({enum.attrib['value']: enum.text})
 
-            reg = Register(identifier, units, cyclic, idx, subidx, dtype,
-                           access, subnode=subnode,
-                           storage=storage, range=reg_range,
-                           labels=labels, enums=enums,
-                           enums_count=len(enums), cat_id=cat_id,
-                           internal_use=internal_use)
+            reg = CanopenRegister(identifier, units, cyclic, idx, subidx, dtype,
+                                  access, subnode=subnode,
+                                  storage=storage, range=reg_range,
+                                  labels=labels, enums=enums,
+                                  enums_count=len(enums), cat_id=cat_id,
+                                  internal_use=internal_use)
             self.__regs[int(subnode)][identifier] = reg
         except Exception as e:
-            # print("FAIL reading a register "+ identifier)
             pass
 
     def get_regs(self, subnode):
@@ -284,7 +283,8 @@ class DictionaryCANOpen(object):
 
     @property
     def cats(self):
-        """ dict: Returns the dictionary containing all categories of the dictionary. """
+        """ dict: Returns the dictionary containing all categories of
+        the dictionary. """
         return self._cats
 
     @cats.setter

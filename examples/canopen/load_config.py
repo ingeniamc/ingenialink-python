@@ -1,12 +1,12 @@
 import sys
-from ingenialink.canopen.net import Network, CAN_DEVICE
+from ingenialink.canopen.can_net import Network, CAN_DEVICE
 import os
 
 def run_example(eds_path, dict_path, config_path):
     net = None
     try:
-        net = Network(device=CAN_DEVICE.PCAN)
-        # net = Network(device=CAN_DEVICE.KVASER)
+        net = CanopenNetwork(device=CAN_DEVICE.PCAN)
+        # net = CanopenNetwork(device=CAN_DEVICE.KVASER)
         net.scan(eds_path, dict_path)
         drives_connected = net.servos
         if len(drives_connected) > 0:

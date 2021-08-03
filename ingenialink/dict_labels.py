@@ -1,7 +1,7 @@
 import collections
 
 from ._ingenialink import ffi, lib
-from ._utils import cstr, pstr, raise_null, raise_err
+from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err
 
 
 class LabelsDictionary(collections.MutableMapping):

@@ -1,26 +1,35 @@
 from enum import Enum
 
-from ._ingenialink import lib, ffi
-from . import exceptions as exc
-from .err import *
+from .._ingenialink import lib, ffi
+from ingenialink import exceptions as exc
+from ingenialink.err import *
+from time import sleep
 
 import warnings
 import functools
+import ingenialogger
+
+logger = ingenialogger.get_logger(__name__)
+
+POLLING_MAX_TRIES = 5       # Seconds
 
 
-def deprecated(new_func_name):
+def deprecated(custom_msg=None, new_func_name=None):
+    """ This is a decorator which can be used to mark functions as deprecated. It will
+    result in a warning being emitted when the function is used. We use this decorator instead
+    of any deprecation library because all libraries raise a DeprecationWarning but since by
+    default this warning is hidden, we use this decorator to manually activate DeprecationWarning
+    and turning it off after the warn has been done. """
     def wrap(func):
-        """This is a decorator which can be used to mark functions
-        as deprecated. It will result in a warning being emitted
-        when the function is used."""
-
         @functools.wraps(func)
         def wrapped_method(*args, **kwargs):
             warnings.simplefilter('always', DeprecationWarning)  # Turn off filter
-            warnings.warn('Call to deprecated function "{}". Please, use "{}" function instead.'.format(
-                func.__name__, new_func_name),
-                category=DeprecationWarning,
-                stacklevel=2)
+            msg = 'Call to deprecated function "{}".'.format(func.__name__)
+            if new_func_name:
+                msg += ' Please, use "{}" function instead.'.format(new_func_name)
+            if custom_msg:
+                msg = custom_msg
+            warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
             warnings.simplefilter('ignore', DeprecationWarning)  # Reset filter
             return func(*args, **kwargs)
 
@@ -59,6 +68,41 @@ def to_ms(s):
         int: Value in milliseconds.
     """
     return int(s * 1e3)
+
+
+def wait_for_register_value(servo, subnode, register, expected_value):
+    logger.debug('Waiting for register {} to return <{}>'.format(register, expected_value))
+    num_tries = 0
+    r = -2
+    while num_tries < POLLING_MAX_TRIES:
+
+        value = None
+        try:
+            value = servo.read(register, subnode=subnode)
+            r = 0
+        except Exception as e:
+            r = -1
+
+        if r >= 0:
+            if value == expected_value:
+                logger.debug('Success. Read value {}.'.format(value))
+                break
+            else:
+                r = -2
+        num_tries += 1
+        logger.debug('Trying again {}. r: {}. value {}.'.format(num_tries, r, value))
+        sleep(1)
+
+    return r
+
+
+def count_file_lines(file_path):
+    file = open(file_path, "r")
+    total_lines = 0
+    for _ in file:
+        total_lines += 1
+    file.close()
+    return total_lines
 
 
 def remove_xml_subelement(element, subelement):

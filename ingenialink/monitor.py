@@ -1,7 +1,7 @@
 from enum import Enum
 
 from ._ingenialink import ffi, lib
-from ._utils import raise_null, raise_err, to_ms
+from ingenialink.utils._utils import raise_null, raise_err, to_ms
 from .registers import _get_reg_id
 
 

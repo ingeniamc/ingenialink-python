@@ -1,7 +1,4 @@
-from ..net import Network, NET_PROT, NET_TRANS_PROT
 from ..servo import Servo
-from .._utils import cstr, pstr, raise_null, raise_err, to_ms
-from .._ingenialink import lib, ffi
 
 
 class EthercatServo(Servo):

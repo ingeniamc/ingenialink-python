@@ -2,11 +2,11 @@ from enum import Enum
 
 from .._ingenialink import lib
 
-from .._utils import *
+from ingenialink.utils._utils import *
 from ..registers import REG_DTYPE, REG_ACCESS, REG_PHY
 
 
-class Register(object):
+class CanopenRegister(object):
     """ Register.
 
     Args:
@@ -229,7 +229,7 @@ class Register(object):
     def range(self):
         """ tuple: Register range (min, max), None if undefined. """
         if self.__range:
-            return (self.__range[0], self.__range[1])
+            return self.__range[0], self.__range[1]
         return None
 
     @property
