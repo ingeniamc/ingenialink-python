@@ -2,6 +2,10 @@ from ..net import Network, NET_PROT, NET_TRANS_PROT
 from .eth_servo import EthernetServo
 from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err, to_ms
 from .._ingenialink import lib, ffi
+import ingenialogger
+
+
+
 
 from ftplib import FTP
 from os import system, remove, path
@@ -11,25 +15,7 @@ FTP_LOGIN_OK_CODE = "230"
 FTP_FILE_TRANSFER_OK_CODE = "226"
 FTP_CLOSE_OK_CODE = "221"
 
-
-class FtpUploadTracker:
-    size_written = 0
-    total_size = 0
-    block_size = 0
-    last_percentage = 0
-
-    def __init__(self, total_size, block_size):
-        self.size_written = 0
-        self.total_size = total_size
-        self.block_size = block_size
-        self.last_percentage = 0
-
-    def handle(self, _):
-        self.size_written += self.block_size
-        percent_complete = round((self.size_written / self.total_size) * 100)
-        if self.last_percentage != percent_complete:
-            self.last_percentage = percent_complete
-            print("{} % complete\n".format(str(percent_complete)))
+logger = ingenialogger.get_logger(__name__)
 
 
 class EthernetNetwork(Network):
@@ -47,48 +33,41 @@ class EthernetNetwork(Network):
             self.msg = "{}\n{}".format(self.msg, error_msg)
         print(error_msg)
 
-    def load_fw(self, fw_file, target="192.168.2.22", ftp_user="Ingenia", ftp_pwd="Ingenia"):
-        print("Flash FW: FTP")
+    def load_fw(self, fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
         try:
-            user = ftp_user
-            pwd = ftp_pwd
-
             file = open(fw_file, 'rb')
             ftp_output = None
             ftp = FTP()
 
             # Start a FTP session. Drive must be in BOOT mode.
-            if not self.msg:
-                ftp_output = ftp.connect(target)
-                print(ftp_output)
-                if FTP_SESSION_OK_CODE not in ftp_output:
-                    raise_err("Unable to open FTP session")
+            logger.info("Starting FTP session...")
+            ftp_output = ftp.connect(target)
+            logger.info(ftp_output)
+            if FTP_SESSION_OK_CODE not in ftp_output:
+                raise_err("Unable to open FTP session")
 
-                # Login into FTP session.
-                if not self.msg:
-                    ftp_output = ftp.login(user, pwd)
-                    print(ftp_output)
-                    if FTP_LOGIN_OK_CODE not in ftp_output:
-                        raise_err("Unable to login the FTP session")
+            # Login into FTP session.
+            logger.info("Logging into FTP session...")
+            ftp_output = ftp.login(ftp_user, ftp_pwd)
+            logger.info(ftp_output)
+            if FTP_LOGIN_OK_CODE not in ftp_output:
+                raise_err("Unable to login the FTP session")
 
-                # Load file through FTP.
-                if not self.msg:
-                    ftp.set_pasv(
-                        False)  # This command does not return any output
-                    ftp_output = ftp.storbinary(
-                        "STOR {}".format(path.basename(file.name)), file)
-                    print(ftp_output)
-                    if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
-                        raise_err(
-                            "Unable to load the FW file through FTP")
+            # Load file through FTP.
+            logger.info("Uploading firmware file...")
+            ftp.set_pasv(False)
+            ftp_output = ftp.storbinary(
+                "STOR {}".format(path.basename(file.name)), file)
+            logger.info(ftp_output)
+            if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
+                raise_err("Unable to load the FW file through FTP")
 
-                # Close FTP session.
-                if not self.msg:
-                    print("Closing FTP session.")
-                    ftp.close()
+            # Close FTP session.
+            logger.info("Closing FTP session...")
+            ftp.close()
 
-                # Close the temporal file
-                file.close()
+            # Close the temporal file
+            file.close()
 
         except Exception as e:
             raise_err("Exception when flashing drive: {}".format(e))
