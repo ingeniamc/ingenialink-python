@@ -12,8 +12,8 @@ from .dictionary import DictionaryCANOpen
 from .registers import Register, REG_DTYPE, REG_ACCESS
 
 import ingenialogger
-logger = ingenialogger.get_logger(__name__)
 
+logger = ingenialogger.get_logger(__name__)
 
 SERIAL_NUMBER = Register(
     identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00",
@@ -84,6 +84,7 @@ class DriveStatusThread(threading.Thread):
     Args:
         parent (Servo): Servo instance of the drive.
     """
+
     def __init__(self, parent):
         super(DriveStatusThread, self).__init__()
         self.__parent = parent
@@ -116,6 +117,7 @@ class Servo(object):
         dict_ (str): Path to the dictionary.
         boot_mode (bool): Booloan to avoid reading registers initially.
     """
+
     def __init__(self, net, node, dict_, boot_mode=False):
         self.__net = net
         self.__node = node
@@ -180,7 +182,7 @@ class Servo(object):
         Args:
             reg (Register, str): Targeted register to validate.
             subnode (int): Subnode for the register.
-        
+
         Returns:
             Register: Instance of the desired register from the dictionary.
 
@@ -292,7 +294,7 @@ class Servo(object):
 
         if isinstance(value, str):
             value = value.replace('\x00', '')
-        return  value
+        return value
 
     def change_sdo_timeout(self, value):
         self.__node.sdo.RESPONSE_TIMEOUT = value
@@ -383,7 +385,7 @@ class Servo(object):
 
     def dict_storage_read(self, new_path, subnode=0):
         """ Read all dictionary registers content and put it to the dictionary
-        storage. 
+        storage.
 
         Args:
             new_path (str): Destination path for the configuration file.
@@ -449,8 +451,8 @@ class Servo(object):
         xml_file.close()
 
     def dict_storage_write(self, path, subnode=0):
-        """ Write current dictionary storage to the servo drive. 
-        
+        """ Write current dictionary storage to the servo drive.
+
         Args:
             path (str): Path to the dictionary.
             subnode (int): Subnode of the drive.
@@ -482,8 +484,8 @@ class Servo(object):
                              "%s: %s", str(element.attrib['id']), e)
 
     def store_all(self, subnode=1):
-        """ Store all servo current parameters to the NVM. 
-        
+        """ Store all servo current parameters to the NVM.
+
         Args:
             subnode (int): Subnode of the drive.
 
@@ -524,7 +526,7 @@ class Servo(object):
 
         Args:
             status_word (int): Read value for the status word.
-        
+
         Returns:
             SERVO_STATE: Status word value.
         """
@@ -550,7 +552,7 @@ class Servo(object):
 
     def set_state(self, state, subnode):
         """ Sets the state internally.
-        
+
         Args:
             state (SERVO_STATE): Curretn servo state.
             subnode (int): Subnode of the drive.
@@ -568,30 +570,31 @@ class Servo(object):
             status_word (int): Status word to wait for.
             timeout (int): Maximum value to wait for the change.
             subnode (int): Subnode of the drive.
-        
+
         Returns:
             int: Error code.
         """
         r = 0
         start_time = int(round(time.time() * 1000))
         actual_status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                           subnode=1)
+                                           subnode=subnode)
         while actual_status_word == status_word:
             current_time = int(round(time.time() * 1000))
             time_diff = (current_time - start_time)
             if time_diff > timeout:
                 r = lib.IL_ETIMEDOUT
+                logger.error('Timeout changing status word.', axis=subnode)
                 return r
             actual_status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                               subnode=1)
+                                               subnode=subnode)
         return r
 
-    def fault_reset(self, subnode=1):
+    def fault_reset(self, subnode=1, timeout=PDS_TIMEOUT):
         """ Executes a fault reset on the drive.
 
         Args:
             subnode (int): Subnode of the drive.
-        
+
         Returns:
             int: Error code.
         """
@@ -613,20 +616,20 @@ class Servo(object):
             self.raw_write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR,
                            subnode=subnode)
             # Wait until statusword changes
-            r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
-                                             subnode=1)
+            r = self.status_word_wait_change(status_word, timeout,
+                                             subnode=subnode)
             if r < 0:
                 return r
             retries += 1
         return r
 
-    def enable(self, timeout=2000, subnode=1):
-        """ Enable PDS. 
-        
+    def enable(self, subnode=1, timeout=PDS_TIMEOUT):
+        """ Enable PDS.
+
         Args:
             timeout (int): Maximum value to wait for the operation to be done.
             subnode (int): Subnode of the drive.
-        
+
         Returns:
             int: Error code.
         """
@@ -665,8 +668,8 @@ class Servo(object):
                                subnode=subnode)
 
                 # Wait for state change
-                r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
-                                                 subnode=1)
+                r = self.status_word_wait_change(status_word, timeout,
+                                                 subnode=subnode)
                 if r < 0:
                     return r
 
@@ -677,9 +680,9 @@ class Servo(object):
                 self.set_state(state, subnode)
         raise_err(r)
 
-    def disable(self, subnode=1):
-        """ Disable PDS. 
-        
+    def disable(self, subnode=1, timeout=PDS_TIMEOUT):
+        """ Disable PDS.
+
         Args:
             subnode (int): Subnode of the drive.
 
@@ -713,8 +716,8 @@ class Servo(object):
                                IL_MC_PDS_CMD_DV, subnode=subnode)
 
                 # Wait until statusword changes
-                r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
-                                                 subnode=1)
+                r = self.status_word_wait_change(status_word, timeout,
+                                                 subnode=subnode)
                 if r < 0:
                     return r
                 status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
@@ -726,7 +729,7 @@ class Servo(object):
     def get_state(self, subnode=1):
         """ SERVO_STATE: Current drive state. """
         return self.__state[subnode], None
-    
+
     @property
     def net(self):
         """ net: CANopen Network. """
