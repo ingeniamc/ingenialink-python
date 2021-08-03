@@ -1,18 +1,12 @@
 from ..net import Network, NET_PROT, NET_TRANS_PROT
 from .eth_servo import EthernetServo
-from .._utils import cstr, pstr, raise_null, raise_err, to_ms
+from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err, to_ms
 from .._ingenialink import lib, ffi
 
 
 class EthernetNetwork(Network):
-    def __init__(self, address_ip=None, dict_f=None, port_ip=1061, protocol=2):
-        self.__address_ip = address_ip
-        self.__dict_f = dict_f
-        self.__port_ip = port_ip
-        self.__protocol = protocol
+    def __init__(self):
         self.__net = None
-        self.__servos = []
-
         opts = ffi.new('il_net_opts_t *')
         self._net = lib.il_net_create(NET_PROT.ETH.value, opts)
         raise_null(self._net)
@@ -24,14 +18,16 @@ class EthernetNetwork(Network):
     def scan_nodes(self):
         raise NotImplementedError
 
-    def connect(self):
+    def connect_to_slave(self, target, dictionary=None, port=1061,
+                communication_protocol=NET_TRANS_PROT.UDP):
         net__ = ffi.new('il_net_t **')
         servo__ = ffi.new('il_servo_t **')
-        dict_f = cstr(self.__dict_f) if self.__dict_f else ffi.NULL
-        address_ip = cstr(self.__address_ip) if self.__address_ip else ffi.NULL
+        _dictionary = cstr(dictionary) if dictionary else ffi.NULL
+        _target = cstr(target) if target else ffi.NULL
 
-        r = lib.il_servo_lucky_eth(NET_PROT.ETH.value, net__, servo__, dict_f,
-                                   address_ip, self.__port_ip, self.__protocol)
+        r = lib.il_servo_lucky_eth(NET_PROT.ETH.value, net__, servo__,
+                                   _dictionary, _target,
+                                   port, communication_protocol.value)
 
         raise_err(r)
 
@@ -39,15 +35,19 @@ class EthernetNetwork(Network):
         servo_ = ffi.cast('il_servo_t *', servo__[0])
 
         net = Network._from_existing(net_)
-        servo = EthernetServo._from_existing(servo_, dict_f)
+        servo = EthernetServo._from_existing(servo_, _dictionary)
         servo.net = net
+        servo.target = target
+        servo.dictionary = dictionary
+        servo.port = port
+        servo.communication_protocol = communication_protocol
 
         self.__net = net
-        self.__servos.append(servo)
+        self.servos.append(servo)
 
         return r, servo
 
-    def disconnect(self):
+    def disconnect_from_slave(self, servo):
         raise NotImplementedError
 
     # Properties
@@ -58,45 +58,3 @@ class EthernetNetwork(Network):
     @net.setter
     def net(self, value):
         self.__net = value
-
-    @property
-    def servos(self):
-        return self.__servos
-
-    @servos.setter
-    def servos(self, value):
-        self.__servos = value
-
-    @property
-    def address_ip(self):
-        return self.__address_ip
-
-    @address_ip.setter
-    def address_ip(self, value):
-        self.__address_ip = value
-
-    @property
-    def dict_f(self):
-        return self.__dict_f
-
-    @dict_f.setter
-    def dict_f(self, value):
-        self.__dict_f = value
-
-    @property
-    def port_ip(self):
-        return self.__port_ip
-
-    @port_ip.setter
-    def port_ip(self, value):
-        self.__port_ip = value
-
-    @property
-    def protocol(self):
-        return self.__protocol
-
-    @protocol.setter
-    def protocol(self, value):
-        self.__protocol = value
-
-

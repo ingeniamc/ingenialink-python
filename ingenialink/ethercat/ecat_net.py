@@ -27,15 +27,6 @@ class EthercatNetwork(Network):
     def is_alive(self):
         raise NotImplementedError
 
-    def restore_parameters(self):
-        raise NotImplementedError
-
-    def store_parameters(self):
-        raise NotImplementedError
-
-    def load_configuration(self):
-        raise NotImplementedError
-
     # Properties
     @property
     def net(self):

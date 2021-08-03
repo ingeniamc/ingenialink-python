@@ -1,4 +1,4 @@
-from .._utils import raise_null, raise_err, to_ms
+from ingenialink.utils._utils import raise_null, raise_err, to_ms
 from .constants import *
 
 from datetime import datetime

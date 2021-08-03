@@ -4,12 +4,12 @@ import canopen
 import struct
 import xml.etree.ElementTree as ET
 
-from .._utils import *
+from ingenialink.utils._utils import *
 from .constants import *
 from ..servo import SERVO_STATE
 from .._ingenialink import lib
 from .can_dictionary import CanopenDictionary
-from .can_register import Register, REG_DTYPE, REG_ACCESS
+from .can_register import CanopenRegister, REG_DTYPE, REG_ACCESS
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -19,73 +19,73 @@ PASSWORD_RESTORE_ALL = 0x64616F6C
 SINGLE_AXIS_MINIMUM_SUBNODES = 2
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
-SERIAL_NUMBER = Register(
+
+SERIAL_NUMBER = CanopenRegister(
     identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00",
     cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
-PRODUCT_CODE = Register(
+PRODUCT_CODE = CanopenRegister(
     identifier='', units='', subnode=1, idx="0x26E1", subidx="0x00",
     cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
-SOFTWARE_VERSION = Register(
+SOFTWARE_VERSION = CanopenRegister(
     identifier='', units='', subnode=1, idx="0x26E4", subidx="0x00",
     cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
 )
-REVISION_NUMBER = Register(
+REVISION_NUMBER = CanopenRegister(
     identifier='', units='', subnode=1, idx="0x26E2", subidx="0x00",
     cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 
 STATUS_WORD_REGISTERS = {
-    1: Register(
+    1: CanopenRegister(
         identifier='', units='', subnode=1, idx="0x6041", subidx="0x00",
         cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     ),
-    2: Register(
+    2: CanopenRegister(
         identifier='', units='', subnode=2, idx="0x6841", subidx="0x00",
         cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     ),
-    3: Register(
+    3: CanopenRegister(
         identifier='', units='', subnode=3, idx="0x7041", subidx="0x00",
         cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     )
 }
 
 CONTROL_WORD_REGISTERS = {
-    1: Register(
+    1: CanopenRegister(
         identifier='', units='', subnode=1, idx="0x2010", subidx="0x00",
         cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     ),
-    2: Register(
+    2: CanopenRegister(
         identifier='', units='', subnode=2, idx="0x2810", subidx="0x00",
         cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     ),
-    3: Register(
+    3: CanopenRegister(
         identifier='', units='', subnode=3, idx="0x3010", subidx="0x00",
         cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     )
 }
-
-STORE_ALL = Register(
+STORE_COCO_ALL = CanopenRegister(
     identifier='', units='', subnode=0, idx="0x1010", subidx="0x01", cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
-RESTORE_ALL = Register(
+RESTORE_COCO_ALL = CanopenRegister(
     identifier='', units='', subnode=0, idx="0x1011", subidx="0x01", cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
 STORE_MOCO_ALL_REGISTERS = {
-    1: Register(
+    1: CanopenRegister(
         identifier='', units='', subnode=1, idx="0x26DB", subidx="0x00",
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
-    2: Register(
+    2: CanopenRegister(
         identifier='', units='', subnode=2, idx="0x2EDB", subidx="0x00",
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
-    3: Register(
+    3: CanopenRegister(
         identifier='', units='', subnode=3, idx="0x36DB", subidx="0x00",
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
@@ -130,18 +130,21 @@ class CanopenServo(object):
         dictionary (str): Path to the dictionary.
         servo_status_listener (bool): Boolean to initialize the ServoStatusListener and check the drive status.
     """
-    def __init__(self, net, target, node, dictionary, servo_status_listener=False):
+    def __init__(self, net, target, node, dictionary=None, servo_status_listener=False):
         self.__net = net
         self.__target = target
         self.__node = node
-        self.__dict = CanopenDictionary(dictionary)
+        if dictionary is not None:
+            self.__dict = CanopenDictionary(dictionary)
+        else:
+            self.__dict = None
         self.__info = {}
         self.__state = {
             1: lib.IL_SERVO_STATE_NRDY,
             2: lib.IL_SERVO_STATE_NRDY,
             3: lib.IL_SERVO_STATE_NRDY
         }
-        self.__observers = []
+        self.__servo_state_observers = []
         self.__lock = threading.RLock()
         self.__units_torque = None
         self.__units_pos = None
@@ -167,13 +170,13 @@ class CanopenServo(object):
             subnode (int): Subnode for the register.
 
         Returns:
-            Register: Instance of the desired register from the dictionary.
+            CanopenRegister: Instance of the desired register from the dictionary.
 
         Raises:
             ILIOError: If the dictionary is not loaded.
             ILWrongRegisterError: If the register has invalid format.
         """
-        if isinstance(reg, Register):
+        if isinstance(reg, CanopenRegister):
             _reg = reg
         elif isinstance(reg, str):
             _dict = self.__dict
@@ -581,7 +584,7 @@ class CanopenServo(object):
         if subnode == 0:
             # Store all
             try:
-                self.write(reg=STORE_ALL,
+                self.write(reg=STORE_COCO_ALL,
                            data=PASSWORD_STORE_ALL,
                            subnode=subnode)
                 logger.info('Store all successfully done.')
@@ -632,7 +635,7 @@ class CanopenServo(object):
     def restore_parameters(self):
         r = 0
         try:
-            self.write(reg=RESTORE_ALL,
+            self.write(reg=RESTORE_COCO_ALL,
                        data=PASSWORD_RESTORE_ALL,
                        subnode=0)
             logger.info('Restore all successfully done.')
@@ -643,6 +646,7 @@ class CanopenServo(object):
         return r
 
     def change_sdo_timeout(self, value):
+        """ Changes the SDO timeout of the node. """
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
     def get_state(self, subnode=1):
@@ -659,7 +663,7 @@ class CanopenServo(object):
         current_state = self.__state[subnode]
         if current_state != state:
             self.state[subnode] = state
-            for callback in self.__observers:
+            for callback in self.__servo_state_observers:
                 callback(state, None, subnode)
 
     def state_subscribe(self, cb):
@@ -671,8 +675,8 @@ class CanopenServo(object):
             Returns:
                 int: Assigned slot.
         """
-        r = len(self.__observers)
-        self.__observers.append(cb)
+        r = len(self.__servo_state_observers)
+        self.__servo_state_observers.append(cb)
         return r
 
     def status_word_decode(self, status_word):
@@ -748,7 +752,7 @@ class CanopenServo(object):
         """ Raw write to servo.
 
             Args:
-                reg (Register): Register.
+                reg (CanopenRegister): Register.
                 data (int): Data.
                 confirm (bool, optional): Confirm write.
                 extended (int, optional): Extended frame.
@@ -767,7 +771,7 @@ class CanopenServo(object):
         """ Raw read from servo.
 
         Args:
-            reg (Register): Register.
+            reg (CanopenRegister): Register.
 
         Returns:
             int: Error code of the read operation.

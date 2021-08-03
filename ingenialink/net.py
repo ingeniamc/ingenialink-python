@@ -2,7 +2,7 @@ from enum import Enum
 from time import sleep
 
 from ._ingenialink import lib, ffi
-from ._utils import cstr, pstr, raise_null, raise_err, to_ms, deprecated
+from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err, to_ms, deprecated
 from .registers import REG_DTYPE
 from .exceptions import *
 

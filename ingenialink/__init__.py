@@ -13,7 +13,7 @@ from .canopen.can_net import CanopenNetwork, CAN_DEVICE
 from .canopen.can_poller import CanopenPoller
 from .err import err_ipb_last
 from ._ingenialink import lib
-from ._utils import pstr
+from ingenialink.utils._utils import pstr
 
 __all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
            'NET_STATE',

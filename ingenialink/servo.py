@@ -1,7 +1,7 @@
 from enum import Enum
 
 from ._ingenialink import ffi, lib
-from ._utils import *
+from ingenialink.utils._utils import *
 from .registers import Register, REG_DTYPE, dtype_size, REG_ACCESS
 from .net import Network, NET_PROT
 from .dict_ import Dictionary
