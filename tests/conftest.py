@@ -13,3 +13,5 @@ def connect_canopen():
                                  dictionary='resources/eve-net-c_can_1.8.1.xdf',
                                  eds='resources/eve-net-c_1.8.1.eds')
     yield servo, net
+
+    net.disconnect_from_slave(servo)

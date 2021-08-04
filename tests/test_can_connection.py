@@ -3,7 +3,6 @@ import pytest
 from ingenialink.canopen.can_net import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
 
 
-@pytest.mark.develop
 def test_scan():
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,
@@ -12,7 +11,6 @@ def test_scan():
     assert len(nodes) > 0
 
 
-@pytest.mark.develop
 def test_connect():
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,

@@ -21,25 +21,25 @@ def store_restore_example():
         print(fw_version)
 
         # Store all
-        r = servo.store_parameters(subnode=0)
-        if r < 0:
-            print('Error storing all parameters')
-        else:
+        try:
+            servo.store_parameters(subnode=0)
             print('Stored all parameters successfully')
+        except Exception as e:
+            print('Error storing all parameters')
 
         # Store axis 1
-        r = servo.store_parameters(subnode=1)
-        if r < 0:
-            print('Error storing parameters axis 1')
-        else:
+        try:
+            servo.store_parameters(subnode=1)
             print('Stored axis 1 parameters successfully')
+        except Exception as e:
+            print('Error storing parameters axis 1')
 
         # Restore all
-        r = servo.restore_parameters()
-        if r < 0:
-            print('Error restoring all parameters')
-        else:
+        try:
+            servo.restore_parameters()
             print('Restored all parameters successfully')
+        except Exception as e:
+            print('Error restoring all parameters')
 
         net.disconnect_from_slave(servo)
     else:
