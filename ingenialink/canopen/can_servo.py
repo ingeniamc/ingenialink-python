@@ -86,7 +86,7 @@ class ServoStatusListener(threading.Thread):
         while not self.__stop:
             for subnode in range(1, self.__parent.subnodes):
                 try:
-                    status_word = self.__parent.raw_read(
+                    status_word = self.__parent.read(
                         STATUS_WORD_REGISTERS[subnode], subnode=subnode
                     )
                     state = self.__parent.status_word_decode(status_word)
@@ -135,7 +135,7 @@ class CanopenServo(object):
         self.__servo_status_listener = None
 
         if servo_status_listener:
-            status_word = self.raw_read(STATUS_WORD_REGISTERS[1])
+            status_word = self.read(STATUS_WORD_REGISTERS[1])
             state = self.status_word_decode(status_word)
             self.set_state(state, 1)
 
@@ -188,7 +188,7 @@ class CanopenServo(object):
 
         Raises:
             TypeError: If the register type is not valid.
-            ILAccessError: Wrong acces to the register.
+            ILAccessError: Wrong access to the register.
             ILIOError: Error reading the register.
         """
         _reg = self.get_reg(reg, subnode)
@@ -324,8 +324,8 @@ class CanopenServo(object):
         """
         r = 0
 
-        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                    subnode=subnode)
+        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
         state = self.status_word_decode(status_word)
         self.set_state(state, subnode)
 
@@ -337,8 +337,8 @@ class CanopenServo(object):
                 return r
 
         while self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
-            status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                        subnode=subnode)
+            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
             state = self.status_word_decode(status_word)
             self.set_state(state, subnode)
             if self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
@@ -353,8 +353,8 @@ class CanopenServo(object):
                 elif self.state[subnode].value == lib.IL_SERVO_STATE_RDY:
                     cmd = IL_MC_PDS_CMD_SOEO
 
-                self.raw_write(CONTROL_WORD_REGISTERS[subnode], cmd,
-                               subnode=subnode)
+                self.write(CONTROL_WORD_REGISTERS[subnode], cmd,
+                           subnode=subnode)
 
                 # Wait for state change
                 r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
@@ -363,8 +363,8 @@ class CanopenServo(object):
                     return r
 
                 # Read the current status word
-                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                            subnode=subnode)
+                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self.set_state(state, subnode)
         raise_err(r)
@@ -380,8 +380,8 @@ class CanopenServo(object):
         """
         r = 0
 
-        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                    subnode=subnode)
+        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
         state = self.status_word_decode(status_word)
         self.set_state(state, subnode)
 
@@ -395,22 +395,22 @@ class CanopenServo(object):
                 r = self.fault_reset(subnode=subnode)
                 if r < 0:
                     return r
-                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                            subnode=subnode)
+                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self.set_state(state, subnode)
             elif self.state[subnode].value != lib.IL_SERVO_STATE_DISABLED:
                 # Check state and command action to reach disabled
-                self.raw_write(CONTROL_WORD_REGISTERS[subnode],
-                               IL_MC_PDS_CMD_DV, subnode=subnode)
+                self.write(CONTROL_WORD_REGISTERS[subnode],
+                           IL_MC_PDS_CMD_DV, subnode=subnode)
 
                 # Wait until statusword changes
                 r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
                                                  subnode=1)
                 if r < 0:
                     return r
-                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                            subnode=subnode)
+                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self.set_state(state, subnode)
         raise_err(r)
@@ -426,8 +426,8 @@ class CanopenServo(object):
         """
         r = 0
         retries = 0
-        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                    subnode=subnode)
+        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
         state = self.status_word_decode(status_word)
         self.set_state(state, subnode)
         while self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
@@ -436,11 +436,11 @@ class CanopenServo(object):
             if retries == FAULT_RESET_RETRIES:
                 return lib.IL_ESTATE
 
-            status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                        subnode=subnode)
-            self.raw_write(CONTROL_WORD_REGISTERS[subnode], 0, subnode=subnode)
-            self.raw_write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR,
-                           subnode=subnode)
+            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
+            self.write(CONTROL_WORD_REGISTERS[subnode], 0, subnode=subnode)
+            self.write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR,
+                       subnode=subnode)
             # Wait until status word changes
             r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
                                              subnode=1)
@@ -493,8 +493,8 @@ class CanopenServo(object):
                 element_subnode = int(register.attrib['subnode'])
                 if subnode == 0 or subnode == element_subnode:
                     if register.attrib['access'] == 'rw':
-                        storage = self.raw_read(register.attrib['id'],
-                                                subnode=element_subnode)
+                        storage = self.read(register.attrib['id'],
+                                            subnode=element_subnode)
                         register.set('storage', str(storage))
 
                         # Update register object
@@ -504,7 +504,7 @@ class CanopenServo(object):
                 else:
                     registers_category.remove(register)
             except BaseException as e:
-                logger.error("Exception during dict_storage_read, "
+                logger.error("Exception during save_configuration, "
                              "register %s: %s",
                              str(register.attrib['id']), e)
             cleanup_register(register)
@@ -541,12 +541,12 @@ class CanopenServo(object):
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
                     if subnode == 0 or subnode == int(element.attrib['subnode']):
-                        self.raw_write(element.attrib['id'],
-                                       float(element.attrib['storage']),
-                                       subnode=int(element.attrib['subnode'])
-                                       )
+                        self.write(element.attrib['id'],
+                                   float(element.attrib['storage']),
+                                   subnode=int(element.attrib['subnode'])
+                                   )
             except BaseException as e:
-                logger.error("Exception during dict_storage_write, register "
+                logger.error("Exception during load_configuration, register "
                              "%s: %s", str(element.attrib['id']), e)
 
     def update_dictionary(self, dictionary):
@@ -693,7 +693,8 @@ class CanopenServo(object):
         self.__servo_state_observers.append(cb)
         return r
 
-    def status_word_decode(self, status_word):
+    @staticmethod
+    def status_word_decode(status_word):
         """ Decodes the status word to a known value.
 
         Args:
@@ -735,16 +736,17 @@ class CanopenServo(object):
         """
         r = 0
         start_time = int(round(time.time() * 1000))
-        actual_status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                           subnode=1)
+        actual_status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                       subnode=1)
         while actual_status_word == status_word:
             current_time = int(round(time.time() * 1000))
             time_diff = (current_time - start_time)
             if time_diff > timeout:
                 r = lib.IL_ETIMEDOUT
                 return r
-            actual_status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                               subnode=1)
+            actual_status_word = self.read(
+                STATUS_WORD_REGISTERS[subnode],
+                subnode=1)
         return r
 
     def stop_status_listener(self):
@@ -980,10 +982,10 @@ class CanopenServo(object):
     @property
     def info(self):
         """ dict: Servo information. """
-        serial_number = self.raw_read(SERIAL_NUMBER)
-        product_code = self.raw_read(PRODUCT_CODE)
-        sw_version = self.raw_read(SOFTWARE_VERSION)
-        revision_number = self.raw_read(REVISION_NUMBER)
+        serial_number = self.read(SERIAL_NUMBER)
+        product_code = self.read(PRODUCT_CODE)
+        sw_version = self.read(SOFTWARE_VERSION)
+        revision_number = self.read(REVISION_NUMBER)
         hw_variant = 'A'
 
         info = {
