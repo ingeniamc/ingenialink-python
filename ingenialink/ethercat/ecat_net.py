@@ -8,58 +8,45 @@ class EthercatNetwork(Network):
     def __init__(self, interface_name=""):
         self.__interface_name = interface_name
 
-        self._net = ffi.new('il_net_t **')
+        self.__net = ffi.new('il_net_t **')
 
-    def load_firmware(self, fw_file):
+    """
+        - boot_in_app:  If summit series -> True
+                        If capitan series -> False
+                        If custom device -> Contact manufacturer
+        """
+    def load_firmware(self, fw_file, slave=1, boot_in_app=True):
         # TODO: Implement FOE fw loader
         raise NotImplementedError
 
     def scan_nodes(self):
         raise NotImplementedError
 
-
-    """
-    - boot_in_app:  If summit series -> True
-                    If capitan series -> False
-                    If custom device -> Contact manufacturer
-    """
-    def connect_to_slave(self, dict_f="", slave=1, boot_in_app=True):
-
-
-        # r = servo.connect_ecat(ifname=ifname,
-        #         #                        slave=slave,
-        #         #                        use_eoe_comms=use_eoe_comms)
+    def connect_to_slave(self, dictionary="", slave=1, use_eoe_comms=1):
         _interface_name = cstr(self.__interface_name) if self.__interface_name else ffi.NULL
-        self.slave = slave
+        _dictionary = cstr(dictionary) if dictionary else ffi.NULL
 
-        r = lib.il_servo_connect_ecat(3, self.ifname, self.net._net,
-                                      self._servo, self.dict_f, 1061,
-                                      self.slave, use_eoe_comms)
-        time.sleep(2)
-        return r
+        _servo = ffi.new('il_servo_t **')
+
+        r = lib.il_servo_connect_ecat(3, _interface_name, self.__net,
+                                      _servo, _dictionary, 1061,
+                                      slave, use_eoe_comms)
 
         if r <= 0:
-            servo = None
-            net = None
+            _servo = None
+            self.__net = None
             raise_err(r)
         else:
-            net._net = ffi.cast('il_net_t *', net._net[0])
-            servo = EthercatServo._from_existing(servo_, dict_f)
+            self.__net = ffi.cast('il_net_t *', self.__net[0])
+            servo = EthercatServo._from_existing(_servo, _dictionary)
             servo._servo = ffi.cast('il_servo_t *', servo._servo[0])
-            servo.net = net
+            servo.net = self.__net
 
-        return servo, net
-
-
-
-    servo, net = il.servo.connect_ecat(
-        "\\Device\\NPF_{43144EC3-59EF-408B-8D9B-4867F1324D62}",
-        "resources/eve-net_1.7.1.xdf",
-        1, use_eoe_comms=0)
+        return servo
 
 
     def disconnect(self):
-        return lib.il_net_master_stop(self._net)
+        return lib.il_net_master_stop(self.__net)
 
     def is_alive(self):
         raise NotImplementedError
