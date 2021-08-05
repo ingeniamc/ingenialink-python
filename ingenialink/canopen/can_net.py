@@ -147,14 +147,12 @@ class CanopenNetwork(Network):
         self.__channel = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
         self.__network_interface = None
-        self.__net_state = NET_STATE.DISCONNECTED
-        self.__observers_net_state = []
         self.__eds = None
         self.__dict = None
         self.__net_status_listener = None
+        self.__net_state = NET_STATE.DISCONNECTED
 
-        # Firmware loader observers
-        self.__fw_load_observers = []
+        self.__observers_net_state = []
         self.__observers_fw_load_status_msg = []
         self.__observers_fw_load_progress = []
         self.__observers_fw_load_progress_total = []
