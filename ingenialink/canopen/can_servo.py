@@ -112,7 +112,7 @@ class ServoStatusListener(threading.Thread):
                         STATUS_WORD_REGISTERS[subnode], subnode=subnode
                     )
                     state = self.__parent.status_word_decode(status_word)
-                    self.__parent.set_state(state, subnode=subnode)
+                    self.__parent._set_state(state, subnode=subnode)
                 except Exception as e:
                     logger.error("Error getting drive status. "
                                  "Exception : %s", e)
@@ -159,7 +159,7 @@ class CanopenServo(object):
         if servo_status_listener:
             status_word = self.read(STATUS_WORD_REGISTERS[1])
             state = self.status_word_decode(status_word)
-            self.set_state(state, 1)
+            self._set_state(state, 1)
 
             self.__servo_status_listener = ServoStatusListener(self)
             self.__servo_status_listener.start()
@@ -190,14 +190,6 @@ class CanopenServo(object):
         else:
             raise_err(lib.IL_EWRONGREG, 'Invalid register')
         return _reg
-
-    def get_all_registers(self):
-        """ Prints all registers from the dictionary. """
-        for obj in self.__node.object_dictionary.values():
-            logger.debug('0x%X: %s' % (obj.index, obj.name))
-            if isinstance(obj, canopen.objectdictionary.Record):
-                for subobj in obj.values():
-                    logger.debug('  %d: %s' % (subobj.subindex, subobj.name))
 
     def read(self, reg, subnode=1):
         """ Read from servo.
@@ -276,7 +268,19 @@ class CanopenServo(object):
             value = value.replace('\x00', '')
         return value
 
-    def write(self, reg, data, confirm=True, extended=0, subnode=1):
+    def write(self, reg, data, subnode=1):
+        """ Writes a data to a target register.
+
+        Args:
+            reg (CanopenRegister, str): Target register to be written.
+            data (int, str, float): Data to be written.
+            subnode (int): Target axis of the drive.
+
+        Raises:
+            TypeError: If the register type is not valid.
+            ILAccessError: Wrong access to the register.
+            ILIOError: Error reading the register.
+        """
         _reg = self.get_reg(reg, subnode)
 
         if _reg.access == REG_ACCESS.RO:
@@ -349,7 +353,7 @@ class CanopenServo(object):
         status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
-        self.set_state(state, subnode)
+        self._set_state(state, subnode)
 
         # Try fault reset if faulty
         if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
@@ -362,7 +366,7 @@ class CanopenServo(object):
             status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
-            self.set_state(state, subnode)
+            self._set_state(state, subnode)
             if self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
                 # Check state and commandaction to reach enabled
                 cmd = IL_MC_PDS_CMD_EO
@@ -388,7 +392,7 @@ class CanopenServo(object):
                 status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
-                self.set_state(state, subnode)
+                self._set_state(state, subnode)
         raise_err(r)
 
     def disable(self, subnode=1):
@@ -405,11 +409,11 @@ class CanopenServo(object):
         status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
-        self.set_state(state, subnode)
+        self._set_state(state, subnode)
 
         while self.state[subnode].value != lib.IL_SERVO_STATE_DISABLED:
             state = self.status_word_decode(status_word)
-            self.set_state(state, subnode)
+            self._set_state(state, subnode)
 
             if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
                     self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
@@ -420,7 +424,7 @@ class CanopenServo(object):
                 status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
-                self.set_state(state, subnode)
+                self._set_state(state, subnode)
             elif self.state[subnode].value != lib.IL_SERVO_STATE_DISABLED:
                 # Check state and command action to reach disabled
                 self.write(CONTROL_WORD_REGISTERS[subnode],
@@ -434,7 +438,7 @@ class CanopenServo(object):
                 status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
-                self.set_state(state, subnode)
+                self._set_state(state, subnode)
         raise_err(r)
 
     def fault_reset(self, subnode=1):
@@ -451,7 +455,7 @@ class CanopenServo(object):
         status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
-        self.set_state(state, subnode)
+        self._set_state(state, subnode)
         while self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
                 self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
             # Check if faulty, if so try to reset (0->1)
@@ -571,14 +575,6 @@ class CanopenServo(object):
                 logger.error("Exception during load_configuration, register "
                              "%s: %s", str(element.attrib['id']), e)
 
-    def update_dictionary(self, dictionary):
-        """ Update dictionary.
-
-            Args:
-                dictionary (str): Dictionary to be loaded.
-        """
-        self.__dict = CanopenDictionary(dictionary)
-
     def store_parameters(self, subnode=1, sdo_timeout=3):
         """ Store all the current parameters of the target subnode.
 
@@ -591,7 +587,7 @@ class CanopenServo(object):
             ILObjectNotExist: Failed to write to the registers.
         """
         r = 0
-        self.change_sdo_timeout(sdo_timeout)
+        self._change_sdo_timeout(sdo_timeout)
 
         try:
             if subnode == 0:
@@ -628,7 +624,7 @@ class CanopenServo(object):
             else:
                 raise ILError('Invalid subnode.')
         finally:
-            self.change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
+            self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
     def restore_parameters(self):
         """ Restore all the current parameters of all the slave to default.
@@ -642,7 +638,7 @@ class CanopenServo(object):
                    subnode=0)
         logger.info('Restore all successfully done.')
 
-    def change_sdo_timeout(self, value):
+    def _change_sdo_timeout(self, value):
         """ Changes the SDO timeout of the node. """
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
@@ -650,7 +646,7 @@ class CanopenServo(object):
         """ SERVO_STATE: Current drive state. """
         return self.__state[subnode], None
 
-    def set_state(self, state, subnode):
+    def _set_state(self, state, subnode):
         """ Sets the state internally.
 
         Args:
@@ -663,7 +659,7 @@ class CanopenServo(object):
             for callback in self.__servo_state_observers:
                 callback(state, None, subnode)
 
-    def state_subscribe(self, cb):
+    def subscribe_to_servo_state(self, cb):
         """ Subscribe to state changes.
 
             Args:
@@ -675,36 +671,6 @@ class CanopenServo(object):
         r = len(self.__servo_state_observers)
         self.__servo_state_observers.append(cb)
         return r
-
-    @staticmethod
-    def status_word_decode(status_word):
-        """ Decodes the status word to a known value.
-
-        Args:
-            status_word (int): Read value for the status word.
-
-        Returns:
-            SERVO_STATE: Status word value.
-        """
-        if (status_word & IL_MC_PDS_STA_NRTSO_MSK) == IL_MC_PDS_STA_NRTSO:
-            state = lib.IL_SERVO_STATE_NRDY
-        elif (status_word & IL_MC_PDS_STA_SOD_MSK) == IL_MC_PDS_STA_SOD:
-            state = lib.IL_SERVO_STATE_DISABLED
-        elif (status_word & IL_MC_PDS_STA_RTSO_MSK) == IL_MC_PDS_STA_RTSO:
-            state = lib.IL_SERVO_STATE_RDY
-        elif (status_word & IL_MC_PDS_STA_SO_MSK) == IL_MC_PDS_STA_SO:
-            state = lib.IL_SERVO_STATE_ON
-        elif (status_word & IL_MC_PDS_STA_OE_MSK) == IL_MC_PDS_STA_OE:
-            state = lib.IL_SERVO_STATE_ENABLED
-        elif (status_word & IL_MC_PDS_STA_QSA_MSK) == IL_MC_PDS_STA_QSA:
-            state = lib.IL_SERVO_STATE_QSTOP
-        elif (status_word & IL_MC_PDS_STA_FRA_MSK) == IL_MC_PDS_STA_FRA:
-            state = lib.IL_SERVO_STATE_FAULTR
-        elif (status_word & IL_MC_PDS_STA_F_MSK) == IL_MC_PDS_STA_F:
-            state = lib.IL_SERVO_STATE_FAULT
-        else:
-            state = lib.IL_SERVO_STATE_NRDY
-        return SERVO_STATE(state)
 
     def status_word_wait_change(self, status_word, timeout, subnode=1):
         """ Waits for a status word change.
@@ -746,170 +712,35 @@ class CanopenServo(object):
     def emcy_unsubscribe(self, callback):
         raise NotImplementedError
 
-    @deprecated(new_func_name='write')
-    def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
-        """ Raw write to servo.
-
-            Args:
-                reg (CanopenRegister): Register.
-                data (int): Data.
-                confirm (bool, optional): Confirm write.
-                extended (int, optional): Extended frame.
-
-            Raises:
-                TypeError: If any of the arguments type is not valid or
-                    unsupported.
-                ILAccessError: Wrong acces to the register.
-                ILIOError: Error reading the register.
-        """
-
-        self.write(reg, data, confirm, extended, subnode)
-
-    @deprecated(new_func_name='read')
-    def raw_read(self, reg, subnode=1):
-        """ Raw read from servo.
+    @staticmethod
+    def status_word_decode(status_word):
+        """ Decodes the status word to a known value.
 
         Args:
-            reg (CanopenRegister): Register.
+            status_word (int): Read value for the status word.
 
         Returns:
-            int: Error code of the read operation.
-
-        Raises:
-            TypeError: If the register type is not valid.
-            ILAccessError: Wrong acces to the register.
-            ILIOError: Error reading the register.
+            SERVO_STATE: Status word value.
         """
-        return self.read(reg, subnode)
-
-    @deprecated(new_func_name='update_dictionary')
-    def dict_load(self, dict_f):
-        """ Load dictionary.
-
-            Args:
-                dict_f (str): Dictionary to be loaded.
-        """
-        self.__dict = CanopenDictionary(dict_f)
-
-    @deprecated(new_func_name='load_configuration')
-    def dict_storage_write(self, path, subnode=0):
-        """ Write current dictionary storage to the servo drive.
-
-        Args:
-            path (str): Path to the dictionary.
-            subnode (int): Subnode of the drive.
-        """
-        with open(path, 'r') as xml_file:
-            tree = ET.parse(xml_file)
-        root = tree.getroot()
-
-        axis = tree.findall('*/Device/Axes/Axis')
-        if axis:
-            # Multiaxis
-            registers = root.findall(
-                './Body/Device/Axes/Axis/Registers/Register'
-            )
+        if (status_word & IL_MC_PDS_STA_NRTSO_MSK) == IL_MC_PDS_STA_NRTSO:
+            state = lib.IL_SERVO_STATE_NRDY
+        elif (status_word & IL_MC_PDS_STA_SOD_MSK) == IL_MC_PDS_STA_SOD:
+            state = lib.IL_SERVO_STATE_DISABLED
+        elif (status_word & IL_MC_PDS_STA_RTSO_MSK) == IL_MC_PDS_STA_RTSO:
+            state = lib.IL_SERVO_STATE_RDY
+        elif (status_word & IL_MC_PDS_STA_SO_MSK) == IL_MC_PDS_STA_SO:
+            state = lib.IL_SERVO_STATE_ON
+        elif (status_word & IL_MC_PDS_STA_OE_MSK) == IL_MC_PDS_STA_OE:
+            state = lib.IL_SERVO_STATE_ENABLED
+        elif (status_word & IL_MC_PDS_STA_QSA_MSK) == IL_MC_PDS_STA_QSA:
+            state = lib.IL_SERVO_STATE_QSTOP
+        elif (status_word & IL_MC_PDS_STA_FRA_MSK) == IL_MC_PDS_STA_FRA:
+            state = lib.IL_SERVO_STATE_FAULTR
+        elif (status_word & IL_MC_PDS_STA_F_MSK) == IL_MC_PDS_STA_F:
+            state = lib.IL_SERVO_STATE_FAULT
         else:
-            # Single axis
-            registers = root.findall('./Body/Device/Registers/Register')
-
-        for element in registers:
-            try:
-                if 'storage' in element.attrib and element.attrib['access'] == 'rw':
-                    if subnode == 0 or subnode == int(element.attrib['subnode']):
-                        self.raw_write(element.attrib['id'],
-                                       float(element.attrib['storage']),
-                                       subnode=int(element.attrib['subnode'])
-                                       )
-            except BaseException as e:
-                logger.error("Exception during dict_storage_write, register "
-                             "%s: %s", str(element.attrib['id']), e)
-
-    @deprecated(new_func_name='save_configuration')
-    def dict_storage_read(self, new_path, subnode=0):
-        """ Read all dictionary registers content and put it to the dictionary
-        storage.
-
-        Args:
-            new_path (str): Destination path for the configuration file.
-            subnode (int): Subnode of the drive.
-        """
-        prod_code, rev_number = get_drive_identification(self, subnode)
-
-        with open(self.__dict.dict, 'r') as xml_file:
-            tree = ET.parse(xml_file)
-        root = tree.getroot()
-
-        body = root.find('Body')
-        device = root.find('Body/Device')
-        categories = root.find('Body/Device/Categories')
-        errors = root.find('Body/Errors')
-
-        device.remove(categories)
-        body.remove(errors)
-
-        if 'ProductCode' in device.attrib and prod_code is not None:
-            device.attrib['ProductCode'] = str(prod_code)
-        if 'RevisionNumber' in device.attrib and rev_number is not None:
-            device.attrib['RevisionNumber'] = str(rev_number)
-
-        axis = tree.findall('*/Device/Axes/Axis')
-        if axis:
-            # Multiaxis
-            registers = root.findall(
-                './Body/Device/Axes/Axis/Registers/Register'
-            )
-        else:
-            # Single axis
-            registers = root.findall('./Body/Device/Registers/Register')
-
-        registers_category = root.find('Body/Device/Registers')
-
-        for register in registers:
-            try:
-                element_subnode = int(register.attrib['subnode'])
-                if subnode == 0 or subnode == element_subnode:
-                    if register.attrib['access'] == 'rw':
-                        storage = self.raw_read(register.attrib['id'],
-                                                subnode=element_subnode)
-                        register.set('storage', str(storage))
-
-                        # Update register object
-                        reg = self.__dict.regs[element_subnode][register.attrib['id']]
-                        reg.storage = storage
-                        reg.storage_valid = 1
-                else:
-                    registers_category.remove(register)
-            except BaseException as e:
-                logger.error("Exception during dict_storage_read, "
-                             "register %s: %s",
-                             str(register.attrib['id']), e)
-            cleanup_register(register)
-
-        image = root.find('./DriveImage')
-        if image is not None:
-            root.remove(image)
-
-        tree.write(new_path)
-        xml_file.close()
-
-    @deprecated(new_func_name='store_parameters')
-    def store_all(self, subnode=1):
-        """ Store all servo current parameters to the NVM.
-
-        Args:
-            subnode (int): Subnode of the drive.
-
-        Returns
-            int: Error code.
-        """
-        r = 0
-        try:
-            self.raw_write(STORE_MOCO_ALL_REGISTERS[subnode], PASSWORD_STORE_ALL,
-                           subnode=subnode)
-        except Exception as e:
-            r = -1
-        return r
+            state = lib.IL_SERVO_STATE_NRDY
+        return SERVO_STATE(state)
 
     @property
     def net(self):

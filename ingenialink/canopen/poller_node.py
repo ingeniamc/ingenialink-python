@@ -1,15 +1,14 @@
-from ingenialink.utils._utils import raise_err
+from .._utils import raise_null, raise_err, to_ms
 from .constants import *
 
 from datetime import datetime
-from threading import Timer, RLock
+from threading import Timer, Thread, Event, RLock
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
-
-class PollerTimer:
-    """ Custom timer for the CanopenPoller.
+class PollerTimer():
+    """ Custom timer for the Poller.
 
     Args:
         time (int): Timeout to use for the timer.
@@ -34,11 +33,11 @@ class PollerTimer:
             self.thread.join()
 
 
-class CanopenPoller(object):
+class Poller(object):
     """ Register poller for CANOpen communications.
 
     Args:
-        servo (CanopenServo): Servo.
+        servo (Servo): Servo.
         number_channels (int): Number of channels.
 
     Raises:
