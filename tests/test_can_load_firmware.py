@@ -1,7 +1,7 @@
 import pytest
 
 
-def test_laod_firmware(connect_canopen):
+def test_load_firmware(connect_canopen):
     servo, net = connect_canopen
     assert servo is not None and net is not None
 
