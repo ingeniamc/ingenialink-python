@@ -5,8 +5,14 @@ from .._ingenialink import lib, ffi
 
 
 class EthernetServo(Servo):
-    def __init__(self, net):
+    def __init__(self, net, target, dictionary, port,
+                 communication_protocol, servo_id=None):
+        super(EthernetServo, self).__init__(net, servo_id=servo_id, dict_f=dictionary)
         self.__net = net
+        self.__target = target
+        self.__dictionary = dictionary
+        self.__port = port
+        self.__communication_protocol = communication_protocol
 
     def is_alive(self):
         raise NotImplementedError

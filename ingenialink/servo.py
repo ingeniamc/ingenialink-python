@@ -166,6 +166,7 @@ class SERVO_UNITS_ACC(Enum):
     """ Meters/second^2. """
 
 
+@deprecated
 def servo_is_connected(address_ip, port_ip=1061, protocol=1):
     """
     Obtain boolean with result of search a servo into ip.
@@ -182,6 +183,7 @@ def servo_is_connected(address_ip, port_ip=1061, protocol=1):
     return lib.il_servo_is_connected(net__, address_ip, port_ip, protocol)
 
 
+@deprecated
 def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     """ Obtain an instance of the first available Servo.
 
@@ -217,6 +219,7 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     return net, servo
 
 
+@deprecated
 def connect_ecat(ifname, dict_f, slave=1, use_eoe_comms=1):
     """
     Connect the drive through SOEM communications.
@@ -344,26 +347,6 @@ class Servo(object):
             inst._errors = inst._get_all_errors(dict_f)
 
         return inst
-
-    def connect_ecat(self, ifname, slave, use_eoe_comms):
-        """
-        Connect drive through SOEM communications.
-
-        Args:
-            ifname: Interface name.
-            slave: Slave number.
-            use_eoe_comms: Use of EoE communications or communicate via SDOs.
-
-        Returns:
-            int: Result code.
-
-        """
-        self.ifname = cstr(ifname) if ifname else ffi.NULL
-        self.slave = slave
-
-        r = lib.il_servo_connect_ecat(3, self.ifname, self.net._net, self._servo, self.dict_f, 1061, self.slave, use_eoe_comms)
-        time.sleep(2)
-        return r
 
     def _get_all_errors(self, dict_f):
         """
@@ -502,58 +485,6 @@ class Servo(object):
         """
         return lib.il_servo_state_subs_stop(self._servo, stop)
 
-    @property
-    def errors(self):
-        """
-        Obtain drive errors.
-
-        Returns:
-            dict: Current errors.
-        """
-        return self._errors
-
-    @property
-    def net(self):
-        """
-        Obtain servo network.
-
-        Returns:
-            Network: Current servo network.
-        """
-        return self._net
-
-    @net.setter
-    def net(self, value):
-        """
-        Set servo network.
-
-        Args:
-            value (Network): Network to be setted as servo Network.
-        """
-        self._net = value
-
-    @property
-    def subnodes(self):
-        """
-        Obtain number of subnodes.
-
-        Returns:
-            int: Current number of subnodes.
-        """
-        return int(ffi.cast('int', lib.il_servo_subnodes_get(self._servo)))
-
-    @property
-    def dict(self):
-        """
-        Obtain dictionary of the servo.
-
-        Returns:
-            dict: Current dictionary of the servo.
-        """
-        _dict = lib.il_servo_dict_get(self._servo)
-
-        return Dictionary._from_dict(_dict) if _dict else None
-
     def dict_load(self, dict_f):
         """
         Load dictionary.
@@ -574,75 +505,6 @@ class Servo(object):
             dict_f (str): Dictionary.
         """
         self._errors = self._get_all_errors(dict_f)
-
-    @deprecated(new_func_name='save_configuration')
-    def dict_storage_read(self, new_path, subnode=0):
-        """
-        Read all dictionary registers content and put it to the dictionary
-        storage.
-
-        Args:
-            new_path (str): Dictionary.
-
-        """
-        prod_code, rev_number = get_drive_identification(self, subnode)
-
-        r = lib.il_servo_dict_storage_read(self._servo)
-        raise_err(r)
-
-        self.dict.save(new_path)
-
-        tree = ET.parse(new_path)
-        xml_data = tree.getroot()
-
-        body = xml_data.find('Body')
-        device = xml_data.find('Body/Device')
-        categories = xml_data.find('Body/Device/Categories')
-        errors = xml_data.find('Body/Errors')
-
-        if 'ProductCode' in device.attrib and prod_code is not None:
-            device.attrib['ProductCode'] = str(prod_code)
-        if 'RevisionNumber' in device.attrib and rev_number is not None:
-            device.attrib['RevisionNumber'] = str(rev_number)
-
-        registers_category = xml_data.find('Body/Device/Registers')
-        registers = xml_data.findall('Body/Device/Registers/Register')
-        if registers_category is None:
-            registers_category = xml_data.find('Body/Device/Axes/Axis/Registers')
-            registers = xml_data.findall('Body/Device/Axes/Axis/Registers/Register')
-
-        for register in registers:
-            if register.attrib['subnode'] != str(subnode) and subnode > 0 and register in registers_category:
-                registers_category.remove(register)
-            cleanup_register(register)
-
-        device.remove(categories)
-        body.remove(errors)
-
-        image = xml_data.find('./DriveImage')
-        if image is not None:
-            xml_data.remove(image)
-
-        xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(indent="  ", newl='')
-
-        config_file = io.open(new_path, "w", encoding='utf8')
-        config_file.write(xmlstr)
-        config_file.close()
-
-    @deprecated(new_func_name='load_configuration')
-    def dict_storage_write(self, dict_f, subnode=0):
-        """
-        Write current dictionary storage to the servo drive.
-
-        Args:
-            dict_f (str): Dictionary.
-            subnode (int, optional): Subnode.
-
-        """
-        r = lib.il_servo_dict_storage_write(self._servo, cstr(dict_f), subnode)
-        if not hasattr(self, '_errors') or not self._errors:
-            self._errors = self._get_all_errors(dict_f)
-        raise_err(r)
 
     def load_configuration(self, dict_f, subnode=0):
         """
@@ -717,71 +579,6 @@ class Servo(object):
         config_file.close()
 
         return r
-
-    @property
-    def name(self):
-        """
-        Obtain servo name.
-
-        Returns:
-            str: Name.
-        """
-        name = ffi.new('char []', lib.IL_SERVO_NAME_SZ)
-
-        r = lib.il_servo_name_get(self._servo, name, ffi.sizeof(name))
-        raise_err(r)
-
-        return pstr(name)
-
-    @name.setter
-    def name(self, name):
-        """
-        Set servo name.
-
-        Args:
-            name (str): Name.
-        """
-        name_ = ffi.new('char []', cstr(name))
-
-        r = lib.il_servo_name_set(self._servo, name_)
-        raise_err(r)
-
-    @property
-    def info(self):
-        """
-        Obtain servo information.
-
-        Returns:
-            dict: Servo information.
-        """
-        info = ffi.new('il_servo_info_t *')
-
-        r = lib.il_servo_info_get(self._servo, info)
-        raise_err(r)
-
-        PRODUCT_ID_REG = Register(identifier='', address=0x06E1,
-                                  dtype=REG_DTYPE.U32,
-                                  access=REG_ACCESS.RO, cyclic='CONFIG',
-                                  units='0')
-
-        product_id = self.read(PRODUCT_ID_REG)
-
-        return {'serial': info.serial,
-                'name': pstr(info.name),
-                'sw_version': pstr(info.sw_version),
-                'hw_variant': pstr(info.hw_variant),
-                'prod_code': product_id,
-                'revision': info.revision}
-
-    def store_all(self, subnode=1):
-        """
-        Store all servo current parameters to the NVM.
-
-        Args:
-            subnode (int, optional): Subnode.
-        """
-        r = lib.il_servo_store_all(self._servo, subnode)
-        raise_err(r)
 
     def store_comm(self):
         """
@@ -877,13 +674,13 @@ class Servo(object):
         except Exception as e:
             pass
         if _reg.dtype == REG_DTYPE.STR:
-            value =  self._net.extended_buffer
+            value = self._net.extended_buffer
         else:
             value = v[0]
 
         if isinstance(value, str):
             value = value.replace('\x00', '')
-        return  value
+        return value
 
     def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
         """
@@ -961,49 +758,54 @@ class Servo(object):
         """
         return lib.il_servo_units_factor(self._servo, reg._reg)
 
-    @property
-    def units_torque(self):
+    def wait_reached(self, timeout):
         """
-        SERVO_UNITS_TORQUE: Torque units.
-        """
-        return SERVO_UNITS_TORQUE(lib.il_servo_units_torque_get(self._servo))
+        Wait until the servo does a target reach.
 
-    @units_torque.setter
-    def units_torque(self, units):
-        lib.il_servo_units_torque_set(self._servo, units.value)
-
-    @property
-    def units_pos(self):
+        Args:
+            timeout (int, float): Timeout (s).
         """
-        SERVO_UNITS_POS: Position units.
-        """
-        return SERVO_UNITS_POS(lib.il_servo_units_pos_get(self._servo))
+        r = lib.il_servo_wait_reached(self._servo, to_ms(timeout))
+        raise_err(r)
 
-    @units_pos.setter
-    def units_pos(self, units):
-        lib.il_servo_units_pos_set(self._servo, units.value)
-
-    @property
-    def units_vel(self):
+    def disturbance_write_data(self, channels, dtypes, data_arr):
         """
-        SERVO_UNITS_VEL: Velocity units.
-        """
-        return SERVO_UNITS_VEL(lib.il_servo_units_vel_get(self._servo))
+        Write disturbance data.
 
-    @units_vel.setter
-    def units_vel(self, units):
-        lib.il_servo_units_vel_set(self._servo, units.value)
-
-    @property
-    def units_acc(self):
+        Args:
+            channels (int or list of int): Channel identifier.
+            dtypes (int or list of int): Data type.
+            data_arr (list or list of list): Data array.
         """
-        SERVO_UNITS_ACC: Acceleration units.
-        """
-        return SERVO_UNITS_ACC(lib.il_servo_units_acc_get(self._servo))
-
-    @units_acc.setter
-    def units_acc(self, units):
-        lib.il_servo_units_acc_set(self._servo, units.value)
+        if not isinstance(channels, list):
+            channels = [channels]
+        if not isinstance(dtypes, list):
+            dtypes = [dtypes]
+        if not isinstance(data_arr[0], list):
+            data_arr = [data_arr]
+        num_samples = len(data_arr[0])
+        self.write(DIST_NUMBER_SAMPLES, num_samples, subnode=0)
+        sample_size = 0
+        for dtype_val in dtypes:
+            sample_size += dtype_size(dtype_val)
+        samples_for_write = DIST_FRAME_SIZE // sample_size
+        number_writes = num_samples // samples_for_write
+        rest_samples = num_samples % samples_for_write
+        for i in range(number_writes):
+            for index, channel in enumerate(channels):
+                self.net.disturbance_channel_data(
+                    channel,
+                    dtypes[index],
+                    data_arr[index][i*samples_for_write:(i+1)*samples_for_write])
+            self.net.disturbance_data_size = sample_size*samples_for_write
+            self.write(DIST_DATA, sample_size*samples_for_write, False, 1, subnode=0)
+        for index, channel in enumerate(channels):
+            self.net.disturbance_channel_data(
+                channel,
+                dtypes[index],
+                data_arr[index][number_writes*samples_for_write:num_samples])
+        self.net.disturbance_data_size = rest_samples * sample_size
+        self.write(DIST_DATA, rest_samples * sample_size, False, 1, subnode=0)
 
     def disable(self, subnode=1):
         """
@@ -1048,6 +850,229 @@ class Servo(object):
         r = lib.il_servo_fault_reset(self._servo, subnode)
         raise_err(r)
 
+    def homing_start(self):
+        """
+        Start the homing procedure.
+        """
+        r = lib.il_servo_homing_start(self._servo)
+        raise_err(r)
+
+    def homing_wait(self, timeout):
+        """
+        Wait until homing completes.
+
+        Notes:
+            The homing itself has a configurable timeout. The timeout given
+            here is purely a 'communications' timeout, e.g. it could happen
+            that the statusword change is never received. This timeout
+            should be >= than the programmed homing timeout.
+
+        Args:
+            timeout (int, float): Timeout (s).
+        """
+        r = lib.il_servo_homing_wait(self._servo, to_ms(timeout))
+        raise_err(r)
+
+    @deprecated
+    def connect_ecat(self, ifname, slave, use_eoe_comms):
+        """
+        Connect drive through SOEM communications.
+
+        Args:
+            ifname: Interface name.
+            slave: Slave number.
+            use_eoe_comms: Use of EoE communications or communicate via SDOs.
+
+        Returns:
+            int: Result code.
+
+        """
+        self.ifname = cstr(ifname) if ifname else ffi.NULL
+        self.slave = slave
+
+        r = lib.il_servo_connect_ecat(3, self.ifname, self.net._net, self._servo, self.dict_f, 1061, self.slave, use_eoe_comms)
+        time.sleep(2)
+        return r
+
+    @deprecated('store_parameters')
+    def store_all(self, subnode=1):
+        """
+        Store all servo current parameters to the NVM.
+
+        Args:
+            subnode (int, optional): Subnode.
+        """
+        r = lib.il_servo_store_all(self._servo, subnode)
+        raise_err(r)
+
+    @deprecated(new_func_name='save_configuration')
+    def dict_storage_read(self, new_path, subnode=0):
+        """
+        Read all dictionary registers content and put it to the dictionary
+        storage.
+
+        Args:
+            new_path (str): Dictionary.
+
+        """
+        prod_code, rev_number = get_drive_identification(self, subnode)
+
+        r = lib.il_servo_dict_storage_read(self._servo)
+        raise_err(r)
+
+        self.dict.save(new_path)
+
+        tree = ET.parse(new_path)
+        xml_data = tree.getroot()
+
+        body = xml_data.find('Body')
+        device = xml_data.find('Body/Device')
+        categories = xml_data.find('Body/Device/Categories')
+        errors = xml_data.find('Body/Errors')
+
+        if 'ProductCode' in device.attrib and prod_code is not None:
+            device.attrib['ProductCode'] = str(prod_code)
+        if 'RevisionNumber' in device.attrib and rev_number is not None:
+            device.attrib['RevisionNumber'] = str(rev_number)
+
+        registers_category = xml_data.find('Body/Device/Registers')
+        registers = xml_data.findall('Body/Device/Registers/Register')
+        if registers_category is None:
+            registers_category = xml_data.find('Body/Device/Axes/Axis/Registers')
+            registers = xml_data.findall('Body/Device/Axes/Axis/Registers/Register')
+
+        for register in registers:
+            if register.attrib['subnode'] != str(subnode) and subnode > 0 and register in registers_category:
+                registers_category.remove(register)
+            cleanup_register(register)
+
+        device.remove(categories)
+        body.remove(errors)
+
+        image = xml_data.find('./DriveImage')
+        if image is not None:
+            xml_data.remove(image)
+
+        xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(indent="  ", newl='')
+
+        config_file = io.open(new_path, "w", encoding='utf8')
+        config_file.write(xmlstr)
+        config_file.close()
+
+    @deprecated(new_func_name='load_configuration')
+    def dict_storage_write(self, dict_f, subnode=0):
+        """
+        Write current dictionary storage to the servo drive.
+
+        Args:
+            dict_f (str): Dictionary.
+            subnode (int, optional): Subnode.
+
+        """
+        r = lib.il_servo_dict_storage_write(self._servo, cstr(dict_f), subnode)
+        if not hasattr(self, '_errors') or not self._errors:
+            self._errors = self._get_all_errors(dict_f)
+        raise_err(r)
+
+    @property
+    def name(self):
+        """
+        Obtain servo name.
+
+        Returns:
+            str: Name.
+        """
+        name = ffi.new('char []', lib.IL_SERVO_NAME_SZ)
+
+        r = lib.il_servo_name_get(self._servo, name, ffi.sizeof(name))
+        raise_err(r)
+
+        return pstr(name)
+
+    @name.setter
+    def name(self, name):
+        """
+        Set servo name.
+
+        Args:
+            name (str): Name.
+        """
+        name_ = ffi.new('char []', cstr(name))
+
+        r = lib.il_servo_name_set(self._servo, name_)
+        raise_err(r)
+
+    @property
+    def info(self):
+        """
+        Obtain servo information.
+
+        Returns:
+            dict: Servo information.
+        """
+        info = ffi.new('il_servo_info_t *')
+
+        r = lib.il_servo_info_get(self._servo, info)
+        raise_err(r)
+
+        PRODUCT_ID_REG = Register(identifier='', address=0x06E1,
+                                  dtype=REG_DTYPE.U32,
+                                  access=REG_ACCESS.RO, cyclic='CONFIG',
+                                  units='0')
+
+        product_id = self.read(PRODUCT_ID_REG)
+
+        return {'serial': info.serial,
+                'name': pstr(info.name),
+                'sw_version': pstr(info.sw_version),
+                'hw_variant': pstr(info.hw_variant),
+                'prod_code': product_id,
+                'revision': info.revision}
+
+    @property
+    def units_torque(self):
+        """
+        SERVO_UNITS_TORQUE: Torque units.
+        """
+        return SERVO_UNITS_TORQUE(lib.il_servo_units_torque_get(self._servo))
+
+    @units_torque.setter
+    def units_torque(self, units):
+        lib.il_servo_units_torque_set(self._servo, units.value)
+
+    @property
+    def units_pos(self):
+        """
+        SERVO_UNITS_POS: Position units.
+        """
+        return SERVO_UNITS_POS(lib.il_servo_units_pos_get(self._servo))
+
+    @units_pos.setter
+    def units_pos(self, units):
+        lib.il_servo_units_pos_set(self._servo, units.value)
+
+    @property
+    def units_vel(self):
+        """
+        SERVO_UNITS_VEL: Velocity units.
+        """
+        return SERVO_UNITS_VEL(lib.il_servo_units_vel_get(self._servo))
+
+    @units_vel.setter
+    def units_vel(self, units):
+        lib.il_servo_units_vel_set(self._servo, units.value)
+
+    @property
+    def units_acc(self):
+        """
+        SERVO_UNITS_ACC: Acceleration units.
+        """
+        return SERVO_UNITS_ACC(lib.il_servo_units_acc_get(self._servo))
+
+    @units_acc.setter
+    def units_acc(self, units):
+        lib.il_servo_units_acc_set(self._servo, units.value)
+
     @property
     def mode(self):
         """
@@ -1074,28 +1099,57 @@ class Servo(object):
         r = lib.il_servo_mode_set(self._servo, mode.value)
         raise_err(r)
 
-    def homing_start(self):
+    @property
+    def errors(self):
         """
-        Start the homing procedure.
-        """
-        r = lib.il_servo_homing_start(self._servo)
-        raise_err(r)
+        Obtain drive errors.
 
-    def homing_wait(self, timeout):
+        Returns:
+            dict: Current errors.
         """
-        Wait until homing completes.
+        return self._errors
 
-        Notes:
-            The homing itself has a configurable timeout. The timeout given
-            here is purely a 'communications' timeout, e.g. it could happen
-            that the statusword change is never received. This timeout
-            should be >= than the programmed homing timeout.
+    @property
+    def net(self):
+        """
+        Obtain servo network.
+
+        Returns:
+            Network: Current servo network.
+        """
+        return self._net
+
+    @net.setter
+    def net(self, value):
+        """
+        Set servo network.
 
         Args:
-            timeout (int, float): Timeout (s).
+            value (Network): Network to be setted as servo Network.
         """
-        r = lib.il_servo_homing_wait(self._servo, to_ms(timeout))
-        raise_err(r)
+        self._net = value
+
+    @property
+    def subnodes(self):
+        """
+        Obtain number of subnodes.
+
+        Returns:
+            int: Current number of subnodes.
+        """
+        return int(ffi.cast('int', lib.il_servo_subnodes_get(self._servo)))
+
+    @property
+    def dict(self):
+        """
+        Obtain dictionary of the servo.
+
+        Returns:
+            dict: Current dictionary of the servo.
+        """
+        _dict = lib.il_servo_dict_get(self._servo)
+
+        return Dictionary._from_dict(_dict) if _dict else None
 
     @property
     def ol_voltage(self):
@@ -1283,52 +1337,3 @@ class Servo(object):
         raise_err(r)
 
         return res[0]
-
-    def wait_reached(self, timeout):
-        """
-        Wait until the servo does a target reach.
-
-        Args:
-            timeout (int, float): Timeout (s).
-        """
-        r = lib.il_servo_wait_reached(self._servo, to_ms(timeout))
-        raise_err(r)
-
-    def disturbance_write_data(self, channels, dtypes, data_arr):
-        """
-        Write disturbance data.
-
-        Args:
-            channels (int or list of int): Channel identifier.
-            dtypes (int or list of int): Data type.
-            data_arr (list or list of list): Data array.
-        """
-        if not isinstance(channels, list):
-            channels = [channels]
-        if not isinstance(dtypes, list):
-            dtypes = [dtypes]
-        if not isinstance(data_arr[0], list):
-            data_arr = [data_arr]
-        num_samples = len(data_arr[0])
-        self.write(DIST_NUMBER_SAMPLES, num_samples, subnode=0)
-        sample_size = 0
-        for dtype_val in dtypes:
-            sample_size += dtype_size(dtype_val)
-        samples_for_write = DIST_FRAME_SIZE // sample_size
-        number_writes = num_samples // samples_for_write
-        rest_samples = num_samples % samples_for_write
-        for i in range(number_writes):
-            for index, channel in enumerate(channels):
-                self.net.disturbance_channel_data(
-                    channel,
-                    dtypes[index],
-                    data_arr[index][i*samples_for_write:(i+1)*samples_for_write])
-            self.net.disturbance_data_size = sample_size*samples_for_write
-            self.write(DIST_DATA, sample_size*samples_for_write, False, 1, subnode=0)
-        for index, channel in enumerate(channels):
-            self.net.disturbance_channel_data(
-                channel,
-                dtypes[index],
-                data_arr[index][number_writes*samples_for_write:num_samples])
-        self.net.disturbance_data_size = rest_samples * sample_size
-        self.write(DIST_DATA, rest_samples * sample_size, False, 1, subnode=0)
