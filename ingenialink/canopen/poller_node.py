@@ -1,4 +1,4 @@
-from .._utils import raise_null, raise_err, to_ms
+from ..utils._utils import raise_null, raise_err, to_ms
 from .constants import *
 
 from datetime import datetime
@@ -6,6 +6,7 @@ from threading import Timer, Thread, Event, RLock
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
+
 
 class PollerTimer():
     """ Custom timer for the Poller.
