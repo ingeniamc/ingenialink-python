@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 from .registers import Register, REG_ACCESS, REG_DTYPE, REG_PHY
-from .._utils import *
+from ..utils._utils import *
 from .._ingenialink import lib
 
 
