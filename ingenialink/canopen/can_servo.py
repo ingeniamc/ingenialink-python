@@ -6,8 +6,9 @@ import xml.etree.ElementTree as ET
 
 from ingenialink.utils._utils import *
 from .constants import *
-from ..servo import SERVO_STATE
+from ..exceptions import *
 from .._ingenialink import lib
+from ..servo import SERVO_STATE
 from .can_dictionary import CanopenDictionary
 from .can_register import CanopenRegister, REG_DTYPE, REG_ACCESS
 
@@ -18,7 +19,9 @@ PASSWORD_STORE_ALL = 0x65766173
 PASSWORD_RESTORE_ALL = 0x64616F6C
 SINGLE_AXIS_MINIMUM_SUBNODES = 2
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
-
+UID_DRV_STORE_MOCO_ALL = 'DRV_STORE_MOCO_ALL'
+UID_CIA301_COMMS_STORE_ALL = 'CIA301_COMMS_STORE_ALL'
+UID_CIA301_COMMS_RESTORE_ALL = 'CIA301_COMMS_RESTORE_ALL'
 
 SERIAL_NUMBER = CanopenRegister(
     identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00",
@@ -66,30 +69,6 @@ CONTROL_WORD_REGISTERS = {
         cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     )
 }
-STORE_COCO_ALL = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x1010", subidx="0x01", cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-)
-
-RESTORE_COCO_ALL = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x1011", subidx="0x01", cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-)
-
-STORE_MOCO_ALL_REGISTERS = {
-    1: CanopenRegister(
-        identifier='', units='', subnode=1, idx="0x26DB", subidx="0x00",
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    ),
-    2: CanopenRegister(
-        identifier='', units='', subnode=2, idx="0x2EDB", subidx="0x00",
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    ),
-    3: CanopenRegister(
-        identifier='', units='', subnode=3, idx="0x36DB", subidx="0x00",
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    )
-}
 
 
 class ServoStatusListener(threading.Thread):
@@ -107,7 +86,7 @@ class ServoStatusListener(threading.Thread):
         while not self.__stop:
             for subnode in range(1, self.__parent.subnodes):
                 try:
-                    status_word = self.__parent.raw_read(
+                    status_word = self.__parent.read(
                         STATUS_WORD_REGISTERS[subnode], subnode=subnode
                     )
                     state = self.__parent.status_word_decode(status_word)
@@ -156,7 +135,7 @@ class CanopenServo(object):
         self.__servo_status_listener = None
 
         if servo_status_listener:
-            status_word = self.raw_read(STATUS_WORD_REGISTERS[1])
+            status_word = self.read(STATUS_WORD_REGISTERS[1])
             state = self.status_word_decode(status_word)
             self.set_state(state, 1)
 
@@ -209,7 +188,7 @@ class CanopenServo(object):
 
         Raises:
             TypeError: If the register type is not valid.
-            ILAccessError: Wrong acces to the register.
+            ILAccessError: Wrong access to the register.
             ILIOError: Error reading the register.
         """
         _reg = self.get_reg(reg, subnode)
@@ -345,8 +324,8 @@ class CanopenServo(object):
         """
         r = 0
 
-        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                    subnode=subnode)
+        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
         state = self.status_word_decode(status_word)
         self.set_state(state, subnode)
 
@@ -358,8 +337,8 @@ class CanopenServo(object):
                 return r
 
         while self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
-            status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                        subnode=subnode)
+            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
             state = self.status_word_decode(status_word)
             self.set_state(state, subnode)
             if self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
@@ -374,8 +353,8 @@ class CanopenServo(object):
                 elif self.state[subnode].value == lib.IL_SERVO_STATE_RDY:
                     cmd = IL_MC_PDS_CMD_SOEO
 
-                self.raw_write(CONTROL_WORD_REGISTERS[subnode], cmd,
-                               subnode=subnode)
+                self.write(CONTROL_WORD_REGISTERS[subnode], cmd,
+                           subnode=subnode)
 
                 # Wait for state change
                 r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
@@ -384,8 +363,8 @@ class CanopenServo(object):
                     return r
 
                 # Read the current status word
-                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                            subnode=subnode)
+                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self.set_state(state, subnode)
         raise_err(r)
@@ -401,8 +380,8 @@ class CanopenServo(object):
         """
         r = 0
 
-        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                    subnode=subnode)
+        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
         state = self.status_word_decode(status_word)
         self.set_state(state, subnode)
 
@@ -416,22 +395,22 @@ class CanopenServo(object):
                 r = self.fault_reset(subnode=subnode)
                 if r < 0:
                     return r
-                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                            subnode=subnode)
+                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self.set_state(state, subnode)
             elif self.state[subnode].value != lib.IL_SERVO_STATE_DISABLED:
                 # Check state and command action to reach disabled
-                self.raw_write(CONTROL_WORD_REGISTERS[subnode],
-                               IL_MC_PDS_CMD_DV, subnode=subnode)
+                self.write(CONTROL_WORD_REGISTERS[subnode],
+                           IL_MC_PDS_CMD_DV, subnode=subnode)
 
                 # Wait until statusword changes
                 r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
                                                  subnode=1)
                 if r < 0:
                     return r
-                status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                            subnode=subnode)
+                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self.set_state(state, subnode)
         raise_err(r)
@@ -447,8 +426,8 @@ class CanopenServo(object):
         """
         r = 0
         retries = 0
-        status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                    subnode=subnode)
+        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
         state = self.status_word_decode(status_word)
         self.set_state(state, subnode)
         while self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
@@ -457,11 +436,11 @@ class CanopenServo(object):
             if retries == FAULT_RESET_RETRIES:
                 return lib.IL_ESTATE
 
-            status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                        subnode=subnode)
-            self.raw_write(CONTROL_WORD_REGISTERS[subnode], 0, subnode=subnode)
-            self.raw_write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR,
-                           subnode=subnode)
+            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
+            self.write(CONTROL_WORD_REGISTERS[subnode], 0, subnode=subnode)
+            self.write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR,
+                       subnode=subnode)
             # Wait until status word changes
             r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
                                              subnode=1)
@@ -476,7 +455,7 @@ class CanopenServo(object):
 
         Args:
             new_path (str): Destination path for the configuration file.
-            subnode (int): Subnode of the drive.
+            subnode (int): Subnode of the axis.
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
 
@@ -514,8 +493,8 @@ class CanopenServo(object):
                 element_subnode = int(register.attrib['subnode'])
                 if subnode == 0 or subnode == element_subnode:
                     if register.attrib['access'] == 'rw':
-                        storage = self.raw_read(register.attrib['id'],
-                                                subnode=element_subnode)
+                        storage = self.read(register.attrib['id'],
+                                            subnode=element_subnode)
                         register.set('storage', str(storage))
 
                         # Update register object
@@ -525,7 +504,7 @@ class CanopenServo(object):
                 else:
                     registers_category.remove(register)
             except BaseException as e:
-                logger.error("Exception during dict_storage_read, "
+                logger.error("Exception during save_configuration, "
                              "register %s: %s",
                              str(register.attrib['id']), e)
             cleanup_register(register)
@@ -542,7 +521,7 @@ class CanopenServo(object):
 
         Args:
             path (str): Path to the dictionary.
-            subnode (int): Subnode of the drive.
+            subnode (int): Subnode of the axis.
         """
         with open(path, 'r') as xml_file:
             tree = ET.parse(xml_file)
@@ -562,12 +541,12 @@ class CanopenServo(object):
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
                     if subnode == 0 or subnode == int(element.attrib['subnode']):
-                        self.raw_write(element.attrib['id'],
-                                       float(element.attrib['storage']),
-                                       subnode=int(element.attrib['subnode'])
-                                       )
+                        self.write(element.attrib['id'],
+                                   float(element.attrib['storage']),
+                                   subnode=int(element.attrib['subnode'])
+                                   )
             except BaseException as e:
-                logger.error("Exception during dict_storage_write, register "
+                logger.error("Exception during load_configuration, register "
                              "%s: %s", str(element.attrib['id']), e)
 
     def update_dictionary(self, dictionary):
@@ -579,73 +558,106 @@ class CanopenServo(object):
         self.__dict = CanopenDictionary(dictionary)
 
     def store_parameters(self, subnode=1, sdo_timeout=3):
+        """ Store all the current parameters of the target subnode.
+
+        Args:
+            subnode (int): Subnode of the axis.
+            sdo_timeout (int): Timeout value for each SDO response.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+        """
         r = 0
         self.change_sdo_timeout(sdo_timeout)
 
-        if subnode == 0:
-            # Store all
-            try:
-                self.write(reg=STORE_COCO_ALL,
-                           data=PASSWORD_STORE_ALL,
-                           subnode=subnode)
-                logger.info('Store all successfully done.')
-            except Exception as e:
-                logger.warning('Store all COCO failed. Trying MOCO...')
-                r = -1
-            if r < 0:
-                if self.__dict.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
-                    # Multiaxis
-                    for dict_subnode in self.__dict.subnodes:
-                        try:
-                            self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
-                                       data=PASSWORD_STORE_ALL,
-                                       subnode=dict_subnode)
-                            logger.info('Store axis {} successfully done.'.format(
-                                dict_subnode))
-                        except Exception as e:
-                            r = -1
-                            logger.exception(e)
-                            break
-                else:
-                    # Single axis
-                    try:
-                        self.write(reg=STORE_MOCO_ALL_REGISTERS[1],
+        try:
+            if subnode == 0:
+                # Store all
+                try:
+                    if self.__dict.get_regs(subnode).get(
+                            UID_CIA301_COMMS_STORE_ALL, None):
+                        self.write(reg=UID_CIA301_COMMS_STORE_ALL,
                                    data=PASSWORD_STORE_ALL,
-                                   subnode=1)
+                                   subnode=subnode)
                         logger.info('Store all successfully done.')
-                    except Exception as e:
-                        logger.exception(e)
+                    else:
+                        logger.warning('COCO Store all "{}" does not '
+                                       'exist in the dictionary.  Trying '
+                                       'MOCO...'.format(UID_CIA301_COMMS_STORE_ALL))
                         r = -1
-        elif subnode > 0:
-            # Store axis
-            try:
-                self.write(reg=STORE_MOCO_ALL_REGISTERS[subnode],
-                           data=PASSWORD_STORE_ALL,
-                           subnode=subnode)
-                logger.info('Store axis {} successfully done.'.format(subnode))
-            except Exception as e:
-                logger.exception(e)
-                r = -1
-        else:
-            logger.error('Invalid subnode')
-            r = -2
-
-        self.change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
-
-        return r
+                except Exception as e:
+                    logger.warning('Store all COCO failed writing. Trying MOCO...')
+                    r = -1
+                if r < 0:
+                    if self.__dict.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
+                        # Multiaxis
+                        for dict_subnode in self.__dict.subnodes:
+                            if self.__dict.get_regs(dict_subnode).get(
+                                    UID_DRV_STORE_MOCO_ALL,
+                                    None):
+                                self.write(reg=UID_DRV_STORE_MOCO_ALL,
+                                           data=PASSWORD_STORE_ALL,
+                                           subnode=dict_subnode)
+                                logger.info('Store axis {} successfully done.'.format(
+                                    dict_subnode))
+                            else:
+                                raise_err(
+                                    lib.IL_REGNOTFOUND,
+                                    'Register {}, axis {}, does not '
+                                    'exist in the dictionary.'.format(
+                                        UID_DRV_STORE_MOCO_ALL,
+                                        dict_subnode)
+                                )
+                    else:
+                        # Single axis
+                        if self.__dict.get_regs(1).get(UID_DRV_STORE_MOCO_ALL, None):
+                            self.write(reg=UID_DRV_STORE_MOCO_ALL,
+                                       data=PASSWORD_STORE_ALL,
+                                       subnode=1)
+                            logger.info('Store all successfully done.')
+                        else:
+                            raise_err(
+                                lib.IL_REGNOTFOUND,
+                                'Register {} does not '
+                                'exist in the dictionary.'.format(UID_DRV_STORE_MOCO_ALL)
+                            )
+            elif 0 < subnode < self.__dict.subnodes:
+                # Store axis
+                if self.__dict.get_regs(subnode).get(UID_DRV_STORE_MOCO_ALL, None):
+                    self.write(reg=UID_DRV_STORE_MOCO_ALL,
+                               data=PASSWORD_STORE_ALL,
+                               subnode=subnode)
+                    logger.info('Store axis {} successfully done.'.format(subnode))
+                else:
+                    raise_err(
+                        lib.IL_REGNOTFOUND,
+                        'Register {} does not '
+                        'exist in the dictionary.'.format(UID_DRV_STORE_MOCO_ALL)
+                    )
+            else:
+                raise ILError('Invalid subnode')
+        finally:
+            self.change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
     def restore_parameters(self):
-        r = 0
-        try:
-            self.write(reg=RESTORE_COCO_ALL,
+        """ Restore all the current parameters of all the slave to default.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+        """
+        if self.__dict.get_regs(0).get(UID_CIA301_COMMS_RESTORE_ALL, None):
+            self.write(reg=UID_CIA301_COMMS_RESTORE_ALL,
                        data=PASSWORD_RESTORE_ALL,
                        subnode=0)
             logger.info('Restore all successfully done.')
-        except Exception as e:
-            logger.exception(e)
-            r = -1
-
-        return r
+        else:
+            raise_err(
+                lib.IL_REGNOTFOUND,
+                'Register {} does not '
+                'exist in the dictionary.'.format(UID_DRV_STORE_MOCO_ALL)
+            )
 
     def change_sdo_timeout(self, value):
         """ Changes the SDO timeout of the node. """
@@ -681,7 +693,8 @@ class CanopenServo(object):
         self.__servo_state_observers.append(cb)
         return r
 
-    def status_word_decode(self, status_word):
+    @staticmethod
+    def status_word_decode(status_word):
         """ Decodes the status word to a known value.
 
         Args:
@@ -723,16 +736,17 @@ class CanopenServo(object):
         """
         r = 0
         start_time = int(round(time.time() * 1000))
-        actual_status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                           subnode=1)
+        actual_status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                       subnode=1)
         while actual_status_word == status_word:
             current_time = int(round(time.time() * 1000))
             time_diff = (current_time - start_time)
             if time_diff > timeout:
                 r = lib.IL_ETIMEDOUT
                 return r
-            actual_status_word = self.raw_read(STATUS_WORD_REGISTERS[subnode],
-                                               subnode=1)
+            actual_status_word = self.read(
+                STATUS_WORD_REGISTERS[subnode],
+                subnode=1)
         return r
 
     def stop_status_listener(self):
@@ -908,7 +922,7 @@ class CanopenServo(object):
         """
         r = 0
         try:
-            self.raw_write(STORE_MOCO_ALL_REGISTERS[subnode], PASSWORD_STORE_ALL,
+            self.raw_write(UID_DRV_STORE_MOCO_ALL, PASSWORD_STORE_ALL,
                            subnode=subnode)
         except Exception as e:
             r = -1
@@ -968,10 +982,10 @@ class CanopenServo(object):
     @property
     def info(self):
         """ dict: Servo information. """
-        serial_number = self.raw_read(SERIAL_NUMBER)
-        product_code = self.raw_read(PRODUCT_CODE)
-        sw_version = self.raw_read(SOFTWARE_VERSION)
-        revision_number = self.raw_read(REVISION_NUMBER)
+        serial_number = self.read(SERIAL_NUMBER)
+        product_code = self.read(PRODUCT_CODE)
+        sw_version = self.read(SOFTWARE_VERSION)
+        revision_number = self.read(REVISION_NUMBER)
         hw_variant = 'A'
 
         info = {
