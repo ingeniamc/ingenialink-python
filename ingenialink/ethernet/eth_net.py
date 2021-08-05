@@ -33,7 +33,7 @@ class EthernetNetwork(Network):
             self.msg = "{}\n{}".format(self.msg, error_msg)
         print(error_msg)
 
-    def load_fw(self, fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
+    def load_firmware(self, fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
         try:
             file = open(fw_file, 'rb')
             ftp_output = None
