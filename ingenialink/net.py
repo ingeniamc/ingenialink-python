@@ -3,13 +3,10 @@ from time import sleep
 
 from ._ingenialink import lib, ffi
 from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err, to_ms, deprecated
+from ingenialink.utils.udp import UDP
 from .registers import REG_DTYPE
-from .exceptions import *
 
 import numpy as np
-import socket
-import struct
-import binascii
 import os
 
 import ingenialogger
@@ -116,6 +113,7 @@ def devices(prot):
     return found
 
 
+@deprecated
 def eeprom_tool(ifname, mode, filename):
     """
     Tool to modify and verify drive EEPROM.
@@ -136,6 +134,7 @@ def eeprom_tool(ifname, mode, filename):
     return lib.il_net_eeprom_tool(net__, ifname, 1, mode.value, filename)
 
 
+@deprecated
 def master_startup(ifname, if_address_ip):
     """
     Start SOEM master.
@@ -154,11 +153,13 @@ def master_startup(ifname, if_address_ip):
     return lib.il_net_master_startup(net__, ifname, if_address_ip), net__
 
 
+@deprecated
 def num_slaves_get(ifname):
     ifname = cstr(ifname) if ifname else ffi.NULL
     return lib.il_net_num_slaves_get(ifname)
 
 
+@deprecated
 def master_stop(net):
     """
     Stop SOEM master.
@@ -169,6 +170,7 @@ def master_stop(net):
     return lib.il_net_master_stop(net)
 
 
+@deprecated
 def update_firmware_moco(node, subnode, ip, port, moco_file):
     """
     Update MOCO firmware through UDP protocol.
@@ -220,6 +222,7 @@ def update_firmware_moco(node, subnode, ip, port, moco_file):
     return r
 
 
+@deprecated
 def update_firmware(ifname, filename, is_summit=False, slave=1):
     """
     Update firmware through FoE.
@@ -241,6 +244,7 @@ def update_firmware(ifname, filename, is_summit=False, slave=1):
                                              filename, is_summit)
 
 
+@deprecated
 def force_error(ifname, if_address_ip):
     """
     Force state machine error.
@@ -268,84 +272,13 @@ def _on_found_cb(ctx, servo_id):
     self._on_found(int(servo_id))
 
 
-class UDP(object):
-    def __init__(self, port, ip):
-        self.port = port
-        self.ip = ip
-        self.rcv_buffer_size = 512
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-        self.socket.settimeout(8)
-        self.socket.connect((ip, port))
-
-    def __del__(self):
-        try:
-            self.socket.close()
-        except Exception as e:
-            logger.error('Socket already closed. Exception: %s', e)
-
-    def close(self):
-        self.socket.close()
-        logger.info('Socket closed')
-
-    def write(self, frame):
-        self.socket.sendto(frame, (self.ip, self.port))
-        self.check_ack()
-
-    def read(self):
-        data, address = self.socket.recvfrom(self.rcv_buffer_size)
-        return data
-
-    def check_ack(self):
-        rcv = self.read()
-        ret_cmd = self.unmsg(rcv)
-        if ret_cmd != 3:
-            self.socket.close()
-            raise Exception('No ACK received (command received %d)' % ret_cmd)
-        return ret_cmd
-
-    @staticmethod
-    def unmsg(in_frame):
-        # Base uart frame (subnode [4 bits], node [12 bits],
-        # Addr [12 bits], cmd [3 bits], pending [1 bit],
-        # Data [8 bytes]) and CRC [2 bytes] is 14 bytes long
-        header = in_frame[2:4]
-        cmd = struct.unpack('<H', header)[0] >> 1
-        cmd = cmd & 0x7
-
-        # CRC is computed with header and data (removing Tx CRC)
-        crc = binascii.crc_hqx(in_frame[0:12], 0)
-        crcread = struct.unpack('<H', in_frame[12:14])[0]
-        if crcread != crc:
-            raise ILUDPException('CRC error')
-
-        return cmd
-
-    @staticmethod
-    def raw_msg(node, subnode, cmd, data, size):
-        node_head = (node << 4) | (subnode & 0xf)
-        node_head = struct.pack('<H', node_head)
-
-        if size > 8:
-            cmd = cmd + 1
-            head = struct.pack('<H', cmd)
-            head_size = struct.pack('<H', size)
-            head_size = head_size + bytes([0] * (8 - len(head_size)))
-            ret = node_head + head + head_size + struct.pack('<H',
-                                                             binascii.crc_hqx(node_head + head + head_size, 0)) + data
-        else:
-            head = struct.pack('<H', cmd)
-            ret = node_head + head + data + struct.pack('<H', binascii.crc_hqx(node_head + head + data, 0))
-
-        return ret
-
-    def raw_cmd(self, node, subnode, cmd, data):
-        if len(data) > 8:
-            frame = self.raw_msg(node, subnode, cmd, data, len(data))
-        else:
-            data = data + bytes([0] * (8 - len(data)))
-            frame = self.raw_msg(node, subnode, cmd, data, len(data))
-
-        self.write(frame)
+@ffi.def_extern()
+def _on_evt_cb(ctx, evt, port):
+    """
+    On event callback shim.
+    """
+    self = ffi.from_handle(ctx)
+    self._on_evt(NET_DEV_EVT(evt), pstr(port))
 
 
 class Network(object):
@@ -383,7 +316,6 @@ class Network(object):
         #     self.slave = slave
         #     self._net = ffi.new('il_net_t **')
 
-
     @classmethod
     def _from_existing(cls, net):
         """
@@ -400,44 +332,6 @@ class Network(object):
         inst._net = ffi.gc(net, lib.il_net_fake_destroy)
 
         return inst
-
-    def master_startup(self, ifname, if_address_ip):
-        """
-        Start SOEM master.
-
-        Args:
-            ifname (str): Interface name.
-            if_address_ip (str): Interface address IP.
-
-        Returns:
-            int: Result code.
-        """
-        ifname = cstr(ifname) if ifname else ffi.NULL
-        if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
-
-        return lib.il_net_master_startup(self._net, ifname, if_address_ip)
-
-    def set_if_params(self, ifname, if_address_ip):
-        """
-        Set ethernet interface parameters.
-
-        Args:
-            ifname (str): Interface name.
-            if_address_ip (str): Interface address IP.
-
-        Returns:
-
-        """
-        return lib.il_net_set_if_params(self._net, ifname, if_address_ip)
-
-    def master_stop(self):
-        """
-        Stop SOEM master.
-
-        Returns:
-            int: Result code.
-        """
-        return lib.il_net_master_stop(self._net)
 
     def monitoring_channel_data(self, channel, dtype):
         """
@@ -654,6 +548,128 @@ class Network(object):
         r = lib.il_net_SDO_write(self._net, slave, idx, subidx, dtype, value)
         raise_err(r)
 
+    def net_mon_status(self, on_evt):
+        """
+        Calls given function everytime a connection/disconnection event is
+        raised.
+
+        Args:
+            on_evt (Callback): Function that will be called every time an event
+                            is raised.
+        """
+        if self.prot == NET_PROT.ETH or self.prot == NET_PROT.ECAT:
+            status = self.status
+            while True:
+                if status != self.status:
+                    if self.status == 0:
+                        on_evt(NET_DEV_EVT.ADDED)
+                    elif self.status == 1:
+                        on_evt(NET_DEV_EVT.REMOVED)
+                    status = self.status
+                sleep(1)
+
+    def net_mon_stop(self):
+        """
+        Stop monitoring network events.
+        """
+        lib.il_net_mon_stop(self._net)
+
+    def destroy_network(self):
+        """
+        Destroy network instance.
+        """
+        lib.il_net_destroy(self._net)
+
+    def set_reconnection_retries(self, retries):
+        """
+        Set the number of reconnection retries in our application.
+
+        Args:
+            retries (int): Number of reconnection retries.
+        """
+        return lib.il_net_set_reconnection_retries(self._net, retries)
+
+    def set_recv_timeout(self, timeout):
+        """
+        Set receive communications timeout.
+
+        Args:
+            timeout (int): Timeout in ms.
+        Returns:
+            int: Result code.
+        """
+        return lib.il_net_set_recv_timeout(self._net, timeout)
+
+    def set_status_check_stop(self, stop):
+        """
+        Start/Stop the internal monitor of the drive status.
+
+        Args:
+            stop (int): 0 to START, 1 to STOP.
+        Returns:
+            int: Result code.
+        """
+        return lib.il_net_set_status_check_stop(self._net, stop)
+
+    def close_socket(self):
+        return lib.il_net_close_socket(self._net)
+
+    @deprecated
+    def set_if_params(self, ifname, if_address_ip):
+        """
+        Set ethernet interface parameters.
+
+        Args:
+            ifname (str): Interface name.
+            if_address_ip (str): Interface address IP.
+
+        Returns:
+
+        """
+        return lib.il_net_set_if_params(self._net, ifname, if_address_ip)
+
+    @deprecated
+    def master_startup(self, ifname, if_address_ip):
+        """
+        Start SOEM master.
+
+        Args:
+            ifname (str): Interface name.
+            if_address_ip (str): Interface address IP.
+
+        Returns:
+            int: Result code.
+        """
+        ifname = cstr(ifname) if ifname else ffi.NULL
+        if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
+
+        return lib.il_net_master_startup(self._net, ifname, if_address_ip)
+
+    @deprecated
+    def connect(self):
+        """
+        Connect network.
+        """
+        r = lib.il_net_connect(self._net)
+        raise_err(r)
+
+    @deprecated
+    def disconnect(self):
+        """
+        Disconnect network.
+        """
+        lib.il_net_disconnect(self._net)
+
+    @deprecated
+    def master_stop(self):
+        """
+        Stop SOEM master.
+
+        Returns:
+            int: Result code.
+        """
+        return lib.il_net_master_stop(self._net)
+
     # Properties
     @property
     def prot(self):
@@ -789,130 +805,6 @@ class Network(object):
     @servos.setter
     def servos(self, value):
         self.__servos = value
-
-    def close_socket(self):
-        return lib.il_net_close_socket(self._net)
-
-    @deprecated
-    def connect(self):
-        """
-        Connect network.
-        """
-        r = lib.il_net_connect(self._net)
-        raise_err(r)
-
-    @deprecated
-    def disconnect(self):
-        """
-        Disconnect network.
-        """
-        lib.il_net_disconnect(self._net)
-
-    # def servos(self, on_found=None):
-    #     """
-    #     Obtain a list of attached servos.
-    #
-    #     Args:
-    #         on_found (callback, optional): Servo found callback.
-    #
-    #     Returns:
-    #         list: List of attached servos.
-    #     """
-    #     if on_found:
-    #         self._on_found = on_found
-    #
-    #         callback = lib._on_found_cb
-    #         handle = ffi.new_handle(self)
-    #     else:
-    #         self._on_found = ffi.NULL
-    #
-    #         callback = ffi.NULL
-    #         handle = ffi.NULL
-    #
-    #     servos = lib.il_net_servos_list_get(self._net, callback, handle)
-    #
-    #     found = []
-    #     curr = servos
-    #
-    #     while curr:
-    #         found.append(int(curr.id))
-    #         curr = curr.next
-    #
-    #     lib.il_net_servos_list_destroy(servos)
-    #
-    #     return found
-
-    def net_mon_status(self, on_evt):
-        """
-        Calls given function everytime a connection/disconnection event is
-        raised.
-
-        Args:
-            on_evt (Callback): Function that will be called every time an event
-                            is raised.
-        """
-        if self.prot == NET_PROT.ETH or self.prot == NET_PROT.ECAT:
-            status = self.status
-            while True:
-                if status != self.status:
-                    if self.status == 0:
-                        on_evt(NET_DEV_EVT.ADDED)
-                    elif self.status == 1:
-                        on_evt(NET_DEV_EVT.REMOVED)
-                    status = self.status
-                sleep(1)
-
-    def net_mon_stop(self):
-        """
-        Stop monitoring network events.
-        """
-        lib.il_net_mon_stop(self._net)
-
-    def destroy_network(self):
-        """
-        Destroy network instance.
-        """
-        lib.il_net_destroy(self._net)
-
-    def set_reconnection_retries(self, retries):
-        """
-        Set the number of reconnection retries in our application.
-
-        Args:
-            retries (int): Number of reconnection retries.
-        """
-        return lib.il_net_set_reconnection_retries(self._net, retries)
-
-    def set_recv_timeout(self, timeout):
-        """
-        Set receive communications timeout.
-
-        Args:
-            timeout (int): Timeout in ms.
-        Returns:
-            int: Result code.
-        """
-        return lib.il_net_set_recv_timeout(self._net, timeout)
-
-    def set_status_check_stop(self, stop):
-        """
-        Start/Stop the internal monitor of the drive status.
-
-        Args:
-            stop (int): 0 to START, 1 to STOP.
-        Returns:
-            int: Result code.
-        """
-        return lib.il_net_set_status_check_stop(self._net, stop)
-
-
-@ffi.def_extern()
-def _on_evt_cb(ctx, evt, port):
-    """
-    On event callback shim.
-    """
-    self = ffi.from_handle(ctx)
-    self._on_evt(NET_DEV_EVT(evt), pstr(port))
 
 
 class NetworkMonitor(object):

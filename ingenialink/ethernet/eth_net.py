@@ -1,14 +1,11 @@
 from ..net import Network, NET_PROT, NET_TRANS_PROT
 from .eth_servo import EthernetServo
-from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err, to_ms
+from ingenialink.utils._utils import cstr, raise_null, raise_err
 from .._ingenialink import lib, ffi
 import ingenialogger
 
-
-
-
 from ftplib import FTP
-from os import system, remove, path
+from os import path
 
 FTP_SESSION_OK_CODE = "220"
 FTP_LOGIN_OK_CODE = "230"
@@ -20,20 +17,26 @@ logger = ingenialogger.get_logger(__name__)
 
 class EthernetNetwork(Network):
     def __init__(self):
+        super(EthernetNetwork, self).__init__()
         self.__net = None
         self.msg = ""
         opts = ffi.new('il_net_opts_t *')
         self._net = lib.il_net_create(NET_PROT.ETH.value, opts)
         raise_null(self._net)
 
-    def add_error(self, error_msg):
-        if not self.msg:
-            self.msg = error_msg
-        else:
-            self.msg = "{}\n{}".format(self.msg, error_msg)
-        print(error_msg)
+    @staticmethod
+    def load_firmware(fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
+        """ Loads a given firmware file to the target slave.
 
-    def load_firmware(self, fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
+        Args:
+            fw_file (str): Path to the firmware file to be loaded.
+            target (str): IP of the target slave.
+            ftp_user (str): FTP user to connect with.
+            ftp_pwd (str): FTP password for the given user.
+
+        Raises:
+            ILError: If the loading firmware process fails.
+        """
         try:
             file = open(fw_file, 'rb')
             ftp_output = None
@@ -76,7 +79,18 @@ class EthernetNetwork(Network):
         raise NotImplementedError
 
     def connect_to_slave(self, target, dictionary=None, port=1061,
-                communication_protocol=NET_TRANS_PROT.UDP):
+                         communication_protocol=NET_TRANS_PROT.UDP):
+        """ Connects to a slave through the given network settings.
+
+        Args:
+            target (str): IP of the target slave.
+            dictionary (str): Path to the target dictionary file.
+            port (int): Port to connect to the slave.
+            communication_protocol (NET_TRANS_PROT): Communication protocol, UPD or TCP.
+
+        Returns:
+            EthernetServo: Instance of the servo connected.
+        """
         net__ = ffi.new('il_net_t **')
         servo__ = ffi.new('il_servo_t **')
         _dictionary = cstr(dictionary) if dictionary else ffi.NULL
@@ -94,6 +108,7 @@ class EthernetNetwork(Network):
         net = Network._from_existing(net_)
         servo = EthernetServo._from_existing(servo_, _dictionary)
         servo.net = net
+        servo._net = net
         servo.target = target
         servo.dictionary = dictionary
         servo.port = port
@@ -102,16 +117,17 @@ class EthernetNetwork(Network):
         self.__net = net
         self.servos.append(servo)
 
-        return r, servo
+        return servo
 
     def disconnect_from_slave(self, servo):
-        raise NotImplementedError
+        """ Disconnects the slave from the network.
 
-    # Properties
-    @property
-    def net(self):
-        return self.__net
+        Args:
+            servo (EthernetServo): Instance of the servo connected.
 
-    @net.setter
-    def net(self, value):
-        self.__net = value
+        """
+        # TODO: This stops all connections no only the target servo.
+        self.servos.remove(servo)
+        if len(self.servos) == 0:
+            self.net_mon_stop()
+            self.close_socket()

@@ -2,37 +2,34 @@ from enum import Enum
 
 from .._ingenialink import lib
 
-from ingenialink.utils._utils import *
+from ..utils._utils import *
 from ..registers import REG_DTYPE, REG_ACCESS, REG_PHY
 
 
-class CanopenRegister(object):
-    """ CANopen Register.
+class Register(object):
+    """ Register.
 
-        Args:
-            identifier (str): Identifier.
-            units (str): Units.
-            cyclic (str): Cyclic typed register.
-            idx (str): Index of the register.
-            subidx (str): Subindex of the register.
-            dtype (REG_DTYPE): Data type.
-            access (REG_ACCESS): Access type.
-            phy (REG_PHY, optional): Physical units.
-            subnode (int): Subnode.
-            storage (any, optional): Storage.
-            range (tuple, optional): Range (min, max).
-            labels (dict, optional): Register labels.
-            enums (list): Enumeration registers.
-            enums_count (int): Number of enumeration registers.
-            cat_id (str, optional): Category ID.
-            scat_id (str, optional): Sub-category ID.
-            internal_use (int, optional): Internal use.
+    Args:
+        identifier (str): Identifier.
+        units (str): Units.
+        address (int): Address.
+        dtype (REG_DTYPE): Data type.
+        access (REG_ACCESS): Access type.
+        phy (REG_PHY, optional): Physical units.
+        subnode (int): Subnode
+        storage (any, optional): Storage.
+        range (tuple, optional): Range (min, max).
+        labels (dict, optional): Register labels.
+        cat_id (str, optional): Category ID.
+        scat_id (str, optional): Sub-category ID.
+        internal_use (int, optional): Internal use.
 
-        Raises:
-            TypeError: If any of the parameters has invalid type.
-            ILValueError: If the register is invalid.
-            ILAccessError: Register with wrong access type.
-        """
+    Raises:
+        TypeError: If any of the parameters has invalid type.
+        ILValueError: If the register is invalid.
+        ILAccessError: Register with wrong access type.
+
+    """
 
     def __init__(self, identifier, units, cyclic, idx, subidx, dtype,
                  access, phy=REG_PHY.NONE, subnode=1, storage=None,
@@ -47,6 +44,7 @@ class CanopenRegister(object):
         if not isinstance(phy, REG_PHY):
             raise_err(lib.IL_EINVAL, 'Invalid physical units type')
 
+        # Initialize register
         self.__identifier = identifier
         self.__units = units
         self.__idx = idx
@@ -231,7 +229,7 @@ class CanopenRegister(object):
     def range(self):
         """ tuple: Register range (min, max), None if undefined. """
         if self.__range:
-            return self.__range[0], self.__range[1]
+            return (self.__range[0], self.__range[1])
         return None
 
     @property
