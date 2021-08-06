@@ -29,7 +29,6 @@ class MCBNetwork(Network):
     def load_configuration(self):
         raise NotImplementedError
 
-    # Properties
     @property
     def port(self):
         return self.__port

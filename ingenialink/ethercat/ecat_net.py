@@ -56,6 +56,16 @@ class EthercatNetwork(Network):
         return slaves
 
     def connect_to_slave(self, target=1, dictionary="", use_eoe_comms=1):
+        """ Connect a slave through an EtherCAT connection.
+
+        Args:
+            target (int): Number of the target slave.
+            dictionary (str): Path to the dictionary to be loaded.
+            use_eoe_comms (int): Specify which architecture is the target based on.
+
+        Returns:
+            EthercatServo: Instance of the connected servo.
+        """
         servo = None
         _interface_name = cstr(self.__interface_name) \
             if self.__interface_name else ffi.NULL
@@ -93,7 +103,6 @@ class EthercatNetwork(Network):
             raise ILError('Error disconnecting the drive. '
                           'Return code: {}'.format(r))
 
-    # Properties
     @property
     def net_interface(self):
         return self.__net_interface

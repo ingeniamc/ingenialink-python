@@ -659,11 +659,11 @@ class CanopenServo(Servo):
             for callback in self.__servo_state_observers:
                 callback(state, None, subnode)
 
-    def subscribe_to_servo_state(self, cb):
+    def subscribe_to_servo_status(self, cb):
         """ Subscribe to state changes.
 
             Args:
-                cb: Callback
+                cb (Callback): Callback function.
 
             Returns:
                 int: Assigned slot.
@@ -671,6 +671,14 @@ class CanopenServo(Servo):
         r = len(self.__servo_state_observers)
         self.__servo_state_observers.append(cb)
         return r
+
+    def stop_servo_monitor(self):
+        """ Stops the ServoStatusListener. """
+        if self.__servo_status_listener is not None and \
+                self.__servo_status_listener.is_alive():
+            self.__servo_status_listener.activate_stop_flag()
+            self.__servo_status_listener.join()
+            self.__servo_status_listener = None
 
     def status_word_wait_change(self, status_word, timeout, subnode=1):
         """ Waits for a status word change.
@@ -697,14 +705,6 @@ class CanopenServo(Servo):
                 STATUS_WORD_REGISTERS[subnode],
                 subnode=1)
         return r
-
-    def stop_status_listener(self):
-        """ Stops the ServoStatusListener. """
-        if self.__servo_status_listener is not None and \
-                self.__servo_status_listener.is_alive():
-            self.__servo_status_listener.activate_stop_flag()
-            self.__servo_status_listener.join()
-            self.__servo_status_listener = None
 
     def emcy_subscribe(self, callback):
         raise NotImplementedError

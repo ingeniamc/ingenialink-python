@@ -234,8 +234,8 @@ class CanopenNetwork(Network):
 
     def disconnect_from_slave(self, servo):
         """ Disconnects the already established network. """
-        self.stop_net_status_listener()
-        servo.stop_status_listener()
+        self.stop_network_monitor()
+        servo.stop_servo_monitor()
         self.__network_interface.disconnect()
         self.servos.remove(servo)
 
@@ -827,7 +827,7 @@ class CanopenNetwork(Network):
         """ Subscribe to network state changes.
 
         Args:
-            cb: Callback
+            cb (Callback): Callback function.
 
         Returns:
             int: Assigned slot.
@@ -836,7 +836,7 @@ class CanopenNetwork(Network):
         self.__observers_net_state.append(cb)
         return r
 
-    def stop_net_status_listener(self):
+    def stop_network_monitor(self):
         """ Stops the NetStatusListener from listening to the drive. """
         try:
             for node_id, node_obj in self.__network_interface.nodes.items():

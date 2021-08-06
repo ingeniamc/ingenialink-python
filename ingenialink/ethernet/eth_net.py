@@ -128,5 +128,5 @@ class EthernetNetwork(Network):
         # TODO: This stops all connections no only the target servo.
         self.servos.remove(servo)
         if len(self.servos) == 0:
-            self.net_mon_stop()
+            self.stop_network_monitor()
             self.close_socket()

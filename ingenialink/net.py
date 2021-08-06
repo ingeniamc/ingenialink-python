@@ -505,13 +505,13 @@ class Network(object):
         """ Closes the established network socket. """
         return lib.il_net_close_socket(self._net)
 
-    def start_network_monitor(self, on_evt):
+    def subscribe_to_network_status(self, on_evt):
         """ Calls given function everytime a connection/disconnection event is
         raised.
 
         Args:
             on_evt (Callback): Function that will be called every time an event
-                            is raised.
+            is raised.
         """
         if self.prot == NET_PROT.ETH or self.prot == NET_PROT.ECAT:
             status = self.status
@@ -535,7 +535,7 @@ class Network(object):
 
         Args:
             on_evt (Callback): Function that will be called every time an event
-                            is raised.
+            is raised.
         """
         if self.prot == NET_PROT.ETH or self.prot == NET_PROT.ECAT:
             status = self.status
@@ -602,7 +602,6 @@ class Network(object):
         """
         return lib.il_net_master_stop(self._net)
 
-    # Properties
     @property
     def prot(self):
         """ Obtain network protocol.
