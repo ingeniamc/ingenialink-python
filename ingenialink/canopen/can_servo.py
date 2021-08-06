@@ -9,7 +9,7 @@ from .constants import *
 from ..const import SINGLE_AXIS_MINIMUM_SUBNODES
 from ..exceptions import *
 from .._ingenialink import lib
-from ..servo import SERVO_STATE
+from ..servo import SERVO_STATE, Servo
 from .can_dictionary import CanopenDictionary
 from .can_register import CanopenRegister, REG_DTYPE, REG_ACCESS
 
@@ -122,7 +122,7 @@ class ServoStatusListener(threading.Thread):
         self.__stop = True
 
 
-class CanopenServo(object):
+class CanopenServo(Servo):
     """ Servo.
 
     Args:
@@ -268,7 +268,7 @@ class CanopenServo(object):
             value = value.replace('\x00', '')
         return value
 
-    def write(self, reg, data, subnode=1):
+    def write(self, reg, data, confirm=True, extended=0, subnode=1):
         """ Writes a data to a target register.
 
         Args:
