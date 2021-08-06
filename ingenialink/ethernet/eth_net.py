@@ -124,7 +124,6 @@ class EthernetNetwork(Network):
 
         Args:
             servo (EthernetServo): Instance of the servo connected.
-
         """
         # TODO: This stops all connections no only the target servo.
         self.servos.remove(servo)

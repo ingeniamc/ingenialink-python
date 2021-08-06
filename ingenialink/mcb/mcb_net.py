@@ -20,9 +20,6 @@ class MCBNetwork(Network):
     def disconnect(self):
         raise NotImplementedError
 
-    def is_alive(self):
-        raise NotImplementedError
-
     def restore_parameters(self):
         raise NotImplementedError
 

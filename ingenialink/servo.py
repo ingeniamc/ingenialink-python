@@ -110,6 +110,7 @@ class SERVO_UNITS_TORQUE(Enum):
 
 class SERVO_UNITS_POS(Enum):
     """ Position Units. """
+
     NATIVE = lib.IL_UNITS_POS_NATIVE
     """ Native. """
     REV = lib.IL_UNITS_POS_REV
@@ -168,8 +169,7 @@ class SERVO_UNITS_ACC(Enum):
 
 @deprecated
 def servo_is_connected(address_ip, port_ip=1061, protocol=1):
-    """
-    Obtain boolean with result of search a servo into ip.
+    """ Obtain boolean with result of search a servo into ip.
 
     Args:
         address_ip: IP Address.
@@ -187,15 +187,15 @@ def servo_is_connected(address_ip, port_ip=1061, protocol=1):
 def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
     """ Obtain an instance of the first available Servo.
 
-        Args:
-            prot (NET_PROT): Network protocol.
-            dict_f (str, optional): Dictionary.
+    Args:
+        prot (NET_PROT): Network protocol.
+        dict_f (str, optional): Dictionary.
 
-        Returns:
-            tuple:
+    Returns:
+        tuple:
 
-                - Network: Servo network instance.
-                - Servo: Servo instance.
+            - Network: Servo network instance.
+            - Servo: Servo instance.
     """
     net__ = ffi.new('il_net_t **')
     servo__ = ffi.new('il_servo_t **')
@@ -218,16 +218,16 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
 
     return net, servo
 
+
 @deprecated
 def connect_ecat(ifname, dict_f, slave=1, use_eoe_comms=1):
-    """
-    Connect the drive through SOEM communications.
+    """ Connect the drive through SOEM communications.
 
     Args:
-        ifname: Interface name.
-        dict_f: Dictionary path.
-        slave: Slave number.
-        use_eoe_comms: Use of EoE communications or communicate via SDOs.
+        ifname (str): Interface name.
+        dict_f (str): Dictionary path.
+        slave (int): Slave number.
+        use_eoe_comms (int): Use of EoE communications or communicate via SDOs.
 
     Returns:
         tuple: Servo and Network.
@@ -254,31 +254,28 @@ def connect_ecat(ifname, dict_f, slave=1, use_eoe_comms=1):
 
 @ffi.def_extern()
 def _on_state_change_cb(ctx, state, flags, subnode):
-    """
-    On state change callback shim.
-    """
+    """ On state change callback shim. """
     cb = ffi.from_handle(ctx)
     cb(SERVO_STATE(state), flags, subnode)
 
 
 @ffi.def_extern()
 def _on_emcy_cb(ctx, code):
-    """
-    On emergency callback shim.
-    """
+    """ On emergency callback shim. """
     cb = ffi.from_handle(ctx)
     cb(code)
 
 
 class Servo(object):
-    """ Servo.
+    """ Basic declaration of a common Servo object.
 
-        Args:
-            net (Network): Network instance.
-            id (int): Servo id.
+    Args:
+        net (Network): Network instance.
+        servo_id (int): Servo id.
+        dict_f (str):  Path to the dictionary file.
 
-        Raises:
-            ILCreationError: If the servo cannot be created.
+    Raises:
+        ILCreationError: If the servo cannot be created.
     """
 
     _raw_read = {REG_DTYPE.U8: ['uint8_t *', lib.il_servo_raw_read_u8],
@@ -326,8 +323,7 @@ class Servo(object):
 
     @classmethod
     def _from_existing(cls, servo, dict_f):
-        """
-        Create a new class instance from an existing servo.
+        """ Create a new class instance from an existing servo.
 
         Args:
             servo (Servo): Servo instance.
@@ -347,9 +343,11 @@ class Servo(object):
 
         return inst
 
+    def is_alive(self):
+        raise NotImplementedError
+
     def _get_all_errors(self, dict_f):
-        """
-        Obtain all errors defined in the dictionary.
+        """ Obtain all errors defined in the dictionary.
 
         Args:
             dict_f: Path to the dictionary file.
@@ -372,8 +370,7 @@ class Servo(object):
         return errors
 
     def destroy(self):
-        """
-        Destroy servo instance.
+        """ Destroy servo instance.
 
         Returns:
             int: Result code.
@@ -382,8 +379,7 @@ class Servo(object):
         return r
 
     def reset(self):
-        """
-        Reset servo.
+        """ Reset servo.
 
         Notes:
             You may need to reconnect the network after reset.
@@ -392,8 +388,7 @@ class Servo(object):
         raise_err(r)
 
     def get_state(self, subnode=1):
-        """
-        Obtain state of the servo.
+        """ Obtain state of the servo.
 
         Args:
             subnode (int, optional): Subnode.
@@ -409,8 +404,7 @@ class Servo(object):
         return SERVO_STATE(state[0]), flags[0]
 
     def state_subscribe(self, cb):
-        """
-        Subscribe to state changes.
+        """ Subscribe to state changes.
 
         Args:
             cb: Callback
@@ -430,8 +424,7 @@ class Servo(object):
         return slot
 
     def state_unsubscribe(self, slot):
-        """
-        Unsubscribe from state changes.
+        """ Unsubscribe from state changes.
 
         Args:
             slot (int): Assigned slot when subscribed.
@@ -441,8 +434,7 @@ class Servo(object):
         del self._state_cb[slot]
 
     def emcy_subscribe(self, cb):
-        """
-        Subscribe to emergency messages.
+        """ Subscribe to emergency messages.
 
         Args:
             cb: Callback
@@ -462,8 +454,7 @@ class Servo(object):
         return slot
 
     def emcy_unsubscribe(self, slot):
-        """
-        Unsubscribe from emergency messages.
+        """ Unsubscribe from emergency messages.
 
         Args:
             slot (int): Assigned slot when subscribed.
@@ -473,8 +464,7 @@ class Servo(object):
         del self._emcy_cb[slot]
 
     def state_subs_stop(self, stop):
-        """
-        Stop servo state subscriptions.
+        """ Stop servo state subscriptions.
 
         Args:
             stop (int): start: 0, stop: 1.
@@ -485,8 +475,7 @@ class Servo(object):
         return lib.il_servo_state_subs_stop(self._servo, stop)
 
     def dict_load(self, dict_f):
-        """
-        Load dictionary.
+        """ Load dictionary.
 
         Args:
             dict_f (str): Dictionary.
@@ -497,8 +486,7 @@ class Servo(object):
         raise_err(r)
 
     def reload_errors(self, dict_f):
-        """
-        Force to reload all dictionary errors.
+        """ Force to reload all dictionary errors.
 
         Args:
             dict_f (str): Dictionary.
@@ -506,8 +494,7 @@ class Servo(object):
         self._errors = self._get_all_errors(dict_f)
 
     def load_configuration(self, dict_f, subnode=0):
-        """
-        Load configuration from dictionary file to the servo drive.
+        """ Load configuration from dictionary file to the servo drive.
 
         Args:
             dict_f (str): Dictionary.
@@ -521,12 +508,11 @@ class Servo(object):
         return r
 
     def save_configuration(self, new_path, subnode=0):
-        """
-            Read all dictionary registers content and save it to a
+        """ Read all dictionary registers content and save it to a
             new dictionary.
 
-            Args:
-                new_path (str): Dictionary.
+        Args:
+            new_path (str): Dictionary.
 
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
@@ -580,22 +566,17 @@ class Servo(object):
         return r
 
     def store_comm(self):
-        """
-        Store all servo current communications to the NVM.
-        """
+        """ Store all servo current communications to the NVM. """
         r = lib.il_servo_store_comm(self._servo)
         raise_err(r)
 
     def store_app(self):
-        """
-        Store all servo current application parameters to the NVM.
-        """
+        """ Store all servo current application parameters to the NVM. """
         r = lib.il_servo_store_app(self._servo)
         raise_err(r)
 
     def raw_read(self, reg, subnode=1):
-        """
-        Raw read from servo.
+        """ Raw read from servo.
 
         Args:
             reg (Register): Register.
@@ -609,8 +590,7 @@ class Servo(object):
         return self.read(reg, subnode=subnode)
 
     def get_reg(self, reg, subnode):
-        """
-        Obtain Register object and its identifier.
+        """ Obtain Register object and its identifier.
 
         Args:
             reg (Register, str): Register.
@@ -636,8 +616,7 @@ class Servo(object):
         return _reg, _id
 
     def read(self, reg, subnode=1):
-        """
-        Read from servo.
+        """ Read from servo.
 
         Args:
             reg (str, Register): Register.
@@ -660,7 +639,7 @@ class Servo(object):
         else:
             raise TypeError('Invalid register')
 
-        # obtain data pointer and function to call
+        # Obtain data pointer and function to call
         t, f = self._raw_read[_reg.dtype]
         v = ffi.new(t)
 
@@ -682,8 +661,7 @@ class Servo(object):
         return value
 
     def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
-        """
-        Raw write to servo.
+        """ Raw write to servo.
 
         Args:
             reg (Register): Register.
@@ -698,8 +676,7 @@ class Servo(object):
         self.write(reg, data, confirm, extended, subnode)
 
     def write(self, reg, data, confirm=True, extended=0, subnode=1):
-        """
-        Write to servo.
+        """ Write to servo.
 
         Args:
             reg (Register): Register.
@@ -723,19 +700,18 @@ class Servo(object):
         else:
             raise TypeError('Invalid register')
 
-        # auto cast floats if register is not float
+        # Auto cast floats if register is not float
         if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
             data = int(data)
 
-        # obtain function to call
+        # Obtain function to call
         f = self._raw_write[_reg.dtype]
 
         r = f(self._servo, _reg._reg, ffi.NULL, data, confirm, extended)
         raise_err(r)
 
     def units_update(self):
-        """
-        Update units scaling factors.
+        """ Update units scaling factors.
 
         Notes:
             This must be called if any encoder parameter, rated torque or
@@ -746,8 +722,7 @@ class Servo(object):
         raise_err(r)
 
     def units_factor(self, reg):
-        """
-        Obtain units scale factor for the given register.
+        """ Obtain units scale factor for the given register.
 
         Args:
             reg (Register): Register.
@@ -758,8 +733,7 @@ class Servo(object):
         return lib.il_servo_units_factor(self._servo, reg._reg)
 
     def wait_reached(self, timeout):
-        """
-        Wait until the servo does a target reach.
+        """ Wait until the servo does a target reach.
 
         Args:
             timeout (int, float): Timeout (s).
@@ -768,8 +742,7 @@ class Servo(object):
         raise_err(r)
 
     def disturbance_write_data(self, channels, dtypes, data_arr):
-        """
-        Write disturbance data.
+        """ Write disturbance data.
 
         Args:
             channels (int or list of int): Channel identifier.
@@ -807,16 +780,12 @@ class Servo(object):
         self.write(DIST_DATA, rest_samples * sample_size, False, 1, subnode=0)
 
     def disable(self, subnode=1):
-        """
-        Disable PDS.
-
-        """
+        """ Disable PDS. """
         r = lib.il_servo_disable(self._servo, subnode)
         raise_err(r)
 
     def switch_on(self, timeout=2.):
-        """
-        Switch on PDS.
+        """ Switch on PDS.
 
         This function switches on the PDS but it does not enable the motor.
         For most application cases, you should only use the `enable`
@@ -829,8 +798,7 @@ class Servo(object):
         raise_err(r)
 
     def enable(self, timeout=2., subnode=1):
-        """
-        Enable PDS.
+        """ Enable PDS.
 
         Args:
             timeout (int, float, optional): Timeout (s).
@@ -840,8 +808,7 @@ class Servo(object):
         raise_err(r)
 
     def fault_reset(self, subnode=1):
-        """
-        Fault reset.
+        """ Fault reset.
 
         Args:
             subnode (int, optional): Subnode.
@@ -850,15 +817,12 @@ class Servo(object):
         raise_err(r)
 
     def homing_start(self):
-        """
-        Start the homing procedure.
-        """
+        """ Start the homing procedure. """
         r = lib.il_servo_homing_start(self._servo)
         raise_err(r)
 
     def homing_wait(self, timeout):
-        """
-        Wait until homing completes.
+        """ Wait until homing completes.
 
         Notes:
             The homing itself has a configurable timeout. The timeout given
@@ -874,8 +838,7 @@ class Servo(object):
 
     @deprecated
     def connect_ecat(self, ifname, slave, use_eoe_comms):
-        """
-        Connect drive through SOEM communications.
+        """ Connect drive through SOEM communications.
 
         Args:
             ifname: Interface name.
@@ -895,8 +858,7 @@ class Servo(object):
 
     @deprecated('store_parameters')
     def store_all(self, subnode=1):
-        """
-        Store all servo current parameters to the NVM.
+        """ Store all servo current parameters to the NVM.
 
         Args:
             subnode (int, optional): Subnode.
@@ -906,8 +868,7 @@ class Servo(object):
 
     @deprecated(new_func_name='save_configuration')
     def dict_storage_read(self, new_path, subnode=0):
-        """
-        Read all dictionary registers content and put it to the dictionary
+        """ Read all dictionary registers content and put it to the dictionary
         storage.
 
         Args:
@@ -960,8 +921,7 @@ class Servo(object):
 
     @deprecated(new_func_name='load_configuration')
     def dict_storage_write(self, dict_f, subnode=0):
-        """
-        Write current dictionary storage to the servo drive.
+        """ Write current dictionary storage to the servo drive.
 
         Args:
             dict_f (str): Dictionary.
@@ -975,8 +935,7 @@ class Servo(object):
 
     @property
     def name(self):
-        """
-        Obtain servo name.
+        """ Obtain servo name.
 
         Returns:
             str: Name.
@@ -990,8 +949,7 @@ class Servo(object):
 
     @name.setter
     def name(self, name):
-        """
-        Set servo name.
+        """ Set servo name.
 
         Args:
             name (str): Name.
@@ -1003,8 +961,7 @@ class Servo(object):
 
     @property
     def info(self):
-        """
-        Obtain servo information.
+        """ Obtain servo information.
 
         Returns:
             dict: Servo information.
@@ -1030,9 +987,7 @@ class Servo(object):
 
     @property
     def units_torque(self):
-        """
-        SERVO_UNITS_TORQUE: Torque units.
-        """
+        """ SERVO_UNITS_TORQUE: Torque units. """
         return SERVO_UNITS_TORQUE(lib.il_servo_units_torque_get(self._servo))
 
     @units_torque.setter
@@ -1041,9 +996,7 @@ class Servo(object):
 
     @property
     def units_pos(self):
-        """
-        SERVO_UNITS_POS: Position units.
-        """
+        """ SERVO_UNITS_POS: Position units. """
         return SERVO_UNITS_POS(lib.il_servo_units_pos_get(self._servo))
 
     @units_pos.setter
@@ -1052,9 +1005,7 @@ class Servo(object):
 
     @property
     def units_vel(self):
-        """
-        SERVO_UNITS_VEL: Velocity units.
-        """
+        """ SERVO_UNITS_VEL: Velocity units. """
         return SERVO_UNITS_VEL(lib.il_servo_units_vel_get(self._servo))
 
     @units_vel.setter
@@ -1063,9 +1014,7 @@ class Servo(object):
 
     @property
     def units_acc(self):
-        """
-        SERVO_UNITS_ACC: Acceleration units.
-        """
+        """ SERVO_UNITS_ACC: Acceleration units. """
         return SERVO_UNITS_ACC(lib.il_servo_units_acc_get(self._servo))
 
     @units_acc.setter
@@ -1074,8 +1023,7 @@ class Servo(object):
 
     @property
     def mode(self):
-        """
-        Obtains Operation mode.
+        """ Obtains Operation mode.
 
         Returns:
             SERVO_MODE: Current operation mode.
@@ -1089,8 +1037,7 @@ class Servo(object):
 
     @mode.setter
     def mode(self, mode):
-        """
-        Set Operation mode.
+        """ Set Operation mode.
 
         Args:
             mode (SERVO_MODE): Operation mode.
@@ -1100,8 +1047,7 @@ class Servo(object):
 
     @property
     def errors(self):
-        """
-        Obtain drive errors.
+        """ Obtain drive errors.
 
         Returns:
             dict: Current errors.
@@ -1110,8 +1056,7 @@ class Servo(object):
 
     @property
     def net(self):
-        """
-        Obtain servo network.
+        """ Obtain servo network.
 
         Returns:
             Network: Current servo network.
@@ -1120,8 +1065,7 @@ class Servo(object):
 
     @net.setter
     def net(self, value):
-        """
-        Set servo network.
+        """ Set servo network.
 
         Args:
             value (Network): Network to be setted as servo Network.
@@ -1130,8 +1074,7 @@ class Servo(object):
 
     @property
     def subnodes(self):
-        """
-        Obtain number of subnodes.
+        """ Obtain number of subnodes.
 
         Returns:
             int: Current number of subnodes.
@@ -1140,8 +1083,7 @@ class Servo(object):
 
     @property
     def dict(self):
-        """
-        Obtain dictionary of the servo.
+        """ Obtain dictionary of the servo.
 
         Returns:
             dict: Current dictionary of the servo.
@@ -1152,8 +1094,7 @@ class Servo(object):
 
     @property
     def ol_voltage(self):
-        """
-        Get open loop voltage.
+        """ Get open loop voltage.
 
         Returns:
             float: Open loop voltage (% relative to DC-bus, -1...1).
@@ -1166,8 +1107,7 @@ class Servo(object):
 
     @ol_voltage.setter
     def ol_voltage(self, voltage):
-        """
-        Set the open loop voltage (% relative to DC-bus, -1...1).
+        """ Set the open loop voltage (% relative to DC-bus, -1...1).
 
         Args:
             float: Open loop voltage.
@@ -1177,8 +1117,7 @@ class Servo(object):
 
     @property
     def ol_frequency(self):
-        """
-        Get open loop frequency.
+        """ Get open loop frequency.
 
         Returns:
             float: Open loop frequency (mHz).
@@ -1191,8 +1130,7 @@ class Servo(object):
 
     @ol_frequency.setter
     def ol_frequency(self, frequency):
-        """
-        Set the open loop frequency (mHz).
+        """ Set the open loop frequency (mHz).
 
         Args:
             float: Open loop frequency.
@@ -1202,8 +1140,7 @@ class Servo(object):
 
     @property
     def torque(self):
-        """
-        Get actual torque.
+        """ Get actual torque.
 
         Returns:
             float: Actual torque.
@@ -1216,8 +1153,7 @@ class Servo(object):
 
     @torque.setter
     def torque(self, torque):
-        """
-        Set the target torque.
+        """ Set the target torque.
 
         Args:
             float: Target torque.
@@ -1227,8 +1163,7 @@ class Servo(object):
 
     @property
     def position(self):
-        """
-        Get actual position.
+        """ Get actual position.
 
         Returns:
             float: Actual position.
@@ -1241,8 +1176,7 @@ class Servo(object):
 
     @position.setter
     def position(self, pos):
-        """
-        Set the target position.
+        """ Set the target position.
 
         Notes:
             Position can be either a single position, or a tuple/list
@@ -1259,7 +1193,7 @@ class Servo(object):
                   timeout (s).
 
         Args:
-            float: Target postion.
+            pos (float): Target position.
         """
         immediate = 1
         relative = 0
@@ -1286,8 +1220,7 @@ class Servo(object):
 
     @property
     def position_res(self):
-        """
-        Get postion resolution.
+        """ Get position resolution.
 
         Returns:
             int: Position resolution (c/rev/s, c/ppitch/s).
@@ -1300,8 +1233,7 @@ class Servo(object):
 
     @property
     def velocity(self):
-        """
-        Get actual velocity.
+        """ Get actual velocity.
 
         Returns:
             float: Actual velocity.
@@ -1314,19 +1246,17 @@ class Servo(object):
 
     @velocity.setter
     def velocity(self, velocity):
-        """
-        Set the target velocity.
+        """ Set the target velocity.
 
         Args:
-            float: Target velocity.
+            velocity (float): Target velocity.
         """
         r = lib.il_servo_velocity_set(self._servo, velocity)
         raise_err(r)
 
     @property
     def velocity_res(self):
-        """
-        Get velocity resolution.
+        """ Get velocity resolution.
 
         Returns:
             int: Velocity resolution (c/rev, c/ppitch).

@@ -48,9 +48,6 @@ class EthernetServo(Servo):
         self.__port = port
         self.__communication_protocol = communication_protocol
 
-    def is_alive(self):
-        raise NotImplementedError
-
     def store_parameters(self, subnode=1):
         """ Store all the current parameters of the target subnode.
 

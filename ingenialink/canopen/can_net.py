@@ -57,16 +57,15 @@ CAN_CHANNELS = {
 
 class CAN_DEVICE(Enum):
     """ CAN Device. """
+
     KVASER = 'kvaser'
-    """ Kvaser. """
     PCAN = 'pcan'
-    """ Peak. """
     IXXAT = 'ixxat'
-    """ Ixxat. """
 
 
 class CAN_BAUDRATE(Enum):
     """ Baudrates. """
+
     Baudrate_1M = 1000000
     """ 1 Mbit/s """
     Baudrate_500K = 500000
@@ -83,6 +82,7 @@ class CAN_BAUDRATE(Enum):
 
 class CAN_BIT_TIMMING(Enum):
     """ Baudrates. """
+
     Baudrate_1M = 0
     """ 1 Mbit/s """
     Baudrate_500K = 2
@@ -185,7 +185,7 @@ class CanopenNetwork(Network):
         self._teardown_connection()
 
         return nodes
-    
+
     def connect_to_slave(self, target, dictionary=None, eds=None,
                          servo_status_listener=False, net_status_listener=True):
         """ Connects to a drive through a given target node ID.
@@ -231,26 +231,13 @@ class CanopenNetwork(Network):
         else:
             logger.error('Node id not found')
             raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(target))
-    
+
     def disconnect_from_slave(self, servo):
         """ Disconnects the already established network. """
-        try:
-            self.stop_net_status_listener()
-        except Exception as e:
-            logger.error('Failed stopping net_status_listener. Exception: %s', e)
-
-        try:
-            servo.stop_status_listener()
-        except Exception as e:
-            logger.error('Failed stopping drive status thread. Exception: %s', e)
-
+        self.stop_net_status_listener()
+        servo.stop_status_listener()
+        self.__network_interface.disconnect()
         self.servos.remove(servo)
-
-        try:
-            self.__network_interface.disconnect()
-        except Exception as e:
-            logger.error('Failed disconnecting. Exception: %s', e)
-            raise_err(lib.IL_EFAIL, 'Failed disconnecting.')
 
     def _setup_connection(self):
         """ Creates a network interface object establishing an empty connection
@@ -279,7 +266,7 @@ class CanopenNetwork(Network):
                 raise_err(lib.IL_EFAIL, 'Failed trying to connect. {}'.format(e))
         else:
             logger.info('Connection already established')
-    
+
     def _teardown_connection(self):
         """ Tears down the already established connection
         and deletes the network interface """
@@ -585,7 +572,7 @@ class CanopenNetwork(Network):
                             servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
                         except Exception as e:
                             pass
-                        
+
                         logger.info('Waiting for the drive to respond...')
                         sleep(5)
                         initial_time = time()
@@ -655,7 +642,7 @@ class CanopenNetwork(Network):
             logger.warning('Could not remove {}. Exception: {}'.format(lfu_path, e))
 
         self.__set_fw_load_errors_enabled(True)
-        
+
         if error_detected_msg != '':
             raise ILFirmwareLoadError(error_detected_msg)
 
@@ -784,7 +771,7 @@ class CanopenNetwork(Network):
     def _lss_switch_state_selective(self, vendor_id, product_code,
                                     rev_number, serial_number):
         """ Switches the state of the LSS to configuration state.
-        
+
         Args:
             vendor_id (int): Vendor ID of the targeted device.
             product_code (int): Product code of the targeted device.
