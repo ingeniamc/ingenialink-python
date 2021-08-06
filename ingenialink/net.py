@@ -284,42 +284,13 @@ def _on_evt_cb(ctx, evt, port):
 class Network(object):
     """
     Network.
-
-    Args:
-        prot (NET_PROT): Protocol.
-        port (str): Network device port (e.g. COM1, /dev/ttyACM0, etc.).
-        timeout_rd (int, float, optional): Read timeout (s).
-        timeout_wr (int, float, optional): Write timeout (s).
-
-    Raises:
-        TypeError: If the protocol type is invalid.
-        ILCreationError: If the network cannot be created.
     """
     def __init__(self):
         self.__servos = []
-        # def __init__(self, prot, port=None, slave=1, timeout_rd=0.5,
-        #              timeout_wr=0.5):
-        # if not isinstance(prot, NET_PROT):
-        #     raise TypeError('Invalid protocol')
-        #
-        # if prot != NET_PROT.ECAT:
-        #     port_ = ffi.new('char []', cstr(port))
-        #     opts = ffi.new('il_net_opts_t *')
-        #
-        #     opts.port = port_
-        #     opts.timeout_rd = to_ms(timeout_rd)
-        #     opts.timeout_wr = to_ms(timeout_wr)
-        #
-        #     self._net = lib.il_net_create(prot.value, opts)
-        #     raise_null(self._net)
-        # else:
-        #     self.slave = slave
-        #     self._net = ffi.new('il_net_t **')
 
     @classmethod
     def _from_existing(cls, net):
-        """
-        Create a new class instance from an existing network.
+        """ Create a new class instance from an existing network.
 
         Args:
             net (Network): Instance to copy.

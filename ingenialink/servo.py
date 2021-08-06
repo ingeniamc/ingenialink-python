@@ -218,7 +218,6 @@ def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
 
     return net, servo
 
-
 @deprecated
 def connect_ecat(ifname, dict_f, slave=1, use_eoe_comms=1):
     """
