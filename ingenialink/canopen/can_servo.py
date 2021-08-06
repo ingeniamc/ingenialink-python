@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 
 from ingenialink.utils._utils import *
 from .constants import *
+from ..const import SINGLE_AXIS_MINIMUM_SUBNODES
 from ..exceptions import *
 from .._ingenialink import lib
 from ..servo import SERVO_STATE
@@ -17,7 +18,6 @@ logger = ingenialogger.get_logger(__name__)
 
 PASSWORD_STORE_ALL = 0x65766173
 PASSWORD_RESTORE_ALL = 0x64616F6C
-SINGLE_AXIS_MINIMUM_SUBNODES = 2
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
 SERIAL_NUMBER = CanopenRegister(
@@ -137,9 +137,9 @@ class CanopenServo(object):
         self.__target = target
         self.__node = node
         if dictionary is not None:
-            self.__dict = CanopenDictionary(dictionary)
+            self.__dictionary = CanopenDictionary(dictionary)
         else:
-            self.__dict = None
+            self.__dictionary = None
         self.__info = {}
         self.__state = {
             1: lib.IL_SERVO_STATE_NRDY,
@@ -181,7 +181,7 @@ class CanopenServo(object):
         if isinstance(reg, CanopenRegister):
             _reg = reg
         elif isinstance(reg, str):
-            _dict = self.__dict
+            _dict = self.__dictionary
             if not _dict:
                 raise_err(lib.IL_EIO, 'No dictionary loaded')
             if reg not in _dict.regs[subnode]:
@@ -485,7 +485,7 @@ class CanopenServo(object):
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        with open(self.__dict.dict, 'r') as xml_file:
+        with open(self.__dictionary.dict, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
@@ -524,7 +524,7 @@ class CanopenServo(object):
                         register.set('storage', str(storage))
 
                         # Update register object
-                        reg = self.__dict.regs[element_subnode][register.attrib['id']]
+                        reg = self.__dictionary.regs[element_subnode][register.attrib['id']]
                         reg.storage = storage
                         reg.storage_valid = 1
                 else:
@@ -601,9 +601,9 @@ class CanopenServo(object):
                     logger.warning('Store all COCO failed. Trying MOCO...')
                     r = -1
                 if r < 0:
-                    if self.__dict.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
+                    if self.__dictionary.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
                         # Multiaxis
-                        for dict_subnode in self.__dict.subnodes:
+                        for dict_subnode in self.__dictionary.subnodes:
                             self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
                                        data=PASSWORD_STORE_ALL,
                                        subnode=dict_subnode)
@@ -781,7 +781,7 @@ class CanopenServo(object):
     @property
     def dict(self):
         """ Dictionary: Dictionary. """
-        return self.__dict
+        return self.__dictionary
 
     @property
     def node(self):
@@ -791,7 +791,7 @@ class CanopenServo(object):
     @property
     def errors(self):
         """ dict: Errors. """
-        return self.__dict.errors.errors
+        return self.__dictionary.errors.errors
 
     @property
     def info(self):
@@ -861,4 +861,4 @@ class CanopenServo(object):
     @property
     def subnodes(self):
         """ SUBNODES: Number of subnodes. """
-        return self.__dict.subnodes
+        return self.__dictionary.subnodes

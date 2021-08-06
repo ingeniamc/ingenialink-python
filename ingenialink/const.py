@@ -6,6 +6,7 @@ from ._ingenialink import lib
 
 DIST_FRAME_SIZE_BYTES = 128
 DIST_FRAME_SIZE = 512
+SINGLE_AXIS_MINIMUM_SUBNODES = 2
 
 
 def _load():
