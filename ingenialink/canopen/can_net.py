@@ -155,12 +155,10 @@ class CanopenNetwork(Network):
         self.__observers_net_state = []
         self.__observers_fw_load_status_msg = []
         self.__observers_fw_load_progress = []
-        self.__observers_fw_load_progress_total = []
         self.__observers_fw_load_errors_enabled = []
 
         self.__fw_load_status_msg = ''
         self.__fw_load_progress = 0
-        self.__fw_load_progress_total = 100
         self.__fw_load_errors_enabled = True
 
     def scan_slaves(self):
@@ -303,7 +301,6 @@ class CanopenNetwork(Network):
 
     def subscribe_to_load_firmware_process(self, callback_status_msg=None,
                                            callback_progress=None,
-                                           callback_progress_total=None,
                                            callback_errors_enabled=None):
         """ Subscribe all the callback methods to its specific variable observer.
 
@@ -312,7 +309,6 @@ class CanopenNetwork(Network):
             message when loading a firmware.
             callback_progress (object): Subscribed callback function for the live
             progress when loading a firmware.
-            callback_progress_total (object): Subscribed callback function for the total
             progress when loading a firmware.
             callback_errors_enabled (object): Subscribed callback function for
             knowing when to toggle the error detection when loading firmware.
@@ -322,8 +318,6 @@ class CanopenNetwork(Network):
             self.__observers_fw_load_status_msg.append(callback_status_msg)
         if callback_progress is not None:
             self.__observers_fw_load_progress.append(callback_progress)
-        if callback_progress_total is not None:
-            self.__observers_fw_load_progress_total.append(callback_progress_total)
         if callback_errors_enabled is not None:
             self.__observers_fw_load_errors_enabled.append(callback_errors_enabled)
 
@@ -340,7 +334,6 @@ class CanopenNetwork(Network):
         """
         self.__set_fw_load_status_msg('')
         self.__set_fw_load_progress(0)
-        self.__set_fw_load_progress_total(100)
         self.__set_fw_load_errors_enabled(True)
 
         servo = None
@@ -400,7 +393,6 @@ class CanopenNetwork(Network):
                             coco_in = open(fw_file, "r")
                             mcb = MCB()
                             copy_process = 0
-                            self.__set_fw_load_progress_total(total_file_lines)
                             self.__set_fw_load_progress(0)
                             bin_node = ''
                             for line in coco_in:
@@ -425,7 +417,9 @@ class CanopenNetwork(Network):
                                 node = 10
                                 mcb.add_cmd(node, subnode, cmd, data, outfile)
 
-                                self.__set_fw_load_progress(copy_process)
+                                current_progress = int((copy_process * 100) /
+                                                       total_file_lines)
+                                self.__set_fw_load_progress(current_progress)
                                 copy_process += 1
 
                             outfile.close()
@@ -440,7 +434,6 @@ class CanopenNetwork(Network):
                     total_file_size = os.path.getsize(lfu_path) / BOOTLOADER_MSG_SIZE
 
                     # Check if Boot mode or App loaded
-                    self.__set_fw_load_progress_total(total_file_size)
                     self.__set_fw_load_progress(0)
 
                     try:
@@ -532,7 +525,9 @@ class CanopenNetwork(Network):
                                         error_detected_msg = 'An error occurred ' \
                                                              'while downloading.'
                                     progress += 1
-                                    self.__set_fw_load_progress(progress)
+                                    current_progress = int((progress * 100) /
+                                                           total_file_size)
+                                    self.__set_fw_load_progress(current_progress)
                                     bytes_data = bytearray()
                                 byte = image.read(1)
                                 if not byte:
@@ -543,7 +538,6 @@ class CanopenNetwork(Network):
                                 self.__set_fw_load_status_msg('Flashing firmware')
                                 logger.info("Download Finished!")
                                 logger.info("Flashing firmware")
-                                self.__set_fw_load_progress_total(0)
 
                                 try:
                                     servo.write(PROG_DL_1, bytes_data, subnode=0)
@@ -604,7 +598,7 @@ class CanopenNetwork(Network):
                         if not bool_timeout:
                             logger.info('Bootloader finished successfully!')
                             self.__set_fw_load_status_msg('Bootloader '
-                                                        'finished successfully!')
+                                                          'finished successfully!')
                         else:
                             error_detected_msg = 'Could not recover drive'
                             logger.error(error_detected_msg)
@@ -668,18 +662,6 @@ class CanopenNetwork(Network):
         """
         self.__fw_load_progress = new_value
         for callback in self.__observers_fw_load_progress:
-            callback(new_value)
-
-    def __set_fw_load_progress_total(self, new_value):
-        """ Updates the fw_load_progress_total value and triggers
-        all the callbacks associated.
-
-        Args:
-            new_value: New value for the variable.
-
-        """
-        self.__fw_load_progress_total = new_value
-        for callback in self.__observers_fw_load_progress_total:
             callback(new_value)
 
     def __set_fw_load_errors_enabled(self, new_value):
