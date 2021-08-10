@@ -1,5 +1,5 @@
 import sys
-from time import time, sleep
+
 from ingenialink.ethercat.ecat_net import EthercatNetwork
 
 
