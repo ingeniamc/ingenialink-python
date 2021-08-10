@@ -3,7 +3,7 @@ import pytest
 from ingenialink.canopen.can_net import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
 
 
-def test_scan():
+def test_scan_slaves():
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,
                          baudrate=CAN_BAUDRATE.Baudrate_1M)
@@ -11,7 +11,7 @@ def test_scan():
     assert len(nodes) > 0
 
 
-def test_connect():
+def test_connect_to_slave():
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,
                          baudrate=CAN_BAUDRATE.Baudrate_1M)
@@ -26,3 +26,10 @@ def test_connect():
 
     net.disconnect_from_slave(servo)
     assert len(net.servos) == 0
+
+
+def test_load_firmware(connect_canopen):
+    servo, net = connect_canopen
+    assert servo is not None and net is not None
+
+    net.load_firmware(32, 'eve-net-c_1.8.1.sfu')
