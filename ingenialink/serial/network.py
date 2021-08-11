@@ -1,8 +1,9 @@
 from ..net import Network
 
 
-class MCBNetwork(Network):
+class SerialNetwork(Network):
     def __init__(self, port=None, timeout_rd=0.5, timeout_wr=0.5):
+        super(SerialNetwork, self).__init__()
         self.__port = port
         self.__timeout_rd = timeout_rd
         self.__timeout_wr = timeout_wr

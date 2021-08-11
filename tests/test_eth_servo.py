@@ -1,7 +1,7 @@
 import pytest
 import os
 
-from ingenialink.ethernet.eth_net import EthernetNetwork
+from ingenialink.ethernet.network import EthernetNetwork
 
 
 def test_load_configuration():

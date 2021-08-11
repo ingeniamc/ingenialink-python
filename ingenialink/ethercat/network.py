@@ -1,5 +1,5 @@
 from ..net import Network
-from .ecat_servo import EthercatServo
+from .servo import EthercatServo
 from ingenialink.utils._utils import cstr, raise_err
 from ..exceptions import *
 from .._ingenialink import lib, ffi

@@ -10,8 +10,8 @@ from ..const import SINGLE_AXIS_MINIMUM_SUBNODES
 from ..exceptions import *
 from .._ingenialink import lib
 from ..servo import SERVO_STATE, Servo
-from .can_dictionary import CanopenDictionary
-from .can_register import CanopenRegister, REG_DTYPE, REG_ACCESS
+from .dictionary import CanopenDictionary
+from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)

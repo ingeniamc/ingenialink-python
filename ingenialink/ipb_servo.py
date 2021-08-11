@@ -1,12 +1,12 @@
-from ..net import Network, NET_PROT, NET_TRANS_PROT
-from ..servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
+from .servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
-from ..registers import *
-from ..const import *
-from ..exceptions import *
-from ..dict_ import Dictionary
+from .registers import *
+from .const import *
+from .exceptions import *
+from .dict_ import Dictionary
+from .net import Network
 from ingenialink.utils._utils import *
-from .._ingenialink import lib, ffi
+from ._ingenialink import lib, ffi
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -16,12 +16,12 @@ import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthercatServo(Servo):
-    def __init__(self, net, target, dictionary_path):
-        super(EthercatServo, self).__init__(net, target)
+class IPBServo(Servo):
+    def __init__(self, net, target, dictionary_path=None):
+        super(IPBServo, self).__init__(net, target)
         self._dictionary = cstr(dictionary_path) if dictionary_path else ffi.NULL
+
         self.__servo_interface = ffi.new('il_servo_t **')
-        self.__net = net
 
         self._state_cb = {}
         self._emcy_cb = {}
@@ -942,4 +942,3 @@ class EthercatServo(Servo):
         raise_err(r)
 
         return res[0]
-

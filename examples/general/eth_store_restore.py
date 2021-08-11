@@ -1,7 +1,7 @@
 import sys
 
 import ingenialink as il
-from ingenialink.ethernet.eth_net import EthernetNetwork
+from ingenialink.ethernet.network import EthernetNetwork
 
 
 def eth_store_parameters():

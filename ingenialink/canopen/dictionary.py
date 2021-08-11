@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from .can_register import CanopenRegister, REG_ACCESS, REG_DTYPE
+from .register import CanopenRegister, REG_ACCESS, REG_DTYPE
 from ingenialink.utils._utils import *
 from .._ingenialink import lib
 

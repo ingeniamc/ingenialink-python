@@ -2,14 +2,14 @@ from enum import Enum
 from time import sleep, time
 from threading import Thread
 from .._ingenialink import lib
-from .can_register import CanopenRegister
+from .register import CanopenRegister
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import *
 from ..exceptions import ILFirmwareLoadError
 from can.interfaces.pcan.pcan import PcanError
 from ..net import NET_PROT, NET_STATE, Network
 from can.interfaces.ixxat.exceptions import VCIDeviceNotFoundError
-from .can_servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT
+from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT
 
 import re
 import os

@@ -221,6 +221,7 @@ class Servo(ABC):
         Returns:
             bool: Indicating if the servo is alive or not.
         """
+        # TODO: Implement is_alive method
         raise NotImplementedError
 
     def get_state(self, subnode=1):
@@ -273,11 +274,10 @@ class Servo(ABC):
 
     def save_configuration(self, new_path, subnode=0):
         """ Read all dictionary registers content and save it to a
-            new dictionary.
+        new dictionary.
 
         Args:
             new_path (str): Dictionary.
-
         """
         raise NotImplementedError
 

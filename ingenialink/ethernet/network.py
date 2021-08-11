@@ -1,5 +1,5 @@
 from ..net import Network, NET_PROT, NET_TRANS_PROT
-from .eth_servo import EthernetServo
+from .servo import EthernetServo
 from ingenialink.utils._utils import cstr, raise_null, raise_err
 from .._ingenialink import lib, ffi
 import ingenialogger

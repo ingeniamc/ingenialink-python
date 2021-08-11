@@ -1,6 +1,6 @@
 import pytest
 
-from ingenialink.ethernet.eth_net import EthernetNetwork
+from ingenialink.ethernet.network import EthernetNetwork
 
 
 def test_store(connect_ethernet):
