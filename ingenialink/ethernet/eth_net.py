@@ -18,11 +18,10 @@ logger = ingenialogger.get_logger(__name__)
 class EthernetNetwork(Network):
     def __init__(self):
         super(EthernetNetwork, self).__init__()
-        self.__net = None
         self.msg = ""
         opts = ffi.new('il_net_opts_t *')
-        self._net = lib.il_net_create(NET_PROT.ETH.value, opts)
-        raise_null(self._net)
+        self.network_interface = lib.il_net_create(NET_PROT.ETH.value, opts)
+        raise_null(self.network_interface)
 
     @staticmethod
     def load_firmware(fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
@@ -108,13 +107,11 @@ class EthernetNetwork(Network):
         net = Network._from_existing(net_)
         servo = EthernetServo._from_existing(servo_, _dictionary)
         servo.net = net
-        servo._net = net
         servo.target = target
-        servo.dictionary = dictionary
+        servo._dictionary = dictionary
         servo.port = port
         servo.communication_protocol = communication_protocol
 
-        self.__net = net
         self.servos.append(servo)
 
         return servo

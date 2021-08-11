@@ -39,14 +39,14 @@ STORE_MOCO_ALL_REGISTERS = {
 
 
 class EthernetServo(Servo):
-    def __init__(self, net, target, dictionary, port,
-                 communication_protocol, servo_id=None):
-        super(EthernetServo, self).__init__(net, servo_id=servo_id, dict_f=dictionary)
-        self.__net = net
-        self.__target = target
-        self.__dictionary = dictionary
+    def __init__(self, net, target, dictionary_path, port, communication_protocol):
+        super(EthernetServo, self).__init__(net, target)
+        self._dictionary = cstr(dictionary_path) if dictionary_path else ffi.NULL
         self.__port = port
         self.__communication_protocol = communication_protocol
+
+        if not hasattr(self, '_errors') or not self._errors:
+            self._errors = self._get_all_errors(self._dictionary)
 
     def store_parameters(self, subnode=1):
         """ Store all the current parameters of the target subnode.
@@ -70,9 +70,9 @@ class EthernetServo(Servo):
                 logger.warning('Store all COCO failed. Trying MOCO...')
                 r = -1
             if r < 0:
-                if self.__dictionary.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
+                if self._dictionary.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
                     # Multiaxis
-                    for dict_subnode in self.__dictionary.subnodes:
+                    for dict_subnode in self._dictionary.subnodes:
                         self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
                                    data=PASSWORD_STORE_ALL,
                                    subnode=dict_subnode)
@@ -104,30 +104,6 @@ class EthernetServo(Servo):
                    data=PASSWORD_RESTORE_ALL,
                    subnode=0)
         logger.info('Restore all successfully done.')
-
-    @property
-    def net(self):
-        return self.__net
-
-    @net.setter
-    def net(self, value):
-        self.__net = value
-
-    @property
-    def target(self):
-        return self.__target
-
-    @target.setter
-    def target(self, value):
-        self.__target = value
-
-    @property
-    def dictionary(self):
-        return self.__dictionary
-
-    @dictionary.setter
-    def dictionary(self, value):
-        self.__dictionary = value
 
     @property
     def port(self):

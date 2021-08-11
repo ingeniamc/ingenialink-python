@@ -128,18 +128,20 @@ class CanopenServo(Servo):
     Args:
         net (Network): Ingenialink Network of the drive.
         node (int): Node ID of the drive.
-        dictionary (str): Path to the dictionary.
+        dictionary_path (str): Path to the dictionary.
         servo_status_listener (bool): Boolean to initialize the ServoStatusListener and
         check the drive status.
     """
-    def __init__(self, net, target, node, dictionary=None, servo_status_listener=False):
+    def __init__(self, net, target, node, dictionary_path=None,
+                 servo_status_listener=False):
+        super(CanopenServo, self).__init__(net, target)
         self.__net = net
         self.__target = target
         self.__node = node
-        if dictionary is not None:
-            self.__dictionary = CanopenDictionary(dictionary)
+        if dictionary_path is not None:
+            self._dictionary = CanopenDictionary(dictionary_path)
         else:
-            self.__dictionary = None
+            self._dictionary = None
         self.__info = {}
         self.__state = {
             1: lib.IL_SERVO_STATE_NRDY,
@@ -181,7 +183,7 @@ class CanopenServo(Servo):
         if isinstance(reg, CanopenRegister):
             _reg = reg
         elif isinstance(reg, str):
-            _dict = self.__dictionary
+            _dict = self._dictionary
             if not _dict:
                 raise_err(lib.IL_EIO, 'No dictionary loaded')
             if reg not in _dict.regs[subnode]:
@@ -485,7 +487,7 @@ class CanopenServo(Servo):
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        with open(self.__dictionary.dict, 'r') as xml_file:
+        with open(self._dictionary.dict, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
@@ -524,7 +526,7 @@ class CanopenServo(Servo):
                         register.set('storage', str(storage))
 
                         # Update register object
-                        reg = self.__dictionary.regs[element_subnode][register.attrib['id']]
+                        reg = self._dictionary.regs[element_subnode][register.attrib['id']]
                         reg.storage = storage
                         reg.storage_valid = 1
                 else:
@@ -601,9 +603,9 @@ class CanopenServo(Servo):
                     logger.warning('Store all COCO failed. Trying MOCO...')
                     r = -1
                 if r < 0:
-                    if self.__dictionary.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
+                    if self._dictionary.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
                         # Multiaxis
-                        for dict_subnode in self.__dictionary.subnodes:
+                        for dict_subnode in self._dictionary.subnodes:
                             self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
                                        data=PASSWORD_STORE_ALL,
                                        subnode=dict_subnode)
@@ -668,9 +670,18 @@ class CanopenServo(Servo):
             Returns:
                 int: Assigned slot.
         """
-        r = len(self.__servo_state_observers)
+        slot = len(self.__servo_state_observers)
         self.__servo_state_observers.append(cb)
-        return r
+        return slot
+
+    def unsubscribe_to_servo_status(self, cb):
+        """ Unsubscribe from state changes.
+
+        Args:
+            cb (Callback): Callback function.
+        """
+
+        del self.__servo_state_observers[cb]
 
     def stop_servo_monitor(self):
         """ Stops the ServoStatusListener. """
@@ -752,6 +763,15 @@ class CanopenServo(Servo):
         self.__net = net
 
     @property
+    def dictionary(self):
+        """ Returns dictionary object """
+        return self._dictionary
+
+    @dictionary.setter
+    def dictionary(self, new_value):
+        self._dictionary = new_value
+
+    @property
     def target(self):
         """ str: Target. """
         return self.__target
@@ -779,11 +799,6 @@ class CanopenServo(Servo):
         self.__full_name = new_name
 
     @property
-    def dict(self):
-        """ Dictionary: Dictionary. """
-        return self.__dictionary
-
-    @property
     def node(self):
         """ int: Node. """
         return self.__node
@@ -791,7 +806,7 @@ class CanopenServo(Servo):
     @property
     def errors(self):
         """ dict: Errors. """
-        return self.__dictionary.errors.errors
+        return self._dictionary.errors.errors
 
     @property
     def info(self):
@@ -861,4 +876,4 @@ class CanopenServo(Servo):
     @property
     def subnodes(self):
         """ SUBNODES: Number of subnodes. """
-        return self.__dictionary.subnodes
+        return self._dictionary.subnodes

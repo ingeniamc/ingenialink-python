@@ -251,6 +251,7 @@ class Network(object):
     """ Basic declaration of a common Network object. """
     def __init__(self):
         self.__servos = []
+        self.__network_interface = None
 
     @classmethod
     def _from_existing(cls, net):
@@ -264,7 +265,7 @@ class Network(object):
 
         """
         inst = cls.__new__(cls)
-        inst._net = ffi.gc(net, lib.il_net_fake_destroy)
+        inst.__network_interface = ffi.gc(net, lib.il_net_fake_destroy)
 
         return inst
 
@@ -282,15 +283,15 @@ class Network(object):
         size = int(self.monitoring_data_size)
         bytes_per_block = self.monitoring_get_bytes_per_block()
         if dtype == REG_DTYPE.U16:
-            data_arr = lib.il_net_monitoring_channel_u16(self._net, channel)
+            data_arr = lib.il_net_monitoring_channel_u16(self.__network_interface, channel)
         elif dtype == REG_DTYPE.S16:
-            data_arr = lib.il_net_monitoring_channel_s16(self._net, channel)
+            data_arr = lib.il_net_monitoring_channel_s16(self.__network_interface, channel)
         elif dtype == REG_DTYPE.U32:
-            data_arr = lib.il_net_monitoring_channel_u32(self._net, channel)
+            data_arr = lib.il_net_monitoring_channel_u32(self.__network_interface, channel)
         elif dtype == REG_DTYPE.S32:
-            data_arr = lib.il_net_monitoring_channel_s32(self._net, channel)
+            data_arr = lib.il_net_monitoring_channel_s32(self.__network_interface, channel)
         elif dtype == REG_DTYPE.FLOAT:
-            data_arr = lib.il_net_monitoring_channel_flt(self._net, channel)
+            data_arr = lib.il_net_monitoring_channel_flt(self.__network_interface, channel)
         ret_arr = []
         for i in range(0, int(size / bytes_per_block)):
             ret_arr.append(data_arr[i])
@@ -302,7 +303,7 @@ class Network(object):
         Returns:
             int: Result code.
         """
-        return lib.il_net_remove_all_mapped_registers(self._net)
+        return lib.il_net_remove_all_mapped_registers(self.__network_interface)
 
     def monitoring_set_mapped_register(self, channel, reg_idx, dtype):
         """ Set monitoring mapped register.
@@ -315,7 +316,7 @@ class Network(object):
         Returns:
             int: Result code.
         """
-        return lib.il_net_set_mapped_register(self._net, channel,
+        return lib.il_net_set_mapped_register(self.__network_interface, channel,
                                               reg_idx, dtype)
 
     def monitoring_get_num_mapped_registers(self):
@@ -324,7 +325,7 @@ class Network(object):
         Returns:
             int: Actual number of mapped registers.
         """
-        return lib.il_net_num_mapped_registers_get(self._net)
+        return lib.il_net_num_mapped_registers_get(self.__network_interface)
 
     def monitoring_enable(self):
         """ Enable monitoring process.
@@ -332,7 +333,7 @@ class Network(object):
         Returns:
             int: Result code.
         """
-        return lib.il_net_enable_monitoring(self._net)
+        return lib.il_net_enable_monitoring(self.__network_interface)
 
     def monitoring_disable(self):
         """ Disable monitoring process.
@@ -340,7 +341,7 @@ class Network(object):
         Returns:
             int: Result code.
         """
-        return lib.il_net_disable_monitoring(self._net)
+        return lib.il_net_disable_monitoring(self.__network_interface)
 
     def monitoring_read_data(self):
         """ Obtain processed monitoring data.
@@ -348,7 +349,7 @@ class Network(object):
         Returns:
             array: Actual processed monitoring data.
         """
-        return lib.il_net_read_monitoring_data(self._net)
+        return lib.il_net_read_monitoring_data(self.__network_interface)
 
     def monitoring_get_bytes_per_block(self):
         """ Obtain Bytes x Block configured.
@@ -356,7 +357,7 @@ class Network(object):
         Returns:
             int: Actual number of Bytes x Block configured.
         """
-        return lib.il_net_monitornig_bytes_per_block_get(self._net)
+        return lib.il_net_monitornig_bytes_per_block_get(self.__network_interface)
 
     # Disturbance
     def disturbance_channel_data(self, channel, dtype, data_arr):
@@ -372,15 +373,15 @@ class Network(object):
 
         """
         if dtype == REG_DTYPE.U16:
-            lib.il_net_disturbance_data_u16_set(self._net, channel, data_arr)
+            lib.il_net_disturbance_data_u16_set(self.__network_interface, channel, data_arr)
         elif dtype == REG_DTYPE.S16:
-            lib.il_net_disturbance_data_s16_set(self._net, channel, data_arr)
+            lib.il_net_disturbance_data_s16_set(self.__network_interface, channel, data_arr)
         elif dtype == REG_DTYPE.U32:
-            lib.il_net_disturbance_data_u32_set(self._net, channel, data_arr)
+            lib.il_net_disturbance_data_u32_set(self.__network_interface, channel, data_arr)
         elif dtype == REG_DTYPE.S32:
-            lib.il_net_disturbance_data_s32_set(self._net, channel, data_arr)
+            lib.il_net_disturbance_data_s32_set(self.__network_interface, channel, data_arr)
         elif dtype == REG_DTYPE.FLOAT:
-            lib.il_net_disturbance_data_flt_set(self._net, channel, data_arr)
+            lib.il_net_disturbance_data_flt_set(self.__network_interface, channel, data_arr)
         return 0
 
     def disturbance_remove_all_mapped_registers(self):
@@ -389,7 +390,7 @@ class Network(object):
         Returns:
             int: Return code.
         """
-        return lib.il_net_disturbance_remove_all_mapped_registers(self._net)
+        return lib.il_net_disturbance_remove_all_mapped_registers(self.__network_interface)
 
     def disturbance_set_mapped_register(self, channel, address, dtype):
         """ Set disturbance mapped register.
@@ -402,7 +403,7 @@ class Network(object):
         Returns:
             int: Return code.
         """
-        return lib.il_net_disturbance_set_mapped_register(self._net, channel,
+        return lib.il_net_disturbance_set_mapped_register(self.__network_interface, channel,
                                                           address, dtype)
 
     # SDOs
@@ -422,7 +423,7 @@ class Network(object):
             TypeError: If the register type is not valid.
         """
         v = ffi.new('double *')
-        r = lib.il_net_SDO_read(self._net, slave, idx, subidx, dtype, v)
+        r = lib.il_net_SDO_read(self.__network_interface, slave, idx, subidx, dtype, v)
         raise_err(r)
 
         value = v[0]
@@ -444,7 +445,7 @@ class Network(object):
             TypeError: If the register type is not valid.
         """
         v = ffi.new("char[" + str(size) + "]")
-        r = lib.il_net_SDO_read_string(self._net, slave, idx, subidx, size, v)
+        r = lib.il_net_SDO_read_string(self.__network_interface, slave, idx, subidx, size, v)
         raise_err(r)
 
         value = pstr(v)
@@ -466,12 +467,12 @@ class Network(object):
         Raises:
             TypeError: If the register type is not valid.
         """
-        r = lib.il_net_SDO_write(self._net, slave, idx, subidx, dtype, value)
+        r = lib.il_net_SDO_write(self.__network_interface, slave, idx, subidx, dtype, value)
         raise_err(r)
 
     def destroy_network(self):
         """ Destroy network instance. """
-        lib.il_net_destroy(self._net)
+        lib.il_net_destroy(self.__network_interface)
 
     def set_reconnection_retries(self, retries):
         """ Set the number of reconnection retries in our application.
@@ -479,7 +480,7 @@ class Network(object):
         Args:
             retries (int): Number of reconnection retries.
         """
-        return lib.il_net_set_reconnection_retries(self._net, retries)
+        return lib.il_net_set_reconnection_retries(self.__network_interface, retries)
 
     def set_recv_timeout(self, timeout):
         """ Set receive communications timeout.
@@ -489,7 +490,7 @@ class Network(object):
         Returns:
             int: Result code.
         """
-        return lib.il_net_set_recv_timeout(self._net, timeout)
+        return lib.il_net_set_recv_timeout(self.__network_interface, timeout)
 
     def set_status_check_stop(self, stop):
         """ Start/Stop the internal monitor of the drive status.
@@ -499,11 +500,11 @@ class Network(object):
         Returns:
             int: Result code.
         """
-        return lib.il_net_set_status_check_stop(self._net, stop)
+        return lib.il_net_set_status_check_stop(self.__network_interface, stop)
 
     def close_socket(self):
         """ Closes the established network socket. """
-        return lib.il_net_close_socket(self._net)
+        return lib.il_net_close_socket(self.__network_interface)
 
     def subscribe_to_network_status(self, on_evt):
         """ Calls given function everytime a connection/disconnection event is
@@ -526,7 +527,7 @@ class Network(object):
 
     def stop_network_monitor(self):
         """ Stop monitoring network events. """
-        lib.il_net_mon_stop(self._net)
+        lib.il_net_mon_stop(self.__network_interface)
 
     @deprecated('start_network_monitor')
     def net_mon_status(self, on_evt):
@@ -551,7 +552,7 @@ class Network(object):
     @deprecated('stop_network_monitor')
     def net_mon_stop(self):
         """ Stop monitoring network events. """
-        lib.il_net_mon_stop(self._net)
+        lib.il_net_mon_stop(self.__network_interface)
 
     @deprecated
     def set_if_params(self, ifname, if_address_ip):
@@ -564,7 +565,7 @@ class Network(object):
         Returns:
 
         """
-        return lib.il_net_set_if_params(self._net, ifname, if_address_ip)
+        return lib.il_net_set_if_params(self.__network_interface, ifname, if_address_ip)
 
     @deprecated
     def master_startup(self, ifname, if_address_ip):
@@ -580,18 +581,18 @@ class Network(object):
         ifname = cstr(ifname) if ifname else ffi.NULL
         if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
 
-        return lib.il_net_master_startup(self._net, ifname, if_address_ip)
+        return lib.il_net_master_startup(self.__network_interface, ifname, if_address_ip)
 
     @deprecated
     def connect(self):
         """ Connect network. """
-        r = lib.il_net_connect(self._net)
+        r = lib.il_net_connect(self.__network_interface)
         raise_err(r)
 
     @deprecated
     def disconnect(self):
         """ Disconnect network. """
-        lib.il_net_disconnect(self._net)
+        lib.il_net_disconnect(self.__network_interface)
 
     @deprecated
     def master_stop(self):
@@ -600,7 +601,7 @@ class Network(object):
         Returns:
             int: Result code.
         """
-        return lib.il_net_master_stop(self._net)
+        return lib.il_net_master_stop(self.__network_interface)
 
     @property
     def prot(self):
@@ -609,7 +610,7 @@ class Network(object):
         Returns:
             str: Current network protocol used.
         """
-        return NET_PROT(lib.il_net_prot_get(self._net))
+        return NET_PROT(lib.il_net_prot_get(self.__network_interface))
 
     @property
     def state(self):
@@ -618,7 +619,7 @@ class Network(object):
         Returns:
             str: Current network state.
         """
-        return NET_STATE(lib.il_net_state_get(self._net))
+        return NET_STATE(lib.il_net_state_get(self.__network_interface))
 
     @property
     def status(self):
@@ -627,7 +628,7 @@ class Network(object):
         Returns:
             str: Current network status.
         """
-        return lib.il_net_status_get(self._net)
+        return lib.il_net_status_get(self.__network_interface)
 
     @property
     def port(self):
@@ -636,7 +637,7 @@ class Network(object):
         Returns:
             str: Current network port.
         """
-        port = lib.il_net_port_get(self._net)
+        port = lib.il_net_port_get(self.__network_interface)
         return pstr(port)
 
     @property
@@ -646,7 +647,7 @@ class Network(object):
         Returns:
             str: Current extended buffer data.
         """
-        ext_buff = lib.il_net_extended_buffer_get(self._net)
+        ext_buff = lib.il_net_extended_buffer_get(self.__network_interface)
         return pstr(ext_buff)
 
     @property
@@ -656,7 +657,7 @@ class Network(object):
         Returns:
             array: Current monitoring data.
         """
-        monitoring_data = lib.il_net_monitornig_data_get(self._net)
+        monitoring_data = lib.il_net_monitornig_data_get(self.__network_interface)
         size = int(self.monitoring_data_size / 2)
         ret_arr = []
         for i in range(0, size):
@@ -670,7 +671,7 @@ class Network(object):
         Returns:
             int: Current monitoring data size.
         """
-        return lib.il_net_monitornig_data_size_get(self._net)
+        return lib.il_net_monitornig_data_size_get(self.__network_interface)
 
     @property
     def disturbance_data(self):
@@ -679,7 +680,7 @@ class Network(object):
         Returns:
             array: Current disturbance data.
         """
-        disturbance_data = lib.il_net_disturbance_data_get(self._net)
+        disturbance_data = lib.il_net_disturbance_data_get(self.__network_interface)
         size = int(self.disturbance_data_size / 2)
         ret_arr = []
         for i in range(0, size):
@@ -698,7 +699,7 @@ class Network(object):
             np.pad(disturbance_arr,
                    (0, int(self.disturbance_data_size / 2) - len(value)),
                    'constant')
-        lib.il_net_disturbance_data_set(self._net, disturbance_arr.tolist())
+        lib.il_net_disturbance_data_set(self.__network_interface, disturbance_arr.tolist())
 
     @property
     def disturbance_data_size(self):
@@ -707,7 +708,7 @@ class Network(object):
         Returns:
             int: Current disturbance data size.
         """
-        return lib.il_net_disturbance_data_size_get(self._net)
+        return lib.il_net_disturbance_data_size_get(self.__network_interface)
 
     @disturbance_data_size.setter
     def disturbance_data_size(self, value):
@@ -716,7 +717,7 @@ class Network(object):
         Args:
             value (int): Disturbance data size in bytes.
         """
-        lib.il_net_disturbance_data_size_set(self._net, value)
+        lib.il_net_disturbance_data_size_set(self.__network_interface, value)
 
     @property
     def servos(self):
@@ -725,6 +726,14 @@ class Network(object):
     @servos.setter
     def servos(self, value):
         self.__servos = value
+
+    @property
+    def network_interface(self):
+        return self.__network_interface
+
+    @network_interface.setter
+    def network_interface(self, value):
+        self.__network_interface = value
 
 
 class NetworkMonitor(object):

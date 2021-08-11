@@ -83,10 +83,10 @@ class CanopenDictionary(object):
     """ Contains all registers and information of a CANopen dictionary.
 
     Args:
-        dict_ (str): Path to the Ingenia dictionary.
+        dictionary_path (str): Path to the Ingenia dictionary.
     """
-    def __init__(self, dict_):
-        self.__dict = dict_
+    def __init__(self, dictionary_path):
+        self.__dictionary_path = dictionary_path
         self.__version = '1'
         self._cats = None
         self.__subnodes = 2
@@ -95,7 +95,7 @@ class CanopenDictionary(object):
 
     def read_dictionary(self):
         """ Reads the dictionary file and initializes all its components. """
-        with open(self.__dict, 'r', encoding='utf-8') as xml_file:
+        with open(self.__dictionary_path, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
@@ -107,10 +107,10 @@ class CanopenDictionary(object):
             self.__regs.append({})
 
         # Categories
-        self._cats = Categories(self.__dict)
+        self._cats = Categories(self.__dictionary_path)
 
         # Errors
-        self._errors = Errors(self.__dict)
+        self._errors = Errors(self.__dictionary_path)
 
         # Version
         version_node = root.find('.Header/Version')
@@ -258,9 +258,9 @@ class CanopenDictionary(object):
         return self.__regs[subnode]
 
     @property
-    def dict(self):
+    def dictionary_path(self):
         """ dict: Returns the path of the loaded dictionary. """
-        return self.__dict
+        return self.__dictionary_path
 
     @property
     def version(self):

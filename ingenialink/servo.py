@@ -3,8 +3,8 @@ from enum import Enum
 from ._ingenialink import ffi, lib
 from ingenialink.utils._utils import *
 from .registers import Register, REG_DTYPE, dtype_size, REG_ACCESS
-from .net import Network, NET_PROT
 from .dict_ import Dictionary
+from .net import Network, NET_PROT
 
 from .const import *
 
@@ -245,8 +245,8 @@ def connect_ecat(ifname, dict_f, slave=1, use_eoe_comms=1):
         net = None
         raise_err(r)
     else:
-        net._net = ffi.cast('il_net_t *', net._net[0])
-        servo._servo = ffi.cast('il_servo_t *', servo._servo[0])
+        net.__net = ffi.cast('il_net_t *', net.__net[0])
+        servo.__servo_interface = ffi.cast('il_servo_t *', servo.__servo_interface[0])
         servo.net = net
 
     return servo, net
@@ -271,8 +271,7 @@ class Servo(object):
 
     Args:
         net (Network): Network instance.
-        servo_id (int): Servo id.
-        dict_f (str):  Path to the dictionary file.
+        dictionary (object):  Path to the dictionary file.
 
     Raises:
         ILCreationError: If the servo cannot be created.
@@ -301,63 +300,55 @@ class Servo(object):
                   REG_DTYPE.FLOAT: lib.il_servo_raw_write_float}
     """ dict: Function mappings for raw write operation. """
 
-    def __init__(self, net, servo_id=None, dict_f=None):
-        self.dict_f = cstr(dict_f) if dict_f else ffi.NULL
+    def __init__(self, net, target, dictionary=None):
+        self._dictionary = dictionary
+
         self.full_name = None
+        self.target = target
 
-        if servo_id:
-            servo = lib.il_servo_create(net._net, servo_id, self.dict_f)
-            raise_null(servo)
-
-            self._servo = ffi.gc(servo, lib.il_servo_destroy)
-            self._net = net
-
-        else:
-            self._net = net
-            self._servo = ffi.new('il_servo_t **')
+        self.__net = net
+        self.__servo_interface = ffi.new('il_servo_t **')
 
         self._state_cb = {}
         self._emcy_cb = {}
-        if not hasattr(self, '_errors') or not self._errors:
-            self._errors = self._get_all_errors(self.dict_f)
 
     @classmethod
-    def _from_existing(cls, servo, dict_f):
+    def _from_existing(cls, servo, dictionary):
         """ Create a new class instance from an existing servo.
 
         Args:
             servo (Servo): Servo instance.
-            dict_f (str): Path to the dictionary file.
+            dictionary (str): Path to the dictionary file.
 
         Returns:
             Servo: Instance of servo.
 
         """
         inst = cls.__new__(cls)
-        inst._servo = ffi.gc(servo, lib.il_servo_fake_destroy)
+        inst.__servo_interface = ffi.gc(servo, lib.il_servo_fake_destroy)
 
         inst._state_cb = {}
         inst._emcy_cb = {}
         if not hasattr(inst, '_errors') or not inst._errors:
-            inst._errors = inst._get_all_errors(dict_f)
+            inst._errors = inst._get_all_errors(dictionary)
 
         return inst
 
     def is_alive(self):
         raise NotImplementedError
 
-    def _get_all_errors(self, dict_f):
+    def _get_all_errors(self, dictionary):
         """ Obtain all errors defined in the dictionary.
 
         Args:
-            dict_f: Path to the dictionary file.
+            dictionary: Path to the dictionary file.
 
         Returns:
             dict: Current errors definde in the dictionary.
         """
         errors = dict()
-        if str(dict_f) != "<cdata 'void *' NULL>":
-            tree = ET.parse(dict_f)
+        if str(dictionary) != "<cdata 'void *' NULL>":
+            tree = ET.parse(dictionary)
             for error in tree.iter("Error"):
                 label = error.find(".//Label")
                 id = int(error.attrib['id'], 0)
@@ -375,7 +366,7 @@ class Servo(object):
         Returns:
             int: Result code.
         """
-        r = lib.il_servo_destroy(self._servo)
+        r = lib.il_servo_destroy(self.__servo_interface)
         return r
 
     def reset(self):
@@ -384,7 +375,7 @@ class Servo(object):
         Notes:
             You may need to reconnect the network after reset.
         """
-        r = lib.il_servo_reset(self._servo)
+        r = lib.il_servo_reset(self.__servo_interface)
         raise_err(r)
 
     def get_state(self, subnode=1):
@@ -399,11 +390,11 @@ class Servo(object):
         state = ffi.new('il_servo_state_t *')
         flags = ffi.new('int *')
 
-        lib.il_servo_state_get(self._servo, state, flags, subnode)
+        lib.il_servo_state_get(self.__servo_interface, state, flags, subnode)
 
         return SERVO_STATE(state[0]), flags[0]
 
-    def state_subscribe(self, cb):
+    def subscribe_to_servo_status(self, cb):
         """ Subscribe to state changes.
 
         Args:
@@ -415,7 +406,7 @@ class Servo(object):
         cb_handle = ffi.new_handle(cb)
 
         slot = lib.il_servo_state_subscribe(
-                self._servo, lib._on_state_change_cb, cb_handle)
+                self.__servo_interface, lib._on_state_change_cb, cb_handle)
         if slot < 0:
             raise_err(slot)
 
@@ -423,13 +414,13 @@ class Servo(object):
 
         return slot
 
-    def state_unsubscribe(self, slot):
+    def unsubscribe_to_servo_status(self, slot):
         """ Unsubscribe from state changes.
 
         Args:
             slot (int): Assigned slot when subscribed.
         """
-        lib.il_servo_state_unsubscribe(self._servo, slot)
+        lib.il_servo_state_unsubscribe(self.__servo_interface, slot)
 
         del self._state_cb[slot]
 
@@ -445,7 +436,7 @@ class Servo(object):
         cb_handle = ffi.new_handle(cb)
 
         slot = lib.il_servo_emcy_subscribe(
-                self._servo, lib._on_emcy_cb, cb_handle)
+                self.__servo_interface, lib._on_emcy_cb, cb_handle)
         if slot < 0:
             raise_err(slot)
 
@@ -459,7 +450,7 @@ class Servo(object):
         Args:
             slot (int): Assigned slot when subscribed.
         """
-        lib.il_servo_emcy_unsubscribe(self._servo, slot)
+        lib.il_servo_emcy_unsubscribe(self.__servo_interface, slot)
 
         del self._emcy_cb[slot]
 
@@ -472,38 +463,38 @@ class Servo(object):
         Returns:
             int: Result code.
         """
-        return lib.il_servo_state_subs_stop(self._servo, stop)
+        return lib.il_servo_state_subs_stop(self.__servo_interface, stop)
 
-    def dict_load(self, dict_f):
+    def _dict_load(self, dictionary):
         """ Load dictionary.
 
         Args:
-            dict_f (str): Dictionary.
+            dictionary (str): Dictionary.
         """
-        r = lib.il_servo_dict_load(self._servo, cstr(dict_f))
+        r = lib.il_servo_dict_load(self.__servo_interface, cstr(dictionary))
         if not hasattr(self, '_errors') or not self._errors:
-            self._errors = self._get_all_errors(dict_f)
+            self._errors = self._get_all_errors(dictionary)
         raise_err(r)
 
-    def reload_errors(self, dict_f):
+    def reload_errors(self, dictionary):
         """ Force to reload all dictionary errors.
 
         Args:
-            dict_f (str): Dictionary.
+            dictionary (str): Dictionary.
         """
-        self._errors = self._get_all_errors(dict_f)
+        self._errors = self._get_all_errors(dictionary)
 
-    def load_configuration(self, dict_f, subnode=0):
+    def load_configuration(self, dictionary, subnode=0):
         """ Load configuration from dictionary file to the servo drive.
 
         Args:
-            dict_f (str): Dictionary.
+            dictionary (str): Dictionary.
             subnode (int, optional): Subnode.
 
         """
-        r = lib.il_servo_dict_storage_write(self._servo, cstr(dict_f), subnode)
+        r = lib.il_servo_dict_storage_write(self.__servo_interface, cstr(dictionary), subnode)
         if not hasattr(self, '_errors') or not self._errors:
-            self._errors = self._get_all_errors(dict_f)
+            self._errors = self._get_all_errors(dictionary)
         raise_err(r)
         return r
 
@@ -517,10 +508,10 @@ class Servo(object):
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        r = lib.il_servo_dict_storage_read(self._servo)
+        r = lib.il_servo_dict_storage_read(self.__servo_interface)
         raise_err(r)
 
-        self.dict.save(new_path)
+        self.dictionary.save(new_path)
 
         tree = ET.parse(new_path)
         xml_data = tree.getroot()
@@ -567,12 +558,12 @@ class Servo(object):
 
     def store_comm(self):
         """ Store all servo current communications to the NVM. """
-        r = lib.il_servo_store_comm(self._servo)
+        r = lib.il_servo_store_comm(self.__servo_interface)
         raise_err(r)
 
     def store_app(self):
         """ Store all servo current application parameters to the NVM. """
-        r = lib.il_servo_store_app(self._servo)
+        r = lib.il_servo_store_app(self.__servo_interface)
         raise_err(r)
 
     def raw_read(self, reg, subnode=1):
@@ -605,7 +596,7 @@ class Servo(object):
         if isinstance(reg, Register):
             _reg = reg._reg
         elif isinstance(reg, str):
-            _dict = self.dict
+            _dict = self.dictionary
             if not _dict:
                 raise ValueError('No dictionary loaded')
             if reg not in _dict.get_regs(subnode):
@@ -622,7 +613,7 @@ class Servo(object):
             reg (str, Register): Register.
 
         Returns:
-            float: Otained value
+            float: Obtained value
 
         Raises:
             TypeError: If the register type is not valid.
@@ -630,7 +621,7 @@ class Servo(object):
         if isinstance(reg, Register):
             _reg = reg
         elif isinstance(reg, str):
-            _dict = self.dict
+            _dict = self.dictionary
             if not _dict:
                 raise ValueError('No dictionary loaded')
             if reg not in _dict.get_regs(subnode):
@@ -643,16 +634,16 @@ class Servo(object):
         t, f = self._raw_read[_reg.dtype]
         v = ffi.new(t)
 
-        r = f(self._servo, _reg._reg, ffi.NULL, v)
+        r = f(self.__servo_interface, _reg._reg, ffi.NULL, v)
         raise_err(r)
 
         try:
-            if self.dict:
-                _reg = self.dict.get_regs(subnode)[reg]
+            if self.dictionary:
+                _reg = self.dictionary.get_regs(subnode)[reg]
         except Exception as e:
             pass
         if _reg.dtype == REG_DTYPE.STR:
-            value = self._net.extended_buffer
+            value = self.__net.extended_buffer
         else:
             value = v[0]
 
@@ -691,7 +682,7 @@ class Servo(object):
         if isinstance(reg, Register):
             _reg = reg
         elif isinstance(reg, str):
-            _dict = self.dict
+            _dict = self.dictionary
             if not _dict:
                 raise ValueError('No dictionary loaded')
             if reg not in _dict.get_regs(subnode):
@@ -707,7 +698,7 @@ class Servo(object):
         # Obtain function to call
         f = self._raw_write[_reg.dtype]
 
-        r = f(self._servo, _reg._reg, ffi.NULL, data, confirm, extended)
+        r = f(self.__servo_interface, _reg._reg, ffi.NULL, data, confirm, extended)
         raise_err(r)
 
     def units_update(self):
@@ -718,7 +709,7 @@ class Servo(object):
             pole pitch are changed, otherwise, the readings conversions
             will not be correct.
         """
-        r = lib.il_servo_units_update(self._servo)
+        r = lib.il_servo_units_update(self.__servo_interface)
         raise_err(r)
 
     def units_factor(self, reg):
@@ -730,7 +721,7 @@ class Servo(object):
         Returns:
             float: Scale factor for the given register.
         """
-        return lib.il_servo_units_factor(self._servo, reg._reg)
+        return lib.il_servo_units_factor(self.__servo_interface, reg._reg)
 
     def wait_reached(self, timeout):
         """ Wait until the servo does a target reach.
@@ -738,7 +729,7 @@ class Servo(object):
         Args:
             timeout (int, float): Timeout (s).
         """
-        r = lib.il_servo_wait_reached(self._servo, to_ms(timeout))
+        r = lib.il_servo_wait_reached(self.__servo_interface, to_ms(timeout))
         raise_err(r)
 
     def disturbance_write_data(self, channels, dtypes, data_arr):
@@ -781,7 +772,7 @@ class Servo(object):
 
     def disable(self, subnode=1):
         """ Disable PDS. """
-        r = lib.il_servo_disable(self._servo, subnode)
+        r = lib.il_servo_disable(self.__servo_interface, subnode)
         raise_err(r)
 
     def switch_on(self, timeout=2.):
@@ -794,7 +785,7 @@ class Servo(object):
         Args:
             timeout (int, float, optional): Timeout (s).
         """
-        r = lib.il_servo_switch_on(self._servo, to_ms(timeout))
+        r = lib.il_servo_switch_on(self.__servo_interface, to_ms(timeout))
         raise_err(r)
 
     def enable(self, timeout=2., subnode=1):
@@ -804,7 +795,7 @@ class Servo(object):
             timeout (int, float, optional): Timeout (s).
             subnode (int, optional): Subnode.
         """
-        r = lib.il_servo_enable(self._servo, to_ms(timeout), subnode)
+        r = lib.il_servo_enable(self.__servo_interface, to_ms(timeout), subnode)
         raise_err(r)
 
     def fault_reset(self, subnode=1):
@@ -813,12 +804,12 @@ class Servo(object):
         Args:
             subnode (int, optional): Subnode.
         """
-        r = lib.il_servo_fault_reset(self._servo, subnode)
+        r = lib.il_servo_fault_reset(self.__servo_interface, subnode)
         raise_err(r)
 
     def homing_start(self):
         """ Start the homing procedure. """
-        r = lib.il_servo_homing_start(self._servo)
+        r = lib.il_servo_homing_start(self.__servo_interface)
         raise_err(r)
 
     def homing_wait(self, timeout):
@@ -833,7 +824,7 @@ class Servo(object):
         Args:
             timeout (int, float): Timeout (s).
         """
-        r = lib.il_servo_homing_wait(self._servo, to_ms(timeout))
+        r = lib.il_servo_homing_wait(self.__servo_interface, to_ms(timeout))
         raise_err(r)
 
     @deprecated
@@ -852,7 +843,12 @@ class Servo(object):
         self.ifname = cstr(ifname) if ifname else ffi.NULL
         self.slave = slave
 
-        r = lib.il_servo_connect_ecat(3, self.ifname, self.net._net, self._servo, self.dict_f, 1061, self.slave, use_eoe_comms)
+        r = lib.il_servo_connect_ecat(
+            3, self.ifname, self.net.__net,
+            self.__servo_interface,
+            self._dictionary, 1061,
+            self.slave, use_eoe_comms
+        )
         time.sleep(2)
         return r
 
@@ -863,7 +859,7 @@ class Servo(object):
         Args:
             subnode (int, optional): Subnode.
         """
-        r = lib.il_servo_store_all(self._servo, subnode)
+        r = lib.il_servo_store_all(self.__servo_interface, subnode)
         raise_err(r)
 
     @deprecated(new_func_name='save_configuration')
@@ -877,10 +873,10 @@ class Servo(object):
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        r = lib.il_servo_dict_storage_read(self._servo)
+        r = lib.il_servo_dict_storage_read(self.__servo_interface)
         raise_err(r)
 
-        self.dict.save(new_path)
+        self.dictionary.save(new_path)
 
         tree = ET.parse(new_path)
         xml_data = tree.getroot()
@@ -920,17 +916,17 @@ class Servo(object):
         config_file.close()
 
     @deprecated(new_func_name='load_configuration')
-    def dict_storage_write(self, dict_f, subnode=0):
+    def dict_storage_write(self, dictionary, subnode=0):
         """ Write current dictionary storage to the servo drive.
 
         Args:
-            dict_f (str): Dictionary.
+            dictionary (str): Dictionary.
             subnode (int, optional): Subnode.
 
         """
-        r = lib.il_servo_dict_storage_write(self._servo, cstr(dict_f), subnode)
+        r = lib.il_servo_dict_storage_write(self.__servo_interface, cstr(dictionary), subnode)
         if not hasattr(self, '_errors') or not self._errors:
-            self._errors = self._get_all_errors(dict_f)
+            self._errors = self._get_all_errors(dictionary)
         raise_err(r)
 
     @property
@@ -942,7 +938,7 @@ class Servo(object):
         """
         name = ffi.new('char []', lib.IL_SERVO_NAME_SZ)
 
-        r = lib.il_servo_name_get(self._servo, name, ffi.sizeof(name))
+        r = lib.il_servo_name_get(self.__servo_interface, name, ffi.sizeof(name))
         raise_err(r)
 
         return pstr(name)
@@ -956,8 +952,19 @@ class Servo(object):
         """
         name_ = ffi.new('char []', cstr(name))
 
-        r = lib.il_servo_name_set(self._servo, name_)
+        r = lib.il_servo_name_set(self.__servo_interface, name_)
         raise_err(r)
+
+    @property
+    def dictionary(self):
+        """ Obtain dictionary of the servo. """
+        _dict = lib.il_servo_dict_get(self.servo_interface)
+
+        return Dictionary._from_dict(_dict) if _dict else None
+
+    @dictionary.setter
+    def dictionary(self, value):
+        self._dictionary = value
 
     @property
     def info(self):
@@ -968,7 +975,7 @@ class Servo(object):
         """
         info = ffi.new('il_servo_info_t *')
 
-        r = lib.il_servo_info_get(self._servo, info)
+        r = lib.il_servo_info_get(self.__servo_interface, info)
         raise_err(r)
 
         PRODUCT_ID_REG = Register(identifier='', address=0x06E1,
@@ -988,38 +995,38 @@ class Servo(object):
     @property
     def units_torque(self):
         """ SERVO_UNITS_TORQUE: Torque units. """
-        return SERVO_UNITS_TORQUE(lib.il_servo_units_torque_get(self._servo))
+        return SERVO_UNITS_TORQUE(lib.il_servo_units_torque_get(self.__servo_interface))
 
     @units_torque.setter
     def units_torque(self, units):
-        lib.il_servo_units_torque_set(self._servo, units.value)
+        lib.il_servo_units_torque_set(self.__servo_interface, units.value)
 
     @property
     def units_pos(self):
         """ SERVO_UNITS_POS: Position units. """
-        return SERVO_UNITS_POS(lib.il_servo_units_pos_get(self._servo))
+        return SERVO_UNITS_POS(lib.il_servo_units_pos_get(self.__servo_interface))
 
     @units_pos.setter
     def units_pos(self, units):
-        lib.il_servo_units_pos_set(self._servo, units.value)
+        lib.il_servo_units_pos_set(self.__servo_interface, units.value)
 
     @property
     def units_vel(self):
         """ SERVO_UNITS_VEL: Velocity units. """
-        return SERVO_UNITS_VEL(lib.il_servo_units_vel_get(self._servo))
+        return SERVO_UNITS_VEL(lib.il_servo_units_vel_get(self.__servo_interface))
 
     @units_vel.setter
     def units_vel(self, units):
-        lib.il_servo_units_vel_set(self._servo, units.value)
+        lib.il_servo_units_vel_set(self.__servo_interface, units.value)
 
     @property
     def units_acc(self):
         """ SERVO_UNITS_ACC: Acceleration units. """
-        return SERVO_UNITS_ACC(lib.il_servo_units_acc_get(self._servo))
+        return SERVO_UNITS_ACC(lib.il_servo_units_acc_get(self.__servo_interface))
 
     @units_acc.setter
     def units_acc(self, units):
-        lib.il_servo_units_acc_set(self._servo, units.value)
+        lib.il_servo_units_acc_set(self.__servo_interface, units.value)
 
     @property
     def mode(self):
@@ -1030,7 +1037,7 @@ class Servo(object):
         """
         mode = ffi.new('il_servo_mode_t *')
 
-        r = lib.il_servo_mode_get(self._servo, mode)
+        r = lib.il_servo_mode_get(self.__servo_interface, mode)
         raise_err(r)
 
         return SERVO_MODE(mode[0])
@@ -1042,7 +1049,7 @@ class Servo(object):
         Args:
             mode (SERVO_MODE): Operation mode.
         """
-        r = lib.il_servo_mode_set(self._servo, mode.value)
+        r = lib.il_servo_mode_set(self.__servo_interface, mode.value)
         raise_err(r)
 
     @property
@@ -1061,7 +1068,7 @@ class Servo(object):
         Returns:
             Network: Current servo network.
         """
-        return self._net
+        return self.__net
 
     @net.setter
     def net(self, value):
@@ -1070,7 +1077,17 @@ class Servo(object):
         Args:
             value (Network): Network to be setted as servo Network.
         """
-        self._net = value
+        self.__net = value
+
+    @property
+    def servo_interface(self):
+        """ Obtain servo interface. """
+        return self.__servo_interface
+
+    @servo_interface.setter
+    def servo_interface(self, value):
+        """ Set servo interface. """
+        self.__servo_interface = value
 
     @property
     def subnodes(self):
@@ -1079,18 +1096,7 @@ class Servo(object):
         Returns:
             int: Current number of subnodes.
         """
-        return int(ffi.cast('int', lib.il_servo_subnodes_get(self._servo)))
-
-    @property
-    def dict(self):
-        """ Obtain dictionary of the servo.
-
-        Returns:
-            dict: Current dictionary of the servo.
-        """
-        _dict = lib.il_servo_dict_get(self._servo)
-
-        return Dictionary._from_dict(_dict) if _dict else None
+        return int(ffi.cast('int', lib.il_servo_subnodes_get(self.__servo_interface)))
 
     @property
     def ol_voltage(self):
@@ -1100,7 +1106,7 @@ class Servo(object):
             float: Open loop voltage (% relative to DC-bus, -1...1).
         """
         voltage = ffi.new('double *')
-        r = lib.il_servo_ol_voltage_get(self._servo, voltage)
+        r = lib.il_servo_ol_voltage_get(self.__servo_interface, voltage)
         raise_err(r)
 
         return voltage[0]
@@ -1112,7 +1118,7 @@ class Servo(object):
         Args:
             float: Open loop voltage.
         """
-        r = lib.il_servo_ol_voltage_set(self._servo, voltage)
+        r = lib.il_servo_ol_voltage_set(self.__servo_interface, voltage)
         raise_err(r)
 
     @property
@@ -1123,7 +1129,7 @@ class Servo(object):
             float: Open loop frequency (mHz).
         """
         frequency = ffi.new('double *')
-        r = lib.il_servo_ol_frequency_get(self._servo, frequency)
+        r = lib.il_servo_ol_frequency_get(self.__servo_interface, frequency)
         raise_err(r)
 
         return frequency[0]
@@ -1135,7 +1141,7 @@ class Servo(object):
         Args:
             float: Open loop frequency.
         """
-        r = lib.il_servo_ol_frequency_set(self._servo, frequency)
+        r = lib.il_servo_ol_frequency_set(self.__servo_interface, frequency)
         raise_err(r)
 
     @property
@@ -1146,7 +1152,7 @@ class Servo(object):
             float: Actual torque.
         """
         torque = ffi.new('double *')
-        r = lib.il_servo_torque_get(self._servo, torque)
+        r = lib.il_servo_torque_get(self.__servo_interface, torque)
         raise_err(r)
 
         return torque[0]
@@ -1158,7 +1164,7 @@ class Servo(object):
         Args:
             float: Target torque.
         """
-        r = lib.il_servo_torque_set(self._servo, torque)
+        r = lib.il_servo_torque_set(self.__servo_interface, torque)
         raise_err(r)
 
     @property
@@ -1169,7 +1175,7 @@ class Servo(object):
             float: Actual position.
         """
         position = ffi.new('double *')
-        r = lib.il_servo_position_get(self._servo, position)
+        r = lib.il_servo_position_get(self.__servo_interface, position)
         raise_err(r)
 
         return position[0]
@@ -1214,7 +1220,7 @@ class Servo(object):
 
             pos = pos[0]
 
-        r = lib.il_servo_position_set(self._servo, pos, immediate, relative,
+        r = lib.il_servo_position_set(self.__servo_interface, pos, immediate, relative,
                                       sp_timeout)
         raise_err(r)
 
@@ -1226,7 +1232,7 @@ class Servo(object):
             int: Position resolution (c/rev/s, c/ppitch/s).
         """
         res = ffi.new('uint32_t *')
-        r = lib.il_servo_position_res_get(self._servo, res)
+        r = lib.il_servo_position_res_get(self.__servo_interface, res)
         raise_err(r)
 
         return res[0]
@@ -1239,7 +1245,7 @@ class Servo(object):
             float: Actual velocity.
         """
         velocity = ffi.new('double *')
-        r = lib.il_servo_velocity_get(self._servo, velocity)
+        r = lib.il_servo_velocity_get(self.__servo_interface, velocity)
         raise_err(r)
 
         return velocity[0]
@@ -1251,7 +1257,7 @@ class Servo(object):
         Args:
             velocity (float): Target velocity.
         """
-        r = lib.il_servo_velocity_set(self._servo, velocity)
+        r = lib.il_servo_velocity_set(self.__servo_interface, velocity)
         raise_err(r)
 
     @property
@@ -1262,7 +1268,7 @@ class Servo(object):
             int: Velocity resolution (c/rev, c/ppitch).
         """
         res = ffi.new('uint32_t *')
-        r = lib.il_servo_velocity_res_get(self._servo, res)
+        r = lib.il_servo_velocity_res_get(self.__servo_interface, res)
         raise_err(r)
 
         return res[0]
