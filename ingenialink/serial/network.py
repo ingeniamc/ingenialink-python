@@ -1,4 +1,6 @@
-from ..net import Network
+from ..network import Network, NET_PROT
+from ..utils._utils import *
+from .._ingenialink import lib, ffi
 
 
 class SerialNetwork(Network):
@@ -8,27 +10,49 @@ class SerialNetwork(Network):
         self.__timeout_rd = timeout_rd
         self.__timeout_wr = timeout_wr
 
+    def devices(self, prot):
+        """
+        Obtain a list of network devices.
+        Args:
+            prot (NET_PROT): Protocol.
+        Returns:
+            list: List of network devices.
+        Raises:
+            TypeError: If the protocol type is invalid.
+        """
+        if not isinstance(prot, NET_PROT):
+            raise TypeError('Invalid protocol')
+
+        devs = lib.il_net_dev_list_get(prot.value)
+
+        found = []
+        curr = devs
+
+        while curr:
+            found.append(pstr(curr.port))
+            curr = curr.next
+
+        lib.il_net_dev_list_destroy(devs)
+
+        return found
+
     def load_firmware(self, fw_file):
-        # TODO: Implement FTP fw loader
+        # TODO: Implement firmware loader
         raise NotImplementedError
 
-    def scan_nodes(self):
+    def scan_slaves(self):
         raise NotImplementedError
 
-    def connect(self):
+    def connect_to_slave(self):
         raise NotImplementedError
 
-    def disconnect(self):
+    def disconnect_from_slave(self, servo):
         raise NotImplementedError
 
-    def restore_parameters(self):
-        raise NotImplementedError
-
-    def store_parameters(self):
-        raise NotImplementedError
-
-    def load_configuration(self):
-        raise NotImplementedError
+    @property
+    def protocol(self):
+        """ NET_PROT: Obtain network protocol. """
+        return NET_PROT.MCB
 
     @property
     def port(self):

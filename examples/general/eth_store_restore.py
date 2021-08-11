@@ -9,7 +9,7 @@ def eth_store_parameters():
     servo = net.connect_to_slave("192.168.2.22",
                                  "eve-net-c_eth_1.8.1.xdf",
                                  1061,
-                                 il.net.NET_TRANS_PROT.UDP)
+                                 il.network.NET_TRANS_PROT.UDP)
 
     print(servo.read('DRV_ID_SOFTWARE_VERSION'))
 
@@ -27,7 +27,7 @@ def eth_restore_parameters():
     servo = net.connect_to_slave("192.168.2.22",
                                  "eve-net-c_eth_1.8.1.xdf",
                                  1061,
-                                 il.net.NET_TRANS_PROT.UDP)
+                                 il.network.NET_TRANS_PROT.UDP)
 
     print(servo.read('DRV_ID_SOFTWARE_VERSION'))
 

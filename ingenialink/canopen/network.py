@@ -7,7 +7,7 @@ from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import *
 from ..exceptions import ILFirmwareLoadError
 from can.interfaces.pcan.pcan import PcanError
-from ..net import NET_PROT, NET_STATE, Network
+from ..network import NET_PROT, NET_STATE, Network
 from can.interfaces.ixxat.exceptions import VCIDeviceNotFoundError
 from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT
 
@@ -168,16 +168,16 @@ class CanopenNetwork(Network):
         """
         self._setup_connection()
 
-        self.network_interface.scanner.reset()
+        self._connection.scanner.reset()
         try:
-            self.network_interface.scanner.search()
+            self._connection.scanner.search()
         except Exception as e:
             logger.error("Error searching for nodes. Exception: {}".format(e))
             logger.info("Resetting bus")
-            self.network_interface.bus.reset()
+            self._connection.bus.reset()
         sleep(0.05)
 
-        nodes = self.network_interface.scanner.nodes
+        nodes = self._connection.scanner.nodes
 
         self._teardown_connection()
 
@@ -203,7 +203,7 @@ class CanopenNetwork(Network):
         self._setup_connection()
         if target in nodes:
             try:
-                node = self.network_interface.add_node(target, eds)
+                node = self._connection.add_node(target, eds)
 
                 node.nmt.start_node_guarding(1)
 
@@ -233,19 +233,19 @@ class CanopenNetwork(Network):
         """ Disconnects the already established network. """
         self.stop_network_monitor()
         servo.stop_servo_monitor()
-        self.network_interface.disconnect()
+        self._connection.disconnect()
         self.servos.remove(servo)
 
     def _setup_connection(self):
         """ Creates a network interface object establishing an empty connection
          with all the network attributes already specified. """
-        if self.network_interface is None:
-            self.network_interface = canopen.Network()
+        if self._connection is None:
+            self._connection = canopen.Network()
 
             try:
-                self.network_interface.connect(bustype=self.__device,
-                                               channel=self.__channel,
-                                               bitrate=self.__baudrate)
+                self._connection.connect(bustype=self.__device,
+                                         channel=self.__channel,
+                                         bitrate=self.__baudrate)
             except (PcanError, VCIDeviceNotFoundError) as e:
                 logger.error('Transceiver not found in network. Exception: %s', e)
                 raise_err(lib.IL_EFAIL, 'Error connecting to the transceiver. '
@@ -267,32 +267,32 @@ class CanopenNetwork(Network):
     def _teardown_connection(self):
         """ Tears down the already established connection
         and deletes the network interface """
-        self.network_interface.disconnect()
-        self.network_interface = None
+        self._connection.disconnect()
+        self._connection = None
         logger.info('Tear down connection.')
 
     def _reset_connection(self):
         """ Resets the established CANopen network. """
         try:
-            self.network_interface.disconnect()
+            self._connection.disconnect()
         except BaseException as e:
             logger.error("Disconnection failed. Exception: %", e)
 
         try:
-            for node in self.network_interface.scanner.nodes:
-                self.network_interface.nodes[node].nmt.stop_node_guarding()
-            if self.network_interface.bus:
-                self.network_interface.bus.flush_tx_buffer()
+            for node in self._connection.scanner.nodes:
+                self._connection.nodes[node].nmt.stop_node_guarding()
+            if self._connection.bus:
+                self._connection.bus.flush_tx_buffer()
                 logger.info("Bus flushed")
         except Exception as e:
             logger.error("Could not stop guarding. Exception: %", e)
 
         try:
-            self.network_interface.connect(bustype=self.__device,
-                                           channel=self.__channel,
-                                           bitrate=self.__baudrate)
-            for node_id in self.network_interface.scanner.nodes:
-                node = self.network_interface.add_node(node_id, self.__eds)
+            self._connection.connect(bustype=self.__device,
+                                     channel=self.__channel,
+                                     bitrate=self.__baudrate)
+            for node_id in self._connection.scanner.nodes:
+                node = self._connection.add_node(node_id, self.__eds)
                 node.nmt.start_node_guarding(1)
         except BaseException as e:
             logger.error("Connection failed. Exception: %s", e)
@@ -607,7 +607,7 @@ class CanopenNetwork(Network):
             else:
                 error_detected_msg = 'Failed to connect to the drive'
                 logger.error("Error detected could not specify the drive.")
-                if self.network_interface is not None and not servo_connected:
+                if self._connection is not None and not servo_connected:
                     self._teardown_connection()
                     logger.error('CANopen connection disconnected')
         except Exception as e:
@@ -615,13 +615,13 @@ class CanopenNetwork(Network):
             error_detected_msg = 'Failed to load firmware'
             if servo is not None and not servo_connected:
                 self.disconnect_from_slave(servo)
-            elif self.network_interface is not None and not servo_connected:
+            elif self._connection is not None and not servo_connected:
                 self._teardown_connection()
                 logger.error('CANopen connection disconnected')
         try:
             if servo is not None and not servo_connected:
                 self.disconnect_from_slave(servo)
-            elif self.network_interface is not None and not servo_connected:
+            elif self._connection is not None and not servo_connected:
                 self._teardown_connection()
                 logger.error('CANopen connection disconnected')
         except Exception as e:
@@ -693,7 +693,7 @@ class CanopenNetwork(Network):
         r = self._lss_switch_state_selective(vendor_id, product_code,
                                             rev_number, serial_number)
         if r < 0:
-            self.network_interface.lss.configure_bit_timing(
+            self._connection.lss.configure_bit_timing(
                 CAN_BIT_TIMMING[new_target_baudrate].value
             )
             sleep(0.1)
@@ -727,7 +727,7 @@ class CanopenNetwork(Network):
                                              rev_number, serial_number)
 
         if r < 0:
-            self.network_interface.lss.configure_node_id(new_target_node)
+            self._connection.lss.configure_node_id(new_target_node)
             sleep(0.1)
 
             self._lss_store_configuration()
@@ -741,11 +741,11 @@ class CanopenNetwork(Network):
 
     def _lss_store_configuration(self):
         """ Stores the current configuration of the LSS"""
-        self.network_interface.lss.store_configuration()
+        self._connection.lss.store_configuration()
         sleep(0.1)
         logger.info('Stored new configuration')
-        self.network_interface.lss.send_switch_state_global(
-            self.network_interface.lss.WAITING_STATE
+        self._connection.lss.send_switch_state_global(
+            self._connection.lss.WAITING_STATE
         )
 
     def _lss_switch_state_selective(self, vendor_id, product_code,
@@ -765,7 +765,7 @@ class CanopenNetwork(Network):
         logger.debug("Switching LSS into CONFIGURATION state...")
 
         try:
-            r = self.network_interface.lss.send__lss_switch_state_selective(
+            r = self._connection.lss.send__lss_switch_state_selective(
                 vendor_id,
                 product_code,
                 rev_number,
@@ -784,7 +784,7 @@ class CanopenNetwork(Network):
             target_node (int): Node ID of the targeted device.
 
         """
-        self.network_interface.nodes[target_node].nmt.send_command(0x82)
+        self._connection.nodes[target_node].nmt.send_command(0x82)
 
         logger.debug("Wait until node is reset")
         sleep(0.5)
@@ -794,14 +794,14 @@ class CanopenNetwork(Network):
 
         for node_id in nodes:
             logger.info('Node found: %i', node_id)
-            node = self.network_interface.add_node(node_id, self.__eds)
+            node = self._connection.add_node(node_id, self.__eds)
 
         # Reset all nodes to default state
-        self.network_interface.lss.send_switch_state_global(
-            self.network_interface.lss.WAITING_STATE
+        self._connection.lss.send_switch_state_global(
+            self._connection.lss.WAITING_STATE
         )
 
-        self.network_interface.nodes[target_node].nmt.start_node_guarding(1)
+        self._connection.nodes[target_node].nmt.start_node_guarding(1)
 
     def subscribe_to_network_status(self, cb):
         """ Subscribe to network state changes.
@@ -819,7 +819,7 @@ class CanopenNetwork(Network):
     def stop_network_monitor(self):
         """ Stops the NetStatusListener from listening to the drive. """
         try:
-            for node_id, node_obj in self.network_interface.nodes.items():
+            for node_id, node_obj in self._connection.nodes.items():
                 node_obj.nmt.stop_node_guarding()
         except Exception as e:
             logger.error('Could not stop node guarding. Exception: %s', str(e))
@@ -837,10 +837,10 @@ class CanopenNetwork(Network):
     @property
     def network(self):
         """ canopen.Network: Returns the instance of the CANopen Network. """
-        return self.network_interface
+        return self._connection
 
     @property
-    def prot(self):
+    def protocol(self):
         """ NET_PROT: Obtain network protocol. """
         return NET_PROT.CAN
 

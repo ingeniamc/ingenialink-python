@@ -1,5 +1,5 @@
-from .net import (Network, NetworkMonitor, devices, NET_PROT, NET_STATE,
-                  NET_DEV_EVT)
+from .network import (Network, NetworkMonitor, devices, NET_PROT, NET_STATE,
+                      NET_DEV_EVT)
 from .servo import (Servo, lucky, SERVO_STATE, SERVO_FLAGS, SERVO_MODE,
                     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL,
                     SERVO_UNITS_ACC)

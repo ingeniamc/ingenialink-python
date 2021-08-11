@@ -1,6 +1,6 @@
 import pytest
 
-from ingenialink.net import NET_TRANS_PROT
+from ingenialink.network import NET_TRANS_PROT
 from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
 from ingenialink.ethernet.network import EthernetNetwork
 

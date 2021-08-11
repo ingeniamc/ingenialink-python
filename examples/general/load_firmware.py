@@ -45,10 +45,10 @@ def main():
               "--is-everest or --no-is-everest")
         return
     ethernet = get_adapter_by_id(args.ethernet_index)
-    net, r = il.net.update_firmware(ethernet,
-                                    args.file_path,
-                                    args.is_everest,
-                                    slave=args.slave)
+    net, r = il.network.update_firmware(ethernet,
+                                        args.file_path,
+                                        args.is_everest,
+                                        slave=args.slave)
     if r < 0:
         print("Error: Firmware update fails.")
 

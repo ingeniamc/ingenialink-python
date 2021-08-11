@@ -1,10 +1,10 @@
 from enum import Enum
-from abc import ABC
+from abc import ABC, abstractmethod, abstractproperty
 
 from ._ingenialink import ffi, lib
 from ingenialink.utils._utils import *
 from .registers import Register
-from .net import Network, NET_PROT
+from .network import Network, NET_PROT
 
 from .const import *
 
@@ -167,7 +167,7 @@ def _on_emcy_cb(ctx, code):
 
 
 class Servo(ABC):
-    """ Basic declaration of a common Servo object.
+    """ Declaration of a general Servo object.
 
     Args:
         net (Network): Network instance.
@@ -224,6 +224,7 @@ class Servo(ABC):
         # TODO: Implement is_alive method
         raise NotImplementedError
 
+    @abstractmethod
     def get_state(self, subnode=1):
         """ Obtain state of the servo.
 
@@ -235,6 +236,7 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def subscribe_to_servo_status(self, cb):
         """ Subscribe to state changes.
 
@@ -246,6 +248,7 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def unsubscribe_to_servo_status(self, slot):
         """ Unsubscribe from state changes.
 
@@ -254,6 +257,7 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def reload_errors(self, dictionary):
         """ Force to reload all dictionary errors.
 
@@ -262,6 +266,7 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def load_configuration(self, dictionary, subnode=0):
         """ Load configuration from dictionary file to the servo drive.
 
@@ -272,6 +277,7 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def save_configuration(self, new_path, subnode=0):
         """ Read all dictionary registers content and save it to a
         new dictionary.
@@ -281,6 +287,7 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def store_parameters(self, subnode=1):
         """ Store all the current parameters of the target subnode.
 
@@ -293,6 +300,7 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def restore_parameters(self):
         """ Restore all the current parameters of all the slave to default.
 
@@ -302,6 +310,7 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def get_reg(self, reg, subnode):
         """ Obtain Register object and its identifier.
 
@@ -315,6 +324,7 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def read(self, reg, subnode=1):
         """ Read from servo.
 
@@ -329,6 +339,7 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def write(self, reg, data, confirm=True, extended=0, subnode=1):
         """ Write to servo.
 
@@ -344,10 +355,12 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def disable(self, subnode=1):
         """ Disable PDS. """
         raise NotImplementedError
 
+    @abstractmethod
     def enable(self, timeout=2., subnode=1):
         """ Enable PDS.
 
@@ -357,6 +370,7 @@ class Servo(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def fault_reset(self, subnode=1):
         """ Fault reset.
 

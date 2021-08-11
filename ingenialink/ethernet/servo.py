@@ -1,6 +1,5 @@
 from ..ipb_servo import IPBServo
 
-
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
