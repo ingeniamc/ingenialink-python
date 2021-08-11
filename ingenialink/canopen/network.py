@@ -148,6 +148,7 @@ class CanopenNetwork(Network):
         self.__baudrate = baudrate.value
         self.__eds = None
         self.__dict = None
+        self._connection = None
         self.__net_status_listener = None
         self.__net_state = NET_STATE.DISCONNECTED
 

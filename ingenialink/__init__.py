@@ -1,6 +1,6 @@
-from .network import (Network, NetworkMonitor, devices, NET_PROT, NET_STATE,
+from .network import (Network, NetworkMonitor, NET_PROT, NET_STATE,
                       NET_DEV_EVT)
-from .servo import (Servo, lucky, SERVO_STATE, SERVO_FLAGS, SERVO_MODE,
+from .servo import (Servo, SERVO_STATE, SERVO_FLAGS, SERVO_MODE,
                     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL,
                     SERVO_UNITS_ACC)
 from .monitor import Monitor, MONITOR_TRIGGER
@@ -15,9 +15,9 @@ from .err import err_ipb_last
 from ._ingenialink import lib
 from ingenialink.utils._utils import pstr
 
-__all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
+__all__ = ['Network', 'NetworkMonitor', 'NET_PROT', 'NET_DEV_EVT',
            'NET_STATE',
-           'Servo', 'lucky', 'SERVO_STATE', 'SERVO_FLAGS', 'SERVO_MODE',
+           'Servo', 'SERVO_STATE', 'SERVO_FLAGS', 'SERVO_MODE',
            'SERVO_UNITS_TORQUE', 'SERVO_UNITS_POS', 'SERVO_UNITS_VEL',
            'SERVO_UNITS_ACC',
            'Monitor', 'MONITOR_TRIGGER',
