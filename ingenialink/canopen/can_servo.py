@@ -135,27 +135,18 @@ class CanopenServo(Servo):
     def __init__(self, net, target, node, dictionary_path=None,
                  servo_status_listener=False):
         super(CanopenServo, self).__init__(net, target)
-        self.__net = net
-        self.__target = target
         self.__node = node
         if dictionary_path is not None:
             self._dictionary = CanopenDictionary(dictionary_path)
         else:
             self._dictionary = None
-        self.__info = {}
+        self.__lock = threading.RLock()
         self.__state = {
             1: lib.IL_SERVO_STATE_NRDY,
             2: lib.IL_SERVO_STATE_NRDY,
             3: lib.IL_SERVO_STATE_NRDY
         }
         self.__servo_state_observers = []
-        self.__lock = threading.RLock()
-        self.__units_torque = None
-        self.__units_pos = None
-        self.__units_vel = None
-        self.__units_acc = None
-        self.__name = "Drive"
-        self.__full_name = None
         self.__servo_status_listener = None
 
         if servo_status_listener:
@@ -717,11 +708,13 @@ class CanopenServo(Servo):
                 subnode=1)
         return r
 
-    def emcy_subscribe(self, callback):
-        raise NotImplementedError
+    def reload_errors(self, dictionary):
+        """ Force to reload all dictionary errors.
 
-    def emcy_unsubscribe(self, callback):
-        raise NotImplementedError
+        Args:
+            dictionary (str): Dictionary.
+        """
+        pass
 
     @staticmethod
     def status_word_decode(status_word):
@@ -754,15 +747,6 @@ class CanopenServo(Servo):
         return SERVO_STATE(state)
 
     @property
-    def net(self):
-        """ net: CANopen Network. """
-        return self.__net
-
-    @net.setter
-    def net(self, net):
-        self.__net = net
-
-    @property
     def dictionary(self):
         """ Returns dictionary object """
         return self._dictionary
@@ -770,15 +754,6 @@ class CanopenServo(Servo):
     @dictionary.setter
     def dictionary(self, new_value):
         self._dictionary = new_value
-
-    @property
-    def target(self):
-        """ str: Target. """
-        return self.__target
-
-    @target.setter
-    def target(self, value):
-        self.__target = value
 
     @property
     def name(self):
