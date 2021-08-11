@@ -9,7 +9,7 @@ from .registers import Register, REG_DTYPE, REG_ACCESS, REG_PHY
 from .dict_ import Dictionary
 from .dict_labels import LabelsDictionary
 from .canopen.servo import CanopenServo
-from .canopen.netwrok import CanopenNetwork, CAN_DEVICE
+from .canopen.network import CanopenNetwork, CAN_DEVICE
 from .canopen.poller import CanopenPoller
 from .err import err_ipb_last
 from ._ingenialink import lib

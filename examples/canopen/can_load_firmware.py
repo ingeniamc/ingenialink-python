@@ -1,4 +1,4 @@
-from ingenialink.canopen.netwrok import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
+from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
 
 import sys
 
