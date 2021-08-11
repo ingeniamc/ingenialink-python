@@ -11,9 +11,6 @@ from .dict_labels import LabelsDictionary
 from .canopen.can_servo import CanopenServo
 from .canopen.can_net import CanopenNetwork, CAN_DEVICE
 from .canopen.can_poller import CanopenPoller
-from .canopen.servo_node import Servo as CANOpenServo
-from .canopen.net import Network as CANOpenNetwork
-from .canopen.poller_node import Poller as CANOpenPoller
 from .err import err_ipb_last
 from ._ingenialink import lib
 from ingenialink.utils._utils import pstr
@@ -29,7 +26,6 @@ __all__ = ['Network', 'NetworkMonitor', 'devices', 'NET_PROT', 'NET_DEV_EVT',
            'Dictionary',
            'LabelsDictionary',
            'CanopenNetwork', 'CAN_DEVICE', 'CanopenPoller', 'CanopenServo',
-           'CANOpenNetwork', 'CANOpenPoller', 'CANOpenServo',
            'err_ipb_last']
 
 __version__ = '5.3.9'

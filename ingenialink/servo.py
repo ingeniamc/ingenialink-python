@@ -1,17 +1,12 @@
 from enum import Enum
+from abc import ABC
 
 from ._ingenialink import ffi, lib
 from ingenialink.utils._utils import *
-from .registers import Register, REG_DTYPE, dtype_size, REG_ACCESS
-from .dict_ import Dictionary
+from .registers import Register
 from .net import Network, NET_PROT
 
 from .const import *
-
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
-import time
-import io
 
 
 class SERVO_STATE(Enum):
@@ -35,7 +30,7 @@ class SERVO_STATE(Enum):
     """ Fault. """
 
 
-class SERVO_FLAGS(object):
+class SERVO_FLAGS(Enum):
     """ Status Flags. """
 
     TGT_REACHED = lib.IL_SERVO_FLAG_TGT_REACHED
@@ -157,91 +152,6 @@ class SERVO_UNITS_ACC(Enum):
     """ Meters/second^2. """
 
 
-@deprecated
-def servo_is_connected(address_ip, port_ip=1061, protocol=1):
-    """ Obtain boolean with result of search a servo into ip.
-
-    Args:
-        address_ip: IP Address.
-
-    Returns:
-        bool
-
-    """
-    net__ = ffi.new('il_net_t **')
-    address_ip = cstr(address_ip) if address_ip else ffi.NULL
-    return lib.il_servo_is_connected(net__, address_ip, port_ip, protocol)
-
-
-@deprecated
-def lucky(prot, dict_f=None, address_ip=None, port_ip=23, protocol=1):
-    """ Obtain an instance of the first available Servo.
-
-    Args:
-        prot (NET_PROT): Network protocol.
-        dict_f (str, optional): Dictionary.
-
-    Returns:
-        tuple:
-
-            - Network: Servo network instance.
-            - Servo: Servo instance.
-    """
-    net__ = ffi.new('il_net_t **')
-    servo__ = ffi.new('il_servo_t **')
-    dict_f = cstr(dict_f) if dict_f else ffi.NULL
-    address_ip = cstr(address_ip) if address_ip else ffi.NULL
-
-    if prot.value == 2:
-        r = lib.il_servo_lucky_eth(prot.value, net__, servo__, dict_f,
-                                   address_ip, port_ip, protocol)
-    else:
-        r = lib.il_servo_lucky(prot.value, net__, servo__, dict_f)
-    raise_err(r)
-
-    net_ = ffi.cast('il_net_t *', net__[0])
-    servo_ = ffi.cast('il_servo_t *', servo__[0])
-
-    net = Network._from_existing(net_)
-    servo = Servo._from_existing(servo_, dict_f)
-    servo.net = net
-
-    return net, servo
-
-
-@deprecated
-def connect_ecat(ifname, dict_f, slave=1, use_eoe_comms=1):
-    """ Connect the drive through SOEM communications.
-
-    Args:
-        ifname (str): Interface name.
-        dict_f (str): Dictionary path.
-        slave (int): Slave number.
-        use_eoe_comms (int): Use of EoE communications or communicate via SDOs.
-
-    Returns:
-        tuple: Servo and Network.
-
-    """
-    net = Network(prot=NET_PROT.ECAT, slave=slave)
-    servo = Servo(net=net, dict_f=dict_f)
-
-    r = servo.connect_ecat(ifname=ifname,
-                           slave=slave,
-                           use_eoe_comms=use_eoe_comms)
-
-    if r <= 0:
-        servo = None
-        net = None
-        raise_err(r)
-    else:
-        net.__net = ffi.cast('il_net_t *', net.__net[0])
-        servo.__servo_interface = ffi.cast('il_servo_t *', servo.__servo_interface[0])
-        servo.net = net
-
-    return servo, net
-
-
 @ffi.def_extern()
 def _on_state_change_cb(ctx, state, flags, subnode):
     """ On state change callback shim. """
@@ -256,7 +166,7 @@ def _on_emcy_cb(ctx, code):
     cb(code)
 
 
-class Servo(object):
+class Servo(ABC):
     """ Basic declaration of a common Servo object.
 
     Args:
@@ -368,6 +278,27 @@ class Servo(object):
         Args:
             new_path (str): Dictionary.
 
+        """
+        raise NotImplementedError
+
+    def store_parameters(self, subnode=1):
+        """ Store all the current parameters of the target subnode.
+
+        Args:
+            subnode (int): Subnode of the axis.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+        """
+        raise NotImplementedError
+
+    def restore_parameters(self):
+        """ Restore all the current parameters of all the slave to default.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
         """
         raise NotImplementedError
 

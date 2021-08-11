@@ -1,5 +1,6 @@
 from enum import Enum
 from time import sleep
+from abc import ABC
 
 from ._ingenialink import lib, ffi
 from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err, to_ms, deprecated
@@ -88,151 +89,6 @@ def devices(prot):
     return found
 
 
-@deprecated
-def eeprom_tool(ifname, mode, filename):
-    """ Tool to modify and verify drive EEPROM.
-
-    Args:
-        ifname (str): Interface name.
-        mode (int): EEPROM tool mode.
-        filename (str): Path to the EEPROM file.
-
-    Returns:
-        int: Result code.
-
-    """
-    net__ = ffi.new('il_net_t **')
-    ifname = cstr(ifname) if ifname else ffi.NULL
-    filename = cstr(filename) if filename else ffi.NULL
-
-    return lib.il_net_eeprom_tool(net__, ifname, 1, mode.value, filename)
-
-
-@deprecated
-def master_startup(ifname, if_address_ip):
-    """ Start SOEM master.
-
-    Args:
-        ifname (str): Interface name.
-        if_address_ip (str): Interface address IP.
-
-    Returns:
-        int: Result code.
-    """
-    net__ = ffi.new('il_net_t **')
-    ifname = cstr(ifname) if ifname else ffi.NULL
-    if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
-
-    return lib.il_net_master_startup(net__, ifname, if_address_ip), net__
-
-
-@deprecated
-def num_slaves_get(ifname):
-    ifname = cstr(ifname) if ifname else ffi.NULL
-    return lib.il_net_num_slaves_get(ifname)
-
-
-@deprecated
-def master_stop(net):
-    """
-    Stop SOEM master.
-
-    Returns:
-        int: Result code.
-    """
-    return lib.il_net_master_stop(net)
-
-
-@deprecated
-def update_firmware_moco(node, subnode, ip, port, moco_file):
-    """ Update MOCO firmware through UDP protocol.
-
-    Args:
-        node: Network node.
-        subnode: Drive subnode.
-        ip: Drive address IP.
-        port: Drive port.
-        moco_file: Path to the firmware file.
-
-    Returns:
-        int: Result code.
-    """
-    r = 1
-    upd = UDP(port, ip)
-
-    if moco_file and os.path.isfile(moco_file):
-        moco_in = open(moco_file, "r")
-
-        logger.info("Loading firmware...")
-        try:
-            for line in moco_in:
-                words = line.split()
-
-                # Get command and address
-                cmd = int(words[1] + words[0], 16)
-                data = b''
-                data_start_byte = 2
-                while data_start_byte in range(data_start_byte, len(words)):
-                    # Load UDP data
-                    data = data + bytes([int(words[data_start_byte], 16)])
-                    data_start_byte = data_start_byte + 1
-
-                # Send message
-                upd.raw_cmd(node, subnode, cmd, data)
-
-                if cmd == CMD_CHANGE_CPU:
-                    sleep(1)
-
-            logger.info("Bootloading process succeeded")
-        except Exception as e:
-            logger.error('Error during bootloading process. %s', e)
-            r = -2
-    else:
-        logger.error('File not found')
-        r = -1
-
-    return r
-
-
-@deprecated
-def update_firmware(ifname, filename, is_summit=False, slave=1):
-    """ Update firmware through FoE.
-
-    Args:
-        ifname: Interface name.
-        filename: Path to the firmware file.
-        is_summit:  [true] -> Everest
-                    [false] -> Capitan or Low-Power drives
-        slave: Slave number in the network.
-
-    Returns:
-        int: Result code.
-    """
-    net__ = ffi.new('il_net_t **')
-    ifname = cstr(ifname) if ifname else ffi.NULL
-    filename = cstr(filename) if filename else ffi.NULL
-    return net__, lib.il_net_update_firmware(net__, ifname, slave,
-                                             filename, is_summit)
-
-
-@deprecated
-def force_error(ifname, if_address_ip):
-    """ Force state machine error.
-
-    Args:
-        ifname: Interface name.
-        if_address_ip: Interface address IP.
-
-    Returns:
-        int: Result code.
-    """
-    net__ = ffi.new('il_net_t **')
-    ifname = cstr(ifname) if ifname else ffi.NULL
-    if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
-
-    return lib.il_net_force_error(net__, ifname, if_address_ip)
-
-
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
     """ On found callback shim. """
@@ -247,7 +103,7 @@ def _on_evt_cb(ctx, evt, port):
     self._on_evt(NET_DEV_EVT(evt), pstr(port))
 
 
-class Network(object):
+class Network(ABC):
     """ Basic declaration of a common Network object. """
     def __init__(self):
         self.__servos = []
@@ -528,80 +384,6 @@ class Network(object):
     def stop_network_monitor(self):
         """ Stop monitoring network events. """
         lib.il_net_mon_stop(self.__network_interface)
-
-    @deprecated('start_network_monitor')
-    def net_mon_status(self, on_evt):
-        """ Calls given function everytime a connection/disconnection event is
-        raised.
-
-        Args:
-            on_evt (Callback): Function that will be called every time an event
-            is raised.
-        """
-        if self.prot == NET_PROT.ETH or self.prot == NET_PROT.ECAT:
-            status = self.status
-            while True:
-                if status != self.status:
-                    if self.status == 0:
-                        on_evt(NET_DEV_EVT.ADDED)
-                    elif self.status == 1:
-                        on_evt(NET_DEV_EVT.REMOVED)
-                    status = self.status
-                sleep(1)
-
-    @deprecated('stop_network_monitor')
-    def net_mon_stop(self):
-        """ Stop monitoring network events. """
-        lib.il_net_mon_stop(self.__network_interface)
-
-    @deprecated
-    def set_if_params(self, ifname, if_address_ip):
-        """ Set ethernet interface parameters.
-
-        Args:
-            ifname (str): Interface name.
-            if_address_ip (str): Interface address IP.
-
-        Returns:
-
-        """
-        return lib.il_net_set_if_params(self.__network_interface, ifname, if_address_ip)
-
-    @deprecated
-    def master_startup(self, ifname, if_address_ip):
-        """ Start SOEM master.
-
-        Args:
-            ifname (str): Interface name.
-            if_address_ip (str): Interface address IP.
-
-        Returns:
-            int: Result code.
-        """
-        ifname = cstr(ifname) if ifname else ffi.NULL
-        if_address_ip = cstr(if_address_ip) if if_address_ip else ffi.NULL
-
-        return lib.il_net_master_startup(self.__network_interface, ifname, if_address_ip)
-
-    @deprecated
-    def connect(self):
-        """ Connect network. """
-        r = lib.il_net_connect(self.__network_interface)
-        raise_err(r)
-
-    @deprecated
-    def disconnect(self):
-        """ Disconnect network. """
-        lib.il_net_disconnect(self.__network_interface)
-
-    @deprecated
-    def master_stop(self):
-        """ Stop SOEM master.
-
-        Returns:
-            int: Result code.
-        """
-        return lib.il_net_master_stop(self.__network_interface)
 
     @property
     def prot(self):
