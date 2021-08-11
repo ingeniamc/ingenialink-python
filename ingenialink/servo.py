@@ -215,15 +215,6 @@ class Servo(ABC):
         self.__units_acc = None
         self.__units_torque = None
 
-    def is_alive(self):
-        """ Checks if the servo is responding and thus, if it is still alive.
-
-        Returns:
-            bool: Indicating if the servo is alive or not.
-        """
-        # TODO: Implement is_alive method
-        raise NotImplementedError
-
     @abstractmethod
     def get_state(self, subnode=1):
         """ Obtain state of the servo.
@@ -378,6 +369,15 @@ class Servo(ABC):
             subnode (int, optional): Subnode.
         """
         raise NotImplementedError
+
+    def is_alive(self):
+        """ Checks if the servo is responding and thus, if it is still alive.
+
+        Returns:
+            bool: Indicating if the servo is alive or not.
+        """
+        # TODO: Implement is_alive method
+        pass
 
     @property
     def name(self):

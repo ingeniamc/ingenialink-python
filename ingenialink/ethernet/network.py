@@ -138,7 +138,7 @@ class EthernetNetwork(Network):
 
         return r
 
-    def scan_nodes(self):
+    def scan_slaves(self):
         raise NotImplementedError
 
     def connect_to_slave(self, target, dictionary=None, port=1061,
