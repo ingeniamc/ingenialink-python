@@ -21,7 +21,7 @@ class IPBServo(Servo):
         super(IPBServo, self).__init__(net, target)
         self._dictionary = cstr(dictionary_path) if dictionary_path else ffi.NULL
 
-        self.__servo_interface = ffi.new('il_servo_t **')
+        self.__cffi_servo = ffi.new('il_servo_t **')
 
         self._state_cb = {}
         self._emcy_cb = {}
@@ -42,7 +42,7 @@ class IPBServo(Servo):
 
         """
         inst = cls.__new__(cls)
-        inst.__servo_interface = ffi.gc(servo, lib.il_servo_fake_destroy)
+        inst.__cffi_servo = ffi.gc(servo, lib.il_servo_fake_destroy)
 
         inst._state_cb = {}
         inst._emcy_cb = {}
@@ -142,7 +142,7 @@ class IPBServo(Servo):
         t, f = self._raw_read[_reg.dtype]
         v = ffi.new(t)
 
-        r = f(self.__servo_interface, _reg._reg, ffi.NULL, v)
+        r = f(self.__cffi_servo, _reg._reg, ffi.NULL, v)
         raise_err(r)
 
         try:
@@ -206,7 +206,7 @@ class IPBServo(Servo):
         # Obtain function to call
         f = self._raw_write[_reg.dtype]
 
-        r = f(self.__servo_interface, _reg._reg, ffi.NULL, data, confirm, extended)
+        r = f(self.__cffi_servo, _reg._reg, ffi.NULL, data, confirm, extended)
         raise_err(r)
 
     def destroy(self):
@@ -215,7 +215,7 @@ class IPBServo(Servo):
         Returns:
             int: Result code.
         """
-        r = lib.il_servo_destroy(self.__servo_interface)
+        r = lib.il_servo_destroy(self.__cffi_servo)
         return r
 
     def reset(self):
@@ -224,7 +224,7 @@ class IPBServo(Servo):
         Notes:
             You may need to reconnect the network after reset.
         """
-        r = lib.il_servo_reset(self.__servo_interface)
+        r = lib.il_servo_reset(self.__cffi_servo)
         raise_err(r)
 
     def get_state(self, subnode=1):
@@ -239,7 +239,7 @@ class IPBServo(Servo):
         state = ffi.new('il_servo_state_t *')
         flags = ffi.new('int *')
 
-        lib.il_servo_state_get(self.__servo_interface, state, flags, subnode)
+        lib.il_servo_state_get(self.__cffi_servo, state, flags, subnode)
 
         return SERVO_STATE(state[0]), flags[0]
 
@@ -252,7 +252,7 @@ class IPBServo(Servo):
         Returns:
             int: Result code.
         """
-        return lib.il_servo_state_subs_stop(self.__servo_interface, stop)
+        return lib.il_servo_state_subs_stop(self.__cffi_servo, stop)
 
     def enable(self, timeout=2., subnode=1):
         """ Enable PDS.
@@ -261,12 +261,12 @@ class IPBServo(Servo):
             timeout (int, float, optional): Timeout (s).
             subnode (int, optional): Subnode.
         """
-        r = lib.il_servo_enable(self.__servo_interface, to_ms(timeout), subnode)
+        r = lib.il_servo_enable(self.__cffi_servo, to_ms(timeout), subnode)
         raise_err(r)
 
     def disable(self, subnode=1):
         """ Disable PDS. """
-        r = lib.il_servo_disable(self.__servo_interface, subnode)
+        r = lib.il_servo_disable(self.__cffi_servo, subnode)
         raise_err(r)
 
     def fault_reset(self, subnode=1):
@@ -275,7 +275,7 @@ class IPBServo(Servo):
         Args:
             subnode (int, optional): Subnode.
         """
-        r = lib.il_servo_fault_reset(self.__servo_interface, subnode)
+        r = lib.il_servo_fault_reset(self.__cffi_servo, subnode)
         raise_err(r)
 
     def switch_on(self, timeout=2.):
@@ -288,12 +288,12 @@ class IPBServo(Servo):
         Args:
             timeout (int, float, optional): Timeout (s).
         """
-        r = lib.il_servo_switch_on(self.__servo_interface, to_ms(timeout))
+        r = lib.il_servo_switch_on(self.__cffi_servo, to_ms(timeout))
         raise_err(r)
 
     def homing_start(self):
         """ Start the homing procedure. """
-        r = lib.il_servo_homing_start(self.__servo_interface)
+        r = lib.il_servo_homing_start(self.__cffi_servo)
         raise_err(r)
 
     def homing_wait(self, timeout):
@@ -308,7 +308,7 @@ class IPBServo(Servo):
         Args:
             timeout (int, float): Timeout (s).
         """
-        r = lib.il_servo_homing_wait(self.__servo_interface, to_ms(timeout))
+        r = lib.il_servo_homing_wait(self.__cffi_servo, to_ms(timeout))
         raise_err(r)
 
     def store_parameters(self, subnode=1):
@@ -370,12 +370,12 @@ class IPBServo(Servo):
 
     def store_comm(self):
         """ Store all servo current communications to the NVM. """
-        r = lib.il_servo_store_comm(self.__servo_interface)
+        r = lib.il_servo_store_comm(self.__cffi_servo)
         raise_err(r)
 
     def store_app(self):
         """ Store all servo current application parameters to the NVM. """
-        r = lib.il_servo_store_app(self.__servo_interface)
+        r = lib.il_servo_store_app(self.__cffi_servo)
         raise_err(r)
 
     def _dict_load(self, dictionary):
@@ -384,7 +384,7 @@ class IPBServo(Servo):
         Args:
             dictionary (str): Dictionary.
         """
-        r = lib.il_servo_dict_load(self.__servo_interface, cstr(dictionary))
+        r = lib.il_servo_dict_load(self.__cffi_servo, cstr(dictionary))
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(dictionary)
         raise_err(r)
@@ -397,7 +397,7 @@ class IPBServo(Servo):
             subnode (int, optional): Subnode.
 
         """
-        r = lib.il_servo_dict_storage_write(self.__servo_interface, cstr(dictionary),
+        r = lib.il_servo_dict_storage_write(self.__cffi_servo, cstr(dictionary),
                                             subnode)
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(dictionary)
@@ -414,7 +414,7 @@ class IPBServo(Servo):
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        r = lib.il_servo_dict_storage_read(self.__servo_interface)
+        r = lib.il_servo_dict_storage_read(self.__cffi_servo)
         raise_err(r)
 
         self.dictionary.save(new_path)
@@ -482,7 +482,7 @@ class IPBServo(Servo):
         cb_handle = ffi.new_handle(cb)
 
         slot = lib.il_servo_emcy_subscribe(
-            self.__servo_interface, lib._on_emcy_cb, cb_handle)
+            self.__cffi_servo, lib._on_emcy_cb, cb_handle)
         if slot < 0:
             raise_err(slot)
 
@@ -496,7 +496,7 @@ class IPBServo(Servo):
         Args:
             slot (int): Assigned slot when subscribed.
         """
-        lib.il_servo_emcy_unsubscribe(self.__servo_interface, slot)
+        lib.il_servo_emcy_unsubscribe(self.__cffi_servo, slot)
 
         del self._emcy_cb[slot]
 
@@ -512,7 +512,7 @@ class IPBServo(Servo):
         cb_handle = ffi.new_handle(cb)
 
         slot = lib.il_servo_state_subscribe(
-            self.__servo_interface, lib._on_state_change_cb, cb_handle)
+            self.__cffi_servo, lib._on_state_change_cb, cb_handle)
         if slot < 0:
             raise_err(slot)
 
@@ -526,7 +526,7 @@ class IPBServo(Servo):
         Args:
             slot (int): Assigned slot when subscribed.
         """
-        lib.il_servo_state_unsubscribe(self.__servo_interface, slot)
+        lib.il_servo_state_unsubscribe(self.__cffi_servo, slot)
 
         del self._state_cb[slot]
 
@@ -574,7 +574,7 @@ class IPBServo(Servo):
         Args:
             timeout (int, float): Timeout (s).
         """
-        r = lib.il_servo_wait_reached(self.__servo_interface, to_ms(timeout))
+        r = lib.il_servo_wait_reached(self.__cffi_servo, to_ms(timeout))
         raise_err(r)
 
     def units_update(self):
@@ -585,7 +585,7 @@ class IPBServo(Servo):
             pole pitch are changed, otherwise, the readings conversions
             will not be correct.
         """
-        r = lib.il_servo_units_update(self.__servo_interface)
+        r = lib.il_servo_units_update(self.__cffi_servo)
         raise_err(r)
 
     def units_factor(self, reg):
@@ -597,7 +597,7 @@ class IPBServo(Servo):
         Returns:
             float: Scale factor for the given register.
         """
-        return lib.il_servo_units_factor(self.__servo_interface, reg._reg)
+        return lib.il_servo_units_factor(self.__cffi_servo, reg._reg)
 
     @property
     def net(self):
@@ -626,7 +626,7 @@ class IPBServo(Servo):
         """
         name = ffi.new('char []', lib.IL_SERVO_NAME_SZ)
 
-        r = lib.il_servo_name_get(self.__servo_interface, name, ffi.sizeof(name))
+        r = lib.il_servo_name_get(self.__cffi_servo, name, ffi.sizeof(name))
         raise_err(r)
 
         return pstr(name)
@@ -640,13 +640,13 @@ class IPBServo(Servo):
         """
         name_ = ffi.new('char []', cstr(name))
 
-        r = lib.il_servo_name_set(self.__servo_interface, name_)
+        r = lib.il_servo_name_set(self.__cffi_servo, name_)
         raise_err(r)
 
     @property
     def dictionary(self):
         """ Obtain dictionary of the servo. """
-        _dict = lib.il_servo_dict_get(self.servo_interface)
+        _dict = lib.il_servo_dict_get(self._cffi_servo)
 
         return Dictionary._from_dict(_dict) if _dict else None
 
@@ -663,7 +663,7 @@ class IPBServo(Servo):
         """
         info = ffi.new('il_servo_info_t *')
 
-        r = lib.il_servo_info_get(self.__servo_interface, info)
+        r = lib.il_servo_info_get(self.__cffi_servo, info)
         raise_err(r)
 
         PRODUCT_ID_REG = Register(identifier='', address=0x06E1,
@@ -683,38 +683,38 @@ class IPBServo(Servo):
     @property
     def units_torque(self):
         """ SERVO_UNITS_TORQUE: Torque units. """
-        return SERVO_UNITS_TORQUE(lib.il_servo_units_torque_get(self.__servo_interface))
+        return SERVO_UNITS_TORQUE(lib.il_servo_units_torque_get(self.__cffi_servo))
 
     @units_torque.setter
     def units_torque(self, units):
-        lib.il_servo_units_torque_set(self.__servo_interface, units.value)
+        lib.il_servo_units_torque_set(self.__cffi_servo, units.value)
 
     @property
     def units_pos(self):
         """ SERVO_UNITS_POS: Position units. """
-        return SERVO_UNITS_POS(lib.il_servo_units_pos_get(self.__servo_interface))
+        return SERVO_UNITS_POS(lib.il_servo_units_pos_get(self.__cffi_servo))
 
     @units_pos.setter
     def units_pos(self, units):
-        lib.il_servo_units_pos_set(self.__servo_interface, units.value)
+        lib.il_servo_units_pos_set(self.__cffi_servo, units.value)
 
     @property
     def units_vel(self):
         """ SERVO_UNITS_VEL: Velocity units. """
-        return SERVO_UNITS_VEL(lib.il_servo_units_vel_get(self.__servo_interface))
+        return SERVO_UNITS_VEL(lib.il_servo_units_vel_get(self.__cffi_servo))
 
     @units_vel.setter
     def units_vel(self, units):
-        lib.il_servo_units_vel_set(self.__servo_interface, units.value)
+        lib.il_servo_units_vel_set(self.__cffi_servo, units.value)
 
     @property
     def units_acc(self):
         """ SERVO_UNITS_ACC: Acceleration units. """
-        return SERVO_UNITS_ACC(lib.il_servo_units_acc_get(self.__servo_interface))
+        return SERVO_UNITS_ACC(lib.il_servo_units_acc_get(self.__cffi_servo))
 
     @units_acc.setter
     def units_acc(self, units):
-        lib.il_servo_units_acc_set(self.__servo_interface, units.value)
+        lib.il_servo_units_acc_set(self.__cffi_servo, units.value)
 
     @property
     def mode(self):
@@ -725,7 +725,7 @@ class IPBServo(Servo):
         """
         mode = ffi.new('il_servo_mode_t *')
 
-        r = lib.il_servo_mode_get(self.__servo_interface, mode)
+        r = lib.il_servo_mode_get(self.__cffi_servo, mode)
         raise_err(r)
 
         return SERVO_MODE(mode[0])
@@ -737,7 +737,7 @@ class IPBServo(Servo):
         Args:
             mode (SERVO_MODE): Operation mode.
         """
-        r = lib.il_servo_mode_set(self.__servo_interface, mode.value)
+        r = lib.il_servo_mode_set(self.__cffi_servo, mode.value)
         raise_err(r)
 
     @property
@@ -750,14 +750,14 @@ class IPBServo(Servo):
         return self._errors
 
     @property
-    def servo_interface(self):
-        """ Obtain servo interface. """
-        return self.__servo_interface
+    def _cffi_servo(self):
+        """ Obtain servo CFFI instance. """
+        return self.__cffi_servo
 
-    @servo_interface.setter
-    def servo_interface(self, value):
-        """ Set servo interface. """
-        self.__servo_interface = value
+    @_cffi_servo.setter
+    def _cffi_servo(self, value):
+        """ Set servo CFFI instance. """
+        self.__cffi_servo = value
 
     @property
     def subnodes(self):
@@ -766,7 +766,7 @@ class IPBServo(Servo):
         Returns:
             int: Current number of subnodes.
         """
-        return int(ffi.cast('int', lib.il_servo_subnodes_get(self.__servo_interface)))
+        return int(ffi.cast('int', lib.il_servo_subnodes_get(self.__cffi_servo)))
 
     @property
     def ol_voltage(self):
@@ -776,7 +776,7 @@ class IPBServo(Servo):
             float: Open loop voltage (% relative to DC-bus, -1...1).
         """
         voltage = ffi.new('double *')
-        r = lib.il_servo_ol_voltage_get(self.__servo_interface, voltage)
+        r = lib.il_servo_ol_voltage_get(self.__cffi_servo, voltage)
         raise_err(r)
 
         return voltage[0]
@@ -788,7 +788,7 @@ class IPBServo(Servo):
         Args:
             float: Open loop voltage.
         """
-        r = lib.il_servo_ol_voltage_set(self.__servo_interface, voltage)
+        r = lib.il_servo_ol_voltage_set(self.__cffi_servo, voltage)
         raise_err(r)
 
     @property
@@ -799,7 +799,7 @@ class IPBServo(Servo):
             float: Open loop frequency (mHz).
         """
         frequency = ffi.new('double *')
-        r = lib.il_servo_ol_frequency_get(self.__servo_interface, frequency)
+        r = lib.il_servo_ol_frequency_get(self.__cffi_servo, frequency)
         raise_err(r)
 
         return frequency[0]
@@ -811,7 +811,7 @@ class IPBServo(Servo):
         Args:
             float: Open loop frequency.
         """
-        r = lib.il_servo_ol_frequency_set(self.__servo_interface, frequency)
+        r = lib.il_servo_ol_frequency_set(self.__cffi_servo, frequency)
         raise_err(r)
 
     @property
@@ -822,7 +822,7 @@ class IPBServo(Servo):
             float: Actual torque.
         """
         torque = ffi.new('double *')
-        r = lib.il_servo_torque_get(self.__servo_interface, torque)
+        r = lib.il_servo_torque_get(self.__cffi_servo, torque)
         raise_err(r)
 
         return torque[0]
@@ -834,7 +834,7 @@ class IPBServo(Servo):
         Args:
             float: Target torque.
         """
-        r = lib.il_servo_torque_set(self.__servo_interface, torque)
+        r = lib.il_servo_torque_set(self.__cffi_servo, torque)
         raise_err(r)
 
     @property
@@ -845,7 +845,7 @@ class IPBServo(Servo):
             float: Actual position.
         """
         position = ffi.new('double *')
-        r = lib.il_servo_position_get(self.__servo_interface, position)
+        r = lib.il_servo_position_get(self.__cffi_servo, position)
         raise_err(r)
 
         return position[0]
@@ -890,7 +890,7 @@ class IPBServo(Servo):
 
             pos = pos[0]
 
-        r = lib.il_servo_position_set(self.__servo_interface, pos, immediate, relative,
+        r = lib.il_servo_position_set(self.__cffi_servo, pos, immediate, relative,
                                       sp_timeout)
         raise_err(r)
 
@@ -902,7 +902,7 @@ class IPBServo(Servo):
             int: Position resolution (c/rev/s, c/ppitch/s).
         """
         res = ffi.new('uint32_t *')
-        r = lib.il_servo_position_res_get(self.__servo_interface, res)
+        r = lib.il_servo_position_res_get(self.__cffi_servo, res)
         raise_err(r)
 
         return res[0]
@@ -915,7 +915,7 @@ class IPBServo(Servo):
             float: Actual velocity.
         """
         velocity = ffi.new('double *')
-        r = lib.il_servo_velocity_get(self.__servo_interface, velocity)
+        r = lib.il_servo_velocity_get(self.__cffi_servo, velocity)
         raise_err(r)
 
         return velocity[0]
@@ -927,7 +927,7 @@ class IPBServo(Servo):
         Args:
             velocity (float): Target velocity.
         """
-        r = lib.il_servo_velocity_set(self.__servo_interface, velocity)
+        r = lib.il_servo_velocity_set(self.__cffi_servo, velocity)
         raise_err(r)
 
     @property
@@ -938,7 +938,7 @@ class IPBServo(Servo):
             int: Velocity resolution (c/rev, c/ppitch).
         """
         res = ffi.new('uint32_t *')
-        r = lib.il_servo_velocity_res_get(self.__servo_interface, res)
+        r = lib.il_servo_velocity_res_get(self.__cffi_servo, res)
         raise_err(r)
 
         return res[0]
