@@ -32,7 +32,6 @@ __all__ = ['IPBNetwork', 'NetworkMonitor',
            'Monitor', 'MONITOR_TRIGGER', 'IPBPoller',
            'CanopenNetwork', 'CAN_DEVICE', 'CAN_BAUDRATE', 'CAN_BIT_TIMMING',
            'CanopenServo', 'CanopenPoller', 'CanopenRegister', 'CanopenDictionary',
-
            'err_ipb_last']
 
 __version__ = '6.0.0'
