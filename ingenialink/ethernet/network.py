@@ -78,8 +78,7 @@ class EthernetNetwork(IPBNetwork):
 
     @staticmethod
     def load_firmware_moco(node, subnode, ip, port, moco_file):
-        """
-        Update MOCO firmware through UDP protocol.
+        """ Update MOCO firmware through UDP protocol.
         Args:
             node: Network node.
             subnode: Drive subnode.
