@@ -4,20 +4,20 @@ import matplotlib.pyplot as plt
 
 
 T_S = 1e-3
-""" int: Sampling period (s). """
+"""int: Sampling period (s)."""
 MAX_SAMPLES = 200
-""" int: Maximum number of samples. """
+"""int: Maximum number of samples."""
 MONITOR_TIMEOUT = 5
-""" int: Monitor timeout (s). """
+"""int: Monitor timeout (s)."""
 
 VEL_TGT_VAL = 40.
-""" float: Target velocity (rps). """
+"""float: Target velocity (rps)."""
 
 VEL_ACT = il.Register(address=0x00606C,
                       dtype=il.REG_DTYPE.S32,
                       access=il.REG_ACCESS.RW,
                       phy=il.REG_PHY.VEL)
-""" Register: Velocity Actual. """
+"""Register: Velocity Actual."""
 
 
 def main():

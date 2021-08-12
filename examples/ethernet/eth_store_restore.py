@@ -1,12 +1,12 @@
 import sys
 
-from ingenialink.ethernet.eth_net import EthernetNetwork, NET_TRANS_PROT
+from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT
 
 
 def eth_store_parameters():
     net = EthernetNetwork()
     servo = net.connect_to_slave("192.168.2.22",
-                                 "eve-net-c_eth_1.8.1.xdf",
+                                 "../../resources/dictionaries/eve-net-c_eth_1.8.1.xdf",
                                  1061,
                                  NET_TRANS_PROT.UDP)
 
@@ -24,7 +24,7 @@ def eth_store_parameters():
 def eth_restore_parameters():
     net = EthernetNetwork()
     servo = net.connect_to_slave("192.168.2.22",
-                                 "eve-net-c_eth_1.8.1.xdf",
+                                 "../../resources/dictionaries/eve-net-c_eth_1.8.1.xdf",
                                  1061,
                                  NET_TRANS_PROT.UDP)
 

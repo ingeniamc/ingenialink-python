@@ -2,30 +2,28 @@ from enum import Enum
 
 from ._ingenialink import ffi, lib
 from ingenialink.utils._utils import raise_null, raise_err, to_ms
-from .registers import _get_reg_id
+from ingenialink.ipb.registers import _get_reg_id
 
 
 class MONITOR_TRIGGER(Enum):
-    """
-    Monitor Trigger Types.
-    """
+    """Monitor Trigger Types."""
 
     IMMEDIATE = lib.IL_MONITOR_TRIGGER_IMMEDIATE
-    """ Immediate. """
+    """Immediate."""
     MOTION = lib.IL_MONITOR_TRIGGER_MOTION
-    """ Motion start. """
+    """Motion start."""
     POS = lib.IL_MONITOR_TRIGGER_POS
-    """ Positive. """
+    """Positive."""
     NEG = lib.IL_MONITOR_TRIGGER_NEG
-    """ Negative. """
+    """Negative."""
     WINDOW = lib.IL_MONITOR_TRIGGER_WINDOW
-    """ Exit window. """
+    """Exit window."""
     DIN = lib.IL_MONITOR_TRIGGER_DIN
-    """ Digital input. """
+    """Digital input."""
 
 
 class Monitor(object):
-    """ Monitor.
+    """Monitor.
 
         Args:
             servo (Servo): Servo instance.
@@ -43,24 +41,19 @@ class Monitor(object):
         self._acq = ffi.new('il_monitor_acq_t **')
 
     def start(self):
-        """
-        Start the monitor.
-        """
+        """Start the monitor."""
 
         r = lib.il_monitor_start(self._monitor)
         raise_err(r)
 
     def stop(self):
-        """
-        Stop the monitor.
-        """
+        """Stop the monitor."""
 
         r = lib.il_monitor_stop(self._monitor)
         raise_err(r)
 
     def wait(self, timeout):
-        """
-        Wait until the current acquisition finishes.
+        """Wait until the current acquisition finishes.
 
         Args:
             timeout (int, float): Timeout (s).
@@ -71,8 +64,7 @@ class Monitor(object):
 
     @property
     def data(self):
-        """
-        Obtain configured data.
+        """Obtain configured data.
 
         Returns:
             tuple: Current acquisition time and data for all channels.
@@ -93,8 +85,7 @@ class Monitor(object):
         return t, d
 
     def configure(self, t_s, delay_samples=0, max_samples=0):
-        """
-        Configure the monitor parameters.
+        """Configure the monitor parameters.
 
         Args:
             t_s (int, float): Sampling period (s, resolution: 1e-4 s).
@@ -107,8 +98,7 @@ class Monitor(object):
         raise_err(r)
 
     def ch_configure(self, ch, reg):
-        """
-        Configure a channel mapping.
+        """Configure a channel mapping.
 
         Args:
             ch (int): Channel.
@@ -120,8 +110,7 @@ class Monitor(object):
         raise_err(r)
 
     def ch_disable(self, ch):
-        """
-        Disable a channel.
+        """Disable a channel.
 
         Args:
             ch (int): Channel identifier.
@@ -131,17 +120,14 @@ class Monitor(object):
         raise_err(r)
 
     def ch_disable_all(self):
-        """
-        Disable all channels.
-        """
+        """Disable all channels."""
 
         r = lib.il_monitor_ch_disable_all(self._monitor)
         raise_err(r)
 
     def trigger_configure(self, mode, delay_samples=0, source=None, th_pos=0.,
                           th_neg=0., din_msk=0):
-        """
-        Configure the trigger.
+        """Configure the trigger.
 
         Args:
             mode (MONITOR_TRIGGER): Trigger mode.

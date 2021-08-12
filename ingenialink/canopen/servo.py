@@ -10,8 +10,8 @@ from ..const import SINGLE_AXIS_MINIMUM_SUBNODES
 from ..exceptions import *
 from .._ingenialink import lib
 from ..servo import SERVO_STATE, Servo
-from .can_dictionary import CanopenDictionary
-from .can_register import CanopenRegister, REG_DTYPE, REG_ACCESS
+from .dictionary import CanopenDictionary
+from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -94,7 +94,7 @@ STORE_MOCO_ALL_REGISTERS = {
 
 
 class ServoStatusListener(threading.Thread):
-    """ Reads the status word to check if the drive is alive.
+    """Reads the status word to check if the drive is alive.
 
     Args:
         parent (Servo): Servo instance of the drive.
@@ -123,37 +123,30 @@ class ServoStatusListener(threading.Thread):
 
 
 class CanopenServo(Servo):
-    """ Servo.
+    """Servo.
 
     Args:
         net (Network): Ingenialink Network of the drive.
         node (int): Node ID of the drive.
-        dictionary (str): Path to the dictionary.
+        dictionary_path (str): Path to the dictionary.
         servo_status_listener (bool): Boolean to initialize the ServoStatusListener and
         check the drive status.
     """
-    def __init__(self, net, target, node, dictionary=None, servo_status_listener=False):
-        self.__net = net
-        self.__target = target
+    def __init__(self, net, target, node, dictionary_path=None,
+                 servo_status_listener=False):
+        super(CanopenServo, self).__init__(net, target)
         self.__node = node
-        if dictionary is not None:
-            self.__dictionary = CanopenDictionary(dictionary)
+        if dictionary_path is not None:
+            self._dictionary = CanopenDictionary(dictionary_path)
         else:
-            self.__dictionary = None
-        self.__info = {}
+            self._dictionary = None
+        self.__lock = threading.RLock()
         self.__state = {
             1: lib.IL_SERVO_STATE_NRDY,
             2: lib.IL_SERVO_STATE_NRDY,
             3: lib.IL_SERVO_STATE_NRDY
         }
         self.__servo_state_observers = []
-        self.__lock = threading.RLock()
-        self.__units_torque = None
-        self.__units_pos = None
-        self.__units_vel = None
-        self.__units_acc = None
-        self.__name = "Drive"
-        self.__full_name = None
         self.__servo_status_listener = None
 
         if servo_status_listener:
@@ -165,7 +158,7 @@ class CanopenServo(Servo):
             self.__servo_status_listener.start()
 
     def get_reg(self, reg, subnode=1):
-        """ Validates a register.
+        """Validates a register.
 
         Args:
             reg (Register, str): Targeted register to validate.
@@ -181,18 +174,18 @@ class CanopenServo(Servo):
         if isinstance(reg, CanopenRegister):
             _reg = reg
         elif isinstance(reg, str):
-            _dict = self.__dictionary
+            _dict = self._dictionary
             if not _dict:
                 raise_err(lib.IL_EIO, 'No dictionary loaded')
-            if reg not in _dict.regs[subnode]:
+            if reg not in _dict.registers[subnode]:
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.regs[subnode][reg]
+            _reg = _dict.registers[subnode][reg]
         else:
             raise_err(lib.IL_EWRONGREG, 'Invalid register')
         return _reg
 
     def read(self, reg, subnode=1):
-        """ Read from servo.
+        """Read from servo.
 
         Args:
             reg (str, Register): Register.
@@ -268,8 +261,8 @@ class CanopenServo(Servo):
             value = value.replace('\x00', '')
         return value
 
-    def write(self, reg, data, confirm=True, extended=0, subnode=1):
-        """ Writes a data to a target register.
+    def write(self, reg, data, subnode=1):
+        """Writes a data to a target register.
 
         Args:
             reg (CanopenRegister, str): Target register to be written.
@@ -339,7 +332,7 @@ class CanopenServo(Servo):
             raise_err(lib.IL_EIO, error_raised)
 
     def enable(self, timeout=2000, subnode=1):
-        """ Enable PDS.
+        """Enable PDS.
 
         Args:
             timeout (int): Maximum value to wait for the operation to be done.
@@ -396,7 +389,7 @@ class CanopenServo(Servo):
         raise_err(r)
 
     def disable(self, subnode=1):
-        """ Disable PDS.
+        """Disable PDS.
 
         Args:
             subnode (int): Subnode of the drive.
@@ -442,7 +435,7 @@ class CanopenServo(Servo):
         raise_err(r)
 
     def fault_reset(self, subnode=1):
-        """ Executes a fault reset on the drive.
+        """Executes a fault reset on the drive.
 
         Args:
             subnode (int): Subnode of the drive.
@@ -476,7 +469,7 @@ class CanopenServo(Servo):
         return r
 
     def save_configuration(self, new_path, subnode=0):
-        """ Read all dictionary registers content and put it to the dictionary
+        """Read all dictionary registers content and put it to the dictionary
         storage.
 
         Args:
@@ -485,7 +478,7 @@ class CanopenServo(Servo):
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        with open(self.__dictionary.dict, 'r') as xml_file:
+        with open(self._dictionary.dict, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
@@ -524,7 +517,7 @@ class CanopenServo(Servo):
                         register.set('storage', str(storage))
 
                         # Update register object
-                        reg = self.__dictionary.regs[element_subnode][register.attrib['id']]
+                        reg = self._dictionary.registers[element_subnode][register.attrib['id']]
                         reg.storage = storage
                         reg.storage_valid = 1
                 else:
@@ -543,7 +536,7 @@ class CanopenServo(Servo):
         xml_file.close()
 
     def load_configuration(self, path, subnode=0):
-        """ Write current dictionary storage to the servo drive.
+        """Write current dictionary storage to the servo drive.
 
         Args:
             path (str): Path to the dictionary.
@@ -576,7 +569,7 @@ class CanopenServo(Servo):
                              "%s: %s", str(element.attrib['id']), e)
 
     def store_parameters(self, subnode=1, sdo_timeout=3):
-        """ Store all the current parameters of the target subnode.
+        """Store all the current parameters of the target subnode.
 
         Args:
             subnode (int): Subnode of the axis.
@@ -601,9 +594,9 @@ class CanopenServo(Servo):
                     logger.warning('Store all COCO failed. Trying MOCO...')
                     r = -1
                 if r < 0:
-                    if self.__dictionary.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
+                    if self._dictionary.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
                         # Multiaxis
-                        for dict_subnode in self.__dictionary.subnodes:
+                        for dict_subnode in self._dictionary.subnodes:
                             self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
                                        data=PASSWORD_STORE_ALL,
                                        subnode=dict_subnode)
@@ -627,7 +620,7 @@ class CanopenServo(Servo):
             self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
     def restore_parameters(self):
-        """ Restore all the current parameters of all the slave to default.
+        """Restore all the current parameters of all the slave to default.
 
         Raises:
             ILError: Invalid subnode.
@@ -639,15 +632,15 @@ class CanopenServo(Servo):
         logger.info('Restore all successfully done.')
 
     def _change_sdo_timeout(self, value):
-        """ Changes the SDO timeout of the node. """
+        """Changes the SDO timeout of the node."""
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
     def get_state(self, subnode=1):
-        """ SERVO_STATE: Current drive state. """
+        """SERVO_STATE: Current drive state."""
         return self.__state[subnode], None
 
     def _set_state(self, state, subnode):
-        """ Sets the state internally.
+        """Sets the state internally.
 
         Args:
             state (SERVO_STATE): Current servo state.
@@ -660,7 +653,7 @@ class CanopenServo(Servo):
                 callback(state, None, subnode)
 
     def subscribe_to_servo_status(self, cb):
-        """ Subscribe to state changes.
+        """Subscribe to state changes.
 
             Args:
                 cb (Callback): Callback function.
@@ -668,12 +661,21 @@ class CanopenServo(Servo):
             Returns:
                 int: Assigned slot.
         """
-        r = len(self.__servo_state_observers)
+        slot = len(self.__servo_state_observers)
         self.__servo_state_observers.append(cb)
-        return r
+        return slot
+
+    def unsubscribe_to_servo_status(self, cb):
+        """Unsubscribe from state changes.
+
+        Args:
+            cb (Callback): Callback function.
+        """
+
+        del self.__servo_state_observers[cb]
 
     def stop_servo_monitor(self):
-        """ Stops the ServoStatusListener. """
+        """Stops the ServoStatusListener."""
         if self.__servo_status_listener is not None and \
                 self.__servo_status_listener.is_alive():
             self.__servo_status_listener.activate_stop_flag()
@@ -681,7 +683,7 @@ class CanopenServo(Servo):
             self.__servo_status_listener = None
 
     def status_word_wait_change(self, status_word, timeout, subnode=1):
-        """ Waits for a status word change.
+        """Waits for a status word change.
 
         Args:
             status_word (int): Status word to wait for.
@@ -706,15 +708,17 @@ class CanopenServo(Servo):
                 subnode=1)
         return r
 
-    def emcy_subscribe(self, callback):
-        raise NotImplementedError
+    def reload_errors(self, dictionary):
+        """Force to reload all dictionary errors.
 
-    def emcy_unsubscribe(self, callback):
-        raise NotImplementedError
+        Args:
+            dictionary (str): Dictionary.
+        """
+        pass
 
     @staticmethod
     def status_word_decode(status_word):
-        """ Decodes the status word to a known value.
+        """Decodes the status word to a known value.
 
         Args:
             status_word (int): Read value for the status word.
@@ -743,26 +747,17 @@ class CanopenServo(Servo):
         return SERVO_STATE(state)
 
     @property
-    def net(self):
-        """ net: CANopen Network. """
-        return self.__net
+    def dictionary(self):
+        """Returns dictionary object"""
+        return self._dictionary
 
-    @net.setter
-    def net(self, net):
-        self.__net = net
-
-    @property
-    def target(self):
-        """ str: Target. """
-        return self.__target
-
-    @target.setter
-    def target(self, value):
-        self.__target = value
+    @dictionary.setter
+    def dictionary(self, new_value):
+        self._dictionary = new_value
 
     @property
     def name(self):
-        """ str: Drive name. """
+        """str: Drive name."""
         return self.__name
 
     @name.setter
@@ -771,7 +766,7 @@ class CanopenServo(Servo):
 
     @property
     def full_name(self):
-        """ str: Drive full name. """
+        """str: Drive full name."""
         return self.__full_name
 
     @full_name.setter
@@ -779,23 +774,18 @@ class CanopenServo(Servo):
         self.__full_name = new_name
 
     @property
-    def dict(self):
-        """ Dictionary: Dictionary. """
-        return self.__dictionary
-
-    @property
     def node(self):
-        """ int: Node. """
+        """int: Node."""
         return self.__node
 
     @property
     def errors(self):
-        """ dict: Errors. """
-        return self.__dictionary.errors.errors
+        """dict: Errors."""
+        return self._dictionary.errors.errors
 
     @property
     def info(self):
-        """ dict: Servo information. """
+        """dict: Servo information."""
         serial_number = self.read(SERIAL_NUMBER)
         product_code = self.read(PRODUCT_CODE)
         sw_version = self.read(SOFTWARE_VERSION)
@@ -815,7 +805,7 @@ class CanopenServo(Servo):
 
     @property
     def state(self):
-        """ tuple: Servo state and state flags. """
+        """tuple: Servo state and state flags."""
         return self.__state
 
     @state.setter
@@ -824,7 +814,7 @@ class CanopenServo(Servo):
 
     @property
     def units_torque(self):
-        """ SERVO_UNITS_TORQUE: Torque units. """
+        """SERVO_UNITS_TORQUE: Torque units."""
         return self.__units_torque
 
     @units_torque.setter
@@ -833,7 +823,7 @@ class CanopenServo(Servo):
 
     @property
     def units_pos(self):
-        """ SERVO_UNITS_POS: Position units. """
+        """SERVO_UNITS_POS: Position units."""
         return self.__units_pos
 
     @units_pos.setter
@@ -842,7 +832,7 @@ class CanopenServo(Servo):
 
     @property
     def units_vel(self):
-        """ SERVO_UNITS_VEL: Velocity units. """
+        """SERVO_UNITS_VEL: Velocity units."""
         return self.__units_vel
 
     @units_vel.setter
@@ -851,7 +841,7 @@ class CanopenServo(Servo):
 
     @property
     def units_acc(self):
-        """ SERVO_UNITS_ACC: Acceleration units. """
+        """SERVO_UNITS_ACC: Acceleration units."""
         return self.__units_acc
 
     @units_acc.setter
@@ -860,5 +850,5 @@ class CanopenServo(Servo):
 
     @property
     def subnodes(self):
-        """ SUBNODES: Number of subnodes. """
-        return self.__dictionary.subnodes
+        """SUBNODES: Number of subnodes."""
+        return self._dictionary.subnodes

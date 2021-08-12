@@ -2,7 +2,7 @@ import sys
 from os.path import join, dirname, abspath
 
 from qtpy import uic
-from qtpy.QtCore import Qt, QObject, QTimer, Signal, Slot, QThread
+from qtpy.QtCore import Qt, QTimer, Slot
 from qtpy.QtGui import (QStandardItemModel, QStandardItem, QImage, QPixmap,
                         QPalette)
 from qtpy.QtWidgets import QApplication, QMainWindow
@@ -18,7 +18,7 @@ from enum import IntEnum
 
 
 _RESOURCES = join(dirname(abspath(__file__)), 'resources')
-""" str: Resources folder. """
+"""str: Resources folder."""
 
 
 POS_ACT = il.Register(address=0x0030,
@@ -28,7 +28,7 @@ POS_ACT = il.Register(address=0x0030,
                       phy=il.REG_PHY.POS,
                       units="",
                       cyclic="")
-""" Register: Position Actual. """
+"""Register: Position Actual."""
 
 VEL_ACT = il.Register(address=0x0031,
                       identifier="VELOCITY_ACTUAL",
@@ -37,10 +37,10 @@ VEL_ACT = il.Register(address=0x0031,
                       phy=il.REG_PHY.VEL,
                       units="",
                       cyclic="")
-""" Register: Velocity Actual. """
+"""Register: Velocity Actual."""
 
 class SERVO_MODE(IntEnum):
-    """ Operation Mode. """
+    """Operation Mode."""
     VOLTAGE = 0,
     VELOCITY = 3,
     CYCLIC_VELOCITY = 35,
@@ -51,34 +51,34 @@ class SERVO_MODE(IntEnum):
     PROFILE_POSITION_S_CURVE = 68
 
 class ScopeWindow(QMainWindow):
-    """ Scope Window. """
+    """Scope Window."""
 
     _FPS = 30
-    """ int: Plot refresh rate (fps). """
+    """int: Plot refresh rate (fps)."""
 
     _N_SAMPLES = 1000
-    """ int: Number of samples. """
+    """int: Number of samples."""
 
     _POLLER_T_S = 10e-3
-    """ float: Poller sampling period (s). """
+    """float: Poller sampling period (s)."""
 
     _POLLER_BUF_SZ = 100
-    """ int: Poller buffer size. """
+    """int: Poller buffer size."""
 
     _PRANGE = 360
-    """ int: Position range (+/-) deg. """
+    """int: Position range (+/-) deg."""
 
     _VRANGE = 40
-    """ int: Velocity range (+/-) rps. """
+    """int: Velocity range (+/-) rps."""
 
     _ENABLE_TIMEOUT = 2
-    """ int: Enable timeout (s). """
+    """int: Enable timeout (s)."""
 
     stateInit, stateIdle, statePosition, stateVelocity = range(4)
-    """ States. """
+    """States."""
 
     tabPositionIndex, tabVelocityIndex = range(2)
-    """ Motion control tabs. """
+    """Motion control tabs."""
 
     def __init__(self):
         QMainWindow.__init__(self)
@@ -97,11 +97,12 @@ class ScopeWindow(QMainWindow):
     def loadServos(self):
         model = QStandardItemModel()
 
-        net, servo = il.lucky(il.NET_PROT.ETH,
-                              "resources/eve-net_1.7.1.xdf",
-                              address_ip='192.168.2.22',
-                              port_ip=1061,
-                              protocol=2)
+        net, servo = il.lucky(
+            il.NET_PROT.ETH,
+            "../../resources/dictionaries/eve-net_1.7.1.xdf",
+            address_ip='192.168.2.22',
+            port_ip=1061,
+            protocol=2)
 
         if net is not None and servo is not None:
             item = QStandardItem('0x{:02x} ({})'.format(1, "Everest"))
@@ -201,7 +202,7 @@ class ScopeWindow(QMainWindow):
         return servo
 
     def enableScope(self, servo, reg):
-        self._poller = il.poller.Poller(servo, 1)
+        self._poller = ingenialink.ipb.poller.Poller(servo, 1)
         self._poller.configure(self._POLLER_T_S, self._POLLER_BUF_SZ)
         self._poller.ch_configure(0, reg)
 

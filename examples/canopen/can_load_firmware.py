@@ -1,4 +1,4 @@
-from ingenialink.canopen.can_net import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
+from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
 
 import sys
 
@@ -33,9 +33,10 @@ def load_firmware_example_connected():
     print(nodes)
 
     if len(nodes) > 0:
-        servo = net.connect_to_slave(target=nodes[0],
-                                     dictionary='eve-net-c_can_1.8.1.xdf',
-                                     eds='eve-net-c_1.8.1.eds')
+        servo = net.connect_to_slave(
+            target=nodes[0],
+            dictionary='../../resources/dictionaries/eve-net-c_can_1.8.1.xdf',
+            eds='../../resources/dictionaries/eve-net-c_1.8.1.eds')
 
         fw_version = servo.read('DRV_ID_SOFTWARE_VERSION')
         print('Firmware version before loading new firmware', fw_version)
@@ -64,7 +65,7 @@ def load_firmware_example_disconnected():
         callback_status_msg=print_status_message,
         callback_progress=print_progress,
         callback_errors_enabled=print_errors_enabled)
-    net.load_firmware(32, 'eve-net-c_1.8.1.sfu')
+    net.load_firmware(32, '../../resources/firmware/eve-net-c_1.8.1.sfu')
 
 
 if __name__ == '__main__':

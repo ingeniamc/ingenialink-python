@@ -2,7 +2,7 @@ from enum import Enum
 
 from .._ingenialink import lib, ffi
 from ingenialink import exceptions as exc
-from ingenialink.err import *
+from ingenialink.errors import *
 from time import sleep
 
 import warnings
@@ -15,11 +15,11 @@ POLLING_MAX_TRIES = 5       # Seconds
 
 
 def deprecated(custom_msg=None, new_func_name=None):
-    """ This is a decorator which can be used to mark functions as deprecated. It will
+    """This is a decorator which can be used to mark functions as deprecated. It will
     result in a warning being emitted when the function is used. We use this decorator instead
     of any deprecation library because all libraries raise a DeprecationWarning but since by
     default this warning is hidden, we use this decorator to manually activate DeprecationWarning
-    and turning it off after the warn has been done. """
+    and turning it off after the warn has been done."""
     def wrap(func):
         @functools.wraps(func)
         def wrapped_method(*args, **kwargs):

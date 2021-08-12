@@ -1,6 +1,6 @@
 import sys
 
-from ingenialink.ethercat.ecat_net import EthercatNetwork
+from ingenialink.ethercat.network import EthercatNetwork
 
 
 def ecat_load_fw():

@@ -1,35 +1,36 @@
-from enum import Enum
-
 from .._ingenialink import lib
 
-from ..utils._utils import *
-from ..registers import REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.utils._utils import *
+from ingenialink.ipb.registers import REG_DTYPE, REG_ACCESS, REG_PHY
 
 
-class Register(object):
-    """ Register.
+class CanopenRegister(object):
+    """CANopen Register.
 
-    Args:
-        identifier (str): Identifier.
-        units (str): Units.
-        address (int): Address.
-        dtype (REG_DTYPE): Data type.
-        access (REG_ACCESS): Access type.
-        phy (REG_PHY, optional): Physical units.
-        subnode (int): Subnode
-        storage (any, optional): Storage.
-        range (tuple, optional): Range (min, max).
-        labels (dict, optional): Register labels.
-        cat_id (str, optional): Category ID.
-        scat_id (str, optional): Sub-category ID.
-        internal_use (int, optional): Internal use.
+        Args:
+            identifier (str): Identifier.
+            units (str): Units.
+            cyclic (str): Cyclic typed register.
+            idx (str): Index of the register.
+            subidx (str): Subindex of the register.
+            dtype (REG_DTYPE): Data type.
+            access (REG_ACCESS): Access type.
+            phy (REG_PHY, optional): Physical units.
+            subnode (int): Subnode.
+            storage (any, optional): Storage.
+            range (tuple, optional): Range (min, max).
+            labels (dict, optional): Register labels.
+            enums (list): Enumeration registers.
+            enums_count (int): Number of enumeration registers.
+            cat_id (str, optional): Category ID.
+            scat_id (str, optional): Sub-category ID.
+            internal_use (int, optional): Internal use.
 
-    Raises:
-        TypeError: If any of the parameters has invalid type.
-        ILValueError: If the register is invalid.
-        ILAccessError: Register with wrong access type.
-
-    """
+        Raises:
+            TypeError: If any of the parameters has invalid type.
+            ILValueError: If the register is invalid.
+            ILAccessError: Register with wrong access type.
+        """
 
     def __init__(self, identifier, units, cyclic, idx, subidx, dtype,
                  access, phy=REG_PHY.NONE, subnode=1, storage=None,
@@ -44,7 +45,6 @@ class Register(object):
         if not isinstance(phy, REG_PHY):
             raise_err(lib.IL_EINVAL, 'Invalid physical units type')
 
-        # Initialize register
         self.__identifier = identifier
         self.__units = units
         self.__idx = idx
@@ -142,52 +142,52 @@ class Register(object):
 
     @property
     def identifier(self):
-        """ str: Register identifier """
+        """str: Register identifier"""
         return self.__identifier
 
     @property
     def units(self):
-        """ str: Register units """
+        """str: Register units"""
         return self.__units
 
     @property
     def idx(self):
-        """ int: Register index. """
+        """int: Register index."""
         return self.__idx
 
     @property
     def subidx(self):
-        """ int: Register subindex. """
+        """int: Register subindex."""
         return self.__subidx
 
     @property
     def subnode(self):
-        """ int: Register subnode. """
+        """int: Register subnode."""
         return self.__subnode
 
     @property
     def cyclic(self):
-        """ str: Register cyclic type. """
+        """str: Register cyclic type."""
         return self.__cyclic
 
     @property
     def dtype(self):
-        """ int: Register data type. """
+        """int: Register data type."""
         return REG_DTYPE(self.__dtype)
 
     @property
     def access(self):
-        """ int: Register access type. """
+        """int: Register access type."""
         return REG_ACCESS(self.__access)
 
     @property
     def phy(self):
-        """ int: Register physical units. """
+        """int: Register physical units."""
         return REG_PHY(self.__phy)
 
     @property
     def storage(self):
-        """ Register storage. """
+        """Register storage."""
         if not self.__storage_valid:
             return None
 
@@ -218,7 +218,7 @@ class Register(object):
 
     @property
     def storage_valid(self):
-        """ int: If storage is valid """
+        """int: If storage is valid"""
         return self.__storage_valid
 
     @storage_valid.setter
@@ -227,37 +227,37 @@ class Register(object):
 
     @property
     def range(self):
-        """ tuple: Register range (min, max), None if undefined. """
+        """tuple: Register range (min, max), None if undefined."""
         if self.__range:
-            return (self.__range[0], self.__range[1])
+            return self.__range[0], self.__range[1]
         return None
 
     @property
     def labels(self):
-        """ LabelsDictionary: Labels dictionary. """
+        """LabelsDictionary: Labels dictionary."""
         return self.__labels
 
     @property
     def enums(self):
-        """ Enumerations list. """
+        """Enumerations list."""
         return self.__enums
 
     @property
     def enums_count(self):
-        """ int: Register Enumerations count. """
+        """int: Register Enumerations count."""
         return self.__enums_count
 
     @property
     def cat_id(self):
-        """ Category ID."""
+        """Category ID."""
         return self.__cat_id
 
     @property
     def scat_id(self):
-        """ Sub-category ID."""
+        """Sub-category ID."""
         return self.__scat_id
 
     @property
     def internal_use(self):
-        """ int: Register internal_use. """
+        """int: Register internal_use."""
         return self.__internal_use

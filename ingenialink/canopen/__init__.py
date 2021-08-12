@@ -1,3 +1,3 @@
 from .constants import *
-from .can_dictionary import CanopenDictionary
-from .can_net import CAN_DEVICE, CAN_BAUDRATE
+from .dictionary import CanopenDictionary
+from .network import CAN_DEVICE, CAN_BAUDRATE
