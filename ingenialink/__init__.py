@@ -18,7 +18,7 @@ from .canopen.poller import CanopenPoller
 from .canopen.register import CanopenRegister
 from .canopen.dictionary import CanopenDictionary
 
-from ingenialink.errors import err_ipb_last
+from ingenialink.utils.errors import err_ipb_last
 
 from ._ingenialink import lib
 from ingenialink.utils._utils import pstr
