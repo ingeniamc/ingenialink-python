@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 from .register import CanopenRegister, REG_ACCESS, REG_DTYPE
+from ..dictionary import Dictionary
 from ingenialink.utils._utils import *
 from .._ingenialink import lib
 
@@ -44,7 +45,7 @@ class Categories(object):
 
 
 class Errors(object):
-    """Categories.
+    """Errors.
 
     Args:
         dict_ (str): Path to the Ingenia dictionary.
@@ -79,38 +80,40 @@ class Errors(object):
         return self._errors
 
 
-class CanopenDictionary(object):
+class CanopenDictionary(Dictionary):
     """Contains all registers and information of a CANopen dictionary.
 
     Args:
         dictionary_path (str): Path to the Ingenia dictionary.
     """
     def __init__(self, dictionary_path):
-        self.__dictionary_path = dictionary_path
+        super(CanopenDictionary, self).__init__(dictionary_path)
         self.__version = '1'
-        self._cats = None
-        self.__subnodes = 2
-        self.__regs = []
+        self.categories = None
+        self.subnodes = 2
+        self.registers = []
+        self.errors = None
+
         self.read_dictionary()
 
     def read_dictionary(self):
         """Reads the dictionary file and initializes all its components."""
-        with open(self.__dictionary_path, 'r', encoding='utf-8') as xml_file:
+        with open(self.path, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
         # Subnodes
         if root.findall('./Body/Device/Axes/'):
-            self.__subnodes = len(root.findall('./Body/Device/Axes/Axis'))
+            self.subnodes = len(root.findall('./Body/Device/Axes/Axis'))
 
-        for subnode in range(0, self.__subnodes):
-            self.__regs.append({})
+        for subnode in range(0, self.subnodes):
+            self.registers.append({})
 
         # Categories
-        self._cats = Categories(self.__dictionary_path)
+        self.categories = Categories(self.path)
 
         # Errors
-        self._errors = Errors(self.__dictionary_path)
+        self.errors = Errors(self.path)
 
         # Version
         version_node = root.find('.Header/Version')
@@ -242,11 +245,11 @@ class CanopenDictionary(object):
                                   labels=labels, enums=enums,
                                   enums_count=len(enums), cat_id=cat_id,
                                   internal_use=internal_use)
-            self.__regs[int(subnode)][identifier] = reg
+            self.registers[int(subnode)][identifier] = reg
         except Exception as e:
             pass
 
-    def get_regs(self, subnode):
+    def registers(self, subnode):
         """Gets the register dictionary to the targeted subnode.
         
         Args:
@@ -255,47 +258,4 @@ class CanopenDictionary(object):
         Returns:
             dict: Dictionary of all the registers for a subnode.
         """
-        return self.__regs[subnode]
-
-    @property
-    def dictionary_path(self):
-        """dict: Returns the path of the loaded dictionary."""
-        return self.__dictionary_path
-
-    @property
-    def version(self):
-        """int: Returns the version of the dictionary"""
-        return self.__version
-
-    @property
-    def regs(self):
-        """dict: Returns the dictionary containing all registers instances."""
-        return self.__regs
-
-    @property
-    def subnodes(self):
-        """int: Returns the total amount of subnodes."""
-        return self.__subnodes
-
-    @regs.setter
-    def regs(self, value):
-        self.__regs = value
-
-    @property
-    def cats(self):
-        """dict: Returns the dictionary containing all categories of
-        the dictionary."""
-        return self._cats
-
-    @cats.setter
-    def cats(self, value):
-        self._cats = value
-
-    @property
-    def errors(self):
-        """dict: Returns a dictionary with all the errors."""
-        return self._errors
-
-    @errors.setter
-    def errors(self, value):
-        self._errors = value
+        return self.registers[subnode]

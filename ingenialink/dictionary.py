@@ -26,19 +26,21 @@ class Dictionary(ABC):
     """Ingenia dictionary Abstract Base Class.
 
     Args:
-        dict_f (str): Dictionary file path.
+        dictionary_path (str): Dictionary file path.
 
     Raises:
         ILCreationError: If the dictionary could not be created.
     """
-    def __init__(self, dict_f):
-        self.__path = dict_f
-        self.__registers = []
+    def __init__(self, dictionary_path):
+        self.__path = dictionary_path
         self.__version = None
         self.__subnodes = None
-        self.__categories = None
 
-    def get_regs(self, subnode):
+        self.__categories = None
+        self.__registers = []
+        self.__errors = None
+
+    def registers(self, subnode):
         raise NotImplementedError
 
     @property
@@ -56,6 +58,14 @@ class Dictionary(ABC):
     @categories.setter
     def categories(self, value):
         self.__categories = value
+
+    @property
+    def errors(self):
+        return self.__errors
+
+    @errors.setter
+    def errors(self, value):
+        self.__errors = value
 
     @property
     def version(self):

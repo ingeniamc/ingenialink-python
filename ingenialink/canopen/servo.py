@@ -177,9 +177,9 @@ class CanopenServo(Servo):
             _dict = self._dictionary
             if not _dict:
                 raise_err(lib.IL_EIO, 'No dictionary loaded')
-            if reg not in _dict.regs[subnode]:
+            if reg not in _dict.registers[subnode]:
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.regs[subnode][reg]
+            _reg = _dict.registers[subnode][reg]
         else:
             raise_err(lib.IL_EWRONGREG, 'Invalid register')
         return _reg
@@ -517,7 +517,7 @@ class CanopenServo(Servo):
                         register.set('storage', str(storage))
 
                         # Update register object
-                        reg = self._dictionary.regs[element_subnode][register.attrib['id']]
+                        reg = self._dictionary.registers[element_subnode][register.attrib['id']]
                         reg.storage = storage
                         reg.storage_valid = 1
                 else:

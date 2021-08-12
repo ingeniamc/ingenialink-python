@@ -200,7 +200,7 @@ class IPBDictionary(Dictionary):
 
         return inst
 
-    def get_regs(self, subnode):
+    def registers(self, subnode):
         """Obtain all the registers of a subnode.
 
         Args:
@@ -253,3 +253,7 @@ class IPBDictionary(Dictionary):
     @_cffi_dictionary.setter
     def _cffi_dictionary(self, value):
         self.__cffi_dictionary = value
+
+    @property
+    def errors(self):
+        raise NotImplementedError
