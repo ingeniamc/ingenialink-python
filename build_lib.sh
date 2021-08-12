@@ -1,4 +1,4 @@
-rm -rf ./_build ./_install ./build ./dist
+rm -rf ./_build ./_deps ./_install ./build ./dist
 pipenv run python setup.py build sdist bdist_wheel
 rm ./ingenialink/_ingenialink.c ./ingenialink/_ingenialink.cp36-win_amd64.pyd
 cp ./build/temp.win-amd64-3.6/Release/ingenialink._ingenialink.c ./ingenialink/_ingenialink.c
