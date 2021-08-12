@@ -9,6 +9,7 @@ import os
 _version = re.search(r'__version__\s+=\s+\'(.*)\'',
                      open('ingenialink/__init__.py').read()).group(1)
 
+
 class BDistAppCommand(Command):
     """Custom command to build the application."""
 
@@ -25,6 +26,7 @@ class BDistAppCommand(Command):
         print("Copying dlls...")
         shutil.copy('resources/Packet.dll', 'ingenialink/')
         shutil.copy('resources/wpcap.dll', 'ingenialink/')
+
 
 class BCleanAppCommand(Command):
     """Custom command to clean the application."""
@@ -45,9 +47,12 @@ class BCleanAppCommand(Command):
         if os.path.exists("ingenialink/wpcap.dll"):
             os.remove("ingenialink/wpcap.dll")
 
+
 setup(name='ingenialink',
       version=_version,
-      packages=['ingenialink', 'ingenialink.canopen'],
+      packages=['ingenialink', 'ingenialink.canopen', 'ingenialink.ethercat',
+                'ingenialink.ethernet', 'ingenialink.serial', 'ingenialink.ipb',
+                'ingenialink.utils'],
       description='IngeniaLink Communications Library',
       long_description=open('README.rst').read(),
       author='Ingenia Motion Control',
