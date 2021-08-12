@@ -4,12 +4,18 @@ from .servo import SERVO_STATE, SERVO_FLAGS, SERVO_MODE, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL, SERVO_UNITS_ACC
 from .monitor import Monitor, MONITOR_TRIGGER
 
-from .ipb.network import IPBNetwork
-from .ipb.register import IPBRegister
-from .ipb.servo import IPBServo
 from .ipb.poller import IPBPoller
 from .ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS, REG_PHY
 from .ipb.dictionary import IPBDictionary
+
+from .serial.network import SerialNetwork
+from .serial.servo import SerialServo
+
+from .ethernet.network import EthernetNetwork
+from .ethernet.servo import EthernetServo
+
+from .ethercat.network import EthercatNetwork
+from .ethercat.servo import EthercatServo
 
 from .canopen.servo import CanopenServo
 from .canopen.network import CanopenNetwork, CAN_DEVICE, CAN_DEVICE, \
@@ -23,13 +29,13 @@ from ingenialink.utils.errors import err_ipb_last
 from ._ingenialink import lib
 from ingenialink.utils._utils import pstr
 
-__all__ = ['IPBNetwork', 'NetworkMonitor',
-           'NET_PROT', 'NET_DEV_EVT', 'NET_STATE', 'NET_TRANS_PROT',
-           'IPBServo', 'SERVO_STATE', 'SERVO_FLAGS', 'SERVO_MODE',
-           'SERVO_UNITS_TORQUE', 'SERVO_UNITS_POS', 'SERVO_UNITS_VEL',
-           'SERVO_UNITS_ACC',
+__all__ = ['NetworkMonitor', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE', 'NET_TRANS_PROT',
+           'SERVO_STATE', 'SERVO_FLAGS', 'SERVO_MODE', 'SERVO_UNITS_TORQUE',
+           'SERVO_UNITS_POS', 'SERVO_UNITS_VEL', 'SERVO_UNITS_ACC',
            'IPBDictionary', 'IPBRegister', 'REG_DTYPE', 'REG_ACCESS', 'REG_PHY',
            'Monitor', 'MONITOR_TRIGGER', 'IPBPoller',
+           'SerialNetwork', 'SerialServo', 'EthercatNetwork', 'EthercatServo',
+           'EthernetServo', 'EthernetNetwork',
            'CanopenNetwork', 'CAN_DEVICE', 'CAN_BAUDRATE', 'CAN_BIT_TIMMING',
            'CanopenServo', 'CanopenPoller', 'CanopenRegister', 'CanopenDictionary',
            'err_ipb_last']
