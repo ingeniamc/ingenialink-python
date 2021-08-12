@@ -6,15 +6,15 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class EthernetServo(IPBServo):
-    """ Servo object for all the EtherCAT communications.
+    """Servo object for all the Ethernet slave functionalities.
 
-        Args:
-            net (IPBNetwork): IPB Network associated with the servo.
-            target (str): Target ID for the slave.
-            dictionary_path (str): Path to the dictionary.
-            port (int): Port for the communication.
-            communication_protocol (NET_TRANS_PROT): Transmission protocol.
-        """
+    Args:
+        net (IPBNetwork): IPB Network associated with the servo.
+        target (str): Target ID for the slave.
+        dictionary_path (str): Path to the dictionary.
+        port (int): Port for the communication.
+        communication_protocol (NET_TRANS_PROT): Transmission protocol.
+    """
     def __init__(self, net, target, dictionary_path, port, communication_protocol):
         super(EthernetServo, self).__init__(net, target, dictionary_path)
         self.__port = port

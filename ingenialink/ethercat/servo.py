@@ -5,7 +5,7 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class EthercatServo(IPBServo):
-    """ Servo object for all the EtherCAT communications.
+    """Servo object for all the EtherCAT slave functionalities.
 
     Args:
         net (IPBNetwork): IPB Network associated with the servo.

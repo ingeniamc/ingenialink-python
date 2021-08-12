@@ -21,13 +21,13 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class EthernetNetwork(IPBNetwork):
-    """ Network for all Ethernet communications. """
+    """Network for all Ethernet communications."""
     def __init__(self):
         super(EthernetNetwork, self).__init__()
 
     @staticmethod
     def load_firmware(fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
-        """ Loads a given firmware file to the target slave.
+        """Loads a given firmware file to the target slave.
 
         Args:
             fw_file (str): Path to the firmware file to be loaded.
@@ -78,7 +78,8 @@ class EthernetNetwork(IPBNetwork):
 
     @staticmethod
     def load_firmware_moco(node, subnode, ip, port, moco_file):
-        """ Update MOCO firmware through UDP protocol.
+        """Update MOCO firmware through UDP protocol.
+
         Args:
             node: Network node.
             subnode: Drive subnode.
@@ -129,7 +130,7 @@ class EthernetNetwork(IPBNetwork):
 
     def connect_to_slave(self, target, dictionary=None, port=1061,
                          communication_protocol=NET_TRANS_PROT.UDP):
-        """ Connects to a slave through the given network settings.
+        """Connects to a slave through the given network settings.
 
         Args:
             target (str): IP of the target slave.
@@ -167,7 +168,7 @@ class EthernetNetwork(IPBNetwork):
         return servo
 
     def disconnect_from_slave(self, servo):
-        """ Disconnects the slave from the network.
+        """Disconnects the slave from the network.
 
         Args:
             servo (EthernetServo): Instance of the servo connected.
@@ -182,5 +183,5 @@ class EthernetNetwork(IPBNetwork):
 
     @property
     def protocol(self):
-        """ NET_PROT: Obtain network protocol. """
+        """NET_PROT: Obtain network protocol."""
         return NET_PROT.ETH

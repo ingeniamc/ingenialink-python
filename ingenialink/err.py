@@ -3,16 +3,12 @@ from enum import IntEnum
 
 
 def err_ipb_last():
-    """
-    Get IPB last last occurred error.
-    """
+    """Get IPB last last occurred error."""
     return int(ffi.cast("int", lib.ilerr_ipb_last()))
 
 
 class CONFIGURATION_ERRORS(IntEnum):
-    """
-    Configuration errors.
-    """
+    """Configuration errors."""
     INCORRECT_ACCESS_TYPE = 0x06010000
     OBJECT_NOT_EXIST = 0x06020000
     OBJECT_NOT_CYCLIC_MAPPABLE = 0x06040041

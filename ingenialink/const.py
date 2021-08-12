@@ -51,9 +51,7 @@ STORE_MOCO_ALL_REGISTERS = {
 
 
 def _load():
-    """
-    Load IngeniaLink constants to this module.
-    """
+    """Load IngeniaLink constants to this module."""
     module = sys.modules[__name__]
     const_pattern = re.compile('ILK_(.*)')
 

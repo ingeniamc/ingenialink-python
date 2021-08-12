@@ -9,7 +9,7 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class PollerTimer:
-    """ Custom timer for the CanopenPoller.
+    """Custom timer for the CanopenPoller.
 
     Args:
         time (int): Timeout to use for the timer.
@@ -35,7 +35,7 @@ class PollerTimer:
 
 
 class CanopenPoller(object):
-    """ Register poller for CANOpen communications.
+    """Register poller for CANOpen communications.
 
     Args:
         servo (CanopenServo): Servo.
@@ -61,14 +61,14 @@ class CanopenPoller(object):
         self.reset_acq()
 
     def reset_acq(self):
-        """ Resets the aquired channels. """
+        """Resets the aquired channels."""
         self.__acq = {
             "t": [],
             "d": []
         }
 
     def acquire_callback_poller_data(self):
-        """ Aquire callback for poller data. """
+        """Aquire callback for poller data."""
         time_diff = datetime.now()
         delta = time_diff - self.__time_start
 
@@ -100,7 +100,7 @@ class CanopenPoller(object):
         self.__lock.release()
 
     def start(self):
-        "" "Start poller. """
+        "" "Start poller."""
 
         if self.__running:
             logger.warning("Poller already running")
@@ -126,7 +126,7 @@ class CanopenPoller(object):
 
     @property
     def data(self):
-        """ tuple (list, list, bool): Time vector, array of data vectors and a
+        """tuple (list, list, bool): Time vector, array of data vectors and a
             flag indicating if data was lost.
         """
 
@@ -155,7 +155,7 @@ class CanopenPoller(object):
         return t, d, self.__samples_lost
 
     def configure(self, t_s, sz):
-        """ Configure data.
+        """Configure data.
 
         Args:
             t_s (int, float): Polling period (s).
@@ -185,7 +185,7 @@ class CanopenPoller(object):
         return 0
 
     def ch_configure(self, channel, reg):
-        """ Configure a poller channel mapping.
+        """Configure a poller channel mapping.
 
         Args:
             channel (int): Channel to be configured.
@@ -219,7 +219,7 @@ class CanopenPoller(object):
         return 0
 
     def ch_disable(self, channel):
-        """ Disable a channel.
+        """Disable a channel.
 
         Args:
             channel (int): Channel to be disabled.
@@ -246,7 +246,7 @@ class CanopenPoller(object):
         return 0
 
     def ch_disable_all(self):
-        """ Disable all channels.
+        """Disable all channels.
          
         Returns:
             int: Status code.

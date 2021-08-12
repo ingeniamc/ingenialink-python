@@ -18,7 +18,7 @@ from enum import IntEnum
 
 
 _RESOURCES = join(dirname(abspath(__file__)), 'resources')
-""" str: Resources folder. """
+"""str: Resources folder."""
 
 
 POS_ACT = il.Register(address=0x0030,
@@ -28,7 +28,7 @@ POS_ACT = il.Register(address=0x0030,
                       phy=il.REG_PHY.POS,
                       units="",
                       cyclic="")
-""" Register: Position Actual. """
+"""Register: Position Actual."""
 
 VEL_ACT = il.Register(address=0x0031,
                       identifier="VELOCITY_ACTUAL",
@@ -37,10 +37,10 @@ VEL_ACT = il.Register(address=0x0031,
                       phy=il.REG_PHY.VEL,
                       units="",
                       cyclic="")
-""" Register: Velocity Actual. """
+"""Register: Velocity Actual."""
 
 class SERVO_MODE(IntEnum):
-    """ Operation Mode. """
+    """Operation Mode."""
     VOLTAGE = 0,
     VELOCITY = 3,
     CYCLIC_VELOCITY = 35,
@@ -51,34 +51,34 @@ class SERVO_MODE(IntEnum):
     PROFILE_POSITION_S_CURVE = 68
 
 class ScopeWindow(QMainWindow):
-    """ Scope Window. """
+    """Scope Window."""
 
     _FPS = 30
-    """ int: Plot refresh rate (fps). """
+    """int: Plot refresh rate (fps)."""
 
     _N_SAMPLES = 1000
-    """ int: Number of samples. """
+    """int: Number of samples."""
 
     _POLLER_T_S = 10e-3
-    """ float: Poller sampling period (s). """
+    """float: Poller sampling period (s)."""
 
     _POLLER_BUF_SZ = 100
-    """ int: Poller buffer size. """
+    """int: Poller buffer size."""
 
     _PRANGE = 360
-    """ int: Position range (+/-) deg. """
+    """int: Position range (+/-) deg."""
 
     _VRANGE = 40
-    """ int: Velocity range (+/-) rps. """
+    """int: Velocity range (+/-) rps."""
 
     _ENABLE_TIMEOUT = 2
-    """ int: Enable timeout (s). """
+    """int: Enable timeout (s)."""
 
     stateInit, stateIdle, statePosition, stateVelocity = range(4)
-    """ States. """
+    """States."""
 
     tabPositionIndex, tabVelocityIndex = range(2)
-    """ Motion control tabs. """
+    """Motion control tabs."""
 
     def __init__(self):
         QMainWindow.__init__(self)

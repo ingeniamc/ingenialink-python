@@ -51,7 +51,7 @@ class SerialNetwork(Network):
 
     @property
     def protocol(self):
-        """ NET_PROT: Obtain network protocol. """
+        """NET_PROT: Obtain network protocol."""
         return NET_PROT.MCB
 
     @property

@@ -4,7 +4,7 @@ from .registers import _get_reg_id
 
 
 class Poller(object):
-    """ Register poller.
+    """Register poller.
 
         Args:
             servo (Servo): Servo.
@@ -23,22 +23,17 @@ class Poller(object):
         self._acq = ffi.new('il_poller_acq_t **')
 
     def start(self):
-        """
-        Start poller.
-        """
+        """Start poller."""
         r = lib.il_poller_start(self._poller)
         raise_err(r)
 
     def stop(self):
-        """
-        Stop poller.
-        """
+        """Stop poller."""
         lib.il_poller_stop(self._poller)
 
     @property
     def data(self):
-        """
-        Obtains processed data.
+        """Obtains processed data.
 
         Returns:
             tuple (list, list, bool): Time vector, array of data vectors and a
@@ -59,8 +54,7 @@ class Poller(object):
         return t, d, bool(acq.lost)
 
     def configure(self, t_s, sz):
-        """
-        Configure.
+        """Configure.
 
         Args:
             t_s (int, float): Polling period (s).
@@ -70,8 +64,7 @@ class Poller(object):
         raise_err(r)
 
     def ch_configure(self, ch, reg):
-        """
-        Configure a poller channel mapping.
+        """Configure a poller channel mapping.
 
         Args:
             ch (int): Channel to be configured.
@@ -85,8 +78,7 @@ class Poller(object):
         raise_err(r)
 
     def ch_disable(self, ch):
-        """
-        Disable a channel.
+        """Disable a channel.
 
         Args:
             ch (int): Channel to be disabled.
@@ -95,8 +87,6 @@ class Poller(object):
         raise_err(r)
 
     def ch_disable_all(self):
-        """
-        Disable all channels.
-        """
+        """Disable all channels."""
         r = lib.il_poller_ch_disable_all(self._poller)
         raise_err(r)

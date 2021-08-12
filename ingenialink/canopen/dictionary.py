@@ -5,7 +5,7 @@ from .._ingenialink import lib
 
 
 class Categories(object):
-    """ Contains all categories from a CANopen Dictionary.
+    """Contains all categories from a CANopen Dictionary.
 
     Args:
         dict_ (str): Path to the Ingenia dictionary.
@@ -31,11 +31,11 @@ class Categories(object):
 
     @property
     def cat_ids(self):
-        """ list: Category IDs. """
+        """list: Category IDs."""
         return self._cat_ids
 
     def labels(self, cat_id):
-        """ Obtain labels for a certain category ID.
+        """Obtain labels for a certain category ID.
 
         Returns:
             dict: Labels dictionary.
@@ -44,7 +44,7 @@ class Categories(object):
 
 
 class Errors(object):
-    """ Categories.
+    """Categories.
 
     Args:
         dict_ (str): Path to the Ingenia dictionary.
@@ -75,12 +75,12 @@ class Errors(object):
 
     @property
     def errors(self):
-        """ dict: Errors dictionary. """
+        """dict: Errors dictionary."""
         return self._errors
 
 
 class CanopenDictionary(object):
-    """ Contains all registers and information of a CANopen dictionary.
+    """Contains all registers and information of a CANopen dictionary.
 
     Args:
         dictionary_path (str): Path to the Ingenia dictionary.
@@ -94,7 +94,7 @@ class CanopenDictionary(object):
         self.read_dictionary()
 
     def read_dictionary(self):
-        """ Reads the dictionary file and initializes all its components. """
+        """Reads the dictionary file and initializes all its components."""
         with open(self.__dictionary_path, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -130,7 +130,7 @@ class CanopenDictionary(object):
         xml_file.close()
 
     def read_register(self, register):
-        """ Reads a register from the dictionary and creates a Register instance.
+        """Reads a register from the dictionary and creates a Register instance.
 
         Args:
             register (str): Register instance from the dictionary. 
@@ -247,7 +247,7 @@ class CanopenDictionary(object):
             pass
 
     def get_regs(self, subnode):
-        """ Gets the register dictionary to the targeted subnode.
+        """Gets the register dictionary to the targeted subnode.
         
         Args:
             subnode (int): Identifier for the subnode.
@@ -259,22 +259,22 @@ class CanopenDictionary(object):
 
     @property
     def dictionary_path(self):
-        """ dict: Returns the path of the loaded dictionary. """
+        """dict: Returns the path of the loaded dictionary."""
         return self.__dictionary_path
 
     @property
     def version(self):
-        """ int: Returns the version of the dictionary """
+        """int: Returns the version of the dictionary"""
         return self.__version
 
     @property
     def regs(self):
-        """ dict: Returns the dictionary containing all registers instances. """
+        """dict: Returns the dictionary containing all registers instances."""
         return self.__regs
 
     @property
     def subnodes(self):
-        """ int: Returns the total amount of subnodes. """
+        """int: Returns the total amount of subnodes."""
         return self.__subnodes
 
     @regs.setter
@@ -283,8 +283,8 @@ class CanopenDictionary(object):
 
     @property
     def cats(self):
-        """ dict: Returns the dictionary containing all categories of
-        the dictionary. """
+        """dict: Returns the dictionary containing all categories of
+        the dictionary."""
         return self._cats
 
     @cats.setter
@@ -293,7 +293,7 @@ class CanopenDictionary(object):
 
     @property
     def errors(self):
-        """ dict: Returns a dictionary with all the errors. """
+        """dict: Returns a dictionary with all the errors."""
         return self._errors
 
     @errors.setter

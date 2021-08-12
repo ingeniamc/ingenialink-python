@@ -3,7 +3,7 @@ import struct
 
 
 class MCB(object):
-    """ Motion Control Bus (MCB) is a high-speed serial protocol designed for getting low
+    """Motion Control Bus (MCB) is a high-speed serial protocol designed for getting low
     latency and high determinism in motion control systems where control loops
     work at high update rates (tens of kHz).
 
@@ -17,7 +17,7 @@ class MCB(object):
         pass
 
     def create_msg(self, node, subnode, cmd, data, size):
-        """ Creates a command message following the MCB protocol.
+        """Creates a command message following the MCB protocol.
 
         Args:
             node (int): Reserved bits used to identify the destination device.
@@ -46,7 +46,7 @@ class MCB(object):
         return ret
 
     def add_cmd(self, node, subnode, cmd, data, output):
-        """ Creates and adds a MCB message to a given file.
+        """Creates and adds a MCB message to a given file.
 
         Args:
             node (int): Reserved bits used to identify the destination device.

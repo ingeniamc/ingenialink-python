@@ -10,63 +10,57 @@ IL_REG_DTYPE_DOMAIN = 15
 
 
 class REG_DTYPE(Enum):
-    """
-    Data Type.
-    """
+    """Data Type."""
     U8 = lib.IL_REG_DTYPE_U8
-    """ Unsigned 8-bit integer. """
+    """Unsigned 8-bit integer."""
     S8 = lib.IL_REG_DTYPE_S8
-    """ Signed 8-bit integer. """
+    """Signed 8-bit integer."""
     U16 = lib.IL_REG_DTYPE_U16
-    """ Unsigned 16-bit integer. """
+    """Unsigned 16-bit integer."""
     S16 = lib.IL_REG_DTYPE_S16
-    """ Signed 16-bit integer. """
+    """Signed 16-bit integer."""
     U32 = lib.IL_REG_DTYPE_U32
-    """ Unsigned 32-bit integer. """
+    """Unsigned 32-bit integer."""
     S32 = lib.IL_REG_DTYPE_S32
-    """ Signed 32-bit integer. """
+    """Signed 32-bit integer."""
     U64 = lib.IL_REG_DTYPE_U64
-    """ Unsigned 64-bit integer. """
+    """Unsigned 64-bit integer."""
     S64 = lib.IL_REG_DTYPE_S64
-    """ Signed 64-bit integer. """
+    """Signed 64-bit integer."""
     FLOAT = lib.IL_REG_DTYPE_FLOAT
-    """ Float. """
+    """Float."""
     STR = lib.IL_REG_DTYPE_STR
-    """ String. """
+    """String."""
     DOMAIN = IL_REG_DTYPE_DOMAIN
-    """ Domain. """
+    """Domain."""
 
 
 class REG_ACCESS(Enum):
-    """
-    Access Type.
-    """
+    """Access Type."""
     RW = lib.IL_REG_ACCESS_RW
-    """ Read/Write. """
+    """Read/Write."""
     RO = lib.IL_REG_ACCESS_RO
-    """ Read-only. """
+    """Read-only."""
     WO = lib.IL_REG_ACCESS_WO
-    """ Write-only. """
+    """Write-only."""
 
 
 class REG_PHY(Enum):
-    """
-    Physical Units.
-    """
+    """Physical Units."""
     NONE = lib.IL_REG_PHY_NONE
-    """ None. """
+    """None."""
     TORQUE = lib.IL_REG_PHY_TORQUE
-    """ Torque. """
+    """Torque."""
     POS = lib.IL_REG_PHY_POS
-    """ Position. """
+    """Position."""
     VEL = lib.IL_REG_PHY_VEL
-    """ Velocity. """
+    """Velocity."""
     ACC = lib.IL_REG_PHY_ACC
-    """ Acceleration. """
+    """Acceleration."""
     VOLT_REL = lib.IL_REG_PHY_VOLT_REL
-    """ Relative voltage (DC). """
+    """Relative voltage (DC)."""
     RAD = lib.IL_REG_PHY_RAD
-    """ Radians. """
+    """Radians."""
 
 
 def dtype_size(dtype):
@@ -85,8 +79,7 @@ def dtype_size(dtype):
 
 
 def _get_reg_id(reg, subnode=1):
-    """
-    Obtain Register and ID.
+    """Obtain Register and ID.
 
     Args:
         reg (str, Register): Register.
@@ -100,8 +93,7 @@ def _get_reg_id(reg, subnode=1):
 
 
 class Register(object):
-    """
-    Register.
+    """Register.
 
     Args:
         identifier (str): Identifier.
@@ -231,8 +223,7 @@ class Register(object):
         self._reg.scat_id = ffi.NULL if not scat_id else cstr(scat_id)
 
     def __repr__(self):
-        """
-        Obtain register object.
+        """Obtain register object.
 
         Returns:
             str: Register information.
@@ -270,8 +261,7 @@ class Register(object):
 
     @classmethod
     def _from_register(cls, reg):
-        """
-        Create a new class instance from an existing register.
+        """Create a new class instance from an existing register.
 
         Args:
             reg (Register): Register instance.
@@ -287,8 +277,7 @@ class Register(object):
 
     @property
     def identifier(self):
-        """
-        Obtain register identifier.
+        """Obtain register identifier.
 
         Returns:
             str: Register identifier
@@ -300,8 +289,7 @@ class Register(object):
 
     @property
     def units(self):
-        """
-        Obtain register units.
+        """Obtain register units.
 
         Returns:
             str: Register units
@@ -311,8 +299,7 @@ class Register(object):
 
     @property
     def address(self):
-        """
-        Obtain register address.
+        """Obtain register address.
 
         Returns:
             int: Register address.
@@ -321,8 +308,7 @@ class Register(object):
 
     @property
     def subnode(self):
-        """
-        Obtain register subnode.
+        """Obtain register subnode.
 
         Returns:
             int: Register subnode.
@@ -331,8 +317,7 @@ class Register(object):
 
     @property
     def cyclic(self):
-        """
-        Obtain register cyclic.
+        """Obtain register cyclic.
 
         Returns:
             str: Register cyclic type.
@@ -342,8 +327,7 @@ class Register(object):
 
     @property
     def dtype(self):
-        """
-        Obtain register dtype.
+        """Obtain register dtype.
 
         Returns:
             int: Register data type.
@@ -352,8 +336,7 @@ class Register(object):
 
     @property
     def access(self):
-        """
-        Obtain register access.
+        """Obtain register access.
 
         Returns:
             int: Register access type.
@@ -362,8 +345,7 @@ class Register(object):
 
     @property
     def phy(self):
-        """
-        Obtain register physical units.
+        """Obtain register physical units.
 
         Returns:
             int: Register physical units.
@@ -372,8 +354,7 @@ class Register(object):
 
     @property
     def storage(self):
-        """
-        Obtain register storage.
+        """Obtain register storage.
 
         Returns:
              int: Register storage.
@@ -404,8 +385,7 @@ class Register(object):
 
     @property
     def range(self):
-        """
-        Obtains register range.
+        """Obtains register range.
 
         Returns:
             tuple: Register range (min, max), None if undefined.
@@ -433,8 +413,7 @@ class Register(object):
 
     @property
     def labels(self):
-        """
-        Obtains register labels.
+        """Obtains register labels.
 
         Returns:
             LabelsDictionary: Labels dictionary.
@@ -443,8 +422,7 @@ class Register(object):
 
     @property
     def enums(self):
-        """
-        Obtain enumerations list of the register.
+        """Obtain enumerations list of the register.
 
         Returns:
             array: Enumerations of the register.
@@ -461,8 +439,7 @@ class Register(object):
 
     @property
     def enums_count(self):
-        """
-        Obtain number of enumerations of the register.
+        """Obtain number of enumerations of the register.
 
         Returns:
             int: Register Enumerations count.
@@ -471,8 +448,7 @@ class Register(object):
 
     @property
     def cat_id(self):
-        """
-        Category identifier.
+        """Category identifier.
 
         Returns:
             str | None: Current category identifier.
@@ -484,8 +460,7 @@ class Register(object):
 
     @property
     def scat_id(self):
-        """
-        Subcategory identifier.
+        """Subcategory identifier.
 
         Returns:
             str | None: Current subcategory identifier.
@@ -496,8 +471,7 @@ class Register(object):
 
     @property
     def internal_use(self):
-        """
-        Internal use check.
+        """Internal use check.
 
         Returns:
             int: Register internal_use.

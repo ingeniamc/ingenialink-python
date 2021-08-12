@@ -7,7 +7,7 @@ from ..registers import REG_DTYPE, REG_ACCESS, REG_PHY
 
 
 class CanopenRegister(object):
-    """ CANopen Register.
+    """CANopen Register.
 
         Args:
             identifier (str): Identifier.
@@ -144,52 +144,52 @@ class CanopenRegister(object):
 
     @property
     def identifier(self):
-        """ str: Register identifier """
+        """str: Register identifier"""
         return self.__identifier
 
     @property
     def units(self):
-        """ str: Register units """
+        """str: Register units"""
         return self.__units
 
     @property
     def idx(self):
-        """ int: Register index. """
+        """int: Register index."""
         return self.__idx
 
     @property
     def subidx(self):
-        """ int: Register subindex. """
+        """int: Register subindex."""
         return self.__subidx
 
     @property
     def subnode(self):
-        """ int: Register subnode. """
+        """int: Register subnode."""
         return self.__subnode
 
     @property
     def cyclic(self):
-        """ str: Register cyclic type. """
+        """str: Register cyclic type."""
         return self.__cyclic
 
     @property
     def dtype(self):
-        """ int: Register data type. """
+        """int: Register data type."""
         return REG_DTYPE(self.__dtype)
 
     @property
     def access(self):
-        """ int: Register access type. """
+        """int: Register access type."""
         return REG_ACCESS(self.__access)
 
     @property
     def phy(self):
-        """ int: Register physical units. """
+        """int: Register physical units."""
         return REG_PHY(self.__phy)
 
     @property
     def storage(self):
-        """ Register storage. """
+        """Register storage."""
         if not self.__storage_valid:
             return None
 
@@ -220,7 +220,7 @@ class CanopenRegister(object):
 
     @property
     def storage_valid(self):
-        """ int: If storage is valid """
+        """int: If storage is valid"""
         return self.__storage_valid
 
     @storage_valid.setter
@@ -229,37 +229,37 @@ class CanopenRegister(object):
 
     @property
     def range(self):
-        """ tuple: Register range (min, max), None if undefined. """
+        """tuple: Register range (min, max), None if undefined."""
         if self.__range:
             return self.__range[0], self.__range[1]
         return None
 
     @property
     def labels(self):
-        """ LabelsDictionary: Labels dictionary. """
+        """LabelsDictionary: Labels dictionary."""
         return self.__labels
 
     @property
     def enums(self):
-        """ Enumerations list. """
+        """Enumerations list."""
         return self.__enums
 
     @property
     def enums_count(self):
-        """ int: Register Enumerations count. """
+        """int: Register Enumerations count."""
         return self.__enums_count
 
     @property
     def cat_id(self):
-        """ Category ID."""
+        """Category ID."""
         return self.__cat_id
 
     @property
     def scat_id(self):
-        """ Sub-category ID."""
+        """Sub-category ID."""
         return self.__scat_id
 
     @property
     def internal_use(self):
-        """ int: Register internal_use. """
+        """int: Register internal_use."""
         return self.__internal_use

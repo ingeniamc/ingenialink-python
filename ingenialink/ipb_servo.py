@@ -18,7 +18,7 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class IPBServo(Servo):
-    """ IPB Servo defines a general class for all IPB based slaves.
+    """IPB Servo defines a general class for all IPB based slaves.
 
     Args:
         net (IPBNetwork): IPB Network associated with the servo.
@@ -39,7 +39,7 @@ class IPBServo(Servo):
 
     @classmethod
     def _from_existing(cls, servo, dictionary):
-        """ Create a new class instance from an existing servo.
+        """Create a new class instance from an existing servo.
 
         Args:
             servo (Servo): Servo instance.
@@ -60,7 +60,7 @@ class IPBServo(Servo):
         return inst
 
     def _get_all_errors(self, dictionary):
-        """ Obtain all errors defined in the dictionary.
+        """Obtain all errors defined in the dictionary.
 
         Args:
             dictionary: Path to the dictionary file.
@@ -83,7 +83,7 @@ class IPBServo(Servo):
         return errors
 
     def get_reg(self, reg, subnode):
-        """ Obtain Register object and its identifier.
+        """Obtain Register object and its identifier.
 
         Args:
             reg (Register, str): Register.
@@ -109,7 +109,7 @@ class IPBServo(Servo):
         return _reg, _id
 
     def raw_read(self, reg, subnode=1):
-        """ Raw read from servo.
+        """Raw read from servo.
 
         Args:
             reg (Register): Register.
@@ -168,7 +168,7 @@ class IPBServo(Servo):
         return value
 
     def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
-        """ Raw write to servo.
+        """Raw write to servo.
 
         Args:
             reg (Register): Register.
@@ -183,7 +183,7 @@ class IPBServo(Servo):
         self.write(reg, data, confirm, extended, subnode)
 
     def write(self, reg, data, confirm=True, extended=0, subnode=1):
-        """ Write to servo.
+        """Write to servo.
 
         Args:
             reg (Register): Register.
@@ -218,7 +218,7 @@ class IPBServo(Servo):
         raise_err(r)
     
     def read_sdo(self, idx, subidx, dtype, slave=1):
-        """ Read SDO from network.
+        """Read SDO from network.
 
         Args:
             idx (int): Register index.
@@ -240,7 +240,7 @@ class IPBServo(Servo):
         return value
 
     def read_string_sdo(self, idx, subidx, size, slave=1):
-        """ Read string SDO from network.
+        """Read string SDO from network.
 
         Args:
             idx (int): Register index.
@@ -262,7 +262,7 @@ class IPBServo(Servo):
         return value
 
     def write_sdo(self, idx, subidx, dtype, value, slave=1):
-        """ Write SDO from network.
+        """Write SDO from network.
 
         Args:
             idx (int): Register index.
@@ -281,7 +281,7 @@ class IPBServo(Servo):
         raise_err(r)
 
     def destroy(self):
-        """ Destroy servo instance.
+        """Destroy servo instance.
 
         Returns:
             int: Result code.
@@ -290,7 +290,7 @@ class IPBServo(Servo):
         return r
 
     def reset(self):
-        """ Reset servo.
+        """Reset servo.
 
         Notes:
             You may need to reconnect the network after reset.
@@ -299,7 +299,7 @@ class IPBServo(Servo):
         raise_err(r)
 
     def get_state(self, subnode=1):
-        """ Obtain state of the servo.
+        """Obtain state of the servo.
 
         Args:
             subnode (int, optional): Subnode.
@@ -315,7 +315,7 @@ class IPBServo(Servo):
         return SERVO_STATE(state[0]), flags[0]
 
     def state_subs_stop(self, stop):
-        """ Stop servo state subscriptions.
+        """Stop servo state subscriptions.
 
         Args:
             stop (int): start: 0, stop: 1.
@@ -326,7 +326,7 @@ class IPBServo(Servo):
         return lib.il_servo_state_subs_stop(self.__cffi_servo, stop)
 
     def enable(self, timeout=2., subnode=1):
-        """ Enable PDS.
+        """Enable PDS.
 
         Args:
             timeout (int, float, optional): Timeout (s).
@@ -336,12 +336,12 @@ class IPBServo(Servo):
         raise_err(r)
 
     def disable(self, subnode=1):
-        """ Disable PDS. """
+        """Disable PDS."""
         r = lib.il_servo_disable(self.__cffi_servo, subnode)
         raise_err(r)
 
     def fault_reset(self, subnode=1):
-        """ Fault reset.
+        """Fault reset.
 
         Args:
             subnode (int, optional): Subnode.
@@ -350,7 +350,7 @@ class IPBServo(Servo):
         raise_err(r)
 
     def switch_on(self, timeout=2.):
-        """ Switch on PDS.
+        """Switch on PDS.
 
         This function switches on the PDS but it does not enable the motor.
         For most application cases, you should only use the `enable`
@@ -363,12 +363,12 @@ class IPBServo(Servo):
         raise_err(r)
 
     def homing_start(self):
-        """ Start the homing procedure. """
+        """Start the homing procedure."""
         r = lib.il_servo_homing_start(self.__cffi_servo)
         raise_err(r)
 
     def homing_wait(self, timeout):
-        """ Wait until homing completes.
+        """Wait until homing completes.
 
         Notes:
             The homing itself has a configurable timeout. The timeout given
@@ -383,7 +383,7 @@ class IPBServo(Servo):
         raise_err(r)
 
     def store_parameters(self, subnode=1):
-        """ Store all the current parameters of the target subnode.
+        """Store all the current parameters of the target subnode.
 
         Args:
             subnode (int): Subnode of the axis.
@@ -428,7 +428,7 @@ class IPBServo(Servo):
             raise ILError('Invalid subnode.')
 
     def restore_parameters(self):
-        """ Restore all the current parameters of all the slave to default.
+        """Restore all the current parameters of all the slave to default.
 
         Raises:
             ILError: Invalid subnode.
@@ -440,17 +440,17 @@ class IPBServo(Servo):
         logger.info('Restore all successfully done.')
 
     def store_comm(self):
-        """ Store all servo current communications to the NVM. """
+        """Store all servo current communications to the NVM."""
         r = lib.il_servo_store_comm(self.__cffi_servo)
         raise_err(r)
 
     def store_app(self):
-        """ Store all servo current application parameters to the NVM. """
+        """Store all servo current application parameters to the NVM."""
         r = lib.il_servo_store_app(self.__cffi_servo)
         raise_err(r)
 
     def _dict_load(self, dictionary):
-        """ Load dictionary.
+        """Load dictionary.
 
         Args:
             dictionary (str): Dictionary.
@@ -461,7 +461,7 @@ class IPBServo(Servo):
         raise_err(r)
 
     def load_configuration(self, dictionary, subnode=0):
-        """ Load configuration from dictionary file to the servo drive.
+        """Load configuration from dictionary file to the servo drive.
 
         Args:
             dictionary (str): Dictionary.
@@ -476,7 +476,7 @@ class IPBServo(Servo):
         return r
 
     def save_configuration(self, new_path, subnode=0):
-        """ Read all dictionary registers content and save it to a
+        """Read all dictionary registers content and save it to a
             new dictionary.
 
         Args:
@@ -534,7 +534,7 @@ class IPBServo(Servo):
         return r
 
     def reload_errors(self, dictionary):
-        """ Force to reload all dictionary errors.
+        """Force to reload all dictionary errors.
 
         Args:
             dictionary (str): Dictionary.
@@ -542,7 +542,7 @@ class IPBServo(Servo):
         self._errors = self._get_all_errors(dictionary)
 
     def emcy_subscribe(self, cb):
-        """ Subscribe to emergency messages.
+        """Subscribe to emergency messages.
 
         Args:
             cb: Callback
@@ -562,7 +562,7 @@ class IPBServo(Servo):
         return slot
 
     def emcy_unsubscribe(self, slot):
-        """ Unsubscribe from emergency messages.
+        """Unsubscribe from emergency messages.
 
         Args:
             slot (int): Assigned slot when subscribed.
@@ -572,7 +572,7 @@ class IPBServo(Servo):
         del self._emcy_cb[slot]
 
     def subscribe_to_servo_status(self, cb):
-        """ Subscribe to state changes.
+        """Subscribe to state changes.
 
         Args:
             cb: Callback
@@ -592,7 +592,7 @@ class IPBServo(Servo):
         return slot
 
     def unsubscribe_to_servo_status(self, slot):
-        """ Unsubscribe from state changes.
+        """Unsubscribe from state changes.
 
         Args:
             slot (int): Assigned slot when subscribed.
@@ -602,7 +602,7 @@ class IPBServo(Servo):
         del self._state_cb[slot]
 
     def disturbance_write_data(self, channels, dtypes, data_arr):
-        """ Write disturbance data.
+        """Write disturbance data.
 
         Args:
             channels (int or list of int): Channel identifier.
@@ -640,7 +640,7 @@ class IPBServo(Servo):
         self.write(DIST_DATA, rest_samples * sample_size, False, 1, subnode=0)
 
     def wait_reached(self, timeout):
-        """ Wait until the servo does a target reach.
+        """Wait until the servo does a target reach.
 
         Args:
             timeout (int, float): Timeout (s).
@@ -649,7 +649,7 @@ class IPBServo(Servo):
         raise_err(r)
 
     def units_update(self):
-        """ Update units scaling factors.
+        """Update units scaling factors.
 
         Notes:
             This must be called if any encoder parameter, rated torque or
@@ -660,7 +660,7 @@ class IPBServo(Servo):
         raise_err(r)
 
     def units_factor(self, reg):
-        """ Obtain units scale factor for the given register.
+        """Obtain units scale factor for the given register.
 
         Args:
             reg (Register): Register.
@@ -671,7 +671,7 @@ class IPBServo(Servo):
         return lib.il_servo_units_factor(self.__cffi_servo, reg._reg)
 
     def monitoring_channel_data(self, channel, dtype):
-        """ Obtain processed monitoring data of a channel.
+        """Obtain processed monitoring data of a channel.
 
         Args:
             channel (int): Identity channel number.
@@ -699,7 +699,7 @@ class IPBServo(Servo):
         return ret_arr
 
     def monitoring_remove_all_mapped_registers(self):
-        """ Remove all monitoring mapped registers.
+        """Remove all monitoring mapped registers.
 
         Returns:
             int: Result code.
@@ -707,7 +707,7 @@ class IPBServo(Servo):
         return lib.il_net_remove_all_mapped_registers(self.net._cffi_network)
 
     def monitoring_set_mapped_register(self, channel, reg_idx, dtype):
-        """ Set monitoring mapped register.
+        """Set monitoring mapped register.
 
         Args:
             channel (int): Identity channel number.
@@ -721,7 +721,7 @@ class IPBServo(Servo):
                                               reg_idx, dtype)
 
     def monitoring_get_num_mapped_registers(self):
-        """ Obtain the number of mapped registers.
+        """Obtain the number of mapped registers.
 
         Returns:
             int: Actual number of mapped registers.
@@ -729,7 +729,7 @@ class IPBServo(Servo):
         return lib.il_net_num_mapped_registers_get(self.net._cffi_network)
 
     def monitoring_enable(self):
-        """ Enable monitoring process.
+        """Enable monitoring process.
 
         Returns:
             int: Result code.
@@ -737,7 +737,7 @@ class IPBServo(Servo):
         return lib.il_net_enable_monitoring(self.net._cffi_network)
 
     def monitoring_disable(self):
-        """ Disable monitoring process.
+        """Disable monitoring process.
 
         Returns:
             int: Result code.
@@ -745,7 +745,7 @@ class IPBServo(Servo):
         return lib.il_net_disable_monitoring(self.net._cffi_network)
 
     def monitoring_read_data(self):
-        """ Obtain processed monitoring data.
+        """Obtain processed monitoring data.
 
         Returns:
             array: Actual processed monitoring data.
@@ -753,7 +753,7 @@ class IPBServo(Servo):
         return lib.il_net_read_monitoring_data(self.net._cffi_network)
 
     def monitoring_get_bytes_per_block(self):
-        """ Obtain Bytes x Block configured.
+        """Obtain Bytes x Block configured.
 
         Returns:
             int: Actual number of Bytes x Block configured.
@@ -761,7 +761,7 @@ class IPBServo(Servo):
         return lib.il_net_monitornig_bytes_per_block_get(self.net._cffi_network)
 
     def disturbance_channel_data(self, channel, dtype, data_arr):
-        """ Send disturbance data.
+        """Send disturbance data.
 
         Args:
             channel (int): Identity channel number.
@@ -785,7 +785,7 @@ class IPBServo(Servo):
         return 0
 
     def disturbance_remove_all_mapped_registers(self):
-        """ Remove all disturbance mapped registers.
+        """Remove all disturbance mapped registers.
 
         Returns:
             int: Return code.
@@ -793,7 +793,7 @@ class IPBServo(Servo):
         return lib.il_net_disturbance_remove_all_mapped_registers(self.net._cffi_network)
 
     def disturbance_set_mapped_register(self, channel, address, dtype):
-        """ Set disturbance mapped register.
+        """Set disturbance mapped register.
 
         Args:
             channel (int): Identity channel number.
@@ -808,7 +808,7 @@ class IPBServo(Servo):
 
     @property
     def net(self):
-        """ Obtain servo network.
+        """Obtain servo network.
 
         Returns:
             IPBNetwork: Current servo network.
@@ -817,7 +817,7 @@ class IPBServo(Servo):
 
     @net.setter
     def net(self, value):
-        """ Set servo network.
+        """Set servo network.
 
         Args:
             value (IPBNetwork): Network to be set as servo Network.
@@ -826,7 +826,7 @@ class IPBServo(Servo):
 
     @property
     def name(self):
-        """ Obtain servo name.
+        """Obtain servo name.
 
         Returns:
             str: Name.
@@ -840,7 +840,7 @@ class IPBServo(Servo):
 
     @name.setter
     def name(self, name):
-        """ Set servo name.
+        """Set servo name.
 
         Args:
             name (str): Name.
@@ -852,7 +852,7 @@ class IPBServo(Servo):
 
     @property
     def dictionary(self):
-        """ Obtain dictionary of the servo. """
+        """Obtain dictionary of the servo."""
         _dict = lib.il_servo_dict_get(self._cffi_servo)
 
         return Dictionary._from_dict(_dict) if _dict else None
@@ -863,7 +863,7 @@ class IPBServo(Servo):
 
     @property
     def info(self):
-        """ Obtain servo information.
+        """Obtain servo information.
 
         Returns:
             dict: Servo information.
@@ -889,7 +889,7 @@ class IPBServo(Servo):
 
     @property
     def units_torque(self):
-        """ SERVO_UNITS_TORQUE: Torque units. """
+        """SERVO_UNITS_TORQUE: Torque units."""
         return SERVO_UNITS_TORQUE(lib.il_servo_units_torque_get(self.__cffi_servo))
 
     @units_torque.setter
@@ -898,7 +898,7 @@ class IPBServo(Servo):
 
     @property
     def units_pos(self):
-        """ SERVO_UNITS_POS: Position units. """
+        """SERVO_UNITS_POS: Position units."""
         return SERVO_UNITS_POS(lib.il_servo_units_pos_get(self.__cffi_servo))
 
     @units_pos.setter
@@ -907,7 +907,7 @@ class IPBServo(Servo):
 
     @property
     def units_vel(self):
-        """ SERVO_UNITS_VEL: Velocity units. """
+        """SERVO_UNITS_VEL: Velocity units."""
         return SERVO_UNITS_VEL(lib.il_servo_units_vel_get(self.__cffi_servo))
 
     @units_vel.setter
@@ -916,7 +916,7 @@ class IPBServo(Servo):
 
     @property
     def units_acc(self):
-        """ SERVO_UNITS_ACC: Acceleration units. """
+        """SERVO_UNITS_ACC: Acceleration units."""
         return SERVO_UNITS_ACC(lib.il_servo_units_acc_get(self.__cffi_servo))
 
     @units_acc.setter
@@ -925,7 +925,7 @@ class IPBServo(Servo):
 
     @property
     def mode(self):
-        """ Obtains Operation mode.
+        """Obtains Operation mode.
 
         Returns:
             SERVO_MODE: Current operation mode.
@@ -939,7 +939,7 @@ class IPBServo(Servo):
 
     @mode.setter
     def mode(self, mode):
-        """ Set Operation mode.
+        """Set Operation mode.
 
         Args:
             mode (SERVO_MODE): Operation mode.
@@ -949,7 +949,7 @@ class IPBServo(Servo):
 
     @property
     def errors(self):
-        """ Obtain drive errors.
+        """Obtain drive errors.
 
         Returns:
             dict: Current errors.
@@ -958,17 +958,17 @@ class IPBServo(Servo):
 
     @property
     def _cffi_servo(self):
-        """ Obtain servo CFFI instance. """
+        """Obtain servo CFFI instance."""
         return self.__cffi_servo
 
     @_cffi_servo.setter
     def _cffi_servo(self, value):
-        """ Set servo CFFI instance. """
+        """Set servo CFFI instance."""
         self.__cffi_servo = value
 
     @property
     def subnodes(self):
-        """ Obtain number of subnodes.
+        """Obtain number of subnodes.
 
         Returns:
             int: Current number of subnodes.
@@ -977,7 +977,7 @@ class IPBServo(Servo):
 
     @property
     def ol_voltage(self):
-        """ Get open loop voltage.
+        """Get open loop voltage.
 
         Returns:
             float: Open loop voltage (% relative to DC-bus, -1...1).
@@ -990,7 +990,7 @@ class IPBServo(Servo):
 
     @ol_voltage.setter
     def ol_voltage(self, voltage):
-        """ Set the open loop voltage (% relative to DC-bus, -1...1).
+        """Set the open loop voltage (% relative to DC-bus, -1...1).
 
         Args:
             float: Open loop voltage.
@@ -1000,7 +1000,7 @@ class IPBServo(Servo):
 
     @property
     def ol_frequency(self):
-        """ Get open loop frequency.
+        """Get open loop frequency.
 
         Returns:
             float: Open loop frequency (mHz).
@@ -1013,7 +1013,7 @@ class IPBServo(Servo):
 
     @ol_frequency.setter
     def ol_frequency(self, frequency):
-        """ Set the open loop frequency (mHz).
+        """Set the open loop frequency (mHz).
 
         Args:
             float: Open loop frequency.
@@ -1023,7 +1023,7 @@ class IPBServo(Servo):
 
     @property
     def torque(self):
-        """ Get actual torque.
+        """Get actual torque.
 
         Returns:
             float: Actual torque.
@@ -1036,7 +1036,7 @@ class IPBServo(Servo):
 
     @torque.setter
     def torque(self, torque):
-        """ Set the target torque.
+        """Set the target torque.
 
         Args:
             float: Target torque.
@@ -1046,7 +1046,7 @@ class IPBServo(Servo):
 
     @property
     def position(self):
-        """ Get actual position.
+        """Get actual position.
 
         Returns:
             float: Actual position.
@@ -1059,7 +1059,7 @@ class IPBServo(Servo):
 
     @position.setter
     def position(self, pos):
-        """ Set the target position.
+        """Set the target position.
 
         Notes:
             Position can be either a single position, or a tuple/list
@@ -1103,7 +1103,7 @@ class IPBServo(Servo):
 
     @property
     def position_res(self):
-        """ Get position resolution.
+        """Get position resolution.
 
         Returns:
             int: Position resolution (c/rev/s, c/ppitch/s).
@@ -1116,7 +1116,7 @@ class IPBServo(Servo):
 
     @property
     def velocity(self):
-        """ Get actual velocity.
+        """Get actual velocity.
 
         Returns:
             float: Actual velocity.
@@ -1129,7 +1129,7 @@ class IPBServo(Servo):
 
     @velocity.setter
     def velocity(self, velocity):
-        """ Set the target velocity.
+        """Set the target velocity.
 
         Args:
             velocity (float): Target velocity.
@@ -1139,7 +1139,7 @@ class IPBServo(Servo):
 
     @property
     def velocity_res(self):
-        """ Get velocity resolution.
+        """Get velocity resolution.
 
         Returns:
             int: Velocity resolution (c/rev, c/ppitch).
@@ -1152,7 +1152,7 @@ class IPBServo(Servo):
     
     @property
     def monitoring_data(self):
-        """ Obtain monitoring data.
+        """Obtain monitoring data.
 
         Returns:
             array: Current monitoring data.
@@ -1166,7 +1166,7 @@ class IPBServo(Servo):
 
     @property
     def monitoring_data_size(self):
-        """ Obtain monitoring data size.
+        """Obtain monitoring data size.
 
         Returns:
             int: Current monitoring data size.
@@ -1175,7 +1175,7 @@ class IPBServo(Servo):
 
     @property
     def disturbance_data(self):
-        """ Obtain disturbance data.
+        """Obtain disturbance data.
 
         Returns:
             array: Current disturbance data.
@@ -1189,7 +1189,7 @@ class IPBServo(Servo):
 
     @disturbance_data.setter
     def disturbance_data(self, value):
-        """ Set disturbance data.
+        """Set disturbance data.
 
         Args:
             value (array): Array with the disturbance to send.
@@ -1203,7 +1203,7 @@ class IPBServo(Servo):
 
     @property
     def disturbance_data_size(self):
-        """ Obtain disturbance data size.
+        """Obtain disturbance data size.
 
         Returns:
             int: Current disturbance data size.
@@ -1212,7 +1212,7 @@ class IPBServo(Servo):
 
     @disturbance_data_size.setter
     def disturbance_data_size(self, value):
-        """ Set disturbance data size.
+        """Set disturbance data size.
 
         Args:
             value (int): Disturbance data size in bytes.
@@ -1221,7 +1221,7 @@ class IPBServo(Servo):
 
     @property
     def extended_buffer(self):
-        """ Obtain extended buffer data.
+        """Obtain extended buffer data.
 
         Returns:
             str: Current extended buffer data.

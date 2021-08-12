@@ -24,9 +24,7 @@ class SubCategories(object):
         self._load_scat_ids()
 
     def _load_scat_ids(self):
-        """
-        Load sub-category IDs from dictionary.
-        """
+        """Load sub-category IDs from dictionary."""
         scat_ids = lib.il_dict_scat_ids_get(self._dict, cstr(self._cat_id))
 
         self._scat_ids = []
@@ -41,8 +39,7 @@ class SubCategories(object):
 
     @property
     def scat_ids(self):
-        """
-        Obtain all sub-category identifiers.
+        """Obtain all sub-category identifiers.
 
         Returns:
             list: Sub-category identifiers.
@@ -50,8 +47,7 @@ class SubCategories(object):
         return self._scat_ids
 
     def labels(self, scat_id):
-        """
-        Obtain labels for a certain sub-category identifiers.
+        """Obtain labels for a certain sub-category identifiers.
 
         Returns:
             dict: Labels dictionary.
@@ -65,8 +61,7 @@ class SubCategories(object):
 
 
 class Categories(object):
-    """
-    Categories.
+    """Categories.
 
     Args:
         dict_ (il_dict_t *): Ingenia dictionary instance.
@@ -78,9 +73,7 @@ class Categories(object):
         self._load_cat_ids()
 
     def _load_cat_ids(self):
-        """
-        Load category IDs from dictionary.
-        """
+        """Load category IDs from dictionary."""
         cat_ids = lib.il_dict_cat_ids_get(self._dict)
 
         self._cat_ids = []
@@ -95,11 +88,11 @@ class Categories(object):
 
     @property
     def cat_ids(self):
-        """
-        Obtain all Category Identifiers.
+        """Obtain all Category Identifiers.
 
         Returns:
-            list: Category IDs."""
+            list: Category IDs.
+        """
         return self._cat_ids
 
     def labels(self, cat_id):
@@ -116,8 +109,7 @@ class Categories(object):
         return LabelsDictionary._from_labels(labels_p[0])
 
     def scats(self, cat_id):
-        """
-        Obtain all sub-categories.
+        """Obtain all sub-categories.
 
         Returns:
             SubCategories: Sub-categories.
@@ -126,8 +118,7 @@ class Categories(object):
 
 
 class RegistersDictionary(collections.Mapping):
-    """
-    Registers dictionary.
+    """Registers dictionary.
 
     Args:
         dict_ (il_dict_t *): Ingenia dictionary instance.
@@ -140,9 +131,7 @@ class RegistersDictionary(collections.Mapping):
         self._load_reg_ids()
 
     def _load_reg_ids(self):
-        """
-        Load register IDs from dictionary.
-        """
+        """Load register IDs from dictionary."""
         self._ids = []
         ids = lib.il_dict_reg_ids_get(self._dict, self._subnode)
 
@@ -170,8 +159,7 @@ class RegistersDictionary(collections.Mapping):
 
 
 class Dictionary(object):
-    """
-    Ingenia Dictionary.
+    """Ingenia Dictionary.
 
     Args:
         dict_f (str): Dictionary file name.
@@ -197,9 +185,7 @@ class Dictionary(object):
 
     @classmethod
     def _from_dict(cls, dict_):
-        """
-        Create a new class instance from an existing dictionary.
-        """
+        """Create a new class instance from an existing dictionary."""
         inst = cls.__new__(cls)
         inst._dict = dict_
 
@@ -215,7 +201,7 @@ class Dictionary(object):
         return inst
 
     def version_get(self, dict_):
-        """
+        """Get the version of the dictionary
 
         Args:
             dict_: Dictionary path.
@@ -226,8 +212,7 @@ class Dictionary(object):
         return lib.il_dict_version_get(dict_)
 
     def save(self, fname):
-        """
-        Save dictionary.
+        """Save dictionary.
 
         Args:
             fname (str): Output file name/path.
@@ -236,8 +221,7 @@ class Dictionary(object):
         raise_err(r)
 
     def get_regs(self, subnode):
-        """
-        Obtain all the registers of a subnode.
+        """Obtain all the registers of a subnode.
 
         Args:
             subnode: Subnode.
@@ -248,14 +232,8 @@ class Dictionary(object):
         if subnode < self._subnodes:
             return self._rdicts[subnode]
 
-    # @property
-    # def regs(self):
-    #     """RegistersDictionary: Registers dictionary."""
-    #     return self._rdict
-
     def reg_storage_update(self, id_, value):
-        """
-        Update register storage.
+        """Update register storage.
 
         Args:
             id_ (str): Register ID.
@@ -290,8 +268,7 @@ class Dictionary(object):
 
     @property
     def cats(self):
-        """
-        Obtains all categories of the dictionary.
+        """Obtains all categories of the dictionary.
 
         Returns:
             Categories: Categories.
@@ -300,8 +277,7 @@ class Dictionary(object):
 
     @property
     def version(self):
-        """
-        Obtain dictionary version.
+        """Obtain dictionary version.
 
         Returns:
             str: Version.
@@ -310,8 +286,7 @@ class Dictionary(object):
 
     @property
     def subnodes(self):
-        """
-        Obtain number of subnodes defined in the dictionary.
+        """Obtain number of subnodes defined in the dictionary.
 
         Returns:
             int: Subnodes.

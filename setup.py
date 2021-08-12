@@ -10,7 +10,7 @@ _version = re.search(r'__version__\s+=\s+\'(.*)\'',
                      open('ingenialink/__init__.py').read()).group(1)
 
 class BDistAppCommand(Command):
-    """ Custom command to build the application. """
+    """Custom command to build the application."""
 
     description = 'Build the application'
     user_options = []
@@ -27,7 +27,7 @@ class BDistAppCommand(Command):
         shutil.copy('resources/wpcap.dll', 'ingenialink/')
 
 class BCleanAppCommand(Command):
-    """ Custom command to clean the application. """
+    """Custom command to clean the application."""
 
     description = 'Clean the application'
     user_options = []

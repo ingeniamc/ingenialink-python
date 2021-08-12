@@ -20,7 +20,7 @@ def print_errors_enabled(value):
 
 
 def load_firmware_example_1():
-    """ Loads a firmware to an already connected drive. """
+    """Loads a firmware to an already connected drive."""
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,
                          baudrate=CAN_BAUDRATE.Baudrate_1M)
@@ -51,7 +51,7 @@ def load_firmware_example_1():
 
 
 def load_firmware_example_2():
-    """ Loads a firmware to a disconnected drive. """
+    """Loads a firmware to a disconnected drive."""
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,
                          baudrate=CAN_BAUDRATE.Baudrate_1M)

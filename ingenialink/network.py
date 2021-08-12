@@ -9,7 +9,7 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class NET_PROT(Enum):
-    """ Network Protocol. """
+    """Network Protocol."""
 
     EUSB = lib.IL_NET_PROT_EUSB
     MCB = lib.IL_NET_PROT_MCB
@@ -19,7 +19,7 @@ class NET_PROT(Enum):
 
 
 class NET_STATE(Enum):
-    """ Network State. """
+    """Network State."""
 
     CONNECTED = lib.IL_NET_STATE_CONNECTED
     DISCONNECTED = lib.IL_NET_STATE_DISCONNECTED
@@ -27,14 +27,14 @@ class NET_STATE(Enum):
 
 
 class NET_DEV_EVT(Enum):
-    """ Device Event. """
+    """Device Event."""
 
     ADDED = lib.IL_NET_DEV_EVT_ADDED
     REMOVED = lib.IL_NET_DEV_EVT_REMOVED
 
 
 class EEPROM_TOOL_MODE(Enum):
-    """ EEPROM tool mode. """
+    """EEPROM tool mode."""
 
     MODE_NONE = 0
     MODE_READBIN = 1
@@ -46,7 +46,7 @@ class EEPROM_TOOL_MODE(Enum):
 
 
 class NET_TRANS_PROT(Enum):
-    """ Transmission protocol. """
+    """Transmission protocol."""
 
     TCP = 1
     UDP = 2
@@ -54,20 +54,20 @@ class NET_TRANS_PROT(Enum):
 
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
-    """ On found callback shim. """
+    """On found callback shim."""
     self = ffi.from_handle(ctx)
     self._on_found(int(servo_id))
 
 
 @ffi.def_extern()
 def _on_evt_cb(ctx, evt, port):
-    """ On event callback shim. """
+    """On event callback shim."""
     self = ffi.from_handle(ctx)
     self._on_evt(NET_DEV_EVT(evt), pstr(port))
 
 
 class Network(ABC):
-    """ Declaration of a general Network object. """
+    """Declaration of a general Network object."""
     def __init__(self):
         self.__servos = []
 
@@ -109,7 +109,7 @@ class Network(ABC):
 
 
 class NetworkMonitor:
-    """ Network Monitor.
+    """Network Monitor.
 
     Args:
         prot (NET_PROT): Protocol.
@@ -128,7 +128,7 @@ class NetworkMonitor:
         self._mon = ffi.gc(mon, lib.il_net_dev_mon_destroy)
 
     def start(self, on_evt):
-        """ Start the monitor.
+        """Start the monitor.
 
         Args:
             on_evt (callback): Callback function.
@@ -140,7 +140,7 @@ class NetworkMonitor:
         raise_err(r)
 
     def stop(self):
-        """ Stop the monitor. """
+        """Stop the monitor."""
         lib.il_net_dev_mon_stop(self._mon)
 
 

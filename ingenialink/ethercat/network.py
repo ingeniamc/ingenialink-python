@@ -7,7 +7,7 @@ from .._ingenialink import lib, ffi
 
 
 class EthercatNetwork(IPBNetwork):
-    """ Network for all EtherCAT communications.
+    """Network for all EtherCAT communications.
 
     Args:
         interface_name (str): Interface name to be targeted.
@@ -18,7 +18,7 @@ class EthercatNetwork(IPBNetwork):
         self._cffi_network = None
 
     def load_firmware(self, fw_file, target=1, boot_in_app=True):
-        """ Loads a given firmware file to a target.
+        """Loads a given firmware file to a target.
 
         Args:
             target (int): Targeted node ID to be loaded.
@@ -41,7 +41,7 @@ class EthercatNetwork(IPBNetwork):
                                           boot_in_app)
 
     def scan_slaves(self):
-        """ Scan all the slaves connected in the network.
+        """Scan all the slaves connected in the network.
 
         Returns:
             list: List of number of slaves connected to the network.
@@ -56,7 +56,7 @@ class EthercatNetwork(IPBNetwork):
         return slaves
 
     def connect_to_slave(self, target=1, dictionary="", use_eoe_comms=1):
-        """ Connect a slave through an EtherCAT connection.
+        """Connect a slave through an EtherCAT connection.
 
         Args:
             target (int): Number of the target slave.
@@ -90,7 +90,7 @@ class EthercatNetwork(IPBNetwork):
         return servo
 
     def disconnect_from_slave(self, servo):
-        """ Disconnects the slave from the network.
+        """Disconnects the slave from the network.
 
         Args:
             servo (EthernetServo): Instance of the servo connected.
@@ -107,7 +107,7 @@ class EthercatNetwork(IPBNetwork):
 
     @property
     def protocol(self):
-        """ NET_PROT: Obtain network protocol. """
+        """NET_PROT: Obtain network protocol."""
         return NET_PROT.ECAT
 
     @property
