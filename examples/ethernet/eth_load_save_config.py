@@ -1,6 +1,6 @@
 import sys
 
-from ingenialink.ethernet.eth_net import EthernetNetwork, NET_TRANS_PROT
+from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT
 
 
 def connect_slave():

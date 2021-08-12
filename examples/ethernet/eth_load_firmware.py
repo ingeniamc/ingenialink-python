@@ -1,5 +1,5 @@
 import sys
-from ingenialink.ethernet.eth_net import EthernetNetwork
+from ingenialink.ethernet.network import EthernetNetwork
 
 
 def ecat_load_fw():
