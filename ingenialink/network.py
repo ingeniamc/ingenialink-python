@@ -88,7 +88,11 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def subscribe_to_network_status(self, *args, **kwargs):
+    def subscribe_to_status(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def unsubscribe_from_status(self, *args, **kwargs):
         raise NotImplementedError
 
     @abstractmethod

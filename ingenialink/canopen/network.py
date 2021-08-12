@@ -804,7 +804,7 @@ class CanopenNetwork(Network):
 
         self._connection.nodes[target_node].nmt.start_node_guarding(1)
 
-    def subscribe_to_network_status(self, cb):
+    def subscribe_to_status(self, cb):
         """Subscribe to network state changes.
 
         Args:

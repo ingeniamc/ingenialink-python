@@ -652,7 +652,7 @@ class CanopenServo(Servo):
             for callback in self.__servo_state_observers:
                 callback(state, None, subnode)
 
-    def subscribe_to_servo_status(self, cb):
+    def subscribe_to_status(self, cb):
         """Subscribe to state changes.
 
             Args:
@@ -665,7 +665,7 @@ class CanopenServo(Servo):
         self.__servo_state_observers.append(cb)
         return slot
 
-    def unsubscribe_to_servo_status(self, cb):
+    def unsubscribe_to_status(self, cb):
         """Unsubscribe from state changes.
 
         Args:

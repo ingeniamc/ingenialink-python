@@ -605,7 +605,7 @@ class IPBServo(Servo):
 
         del self._emcy_cb[slot]
 
-    def subscribe_to_servo_status(self, cb):
+    def subscribe_to_status(self, cb):
         """Subscribe to state changes.
 
         Args:
@@ -625,7 +625,7 @@ class IPBServo(Servo):
 
         return slot
 
-    def unsubscribe_to_servo_status(self, slot):
+    def unsubscribe_to_status(self, slot):
         """Unsubscribe from state changes.
 
         Args:
