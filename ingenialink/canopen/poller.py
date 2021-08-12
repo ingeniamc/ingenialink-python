@@ -34,7 +34,7 @@ class PollerTimer:
             self.thread.join()
 
 
-class CanopenPoller(object):
+class CanopenPoller:
     """Register poller for CANOpen communications.
 
     Args:

@@ -1,9 +1,9 @@
 from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import raise_null, raise_err, to_ms
-from ingenialink.ipb.registers import _get_reg_id
+from ingenialink.register import _get_reg_id
 
 
-class Poller(object):
+class Poller:
     """Register poller.
 
         Args:

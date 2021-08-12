@@ -1,6 +1,6 @@
 from ingenialink.servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
-from ingenialink.ipb.registers import *
+from ingenialink.ipb.register import *
 from ingenialink.const import *
 from ingenialink.exceptions import *
 from ingenialink.ipb.dictionary import IPBDictionary
@@ -101,9 +101,9 @@ class IPBServo(Servo):
             _dict = self.dictionary
             if not _dict:
                 raise ValueError('No dictionary loaded')
-            if reg not in _dict.get_regs(subnode):
+            if reg not in _dict.registers(subnode):
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.get_regs(subnode)[reg]._reg
+            _reg = _dict.registers(subnode)[reg]._reg
         else:
             raise TypeError('Invalid register')
         return _reg, _id
@@ -140,9 +140,9 @@ class IPBServo(Servo):
             _dict = self.dictionary
             if not _dict:
                 raise ValueError('No dictionary loaded')
-            if reg not in _dict.get_regs(subnode):
+            if reg not in _dict.registers(subnode):
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.get_regs(subnode)[reg]
+            _reg = _dict.registers(subnode)[reg]
         else:
             raise TypeError('Invalid register')
 
@@ -155,7 +155,7 @@ class IPBServo(Servo):
 
         try:
             if self.dictionary:
-                _reg = self.dictionary.get_regs(subnode)[reg]
+                _reg = self.dictionary.registers(subnode)[reg]
         except Exception as e:
             pass
         if _reg.dtype == REG_DTYPE.STR:
@@ -201,9 +201,9 @@ class IPBServo(Servo):
             _dict = self.dictionary
             if not _dict:
                 raise ValueError('No dictionary loaded')
-            if reg not in _dict.get_regs(subnode):
+            if reg not in _dict.registers(subnode):
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.get_regs(subnode)[reg]
+            _reg = _dict.registers(subnode)[reg]
         else:
             raise TypeError('Invalid register')
 
@@ -873,10 +873,10 @@ class IPBServo(Servo):
         r = lib.il_servo_info_get(self.__cffi_servo, info)
         raise_err(r)
 
-        PRODUCT_ID_REG = Register(identifier='', address=0x06E1,
-                                  dtype=REG_DTYPE.U32,
-                                  access=REG_ACCESS.RO, cyclic='CONFIG',
-                                  units='0')
+        PRODUCT_ID_REG = IPBRegister(identifier='', address=0x06E1,
+                                     dtype=REG_DTYPE.U32,
+                                     access=REG_ACCESS.RO, cyclic='CONFIG',
+                                     units='0')
 
         product_id = self.read(PRODUCT_ID_REG)
 

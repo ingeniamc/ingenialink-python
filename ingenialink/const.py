@@ -1,6 +1,6 @@
 import sys
 import re
-from ingenialink.ipb.registers import Register, REG_ACCESS, REG_DTYPE
+from ingenialink.ipb.register import IPBRegister, REG_ACCESS, REG_DTYPE
 
 from ._ingenialink import lib
 
@@ -15,35 +15,35 @@ DEFAULT_DRIVE_NAME = 'Drive'
 PASSWORD_STORE_ALL = 0x65766173
 PASSWORD_RESTORE_ALL = 0x64616F6C
 
-DIST_NUMBER_SAMPLES = Register(
+DIST_NUMBER_SAMPLES = IPBRegister(
     identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
 )
-DIST_DATA = Register(
+DIST_DATA = IPBRegister(
     identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
     dtype=REG_DTYPE.U16, access=REG_ACCESS.WO, range=None
 )
 
-STORE_COCO_ALL = Register(
+STORE_COCO_ALL = IPBRegister(
     identifier='', units='', subnode=0, address=0x06DB, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
 )
 
-RESTORE_COCO_ALL = Register(
+RESTORE_COCO_ALL = IPBRegister(
     identifier='', units='', subnode=0, address=0x06DC, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
 )
 
 STORE_MOCO_ALL_REGISTERS = {
-    1: Register(
+    1: IPBRegister(
         identifier='', units='', subnode=1, address=0x06DB, cyclic='CONFIG',
         dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
     ),
-    2: Register(
+    2: IPBRegister(
         identifier='', units='', subnode=2, address=0x06DB, cyclic='CONFIG',
         dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
     ),
-    3: Register(
+    3: IPBRegister(
         identifier='', units='', subnode=3, address=0x06DB, cyclic='CONFIG',
         dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
     )

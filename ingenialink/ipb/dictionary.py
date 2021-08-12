@@ -3,7 +3,7 @@ import collections
 from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err
 
-from ingenialink.ipb.registers import Register, REG_DTYPE, LabelsDictionary
+from ingenialink.ipb.register import IPBRegister, REG_DTYPE, LabelsDictionary
 from ..dictionary import Dictionary, Categories
 
 
@@ -148,7 +148,7 @@ class RegistersDictionary(collections.Mapping):
         r = lib.il_dict_reg_get(self._dict, cstr(_id), reg_p, self._subnode)
         raise_err(r)
 
-        return Register._from_register(reg_p[0])
+        return IPBRegister._from_register(reg_p[0])
 
     def __len__(self):
         return len(self._ids)
