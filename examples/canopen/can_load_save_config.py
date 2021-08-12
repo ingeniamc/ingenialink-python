@@ -4,6 +4,7 @@ from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
 
 
 def load_config_example():
+    """ Loads a given configuration file into the drive."""
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,
                          baudrate=CAN_BAUDRATE.Baudrate_1M)
@@ -17,6 +18,7 @@ def load_config_example():
 
 
 def save_config_example():
+    """ Saves the drive configuration into a file."""
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,
                          baudrate=CAN_BAUDRATE.Baudrate_1M)
