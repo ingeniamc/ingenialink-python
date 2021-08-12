@@ -1,7 +1,7 @@
 from ingenialink.servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
-from ingenialink.ipb.registers import *
-from ingenialink.const import *
+from ingenialink.ipb.register import *
+from ingenialink.constants import *
 from ingenialink.exceptions import *
 from ingenialink.ipb.dictionary import IPBDictionary
 from .network import IPBNetwork
@@ -15,6 +15,40 @@ import io
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
+
+DIST_NUMBER_SAMPLES = IPBRegister(
+    identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+)
+DIST_DATA = IPBRegister(
+    identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO, range=None
+)
+
+STORE_COCO_ALL = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06DB, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+)
+
+RESTORE_COCO_ALL = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06DC, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+)
+
+STORE_MOCO_ALL_REGISTERS = {
+    1: IPBRegister(
+        identifier='', units='', subnode=1, address=0x06DB, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+    ),
+    2: IPBRegister(
+        identifier='', units='', subnode=2, address=0x06DB, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+    ),
+    3: IPBRegister(
+        identifier='', units='', subnode=3, address=0x06DB, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+    )
+}
 
 
 class IPBServo(Servo):
@@ -101,9 +135,9 @@ class IPBServo(Servo):
             _dict = self.dictionary
             if not _dict:
                 raise ValueError('No dictionary loaded')
-            if reg not in _dict.get_regs(subnode):
+            if reg not in _dict.registers(subnode):
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.get_regs(subnode)[reg]._reg
+            _reg = _dict.registers(subnode)[reg]._reg
         else:
             raise TypeError('Invalid register')
         return _reg, _id
@@ -140,9 +174,9 @@ class IPBServo(Servo):
             _dict = self.dictionary
             if not _dict:
                 raise ValueError('No dictionary loaded')
-            if reg not in _dict.get_regs(subnode):
+            if reg not in _dict.registers(subnode):
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.get_regs(subnode)[reg]
+            _reg = _dict.registers(subnode)[reg]
         else:
             raise TypeError('Invalid register')
 
@@ -155,7 +189,7 @@ class IPBServo(Servo):
 
         try:
             if self.dictionary:
-                _reg = self.dictionary.get_regs(subnode)[reg]
+                _reg = self.dictionary.registers(subnode)[reg]
         except Exception as e:
             pass
         if _reg.dtype == REG_DTYPE.STR:
@@ -201,9 +235,9 @@ class IPBServo(Servo):
             _dict = self.dictionary
             if not _dict:
                 raise ValueError('No dictionary loaded')
-            if reg not in _dict.get_regs(subnode):
+            if reg not in _dict.registers(subnode):
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.get_regs(subnode)[reg]
+            _reg = _dict.registers(subnode)[reg]
         else:
             raise TypeError('Invalid register')
 
@@ -571,16 +605,16 @@ class IPBServo(Servo):
 
         del self._emcy_cb[slot]
 
-    def subscribe_to_servo_status(self, cb):
+    def subscribe_to_status(self, callback):
         """Subscribe to state changes.
 
         Args:
-            cb: Callback
+            callback: Callback
 
         Returns:
             int: Assigned slot.
         """
-        cb_handle = ffi.new_handle(cb)
+        cb_handle = ffi.new_handle(callback)
 
         slot = lib.il_servo_state_subscribe(
             self.__cffi_servo, lib._on_state_change_cb, cb_handle)
@@ -591,7 +625,7 @@ class IPBServo(Servo):
 
         return slot
 
-    def unsubscribe_to_servo_status(self, slot):
+    def unsubscribe_from_status(self, slot):
         """Unsubscribe from state changes.
 
         Args:
@@ -873,10 +907,10 @@ class IPBServo(Servo):
         r = lib.il_servo_info_get(self.__cffi_servo, info)
         raise_err(r)
 
-        PRODUCT_ID_REG = Register(identifier='', address=0x06E1,
-                                  dtype=REG_DTYPE.U32,
-                                  access=REG_ACCESS.RO, cyclic='CONFIG',
-                                  units='0')
+        PRODUCT_ID_REG = IPBRegister(identifier='', address=0x06E1,
+                                     dtype=REG_DTYPE.U32,
+                                     access=REG_ACCESS.RO, cyclic='CONFIG',
+                                     units='0')
 
         product_id = self.read(PRODUCT_ID_REG)
 

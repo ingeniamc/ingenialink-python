@@ -40,6 +40,7 @@ class Dictionary(ABC):
         self.__registers = []
         self.__errors = None
 
+    @abstractmethod
     def registers(self, subnode):
         raise NotImplementedError
 

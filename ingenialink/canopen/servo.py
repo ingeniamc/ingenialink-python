@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 
 from ingenialink.utils._utils import *
 from .constants import *
-from ..const import SINGLE_AXIS_MINIMUM_SUBNODES
+from ..constants import SINGLE_AXIS_MINIMUM_SUBNODES
 from ..exceptions import *
 from .._ingenialink import lib
 from ..servo import SERVO_STATE, Servo
@@ -652,27 +652,27 @@ class CanopenServo(Servo):
             for callback in self.__servo_state_observers:
                 callback(state, None, subnode)
 
-    def subscribe_to_servo_status(self, cb):
+    def subscribe_to_status(self, callback):
         """Subscribe to state changes.
 
             Args:
-                cb (Callback): Callback function.
+                callback (Callback): Callback function.
 
             Returns:
                 int: Assigned slot.
         """
         slot = len(self.__servo_state_observers)
-        self.__servo_state_observers.append(cb)
+        self.__servo_state_observers.append(callback)
         return slot
 
-    def unsubscribe_to_servo_status(self, cb):
+    def unsubscribe_from_status(self, callback):
         """Unsubscribe from state changes.
 
         Args:
-            cb (Callback): Callback function.
+            callback (Callback): Callback function.
         """
 
-        del self.__servo_state_observers[cb]
+        self.__servo_state_observers.remove(callback)
 
     def stop_servo_monitor(self):
         """Stops the ServoStatusListener."""

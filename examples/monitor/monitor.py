@@ -13,10 +13,10 @@ MONITOR_TIMEOUT = 5
 VEL_TGT_VAL = 40.
 """float: Target velocity (rps)."""
 
-VEL_ACT = il.Register(address=0x00606C,
-                      dtype=il.REG_DTYPE.S32,
-                      access=il.REG_ACCESS.RW,
-                      phy=il.REG_PHY.VEL)
+VEL_ACT = il.IPBRegister(address=0x00606C,
+                         dtype=il.REG_DTYPE.S32,
+                         access=il.REG_ACCESS.RW,
+                         phy=il.REG_PHY.VEL)
 """Register: Velocity Actual."""
 
 

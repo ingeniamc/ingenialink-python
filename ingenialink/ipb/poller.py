@@ -1,25 +1,28 @@
 from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import raise_null, raise_err, to_ms
-from ingenialink.ipb.registers import _get_reg_id
+from ingenialink.register import _get_reg_id
+from ingenialink.ipb.servo import IPBServo
+from ingenialink.poller import Poller
 
 
-class Poller(object):
-    """Register poller.
+class IPBPoller(Poller):
+    """IPB poller.
 
         Args:
-            servo (Servo): Servo.
-            n_ch (int): Number of channels.
+            servo (IPBServo): Servo.
+            num_channels (int): Number of channels.
 
         Raises:
             ILCreationError: If the poller could not be created.
     """
-    def __init__(self, servo, n_ch):
-        poller = lib.il_poller_create(servo._servo, n_ch)
+    def __init__(self, servo, num_channels):
+        super(IPBPoller, self).__init__(servo, num_channels)
+        poller = lib.il_poller_create(servo._servo, num_channels)
         raise_null(poller)
 
         self._poller = ffi.gc(poller, lib.il_poller_destroy)
 
-        self._n_ch = n_ch
+        self._n_ch = num_channels
         self._acq = ffi.new('il_poller_acq_t **')
 
     def start(self):
@@ -30,28 +33,6 @@ class Poller(object):
     def stop(self):
         """Stop poller."""
         lib.il_poller_stop(self._poller)
-
-    @property
-    def data(self):
-        """Obtains processed data.
-
-        Returns:
-            tuple (list, list, bool): Time vector, array of data vectors and a
-                flag indicating if data was lost.
-        """
-        lib.il_poller_data_get(self._poller, self._acq)
-        acq = ffi.cast('il_poller_acq_t *', self._acq[0])
-
-        t = list(acq.t[0:acq.cnt])
-
-        d = []
-        for ch in range(self._n_ch):
-            if acq.d[ch] != ffi.NULL:
-                d.append(list(acq.d[ch][0:acq.cnt]))
-            else:
-                d.append(None)
-
-        return t, d, bool(acq.lost)
 
     def configure(self, t_s, sz):
         """Configure.
@@ -90,3 +71,25 @@ class Poller(object):
         """Disable all channels."""
         r = lib.il_poller_ch_disable_all(self._poller)
         raise_err(r)
+
+    @property
+    def data(self):
+        """Obtains processed data.
+
+        Returns:
+            tuple (list, list, bool): Time vector, array of data vectors and a
+                flag indicating if data was lost.
+        """
+        lib.il_poller_data_get(self._poller, self._acq)
+        acq = ffi.cast('il_poller_acq_t *', self._acq[0])
+
+        t = list(acq.t[0:acq.cnt])
+
+        d = []
+        for ch in range(self._n_ch):
+            if acq.d[ch] != ffi.NULL:
+                d.append(list(acq.d[ch][0:acq.cnt]))
+            else:
+                d.append(None)
+
+        return t, d, bool(acq.lost)
