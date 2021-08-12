@@ -4,7 +4,7 @@ from .registers import *
 from .const import *
 from .exceptions import *
 from .dict_ import Dictionary
-from .network import Network
+from .ipb_network import IPBNetwork
 from ingenialink.utils._utils import *
 from ._ingenialink import lib, ffi
 
@@ -18,6 +18,13 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class IPBServo(Servo):
+    """ IPB Servo defines a general class for all IPB based slaves.
+
+    Args:
+        net (IPBNetwork): IPB Network associated with the servo.
+        target (str): Target ID for the slave.
+        dictionary_path (str): Path to the dictionary.
+    """
     def __init__(self, net, target, dictionary_path=None):
         super(IPBServo, self).__init__(net, target)
         self._dictionary = cstr(dictionary_path) if dictionary_path else ffi.NULL
@@ -804,7 +811,7 @@ class IPBServo(Servo):
         """ Obtain servo network.
 
         Returns:
-            Network: Current servo network.
+            IPBNetwork: Current servo network.
         """
         return self.__net
 
@@ -813,7 +820,7 @@ class IPBServo(Servo):
         """ Set servo network.
 
         Args:
-            value (Network): Network to be setted as servo Network.
+            value (IPBNetwork): Network to be set as servo Network.
         """
         self.__net = value
 

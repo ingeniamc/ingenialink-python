@@ -21,6 +21,7 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class EthernetNetwork(IPBNetwork):
+    """ Network for all Ethernet communications. """
     def __init__(self):
         super(EthernetNetwork, self).__init__()
 

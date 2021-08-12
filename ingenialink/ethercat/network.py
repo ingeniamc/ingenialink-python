@@ -7,6 +7,11 @@ from .._ingenialink import lib, ffi
 
 
 class EthercatNetwork(IPBNetwork):
+    """ Network for all EtherCAT communications.
+
+    Args:
+        interface_name (str): Interface name to be targeted.
+    """
     def __init__(self, interface_name=""):
         super(EthercatNetwork, self).__init__()
         self.__interface_name = interface_name
@@ -25,7 +30,6 @@ class EthercatNetwork(IPBNetwork):
         Raises:
             ILFirmwareLoadError: The firmware load process fails
             with an error message.
-
         """
         _interface_name = cstr(self.__interface_name) \
             if self.__interface_name else ffi.NULL

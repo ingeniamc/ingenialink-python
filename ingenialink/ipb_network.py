@@ -8,6 +8,7 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class IPBNetwork(Network, ABC):
+    """ IPB Network defines a general class for all IPB based communications. """
     def __init__(self):
         super(IPBNetwork, self).__init__()
         self.__cffi_network = None
