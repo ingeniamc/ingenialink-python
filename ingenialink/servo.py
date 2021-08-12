@@ -4,7 +4,7 @@ from ._ingenialink import ffi, lib
 from ingenialink.utils._utils import *
 from .network import Network
 
-from .const import *
+from .constants import *
 
 
 class SERVO_STATE(Enum):

@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 
 from ingenialink.utils._utils import *
 from .constants import *
-from ..const import SINGLE_AXIS_MINIMUM_SUBNODES
+from ..constants import SINGLE_AXIS_MINIMUM_SUBNODES
 from ..exceptions import *
 from .._ingenialink import lib
 from ..servo import SERVO_STATE, Servo

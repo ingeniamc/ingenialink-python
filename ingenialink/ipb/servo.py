@@ -1,7 +1,7 @@
 from ingenialink.servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
 from ingenialink.ipb.register import *
-from ingenialink.const import *
+from ingenialink.constants import *
 from ingenialink.exceptions import *
 from ingenialink.ipb.dictionary import IPBDictionary
 from .network import IPBNetwork
@@ -15,6 +15,40 @@ import io
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
+
+DIST_NUMBER_SAMPLES = IPBRegister(
+    identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+)
+DIST_DATA = IPBRegister(
+    identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO, range=None
+)
+
+STORE_COCO_ALL = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06DB, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+)
+
+RESTORE_COCO_ALL = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06DC, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+)
+
+STORE_MOCO_ALL_REGISTERS = {
+    1: IPBRegister(
+        identifier='', units='', subnode=1, address=0x06DB, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+    ),
+    2: IPBRegister(
+        identifier='', units='', subnode=2, address=0x06DB, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+    ),
+    3: IPBRegister(
+        identifier='', units='', subnode=3, address=0x06DB, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
+    )
+}
 
 
 class IPBServo(Servo):
