@@ -10,7 +10,7 @@ from ingenialink.ipb.dictionary import Dictionary
 from .canopen.servo import CanopenServo
 from .canopen.network import CanopenNetwork, CAN_DEVICE
 from .canopen.poller import CanopenPoller
-from .err import err_ipb_last
+from ingenialink.errors import err_ipb_last
 from ._ingenialink import lib
 from ingenialink.utils._utils import pstr
 
