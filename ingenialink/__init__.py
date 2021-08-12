@@ -7,7 +7,7 @@ from .monitor import Monitor, MONITOR_TRIGGER
 from .ipb.network import IPBNetwork
 from .ipb.register import IPBRegister
 from .ipb.servo import IPBServo
-from .ipb.poller import Poller
+from .ipb.poller import IPBPoller
 from .ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS, REG_PHY
 from .ipb.dictionary import IPBDictionary
 
@@ -33,7 +33,7 @@ __all__ = ['IPBNetwork', 'NetworkMonitor',
            'IPBDictionary', 'IPBRegister', 'REG_DTYPE', 'REG_ACCESS', 'REG_PHY',
 
            'Monitor', 'MONITOR_TRIGGER',
-           'Poller',
+           'IPBPoller',
 
            'CanopenNetwork', 'CAN_DEVICE', 'CAN_BAUDRATE', 'CAN_BIT_TIMMING',
            'CanopenServo', 'CanopenPoller', 'CanopenRegister', 'CanopenDictionary',
