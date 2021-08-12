@@ -42,7 +42,7 @@ class EthercatNetwork(Network):
         _interface_name = cstr(self.__interface_name) \
             if self.__interface_name else ffi.NULL
         _fw_file = cstr(fw_file) if fw_file else ffi.NULL
-        return lib.il_net_update_firmware(self.__cff_network,
+        return lib.il_net_update_firmware(self.__cffi_network,
                                           _interface_name,
                                           target,
                                           _fw_file,
@@ -81,15 +81,15 @@ class EthercatNetwork(Network):
 
         _servo = ffi.new('il_servo_t **')
 
-        r = lib.il_servo_connect_ecat(3, _interface_name, self.__cff_network,
+        r = lib.il_servo_connect_ecat(3, _interface_name, self.__cffi_network,
                                       _servo, _dictionary, 1061,
                                       target, use_eoe_comms)
         if r <= 0:
             _servo = None
-            self.__cff_network = None
+            self.__cffi_network = None
             raise_err(r)
         else:
-            self.__cff_network = ffi.cast('il_net_t *', self.__cff_network[0])
+            self.__cffi_network = ffi.cast('il_net_t *', self.__cffi_network[0])
             servo = EthercatServo._from_existing(_servo, _dictionary)
             servo._servo = ffi.cast('il_servo_t *', servo._servo[0])
             servo.net = self
@@ -106,7 +106,7 @@ class EthercatNetwork(Network):
         # TODO: This stops all connections no only the target servo.
         if servo in self.servos:
             self.servos.remove(servo)
-        r = lib.il_net_master_stop(self.__cff_network)
+        r = lib.il_net_master_stop(self.__cffi_network)
         self.__cffi_network = None
         if r < 0:
             raise ILError('Error disconnecting the drive. '
