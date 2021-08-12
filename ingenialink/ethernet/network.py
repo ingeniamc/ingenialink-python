@@ -24,20 +24,14 @@ class EthernetNetwork(Network):
         super(EthernetNetwork, self).__init__()
         self.__cffi_network = None
 
-    @classmethod
-    def _from_existing(cls, net):
+    def _from_existing(self, net):
         """ Create a new class instance from an existing network.
 
         Args:
             net (Network): Instance to copy.
 
-        Returns:
-            Network: New instanced class.
-
         """
-        inst = cls.__new__(cls)
-        inst.__cffi_network = ffi.gc(net, lib.il_net_fake_destroy)
-        return inst
+        self.__cffi_network = ffi.gc(net, lib.il_net_fake_destroy)
 
     @staticmethod
     def load_firmware(fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
@@ -168,9 +162,9 @@ class EthernetNetwork(Network):
         net_ = ffi.cast('il_net_t *', net__[0])
         servo_ = ffi.cast('il_servo_t *', servo__[0])
 
-        net = self._from_existing(net_)
+        self._from_existing(net_)
         servo = EthernetServo._from_existing(servo_, _dictionary)
-        servo.net = net
+        servo.net = self
         servo.target = target
         servo._dictionary = dictionary
         servo.port = port
@@ -191,6 +185,7 @@ class EthernetNetwork(Network):
         if len(self.servos) == 0:
             self.stop_network_monitor()
             self.close_socket()
+        self.__cffi_network = None
 
     def close_socket(self):
         """ Closes the established network socket. """

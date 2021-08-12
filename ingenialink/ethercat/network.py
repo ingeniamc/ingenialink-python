@@ -12,8 +12,7 @@ class EthercatNetwork(Network):
         self.__interface_name = interface_name
         self.__cffi_network = None
 
-    @classmethod
-    def _from_existing(cls, net):
+    def _from_existing(self, net):
         """ Create a new class instance from an existing network.
 
         Args:
@@ -23,9 +22,7 @@ class EthercatNetwork(Network):
             Network: New instanced class.
 
         """
-        inst = cls.__new__(cls)
-        inst.__cffi_network = ffi.gc(net, lib.il_net_fake_destroy)
-        return inst
+        self.__cffi_network = ffi.gc(net, lib.il_net_fake_destroy)
 
     def load_firmware(self, fw_file, target=1, boot_in_app=True):
         """ Loads a given firmware file to a target.
@@ -110,6 +107,7 @@ class EthercatNetwork(Network):
         if servo in self.servos:
             self.servos.remove(servo)
         r = lib.il_net_master_stop(self.__cff_network)
+        self.__cffi_network = None
         if r < 0:
             raise ILError('Error disconnecting the drive. '
                           'Return code: {}'.format(r))
