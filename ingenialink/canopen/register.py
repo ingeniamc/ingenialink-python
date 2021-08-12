@@ -1,9 +1,7 @@
-from enum import Enum
-
 from .._ingenialink import lib
 
 from ingenialink.utils._utils import *
-from ..registers import REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.ipb.registers import REG_DTYPE, REG_ACCESS, REG_PHY
 
 
 class CanopenRegister(object):

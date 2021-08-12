@@ -1,6 +1,6 @@
 from ..network import NET_PROT
 from .servo import EthercatServo
-from ..ipb_network import IPBNetwork
+from ingenialink.ipb.network import IPBNetwork
 from ingenialink.utils._utils import cstr, raise_err
 from ..exceptions import *
 from .._ingenialink import lib, ffi

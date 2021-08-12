@@ -1,6 +1,6 @@
 import sys
 import re
-from ingenialink.registers import Register, REG_ACCESS, REG_DTYPE
+from ingenialink.ipb.registers import Register, REG_ACCESS, REG_DTYPE
 
 from ._ingenialink import lib
 

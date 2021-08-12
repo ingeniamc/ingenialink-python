@@ -1,5 +1,5 @@
-from .network import Network, NET_DEV_EVT, NET_STATE
-from ._ingenialink import lib, ffi
+from ingenialink.network import Network, NET_DEV_EVT, NET_STATE
+from .._ingenialink import lib, ffi
 from abc import ABC, abstractmethod
 from time import sleep
 

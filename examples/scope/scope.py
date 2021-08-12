@@ -2,7 +2,7 @@ import sys
 from os.path import join, dirname, abspath
 
 from qtpy import uic
-from qtpy.QtCore import Qt, QObject, QTimer, Signal, Slot, QThread
+from qtpy.QtCore import Qt, QTimer, Slot
 from qtpy.QtGui import (QStandardItemModel, QStandardItem, QImage, QPixmap,
                         QPalette)
 from qtpy.QtWidgets import QApplication, QMainWindow
@@ -201,7 +201,7 @@ class ScopeWindow(QMainWindow):
         return servo
 
     def enableScope(self, servo, reg):
-        self._poller = il.poller.Poller(servo, 1)
+        self._poller = ingenialink.ipb.poller.Poller(servo, 1)
         self._poller.configure(self._POLLER_T_S, self._POLLER_BUF_SZ)
         self._poller.ch_configure(0, reg)
 

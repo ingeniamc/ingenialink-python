@@ -1,6 +1,6 @@
 from ..network import NET_PROT, NET_TRANS_PROT
 from .servo import EthernetServo
-from ..ipb_network import IPBNetwork
+from ingenialink.ipb.network import IPBNetwork
 from ingenialink.utils._utils import *
 from .._ingenialink import lib, ffi
 from ingenialink.utils.udp import UDP

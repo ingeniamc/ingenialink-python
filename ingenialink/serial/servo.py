@@ -1,4 +1,4 @@
-from ..ipb_servo import IPBServo
+from ingenialink.ipb.servo import IPBServo
 
 
 import ingenialogger

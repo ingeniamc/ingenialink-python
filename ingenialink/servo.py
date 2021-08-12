@@ -1,10 +1,8 @@
-from enum import Enum
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 
 from ._ingenialink import ffi, lib
 from ingenialink.utils._utils import *
-from .registers import Register
-from .network import Network, NET_PROT
+from .network import Network
 
 from .const import *
 

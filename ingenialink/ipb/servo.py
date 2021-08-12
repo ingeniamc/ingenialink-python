@@ -1,12 +1,12 @@
-from .servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
+from ingenialink.servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
-from .registers import *
-from .const import *
-from .exceptions import *
-from .dict_ import Dictionary
-from .ipb_network import IPBNetwork
+from ingenialink.ipb.registers import *
+from ingenialink.const import *
+from ingenialink.exceptions import *
+from ingenialink.ipb.dictionary import IPBDictionary
+from .network import IPBNetwork
 from ingenialink.utils._utils import *
-from ._ingenialink import lib, ffi
+from .._ingenialink import lib, ffi
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -855,7 +855,7 @@ class IPBServo(Servo):
         """Obtain dictionary of the servo."""
         _dict = lib.il_servo_dict_get(self._cffi_servo)
 
-        return Dictionary._from_dict(_dict) if _dict else None
+        return IPBDictionary._from_dict(_dict) if _dict else None
 
     @dictionary.setter
     def dictionary(self, value):

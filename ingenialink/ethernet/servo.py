@@ -1,4 +1,4 @@
-from ..ipb_servo import IPBServo
+from ingenialink.ipb.servo import IPBServo
 from ..network import NET_TRANS_PROT
 
 import ingenialogger

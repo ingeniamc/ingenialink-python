@@ -4,10 +4,9 @@ from .servo import (Servo, SERVO_STATE, SERVO_FLAGS, SERVO_MODE,
                     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL,
                     SERVO_UNITS_ACC)
 from .monitor import Monitor, MONITOR_TRIGGER
-from .poller import Poller
-from .registers import Register, REG_DTYPE, REG_ACCESS, REG_PHY
-from .dict_ import Dictionary
-from .dict_labels import LabelsDictionary
+from ingenialink.ipb.poller import Poller
+from ingenialink.ipb.registers import Register, REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.ipb.dictionary import Dictionary
 from .canopen.servo import CanopenServo
 from .canopen.network import CanopenNetwork, CAN_DEVICE
 from .canopen.poller import CanopenPoller
