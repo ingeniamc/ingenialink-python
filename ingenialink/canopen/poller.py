@@ -1,4 +1,5 @@
 from ingenialink.utils._utils import raise_err
+from ingenialink.poller import Poller
 from .constants import *
 
 from datetime import datetime
@@ -34,20 +35,19 @@ class PollerTimer:
             self.thread.join()
 
 
-class CanopenPoller(object):
+class CanopenPoller(Poller):
     """Register poller for CANOpen communications.
 
     Args:
         servo (CanopenServo): Servo.
-        number_channels (int): Number of channels.
+        num_channels (int): Number of channels.
 
     Raises:
         ILCreationError: If the poller could not be created.
     """
 
-    def __init__(self, servo, number_channels):
-        self.__servo = servo
-        self.__number_channels = number_channels
+    def __init__(self, servo, num_channels):
+        super(CanopenPoller, self).__init__(servo, num_channels)
         self.__sz = 0
         self.__refresh_time = 0
         self.__time_start = 0.0
@@ -58,46 +58,7 @@ class CanopenPoller(object):
         self.__mappings = []
         self.__mappings_enabled = []
         self.__lock = RLock()
-        self.reset_acq()
-
-    def reset_acq(self):
-        """Resets the aquired channels."""
-        self.__acq = {
-            "t": [],
-            "d": []
-        }
-
-    def acquire_callback_poller_data(self):
-        """Aquire callback for poller data."""
-        time_diff = datetime.now()
-        delta = time_diff - self.__time_start
-
-        # Obtain current time
-        t = delta.total_seconds()
-
-        self.__lock.acquire()
-        # Acquire all configured channels
-        if self.__samples_count >= self.__sz:
-            self.__samples_lost = True
-        else:
-            self.__acq['t'][self.__samples_count] = t
-
-            # Acquire enabled channels, comprehension list indexes obtained
-            enabled_channel_indexes = [
-                channel_idx for channel_idx, is_enabled in
-                enumerate(self.__mappings_enabled) if is_enabled
-            ]
-
-            for channel in enabled_channel_indexes:
-                for register_identifier, subnode in \
-                        self.__mappings[channel].items():
-                    self.__acq['d'][channel][self.__samples_count] = \
-                        self.__servo.read(register_identifier, subnode)
-
-            # Increment samples count
-            self.__samples_count += 1
-
-        self.__lock.release()
+        self._reset_acq()
 
     def start(self):
         "" "Start poller."""
@@ -108,7 +69,7 @@ class CanopenPoller(object):
 
         # Activate timer
         self.__timer = PollerTimer(self.__refresh_time,
-                                   self.acquire_callback_poller_data)
+                                   self._acquire_callback_poller_data)
         self.__timer.start()
         self.__time_start = datetime.now()
 
@@ -124,43 +85,13 @@ class CanopenPoller(object):
 
         self.__running = False
 
-    @property
-    def data(self):
-        """tuple (list, list, bool): Time vector, array of data vectors and a
-            flag indicating if data was lost.
-        """
-
-        t = list(self.__acq['t'][0:self.__samples_count])
-        d = []
-
-        # Acquire enabled channels, comprehension list indexes obtained
-        enabled_channel_indexes = [
-            channel_idx for channel_idx, is_enabled in
-            enumerate(self.__mappings_enabled) if is_enabled
-        ]
-
-        for channel in range(0, self.__number_channels):
-            if self.__mappings_enabled[channel]:
-                d.append(
-                    list(self.__acq['d'][channel][0:self.__samples_count])
-                )
-            else:
-                d.append(list(None))
-
-        self.__lock.acquire()
-        self.__samples_count = 0
-        self.__samples_lost = False
-        self.__lock.release()
-
-        return t, d, self.__samples_lost
-
     def configure(self, t_s, sz):
         """Configure data.
 
         Args:
             t_s (int, float): Polling period (s).
             sz (int): Buffer size.
-        
+
         Returns:
             int: Status code.
 
@@ -172,11 +103,11 @@ class CanopenPoller(object):
             raise_err(IL_ESTATE)
 
         # Configure data and sizes with empty data
-        self.reset_acq()
+        self._reset_acq()
         self.__sz = sz
         self.__refresh_time = t_s
         self.__acq['t'] = [0] * sz
-        for channel in range(0, self.__number_channels):
+        for channel in range(0, self.num_channels):
             data_channel = [0] * sz
             self.__acq['d'].append(data_channel)
             self.__mappings.append('')
@@ -204,12 +135,12 @@ class CanopenPoller(object):
             logger.warning("Poller is running")
             raise_err(IL_ESTATE)
 
-        if channel > self.__number_channels:
+        if channel > self.num_channels:
             logger.error("Channel out of range")
             raise_err(IL_EINVAL)
 
         # Obtain register
-        _reg = self.__servo.get_reg(reg)
+        _reg = self.servo.get_reg(reg)
 
         # Reg identifier obtained and set enabled
         self.__mappings[channel] = {}
@@ -223,7 +154,7 @@ class CanopenPoller(object):
 
         Args:
             channel (int): Channel to be disabled.
-        
+
         Raises:
             ILStateError: The poller is already running.
             ILValueError: Channel out of range.
@@ -236,7 +167,7 @@ class CanopenPoller(object):
             logger.warning("Poller is running")
             raise_err(IL_ESTATE)
 
-        if channel > self.__number_channels:
+        if channel > self.num_channels:
             logger.error("Channel out of range")
             raise_err(IL_EINVAL)
 
@@ -247,13 +178,82 @@ class CanopenPoller(object):
 
     def ch_disable_all(self):
         """Disable all channels.
-         
+
         Returns:
             int: Status code.
         """
 
-        for channel in range(0, self.__number_channels):
+        for channel in range(0, self.num_channels):
             r = self.ch_disable(channel)
             if r < 0:
                 raise_err(r)
         return 0
+    
+    def _reset_acq(self):
+        """Resets the aquired channels."""
+        self.__acq = {
+            "t": [],
+            "d": []
+        }
+
+    def _acquire_callback_poller_data(self):
+        """Acquire callback for poller data."""
+        time_diff = datetime.now()
+        delta = time_diff - self.__time_start
+
+        # Obtain current time
+        t = delta.total_seconds()
+
+        self.__lock.acquire()
+        # Acquire all configured channels
+        if self.__samples_count >= self.__sz:
+            self.__samples_lost = True
+        else:
+            self.__acq['t'][self.__samples_count] = t
+
+            # Acquire enabled channels, comprehension list indexes obtained
+            enabled_channel_indexes = [
+                channel_idx for channel_idx, is_enabled in
+                enumerate(self.__mappings_enabled) if is_enabled
+            ]
+
+            for channel in enabled_channel_indexes:
+                for register_identifier, subnode in \
+                        self.__mappings[channel].items():
+                    self.__acq['d'][channel][self.__samples_count] = \
+                        self.servo.read(register_identifier, subnode)
+
+            # Increment samples count
+            self.__samples_count += 1
+
+        self.__lock.release()
+    
+    @property
+    def data(self):
+        """tuple (list, list, bool): Time vector, array of data vectors and a
+            flag indicating if data was lost.
+        """
+
+        t = list(self.__acq['t'][0:self.__samples_count])
+        d = []
+
+        # Acquire enabled channels, comprehension list indexes obtained
+        enabled_channel_indexes = [
+            channel_idx for channel_idx, is_enabled in
+            enumerate(self.__mappings_enabled) if is_enabled
+        ]
+
+        for channel in range(0, self.num_channels):
+            if self.__mappings_enabled[channel]:
+                d.append(
+                    list(self.__acq['d'][channel][0:self.__samples_count])
+                )
+            else:
+                d.append(list(None))
+
+        self.__lock.acquire()
+        self.__samples_count = 0
+        self.__samples_lost = False
+        self.__lock.release()
+
+        return t, d, self.__samples_lost

@@ -21,23 +21,24 @@ _RESOURCES = join(dirname(abspath(__file__)), 'resources')
 """str: Resources folder."""
 
 
-POS_ACT = il.Register(address=0x0030,
-                      identifier="POSITION_ACTUAL",
-                      dtype=il.REG_DTYPE.S32,
-                      access=il.REG_ACCESS.RW,
-                      phy=il.REG_PHY.POS,
-                      units="",
-                      cyclic="")
+POS_ACT = il.IPBRegister(address=0x0030,
+                         identifier="POSITION_ACTUAL",
+                         dtype=il.REG_DTYPE.S32,
+                         access=il.REG_ACCESS.RW,
+                         phy=il.REG_PHY.POS,
+                         units="",
+                         cyclic="")
 """Register: Position Actual."""
 
-VEL_ACT = il.Register(address=0x0031,
-                      identifier="VELOCITY_ACTUAL",
-                      dtype=il.REG_DTYPE.S32,
-                      access=il.REG_ACCESS.RW,
-                      phy=il.REG_PHY.VEL,
-                      units="",
-                      cyclic="")
+VEL_ACT = il.IPBRegister(address=0x0031,
+                         identifier="VELOCITY_ACTUAL",
+                         dtype=il.REG_DTYPE.S32,
+                         access=il.REG_ACCESS.RW,
+                         phy=il.REG_PHY.VEL,
+                         units="",
+                         cyclic="")
 """Register: Velocity Actual."""
+
 
 class SERVO_MODE(IntEnum):
     """Operation Mode."""
@@ -49,6 +50,7 @@ class SERVO_MODE(IntEnum):
     CYCLIC_POSITION = 36,
     PROFILE_POSITION = 20,
     PROFILE_POSITION_S_CURVE = 68
+
 
 class ScopeWindow(QMainWindow):
     """Scope Window."""

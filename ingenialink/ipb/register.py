@@ -2,105 +2,20 @@ from enum import Enum
 
 from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import *
+from ..register import Register, REG_DTYPE, REG_ACCESS, REG_PHY
 
 import collections
 
-# CANOPEN DTYPES
-IL_REG_DTYPE_DOMAIN = 15
 
-
-class REG_DTYPE(Enum):
-    """Data Type."""
-    U8 = lib.IL_REG_DTYPE_U8
-    """Unsigned 8-bit integer."""
-    S8 = lib.IL_REG_DTYPE_S8
-    """Signed 8-bit integer."""
-    U16 = lib.IL_REG_DTYPE_U16
-    """Unsigned 16-bit integer."""
-    S16 = lib.IL_REG_DTYPE_S16
-    """Signed 16-bit integer."""
-    U32 = lib.IL_REG_DTYPE_U32
-    """Unsigned 32-bit integer."""
-    S32 = lib.IL_REG_DTYPE_S32
-    """Signed 32-bit integer."""
-    U64 = lib.IL_REG_DTYPE_U64
-    """Unsigned 64-bit integer."""
-    S64 = lib.IL_REG_DTYPE_S64
-    """Signed 64-bit integer."""
-    FLOAT = lib.IL_REG_DTYPE_FLOAT
-    """Float."""
-    STR = lib.IL_REG_DTYPE_STR
-    """String."""
-    DOMAIN = IL_REG_DTYPE_DOMAIN
-    """Domain."""
-
-
-class REG_ACCESS(Enum):
-    """Access Type."""
-    RW = lib.IL_REG_ACCESS_RW
-    """Read/Write."""
-    RO = lib.IL_REG_ACCESS_RO
-    """Read-only."""
-    WO = lib.IL_REG_ACCESS_WO
-    """Write-only."""
-
-
-class REG_PHY(Enum):
-    """Physical Units."""
-    NONE = lib.IL_REG_PHY_NONE
-    """None."""
-    TORQUE = lib.IL_REG_PHY_TORQUE
-    """Torque."""
-    POS = lib.IL_REG_PHY_POS
-    """Position."""
-    VEL = lib.IL_REG_PHY_VEL
-    """Velocity."""
-    ACC = lib.IL_REG_PHY_ACC
-    """Acceleration."""
-    VOLT_REL = lib.IL_REG_PHY_VOLT_REL
-    """Relative voltage (DC)."""
-    RAD = lib.IL_REG_PHY_RAD
-    """Radians."""
-
-
-def dtype_size(dtype):
-    sizes = {
-        REG_DTYPE.U8: 1,
-        REG_DTYPE.S8: 1,
-        REG_DTYPE.U16: 2,
-        REG_DTYPE.S16: 2,
-        REG_DTYPE.U32: 4,
-        REG_DTYPE.S32: 4,
-        REG_DTYPE.U64: 8,
-        REG_DTYPE.S64: 8,
-        REG_DTYPE.FLOAT: 4
-    }
-    return sizes[dtype]
-
-
-def _get_reg_id(reg, subnode=1):
-    """Obtain Register and ID.
-
-    Args:
-        reg (str, Register): Register.
-    """
-    if isinstance(reg, str):
-        return ffi.NULL, cstr(reg)
-    elif isinstance(reg, Register):
-        return reg._reg, ffi.NULL
-
-    raise TypeError('Unexpected register type')
-
-
-class Register(object):
+class IPBRegister(Register):
     """Register.
 
     Args:
         identifier (str): Identifier.
         units (str): Units.
-        address (int): Address.
         dtype (REG_DTYPE): Data type.
         access (REG_ACCESS): Access type.
+        address (int): Address.
         phy (REG_PHY, optional): Physical units.
         subnode (int): Subnode
         storage (any, optional): Storage.
@@ -114,10 +29,13 @@ class Register(object):
     Raises:
         TypeError: If any of the parameters has invalid type.
     """
-    def __init__(self, identifier, units, cyclic, address, dtype, access,
+    def __init__(self, identifier, units, cyclic, dtype, access, address,
                  phy=REG_PHY.NONE, subnode=1, storage=None, range=None,
                  labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None,
                  internal_use=0):
+        super(IPBRegister, self).__init__(
+            identifier, units, cyclic, dtype, access, phy, subnode, storage,
+            range, labels, enums, enums_count, cat_id, scat_id, internal_use)
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
@@ -129,7 +47,6 @@ class Register(object):
 
         self._reg = ffi.new('il_reg_t *')
 
-        # initialize register
         self._reg.identifier = ffi.new("char[]", cstr(identifier))
         self._reg.units = ffi.new("char[]", cstr(units))
         self._reg.address = address
@@ -206,8 +123,8 @@ class Register(object):
             if storage:
                 self._reg.storage.flt = float(storage)
 
-            self._reg.range.min.flt = (range[0] if range else -2147483648)
-            self._reg.range.max.flt = (range[1] if range else 2147483647)
+            self._reg.range.min.flt = (range[0] if range else INT_SIZES.S32_MIN.value)
+            self._reg.range.max.flt = (range[1] if range else INT_SIZES.S32_MAX.value)
         else:
             self._reg.storage_valid = 0
 
@@ -391,23 +308,23 @@ class Register(object):
             tuple: Register range (min, max), None if undefined.
         """
         if self.dtype == REG_DTYPE.S8:
-            return (self._reg.range.min.s8, self._reg.range.max.s8)
+            return self._reg.range.min.s8, self._reg.range.max.s8
         elif self.dtype == REG_DTYPE.U8:
-            return (self._reg.range.min.u8, self._reg.range.max.u8)
+            return self._reg.range.min.u8, self._reg.range.max.u8
         if self.dtype == REG_DTYPE.S16:
-            return (self._reg.range.min.s16, self._reg.range.max.s16)
+            return self._reg.range.min.s16, self._reg.range.max.s16
         elif self.dtype == REG_DTYPE.U16:
-            return (self._reg.range.min.u16, self._reg.range.max.u16)
+            return self._reg.range.min.u16, self._reg.range.max.u16
         if self.dtype == REG_DTYPE.S32:
-            return (self._reg.range.min.s32, self._reg.range.max.s32)
+            return self._reg.range.min.s32, self._reg.range.max.s32
         elif self.dtype == REG_DTYPE.U32:
-            return (self._reg.range.min.u32, self._reg.range.max.u32)
+            return self._reg.range.min.u32, self._reg.range.max.u32
         if self.dtype == REG_DTYPE.S64:
-            return (self._reg.range.min.s64, self._reg.range.max.s64)
+            return self._reg.range.min.s64, self._reg.range.max.s64
         elif self.dtype == REG_DTYPE.U64:
-            return (self._reg.range.min.u64, self._reg.range.max.u64)
+            return self._reg.range.min.u64, self._reg.range.max.u64
         elif self.dtype == REG_DTYPE.FLOAT:
-            return (self._reg.range.min.flt, self._reg.range.max.flt)
+            return self._reg.range.min.flt, self._reg.range.max.flt
 
         return None
 

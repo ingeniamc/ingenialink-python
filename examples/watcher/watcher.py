@@ -8,23 +8,23 @@ from qtpy.QtWidgets import (QApplication, QDialog, QFormLayout, QLabel,
 import ingenialink as il
 
 
-POS_ACT = il.Register(address=0x0030,
-                      identifier="CL_POS_FBK_VALUE",
-                      dtype=il.REG_DTYPE.S32,
-                      access=il.REG_ACCESS.RW,
-                      phy=il.REG_PHY.POS,
-                      units="",
-                      cyclic="")
+POS_ACT = il.IPBRegister(address=0x0030,
+                         identifier="CL_POS_FBK_VALUE",
+                         dtype=il.REG_DTYPE.S32,
+                         access=il.REG_ACCESS.RW,
+                         phy=il.REG_PHY.POS,
+                         units="",
+                         cyclic="")
 """Register: Position Actual."""
 
 
-VEL_ACT = il.Register(address=0x0031,
-                      identifier="CL_VEL_FBK_VALUE",
-                      dtype=il.REG_DTYPE.S32,
-                      access=il.REG_ACCESS.RW,
-                      phy=il.REG_PHY.VEL,
-                      units="",
-                      cyclic="")
+VEL_ACT = il.IPBRegister(address=0x0031,
+                         identifier="CL_VEL_FBK_VALUE",
+                         dtype=il.REG_DTYPE.S32,
+                         access=il.REG_ACCESS.RW,
+                         phy=il.REG_PHY.VEL,
+                         units="",
+                         cyclic="")
 
 """Register: Velocity Actual."""
 

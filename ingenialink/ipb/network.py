@@ -46,21 +46,21 @@ class IPBNetwork(Network, ABC):
         """Destroy network instance."""
         lib.il_net_destroy(self.__cffi_network)
 
-    def subscribe_to_network_status(self, on_evt):
+    def subscribe_to_status(self, callback):
         """Calls given function everytime a connection/disconnection event is
         raised.
 
         Args:
-            on_evt (Callback): Function that will be called every time an event
+            callback (Callback): Function that will be called every time an event
             is raised.
         """
         status = self.status
         while True:
             if status != self.status:
                 if self.status == 0:
-                    on_evt(NET_DEV_EVT.ADDED)
+                    callback(NET_DEV_EVT.ADDED)
                 elif self.status == 1:
-                    on_evt(NET_DEV_EVT.REMOVED)
+                    callback(NET_DEV_EVT.REMOVED)
                 status = self.status
             sleep(1)
 

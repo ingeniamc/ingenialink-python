@@ -2,7 +2,7 @@ from enum import Enum
 
 from .._ingenialink import lib, ffi
 from ingenialink import exceptions as exc
-from ingenialink.errors import *
+from ingenialink.utils.errors import *
 from time import sleep
 
 import warnings

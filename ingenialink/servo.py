@@ -3,8 +3,9 @@ from abc import ABC, abstractmethod
 from ._ingenialink import ffi, lib
 from ingenialink.utils._utils import *
 from .network import Network
+from .register import REG_DTYPE
 
-from .const import *
+from .constants import *
 
 
 class SERVO_STATE(Enum):
@@ -218,11 +219,11 @@ class Servo(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def subscribe_to_servo_status(self, cb):
+    def subscribe_to_status(self, callback):
         raise NotImplementedError
 
     @abstractmethod
-    def unsubscribe_to_servo_status(self, slot):
+    def unsubscribe_from_status(self, callback):
         raise NotImplementedError
 
     @abstractmethod
