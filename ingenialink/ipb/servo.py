@@ -625,7 +625,7 @@ class IPBServo(Servo):
 
         return slot
 
-    def unsubscribe_to_status(self, slot):
+    def unsubscribe_from_status(self, slot):
         """Unsubscribe from state changes.
 
         Args:

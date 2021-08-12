@@ -223,7 +223,7 @@ class Servo(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def unsubscribe_to_status(self, slot):
+    def unsubscribe_from_status(self, cb):
         raise NotImplementedError
 
     @abstractmethod

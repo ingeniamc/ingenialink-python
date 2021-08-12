@@ -817,6 +817,14 @@ class CanopenNetwork(Network):
         self.__observers_net_state.append(cb)
         return r
 
+    def unsubscribe_from_status(self, cb):
+        """Unsubscribe from network state changes.
+
+        Args:
+            cb (Callback): Callback function.
+        """
+        self.__observers_net_state.remove(cb)
+
     def stop_network_monitor(self):
         """Stops the NetStatusListener from listening to the drive."""
         try:
