@@ -25,16 +25,11 @@ from ingenialink.utils._utils import pstr
 
 __all__ = ['IPBNetwork', 'NetworkMonitor',
            'NET_PROT', 'NET_DEV_EVT', 'NET_STATE', 'NET_TRANS_PROT',
-
            'IPBServo', 'SERVO_STATE', 'SERVO_FLAGS', 'SERVO_MODE',
            'SERVO_UNITS_TORQUE', 'SERVO_UNITS_POS', 'SERVO_UNITS_VEL',
            'SERVO_UNITS_ACC',
-
            'IPBDictionary', 'IPBRegister', 'REG_DTYPE', 'REG_ACCESS', 'REG_PHY',
-
-           'Monitor', 'MONITOR_TRIGGER',
-           'IPBPoller',
-
+           'Monitor', 'MONITOR_TRIGGER', 'IPBPoller',
            'CanopenNetwork', 'CAN_DEVICE', 'CAN_BAUDRATE', 'CAN_BIT_TIMMING',
            'CanopenServo', 'CanopenPoller', 'CanopenRegister', 'CanopenDictionary',
 
