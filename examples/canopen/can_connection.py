@@ -6,7 +6,7 @@ from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
 def connection_example():
     """ Scans for nodes in a network, connects to the first found node, reads
     a register and disconnects the found servo from the network. """
-    net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
+    net = CanopenNetwork(device=CAN_DEVICE.KVASER,
                          channel=0,
                          baudrate=CAN_BAUDRATE.Baudrate_1M)
     nodes = net.scan_slaves()
