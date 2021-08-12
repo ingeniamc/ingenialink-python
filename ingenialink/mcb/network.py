@@ -1,4 +1,4 @@
-from ..net import Network, NET_PROT
+from ..network import Network, NET_PROT
 from .._ingenialink import lib, ffi
 from ingenialink.utils._utils import pstr, cstr, raise_null, raise_err
 
@@ -16,11 +16,11 @@ class MCBNetwork(Network):
         # TODO: Implement FTP fw loader
         raise NotImplementedError
 
-    def scan_nodes(self):
+    def scan_slaves(self):
         ports_found = self.devices()
         return ports_found
 
-    def connect(self, port=None):
+    def connect_to_slave(self, port=None):
         self._on_found = ffi.NULL
 
         callback = ffi.NULL
@@ -70,7 +70,7 @@ class MCBNetwork(Network):
 
         return found
 
-    def disconnect(self):
+    def disconnect_from_slave(self):
         raise NotImplementedError
 
     def restore_parameters(self):
@@ -80,6 +80,12 @@ class MCBNetwork(Network):
         raise NotImplementedError
 
     def load_configuration(self):
+        raise NotImplementedError
+
+    def stop_network_monitor(self):
+        raise NotImplementedError
+
+    def subscribe_to_network_status(self):
         raise NotImplementedError
 
     @property
