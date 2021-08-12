@@ -51,8 +51,8 @@ class EthercatNetwork(Network):
 
         number_slaves = lib.il_net_num_slaves_get(_interface_name)
         slaves = []
-        for slave in range(1, number_slaves):
-            slaves.append(slave)
+        for slave in range(number_slaves):
+            slaves.append(slave + 1)
         return slaves
 
     def connect_to_slave(self, target=1, dictionary="", use_eoe_comms=1):
