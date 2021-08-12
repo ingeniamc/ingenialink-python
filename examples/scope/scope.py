@@ -97,11 +97,12 @@ class ScopeWindow(QMainWindow):
     def loadServos(self):
         model = QStandardItemModel()
 
-        net, servo = il.lucky(il.NET_PROT.ETH,
-                              "resources/eve-net_1.7.1.xdf",
-                              address_ip='192.168.2.22',
-                              port_ip=1061,
-                              protocol=2)
+        net, servo = il.lucky(
+            il.NET_PROT.ETH,
+            "../../resources/dictionaries/eve-net_1.7.1.xdf",
+            address_ip='192.168.2.22',
+            port_ip=1061,
+            protocol=2)
 
         if net is not None and servo is not None:
             item = QStandardItem('0x{:02x} ({})'.format(1, "Everest"))

@@ -172,11 +172,12 @@ class WatcherDialog(QDialog):
         self.form.addRow(QLabel('Velocity'), self.editVelocity)
 
         # configure network (take first available servo)
-        self._net, self._servo = il.lucky(il.NET_PROT.ETH,
-                                          "resources/eve-net_1.7.1.xdf",
-                                          address_ip='192.168.2.22',
-                                          port_ip=1061,
-                                          protocol=2)
+        self._net, self._servo = il.lucky(
+            il.NET_PROT.ETH,
+            "../../resources/dictionaries/eve-net_1.7.1.xdf",
+            address_ip='192.168.2.22',
+            port_ip=1061,
+            protocol=2)
 
         # create data model
         model = QStandardItemModel()
