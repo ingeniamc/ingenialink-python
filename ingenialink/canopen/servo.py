@@ -652,27 +652,27 @@ class CanopenServo(Servo):
             for callback in self.__servo_state_observers:
                 callback(state, None, subnode)
 
-    def subscribe_to_status(self, cb):
+    def subscribe_to_status(self, callback):
         """Subscribe to state changes.
 
             Args:
-                cb (Callback): Callback function.
+                callback (Callback): Callback function.
 
             Returns:
                 int: Assigned slot.
         """
         slot = len(self.__servo_state_observers)
-        self.__servo_state_observers.append(cb)
+        self.__servo_state_observers.append(callback)
         return slot
 
-    def unsubscribe_from_status(self, cb):
+    def unsubscribe_from_status(self, callback):
         """Unsubscribe from state changes.
 
         Args:
-            cb (Callback): Callback function.
+            callback (Callback): Callback function.
         """
 
-        self.__servo_state_observers.remove(cb)
+        self.__servo_state_observers.remove(callback)
 
     def stop_servo_monitor(self):
         """Stops the ServoStatusListener."""

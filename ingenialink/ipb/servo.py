@@ -605,16 +605,16 @@ class IPBServo(Servo):
 
         del self._emcy_cb[slot]
 
-    def subscribe_to_status(self, cb):
+    def subscribe_to_status(self, callback):
         """Subscribe to state changes.
 
         Args:
-            cb: Callback
+            callback: Callback
 
         Returns:
             int: Assigned slot.
         """
-        cb_handle = ffi.new_handle(cb)
+        cb_handle = ffi.new_handle(callback)
 
         slot = lib.il_servo_state_subscribe(
             self.__cffi_servo, lib._on_state_change_cb, cb_handle)

@@ -219,11 +219,11 @@ class Servo(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def subscribe_to_status(self, cb):
+    def subscribe_to_status(self, callback):
         raise NotImplementedError
 
     @abstractmethod
-    def unsubscribe_from_status(self, cb):
+    def unsubscribe_from_status(self, callback):
         raise NotImplementedError
 
     @abstractmethod

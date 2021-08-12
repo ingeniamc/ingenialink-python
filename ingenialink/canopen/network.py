@@ -804,26 +804,26 @@ class CanopenNetwork(Network):
 
         self._connection.nodes[target_node].nmt.start_node_guarding(1)
 
-    def subscribe_to_status(self, cb):
+    def subscribe_to_status(self, callback):
         """Subscribe to network state changes.
 
         Args:
-            cb (Callback): Callback function.
+            callback (Callback): Callback function.
 
         Returns:
             int: Assigned slot.
         """
         r = len(self.__observers_net_state)
-        self.__observers_net_state.append(cb)
+        self.__observers_net_state.append(callback)
         return r
 
-    def unsubscribe_from_status(self, cb):
+    def unsubscribe_from_status(self, callback):
         """Unsubscribe from network state changes.
 
         Args:
-            cb (Callback): Callback function.
+            callback (Callback): Callback function.
         """
-        self.__observers_net_state.remove(cb)
+        self.__observers_net_state.remove(callback)
 
     def stop_network_monitor(self):
         """Stops the NetStatusListener from listening to the drive."""
