@@ -64,7 +64,7 @@ def load_firmware_example_disconnected():
         callback_status_msg=print_status_message,
         callback_progress=print_progress,
         callback_errors_enabled=print_errors_enabled)
-    net.load_firmware(32, 'eve-net-c_1.8.1.sfu')
+    net.load_firmware(32, '../../resources/firmware/eve-net-c_1.8.1.sfu')
 
 
 if __name__ == '__main__':

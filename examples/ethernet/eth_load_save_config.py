@@ -6,7 +6,7 @@ from ingenialink.ethernet.eth_net import EthernetNetwork, NET_TRANS_PROT
 def connect_slave():
     net = EthernetNetwork()
     servo = net.connect_to_slave("192.168.2.22",
-                                 "eve-net-c_eth_1.8.1.xdf",
+                                 "../../resources/dictionaries/eve-net-c_eth_1.8.1.xdf",
                                  1061,
                                  NET_TRANS_PROT.UDP)
     return servo, net
@@ -15,7 +15,7 @@ def connect_slave():
 def load_config_example():
     """ Loads a given configuration file into the drive."""
     servo, net = connect_slave()
-    servo.load_configuration('eth_config.xcf', subnode=0)
+    servo.load_configuration('../../resources/configurations/eth_config.xcf', subnode=0)
 
     net.disconnect_from_slave(servo)
 
@@ -23,7 +23,7 @@ def load_config_example():
 def save_config_example():
     """ Saves the drive configuration into a file."""
     servo, net = connect_slave()
-    servo.save_configuration('eth_config.xcf', subnode=0)
+    servo.save_configuration('../../resources/configurations/eth_config.xcf', subnode=0)
 
     net.disconnect_from_slave(servo)
 
