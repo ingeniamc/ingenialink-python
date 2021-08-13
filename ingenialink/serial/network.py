@@ -16,8 +16,26 @@ class SerialNetwork(IPBNetwork):
         raise NotImplementedError
 
     def scan_slaves(self):
-        ports_found = self._devices()
-        return ports_found
+        """ Obtain a list of network devices.
+
+        Returns:
+            list: List of network devices.
+
+        Raises:
+            TypeError: If the protocol type is invalid.
+        """
+        devs = lib.il_net_dev_list_get(NET_PROT.MCB.value)
+
+        found = []
+        curr = devs
+
+        while curr:
+            found.append(pstr(curr.port))
+            curr = curr.next
+
+        lib.il_net_dev_list_destroy(devs)
+
+        return found
 
     def connect_to_slave(self, port=None):
         self._on_found = ffi.NULL
@@ -44,29 +62,6 @@ class SerialNetwork(IPBNetwork):
             curr = curr.next
 
         lib.il_net_servos_list_destroy(servos)
-
-        return found
-
-    @staticmethod
-    def _devices():
-        """ Obtain a list of network devices.
-
-        Returns:
-            list: List of network devices.
-
-        Raises:
-            TypeError: If the protocol type is invalid.
-        """
-        devs = lib.il_net_dev_list_get(NET_PROT.MCB.value)
-
-        found = []
-        curr = devs
-
-        while curr:
-            found.append(pstr(curr.port))
-            curr = curr.next
-
-        lib.il_net_dev_list_destroy(devs)
 
         return found
 
