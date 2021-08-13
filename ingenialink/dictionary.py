@@ -5,7 +5,7 @@ class Categories(ABC):
     """Categories.
 
     Args:
-        dict_ (il_dict_t *): Ingenia dictionary instance.
+        parent (Dictionary): Ingenia dictionary instance.
     """
 
     def __init__(self, parent):

@@ -16,7 +16,7 @@ class SerialNetwork(IPBNetwork):
         raise NotImplementedError
 
     def scan_slaves(self):
-        """ Obtain a list of network devices.
+        """Obtain a list of network devices.
 
         Returns:
             list: List of network devices.

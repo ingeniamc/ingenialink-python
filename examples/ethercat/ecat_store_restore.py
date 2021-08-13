@@ -12,8 +12,8 @@ def connect_slave():
 
 
 def store_restore_example():
-    """ Connects to the first scanned drive and store and restores the
-    current configuration. """
+    """Connects to the first scanned drive and store and restores the
+    current configuration."""
 
     servo, net = connect_slave()
 

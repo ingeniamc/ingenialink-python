@@ -34,7 +34,7 @@ class ILTimeoutError(ILError):
 
 
 class ILAlreadyInitializedError(ILError):
-    """InteniaLink already initialized error."""
+    """IngeniaLink already initialized error."""
     pass
 
 

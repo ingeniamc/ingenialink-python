@@ -162,7 +162,7 @@ class IPBServo(Servo):
         return self.read(reg, subnode=subnode)
 
     def read(self, reg, subnode=1):
-        """ Read from servo.
+        """Read from servo.
 
         Args:
             reg (str, Register): Register.

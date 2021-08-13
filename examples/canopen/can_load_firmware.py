@@ -4,27 +4,27 @@ import sys
 
 
 def print_status_message(msg):
-    """ Example of a callback function. """
+    """Example of a callback function."""
     print('Current status message: {}'.format(msg))
 
 
 def print_progress(value):
-    """ Example of a callback function. """
+    """Example of a callback function."""
     print('Progress: {}'.format(value))
 
 
 def print_progress_total(value):
-    """ Example of a callback function. """
+    """Example of a callback function."""
     print('Total progress to be done: {}'.format(value))
 
 
 def print_errors_enabled(value):
-    """ Example of a callback function. """
+    """Example of a callback function."""
     print('Errors enabled: {}'.format(value))
 
 
 def load_firmware_example_connected():
-    """ Loads a firmware to an already connected drive. """
+    """Loads a firmware to an already connected drive."""
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,
                          baudrate=CAN_BAUDRATE.Baudrate_1M)
@@ -56,7 +56,7 @@ def load_firmware_example_connected():
 
 
 def load_firmware_example_disconnected():
-    """ Loads a firmware to a disconnected drive. """
+    """Loads a firmware to a disconnected drive."""
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,
                          baudrate=CAN_BAUDRATE.Baudrate_1M)
