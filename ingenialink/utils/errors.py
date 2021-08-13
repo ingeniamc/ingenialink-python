@@ -1,4 +1,4 @@
-from ._ingenialink import ffi, lib
+from .._ingenialink import ffi, lib
 from enum import IntEnum
 
 
