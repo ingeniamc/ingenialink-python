@@ -631,6 +631,20 @@ class CanopenServo(Servo):
                    subnode=0)
         logger.info('Restore all successfully done.')
 
+    def is_alive(self):
+        """Checks if the servo responds to a reading a register.
+
+        Returns:
+            int: Return code with the result of the read.
+        """
+        r = 0
+        try:
+            self.read(STATUS_WORD_REGISTERS[1])
+        except ILError as e:
+            r = -1
+            logger.error(e)
+        return r
+
     def _change_sdo_timeout(self, value):
         """Changes the SDO timeout of the node."""
         self.__node.sdo.RESPONSE_TIMEOUT = value

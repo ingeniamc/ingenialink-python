@@ -35,6 +35,11 @@ RESTORE_COCO_ALL = IPBRegister(
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, range=None
 )
 
+STATUS_WORD = IPBRegister(
+    identifier='', units='', subnode=1, address=0x0011, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW, range=None
+)
+
 STORE_MOCO_ALL_REGISTERS = {
     1: IPBRegister(
         identifier='', units='', subnode=1, address=0x06DB, cyclic='CONFIG',
@@ -472,6 +477,20 @@ class IPBServo(Servo):
                    data=PASSWORD_RESTORE_ALL,
                    subnode=0)
         logger.info('Restore all successfully done.')
+
+    def is_alive(self):
+        """Checks if the servo responds to a reading a register.
+
+        Returns:
+            int: Return code with the result of the read.
+        """
+        r = 0
+        try:
+            self.read(STATUS_WORD)
+        except ILError as e:
+            r = -1
+            logger.error(e)
+        return r
 
     def store_comm(self):
         """Store all servo current communications to the NVM."""

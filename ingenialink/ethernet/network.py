@@ -89,7 +89,7 @@ class EthernetNetwork(IPBNetwork):
         Returns:
             int: Result code.
         """
-        r = 1
+        r = 0
         upd = UDP(port, ip)
 
         if moco_file and path.isfile(moco_file):

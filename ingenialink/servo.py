@@ -270,9 +270,9 @@ class Servo(ABC):
     def fault_reset(self, subnode=1):
         raise NotImplementedError
 
+    @abstractmethod
     def is_alive(self):
-        # TODO: Implement is_alive method
-        pass
+        raise NotImplementedError
 
     @property
     def name(self):
