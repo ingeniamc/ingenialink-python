@@ -87,13 +87,13 @@ class Network(ABC):
     def load_firmware(self, *args, **kwargs):
         raise NotImplementedError
 
-    @abstractmethod
-    def subscribe_to_status(self, callback):
-        raise NotImplementedError
-
-    @abstractmethod
-    def unsubscribe_from_status(self, callback):
-        raise NotImplementedError
+    # @abstractmethod
+    # def subscribe_to_status(self, callback):
+    #     raise NotImplementedError
+    #
+    # @abstractmethod
+    # def unsubscribe_from_status(self, callback):
+    #     raise NotImplementedError
 
     @abstractmethod
     def stop_network_monitor(self, *args, **kwargs):

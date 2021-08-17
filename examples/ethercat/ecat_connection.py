@@ -4,7 +4,7 @@ from ingenialink.ethercat.network import EthercatNetwork
 
 
 def connection_example():
-    net = EthercatNetwork("\\Device\\NPF_{192D1D2F-C684-467D-A637-EC07BD434A63}")
+    net = EthercatNetwork("\\Device\\NPF_{13C5D891-C81E-46CE-8651-FADBE3C9415D}")
 
     slaves = net.scan_slaves()
     print(slaves)
@@ -12,7 +12,8 @@ def connection_example():
     if len(slaves) > 0:
         servo = net.connect_to_slave(
             target=slaves[0],
-            dictionary='../../resources/dictionaries/cap-net-e_eoe_0.7.1.xdf')
+            dictionary='eve-xcr-e_eoe_1.8.1.xdf')
+
 
         print(servo.read('DRV_ID_SOFTWARE_VERSION'))
 

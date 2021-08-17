@@ -2,6 +2,7 @@ from ingenialink.network import NET_PROT
 from ingenialink.ipb.network import IPBNetwork
 from .._ingenialink import lib, ffi
 from ingenialink.utils._utils import pstr, cstr, raise_null, to_ms
+from ingenialink.serial.servo import SerialServo
 
 
 class SerialNetwork(IPBNetwork):
@@ -37,14 +38,14 @@ class SerialNetwork(IPBNetwork):
 
         return found
 
-    def connect_to_slave(self, port=None):
+    def connect_to_slave(self, target=None, dictionary=""):
         self._on_found = ffi.NULL
 
         callback = ffi.NULL
         handle = ffi.NULL
 
         opts = ffi.new('il_net_opts_t *')
-        _port = ffi.new('char []', cstr(port))
+        _port = ffi.new('char []', cstr(target))
         opts.port = _port
         opts.timeout_rd = to_ms(self.__timeout_rd)
         opts.timeout_wr = to_ms(self.__timeout_wr)
@@ -63,7 +64,10 @@ class SerialNetwork(IPBNetwork):
 
         lib.il_net_servos_list_destroy(servos)
 
-        return found
+        servo = SerialServo(net=self, target=found[0],
+                            dictionary_path=dictionary)
+        SerialServo._from_existing(servo._cffi_servo, dictionary)
+        return servo
 
     def disconnect_from_slave(self, servo):
         raise NotImplementedError

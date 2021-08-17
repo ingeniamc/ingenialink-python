@@ -906,7 +906,7 @@ class IPBServo(Servo):
     @property
     def dictionary(self):
         """Obtain dictionary of the servo."""
-        _dict = lib.il_servo_dict_get(self._cffi_servo)
+        _dict = lib.il_servo_dict_get(self.__cffi_servo)
 
         return IPBDictionary._from_dict(_dict) if _dict else None
 
