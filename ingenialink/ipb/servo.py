@@ -1020,6 +1020,16 @@ class IPBServo(Servo):
         self.__cffi_servo = value
 
     @property
+    def _cffi_net(self):
+        """Obtain parent net CFFI instance."""
+        return self.__cffi_net
+
+    @_cffi_net.setter
+    def _cffi_net(self, value):
+        """Set parent net CFFI instance."""
+        self.__cffi_net = value
+
+    @property
     def subnodes(self):
         """Obtain number of subnodes.
 

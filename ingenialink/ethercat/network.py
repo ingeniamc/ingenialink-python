@@ -80,12 +80,11 @@ class EthercatNetwork(IPBNetwork):
             self._cffi_network = None
             raise_err(r)
         else:
-            self._cffi_network = ffi.cast('il_net_t *', self._cffi_network[0])
-            servo = EthercatServo(self, target, dictionary)
-            # servo = EthercatServo._from_existing(_servo, _dictionary)
-            servo._cffi_servo = ffi.cast('il_servo_t *', servo._cffi_servo)
-            servo.net = self
-            # servo._dict_load(dictionary)
+            net_ = ffi.cast('il_net_t *', self._cffi_network[0])
+            servo_ = ffi.cast('il_servo_t *', _servo[0])
+            servo = EthercatServo._from_existing(servo_, _dictionary)
+            self._cffi_network = net_
+            servo._cffi_network = self._cffi_network
             self.servos.append(servo)
 
         return servo
