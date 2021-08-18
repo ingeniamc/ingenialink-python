@@ -15,7 +15,7 @@ class EthercatNetwork(IPBNetwork):
     def __init__(self, interface_name=""):
         super(EthercatNetwork, self).__init__()
         self.__interface_name = interface_name
-        self._cffi_network = None
+        self._cffi_network = ffi.new('il_net_t **')
 
     def load_firmware(self, fw_file, target=1, boot_in_app=True):
         """Loads a given firmware file to a target.
@@ -81,10 +81,11 @@ class EthercatNetwork(IPBNetwork):
             self._cffi_network = None
             raise_err(r)
         else:
-            self._cffi_network = ffi.cast('il_net_t *', self._cffi_network[0])
-            servo = EthercatServo._from_existing(_servo, _dictionary)
-            servo._servo = ffi.cast('il_servo_t *', servo._servo[0])
-            servo.net = self
+            net_ = ffi.cast('il_net_t *', self._cffi_network[0])
+            servo_ = ffi.cast('il_servo_t *', _servo[0])
+            servo = EthercatServo._from_existing(servo_, _dictionary)
+            self._cffi_network = net_
+            servo._cffi_network = self._cffi_network
             self.servos.append(servo)
 
         return servo

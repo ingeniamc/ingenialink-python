@@ -4,7 +4,7 @@ from ingenialink.ethercat.network import EthercatNetwork
 
 
 def connection_example():
-    net = EthercatNetwork("\\Device\\NPF_{192D1D2F-C684-467D-A637-EC07BD434A63}")
+    net = EthercatNetwork("\\Device\\NPF_{13C5D891-C81E-46CE-8651-FADBE3C9415D}")
 
     slaves = net.scan_slaves()
     print(slaves)
