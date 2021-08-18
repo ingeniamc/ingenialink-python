@@ -189,12 +189,6 @@ class IPBDictionary(Dictionary):
         inst = cls.__new__(cls)
         inst.__cffi_dictionary = dict_
 
-        dict_ = lib.il_dict_create(dict_)
-        raise_null(dict_)
-
-        # Dictionary version
-        inst.__cffi_dictionary = ffi.gc(dict_, lib.il_dict_destroy)
-
         inst.version = pstr(lib.il_dict_version_get(inst.__cffi_dictionary))
         inst.subnodes = lib.il_dict_subnodes_get(inst.__cffi_dictionary)
 

@@ -13,6 +13,8 @@ def connection_example():
         print("connected!")
         print("Status word: ", servo.read("DRV_STATE_STATUS", subnode=1))
 
+    network.disconnect_from_slave(servo)
+
 
 if __name__ == '__main__':
     connection_example()

@@ -64,13 +64,21 @@ class SerialNetwork(IPBNetwork):
 
         lib.il_net_servos_list_destroy(servos)
 
-        servo = SerialServo(net=self, target=found[0],
+        servo = None
+        if len(found) > 0:
+            servo = SerialServo(net=self.__net_interface, target=found[0],
                             dictionary_path=dictionary)
-        SerialServo._from_existing(servo._cffi_servo, dictionary)
+            self._cffi_network = self.__net_interface
+            self.servos.append(servo)
         return servo
 
     def disconnect_from_slave(self, servo):
-        raise NotImplementedError
+        self.servos.remove(servo)
+        if len(self.servos) == 0:
+            lib.il_net_disconnect(self._cffi_network)
+            self.destroy_network()
+        self._cffi_network = None
+
 
     def stop_network_monitor(self):
         raise NotImplementedError

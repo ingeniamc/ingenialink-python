@@ -69,6 +69,7 @@ class IPBServo(Servo):
         self._dictionary = cstr(dictionary_path) if dictionary_path else ffi.NULL
 
         self.__cffi_servo = ffi.new('il_servo_t **')
+        self.__cffi_network = net
 
         self._state_cb = {}
         self._emcy_cb = {}
@@ -272,7 +273,7 @@ class IPBServo(Servo):
             TypeError: If the register type is not valid.
         """
         v = ffi.new('double *')
-        r = lib.il_net_SDO_read(self.net._cffi_network, slave, idx, subidx, dtype, v)
+        r = lib.il_net_SDO_read(self.__cffi_network, slave, idx, subidx, dtype, v)
         raise_err(r)
 
         value = v[0]
@@ -294,7 +295,7 @@ class IPBServo(Servo):
             TypeError: If the register type is not valid.
         """
         v = ffi.new("char[" + str(size) + "]")
-        r = lib.il_net_SDO_read_string(self.net._cffi_network, slave, idx, subidx, size, v)
+        r = lib.il_net_SDO_read_string(self.__cffi_network, slave, idx, subidx, size, v)
         raise_err(r)
 
         value = pstr(v)
@@ -316,7 +317,7 @@ class IPBServo(Servo):
         Raises:
             TypeError: If the register type is not valid.
         """
-        r = lib.il_net_SDO_write(self.net._cffi_network, slave, idx, subidx, dtype, value)
+        r = lib.il_net_SDO_write(self.__cffi_network, slave, idx, subidx, dtype, value)
         raise_err(r)
 
     def destroy(self):
@@ -678,18 +679,18 @@ class IPBServo(Servo):
         rest_samples = num_samples % samples_for_write
         for i in range(number_writes):
             for index, channel in enumerate(channels):
-                self.net.disturbance_channel_data(
+                self.disturbance_channel_data(
                     channel,
                     dtypes[index],
                     data_arr[index][i * samples_for_write:(i + 1) * samples_for_write])
-            self.net.disturbance_data_size = sample_size * samples_for_write
+            self.disturbance_data_size = sample_size * samples_for_write
             self.write(DIST_DATA, sample_size * samples_for_write, False, 1, subnode=0)
         for index, channel in enumerate(channels):
-            self.net.disturbance_channel_data(
+            self.disturbance_channel_data(
                 channel,
                 dtypes[index],
                 data_arr[index][number_writes * samples_for_write:num_samples])
-        self.net.disturbance_data_size = rest_samples * sample_size
+        self.disturbance_data_size = rest_samples * sample_size
         self.write(DIST_DATA, rest_samples * sample_size, False, 1, subnode=0)
 
     def wait_reached(self, timeout):
@@ -737,15 +738,15 @@ class IPBServo(Servo):
         size = int(self.monitoring_data_size)
         bytes_per_block = self.monitoring_get_bytes_per_block()
         if dtype == REG_DTYPE.U16:
-            data_arr = lib.il_net_monitoring_channel_u16(self.net._cffi_network, channel)
+            data_arr = lib.il_net_monitoring_channel_u16(self.__cffi_network, channel)
         elif dtype == REG_DTYPE.S16:
-            data_arr = lib.il_net_monitoring_channel_s16(self.net._cffi_network, channel)
+            data_arr = lib.il_net_monitoring_channel_s16(self.__cffi_network, channel)
         elif dtype == REG_DTYPE.U32:
-            data_arr = lib.il_net_monitoring_channel_u32(self.net._cffi_network, channel)
+            data_arr = lib.il_net_monitoring_channel_u32(self.__cffi_network, channel)
         elif dtype == REG_DTYPE.S32:
-            data_arr = lib.il_net_monitoring_channel_s32(self.net._cffi_network, channel)
+            data_arr = lib.il_net_monitoring_channel_s32(self.__cffi_network, channel)
         elif dtype == REG_DTYPE.FLOAT:
-            data_arr = lib.il_net_monitoring_channel_flt(self.net._cffi_network, channel)
+            data_arr = lib.il_net_monitoring_channel_flt(self.__cffi_network, channel)
         ret_arr = []
         for i in range(0, int(size / bytes_per_block)):
             ret_arr.append(data_arr[i])
@@ -757,7 +758,7 @@ class IPBServo(Servo):
         Returns:
             int: Result code.
         """
-        return lib.il_net_remove_all_mapped_registers(self.net._cffi_network)
+        return lib.il_net_remove_all_mapped_registers(self.__cffi_network)
 
     def monitoring_set_mapped_register(self, channel, reg_idx, dtype):
         """Set monitoring mapped register.
@@ -770,7 +771,7 @@ class IPBServo(Servo):
         Returns:
             int: Result code.
         """
-        return lib.il_net_set_mapped_register(self.net._cffi_network, channel,
+        return lib.il_net_set_mapped_register(self.__cffi_network, channel,
                                               reg_idx, dtype)
 
     def monitoring_get_num_mapped_registers(self):
@@ -779,7 +780,7 @@ class IPBServo(Servo):
         Returns:
             int: Actual number of mapped registers.
         """
-        return lib.il_net_num_mapped_registers_get(self.net._cffi_network)
+        return lib.il_net_num_mapped_registers_get(self.__cffi_network)
 
     def monitoring_enable(self):
         """Enable monitoring process.
@@ -787,7 +788,7 @@ class IPBServo(Servo):
         Returns:
             int: Result code.
         """
-        return lib.il_net_enable_monitoring(self.net._cffi_network)
+        return lib.il_net_enable_monitoring(self.__cffi_network)
 
     def monitoring_disable(self):
         """Disable monitoring process.
@@ -795,7 +796,7 @@ class IPBServo(Servo):
         Returns:
             int: Result code.
         """
-        return lib.il_net_disable_monitoring(self.net._cffi_network)
+        return lib.il_net_disable_monitoring(self.__cffi_network)
 
     def monitoring_read_data(self):
         """Obtain processed monitoring data.
@@ -803,7 +804,7 @@ class IPBServo(Servo):
         Returns:
             array: Actual processed monitoring data.
         """
-        return lib.il_net_read_monitoring_data(self.net._cffi_network)
+        return lib.il_net_read_monitoring_data(self.__cffi_network)
 
     def monitoring_get_bytes_per_block(self):
         """Obtain Bytes x Block configured.
@@ -811,7 +812,7 @@ class IPBServo(Servo):
         Returns:
             int: Actual number of Bytes x Block configured.
         """
-        return lib.il_net_monitornig_bytes_per_block_get(self.net._cffi_network)
+        return lib.il_net_monitornig_bytes_per_block_get(self.__cffi_network)
 
     def disturbance_channel_data(self, channel, dtype, data_arr):
         """Send disturbance data.
@@ -826,15 +827,15 @@ class IPBServo(Servo):
 
         """
         if dtype == REG_DTYPE.U16:
-            lib.il_net_disturbance_data_u16_set(self.net._cffi_network, channel, data_arr)
+            lib.il_net_disturbance_data_u16_set(self.__cffi_network, channel, data_arr)
         elif dtype == REG_DTYPE.S16:
-            lib.il_net_disturbance_data_s16_set(self.net._cffi_network, channel, data_arr)
+            lib.il_net_disturbance_data_s16_set(self.__cffi_network, channel, data_arr)
         elif dtype == REG_DTYPE.U32:
-            lib.il_net_disturbance_data_u32_set(self.net._cffi_network, channel, data_arr)
+            lib.il_net_disturbance_data_u32_set(self.__cffi_network, channel, data_arr)
         elif dtype == REG_DTYPE.S32:
-            lib.il_net_disturbance_data_s32_set(self.net._cffi_network, channel, data_arr)
+            lib.il_net_disturbance_data_s32_set(self.__cffi_network, channel, data_arr)
         elif dtype == REG_DTYPE.FLOAT:
-            lib.il_net_disturbance_data_flt_set(self.net._cffi_network, channel, data_arr)
+            lib.il_net_disturbance_data_flt_set(self.__cffi_network, channel, data_arr)
         return 0
 
     def disturbance_remove_all_mapped_registers(self):
@@ -843,7 +844,7 @@ class IPBServo(Servo):
         Returns:
             int: Return code.
         """
-        return lib.il_net_disturbance_remove_all_mapped_registers(self.net._cffi_network)
+        return lib.il_net_disturbance_remove_all_mapped_registers(self.__cffi_network)
 
     def disturbance_set_mapped_register(self, channel, address, dtype):
         """Set disturbance mapped register.
@@ -856,26 +857,8 @@ class IPBServo(Servo):
         Returns:
             int: Return code.
         """
-        return lib.il_net_disturbance_set_mapped_register(self.net._cffi_network, channel,
+        return lib.il_net_disturbance_set_mapped_register(self.__cffi_network, channel,
                                                           address, dtype)
-
-    @property
-    def net(self):
-        """Obtain servo network.
-
-        Returns:
-            IPBNetwork: Current servo network.
-        """
-        return self.__net
-
-    @net.setter
-    def net(self, value):
-        """Set servo network.
-
-        Args:
-            value (IPBNetwork): Network to be set as servo Network.
-        """
-        self.__net = value
 
     @property
     def name(self):
@@ -1020,14 +1003,14 @@ class IPBServo(Servo):
         self.__cffi_servo = value
 
     @property
-    def _cffi_net(self):
+    def _cffi_network(self):
         """Obtain parent net CFFI instance."""
-        return self.__cffi_net
+        return self.__cffi_network
 
-    @_cffi_net.setter
-    def _cffi_net(self, value):
+    @_cffi_network.setter
+    def _cffi_network(self, value):
         """Set parent net CFFI instance."""
-        self.__cffi_net = value
+        self.__cffi_network = value
 
     @property
     def subnodes(self):
@@ -1220,7 +1203,7 @@ class IPBServo(Servo):
         Returns:
             array: Current monitoring data.
         """
-        monitoring_data = lib.il_net_monitornig_data_get(self.net._cffi_network)
+        monitoring_data = lib.il_net_monitornig_data_get(self.__cffi_network)
         size = int(self.monitoring_data_size / 2)
         ret_arr = []
         for i in range(0, size):
@@ -1234,7 +1217,7 @@ class IPBServo(Servo):
         Returns:
             int: Current monitoring data size.
         """
-        return lib.il_net_monitornig_data_size_get(self.net._cffi_network)
+        return lib.il_net_monitornig_data_size_get(self.__cffi_network)
 
     @property
     def disturbance_data(self):
@@ -1243,7 +1226,7 @@ class IPBServo(Servo):
         Returns:
             array: Current disturbance data.
         """
-        disturbance_data = lib.il_net_disturbance_data_get(self.net._cffi_network)
+        disturbance_data = lib.il_net_disturbance_data_get(self.__cffi_network)
         size = int(self.disturbance_data_size / 2)
         ret_arr = []
         for i in range(0, size):
@@ -1262,7 +1245,7 @@ class IPBServo(Servo):
             np.pad(disturbance_arr,
                    (0, int(self.disturbance_data_size / 2) - len(value)),
                    'constant')
-        lib.il_net_disturbance_data_set(self.net._cffi_network, disturbance_arr.tolist())
+        lib.il_net_disturbance_data_set(self.__cffi_network, disturbance_arr.tolist())
 
     @property
     def disturbance_data_size(self):
@@ -1271,7 +1254,7 @@ class IPBServo(Servo):
         Returns:
             int: Current disturbance data size.
         """
-        return lib.il_net_disturbance_data_size_get(self.net._cffi_network)
+        return lib.il_net_disturbance_data_size_get(self.__cffi_network)
 
     @disturbance_data_size.setter
     def disturbance_data_size(self, value):
@@ -1280,7 +1263,7 @@ class IPBServo(Servo):
         Args:
             value (int): Disturbance data size in bytes.
         """
-        lib.il_net_disturbance_data_size_set(self.net._cffi_network, value)
+        lib.il_net_disturbance_data_size_set(self.__cffi_network, value)
 
     @property
     def extended_buffer(self):
@@ -1289,6 +1272,6 @@ class IPBServo(Servo):
         Returns:
             str: Current extended buffer data.
         """
-        ext_buff = lib.il_net_extended_buffer_get(self.net._cffi_network)
+        ext_buff = lib.il_net_extended_buffer_get(self.__cffi_network)
         return pstr(ext_buff)
 

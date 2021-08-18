@@ -157,7 +157,7 @@ class EthernetNetwork(IPBNetwork):
 
         self._from_existing(net_)
         servo = EthernetServo._from_existing(servo_, _dictionary)
-        servo.net = self
+        servo._cffi_network = self._cffi_network
         servo.target = target
         servo._dictionary = dictionary
         servo.port = port
