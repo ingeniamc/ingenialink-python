@@ -6,11 +6,12 @@ from ingenialink.serial.network import SerialNetwork
 
 def connection_example():
     network = SerialNetwork()
-    servo = network.connect_to_slave("COM5",
+    target = "COM5"
+    servo = network.connect_to_slave(target,
                                  "../../resources/dictionaries/"
                                  "eve-core_1.8.1.xdf")
     if servo:
-        print("connected!")
+        print("Drive Connected in", target)
         print("Status word: ", servo.read("DRV_STATE_STATUS", subnode=1))
 
     network.disconnect_from_slave(servo)
