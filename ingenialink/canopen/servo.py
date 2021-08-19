@@ -133,7 +133,7 @@ class CanopenServo(Servo):
         check the drive status.
     """
     def __init__(self, net, target, node, dictionary_path=None,
-                 servo_status_listener=False):
+                 servo_status_listener=True):
         super(CanopenServo, self).__init__(net, target)
         self.__node = node
         if dictionary_path is not None:

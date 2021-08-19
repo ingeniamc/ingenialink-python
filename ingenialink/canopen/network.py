@@ -185,7 +185,7 @@ class CanopenNetwork(Network):
         return nodes
 
     def connect_to_slave(self, target, dictionary=None, eds=None,
-                         servo_status_listener=False, net_status_listener=True):
+                         servo_status_listener=True, net_status_listener=True):
         """Connects to a drive through a given target node ID.
 
         Args:
