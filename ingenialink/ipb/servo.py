@@ -995,22 +995,20 @@ class IPBServo(Servo):
 
     @property
     def _cffi_servo(self):
-        """Obtain servo CFFI instance."""
+        """CFFI instance of the servo."""
         return self.__cffi_servo
 
     @_cffi_servo.setter
     def _cffi_servo(self, value):
-        """Set servo CFFI instance."""
         self.__cffi_servo = value
 
     @property
     def _cffi_network(self):
-        """Obtain parent net CFFI instance."""
+        """CFFI instance of the network."""
         return self.__cffi_network
 
     @_cffi_network.setter
     def _cffi_network(self, value):
-        """Set parent net CFFI instance."""
         self.__cffi_network = value
 
     @property

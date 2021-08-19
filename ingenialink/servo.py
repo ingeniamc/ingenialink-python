@@ -9,7 +9,7 @@ from .constants import *
 
 
 class SERVO_STATE(Enum):
-    """State."""
+    """Servo states."""
 
     NRDY = lib.IL_SERVO_STATE_NRDY
     """Not ready to switch on."""
@@ -276,43 +276,25 @@ class Servo(ABC):
 
     @property
     def name(self):
-        """Obtain servo name.
-
-        Returns:
-            str: Name.
-        """
+        """str: Obtains the servo name."""
         return self.__name
 
     @name.setter
     def name(self, name):
-        """Set servo name.
-
-        Args:
-            name (str): Name.
-        """
         self.__name = name
 
     @property
     def full_name(self):
-        """Obtain servo full name.
-
-        Returns:
-            str: Name.
-        """
+        """str: Obtains the servo full name."""
         return self.__full_name
 
     @full_name.setter
     def full_name(self, name):
-        """Set servo full name.
-
-        Args:
-            name (str): Name.
-        """
         self.__full_name = name
 
     @property
     def dictionary(self):
-        """Obtain dictionary of the servo."""
+        """Dictionary: Obtain dictionary of the servo."""
         return self._dictionary
 
     @dictionary.setter
@@ -321,16 +303,12 @@ class Servo(ABC):
 
     @property
     def info(self):
-        """Obtain servo information.
-
-        Returns:
-            dict: Servo information.
-        """
+        """dict: Obtains the servo information."""
         return self.__info
 
     @property
     def units_torque(self):
-        """Torque units."""
+        """SERVO_UNITS_TORQUE: Torque units."""
         return self.__units_torque
 
     @units_torque.setter

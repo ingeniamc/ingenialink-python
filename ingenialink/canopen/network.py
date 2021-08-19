@@ -231,7 +231,11 @@ class CanopenNetwork(Network):
             raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(target))
 
     def disconnect_from_slave(self, servo):
-        """Disconnects the already established network."""
+        """Disconnects the slave from the network.
+
+        Args:
+            servo (CanopenServo): Instance of the servo connected.
+        """
         self.stop_network_monitor()
         servo.stop_servo_monitor()
         self._connection.disconnect()

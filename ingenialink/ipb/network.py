@@ -107,12 +107,11 @@ class IPBNetwork(Network, ABC):
 
     @property
     def _cffi_network(self):
-        """Obtain network CFFI instance."""
+        """CFFI instance of the network."""
         return self.__cffi_network
 
     @_cffi_network.setter
     def _cffi_network(self, value):
-        """Set network CFFI instance."""
         self.__cffi_network = value
 
     @property

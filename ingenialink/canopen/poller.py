@@ -22,14 +22,17 @@ class PollerTimer:
         self.thread = Timer(self.time, self.handle_function)
 
     def handle_function(self):
+        """Handle method that creates the timer for the poller"""
         self.cb()
         self.thread = Timer(self.time, self.handle_function)
         self.thread.start()
 
     def start(self):
+        """Starts the poller timer"""
         self.thread.start()
 
     def cancel(self):
+        """Stops the poller timer"""
         self.thread.cancel()
         if self.thread.is_alive():
             self.thread.join()
@@ -61,7 +64,7 @@ class CanopenPoller(Poller):
         self._reset_acq()
 
     def start(self):
-        "" "Start poller."""
+        """Start the poller."""
 
         if self.__running:
             logger.warning("Poller already running")

@@ -79,9 +79,7 @@ class ILRegisterNotFoundError(ILError):
 
 
 class ILWrongCRCError(ILError):
-    """
-    IngeniaLink Wrong CRC error.
-    """
+    """IngeniaLink Wrong CRC error."""
     pass
 
 
@@ -101,7 +99,7 @@ class ILObjectNotExist(ILConfigurationError):
 
 
 class ILObjectNotCyclicMappable(ILConfigurationError):
-    """  Object isn't cyclic mappable as requested configuration error."""
+    """Object isn't cyclic mappable as requested configuration error."""
     pass
 
 

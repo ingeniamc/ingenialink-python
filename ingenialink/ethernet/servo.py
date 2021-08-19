@@ -22,6 +22,7 @@ class EthernetServo(IPBServo):
 
     @property
     def port(self):
+        """int: Port number used for connections to the servo."""
         return self.__port
 
     @port.setter
@@ -30,6 +31,7 @@ class EthernetServo(IPBServo):
 
     @property
     def communication_protocol(self):
+        """NET_TRANS_PROT: Protocol used to connect to the servo."""
         return self.__communication_protocol
 
     @communication_protocol.setter

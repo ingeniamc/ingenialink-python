@@ -6,6 +6,12 @@ from ingenialink.serial.servo import SerialServo
 
 
 class SerialNetwork(IPBNetwork):
+    """Network for all Serial communications.
+
+    Args:
+        timeout_rd (int): Timeout for read commands.
+        timeout_wr (int): Timeout for write commands.
+    """
     def __init__(self, timeout_rd=0.5, timeout_wr=0.5):
         super(SerialNetwork, self).__init__()
         self.__timeout_rd = timeout_rd
@@ -39,6 +45,15 @@ class SerialNetwork(IPBNetwork):
         return found
 
     def connect_to_slave(self, target=None, dictionary=""):
+        """Connects to a slave through the given network settings.
+
+        Args:
+            target (str): IP of the target slave.
+            dictionary (str): Path to the target dictionary file.
+
+        Returns:
+            EthernetServo: Instance of the servo connected.
+        """
         self._on_found = ffi.NULL
 
         callback = ffi.NULL
@@ -67,12 +82,17 @@ class SerialNetwork(IPBNetwork):
         servo = None
         if len(found) > 0:
             servo = SerialServo(net=self.__net_interface, target=found[0],
-                            dictionary_path=dictionary)
+                                dictionary_path=dictionary)
             self._cffi_network = self.__net_interface
             self.servos.append(servo)
         return servo
 
     def disconnect_from_slave(self, servo):
+        """Disconnects the slave from the network.
+
+        Args:
+            servo (SerialServo): Instance of the servo connected.
+        """
         self.servos.remove(servo)
         if len(self.servos) == 0:
             lib.il_net_disconnect(self._cffi_network)
@@ -86,6 +106,7 @@ class SerialNetwork(IPBNetwork):
 
     @property
     def timeout_rd(self):
+        """int: Read timeout"""
         return self.__timeout_rd
 
     @timeout_rd.setter
@@ -94,6 +115,7 @@ class SerialNetwork(IPBNetwork):
 
     @property
     def timeout_wr(self):
+        """int: Write timeout"""
         return self.__timeout_wr
 
     @timeout_wr.setter

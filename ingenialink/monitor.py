@@ -25,11 +25,11 @@ class MONITOR_TRIGGER(Enum):
 class Monitor:
     """Monitor.
 
-        Args:
-            servo (Servo): Servo instance.
+    Args:
+        servo (Servo): Servo instance.
 
-        Raises:
-            ILCreationError: If the monitor could not be created.
+    Raises:
+        ILCreationError: If the monitor could not be created.
     """
 
     def __init__(self, servo):

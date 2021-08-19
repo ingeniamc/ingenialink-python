@@ -103,6 +103,7 @@ class ServoStatusListener(threading.Thread):
         self.__stop = False
 
     def run(self):
+        """Checks if the drive is alive by reading the status word register"""
         while not self.__stop:
             for subnode in range(1, self.__parent.subnodes):
                 try:
@@ -117,14 +118,15 @@ class ServoStatusListener(threading.Thread):
             time.sleep(1.5)
 
     def activate_stop_flag(self):
+        """Stops the loop that reads the status word register"""
         self.__stop = True
 
 
 class CanopenServo(Servo):
-    """Servo.
+    """CANopen Servo instance.
 
     Args:
-        net (Network): Ingenialink Network of the drive.
+        net (CanopenNetwork): Canopen Network of the drive.
         node (int): Node ID of the drive.
         dictionary_path (str): Path to the dictionary.
         servo_status_listener (bool): Boolean to initialize the ServoStatusListener and
@@ -823,42 +825,6 @@ class CanopenServo(Servo):
     @state.setter
     def state(self, new_state):
         self.__state = new_state
-
-    @property
-    def units_torque(self):
-        """SERVO_UNITS_TORQUE: Torque units."""
-        return self.__units_torque
-
-    @units_torque.setter
-    def units_torque(self, units):
-        self.__units_torque = units
-
-    @property
-    def units_pos(self):
-        """SERVO_UNITS_POS: Position units."""
-        return self.__units_pos
-
-    @units_pos.setter
-    def units_pos(self, units):
-        self.__units_pos = units
-
-    @property
-    def units_vel(self):
-        """SERVO_UNITS_VEL: Velocity units."""
-        return self.__units_vel
-
-    @units_vel.setter
-    def units_vel(self, units):
-        self.__units_vel = units
-
-    @property
-    def units_acc(self):
-        """SERVO_UNITS_ACC: Acceleration units."""
-        return self.__units_acc
-
-    @units_acc.setter
-    def units_acc(self, units):
-        self.__units_acc = units
 
     @property
     def subnodes(self):

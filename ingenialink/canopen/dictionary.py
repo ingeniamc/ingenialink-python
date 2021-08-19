@@ -45,7 +45,7 @@ class Categories:
 
 
 class Errors:
-    """Errors.
+    """Errors for the CANopen dictionary.
 
     Args:
         dict_ (str): Path to the Ingenia dictionary.
@@ -58,9 +58,7 @@ class Errors:
         self.load_errors()
 
     def load_errors(self):
-        """
-        Load errors from dictionary.
-        """
+        """Load errors from dictionary."""
         with open(self._dict, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
