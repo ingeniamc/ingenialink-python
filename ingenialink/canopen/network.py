@@ -706,7 +706,7 @@ class CanopenNetwork(Network):
 
         """
         r = self._lss_switch_state_selective(vendor_id, product_code,
-                                            rev_number, serial_number)
+                                             rev_number, serial_number)
         if r < 0:
             self._connection.lss.configure_bit_timing(
                 CAN_BIT_TIMMING[new_target_baudrate].value
