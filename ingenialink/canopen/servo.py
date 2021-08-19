@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 
 from ingenialink.utils._utils import *
 from .constants import *
-from ..constants import SINGLE_AXIS_MINIMUM_SUBNODES
+from ..constants import *
 from ..exceptions import *
 from .._ingenialink import lib
 from ..servo import SERVO_STATE, Servo
@@ -16,8 +16,6 @@ from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
-PASSWORD_STORE_ALL = 0x65766173
-PASSWORD_RESTORE_ALL = 0x64616F6C
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
 SERIAL_NUMBER = CanopenRegister(
