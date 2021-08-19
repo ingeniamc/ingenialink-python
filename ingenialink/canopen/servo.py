@@ -828,5 +828,5 @@ class CanopenServo(Servo):
 
     @property
     def subnodes(self):
-        """SUBNODES: Number of subnodes."""
+        """int: Number of subnodes."""
         return self._dictionary.subnodes
