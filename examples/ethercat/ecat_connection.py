@@ -12,11 +12,9 @@ def connection_example():
     if len(slaves) > 0:
         servo = net.connect_to_slave(
             target=slaves[0],
-            dictionary='eve-xcr-e_eoe_1.8.1.xdf')
-
+            dictionary='../../resources/dictionaries/eve-xcr-e_eoe_1.8.1.xdf')
 
         print(servo.read('DRV_ID_SOFTWARE_VERSION'))
-
         net.disconnect_from_slave(servo)
 
 
