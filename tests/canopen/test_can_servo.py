@@ -9,12 +9,12 @@ def test_save_configuration(connect_canopen):
 
     filename = 'eve-net-c_1.8.1_canopen.xcf'
 
-    if os.path.isfile(filename):
-        os.remove(filename)
-
     servo.save_configuration(filename, subnode=0)
 
     assert os.path.isfile(filename)
+
+    if os.path.isfile(filename):
+        os.remove(filename)
 
 
 @pytest.mark.canopen
