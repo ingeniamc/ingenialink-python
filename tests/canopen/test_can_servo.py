@@ -2,11 +2,12 @@ import os
 import pytest
 
 
+@pytest.mark.canopen
 def test_save_configuration(connect_canopen):
     servo, net = connect_canopen
     assert servo is not None and net is not None
 
-    filename = '../can_config.xcf'
+    filename = 'eve-net-c_1.8.1_canopen.xcf'
 
     if os.path.isfile(filename):
         os.remove(filename)
@@ -16,17 +17,19 @@ def test_save_configuration(connect_canopen):
     assert os.path.isfile(filename)
 
 
+@pytest.mark.canopen
 def test_load_configuration(connect_canopen):
     servo, net = connect_canopen
     assert servo is not None and net is not None
 
-    filename = '../can_config.xcf'
+    filename = 'resources/configurations/eve-net-c_1.8.1_canopen.xcf'
 
     assert os.path.isfile(filename)
 
     servo.load_configuration(filename, subnode=0)
 
 
+@pytest.mark.canopen
 def test_store_parameters(connect_canopen):
     servo, net = connect_canopen
     assert servo is not None and net is not None
@@ -34,6 +37,7 @@ def test_store_parameters(connect_canopen):
     servo.store_parameters()
 
 
+@pytest.mark.canopen
 def test_restore_parameters(connect_canopen):
     servo, net = connect_canopen
     assert servo is not None and net is not None

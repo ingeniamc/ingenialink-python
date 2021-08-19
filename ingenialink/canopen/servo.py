@@ -478,7 +478,7 @@ class CanopenServo(Servo):
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        with open(self._dictionary.dict, 'r') as xml_file:
+        with open(self._dictionary.path, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
@@ -568,7 +568,7 @@ class CanopenServo(Servo):
                 logger.error("Exception during load_configuration, register "
                              "%s: %s", str(element.attrib['id']), e)
 
-    def store_parameters(self, subnode=1, sdo_timeout=3):
+    def store_parameters(self, subnode=0, sdo_timeout=3):
         """Store all the current parameters of the target subnode.
 
         Args:

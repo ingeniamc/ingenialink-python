@@ -13,7 +13,7 @@ def load_config_example():
         target=32,
         dictionary='../../resources/dictionaries/eve-net-c_can_1.8.1.xdf',
         eds='../../resources/dictionaries/eve-net-c_1.8.1.eds')
-    servo.load_configuration('../../resources/configurations/can_config.xcf', subnode=0)
+    servo.load_configuration('../../resources/configurations/eve-net-c_1.8.1_canopen.xcf', subnode=0)
 
     net.disconnect_from_slave(servo)
 
@@ -28,7 +28,7 @@ def save_config_example():
         target=32,
         dictionary='../../resources/dictionaries/eve-net-c_can_1.8.1.xdf',
         eds='../../resources/dictionaries/eve-net-c_1.8.1.eds')
-    servo.save_configuration('../../resources/configurations/can_config.xcf', subnode=0)
+    servo.save_configuration('../../resources/configurations/eve-net-c_1.8.1_canopen.xcf', subnode=0)
 
     net.disconnect_from_slave(servo)
 
