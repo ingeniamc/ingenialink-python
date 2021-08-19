@@ -7,6 +7,7 @@ from ingenialink.ipb.dictionary import IPBDictionary
 from .network import IPBNetwork
 from ingenialink.utils._utils import *
 from .._ingenialink import lib, ffi
+from ingenialink.register import dtype_size
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
