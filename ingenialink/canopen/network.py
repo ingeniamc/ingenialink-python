@@ -120,7 +120,7 @@ class NetStatusListener(Thread):
                     self.__parent.net_state = NET_STATE.DISCONNECTED
                     self.__state = NET_STATE.DISCONNECTED
                 else:
-                    self.__parent.reset_connection()
+                    self.__parent._reset_connection()
             else:
                 if self.__state != NET_STATE.CONNECTED:
                     self.__parent.net_state = NET_STATE.CONNECTED
@@ -331,15 +331,16 @@ class CanopenNetwork(Network):
             ILFirmwareLoadError: The firmware load process fails with an error message.
 
         """
-        self.__set_fw_load_status_msg('')
-        self.__set_fw_load_progress(0)
-        self.__set_fw_load_errors_enabled(True)
-
         servo = None
         lfu_path = None
         error_detected_msg = ''
         servo_connected = False
         error_connecting = False
+        progress = 0
+
+        self.__set_fw_load_status_msg('')
+        self.__set_fw_load_progress(progress)
+        self.__set_fw_load_errors_enabled(True)
 
         # Check if target is already connected
         for servo in self.servos:
@@ -353,10 +354,12 @@ class CanopenNetwork(Network):
             if not servo_connected:
                 self.__set_fw_load_status_msg('Connecting to drive')
                 logger.info('Connecting to drive')
-                self.__set_fw_load_progress(25)
+                progress = 5
+                self.__set_fw_load_progress(progress)
                 try:
                     servo = self.connect_to_slave(target, servo_status_listener=False)
-                    self.__set_fw_load_progress(75)
+                    progress = 7
+                    self.__set_fw_load_progress(progress)
                 except Exception as e:
                     logger.error('Error connecting to drive through CAN: %s', e)
                     error_connecting = True
@@ -372,7 +375,9 @@ class CanopenNetwork(Network):
                 except Exception as e:
                     is_bootloader_supported = False
 
-                self.__set_fw_load_progress(85)
+                progress = 10
+                current_progress = progress
+                self.__set_fw_load_progress(progress)
 
                 if is_bootloader_supported:
                     # Check if file is .lfu
@@ -392,7 +397,6 @@ class CanopenNetwork(Network):
                             coco_in = open(fw_file, "r")
                             mcb = MCB()
                             copy_process = 0
-                            self.__set_fw_load_progress(0)
                             bin_node = ''
                             for line in coco_in:
                                 if re.match("74 67 [0-4][0-4] 00 00 00 00 00 00 00",
@@ -416,10 +420,14 @@ class CanopenNetwork(Network):
                                 node = 10
                                 mcb.add_cmd(node, subnode, cmd, data, outfile)
 
-                                current_progress = int((copy_process * 100) /
-                                                       total_file_lines)
-                                self.__set_fw_load_progress(current_progress)
+                                new_progress = int((copy_process * (25 - progress)) /
+                                                   total_file_lines) + progress
+                                if new_progress != current_progress:
+                                    current_progress = new_progress
+                                    self.__set_fw_load_progress(current_progress)
                                 copy_process += 1
+
+                            progress = current_progress
 
                             outfile.close()
                             coco_in.close()
@@ -433,8 +441,6 @@ class CanopenNetwork(Network):
                     total_file_size = os.path.getsize(lfu_path) / BOOTLOADER_MSG_SIZE
 
                     # Check if Boot mode or App loaded
-                    self.__set_fw_load_progress(0)
-
                     try:
                         device_type = servo.read(CIA301_DRV_ID_DEVICE_TYPE, subnode=0)
                         device_type = device_type & 0xFFFF
@@ -499,7 +505,7 @@ class CanopenNetwork(Network):
                     if error_detected_msg == '':
                         logger.info('Downloading program...')
                         image = open(lfu_path, "rb")
-                        progress = 0
+                        counter = 0
                         # Read image content in BOOTLOADER_MSG_SIZE
                         try:
                             error_downloading = False
@@ -523,10 +529,14 @@ class CanopenNetwork(Network):
                                         error_downloading = True
                                         error_detected_msg = 'An error occurred ' \
                                                              'while downloading.'
-                                    progress += 1
-                                    current_progress = int((progress * 100) /
-                                                           total_file_size)
-                                    self.__set_fw_load_progress(current_progress)
+                                    counter += 1
+
+                                    new_progress = int((counter * (100 - progress)) /
+                                                       total_file_size) + progress
+                                    if new_progress != current_progress:
+                                        current_progress = new_progress
+                                        self.__set_fw_load_progress(current_progress)
+
                                     bytes_data = bytearray()
                                 byte = image.read(1)
                                 if not byte:
