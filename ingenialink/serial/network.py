@@ -79,16 +79,6 @@ class SerialNetwork(IPBNetwork):
             self.destroy_network()
         self._cffi_network = None
 
-
-    def stop_network_monitor(self):
-        raise NotImplementedError
-
-    def subscribe_to_status(self, callback):
-        raise NotImplementedError
-
-    def unsubscribe_from_status(self, callback):
-        raise NotImplementedError
-
     @property
     def protocol(self):
         """NET_PROT: Obtain network protocol."""

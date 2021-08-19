@@ -54,6 +54,7 @@ class IPBNetwork(Network, ABC):
             callback (Callback): Function that will be called every time an event
             is raised.
         """
+        # TODO: Re-implement using observers and internal threads
         status = self.status
         while True:
             if status != self.status:
@@ -63,6 +64,10 @@ class IPBNetwork(Network, ABC):
                     callback(NET_DEV_EVT.REMOVED)
                 status = self.status
             sleep(1)
+
+    def unsubscribe_from_status(self, callback):
+        # TODO: Re-implement using observers and internal threads
+        raise NotImplementedError
 
     def stop_network_monitor(self):
         """Stop monitoring network events."""
