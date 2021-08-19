@@ -22,7 +22,7 @@ class MONITOR_TRIGGER(Enum):
     """Digital input."""
 
 
-class Monitor(object):
+class Monitor:
     """Monitor.
 
         Args:

@@ -7,7 +7,7 @@ from ingenialink.ipb.register import IPBRegister, REG_DTYPE, LabelsDictionary
 from ..dictionary import Dictionary, Categories
 
 
-class SubCategories(object):
+class SubCategories:
     """Sub-categories.
 
     Args:
@@ -199,6 +199,15 @@ class IPBDictionary(Dictionary):
         inst._cats = IPBCategories(inst)
 
         return inst
+
+    def save(self, filename):
+        """Save dictionary.
+
+        Args:
+            filename (str): Output file name/path.
+        """
+        r = lib.il_dict_save(self.__cffi_dictionary, cstr(filename))
+        raise_err(r)
 
     def registers(self, subnode):
         """Obtain all the registers of a subnode.

@@ -422,7 +422,7 @@ class IPBServo(Servo):
         r = lib.il_servo_homing_wait(self.__cffi_servo, to_ms(timeout))
         raise_err(r)
 
-    def store_parameters(self, subnode=1):
+    def store_parameters(self, subnode=0):
         """Store all the current parameters of the target subnode.
 
         Args:

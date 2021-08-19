@@ -11,9 +11,10 @@ def connect_canopen():
                          channel=0,
                          baudrate=CAN_BAUDRATE.Baudrate_1M)
 
-    servo = net.connect_to_slave(target=32,
-                                 dictionary='resources/dictionaries/eve-net-c_can_1.8.1.xdf',
-                                 eds='resources/dictionaries/eve-net-c_1.8.1.eds')
+    servo = net.connect_to_slave(
+        target=32,
+        dictionary='resources/dictionaries/eve-net-c_can_1.8.1.xdf',
+        eds='resources/dictionaries/eve-net-c_1.8.1.eds')
     yield servo, net
 
     net.disconnect_from_slave(servo)
@@ -24,7 +25,7 @@ def connect_ethernet():
     net = EthernetNetwork()
     servo = net.connect_to_slave(
         "192.168.2.22",
-        "resources/eve-net-c_eth_1.8.1.xdf",
+        "resources/dictionaries/eve-net-c_eth_1.8.1.xdf",
         1061,
         NET_TRANS_PROT.UDP)
 

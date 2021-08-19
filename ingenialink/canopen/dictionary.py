@@ -5,7 +5,7 @@ from ingenialink.utils._utils import *
 from .._ingenialink import lib
 
 
-class Categories(object):
+class Categories:
     """Contains all categories from a CANopen Dictionary.
 
     Args:
@@ -44,7 +44,7 @@ class Categories(object):
         return self._categories[cat_id]
 
 
-class Errors(object):
+class Errors:
     """Errors.
 
     Args:

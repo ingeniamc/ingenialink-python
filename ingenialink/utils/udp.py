@@ -8,7 +8,7 @@ import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
 
-class UDP(object):
+class UDP:
     def __init__(self, port, ip):
         self.port = port
         self.ip = ip
