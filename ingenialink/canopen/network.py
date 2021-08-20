@@ -231,7 +231,11 @@ class CanopenNetwork(Network):
             raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(target))
 
     def disconnect_from_slave(self, servo):
-        """Disconnects the already established network."""
+        """Disconnects the slave from the network.
+
+        Args:
+            servo (CanopenServo): Instance of the servo connected.
+        """
         self.stop_network_monitor()
         servo.stop_servo_monitor()
         self._connection.disconnect()
@@ -702,7 +706,7 @@ class CanopenNetwork(Network):
 
         """
         r = self._lss_switch_state_selective(vendor_id, product_code,
-                                            rev_number, serial_number)
+                                             rev_number, serial_number)
         if r < 0:
             self._connection.lss.configure_bit_timing(
                 CAN_BIT_TIMMING[new_target_baudrate].value

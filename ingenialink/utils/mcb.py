@@ -6,7 +6,6 @@ class MCB:
     """Motion Control Bus (MCB) is a high-speed serial protocol designed for getting low
     latency and high determinism in motion control systems where control loops
     work at high update rates (tens of kHz).
-
     """
     EXTENDED_MESSAGE_SIZE = 8
 
@@ -23,12 +22,11 @@ class MCB:
             node (int): Reserved bits used to identify the destination device.
             subnode (int): Subsystem bits used to identify the destination device.
             cmd (int): Command to lead the message.
-            data (bin): Data to be added to the message.
+            data (bytes): Data to be added to the message.
             size (int): Size of data.
 
         Returns:
             bin: MCB command message.
-
         """
         node_head = (node << 4) | (subnode & 0xf)
         node_head = struct.pack('<H', node_head)
@@ -52,11 +50,8 @@ class MCB:
             node (int): Reserved bits used to identify the destination device.
             subnode (int): Subsystem bits used to identify the destination device.
             cmd (int): Command to lead the message.
-            data (bin): Data to be added to the message.
+            data (bytes): Data to be added to the message.
             output (file): File object to store the message.
-
-        Returns:
-
         """
         if len(data) > self.EXTENDED_MESSAGE_SIZE:
             frame = self.create_msg(node, subnode, cmd, data, len(data))

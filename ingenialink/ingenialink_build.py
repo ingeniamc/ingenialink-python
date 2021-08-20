@@ -65,7 +65,7 @@ else:
 
 
 def _build_deps():
-    """Obtain and build dependencies (sercomm and ingenialink)."""
+    """Obtains and build dependencies (sercomm and ingenialink)."""
 
     # Check for Git & CMake
     git = find_executable('git')
@@ -126,13 +126,13 @@ def _build_deps():
 
 
 def _gen_cffi_header():
-    """Generate cffi header.
+    """Generates cffi header.
 
-        All ingenialink headers are joined into a single one, and, all
-        cffi non-compatibe portions removed.
+    All ingenialink headers are joined into a single one, and, all
+    cffi non-compatibe portions removed.
 
-        Returns:
-            str: cffi header.
+    Returns:
+        str: cffi header.
     """
 
     remove = ['IL_EXPORT',
@@ -168,8 +168,8 @@ def _gen_cffi_header():
 def _get_libs():
     """Obtain the list of libraries to link against based on platform.
 
-        Returns:
-            list: List of libraries.
+    Returns:
+        list: List of libraries.
     """
 
     libs = ['ingenialink', 'sercomm', 'xml2', 'soem']
@@ -188,8 +188,8 @@ def _get_libs():
 def _get_link_args():
     """Obtain the list of extra linker arguments based on platform.
 
-        Returns:
-            list: List of extra linker arguments.
+    Returns:
+        list: List of extra linker arguments.
     """
 
     if sys.platform == 'darwin':

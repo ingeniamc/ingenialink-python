@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 
 class Categories(ABC):
-    """Categories.
+    """Categories Abstract Base Class.
 
     Args:
         parent (Dictionary): Ingenia dictionary instance.
@@ -46,6 +46,7 @@ class Dictionary(ABC):
 
     @property
     def path(self):
+        """str: Path of the dictionary."""
         return self.__path
 
     @path.setter
@@ -54,6 +55,7 @@ class Dictionary(ABC):
 
     @property
     def categories(self):
+        """Categories: Instance of all the categories in the dictionary."""
         return self.__categories
 
     @categories.setter
@@ -62,6 +64,7 @@ class Dictionary(ABC):
 
     @property
     def errors(self):
+        """Errors: Instance of all the errors in the dictionary."""
         return self.__errors
 
     @errors.setter
@@ -70,6 +73,7 @@ class Dictionary(ABC):
 
     @property
     def version(self):
+        """str: Version of the dictionary."""
         return self.__version
 
     @version.setter
@@ -78,6 +82,7 @@ class Dictionary(ABC):
 
     @property
     def subnodes(self):
+        """int: Number of subnodes in the dictionary."""
         return self.__subnodes
 
     @subnodes.setter

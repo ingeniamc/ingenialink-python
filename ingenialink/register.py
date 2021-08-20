@@ -98,6 +98,7 @@ class Register(ABC):
     Args:
         identifier (str): Identifier.
         units (str): Units.
+        cyclic (str): Cyclic typed register.
         dtype (REG_DTYPE): Data type.
         access (REG_ACCESS): Access type.
         phy (REG_PHY, optional): Physical units.
@@ -145,6 +146,7 @@ class Register(ABC):
 
     @property
     def identifier(self):
+        """str: Register identifier."""
         return self.__identifier
 
     @identifier.setter
@@ -153,6 +155,7 @@ class Register(ABC):
 
     @property
     def units(self):
+        """str: Units of the register."""
         return self.__units
 
     @units.setter
@@ -161,6 +164,7 @@ class Register(ABC):
 
     @property
     def subnode(self):
+        """int: Target subnode of the register."""
         return self.__subnode
 
     @subnode.setter
@@ -169,6 +173,7 @@ class Register(ABC):
 
     @property
     def cyclic(self):
+        """str: Defines if the register is cyclic."""
         return self.__cyclic
 
     @cyclic.setter
@@ -177,6 +182,7 @@ class Register(ABC):
 
     @property
     def dtype(self):
+        """REG_DTYPE: Data type of the register."""
         return REG_DTYPE(self.__dtype)
 
     @dtype.setter
@@ -185,6 +191,7 @@ class Register(ABC):
 
     @property
     def access(self):
+        """REG_ACCESS: Access type of the register."""
         return REG_ACCESS(self.__access)
 
     @access.setter
@@ -193,6 +200,7 @@ class Register(ABC):
 
     @property
     def phy(self):
+        """REG_PHY: Physical units of the register."""
         return REG_PHY(self.__phy)
 
     @phy.setter
@@ -201,6 +209,7 @@ class Register(ABC):
 
     @property
     def storage(self):
+        """any: Defines if the register needs to be stored."""
         if not self.__storage_valid:
             return None
 
@@ -217,6 +226,7 @@ class Register(ABC):
 
     @property
     def storage_valid(self):
+        """bool: Defines if the register storage is valid."""
         return self.__storage_valid
 
     @storage_valid.setter
@@ -225,6 +235,7 @@ class Register(ABC):
 
     @property
     def range(self):
+        """tuple: Containing the minimum and the maximum values of the register."""
         if self.__range:
             return self.__range[0], self.__range[1]
         return None
@@ -235,6 +246,7 @@ class Register(ABC):
 
     @property
     def labels(self):
+        """dict: Containing the labels of the register."""
         return self.__labels
 
     @labels.setter
@@ -243,6 +255,7 @@ class Register(ABC):
 
     @property
     def enums(self):
+        """dict: Containing all the enums for the register."""
         return self.__enums
 
     @enums.setter
@@ -251,6 +264,7 @@ class Register(ABC):
 
     @property
     def enums_count(self):
+        """int: The number of the enums in the register."""
         return self.__enums_count
 
     @enums_count.setter
@@ -259,6 +273,7 @@ class Register(ABC):
 
     @property
     def cat_id(self):
+        """str: Category ID"""
         return self.__cat_id
 
     @cat_id.setter
@@ -267,6 +282,7 @@ class Register(ABC):
 
     @property
     def scat_id(self):
+        """str: Sub-Category ID"""
         return self.__scat_id
 
     @scat_id.setter
@@ -275,6 +291,7 @@ class Register(ABC):
 
     @property
     def internal_use(self):
+        """int: Defines if the register is only for internal uses."""
         return self.__internal_use
 
     @internal_use.setter

@@ -59,7 +59,7 @@ class SubCategories:
 
 
 class IPBCategories(Categories):
-    """Categories.
+    """ IPB Categories for the dictionary.
 
     Args:
         parent (IPBDictionary): Ingenia dictionary instance.
@@ -85,8 +85,7 @@ class IPBCategories(Categories):
         lib.il_dict_cat_ids_destroy(cat_ids)
 
     def labels(self, category_id):
-        """
-        Obtain labels for a certain category ID.
+        """Obtain labels for a certain category ID.
 
         Returns:
             dict: Labels dictionary.
@@ -158,7 +157,7 @@ class RegistersDictionary(collections.Mapping):
 
 
 class IPBDictionary(Dictionary):
-    """Ingenia Dictionary.
+    """IPB Ingenia Dictionary.
 
     Args:
         dictionary (str): Dictionary file name.
@@ -171,7 +170,6 @@ class IPBDictionary(Dictionary):
         dict_ = lib.il_dict_create(cstr(dictionary))
         raise_null(dict_)
 
-        # Dictionary version
         self.__cffi_dictionary = ffi.gc(dict_, lib.il_dict_destroy)
 
         self.version = pstr(lib.il_dict_version_get(dict_))
@@ -257,6 +255,7 @@ class IPBDictionary(Dictionary):
 
     @property
     def _cffi_dictionary(self):
+        """CFFI Instance of the dictionary."""
         return self.__cffi_dictionary
 
     @_cffi_dictionary.setter

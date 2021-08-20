@@ -105,6 +105,7 @@ class Network(ABC):
 
     @property
     def servos(self):
+        """list: List of the connected servos in the network."""
         return self.__servos
 
     @servos.setter

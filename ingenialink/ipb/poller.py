@@ -8,12 +8,12 @@ from ingenialink.poller import Poller
 class IPBPoller(Poller):
     """IPB poller.
 
-        Args:
-            servo (IPBServo): Servo.
-            num_channels (int): Number of channels.
+    Args:
+        servo (IPBServo): Servo.
+        num_channels (int): Number of channels.
 
-        Raises:
-            ILCreationError: If the poller could not be created.
+    Raises:
+        ILCreationError: If the poller could not be created.
     """
     def __init__(self, servo, num_channels):
         super(IPBPoller, self).__init__(servo, num_channels)
@@ -35,7 +35,7 @@ class IPBPoller(Poller):
         lib.il_poller_stop(self._poller)
 
     def configure(self, t_s, sz):
-        """Configure.
+        """Configure the poller.
 
         Args:
             t_s (int, float): Polling period (s).

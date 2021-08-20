@@ -112,6 +112,7 @@ class EthercatNetwork(IPBNetwork):
 
     @property
     def interface_name(self):
+        """str: Interface name used in the network settings."""
         return self.__interface_name
 
     @interface_name.setter

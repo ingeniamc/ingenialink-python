@@ -4,12 +4,12 @@ from abc import ABC, abstractmethod
 class Poller(ABC):
     """Register poller.
 
-        Args:
-            servo (Servo): Servo.
-            num_channels (int): Number of channels.
+    Args:
+        servo (Servo): Servo.
+        num_channels (int): Number of channels.
 
-        Raises:
-            ILCreationError: If the poller could not be created.
+    Raises:
+        ILCreationError: If the poller could not be created.
     """
     def __init__(self, servo, num_channels):
         self.__servo = servo
@@ -45,6 +45,7 @@ class Poller(ABC):
 
     @property
     def servo(self):
+        """Servo: Servo instance to be used."""
         return self.__servo
 
     @servo.setter
@@ -53,6 +54,7 @@ class Poller(ABC):
 
     @property
     def num_channels(self):
+        """int: Number of channels in the poller."""
         return self.__num_channels
 
     @num_channels.setter
