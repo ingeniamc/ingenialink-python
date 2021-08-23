@@ -11,6 +11,7 @@ class EthercatNetwork(IPBNetwork):
 
     Args:
         interface_name (str): Interface name to be targeted.
+
     """
     def __init__(self, interface_name=""):
         super(EthercatNetwork, self).__init__()
@@ -30,6 +31,7 @@ class EthercatNetwork(IPBNetwork):
         Raises:
             ILFirmwareLoadError: The firmware load process fails
             with an error message.
+
         """
         _interface_name = cstr(self.__interface_name) \
             if self.__interface_name else ffi.NULL
@@ -45,6 +47,7 @@ class EthercatNetwork(IPBNetwork):
 
         Returns:
             list: List of number of slaves connected to the network.
+
         """
         _interface_name = cstr(self.__interface_name) \
             if self.__interface_name else ffi.NULL
@@ -65,6 +68,7 @@ class EthercatNetwork(IPBNetwork):
 
         Returns:
             EthercatServo: Instance of the connected servo.
+
         """
         servo = None
         _interface_name = cstr(self.__interface_name) \
@@ -94,6 +98,7 @@ class EthercatNetwork(IPBNetwork):
 
         Args:
             servo (EthernetServo): Instance of the servo connected.
+
         """
         # TODO: This stops all connections no only the target servo.
         if servo in self.servos:

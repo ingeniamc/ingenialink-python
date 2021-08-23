@@ -6,8 +6,8 @@ class Categories(ABC):
 
     Args:
         parent (Dictionary): Ingenia dictionary instance.
-    """
 
+    """
     def __init__(self, parent):
         self.__parent = parent
         self.__labels = None
@@ -30,6 +30,7 @@ class Dictionary(ABC):
 
     Raises:
         ILCreationError: If the dictionary could not be created.
+
     """
     def __init__(self, dictionary_path):
         self.__path = dictionary_path

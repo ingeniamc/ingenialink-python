@@ -11,6 +11,7 @@ class SerialNetwork(IPBNetwork):
     Args:
         timeout_rd (int): Timeout for read commands.
         timeout_wr (int): Timeout for write commands.
+
     """
     def __init__(self, timeout_rd=0.5, timeout_wr=0.5):
         super(SerialNetwork, self).__init__()
@@ -30,6 +31,7 @@ class SerialNetwork(IPBNetwork):
 
         Raises:
             TypeError: If the protocol type is invalid.
+
         """
         devs = lib.il_net_dev_list_get(NET_PROT.MCB.value)
 
@@ -53,6 +55,7 @@ class SerialNetwork(IPBNetwork):
 
         Returns:
             EthernetServo: Instance of the servo connected.
+
         """
         self._on_found = ffi.NULL
 
@@ -92,6 +95,7 @@ class SerialNetwork(IPBNetwork):
 
         Args:
             servo (SerialServo): Instance of the servo connected.
+
         """
         self.servos.remove(servo)
         if len(self.servos) == 0:

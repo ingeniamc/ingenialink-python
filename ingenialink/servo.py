@@ -10,7 +10,6 @@ from .constants import *
 
 class SERVO_STATE(Enum):
     """Servo states."""
-
     NRDY = lib.IL_SERVO_STATE_NRDY
     """Not ready to switch on."""
     DISABLED = lib.IL_SERVO_STATE_DISABLED
@@ -31,7 +30,6 @@ class SERVO_STATE(Enum):
 
 class SERVO_FLAGS(Enum):
     """Status Flags."""
-
     TGT_REACHED = lib.IL_SERVO_FLAG_TGT_REACHED
     """Target reached."""
     ILIM_ACTIVE = lib.IL_SERVO_FLAG_ILIM_ACTIVE
@@ -56,7 +54,6 @@ class SERVO_FLAGS(Enum):
 
 class SERVO_MODE(Enum):
     """Operation Mode."""
-
     OLV = lib.IL_SERVO_MODE_OLV
     """Open loop (vector mode)."""
     OLS = lib.IL_SERVO_MODE_OLS
@@ -83,7 +80,6 @@ class SERVO_MODE(Enum):
 
 class SERVO_UNITS_TORQUE(Enum):
     """Torque Units."""
-
     NATIVE = lib.IL_UNITS_TORQUE_NATIVE
     """Native"""
     MN = lib.IL_UNITS_TORQUE_MNM
@@ -94,7 +90,6 @@ class SERVO_UNITS_TORQUE(Enum):
 
 class SERVO_UNITS_POS(Enum):
     """Position Units."""
-
     NATIVE = lib.IL_UNITS_POS_NATIVE
     """Native."""
     REV = lib.IL_UNITS_POS_REV
@@ -113,7 +108,6 @@ class SERVO_UNITS_POS(Enum):
 
 class SERVO_UNITS_VEL(Enum):
     """Velocity Units."""
-
     NATIVE = lib.IL_UNITS_VEL_NATIVE
     """Native."""
     RPS = lib.IL_UNITS_VEL_RPS
@@ -134,7 +128,6 @@ class SERVO_UNITS_VEL(Enum):
 
 class SERVO_UNITS_ACC(Enum):
     """Acceleration Units."""
-
     NATIVE = lib.IL_UNITS_ACC_NATIVE
     """Native."""
     REV_S2 = lib.IL_UNITS_ACC_REV_S2
@@ -175,8 +168,8 @@ class Servo(ABC):
 
     Raises:
         ILCreationError: If the servo cannot be created.
-    """
 
+    """
     _raw_read = {REG_DTYPE.U8: ['uint8_t *', lib.il_servo_raw_read_u8],
                  REG_DTYPE.S8: ['int8_t *', lib.il_servo_raw_read_s8],
                  REG_DTYPE.U16: ['uint16_t *', lib.il_servo_raw_read_u16],

@@ -133,8 +133,8 @@ def _gen_cffi_header():
 
     Returns:
         str: cffi header.
-    """
 
+    """
     remove = ['IL_EXPORT',
               'IL_BEGIN_DECL',
               'IL_END_DECL',
@@ -170,8 +170,8 @@ def _get_libs():
 
     Returns:
         list: List of libraries.
-    """
 
+    """
     libs = ['ingenialink', 'sercomm', 'xml2', 'soem']
 
     if sys.platform.startswith('linux'):
@@ -190,8 +190,8 @@ def _get_link_args():
 
     Returns:
         list: List of extra linker arguments.
-    """
 
+    """
     if sys.platform == 'darwin':
         return ['-framework', 'IOKit', '-framework', 'Foundation']
 

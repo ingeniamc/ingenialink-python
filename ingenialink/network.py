@@ -10,7 +10,6 @@ logger = ingenialogger.get_logger(__name__)
 
 class NET_PROT(Enum):
     """Network Protocol."""
-
     EUSB = lib.IL_NET_PROT_EUSB
     MCB = lib.IL_NET_PROT_MCB
     ETH = lib.IL_NET_PROT_ETH
@@ -20,7 +19,6 @@ class NET_PROT(Enum):
 
 class NET_STATE(Enum):
     """Network State."""
-
     CONNECTED = lib.IL_NET_STATE_CONNECTED
     DISCONNECTED = lib.IL_NET_STATE_DISCONNECTED
     FAULTY = lib.IL_NET_STATE_FAULTY
@@ -28,14 +26,12 @@ class NET_STATE(Enum):
 
 class NET_DEV_EVT(Enum):
     """Device Event."""
-
     ADDED = lib.IL_NET_DEV_EVT_ADDED
     REMOVED = lib.IL_NET_DEV_EVT_REMOVED
 
 
 class EEPROM_TOOL_MODE(Enum):
     """EEPROM tool mode."""
-
     MODE_NONE = 0
     MODE_READBIN = 1
     MODE_READINTEL = 2
@@ -47,7 +43,6 @@ class EEPROM_TOOL_MODE(Enum):
 
 class NET_TRANS_PROT(Enum):
     """Transmission protocol."""
-
     TCP = 1
     UDP = 2
 
@@ -122,6 +117,7 @@ class NetworkMonitor:
     Raises:
         TypeError: If the protocol type is invalid.
         ILCreationError: If the monitor cannot be created.
+
     """
     def __init__(self, prot):
         if not isinstance(prot, NET_PROT):
@@ -137,6 +133,7 @@ class NetworkMonitor:
 
         Args:
             on_evt (callback): Callback function.
+
         """
         self._on_evt = on_evt
         self._handle = ffi.new_handle(self)

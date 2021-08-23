@@ -37,6 +37,7 @@ class EthernetNetwork(IPBNetwork):
 
         Raises:
             ILError: If the loading firmware process fails.
+
         """
         try:
             file = open(fw_file, 'rb')
@@ -88,6 +89,7 @@ class EthernetNetwork(IPBNetwork):
             moco_file: Path to the firmware file.
         Returns:
             int: Result code.
+
         """
         r = 0
         upd = UDP(port, ip)
@@ -140,6 +142,7 @@ class EthernetNetwork(IPBNetwork):
 
         Returns:
             EthernetServo: Instance of the servo connected.
+
         """
         net__ = ffi.new('il_net_t **')
         servo__ = ffi.new('il_servo_t **')
@@ -172,6 +175,7 @@ class EthernetNetwork(IPBNetwork):
 
         Args:
             servo (EthernetServo): Instance of the servo connected.
+
         """
         # TODO: This stops all connections no only the target servo.
         self.servos.remove(servo)

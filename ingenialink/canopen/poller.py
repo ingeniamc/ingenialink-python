@@ -15,6 +15,7 @@ class PollerTimer:
     Args:
         time (int): Timeout to use for the timer.
         cb (function): Callback.
+
     """
     def __init__(self, time, cb):
         self.cb = cb
@@ -47,6 +48,7 @@ class CanopenPoller(Poller):
 
     Raises:
         ILCreationError: If the poller could not be created.
+
     """
 
     def __init__(self, servo, num_channels):
@@ -100,6 +102,7 @@ class CanopenPoller(Poller):
 
         Raises:
             ILStateError: The poller is already running.
+
         """
         if self.__running:
             logger.warning("Poller is running")
@@ -132,6 +135,7 @@ class CanopenPoller(Poller):
             ILStateError: The poller is already running.
             ILValueError: Channel out of range.
             TypeError: If the register is not valid.
+
         """
 
         if self.__running:
@@ -164,6 +168,7 @@ class CanopenPoller(Poller):
 
         Returns:
             int: Status code.
+
         """
 
         if self.__running:
@@ -184,6 +189,7 @@ class CanopenPoller(Poller):
 
         Returns:
             int: Status code.
+
         """
 
         for channel in range(0, self.num_channels):
@@ -234,9 +240,7 @@ class CanopenPoller(Poller):
     @property
     def data(self):
         """tuple (list, list, bool): Time vector, array of data vectors and a
-            flag indicating if data was lost.
-        """
-
+            flag indicating if data was lost."""
         t = list(self.__acq['t'][0:self.__samples_count])
         d = []
 

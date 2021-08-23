@@ -10,6 +10,7 @@ class Categories:
 
     Args:
         dict_ (str): Path to the Ingenia dictionary.
+
     """
     def __init__(self, dict_):
         self._dict = dict_
@@ -40,6 +41,7 @@ class Categories:
 
         Returns:
             dict: Labels dictionary.
+
         """
         return self._categories[cat_id]
 
@@ -49,8 +51,8 @@ class Errors:
 
     Args:
         dict_ (str): Path to the Ingenia dictionary.
-    """
 
+    """
     def __init__(self, dict_):
         self._dict = dict_
         self._errors = {}   # { cat_id : label }
@@ -83,6 +85,7 @@ class CanopenDictionary(Dictionary):
 
     Args:
         dictionary_path (str): Path to the Ingenia dictionary.
+
     """
     def __init__(self, dictionary_path):
         super(CanopenDictionary, self).__init__(dictionary_path)
@@ -134,7 +137,8 @@ class CanopenDictionary(Dictionary):
         """Reads a register from the dictionary and creates a Register instance.
 
         Args:
-            register (str): Register instance from the dictionary. 
+            register (str): Register instance from the dictionary.
+
         """
         try:
             # Identifier
@@ -255,5 +259,6 @@ class CanopenDictionary(Dictionary):
         
         Returns:
             dict: Dictionary of all the registers for a subnode.
+
         """
         return self.registers[subnode]

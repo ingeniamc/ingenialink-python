@@ -10,6 +10,7 @@ class Poller(ABC):
 
     Raises:
         ILCreationError: If the poller could not be created.
+
     """
     def __init__(self, servo, num_channels):
         self.__servo = servo

@@ -7,7 +7,6 @@ from ingenialink.register import _get_reg_id
 
 class MONITOR_TRIGGER(Enum):
     """Monitor Trigger Types."""
-
     IMMEDIATE = lib.IL_MONITOR_TRIGGER_IMMEDIATE
     """Immediate."""
     MOTION = lib.IL_MONITOR_TRIGGER_MOTION
@@ -30,8 +29,8 @@ class Monitor:
 
     Raises:
         ILCreationError: If the monitor could not be created.
-    """
 
+    """
     def __init__(self, servo):
         monitor = lib.il_monitor_create(servo._servo)
         raise_null(monitor)
@@ -42,13 +41,11 @@ class Monitor:
 
     def start(self):
         """Start the monitor."""
-
         r = lib.il_monitor_start(self._monitor)
         raise_err(r)
 
     def stop(self):
         """Stop the monitor."""
-
         r = lib.il_monitor_stop(self._monitor)
         raise_err(r)
 
@@ -57,8 +54,8 @@ class Monitor:
 
         Args:
             timeout (int, float): Timeout (s).
-        """
 
+        """
         r = lib.il_monitor_wait(self._monitor, to_ms(timeout))
         raise_err(r)
 
@@ -68,8 +65,8 @@ class Monitor:
 
         Returns:
             tuple: Current acquisition time and data for all channels.
-        """
 
+        """
         lib.il_monitor_data_get(self._monitor, self._acq)
         acq = ffi.cast('il_monitor_acq_t *', self._acq[0])
 
@@ -91,8 +88,8 @@ class Monitor:
             t_s (int, float): Sampling period (s, resolution: 1e-4 s).
             delay_samples (int, optional): Delay samples.
             max_samples (int, optional): Maximum acquisition samples.
-        """
 
+        """
         r = lib.il_monitor_configure(self._monitor, int(t_s * 1e6),
                                      delay_samples, max_samples)
         raise_err(r)
@@ -103,8 +100,8 @@ class Monitor:
         Args:
             ch (int): Channel.
             reg (str, Register): Register to be mapped to the channel.
-        """
 
+        """
         _reg, _id = _get_reg_id(reg)
         r = lib.il_monitor_ch_configure(self._monitor, ch, _reg, _id)
         raise_err(r)
@@ -114,14 +111,13 @@ class Monitor:
 
         Args:
             ch (int): Channel identifier.
-        """
 
+        """
         r = lib.il_monitor_ch_disable(self._monitor, ch)
         raise_err(r)
 
     def ch_disable_all(self):
         """Disable all channels."""
-
         r = lib.il_monitor_ch_disable_all(self._monitor)
         raise_err(r)
 
@@ -141,8 +137,8 @@ class Monitor:
                 MONITOR_TRIGGER.NEG, MONITOR_TRIGGER.WINDOW
             din_msk (int, optional): Digital input mask, used for
                 MONITOR_TRIGGER.DIN
-        """
 
+        """
         if not isinstance(mode, MONITOR_TRIGGER):
             raise TypeError('Invalid trigger mode')
 

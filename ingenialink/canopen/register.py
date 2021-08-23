@@ -30,6 +30,7 @@ class CanopenRegister(Register):
             TypeError: If any of the parameters has invalid type.
             ILValueError: If the register is invalid.
             ILAccessError: Register with wrong access type.
+
         """
 
     def __init__(self, identifier, units, cyclic, idx, subidx, dtype,

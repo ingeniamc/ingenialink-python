@@ -53,6 +53,7 @@ class IPBNetwork(Network, ABC):
         Args:
             callback (Callback): Function that will be called every time an event
             is raised.
+
         """
         # TODO: Re-implement using observers and internal threads
         status = self.status
@@ -78,6 +79,7 @@ class IPBNetwork(Network, ABC):
 
         Args:
             retries (int): Number of reconnection retries.
+
         """
         return lib.il_net_set_reconnection_retries(self.__cffi_network, retries)
 
@@ -88,6 +90,7 @@ class IPBNetwork(Network, ABC):
             timeout (int): Timeout in ms.
         Returns:
             int: Result code.
+
         """
         return lib.il_net_set_recv_timeout(self.__cffi_network, timeout)
 
@@ -98,6 +101,7 @@ class IPBNetwork(Network, ABC):
             stop (int): 0 to START, 1 to STOP.
         Returns:
             int: Result code.
+
         """
         return lib.il_net_set_status_check_stop(self.__cffi_network, stop)
 
@@ -120,6 +124,7 @@ class IPBNetwork(Network, ABC):
 
         Returns:
             str: Current network state.
+
         """
         return NET_STATE(lib.il_net_state_get(self.__cffi_network))
 
@@ -129,5 +134,6 @@ class IPBNetwork(Network, ABC):
 
         Returns:
             str: Current network status.
+
         """
         return lib.il_net_status_get(self.__cffi_network)

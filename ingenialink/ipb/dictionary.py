@@ -13,6 +13,7 @@ class SubCategories:
     Args:
         dict_ (il_dict_t *): Ingenia dictionary instance.
         cat_id (str): Category ID (parent).
+
     """
 
     def __init__(self, dict_, cat_id):
@@ -40,6 +41,7 @@ class SubCategories:
 
         Returns:
             dict: Labels dictionary.
+
         """
         labels_p = ffi.new('il_dict_labels_t **')
         r = lib.il_dict_scat_get(self._dict, cstr(self._cat_id), cstr(scat_id),
@@ -54,15 +56,17 @@ class SubCategories:
 
         Returns:
             list: Sub-category identifiers.
+
         """
         return self._scat_ids
 
 
 class IPBCategories(Categories):
-    """ IPB Categories for the dictionary.
+    """IPB Categories for the dictionary.
 
     Args:
         parent (IPBDictionary): Ingenia dictionary instance.
+
     """
 
     def __init__(self, parent):
@@ -89,6 +93,7 @@ class IPBCategories(Categories):
 
         Returns:
             dict: Labels dictionary.
+
         """
         labels_p = ffi.new('il_dict_labels_t **')
         r = lib.il_dict_cat_get(self.__parent._cffi_dictionary,
@@ -102,6 +107,7 @@ class IPBCategories(Categories):
 
         Returns:
             SubCategories: Sub-categories.
+
         """
         return SubCategories(self.__parent._cffi_dictionary, cat_id)
 
@@ -111,6 +117,7 @@ class IPBCategories(Categories):
 
         Returns:
             list: Category IDs.
+
         """
         return self._cat_ids
 
@@ -120,6 +127,7 @@ class RegistersDictionary(collections.Mapping):
 
     Args:
         dict_ (il_dict_t *): Ingenia dictionary instance.
+
     """
 
     def __init__(self, dict_, subnode):
@@ -164,6 +172,7 @@ class IPBDictionary(Dictionary):
 
     Raises:
         ILCreationError: If the dictionary could not be created.
+
     """
     def __init__(self, dictionary):
         super(IPBDictionary, self).__init__(dictionary)
@@ -203,6 +212,7 @@ class IPBDictionary(Dictionary):
 
         Args:
             filename (str): Output file name/path.
+
         """
         r = lib.il_dict_save(self.__cffi_dictionary, cstr(filename))
         raise_err(r)
@@ -215,6 +225,7 @@ class IPBDictionary(Dictionary):
 
         Returns:
             array: List of registers.
+
         """
         if subnode < self.subnodes:
             return self.__regs[subnode]
@@ -225,6 +236,7 @@ class IPBDictionary(Dictionary):
         Args:
             id_ (str): Register ID.
             value: Value.
+
         """
         reg = self.regs[id_]
         value_ = ffi.new('il_reg_value_t')

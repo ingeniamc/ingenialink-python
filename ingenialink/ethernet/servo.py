@@ -14,6 +14,7 @@ class EthernetServo(IPBServo):
         dictionary_path (str): Path to the dictionary.
         port (int): Port for the communication.
         communication_protocol (NET_TRANS_PROT): Transmission protocol.
+
     """
     def __init__(self, net, target, dictionary_path, port, communication_protocol):
         super(EthernetServo, self).__init__(net, target, dictionary_path)

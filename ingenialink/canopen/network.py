@@ -103,6 +103,7 @@ class NetStatusListener(Thread):
     Args:
         parent (Network): network instance of the CANopen communication.
         node (int): Identifier for the targeted node ID.
+
     """
 
     def __init__(self, parent, node):
@@ -139,6 +140,7 @@ class CanopenNetwork(Network):
         device (CAN_DEVICE): Targeted device to connect.
         channel (int): Targeted channel number of the transceiver.
         baudrate (CAN_BAUDRATE): Baudrate to communicate through.
+
     """
 
     def __init__(self, device, channel=0, baudrate=CAN_BAUDRATE.Baudrate_1M):
@@ -166,6 +168,7 @@ class CanopenNetwork(Network):
 
         Returns:
             list: Containing all the detected node IDs.
+
         """
         self._setup_connection()
 
@@ -196,6 +199,7 @@ class CanopenNetwork(Network):
             its status, errors, faults, etc.
             net_status_listener (bool): Toggle the listener of the network
             status, connection and disconnection.
+
         """
         nodes = self.scan_slaves()
         if len(nodes) < 1:
@@ -235,6 +239,7 @@ class CanopenNetwork(Network):
 
         Args:
             servo (CanopenServo): Instance of the servo connected.
+
         """
         self.stop_network_monitor()
         servo.stop_servo_monitor()
@@ -826,6 +831,7 @@ class CanopenNetwork(Network):
 
         Returns:
             int: Assigned slot.
+
         """
         r = len(self.__observers_net_state)
         self.__observers_net_state.append(callback)
@@ -836,6 +842,7 @@ class CanopenNetwork(Network):
 
         Args:
             callback (Callback): Callback function.
+
         """
         self.__observers_net_state.remove(callback)
 

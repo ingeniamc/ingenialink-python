@@ -113,6 +113,7 @@ class Register(ABC):
 
     Raises:
         TypeError: If any of the parameters has invalid type.
+
     """
     def __init__(self, identifier, units, cyclic, dtype, access,
                  phy=REG_PHY.NONE, subnode=1, storage=None, range=None,

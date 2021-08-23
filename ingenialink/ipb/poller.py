@@ -14,6 +14,7 @@ class IPBPoller(Poller):
 
     Raises:
         ILCreationError: If the poller could not be created.
+
     """
     def __init__(self, servo, num_channels):
         super(IPBPoller, self).__init__(servo, num_channels)
@@ -40,6 +41,7 @@ class IPBPoller(Poller):
         Args:
             t_s (int, float): Polling period (s).
             sz (int): Buffer size.
+
         """
         r = lib.il_poller_configure(self._poller, to_ms(t_s), sz)
         raise_err(r)
@@ -53,6 +55,7 @@ class IPBPoller(Poller):
 
         Raises:
             TypeError: If the register is not valid.
+
         """
         _reg, _id = _get_reg_id(reg)
         r = lib.il_poller_ch_configure(self._poller, ch, _reg, _id)
@@ -63,6 +66,7 @@ class IPBPoller(Poller):
 
         Args:
             ch (int): Channel to be disabled.
+
         """
         r = lib.il_poller_ch_disable(self._poller, ch)
         raise_err(r)
@@ -79,6 +83,7 @@ class IPBPoller(Poller):
         Returns:
             tuple (list, list, bool): Time vector, array of data vectors and a
                 flag indicating if data was lost.
+
         """
         lib.il_poller_data_get(self._poller, self._acq)
         acq = ffi.cast('il_poller_acq_t *', self._acq[0])

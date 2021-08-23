@@ -29,6 +29,7 @@ class IPBRegister(Register):
 
     Raises:
         TypeError: If any of the parameters has invalid type.
+
     """
     def __init__(self, identifier, units, cyclic, dtype, access, address,
                  phy=REG_PHY.NONE, subnode=1, storage=None, range=None,
@@ -145,6 +146,7 @@ class IPBRegister(Register):
 
         Returns:
             str: Register information.
+
         """
         # obtain category/subcategory information
         if self.cat_id:
@@ -186,6 +188,7 @@ class IPBRegister(Register):
 
         Returns:
             Register: Register object instance copied.
+
         """
         inst = cls.__new__(cls)
         inst._reg = reg
@@ -199,6 +202,7 @@ class IPBRegister(Register):
 
         Returns:
             str: Register identifier
+
         """
         if self._reg.identifier != ffi.NULL:
             return pstr(self._reg.identifier)
@@ -211,6 +215,7 @@ class IPBRegister(Register):
 
         Returns:
             str: Register units
+
         """
         if self._reg.units != ffi.NULL:
             return pstr(self._reg.units)
@@ -221,6 +226,7 @@ class IPBRegister(Register):
 
         Returns:
             int: Register address.
+
         """
         return self._reg.address
 
@@ -230,6 +236,7 @@ class IPBRegister(Register):
 
         Returns:
             int: Register subnode.
+
         """
         return self._reg.subnode
 
@@ -239,6 +246,7 @@ class IPBRegister(Register):
 
         Returns:
             str: Register cyclic type.
+
         """
         if self._reg.cyclic != ffi.NULL:
             return pstr(self._reg.cyclic)
@@ -249,6 +257,7 @@ class IPBRegister(Register):
 
         Returns:
             int: Register data type.
+
         """
         return REG_DTYPE(self._reg.dtype)
 
@@ -258,6 +267,7 @@ class IPBRegister(Register):
 
         Returns:
             int: Register access type.
+
         """
         return REG_ACCESS(self._reg.access)
 
@@ -267,6 +277,7 @@ class IPBRegister(Register):
 
         Returns:
             int: Register physical units.
+
         """
         return REG_PHY(self._reg.phy)
 
@@ -276,6 +287,7 @@ class IPBRegister(Register):
 
         Returns:
              int: Register storage.
+
         """
         if not self._reg.storage_valid:
             return None
@@ -307,6 +319,7 @@ class IPBRegister(Register):
 
         Returns:
             tuple: Register range (min, max), None if undefined.
+
         """
         if self.dtype == REG_DTYPE.S8:
             return self._reg.range.min.s8, self._reg.range.max.s8
@@ -335,6 +348,7 @@ class IPBRegister(Register):
 
         Returns:
             LabelsDictionary: Labels dictionary.
+
         """
         return self._labels
 
@@ -344,6 +358,7 @@ class IPBRegister(Register):
 
         Returns:
             array: Enumerations of the register.
+
         """
         if not hasattr(self, '_enums'):
             self._enums = []
@@ -361,6 +376,7 @@ class IPBRegister(Register):
 
         Returns:
             int: Register Enumerations count.
+
         """
         return self._reg.enums_count
 
@@ -370,6 +386,7 @@ class IPBRegister(Register):
 
         Returns:
             str | None: Current category identifier.
+
         """
         if self._reg.cat_id != ffi.NULL:
             return pstr(self._reg.cat_id)
@@ -382,6 +399,7 @@ class IPBRegister(Register):
 
         Returns:
             str | None: Current subcategory identifier.
+
         """
         if self._reg.scat_id != ffi.NULL:
             return pstr(self._reg.scat_id)
@@ -393,6 +411,7 @@ class IPBRegister(Register):
 
         Returns:
             int: Register internal_use.
+
         """
         return self._reg.internal_use
 
@@ -405,6 +424,7 @@ class LabelsDictionary(collections.MutableMapping):
 
     Raises:
         ILCreationError: If the dictionary could not be created.
+
     """
     def __init__(self, labels={}):
         _labels = lib.il_dict_labels_create()

@@ -13,6 +13,7 @@ class SerialServo(IPBServo):
         net (IPBNetwork): IPB Network associated with the servo.
         target (int): Target ID for the slave.
         dictionary_path (str): Path to the dictionary.
+
     """
     def __init__(self, net, target, dictionary_path):
         super(SerialServo, self).__init__(net, target, dictionary_path)
