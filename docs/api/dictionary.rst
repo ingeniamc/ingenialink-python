@@ -2,5 +2,5 @@
 Dictionary
 ==========
 
-.. automodule:: ingenialink.dict_.Dictionary
+.. automodule:: ingenialink.dictionary.Dictionary
     :members:

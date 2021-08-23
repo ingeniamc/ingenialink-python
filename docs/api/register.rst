@@ -2,5 +2,5 @@
 Registers
 =========
 
-.. automodule:: ingenialink.registers
+.. automodule:: ingenialink.register
     :members:

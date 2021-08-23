@@ -1,13 +1,23 @@
-Communication Examples
+Connection Examples
 ======================
 
-Slave connection Example
------------------------------
+Slave connection through CANopen Example
+----------------------------------------
 
-.. literalinclude:: ../../examples/general/slave_connection.py
+.. literalinclude:: ../../examples/canopen/can_connection.py
 
 
-ECAT Slave connection Example
------------------------------
+Slave connection through EtherCAT Example
+-----------------------------------------
 
-.. literalinclude:: ../../examples/general/ecat_slave_connection.py
+.. literalinclude:: ../../examples/ethercat/ecat_connection.py
+
+Slave connection through Ethernet Example
+-----------------------------------------
+
+.. literalinclude:: ../../examples/ethernet/eth_connection.py
+
+Slave connection through Serial Example
+---------------------------------------
+
+.. literalinclude:: ../../examples/serial/serial_connection.py
