@@ -1,10 +1,20 @@
 node('windows') {
     deleteDir()
 
+
     if (env.BRANCH_NAME == 'master') {
         stage('Checkout') {
             checkout scm
         }
+	'''
+		Remove _build, _deps, _install, build
+		change to wanted python
+		pipenv --rm
+		remove pipfile.lock
+		pipenv install --dev
+
+
+	'''
 
         stage('Install environment') {
             bat '''

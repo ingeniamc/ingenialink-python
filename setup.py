@@ -79,10 +79,10 @@ setup(name='ingenialink',
         'bdist_app': BDistAppCommand,
         'bclean_app': BCleanAppCommand
       },
-      setup_requires=['cffi==1.12.2'],
+      setup_requires=['cffi==1.14.6'],
       cffi_modules=['ingenialink/ingenialink_build.py:ffibuilder'],
       install_requires=[
-          'cffi==1.12.2',
+          'cffi==1.14.6',
           'numpy<=1.19.5',
           'canopen>=1.0.0',
           'ingenialogger>=0.2.1'
