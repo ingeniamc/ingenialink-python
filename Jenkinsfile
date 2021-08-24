@@ -18,11 +18,6 @@ node('windows') {
                     del /f "Pipfile.lock"
                 """
             }
-            stage('Remove previous environments') {
-                bat """
-                    pipenv --rm
-                """
-            }
             stage('Set environment Python version to 3.6') {
                 bat """
                     @set "PATH=C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python36\\;C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python36\\Scripts\\;%PATH%"
@@ -61,6 +56,11 @@ node('windows') {
                     rmdir /Q /S "_install"
                     rmdir /Q /S "build"
                     del /f "Pipfile.lock"
+                """
+            }
+            stage('Remove previous environments') {
+                bat """
+                    pipenv --rm
                 """
             }
             stage('Set environment Python version to 3.9') {
