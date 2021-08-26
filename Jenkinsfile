@@ -29,18 +29,20 @@ node('sw') {
                 '''
             }
 
+            stage('PEP8 style check')
+            {
+                // bat '''
+                //     python -m pipenv run pycodestyle --first ingenialink/
+                // '''
+            }
+
             stage('Build libraries') {
                 bat '''
                     python -m pipenv run python setup.py build sdist bdist_wheel
                 '''
             }
 
-            stage('PEP8 style check')
-            {
-                bat '''
-                    python -m pipenv run pycodestyle --first ingenialink/
-                '''
-            }
+            
 
             stage('Generate documentation') {
                 bat '''
@@ -77,13 +79,6 @@ node('sw') {
             stage('Build libraries') {
                 bat '''
                     python -m pipenv run python setup.py build sdist bdist_wheel
-                '''
-            }
-
-            stage('PEP8 style check')
-            {
-                bat '''
-                    python -m pipenv run pycodestyle --first ingenialink/
                 '''
             }
         }
