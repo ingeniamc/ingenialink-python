@@ -20,7 +20,7 @@ node('windows') {
             }
             stage('Set environment Python version to 3.6') {
                 bat """
-                    @set "PATH=C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python36\\;C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python36\\Scripts\\;%PATH%"
+                    @set "PATH=C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python36\\;C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python36\\Scripts\\;%PATH%"
                 """
             }
             stage('Install environment') {
@@ -65,7 +65,7 @@ node('windows') {
             }
             stage('Set environment Python version to 3.9') {
                 bat """
-                    @set "PATH=C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python39\\;C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python39\\Scripts\\;%PATH%"
+                    @set "PATH=C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python39\\;C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python39\\Scripts\\;%PATH%"
                 """
             }
             stage('Install environment') {
