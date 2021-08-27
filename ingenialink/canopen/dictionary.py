@@ -92,7 +92,7 @@ class CanopenDictionary(Dictionary):
         self.__version = '1'
         self.categories = None
         self.subnodes = 2
-        self.registers = []
+        self.__registers = []
         self.errors = None
 
         self.read_dictionary()
@@ -108,7 +108,7 @@ class CanopenDictionary(Dictionary):
             self.subnodes = len(root.findall('./Body/Device/Axes/Axis'))
 
         for subnode in range(0, self.subnodes):
-            self.registers.append({})
+            self.__registers.append({})
 
         # Categories
         self.categories = Categories(self.path)
@@ -247,7 +247,7 @@ class CanopenDictionary(Dictionary):
                                   labels=labels, enums=enums,
                                   enums_count=len(enums), cat_id=cat_id,
                                   internal_use=internal_use)
-            self.registers[int(subnode)][identifier] = reg
+            self.__registers[int(subnode)][identifier] = reg
         except Exception as e:
             pass
 
@@ -261,4 +261,4 @@ class CanopenDictionary(Dictionary):
             dict: Dictionary of all the registers for a subnode.
 
         """
-        return self.registers[subnode]
+        return self.__registers[subnode]
