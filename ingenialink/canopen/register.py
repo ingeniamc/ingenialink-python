@@ -119,13 +119,16 @@ class CanopenRegister(Register):
         else:
             self.storage_valid = 0
 
+        aux_enums = []
         for enum in enums:
             for key, value in enum.items():
                 dictionary = {
                     'label': value,
                     'value': int(key)
                 }
-                self.enums.append(dictionary)
+                aux_enums.append(dictionary)
+
+        self.enums = aux_enums
 
     @property
     def idx(self):

@@ -257,7 +257,15 @@ class Register(ABC):
     @property
     def enums(self):
         """dict: Containing all the enums for the register."""
-        return self.__enums
+        if not hasattr(self, '_enums'):
+            self._enums = []
+            for i in range(0, self.enums_count):
+                dict = {
+                    'label': pstr(self.__enums[i].label),
+                    'value': self.__enums[i].value
+                }
+                self._enums.append(dict)
+        return self._enums
 
     @enums.setter
     def enums(self, value):
