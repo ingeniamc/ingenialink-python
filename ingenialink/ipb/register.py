@@ -7,6 +7,118 @@ from ..register import Register, REG_DTYPE, REG_ACCESS, REG_PHY
 import collections
 
 
+def get_enums(enums, enums_count):
+    """Obtain enumerations list of the register.
+
+    Returns:
+        array: Enumerations of the register.
+
+    """
+    aux_enums = []
+    for i in range(enums_count):
+        aux_dict = {
+            'label': pstr(enums[i].label),
+            'value': enums[i].value
+        }
+        aux_enums.append(aux_dict)
+    return aux_enums
+
+
+def get_range(reg_range, dtype):
+    """Obtains register range.
+
+    Returns:
+        tuple: Register range (min, max), None if undefined.
+
+    """
+
+    if dtype == REG_DTYPE.S8:
+        return reg_range.min.s8, reg_range.max.s8
+    elif dtype == REG_DTYPE.U8:
+        return reg_range.min.u8, reg_range.max.u8
+    if dtype == REG_DTYPE.S16:
+        return reg_range.min.s16, reg_range.max.s16
+    elif dtype == REG_DTYPE.U16:
+        return reg_range.min.u16, reg_range.max.u16
+    if dtype == REG_DTYPE.S32:
+        return reg_range.min.s32, reg_range.max.s32
+    elif dtype == REG_DTYPE.U32:
+        return reg_range.min.u32, reg_range.max.u32
+    if dtype == REG_DTYPE.S64:
+        return reg_range.min.s64, reg_range.max.s64
+    elif dtype == REG_DTYPE.U64:
+        return reg_range.min.u64, reg_range.max.u64
+    elif dtype == REG_DTYPE.FLOAT:
+        return reg_range.min.flt, reg_range.max.flt
+
+    return None
+
+
+def get_storage(storage, storage_valid, dtype):
+    """Obtain register storage.
+
+    Returns:
+         int: Register storage.
+
+    """
+    if not storage_valid:
+        return None
+
+    if dtype == REG_DTYPE.S8:
+        return storage.s8
+    elif dtype == REG_DTYPE.U8:
+        return storage.u8
+    if dtype == REG_DTYPE.S16:
+        return storage.s16
+    elif dtype == REG_DTYPE.U16:
+        return storage.u16
+    if dtype == REG_DTYPE.S32:
+        return storage.s32
+    elif dtype == REG_DTYPE.U32:
+        return storage.u32
+    if dtype == REG_DTYPE.S64:
+        return storage.s64
+    elif dtype == REG_DTYPE.U64:
+        return storage.u64
+    elif dtype == REG_DTYPE.FLOAT:
+        return storage.flt
+    else:
+        return None
+
+
+def ipb_register_from_cffi(cffi_register):
+    units = None
+    cyclic = None
+    labels = None
+    cat_id = None
+    scat_id = None
+
+    identifier = pstr(cffi_register.identifier)
+    dtype = REG_DTYPE(cffi_register.dtype)
+    access = REG_ACCESS(cffi_register.access)
+    phy = REG_PHY(cffi_register.phy)
+    address = cffi_register.address
+    subnode = cffi_register.subnode
+    storage = get_storage(cffi_register.storage, cffi_register.storage_valid, dtype)
+    reg_range = get_range(cffi_register.range, cffi_register.dtype)
+    enums_count = cffi_register.enums_count
+    enums = get_enums(cffi_register.enums, enums_count)
+    internal_use = cffi_register.internal_use
+
+    if cffi_register.units != ffi.NULL:
+        units = pstr(cffi_register.units)
+    if cffi_register.cyclic != ffi.NULL:
+        cyclic = pstr(cffi_register.cyclic)
+    if cffi_register.cat_id != ffi.NULL:
+        cat_id = pstr(cffi_register.cat_id)
+    if cffi_register.scat_id != ffi.NULL:
+        scat_id = pstr(cffi_register.scat_id)
+
+    return IPBRegister(identifier, units, cyclic, dtype, access,
+                       address, phy, subnode,  storage, reg_range,
+                       labels, enums, cat_id, scat_id, internal_use)
+
+
 class IPBRegister(Register):
     """IPB Register.
 
@@ -42,108 +154,18 @@ class IPBRegister(Register):
         super(IPBRegister, self).__init__(
             identifier, units, cyclic, dtype, access, phy, subnode, storage,
             reg_range, labels, enums, enums_count, cat_id, scat_id, internal_use)
+
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
-
         if not isinstance(access, REG_ACCESS):
             raise TypeError('Invalid access type')
-
         if not isinstance(phy, REG_PHY):
             raise TypeError('Invalid physical units type')
-
-        self._reg = ffi.new('il_reg_t *')
-
-        self._reg.identifier = ffi.new("char[]", cstr(identifier))
-        self._reg.units = ffi.new("char[]", cstr(units))
-        self._reg.address = address
-        self._reg.subnode = subnode
-        self._reg.cyclic = ffi.new("char[]", cstr(cyclic))
-        self._reg.dtype = dtype.value
-        self._reg.access = access.value
-        self._reg.phy = phy.value
-        self._reg.internal_use = internal_use
-
-        self._reg.storage_valid = 0 if not storage else 1
-
-        if dtype == REG_DTYPE.S8:
-            if storage:
-                self._reg.storage.s8 = int(storage)
-
-            self._reg.range.min.s8 = (reg_range[0] if reg_range else
-                                      INT_SIZES.S8_MIN.value)
-            self._reg.range.max.s8 = (reg_range[1] if reg_range else
-                                      INT_SIZES.S8_MAX.value)
-        elif dtype == REG_DTYPE.U8:
-            if storage:
-                self._reg.storage.u8 = int(storage)
-
-            self._reg.range.min.u8 = reg_range[0] if reg_range else 0
-            self._reg.range.max.u8 = (reg_range[1] if reg_range else
-                                      INT_SIZES.U8_MAX.value)
-        if dtype == REG_DTYPE.S16:
-            if storage:
-                self._reg.storage.s16 = int(storage)
-
-            self._reg.range.min.s16 = (reg_range[0] if reg_range else
-                                       INT_SIZES.S16_MIN.value)
-            self._reg.range.max.s16 = (reg_range[1] if reg_range else
-                                       INT_SIZES.S16_MAX.value)
-        elif dtype == REG_DTYPE.U16:
-            if storage:
-                self._reg.storage.u16 = int(storage)
-
-            self._reg.range.min.u16 = reg_range[0] if reg_range else 0
-            self._reg.range.max.u16 = (reg_range[1] if reg_range else
-                                       INT_SIZES.U16_MAX.value)
-        if dtype == REG_DTYPE.S32:
-            if storage:
-                self._reg.storage.s32 = int(storage)
-
-            self._reg.range.min.s32 = (reg_range[0] if reg_range else
-                                       INT_SIZES.S32_MIN.value)
-            self._reg.range.max.s32 = (reg_range[1] if reg_range else
-                                       INT_SIZES.S32_MAX.value)
-        elif dtype == REG_DTYPE.U32:
-            if storage:
-                self._reg.storage.u32 = int(storage)
-
-            self._reg.range.min.u32 = reg_range[0] if reg_range else 0
-            self._reg.range.max.u32 = (reg_range[1] if reg_range else
-                                       INT_SIZES.U32_MAX.value)
-        if dtype == REG_DTYPE.S64:
-            if storage:
-                self._reg.storage.s64 = int(storage)
-
-            self._reg.range.min.s64 = (reg_range[0] if reg_range else
-                                       INT_SIZES.S64_MIN.value)
-            self._reg.range.max.s64 = (reg_range[1] if reg_range else
-                                       INT_SIZES.S64_MAX.value)
-        elif dtype == REG_DTYPE.U64:
-            if storage:
-                self._reg.storage.u64 = int(storage)
-
-            self._reg.range.min.u64 = reg_range[0] if reg_range else 0
-            self._reg.range.max.u64 = (reg_range[1] if reg_range else
-                                       INT_SIZES.U64_MAX.value)
-        elif dtype == REG_DTYPE.FLOAT:
-            if storage:
-                self._reg.storage.flt = float(storage)
-
-            self._reg.range.min.flt = (reg_range[0] if reg_range else INT_SIZES.S32_MIN.value)
-            self._reg.range.max.flt = (reg_range[1] if reg_range else INT_SIZES.S32_MAX.value)
-        else:
-            self._reg.storage_valid = 0
-
-        self._labels = LabelsDictionary(labels)
-        self._reg.labels = self._labels._labels
-        self._reg.enums_count = enums_count
-
-        self._reg.cat_id = ffi.NULL if not cat_id else cstr(cat_id)
-
         if not cat_id and scat_id:
             raise ValueError('Sub-category requires a parent category')
 
-        self._reg.scat_id = ffi.NULL if not scat_id else cstr(scat_id)
+        self._address = address
+        self._labels = LabelsDictionary(labels)
 
     def __repr__(self):
         """Obtain register object.
@@ -152,7 +174,6 @@ class IPBRegister(Register):
             str: Register information.
 
         """
-        # obtain category/subcategory information
         if self.cat_id:
             cat_info = self.cat_id
             if self.scat_id:
@@ -183,211 +204,10 @@ class IPBRegister(Register):
                     self.internal_use
                 )
 
-    @classmethod
-    def _from_register(cls, reg):
-        """Create a new class instance from an existing register.
-
-        Args:
-            reg (Register): Register instance.
-
-        Returns:
-            Register: Register object instance copied.
-
-        """
-        inst = cls.__new__(cls)
-        inst._reg = reg
-        inst._labels = LabelsDictionary._from_labels(reg.labels)
-
-        return inst
-
-    @property
-    def identifier(self):
-        """Obtain register identifier.
-
-        Returns:
-            str: Register identifier
-
-        """
-        if self._reg.identifier != ffi.NULL:
-            return pstr(self._reg.identifier)
-
-        return None
-
-    @property
-    def units(self):
-        """Obtain register units.
-
-        Returns:
-            str: Register units
-
-        """
-        if self._reg.units != ffi.NULL:
-            return pstr(self._reg.units)
-
     @property
     def address(self):
-        """Obtain register address.
-
-        Returns:
-            int: Register address.
-
-        """
-        return self._reg.address
-
-    @property
-    def subnode(self):
-        """Obtain register subnode.
-
-        Returns:
-            int: Register subnode.
-
-        """
-        return self._reg.subnode
-
-    @property
-    def cyclic(self):
-        """Obtain register cyclic.
-
-        Returns:
-            str: Register cyclic type.
-
-        """
-        if self._reg.cyclic != ffi.NULL:
-            return pstr(self._reg.cyclic)
-
-    @property
-    def storage(self):
-        """Obtain register storage.
-
-        Returns:
-             int: Register storage.
-
-        """
-        if not self._reg.storage_valid:
-            return None
-
-        if self.dtype == REG_DTYPE.S8:
-            return self._reg.storage.s8
-        elif self.dtype == REG_DTYPE.U8:
-            return self._reg.storage.u8
-        if self.dtype == REG_DTYPE.S16:
-            return self._reg.storage.s16
-        elif self.dtype == REG_DTYPE.U16:
-            return self._reg.storage.u16
-        if self.dtype == REG_DTYPE.S32:
-            return self._reg.storage.s32
-        elif self.dtype == REG_DTYPE.U32:
-            return self._reg.storage.u32
-        if self.dtype == REG_DTYPE.S64:
-            return self._reg.storage.s64
-        elif self.dtype == REG_DTYPE.U64:
-            return self._reg.storage.u64
-        elif self.dtype == REG_DTYPE.FLOAT:
-            return self._reg.storage.flt
-        else:
-            return None
-
-    @property
-    def range(self):
-        """Obtains register range.
-
-        Returns:
-            tuple: Register range (min, max), None if undefined.
-
-        """
-        if self.dtype == REG_DTYPE.S8:
-            return self._reg.range.min.s8, self._reg.range.max.s8
-        elif self.dtype == REG_DTYPE.U8:
-            return self._reg.range.min.u8, self._reg.range.max.u8
-        if self.dtype == REG_DTYPE.S16:
-            return self._reg.range.min.s16, self._reg.range.max.s16
-        elif self.dtype == REG_DTYPE.U16:
-            return self._reg.range.min.u16, self._reg.range.max.u16
-        if self.dtype == REG_DTYPE.S32:
-            return self._reg.range.min.s32, self._reg.range.max.s32
-        elif self.dtype == REG_DTYPE.U32:
-            return self._reg.range.min.u32, self._reg.range.max.u32
-        if self.dtype == REG_DTYPE.S64:
-            return self._reg.range.min.s64, self._reg.range.max.s64
-        elif self.dtype == REG_DTYPE.U64:
-            return self._reg.range.min.u64, self._reg.range.max.u64
-        elif self.dtype == REG_DTYPE.FLOAT:
-            return self._reg.range.min.flt, self._reg.range.max.flt
-
-        return None
-
-    @property
-    def labels(self):
-        """Obtains register labels.
-
-        Returns:
-            LabelsDictionary: Labels dictionary.
-
-        """
-        return self._labels
-
-    @property
-    def enums(self):
-        """Obtain enumerations list of the register.
-
-        Returns:
-            array: Enumerations of the register.
-
-        """
-        if not hasattr(self, '_enums'):
-            self._enums = []
-            for i in range(0, self._reg.enums_count):
-                dict = {
-                    'label': pstr(self._reg.enums[i].label),
-                    'value': self._reg.enums[i].value
-                }
-                self._enums.append(dict)
-        return self._enums
-
-    @property
-    def enums_count(self):
-        """Obtain number of enumerations of the register.
-
-        Returns:
-            int: Register Enumerations count.
-
-        """
-        return self._reg.enums_count
-
-    @property
-    def cat_id(self):
-        """Category identifier.
-
-        Returns:
-            str | None: Current category identifier.
-
-        """
-        if self._reg.cat_id != ffi.NULL:
-            return pstr(self._reg.cat_id)
-
-        return None
-
-    @property
-    def scat_id(self):
-        """Subcategory identifier.
-
-        Returns:
-            str | None: Current subcategory identifier.
-
-        """
-        if self._reg.scat_id != ffi.NULL:
-            return pstr(self._reg.scat_id)
-        return None
-
-    @property
-    def internal_use(self):
-        """Internal use check.
-
-        Returns:
-            int: Register internal_use.
-
-        """
-        return self._reg.internal_use
+        """int: Obtain register address."""
+        return self._address
 
 
 class LabelsDictionary(collections.MutableMapping):
@@ -400,7 +220,9 @@ class LabelsDictionary(collections.MutableMapping):
         ILCreationError: If the dictionary could not be created.
 
     """
-    def __init__(self, labels={}):
+    def __init__(self, labels=None):
+        if labels is None:
+            labels = {}
         _labels = lib.il_dict_labels_create()
         raise_null(_labels)
 
