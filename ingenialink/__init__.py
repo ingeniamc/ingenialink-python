@@ -19,7 +19,7 @@ from .ethercat.servo import EthercatServo
 
 from .canopen.servo import CanopenServo
 from .canopen.network import CanopenNetwork, CAN_DEVICE, CAN_DEVICE, \
-    CAN_BAUDRATE, CAN_BIT_TIMMING
+    CAN_BAUDRATE
 from .canopen.poller import CanopenPoller
 from .canopen.register import CanopenRegister
 from .canopen.dictionary import CanopenDictionary
@@ -36,7 +36,7 @@ __all__ = ['NetworkMonitor', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE', 'NET_TRANS_
            'Monitor', 'MONITOR_TRIGGER', 'IPBPoller',
            'SerialNetwork', 'SerialServo', 'EthercatNetwork', 'EthercatServo',
            'EthernetServo', 'EthernetNetwork',
-           'CanopenNetwork', 'CAN_DEVICE', 'CAN_BAUDRATE', 'CAN_BIT_TIMMING',
+           'CanopenNetwork', 'CAN_DEVICE', 'CAN_BAUDRATE',
            'CanopenServo', 'CanopenPoller', 'CanopenRegister', 'CanopenDictionary',
            'err_ipb_last']
 

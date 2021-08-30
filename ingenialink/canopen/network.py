@@ -5,7 +5,7 @@ from .._ingenialink import lib
 from .register import CanopenRegister
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import *
-from ..exceptions import ILFirmwareLoadError
+from ..exceptions import ILFirmwareLoadError, ILObjectNotExist
 from can.interfaces.pcan.pcan import PcanError
 from ..network import NET_PROT, NET_STATE, Network
 from can.interfaces.ixxat.exceptions import VCIDeviceNotFoundError
@@ -80,21 +80,14 @@ class CAN_BAUDRATE(Enum):
     """50 Kbit/s"""
 
 
-class CAN_BIT_TIMMING(Enum):
-    """Baudrates."""
-
-    Baudrate_1M = 0
-    """1 Mbit/s"""
-    Baudrate_500K = 2
-    """500 Kbit/s"""
-    Baudrate_250K = 3
-    """250 Kbit/s"""
-    Baudrate_125K = 4
-    """150 Kbit/s"""
-    Baudrate_100K = 5
-    """100 Kbit/s"""
-    Baudrate_50K = 6
-    """50 Kbit/s"""
+CAN_BIT_TIMMING = {
+    CAN_BAUDRATE.Baudrate_1M: 0,
+    CAN_BAUDRATE.Baudrate_500K: 2,
+    CAN_BAUDRATE.Baudrate_250K: 3,
+    CAN_BAUDRATE.Baudrate_125K: 4,
+    CAN_BAUDRATE.Baudrate_100K: 5,
+    CAN_BAUDRATE.Baudrate_50K: 6
+}
 
 
 class NetStatusListener(Thread):
@@ -148,8 +141,6 @@ class CanopenNetwork(Network):
         self.__device = device.value
         self.__channel = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
-        self.__eds = None
-        self.__dict = None
         self._connection = None
         self.__net_status_listener = None
         self.__net_state = NET_STATE.DISCONNECTED
@@ -178,7 +169,8 @@ class CanopenNetwork(Network):
         except Exception as e:
             logger.error("Error searching for nodes. Exception: {}".format(e))
             logger.info("Resetting bus")
-            self._connection.bus.reset()
+            if self._connection is not None and self._connection.bus is not None:
+                self._connection.bus.reset()
         sleep(0.05)
 
         nodes = self._connection.scanner.nodes
@@ -212,14 +204,11 @@ class CanopenNetwork(Network):
 
                 node.nmt.start_node_guarding(1)
 
-                self.__eds = eds
-                self.__dict = dictionary
-
                 if net_status_listener:
                     self.__net_status_listener = NetStatusListener(self, node)
                     self.__net_status_listener.start()
 
-                servo = CanopenServo(self, target, node, dictionary,
+                servo = CanopenServo(self, target, node, dictionary, eds,
                                      servo_status_listener=servo_status_listener)
                 self.servos.append(servo)
                 return servo
@@ -301,8 +290,8 @@ class CanopenNetwork(Network):
             self._connection.connect(bustype=self.__device,
                                      channel=self.__channel,
                                      bitrate=self.__baudrate)
-            for node_id in self._connection.scanner.nodes:
-                node = self._connection.add_node(node_id, self.__eds)
+            for servo in self.servos:
+                node = self._connection.add_node(servo.target, servo.eds)
                 node.nmt.start_node_guarding(1)
         except BaseException as e:
             logger.error("Connection failed. Exception: %s", e)
@@ -694,66 +683,72 @@ class CanopenNetwork(Network):
         for callback in self.__observers_fw_load_errors_enabled:
             callback(new_value)
 
-    def change_baudrate(self, target_node, vendor_id, product_code,
-                        rev_number, serial_number, new_target_baudrate=None):
+    def change_baudrate(self, target_node, new_target_baudrate, vendor_id,
+                        product_code, rev_number, serial_number):
         """Changes the node ID of a given target node ID.
 
         Args:
             target_node (int): Node ID of the targeted device.
+            new_target_baudrate (CAN_BAUDRATE): New baudrate for the targeted device.
             vendor_id (int): Vendor ID of the targeted device.
             product_code (int): Product code of the targeted device.
             rev_number (int): Revision number of the targeted device.
             serial_number (int): Serial number of the targeted device.
-            new_target_baudrate (int): New baudrate for the targeted device.
 
         Returns:
             bool: Indicates if the operation was successful.
 
         """
+        if self._connection is None:
+            raise ILObjectNotExist('CAN connection was not established.')
+
         r = self._lss_switch_state_selective(vendor_id, product_code,
                                              rev_number, serial_number)
-        if r < 0:
+        if r >= 0:
             self._connection.lss.configure_bit_timing(
-                CAN_BIT_TIMMING[new_target_baudrate].value
+                CAN_BIT_TIMMING[new_target_baudrate]
             )
             sleep(0.1)
 
             self._lss_store_configuration()
 
         else:
-            return -1
+            return r
 
         self._lss_reset_connection_nodes(target_node)
         logger.info('Baudrate changed to {}'.format(new_target_baudrate))
         return 0
 
-    def change_node_id(self, target_node, vendor_id, product_code,
-                       rev_number, serial_number, new_target_node=None):
+    def change_node_id(self, target_node, new_target_node, vendor_id,
+                       product_code, rev_number, serial_number):
         """Changes the node ID of a given target node ID.
 
         Args:
             target_node (int): Node ID of the targeted device.
+            new_target_node (int): New node ID for the targeted device.
             vendor_id (int): Vendor ID of the targeted device.
             product_code (int): Product code of the targeted device.
             rev_number (int): Revision number of the targeted device.
             serial_number (int): Serial number of the targeted device.
-            new_target_node (int): New node ID for the targeted device.
 
         Returns:
             bool: Indicates if the operation was successful.
 
         """
+        if self._connection is None:
+            raise ILObjectNotExist('CAN connection was not established.')
+
         r = self._lss_switch_state_selective(vendor_id, product_code,
                                              rev_number, serial_number)
 
-        if r < 0:
+        if r >= 0:
             self._connection.lss.configure_node_id(new_target_node)
             sleep(0.1)
 
             self._lss_store_configuration()
 
         else:
-            return -1
+            return r
 
         self._lss_reset_connection_nodes(target_node)
         logger.info('Node ID changed to {}'.format(new_target_node))
@@ -785,7 +780,7 @@ class CanopenNetwork(Network):
         logger.debug("Switching LSS into CONFIGURATION state...")
 
         try:
-            r = self._connection.lss.send__lss_switch_state_selective(
+            r = self._connection.lss.send_switch_state_selective(
                 vendor_id,
                 product_code,
                 rev_number,
@@ -809,12 +804,9 @@ class CanopenNetwork(Network):
         logger.debug("Wait until node is reset")
         sleep(0.5)
 
-        logger.debug("Searching for nodes...")
-        nodes = self.scan_slaves()
-
-        for node_id in nodes:
-            logger.info('Node found: %i', node_id)
-            node = self._connection.add_node(node_id, self.__eds)
+        for servo in self.servos:
+            logger.info('Node connected: %i', servo.target)
+            node = self._connection.add_node(servo.target, servo.eds)
 
         # Reset all nodes to default state
         self._connection.lss.send_switch_state_global(

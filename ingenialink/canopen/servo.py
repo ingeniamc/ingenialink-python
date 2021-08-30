@@ -132,7 +132,7 @@ class CanopenServo(Servo):
         servo_status_listener (bool): Boolean to initialize the ServoStatusListener and
         check the drive status.
     """
-    def __init__(self, net, target, node, dictionary_path=None,
+    def __init__(self, net, target, node, dictionary_path=None, eds=None,
                  servo_status_listener=True):
         super(CanopenServo, self).__init__(net, target)
         self.__node = node
@@ -140,6 +140,7 @@ class CanopenServo(Servo):
             self._dictionary = CanopenDictionary(dictionary_path)
         else:
             self._dictionary = None
+        self._eds = eds
         self.__lock = threading.RLock()
         self.__state = {
             1: lib.IL_SERVO_STATE_NRDY,
@@ -768,6 +769,15 @@ class CanopenServo(Servo):
     @dictionary.setter
     def dictionary(self, new_value):
         self._dictionary = new_value
+
+    @property
+    def eds(self):
+        """Returns EDs path object"""
+        return self._eds
+
+    @eds.setter
+    def eds(self, new_value):
+        self._eds = new_value
 
     @property
     def name(self):
