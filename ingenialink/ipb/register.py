@@ -87,6 +87,14 @@ def get_storage(storage, storage_valid, dtype):
 
 
 def ipb_register_from_cffi(cffi_register):
+    """Creates an IPBRegister instance from a CFFI register instance.
+
+    Args:
+        cffi_register (CData): CFFI instance of the register.
+
+    Returns:
+        IPBRegister: Instance of the newly created register.
+    """
     units = None
     cyclic = None
     labels = None
