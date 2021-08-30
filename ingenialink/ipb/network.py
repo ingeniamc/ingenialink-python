@@ -11,7 +11,8 @@ class IPBNetwork(Network, ABC):
     """IPB Network defines a general class for all IPB based communications."""
     def __init__(self):
         super(IPBNetwork, self).__init__()
-        self.__cffi_network = None
+        self._cffi_network = None
+        """CFFI instance of the network."""
 
     def _from_existing(self, net):
         """Create a new class instance from an existing network.
@@ -20,7 +21,7 @@ class IPBNetwork(Network, ABC):
             net (Network): Instance to copy.
 
         """
-        self.__cffi_network = ffi.gc(net, lib.il_net_fake_destroy)
+        self._cffi_network = ffi.gc(net, lib.il_net_fake_destroy)
 
     @abstractmethod
     def scan_slaves(self):
@@ -40,11 +41,11 @@ class IPBNetwork(Network, ABC):
 
     def close_socket(self):
         """Closes the established network socket."""
-        return lib.il_net_close_socket(self.__cffi_network)
+        return lib.il_net_close_socket(self._cffi_network)
 
     def destroy_network(self):
         """Destroy network instance."""
-        lib.il_net_destroy(self.__cffi_network)
+        lib.il_net_destroy(self._cffi_network)
 
     def subscribe_to_status(self, callback):
         """Calls given function everytime a connection/disconnection event is
@@ -72,7 +73,7 @@ class IPBNetwork(Network, ABC):
 
     def stop_network_monitor(self):
         """Stop monitoring network events."""
-        lib.il_net_mon_stop(self.__cffi_network)
+        lib.il_net_mon_stop(self._cffi_network)
 
     def set_reconnection_retries(self, retries):
         """Set the number of reconnection retries in our application.
@@ -81,7 +82,7 @@ class IPBNetwork(Network, ABC):
             retries (int): Number of reconnection retries.
 
         """
-        return lib.il_net_set_reconnection_retries(self.__cffi_network, retries)
+        return lib.il_net_set_reconnection_retries(self._cffi_network, retries)
 
     def set_recv_timeout(self, timeout):
         """Set receive communications timeout.
@@ -92,7 +93,7 @@ class IPBNetwork(Network, ABC):
             int: Result code.
 
         """
-        return lib.il_net_set_recv_timeout(self.__cffi_network, timeout)
+        return lib.il_net_set_recv_timeout(self._cffi_network, timeout)
 
     def set_status_check_stop(self, stop):
         """Start/Stop the internal monitor of the drive status.
@@ -103,20 +104,11 @@ class IPBNetwork(Network, ABC):
             int: Result code.
 
         """
-        return lib.il_net_set_status_check_stop(self.__cffi_network, stop)
+        return lib.il_net_set_status_check_stop(self._cffi_network, stop)
 
     @property
     def protocol(self):
         raise NotImplementedError
-
-    @property
-    def _cffi_network(self):
-        """CFFI instance of the network."""
-        return self.__cffi_network
-
-    @_cffi_network.setter
-    def _cffi_network(self, value):
-        self.__cffi_network = value
 
     @property
     def state(self):
@@ -126,7 +118,7 @@ class IPBNetwork(Network, ABC):
             str: Current network state.
 
         """
-        return NET_STATE(lib.il_net_state_get(self.__cffi_network))
+        return NET_STATE(lib.il_net_state_get(self._cffi_network))
 
     @property
     def status(self):
@@ -136,4 +128,4 @@ class IPBNetwork(Network, ABC):
             str: Current network status.
 
         """
-        return lib.il_net_status_get(self.__cffi_network)
+        return lib.il_net_status_get(self._cffi_network)

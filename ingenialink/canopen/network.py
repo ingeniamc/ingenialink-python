@@ -860,6 +860,16 @@ class CanopenNetwork(Network):
             self.__net_status_listener = None
 
     @property
+    def device(self):
+        """CAN_DEVICE: Current device of the network."""
+        return self.__device
+
+    @property
+    def channel(self):
+        """int: Current device of the network."""
+        return self.__channel
+
+    @property
     def baudrate(self):
         """int: Current baudrate of the network."""
         return self.__baudrate

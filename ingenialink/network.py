@@ -64,7 +64,8 @@ def _on_evt_cb(ctx, evt, port):
 class Network(ABC):
     """Declaration of a general Network object."""
     def __init__(self):
-        self.__servos = []
+        self.servos = []
+        """list: List of the connected servos in the network."""
 
     @abstractmethod
     def scan_slaves(self):
@@ -97,15 +98,6 @@ class Network(ABC):
     @property
     def protocol(self):
         raise NotImplementedError
-
-    @property
-    def servos(self):
-        """list: List of the connected servos in the network."""
-        return self.__servos
-
-    @servos.setter
-    def servos(self, value):
-        self.__servos = value
 
 
 class NetworkMonitor:

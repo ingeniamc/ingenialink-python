@@ -15,8 +15,9 @@ class EthercatNetwork(IPBNetwork):
     """
     def __init__(self, interface_name=""):
         super(EthercatNetwork, self).__init__()
-        self.__interface_name = interface_name
         self._cffi_network = ffi.new('il_net_t **')
+        self.interface_name = interface_name
+        """str: Interface name used in the network settings."""
 
     def load_firmware(self, fw_file, target=1, boot_in_app=True):
         """Loads a given firmware file to a target.
@@ -33,8 +34,8 @@ class EthercatNetwork(IPBNetwork):
             with an error message.
 
         """
-        _interface_name = cstr(self.__interface_name) \
-            if self.__interface_name else ffi.NULL
+        _interface_name = cstr(self.interface_name) \
+            if self.interface_name else ffi.NULL
         _fw_file = cstr(fw_file) if fw_file else ffi.NULL
         return lib.il_net_update_firmware(self._cffi_network,
                                           _interface_name,
@@ -49,8 +50,8 @@ class EthercatNetwork(IPBNetwork):
             list: List of number of slaves connected to the network.
 
         """
-        _interface_name = cstr(self.__interface_name) \
-            if self.__interface_name else ffi.NULL
+        _interface_name = cstr(self.interface_name) \
+            if self.interface_name else ffi.NULL
 
         number_slaves = lib.il_net_num_slaves_get(_interface_name)
         slaves = []
@@ -71,8 +72,8 @@ class EthercatNetwork(IPBNetwork):
 
         """
         servo = None
-        _interface_name = cstr(self.__interface_name) \
-            if self.__interface_name else ffi.NULL
+        _interface_name = cstr(self.interface_name) \
+            if self.interface_name else ffi.NULL
         _dictionary = cstr(dictionary) if dictionary else ffi.NULL
 
         _servo = ffi.new('il_servo_t **')
@@ -114,18 +115,3 @@ class EthercatNetwork(IPBNetwork):
     def protocol(self):
         """NET_PROT: Obtain network protocol."""
         return NET_PROT.ECAT
-
-    @property
-    def interface_name(self):
-        """str: Interface name used in the network settings."""
-        return self.__interface_name
-
-    @interface_name.setter
-    def interface_name(self, value):
-        self.__interface_name = value
-
-
-
-
-
-
