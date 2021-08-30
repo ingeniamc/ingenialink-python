@@ -104,7 +104,7 @@ class Register(ABC):
         phy (REG_PHY, optional): Physical units.
         subnode (int): Subnode
         storage (any, optional): Storage.
-        range (tuple, optional): Range (min, max).
+        reg_range (tuple, optional): Range (min, max).
         labels (dict, optional): Register labels.
         enums (dict, optional): Enumeration values.
         cat_id (str, optional): Category ID.
@@ -116,9 +116,13 @@ class Register(ABC):
 
     """
     def __init__(self, identifier, units, cyclic, dtype, access,
-                 phy=REG_PHY.NONE, subnode=1, storage=None, range=None,
-                 labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None,
+                 phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=None,
+                 labels=None, enums=None, enums_count=0, cat_id=None, scat_id=None,
                  internal_use=0):
+        if labels is None:
+            labels = {}
+        if enums is None:
+            enums = []
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
@@ -128,181 +132,99 @@ class Register(ABC):
         if not isinstance(phy, REG_PHY):
             raise TypeError('Invalid physical units type')
 
-        self.__identifier = identifier
-        self.__units = units
-        self.__subnode = subnode
-        self.__cyclic = cyclic
-        self.__dtype = dtype.value
-        self.__access = access.value
-        self.__phy = phy.value
-        self.__storage = storage
-        self.__storage_valid = 0 if not storage else 1
-        self.__internal_use = internal_use
-        self.__range = (None, None) if not range else range
-        self.__labels = labels
-        self.__enums = enums
-        self.__enums_count = enums_count
-        self.__cat_id = cat_id
-        self.__scat_id = scat_id
+        self._identifier = identifier
+        self._units = units
+        self._subnode = subnode
+        self._cyclic = cyclic
+        self._dtype = dtype.value
+        self._access = access.value
+        self._phy = phy.value
+        self._storage = storage
+        self._storage_valid = 0 if not storage else 1
+        self._internal_use = internal_use
+        self._range = (None, None) if not reg_range else reg_range
+        self._labels = labels
+        self._enums = enums
+        self._enums_count = enums_count
+        self._cat_id = cat_id
+        self._scat_id = scat_id
 
     @property
     def identifier(self):
         """str: Register identifier."""
-        return self.__identifier
-
-    @identifier.setter
-    def identifier(self, value):
-        self.__identifier = value
+        return self._identifier
 
     @property
     def units(self):
         """str: Units of the register."""
-        return self.__units
-
-    @units.setter
-    def units(self, value):
-        self.__units = value
+        return self._units
 
     @property
     def subnode(self):
         """int: Target subnode of the register."""
-        return self.__subnode
-
-    @subnode.setter
-    def subnode(self, value):
-        self.__subnode = value
+        return self._subnode
 
     @property
     def cyclic(self):
         """str: Defines if the register is cyclic."""
-        return self.__cyclic
-
-    @cyclic.setter
-    def cyclic(self, value):
-        self.__cyclic = value
+        return self._cyclic
 
     @property
     def dtype(self):
         """REG_DTYPE: Data type of the register."""
-        return REG_DTYPE(self.__dtype)
-
-    @dtype.setter
-    def dtype(self, value):
-        self.__dtype = value
+        return REG_DTYPE(self._dtype)
 
     @property
     def access(self):
         """REG_ACCESS: Access type of the register."""
-        return REG_ACCESS(self.__access)
-
-    @access.setter
-    def access(self, value):
-        self.__access = value
+        return REG_ACCESS(self._access)
 
     @property
     def phy(self):
         """REG_PHY: Physical units of the register."""
-        return REG_PHY(self.__phy)
-
-    @phy.setter
-    def phy(self, value):
-        self.__phy = value
+        return REG_PHY(self._phy)
 
     @property
     def storage(self):
         """any: Defines if the register needs to be stored."""
-        if not self.__storage_valid:
-            return None
-
-        if self.dtype in [REG_DTYPE.S8, REG_DTYPE.U8, REG_DTYPE.S16,
-                          REG_DTYPE.U16, REG_DTYPE.S32, REG_DTYPE.U32,
-                          REG_DTYPE.S64, REG_DTYPE.U64, REG_DTYPE.FLOAT]:
-            return self.__storage
-        else:
-            return None
-
-    @storage.setter
-    def storage(self, value):
-        self.__storage = value
+        return self._storage
 
     @property
     def storage_valid(self):
         """bool: Defines if the register storage is valid."""
-        return self.__storage_valid
-
-    @storage_valid.setter
-    def storage_valid(self, value):
-        self.__storage_valid = value
+        return self._storage_valid
 
     @property
     def range(self):
         """tuple: Containing the minimum and the maximum values of the register."""
-        if self.__range:
-            return self.__range[0], self.__range[1]
-        return None
-
-    @range.setter
-    def range(self, value):
-        self.__range = value
+        return self._range
 
     @property
     def labels(self):
         """dict: Containing the labels of the register."""
-        return self.__labels
-
-    @labels.setter
-    def labels(self, value):
-        self.__labels = value
+        return self._labels
 
     @property
     def enums(self):
         """dict: Containing all the enums for the register."""
-        if not hasattr(self, '_enums'):
-            self._enums = []
-            for i in range(0, self.enums_count):
-                dict = {
-                    'label': pstr(self.__enums[i].label),
-                    'value': self.__enums[i].value
-                }
-                self._enums.append(dict)
         return self._enums
-
-    @enums.setter
-    def enums(self, value):
-        self.__enums = value
 
     @property
     def enums_count(self):
         """int: The number of the enums in the register."""
-        return self.__enums_count
-
-    @enums_count.setter
-    def enums_count(self, value):
-        self.__enums_count = value
+        return self._enums_count
 
     @property
     def cat_id(self):
         """str: Category ID"""
-        return self.__cat_id
-
-    @cat_id.setter
-    def cat_id(self, value):
-        self.__cat_id = value
+        return self._cat_id
 
     @property
     def scat_id(self):
         """str: Sub-Category ID"""
-        return self.__scat_id
-
-    @scat_id.setter
-    def scat_id(self, value):
-        self.__scat_id = value
+        return self._scat_id
 
     @property
     def internal_use(self):
         """int: Defines if the register is only for internal uses."""
-        return self.__internal_use
-
-    @internal_use.setter
-    def internal_use(self, value):
-        self.__internal_use = value
+        return self._internal_use

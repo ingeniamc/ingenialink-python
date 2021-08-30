@@ -20,7 +20,7 @@ class IPBRegister(Register):
         phy (REG_PHY, optional): Physical units.
         subnode (int): Subnode
         storage (any, optional): Storage.
-        range (tuple, optional): Range (min, max).
+        reg_range (tuple, optional): Range (min, max).
         labels (dict, optional): Register labels.
         enums (dict, optional): Enumeration values.
         cat_id (str, optional): Category ID.
@@ -32,12 +32,16 @@ class IPBRegister(Register):
 
     """
     def __init__(self, identifier, units, cyclic, dtype, access, address,
-                 phy=REG_PHY.NONE, subnode=1, storage=None, range=None,
-                 labels={}, enums=[], enums_count=0, cat_id=None, scat_id=None,
+                 phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=None,
+                 labels=None, enums=None, enums_count=0, cat_id=None, scat_id=None,
                  internal_use=0):
+        if labels is None:
+            labels = {}
+        if enums is None:
+            enums = []
         super(IPBRegister, self).__init__(
             identifier, units, cyclic, dtype, access, phy, subnode, storage,
-            range, labels, enums, enums_count, cat_id, scat_id, internal_use)
+            reg_range, labels, enums, enums_count, cat_id, scat_id, internal_use)
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
@@ -65,68 +69,68 @@ class IPBRegister(Register):
             if storage:
                 self._reg.storage.s8 = int(storage)
 
-            self._reg.range.min.s8 = (range[0] if range else
+            self._reg.range.min.s8 = (reg_range[0] if reg_range else
                                       INT_SIZES.S8_MIN.value)
-            self._reg.range.max.s8 = (range[1] if range else
+            self._reg.range.max.s8 = (reg_range[1] if reg_range else
                                       INT_SIZES.S8_MAX.value)
         elif dtype == REG_DTYPE.U8:
             if storage:
                 self._reg.storage.u8 = int(storage)
 
-            self._reg.range.min.u8 = range[0] if range else 0
-            self._reg.range.max.u8 = (range[1] if range else
+            self._reg.range.min.u8 = reg_range[0] if reg_range else 0
+            self._reg.range.max.u8 = (reg_range[1] if reg_range else
                                       INT_SIZES.U8_MAX.value)
         if dtype == REG_DTYPE.S16:
             if storage:
                 self._reg.storage.s16 = int(storage)
 
-            self._reg.range.min.s16 = (range[0] if range else
+            self._reg.range.min.s16 = (reg_range[0] if reg_range else
                                        INT_SIZES.S16_MIN.value)
-            self._reg.range.max.s16 = (range[1] if range else
+            self._reg.range.max.s16 = (reg_range[1] if reg_range else
                                        INT_SIZES.S16_MAX.value)
         elif dtype == REG_DTYPE.U16:
             if storage:
                 self._reg.storage.u16 = int(storage)
 
-            self._reg.range.min.u16 = range[0] if range else 0
-            self._reg.range.max.u16 = (range[1] if range else
+            self._reg.range.min.u16 = reg_range[0] if reg_range else 0
+            self._reg.range.max.u16 = (reg_range[1] if reg_range else
                                        INT_SIZES.U16_MAX.value)
         if dtype == REG_DTYPE.S32:
             if storage:
                 self._reg.storage.s32 = int(storage)
 
-            self._reg.range.min.s32 = (range[0] if range else
+            self._reg.range.min.s32 = (reg_range[0] if reg_range else
                                        INT_SIZES.S32_MIN.value)
-            self._reg.range.max.s32 = (range[1] if range else
+            self._reg.range.max.s32 = (reg_range[1] if reg_range else
                                        INT_SIZES.S32_MAX.value)
         elif dtype == REG_DTYPE.U32:
             if storage:
                 self._reg.storage.u32 = int(storage)
 
-            self._reg.range.min.u32 = range[0] if range else 0
-            self._reg.range.max.u32 = (range[1] if range else
+            self._reg.range.min.u32 = reg_range[0] if reg_range else 0
+            self._reg.range.max.u32 = (reg_range[1] if reg_range else
                                        INT_SIZES.U32_MAX.value)
         if dtype == REG_DTYPE.S64:
             if storage:
                 self._reg.storage.s64 = int(storage)
 
-            self._reg.range.min.s64 = (range[0] if range else
+            self._reg.range.min.s64 = (reg_range[0] if reg_range else
                                        INT_SIZES.S64_MIN.value)
-            self._reg.range.max.s64 = (range[1] if range else
+            self._reg.range.max.s64 = (reg_range[1] if reg_range else
                                        INT_SIZES.S64_MAX.value)
         elif dtype == REG_DTYPE.U64:
             if storage:
                 self._reg.storage.u64 = int(storage)
 
-            self._reg.range.min.u64 = range[0] if range else 0
-            self._reg.range.max.u64 = (range[1] if range else
+            self._reg.range.min.u64 = reg_range[0] if reg_range else 0
+            self._reg.range.max.u64 = (reg_range[1] if reg_range else
                                        INT_SIZES.U64_MAX.value)
         elif dtype == REG_DTYPE.FLOAT:
             if storage:
                 self._reg.storage.flt = float(storage)
 
-            self._reg.range.min.flt = (range[0] if range else INT_SIZES.S32_MIN.value)
-            self._reg.range.max.flt = (range[1] if range else INT_SIZES.S32_MAX.value)
+            self._reg.range.min.flt = (reg_range[0] if reg_range else INT_SIZES.S32_MIN.value)
+            self._reg.range.max.flt = (reg_range[1] if reg_range else INT_SIZES.S32_MAX.value)
         else:
             self._reg.storage_valid = 0
 
@@ -250,36 +254,6 @@ class IPBRegister(Register):
         """
         if self._reg.cyclic != ffi.NULL:
             return pstr(self._reg.cyclic)
-
-    @property
-    def dtype(self):
-        """Obtain register dtype.
-
-        Returns:
-            int: Register data type.
-
-        """
-        return REG_DTYPE(self._reg.dtype)
-
-    @property
-    def access(self):
-        """Obtain register access.
-
-        Returns:
-            int: Register access type.
-
-        """
-        return REG_ACCESS(self._reg.access)
-
-    @property
-    def phy(self):
-        """Obtain register physical units.
-
-        Returns:
-            int: Register physical units.
-
-        """
-        return REG_PHY(self._reg.phy)
 
     @property
     def storage(self):

@@ -18,7 +18,7 @@ class CanopenRegister(Register):
             phy (REG_PHY, optional): Physical units.
             subnode (int): Subnode.
             storage (any, optional): Storage.
-            range (tuple, optional): Range (min, max).
+            reg_range (tuple, optional): Range (min, max).
             labels (dict, optional): Register labels.
             enums (list): Enumeration registers.
             enums_count (int): Number of enumeration registers.
@@ -35,11 +35,15 @@ class CanopenRegister(Register):
 
     def __init__(self, identifier, units, cyclic, idx, subidx, dtype,
                  access, phy=REG_PHY.NONE, subnode=1, storage=None,
-                 range=(None, None), labels={}, enums=[], enums_count=0,
+                 reg_range=(None, None), labels=None, enums=None, enums_count=0,
                  cat_id=None, scat_id=None, internal_use=0):
+        if labels is None:
+            labels = {}
+        if enums is None:
+            enums = []
         super(CanopenRegister, self).__init__(
             identifier, units, cyclic, dtype, access, phy, subnode,
-            storage, range, labels, enums, enums_count, cat_id,
+            storage, reg_range, labels, enums, enums_count, cat_id,
             scat_id, internal_use)
         if not isinstance(dtype, REG_DTYPE):
             raise_err(lib.IL_EINVAL, 'Invalid data type')
@@ -55,69 +59,69 @@ class CanopenRegister(Register):
 
         if dtype == REG_DTYPE.S8:
             if storage:
-                self.storage = int(storage)
+                self._storage = int(storage)
 
-            range_min = (range[0] if range[0] else INT_SIZES.S8_MIN.value)
-            range_max = (range[1] if range[1] else INT_SIZES.S8_MAX.value)
-            self.range = (int(range_min), int(range_max))
+            range_min = (reg_range[0] if reg_range[0] else INT_SIZES.S8_MIN.value)
+            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.S8_MAX.value)
+            self._range = (int(range_min), int(range_max))
         elif dtype == REG_DTYPE.U8:
             if storage:
-                self.storage = int(storage)
+                self._storage = int(storage)
 
-            range_min = range[0] if range[0] else 0
-            range_max = (range[1] if range[1] else INT_SIZES.U8_MAX.value)
-            self.range = (int(range_min), int(range_max))
+            range_min = reg_range[0] if reg_range[0] else 0
+            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.U8_MAX.value)
+            self._range = (int(range_min), int(range_max))
         if dtype == REG_DTYPE.S16:
             if storage:
-                self.storage = int(storage)
+                self._storage = int(storage)
 
-            range_min = (range[0] if range[0] else INT_SIZES.S16_MIN.value)
-            range_max = (range[1] if range[1] else INT_SIZES.S16_MAX.value)
-            self.range = (int(range_min), int(range_max))
+            range_min = (reg_range[0] if reg_range[0] else INT_SIZES.S16_MIN.value)
+            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.S16_MAX.value)
+            self._range = (int(range_min), int(range_max))
         elif dtype == REG_DTYPE.U16:
             if storage:
-                self.storage = int(storage)
+                self._storage = int(storage)
 
-            range_min = range[0] if range[0] else 0
-            range_max = (range[1] if range[1] else INT_SIZES.U16_MAX.value)
-            self.range = (int(range_min), int(range_max))
+            range_min = reg_range[0] if reg_range[0] else 0
+            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.U16_MAX.value)
+            self._range = (int(range_min), int(range_max))
         if dtype == REG_DTYPE.S32:
             if storage:
-                self.storage = int(storage)
+                self._storage = int(storage)
 
-            range_min = (range[0] if range[0] else INT_SIZES.S32_MIN.value)
-            range_max = (range[1] if range[1] else INT_SIZES.S32_MAX.value)
-            self.range = (int(range_min), int(range_max))
+            range_min = (reg_range[0] if reg_range[0] else INT_SIZES.S32_MIN.value)
+            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.S32_MAX.value)
+            self._range = (int(range_min), int(range_max))
         elif dtype == REG_DTYPE.U32:
             if storage:
-                self.storage = int(storage)
+                self._storage = int(storage)
 
-            range_min = range[0] if range[0] else 0
-            range_max = (range[1] if range[1] else INT_SIZES.U32_MAX.value)
-            self.range = (int(range_min), int(range_max))
+            range_min = reg_range[0] if reg_range[0] else 0
+            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.U32_MAX.value)
+            self._range = (int(range_min), int(range_max))
         if dtype == REG_DTYPE.S64:
             if storage:
-                self.storage = int(storage)
+                self._storage = int(storage)
 
-            range_min = (range[0] if range[0] else INT_SIZES.S64_MIN.value)
-            range_max = (range[1] if range[1] else INT_SIZES.S64_MAX.value)
-            self.range = (int(range_min), int(range_max))
+            range_min = (reg_range[0] if reg_range[0] else INT_SIZES.S64_MIN.value)
+            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.S64_MAX.value)
+            self._range = (int(range_min), int(range_max))
         elif dtype == REG_DTYPE.U64:
             if storage:
-                self.storage = int(storage)
+                self._storage = int(storage)
 
-            range_min = range[0] if range[0] else 0
-            range_max = (range[1] if range[1] else INT_SIZES.U64_MAX.value)
-            self.range = (int(range_min), int(range_max))
+            range_min = reg_range[0] if reg_range[0] else 0
+            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.U64_MAX.value)
+            self._range = (int(range_min), int(range_max))
         elif dtype == REG_DTYPE.FLOAT:
             if storage:
-                self.storage = float(storage)
+                self._storage = float(storage)
 
-            range_min = (range[0] if range[0] else INT_SIZES.S32_MIN.value)
-            range_max = (range[1] if range[1] else INT_SIZES.S32_MAX.value)
-            self.range = (float(range_min), float(range_max))
+            range_min = (reg_range[0] if reg_range[0] else INT_SIZES.S32_MIN.value)
+            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.S32_MAX.value)
+            self._range = (float(range_min), float(range_max))
         else:
-            self.storage_valid = 0
+            self._storage_valid = 0
 
         aux_enums = []
         for enum in enums:
@@ -128,7 +132,7 @@ class CanopenRegister(Register):
                 }
                 aux_enums.append(dictionary)
 
-        self.enums = aux_enums
+        self._enums = aux_enums
 
     @property
     def idx(self):
@@ -139,3 +143,36 @@ class CanopenRegister(Register):
     def subidx(self):
         """int: Register subindex."""
         return self.__subidx
+
+    @property
+    def storage(self):
+        """any: Defines if the register needs to be stored."""
+        if not self.storage_valid:
+            return None
+
+        if self.dtype in [REG_DTYPE.S8, REG_DTYPE.U8, REG_DTYPE.S16,
+                          REG_DTYPE.U16, REG_DTYPE.S32, REG_DTYPE.U32,
+                          REG_DTYPE.S64, REG_DTYPE.U64, REG_DTYPE.FLOAT]:
+            return self._storage
+        else:
+            return None
+
+    @property
+    def range(self):
+        """tuple: Containing the minimum and the maximum values of the register."""
+        if self._range:
+            return self._range[0], self._range[1]
+        return None
+
+    @property
+    def enums(self):
+        """dict: Containing all the enums for the register."""
+        if not hasattr(self, '_enums'):
+            self._enums = []
+            for i in range(0, self.enums_count):
+                aux_dict = {
+                    'label': pstr(self._enums[i].label),
+                    'value': self._enums[i].value
+                }
+                self._enums.append(aux_dict)
+        return self._enums

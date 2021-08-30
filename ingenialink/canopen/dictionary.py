@@ -243,7 +243,7 @@ class CanopenDictionary(Dictionary):
 
             reg = CanopenRegister(identifier, units, cyclic, idx, subidx, dtype,
                                   access, subnode=subnode,
-                                  storage=storage, range=reg_range,
+                                  storage=storage, reg_range=reg_range,
                                   labels=labels, enums=enums,
                                   enums_count=len(enums), cat_id=cat_id,
                                   internal_use=internal_use)
