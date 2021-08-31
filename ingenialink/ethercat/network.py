@@ -89,7 +89,7 @@ class EthercatNetwork(IPBNetwork):
         else:
             net_ = ffi.cast('il_net_t *', self._cffi_network[0])
             servo_ = ffi.cast('il_servo_t *', _servo[0])
-            servo = EthercatServo(servo_, net_, target, _dictionary)
+            servo = EthercatServo(servo_, net_, target, dictionary)
             self._cffi_network = net_
             self.servos.append(servo)
 
