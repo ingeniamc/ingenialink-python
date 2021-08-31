@@ -63,6 +63,19 @@ class REG_PHY(Enum):
     """Radians."""
 
 
+dtypes_ranges = {
+    REG_DTYPE.U8: {"max": 255, "min": 0},
+    REG_DTYPE.S8: {"max": 127, "min": -128},
+    REG_DTYPE.U16: {"max": 65535, "min": 0},
+    REG_DTYPE.S16: {"max": 32767, "min": -32767 - 1},
+    REG_DTYPE.U32: {"max": 4294967295, "min": 0},
+    REG_DTYPE.S32: {"max": 2147483647, "min": -2147483647 - 1},
+    REG_DTYPE.U64: {"max": 18446744073709551615, "min": 0},
+    REG_DTYPE.S64: {"max": 9223372036854775807, "min":  9223372036854775807 - 1},
+    REG_DTYPE.FLOAT: {"max": 2147483647, "min": -2147483647 - 1}
+}
+
+
 def dtype_size(dtype):
     sizes = {
         REG_DTYPE.U8: 1,

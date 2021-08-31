@@ -2,7 +2,7 @@ from enum import Enum
 
 from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import *
-from ..register import Register, REG_DTYPE, REG_ACCESS, REG_PHY
+from ..register import Register, REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
 
 import collections
 
@@ -108,7 +108,7 @@ def ipb_register_from_cffi(cffi_register):
     address = cffi_register.address
     subnode = cffi_register.subnode
     storage = get_storage(cffi_register.storage, cffi_register.storage_valid, dtype)
-    reg_range = get_range(cffi_register.range, cffi_register.dtype)
+    reg_range = get_range(cffi_register.range, dtype)
     enums_count = cffi_register.enums_count
     enums = get_enums(cffi_register.enums, enums_count)
     internal_use = cffi_register.internal_use
@@ -175,6 +175,7 @@ class IPBRegister(Register):
 
         self._address = address
         self._labels = LabelsDictionary(labels)
+        self.__update_range(dtype)
         if c_reg is None:
             self._reg = self.__create_c_reg()
         else:
@@ -231,74 +232,26 @@ class IPBRegister(Register):
 
         _reg.storage_valid = 0 if not self.storage else 1
 
-        if self.dtype == REG_DTYPE.S8:
+        dtype_attr = {
+            REG_DTYPE.U8: "u8",
+            REG_DTYPE.S8: "s8",
+            REG_DTYPE.U16: "u16",
+            REG_DTYPE.S16: "s16",
+            REG_DTYPE.U32: "u32",
+            REG_DTYPE.S32: "s32",
+            REG_DTYPE.U64: "u64",
+            REG_DTYPE.S64: "s64",
+            REG_DTYPE.FLOAT: "flt"
+        }
+        if self.dtype in REG_DTYPE:
+            attr_name = dtype_attr[self.dtype]
             if self.storage:
-                _reg.storage.s8 = int(self.storage)
-
-            _reg.range.min.s8 = (self.range[0] if self.range[0] else
-                                 INT_SIZES.S8_MIN.value)
-            _reg.range.max.s8 = (self.range[1] if self.range[1] else
-                                 INT_SIZES.S8_MAX.value)
-        elif self.dtype == REG_DTYPE.U8:
-            if self.storage:
-                _reg.storage.u8 = int(self.storage)
-
-            _reg.range.min.u8 = self.range[0] if self.range[0] else 0
-            _reg.range.max.u8 = (self.range[1] if self.range[1] else
-                                 INT_SIZES.U8_MAX.value)
-        if self.dtype == REG_DTYPE.S16:
-            if self.storage:
-                _reg.storage.s16 = int(self.storage)
-
-            _reg.range.min.s16 = (self.range[0] if self.range[0] else
-                                  INT_SIZES.S16_MIN.value)
-            _reg.range.max.s16 = (self.range[1] if self.range[1] else
-                                  INT_SIZES.S16_MAX.value)
-        elif self.dtype == REG_DTYPE.U16:
-            if self.storage:
-                _reg.storage.u16 = int(self.storage)
-
-            _reg.range.min.u16 = self.range[0] if self.range[0] else 0
-            _reg.range.max.u16 = (self.range[1] if self.range[1] else
-                                  INT_SIZES.U16_MAX.value)
-        if self.dtype == REG_DTYPE.S32:
-            if self.storage:
-                _reg.storage.s32 = int(self.storage)
-
-            _reg.range.min.s32 = (self.range[0] if self.range[0] else
-                                  INT_SIZES.S32_MIN.value)
-            _reg.range.max.s32 = (self.range[1] if self.range[1] else
-                                  INT_SIZES.S32_MAX.value)
-        elif self.dtype == REG_DTYPE.U32:
-            if self.storage:
-                _reg.storage.u32 = int(self.storage)
-
-            _reg.range.min.u32 = self.range[0] if self.range[0] else 0
-            _reg.range.max.u32 = (self.range[1] if self.range[1] else
-                                  INT_SIZES.U32_MAX.value)
-        if self.dtype == REG_DTYPE.S64:
-            if self.storage:
-                _reg.storage.s64 = int(self.storage)
-
-            _reg.range.min.s64 = (self.range[0] if self.range[0] else
-                                  INT_SIZES.S64_MIN.value)
-            _reg.range.max.s64 = (self.range[1] if self.range[1] else
-                                  INT_SIZES.S64_MAX.value)
-        elif self.dtype == REG_DTYPE.U64:
-            if self.storage:
-                _reg.storage.u64 = int(self.storage)
-
-            _reg.range.min.u64 = self.range[0] if self.range[0] else 0
-            _reg.range.max.u64 = (self.range[1] if self.range[1] else
-                                  INT_SIZES.U64_MAX.value)
-        elif self.dtype == REG_DTYPE.FLOAT:
-            if self.storage:
-                _reg.storage.flt = float(self.storage)
-
-            _reg.range.min.flt = (
-                self.range[0] if self.range[0] else INT_SIZES.S32_MIN.value)
-            _reg.range.max.flt = (
-                self.range[1] if self.range[1] else INT_SIZES.S32_MAX.value)
+                if self.dtype == REG_DTYPE.FLOAT:
+                    setattr(_reg.storage, attr_name, float(self.storage))
+                else:
+                    setattr(_reg.storage, attr_name, int(self.storage))
+            setattr(_reg.range.min, attr_name, self.range[0])
+            setattr(_reg.range.max, attr_name, self.range[1])
         else:
             _reg.storage_valid = 0
 
@@ -310,6 +263,15 @@ class IPBRegister(Register):
         _reg.scat_id = ffi.NULL if not self.scat_id else cstr(self.scat_id)
 
         return _reg
+
+    def __update_range(self, dtype):
+        if dtype not in dtypes_ranges:
+            return
+        aux_range = (
+            self.range[0] if self.range[0] is not None else dtypes_ranges[dtype]["min"],
+            self.range[1] if self.range[1] is not None else dtypes_ranges[dtype]["max"],
+        )
+        self._range = aux_range
 
     @property
     def address(self):

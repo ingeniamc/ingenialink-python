@@ -1,7 +1,7 @@
 from .._ingenialink import lib
 
 from ingenialink.utils._utils import *
-from ingenialink.register import Register, REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.register import Register, REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
 
 
 class CanopenRegister(Register):
@@ -57,69 +57,22 @@ class CanopenRegister(Register):
         self.__idx = idx
         self.__subidx = subidx
 
-        if dtype == REG_DTYPE.S8:
-            if storage:
-                self._storage = int(storage)
-
-            range_min = (reg_range[0] if reg_range[0] else INT_SIZES.S8_MIN.value)
-            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.S8_MAX.value)
-            self._range = (int(range_min), int(range_max))
-        elif dtype == REG_DTYPE.U8:
-            if storage:
-                self._storage = int(storage)
-
-            range_min = reg_range[0] if reg_range[0] else 0
-            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.U8_MAX.value)
-            self._range = (int(range_min), int(range_max))
-        if dtype == REG_DTYPE.S16:
-            if storage:
-                self._storage = int(storage)
-
-            range_min = (reg_range[0] if reg_range[0] else INT_SIZES.S16_MIN.value)
-            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.S16_MAX.value)
-            self._range = (int(range_min), int(range_max))
-        elif dtype == REG_DTYPE.U16:
-            if storage:
-                self._storage = int(storage)
-
-            range_min = reg_range[0] if reg_range[0] else 0
-            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.U16_MAX.value)
-            self._range = (int(range_min), int(range_max))
-        if dtype == REG_DTYPE.S32:
-            if storage:
-                self._storage = int(storage)
-
-            range_min = (reg_range[0] if reg_range[0] else INT_SIZES.S32_MIN.value)
-            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.S32_MAX.value)
-            self._range = (int(range_min), int(range_max))
-        elif dtype == REG_DTYPE.U32:
-            if storage:
-                self._storage = int(storage)
-
-            range_min = reg_range[0] if reg_range[0] else 0
-            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.U32_MAX.value)
-            self._range = (int(range_min), int(range_max))
-        if dtype == REG_DTYPE.S64:
-            if storage:
-                self._storage = int(storage)
-
-            range_min = (reg_range[0] if reg_range[0] else INT_SIZES.S64_MIN.value)
-            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.S64_MAX.value)
-            self._range = (int(range_min), int(range_max))
-        elif dtype == REG_DTYPE.U64:
-            if storage:
-                self._storage = int(storage)
-
-            range_min = reg_range[0] if reg_range[0] else 0
-            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.U64_MAX.value)
-            self._range = (int(range_min), int(range_max))
-        elif dtype == REG_DTYPE.FLOAT:
-            if storage:
-                self._storage = float(storage)
-
-            range_min = (reg_range[0] if reg_range[0] else INT_SIZES.S32_MIN.value)
-            range_max = (reg_range[1] if reg_range[1] else INT_SIZES.S32_MAX.value)
-            self._range = (float(range_min), float(range_max))
+        if dtype in dtypes_ranges:
+            if dtype == REG_DTYPE.FLOAT:
+                if storage:
+                    self._storage = float(storage)
+                aux_range = (
+                    float(reg_range[0]) if reg_range[0] else dtypes_ranges[dtype]["min"],
+                    float(reg_range[1]) if reg_range[1] else dtypes_ranges[dtype]["max"],
+                )
+            else:
+                if storage:
+                    self._storage = int(storage)
+                aux_range = (
+                    int(reg_range[0]) if reg_range[0] else dtypes_ranges[dtype]["min"],
+                    int(reg_range[1]) if reg_range[1] else dtypes_ranges[dtype]["max"],
+                )
+            self._range = aux_range
         else:
             self._storage_valid = 0
 
