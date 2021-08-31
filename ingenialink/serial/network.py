@@ -53,7 +53,7 @@ class SerialNetwork(IPBNetwork):
             dictionary (str): Path to the target dictionary file.
 
         Returns:
-            EthernetServo: Instance of the servo connected.
+            SerialServo: Instance of the servo connected.
 
         """
         self._on_found = ffi.NULL

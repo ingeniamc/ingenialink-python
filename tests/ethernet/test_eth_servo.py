@@ -9,8 +9,7 @@ def test_save_configuration(connect_ethernet):
 
     filename = "resources/configurations/eth_config.xcf"
 
-    r = servo.save_configuration(filename)
-    assert r >= 0
+    servo.save_configuration(filename)
 
     if os.path.isfile(filename):
         os.remove(filename)
@@ -21,8 +20,7 @@ def test_load_configuration(connect_ethernet):
     servo, net = connect_ethernet
     assert servo is not None and net is not None
 
-    r = servo.load_configuration("resources/configurations/eve-xcr-e_1.8.1_cfg.xcf")
-    assert r >= 0
+    servo.load_configuration("resources/configurations/eve-xcr-e_1.8.1_cfg.xcf")
 
 
 @pytest.mark.ethernet
