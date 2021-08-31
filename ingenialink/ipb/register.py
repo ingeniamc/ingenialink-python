@@ -123,8 +123,8 @@ def ipb_register_from_cffi(cffi_register):
         scat_id = pstr(cffi_register.scat_id)
 
     return IPBRegister(identifier, units, cyclic, dtype, access,
-                       address, phy, subnode,  storage, reg_range,
-                       labels, enums, cat_id, scat_id, internal_use)
+                       address, phy, subnode, storage, reg_range,
+                       labels, enums, enums_count, cat_id, scat_id, internal_use, cffi_register)
 
 
 class IPBRegister(Register):
@@ -151,10 +151,11 @@ class IPBRegister(Register):
         TypeError: If any of the parameters has invalid type.
 
     """
+
     def __init__(self, identifier, units, cyclic, dtype, access, address,
                  phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=None,
                  labels=None, enums=None, enums_count=0, cat_id=None, scat_id=None,
-                 internal_use=0):
+                 internal_use=0, c_reg=None):
         if labels is None:
             labels = {}
         if enums is None:
@@ -174,6 +175,10 @@ class IPBRegister(Register):
 
         self._address = address
         self._labels = LabelsDictionary(labels)
+        if c_reg is None:
+            self._reg = self.__create_c_reg()
+        else:
+            self._reg = c_reg
 
     def __repr__(self):
         """Obtain register object.
@@ -196,21 +201,115 @@ class IPBRegister(Register):
 
         return '<Register: {}, {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [], {},' \
                'ST: {}, [{}], {}>'.format(
-                    self.identifier,
-                    self.units,
-                    self.subnode,
-                    self.cyclic,
-                    self.address,
-                    self.dtype,
-                    ' ∊ ' + str(self.range) if self.range else '',
-                    self.access,
-                    self.phy,
-                    self.enums,
-                    self.enums_count,
-                    storage_info,
-                    cat_info,
-                    self.internal_use
-                )
+                self.identifier,
+                self.units,
+                self.subnode,
+                self.cyclic,
+                self.address,
+                self.dtype,
+                ' ∊ ' + str(self.range) if self.range else '',
+                self.access,
+                self.phy,
+                self.enums,
+                self.enums_count,
+                storage_info,
+                cat_info,
+                self.internal_use)
+
+    def __create_c_reg(self):
+        _reg = ffi.new('il_reg_t *')
+
+        _reg.identifier = ffi.new("char[]", cstr(self.identifier))
+        _reg.units = ffi.new("char[]", cstr(self.units))
+        _reg.address = self.address
+        _reg.subnode = self.subnode
+        _reg.cyclic = ffi.new("char[]", cstr(self.cyclic))
+        _reg.dtype = self.dtype.value
+        _reg.access = self.access.value
+        _reg.phy = self.phy.value
+        _reg.internal_use = self.internal_use
+
+        _reg.storage_valid = 0 if not self.storage else 1
+
+        if self.dtype == REG_DTYPE.S8:
+            if self.storage:
+                _reg.storage.s8 = int(self.storage)
+
+            _reg.range.min.s8 = (self.range[0] if self.range[0] else
+                                 INT_SIZES.S8_MIN.value)
+            _reg.range.max.s8 = (self.range[1] if self.range[1] else
+                                 INT_SIZES.S8_MAX.value)
+        elif self.dtype == REG_DTYPE.U8:
+            if self.storage:
+                _reg.storage.u8 = int(self.storage)
+
+            _reg.range.min.u8 = self.range[0] if self.range[0] else 0
+            _reg.range.max.u8 = (self.range[1] if self.range[1] else
+                                 INT_SIZES.U8_MAX.value)
+        if self.dtype == REG_DTYPE.S16:
+            if self.storage:
+                _reg.storage.s16 = int(self.storage)
+
+            _reg.range.min.s16 = (self.range[0] if self.range[0] else
+                                  INT_SIZES.S16_MIN.value)
+            _reg.range.max.s16 = (self.range[1] if self.range[1] else
+                                  INT_SIZES.S16_MAX.value)
+        elif self.dtype == REG_DTYPE.U16:
+            if self.storage:
+                _reg.storage.u16 = int(self.storage)
+
+            _reg.range.min.u16 = self.range[0] if self.range[0] else 0
+            _reg.range.max.u16 = (self.range[1] if self.range[1] else
+                                  INT_SIZES.U16_MAX.value)
+        if self.dtype == REG_DTYPE.S32:
+            if self.storage:
+                _reg.storage.s32 = int(self.storage)
+
+            _reg.range.min.s32 = (self.range[0] if self.range[0] else
+                                  INT_SIZES.S32_MIN.value)
+            _reg.range.max.s32 = (self.range[1] if self.range[1] else
+                                  INT_SIZES.S32_MAX.value)
+        elif self.dtype == REG_DTYPE.U32:
+            if self.storage:
+                _reg.storage.u32 = int(self.storage)
+
+            _reg.range.min.u32 = self.range[0] if self.range[0] else 0
+            _reg.range.max.u32 = (self.range[1] if self.range[1] else
+                                  INT_SIZES.U32_MAX.value)
+        if self.dtype == REG_DTYPE.S64:
+            if self.storage:
+                _reg.storage.s64 = int(self.storage)
+
+            _reg.range.min.s64 = (self.range[0] if self.range[0] else
+                                  INT_SIZES.S64_MIN.value)
+            _reg.range.max.s64 = (self.range[1] if self.range[1] else
+                                  INT_SIZES.S64_MAX.value)
+        elif self.dtype == REG_DTYPE.U64:
+            if self.storage:
+                _reg.storage.u64 = int(self.storage)
+
+            _reg.range.min.u64 = self.range[0] if self.range[0] else 0
+            _reg.range.max.u64 = (self.range[1] if self.range[1] else
+                                  INT_SIZES.U64_MAX.value)
+        elif self.dtype == REG_DTYPE.FLOAT:
+            if self.storage:
+                _reg.storage.flt = float(self.storage)
+
+            _reg.range.min.flt = (
+                self.range[0] if self.range[0] else INT_SIZES.S32_MIN.value)
+            _reg.range.max.flt = (
+                self.range[1] if self.range[1] else INT_SIZES.S32_MAX.value)
+        else:
+            _reg.storage_valid = 0
+
+        _reg.labels = self._labels._labels
+        _reg.enums_count = self.enums_count
+
+        _reg.cat_id = ffi.NULL if not self.cat_id else cstr(self.cat_id)
+
+        _reg.scat_id = ffi.NULL if not self.scat_id else cstr(self.scat_id)
+
+        return _reg
 
     @property
     def address(self):
@@ -228,6 +327,7 @@ class LabelsDictionary(collections.MutableMapping):
         ILCreationError: If the dictionary could not be created.
 
     """
+
     def __init__(self, labels=None):
         if labels is None:
             labels = {}

@@ -84,7 +84,7 @@ class SerialNetwork(IPBNetwork):
 
         servo = None
         if len(found) > 0:
-            servo = SerialServo(net=self.__net_interface, target=found[0],
+            servo = SerialServo(self.__net_interface, target=found[0],
                                 dictionary_path=dictionary)
             self._cffi_network = self.__net_interface
             self.servos.append(servo)

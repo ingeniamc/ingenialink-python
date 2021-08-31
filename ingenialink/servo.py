@@ -162,7 +162,6 @@ class Servo(ABC):
     """Declaration of a general Servo object.
 
     Args:
-        net (Network): Network instance.
         target (str, int): Target ID of the servo.
         dictionary (object):  Path to the dictionary file.
 
@@ -193,19 +192,15 @@ class Servo(ABC):
                   REG_DTYPE.FLOAT: lib.il_servo_raw_write_float}
     """dict: Function mappings for raw write operation."""
 
-    def __init__(self, net, target, dictionary=None):
-        self._dictionary = dictionary
+    def __init__(self, target):
         self.target = target
-        self.net = net
 
-        self.__name = DEFAULT_DRIVE_NAME
-        self.__full_name = None
-        self.__info = None
-        self.__units_torque = None
-        self.__units_pos = None
-        self.__units_vel = None
-        self.__units_acc = None
-        self.__units_torque = None
+        self._info = None
+
+        self.name = DEFAULT_DRIVE_NAME
+        """str: Obtains the servo name."""
+        self.full_name = None
+        """str: Obtains the servo full name."""
 
     @abstractmethod
     def get_state(self, subnode=1):
@@ -268,72 +263,9 @@ class Servo(ABC):
         raise NotImplementedError
 
     @property
-    def name(self):
-        """str: Obtains the servo name."""
-        return self.__name
-
-    @name.setter
-    def name(self, name):
-        self.__name = name
-
-    @property
-    def full_name(self):
-        """str: Obtains the servo full name."""
-        return self.__full_name
-
-    @full_name.setter
-    def full_name(self, name):
-        self.__full_name = name
-
-    @property
-    def dictionary(self):
-        """Dictionary: Obtain dictionary of the servo."""
-        return self._dictionary
-
-    @dictionary.setter
-    def dictionary(self, value):
-        self._dictionary = value
-
-    @property
     def info(self):
         """dict: Obtains the servo information."""
-        return self.__info
-
-    @property
-    def units_torque(self):
-        """SERVO_UNITS_TORQUE: Torque units."""
-        return self.__units_torque
-
-    @units_torque.setter
-    def units_torque(self, units):
-        self.__units_torque = units
-
-    @property
-    def units_pos(self):
-        """SERVO_UNITS_POS: Position units."""
-        return self.__units_pos
-
-    @units_pos.setter
-    def units_pos(self, units):
-        self.__units_pos = units
-
-    @property
-    def units_vel(self):
-        """SERVO_UNITS_VEL: Velocity units."""
-        return self.__units_vel
-
-    @units_vel.setter
-    def units_vel(self, units):
-        self.__units_vel = units
-
-    @property
-    def units_acc(self):
-        """SERVO_UNITS_ACC: Acceleration units."""
-        return self.__units_acc
-
-    @units_acc.setter
-    def units_acc(self, units):
-        self.__units_acc = units
+        return self._info
 
     @property
     def errors(self):

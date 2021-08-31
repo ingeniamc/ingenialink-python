@@ -126,21 +126,28 @@ class CanopenServo(Servo):
     """CANopen Servo instance.
 
     Args:
-        net (CanopenNetwork): Canopen Network of the drive.
         node (int): Node ID of the drive.
         dictionary_path (str): Path to the dictionary.
         servo_status_listener (bool): Boolean to initialize the ServoStatusListener and
         check the drive status.
     """
-    def __init__(self, net, target, node, dictionary_path=None, eds=None,
+    def __init__(self, target, node, dictionary_path=None, eds=None,
                  servo_status_listener=True):
-        super(CanopenServo, self).__init__(net, target)
+        super(CanopenServo, self).__init__(target)
         self.__node = node
         if dictionary_path is not None:
             self._dictionary = CanopenDictionary(dictionary_path)
         else:
             self._dictionary = None
-        self._eds = eds
+        self.units_torque = None
+        """SERVO_UNITS_TORQUE: Torque units."""
+        self.units_pos = None
+        """SERVO_UNITS_POS: Position units."""
+        self.units_vel = None
+        """SERVO_UNITS_VEL: Velocity units."""
+        self.units_acc = None
+        """SERVO_UNITS_ACC: Acceleration units."""
+        self.eds = eds
         self.__lock = threading.RLock()
         self.__state = {
             1: lib.IL_SERVO_STATE_NRDY,
@@ -766,28 +773,6 @@ class CanopenServo(Servo):
         """Returns dictionary object"""
         return self._dictionary
 
-    @dictionary.setter
-    def dictionary(self, new_value):
-        self._dictionary = new_value
-
-    @property
-    def eds(self):
-        """Returns EDs path object"""
-        return self._eds
-
-    @eds.setter
-    def eds(self, new_value):
-        self._eds = new_value
-
-    @property
-    def name(self):
-        """str: Drive name."""
-        return self.__name
-
-    @name.setter
-    def name(self, new_name):
-        self.__name = new_name
-
     @property
     def full_name(self):
         """str: Drive full name."""
@@ -818,7 +803,7 @@ class CanopenServo(Servo):
 
         info = {
             'serial': serial_number,
-            'name': self.__name,
+            'name': self.name,
             'sw_version': sw_version,
             'hw_variant': hw_variant,
             'prod_code': product_code,

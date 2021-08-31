@@ -208,7 +208,7 @@ class CanopenNetwork(Network):
                     self.__net_status_listener = NetStatusListener(self, node)
                     self.__net_status_listener.start()
 
-                servo = CanopenServo(self, target, node, dictionary, eds,
+                servo = CanopenServo(target, node, dictionary, eds,
                                      servo_status_listener=servo_status_listener)
                 self.servos.append(servo)
                 return servo
@@ -450,7 +450,7 @@ class CanopenNetwork(Network):
                         self.__set_fw_load_status_msg('Entering Bootmode')
                         logger.info('Entering Bootmode')
                         # Enter in NMT pre-operational state.
-                        servo.net.network.nmt.send_command(PROG_CTRL_STATE_FLASH)
+                        self._connection.nmt.send_command(PROG_CTRL_STATE_FLASH)
                         # The drive will unlock the clear program command
                         password = 0x70636675
 

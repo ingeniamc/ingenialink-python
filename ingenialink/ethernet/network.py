@@ -159,12 +159,8 @@ class EthernetNetwork(IPBNetwork):
         servo_ = ffi.cast('il_servo_t *', servo__[0])
 
         self._from_existing(net_)
-        servo = EthernetServo._from_existing(servo_, _dictionary)
-        servo._cffi_network = self._cffi_network
-        servo.target = target
-        servo._dictionary = dictionary
-        servo.port = port
-        servo.communication_protocol = communication_protocol
+        servo = EthernetServo(servo_, self._cffi_network, target,
+                              port, communication_protocol, dictionary)
 
         self.servos.append(servo)
 

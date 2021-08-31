@@ -1,5 +1,6 @@
 from ingenialink.ipb.servo import IPBServo
 from ..network import NET_TRANS_PROT
+from .._ingenialink import lib, ffi
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -9,32 +10,20 @@ class EthernetServo(IPBServo):
     """Servo object for all the Ethernet slave functionalities.
 
     Args:
-        net (IPBNetwork): IPB Network associated with the servo.
+        cffi_servo (CData): CData instance of the servo.
+        cffi_net (CData): CData instance of the network.
         target (str): Target ID for the slave.
-        dictionary_path (str): Path to the dictionary.
         port (int): Port for the communication.
         communication_protocol (NET_TRANS_PROT): Transmission protocol.
+        dictionary_path (str): Path to the dictionary.
 
     """
-    def __init__(self, net, target, dictionary_path, port, communication_protocol):
-        super(EthernetServo, self).__init__(net, target, dictionary_path)
-        self.__port = port
-        self.__communication_protocol = communication_protocol
-
-    @property
-    def port(self):
+    def __init__(self, cffi_servo, cffi_net, target, port, communication_protocol,
+                 dictionary_path=None):
+        servo = ffi.gc(cffi_servo, lib.il_servo_fake_destroy)
+        super(EthernetServo, self).__init__(
+            servo, cffi_net, target, dictionary_path)
+        self.port = port
         """int: Port number used for connections to the servo."""
-        return self.__port
-
-    @port.setter
-    def port(self, value):
-        self.__port = value
-
-    @property
-    def communication_protocol(self):
+        self.communication_protocol = communication_protocol
         """NET_TRANS_PROT: Protocol used to connect to the servo."""
-        return self.__communication_protocol
-
-    @communication_protocol.setter
-    def communication_protocol(self, value):
-        self.__communication_protocol = value

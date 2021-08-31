@@ -61,47 +61,29 @@ class IPBServo(Servo):
     """IPB Servo defines a general class for all IPB based slaves.
 
     Args:
-        net (IPBNetwork): IPB Network associated with the servo.
-        target (str): Target ID for the slave.
+        cffi_servo (CData): CData instance of the servo.
+        cffi_net (CData): CData instance of the network.
+        target (int, str): Target ID for the slave.
         dictionary_path (str): Path to the dictionary.
 
     """
-    def __init__(self, net, target, dictionary_path=None):
-        super(IPBServo, self).__init__(net, target)
-        self._dictionary = cstr(dictionary_path) if dictionary_path else ffi.NULL
+    def __init__(self, cffi_servo, cffi_net, target, dictionary_path=None):
+        self._cffi_servo = cffi_servo
+        """CFFI instance of the servo."""
+        self._cffi_network = cffi_net
+        """CFFI instance of the network."""
 
-        self.__cffi_servo = ffi.new('il_servo_t **')
-        self.__cffi_network = net
+        super(IPBServo, self).__init__(target)
+        _dictionary_path = cstr(dictionary_path) if dictionary_path else ffi.NULL
 
         self._state_cb = {}
         self._emcy_cb = {}
 
         if not hasattr(self, '_errors') or not self._errors:
-            self._errors = self._get_all_errors(self._dictionary)
+            self._errors = self._get_all_errors(_dictionary_path)
 
-    @classmethod
-    def _from_existing(cls, servo, dictionary):
-        """Create a new class instance from an existing servo.
-
-        Args:
-            servo (Servo): Servo instance.
-            dictionary (str): Path to the dictionary file.
-
-        Returns:
-            Servo: Instance of servo.
-
-        """
-        inst = cls.__new__(cls)
-        inst.__cffi_servo = ffi.gc(servo, lib.il_servo_fake_destroy)
-
-        inst._state_cb = {}
-        inst._emcy_cb = {}
-        if not hasattr(inst, '_errors') or not inst._errors:
-            inst._errors = inst._get_all_errors(dictionary)
-
-        return inst
-
-    def _get_all_errors(self, dictionary):
+    @staticmethod
+    def _get_all_errors(dictionary):
         """Obtain all errors defined in the dictionary.
 
         Args:
@@ -129,7 +111,7 @@ class IPBServo(Servo):
         """Obtain Register object and its identifier.
 
         Args:
-            reg (Register, str): Register.
+            reg (IPBRegister, str): Register.
             subnode (int): Subnode.
 
         Returns:
@@ -196,7 +178,7 @@ class IPBServo(Servo):
         t, f = self._raw_read[_reg.dtype]
         v = ffi.new(t)
 
-        r = f(self.__cffi_servo, _reg._reg, ffi.NULL, v)
+        r = f(self._cffi_servo, _reg._reg, ffi.NULL, v)
         raise_err(r)
 
         try:
@@ -262,7 +244,7 @@ class IPBServo(Servo):
         # Obtain function to call
         f = self._raw_write[_reg.dtype]
 
-        r = f(self.__cffi_servo, _reg._reg, ffi.NULL, data, confirm, extended)
+        r = f(self._cffi_servo, _reg._reg, ffi.NULL, data, confirm, extended)
         raise_err(r)
     
     def read_sdo(self, idx, subidx, dtype, slave=1):
@@ -282,7 +264,7 @@ class IPBServo(Servo):
 
         """
         v = ffi.new('double *')
-        r = lib.il_net_SDO_read(self.__cffi_network, slave, idx, subidx, dtype, v)
+        r = lib.il_net_SDO_read(self._cffi_network, slave, idx, subidx, dtype, v)
         raise_err(r)
 
         value = v[0]
@@ -305,7 +287,7 @@ class IPBServo(Servo):
 
         """
         v = ffi.new("char[" + str(size) + "]")
-        r = lib.il_net_SDO_read_string(self.__cffi_network, slave, idx, subidx, size, v)
+        r = lib.il_net_SDO_read_string(self._cffi_network, slave, idx, subidx, size, v)
         raise_err(r)
 
         value = pstr(v)
@@ -328,7 +310,7 @@ class IPBServo(Servo):
             TypeError: If the register type is not valid.
 
         """
-        r = lib.il_net_SDO_write(self.__cffi_network, slave, idx, subidx, dtype, value)
+        r = lib.il_net_SDO_write(self._cffi_network, slave, idx, subidx, dtype, value)
         raise_err(r)
 
     def destroy(self):
@@ -338,7 +320,7 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        r = lib.il_servo_destroy(self.__cffi_servo)
+        r = lib.il_servo_destroy(self._cffi_servo)
         return r
 
     def reset(self):
@@ -348,7 +330,7 @@ class IPBServo(Servo):
             You may need to reconnect the network after reset.
 
         """
-        r = lib.il_servo_reset(self.__cffi_servo)
+        r = lib.il_servo_reset(self._cffi_servo)
         raise_err(r)
 
     def get_state(self, subnode=1):
@@ -364,7 +346,7 @@ class IPBServo(Servo):
         state = ffi.new('il_servo_state_t *')
         flags = ffi.new('int *')
 
-        lib.il_servo_state_get(self.__cffi_servo, state, flags, subnode)
+        lib.il_servo_state_get(self._cffi_servo, state, flags, subnode)
 
         return SERVO_STATE(state[0]), flags[0]
 
@@ -378,7 +360,7 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        return lib.il_servo_state_subs_stop(self.__cffi_servo, stop)
+        return lib.il_servo_state_subs_stop(self._cffi_servo, stop)
 
     def enable(self, timeout=2., subnode=1):
         """Enable PDS.
@@ -388,12 +370,12 @@ class IPBServo(Servo):
             subnode (int, optional): Subnode.
 
         """
-        r = lib.il_servo_enable(self.__cffi_servo, to_ms(timeout), subnode)
+        r = lib.il_servo_enable(self._cffi_servo, to_ms(timeout), subnode)
         raise_err(r)
 
     def disable(self, subnode=1):
         """Disable PDS."""
-        r = lib.il_servo_disable(self.__cffi_servo, subnode)
+        r = lib.il_servo_disable(self._cffi_servo, subnode)
         raise_err(r)
 
     def fault_reset(self, subnode=1):
@@ -403,7 +385,7 @@ class IPBServo(Servo):
             subnode (int, optional): Subnode.
 
         """
-        r = lib.il_servo_fault_reset(self.__cffi_servo, subnode)
+        r = lib.il_servo_fault_reset(self._cffi_servo, subnode)
         raise_err(r)
 
     def switch_on(self, timeout=2.):
@@ -417,12 +399,12 @@ class IPBServo(Servo):
             timeout (int, float, optional): Timeout (s).
 
         """
-        r = lib.il_servo_switch_on(self.__cffi_servo, to_ms(timeout))
+        r = lib.il_servo_switch_on(self._cffi_servo, to_ms(timeout))
         raise_err(r)
 
     def homing_start(self):
         """Start the homing procedure."""
-        r = lib.il_servo_homing_start(self.__cffi_servo)
+        r = lib.il_servo_homing_start(self._cffi_servo)
         raise_err(r)
 
     def homing_wait(self, timeout):
@@ -438,7 +420,7 @@ class IPBServo(Servo):
             timeout (int, float): Timeout (s).
 
         """
-        r = lib.il_servo_homing_wait(self.__cffi_servo, to_ms(timeout))
+        r = lib.il_servo_homing_wait(self._cffi_servo, to_ms(timeout))
         raise_err(r)
 
     def store_parameters(self, subnode=0):
@@ -464,9 +446,9 @@ class IPBServo(Servo):
                 logger.warning('Store all COCO failed. Trying MOCO...')
                 r = -1
             if r < 0:
-                if self._dictionary.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
+                if self.dictionary.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
                     # Multiaxis
-                    for dict_subnode in self._dictionary.subnodes:
+                    for dict_subnode in self.dictionary.subnodes:
                         self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
                                    data=PASSWORD_STORE_ALL,
                                    subnode=dict_subnode)
@@ -517,12 +499,12 @@ class IPBServo(Servo):
 
     def store_comm(self):
         """Store all servo current communications to the NVM."""
-        r = lib.il_servo_store_comm(self.__cffi_servo)
+        r = lib.il_servo_store_comm(self._cffi_servo)
         raise_err(r)
 
     def store_app(self):
         """Store all servo current application parameters to the NVM."""
-        r = lib.il_servo_store_app(self.__cffi_servo)
+        r = lib.il_servo_store_app(self._cffi_servo)
         raise_err(r)
 
     def _dict_load(self, dictionary):
@@ -532,7 +514,7 @@ class IPBServo(Servo):
             dictionary (str): Dictionary.
 
         """
-        r = lib.il_servo_dict_load(self.__cffi_servo, cstr(dictionary))
+        r = lib.il_servo_dict_load(self._cffi_servo, cstr(dictionary))
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(dictionary)
         raise_err(r)
@@ -545,7 +527,7 @@ class IPBServo(Servo):
             subnode (int, optional): Subnode.
 
         """
-        r = lib.il_servo_dict_storage_write(self.__cffi_servo, cstr(dictionary),
+        r = lib.il_servo_dict_storage_write(self._cffi_servo, cstr(dictionary),
                                             subnode)
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(dictionary)
@@ -562,7 +544,7 @@ class IPBServo(Servo):
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        r = lib.il_servo_dict_storage_read(self.__cffi_servo)
+        r = lib.il_servo_dict_storage_read(self._cffi_servo)
         raise_err(r)
 
         self.dictionary.save(new_path)
@@ -632,7 +614,7 @@ class IPBServo(Servo):
         cb_handle = ffi.new_handle(cb)
 
         slot = lib.il_servo_emcy_subscribe(
-            self.__cffi_servo, lib._on_emcy_cb, cb_handle)
+            self._cffi_servo, lib._on_emcy_cb, cb_handle)
         if slot < 0:
             raise_err(slot)
 
@@ -647,7 +629,7 @@ class IPBServo(Servo):
             slot (int): Assigned slot when subscribed.
 
         """
-        lib.il_servo_emcy_unsubscribe(self.__cffi_servo, slot)
+        lib.il_servo_emcy_unsubscribe(self._cffi_servo, slot)
 
         del self._emcy_cb[slot]
 
@@ -664,7 +646,7 @@ class IPBServo(Servo):
         cb_handle = ffi.new_handle(callback)
 
         slot = lib.il_servo_state_subscribe(
-            self.__cffi_servo, lib._on_state_change_cb, cb_handle)
+            self._cffi_servo, lib._on_state_change_cb, cb_handle)
         if slot < 0:
             raise_err(slot)
 
@@ -679,7 +661,7 @@ class IPBServo(Servo):
             slot (int): Assigned slot when subscribed.
 
         """
-        lib.il_servo_state_unsubscribe(self.__cffi_servo, slot)
+        lib.il_servo_state_unsubscribe(self._cffi_servo, slot)
 
         del self._state_cb[slot]
 
@@ -729,7 +711,7 @@ class IPBServo(Servo):
             timeout (int, float): Timeout (s).
 
         """
-        r = lib.il_servo_wait_reached(self.__cffi_servo, to_ms(timeout))
+        r = lib.il_servo_wait_reached(self._cffi_servo, to_ms(timeout))
         raise_err(r)
 
     def units_update(self):
@@ -741,7 +723,7 @@ class IPBServo(Servo):
             will not be correct.
 
         """
-        r = lib.il_servo_units_update(self.__cffi_servo)
+        r = lib.il_servo_units_update(self._cffi_servo)
         raise_err(r)
 
     def units_factor(self, reg):
@@ -754,7 +736,7 @@ class IPBServo(Servo):
             float: Scale factor for the given register.
 
         """
-        return lib.il_servo_units_factor(self.__cffi_servo, reg._reg)
+        return lib.il_servo_units_factor(self._cffi_servo, reg._reg)
 
     def monitoring_channel_data(self, channel, dtype):
         """Obtain processed monitoring data of a channel.
@@ -771,15 +753,15 @@ class IPBServo(Servo):
         size = int(self.monitoring_data_size)
         bytes_per_block = self.monitoring_get_bytes_per_block()
         if dtype == REG_DTYPE.U16:
-            data_arr = lib.il_net_monitoring_channel_u16(self.__cffi_network, channel)
+            data_arr = lib.il_net_monitoring_channel_u16(self._cffi_network, channel)
         elif dtype == REG_DTYPE.S16:
-            data_arr = lib.il_net_monitoring_channel_s16(self.__cffi_network, channel)
+            data_arr = lib.il_net_monitoring_channel_s16(self._cffi_network, channel)
         elif dtype == REG_DTYPE.U32:
-            data_arr = lib.il_net_monitoring_channel_u32(self.__cffi_network, channel)
+            data_arr = lib.il_net_monitoring_channel_u32(self._cffi_network, channel)
         elif dtype == REG_DTYPE.S32:
-            data_arr = lib.il_net_monitoring_channel_s32(self.__cffi_network, channel)
+            data_arr = lib.il_net_monitoring_channel_s32(self._cffi_network, channel)
         elif dtype == REG_DTYPE.FLOAT:
-            data_arr = lib.il_net_monitoring_channel_flt(self.__cffi_network, channel)
+            data_arr = lib.il_net_monitoring_channel_flt(self._cffi_network, channel)
         ret_arr = []
         for i in range(0, int(size / bytes_per_block)):
             ret_arr.append(data_arr[i])
@@ -792,7 +774,7 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        return lib.il_net_remove_all_mapped_registers(self.__cffi_network)
+        return lib.il_net_remove_all_mapped_registers(self._cffi_network)
 
     def monitoring_set_mapped_register(self, channel, reg_idx, dtype):
         """Set monitoring mapped register.
@@ -806,7 +788,7 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        return lib.il_net_set_mapped_register(self.__cffi_network, channel,
+        return lib.il_net_set_mapped_register(self._cffi_network, channel,
                                               reg_idx, dtype)
 
     def monitoring_get_num_mapped_registers(self):
@@ -816,7 +798,7 @@ class IPBServo(Servo):
             int: Actual number of mapped registers.
 
         """
-        return lib.il_net_num_mapped_registers_get(self.__cffi_network)
+        return lib.il_net_num_mapped_registers_get(self._cffi_network)
 
     def monitoring_enable(self):
         """Enable monitoring process.
@@ -825,7 +807,7 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        return lib.il_net_enable_monitoring(self.__cffi_network)
+        return lib.il_net_enable_monitoring(self._cffi_network)
 
     def monitoring_disable(self):
         """Disable monitoring process.
@@ -834,7 +816,7 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        return lib.il_net_disable_monitoring(self.__cffi_network)
+        return lib.il_net_disable_monitoring(self._cffi_network)
 
     def monitoring_read_data(self):
         """Obtain processed monitoring data.
@@ -843,7 +825,7 @@ class IPBServo(Servo):
             array: Actual processed monitoring data.
 
         """
-        return lib.il_net_read_monitoring_data(self.__cffi_network)
+        return lib.il_net_read_monitoring_data(self._cffi_network)
 
     def monitoring_get_bytes_per_block(self):
         """Obtain Bytes x Block configured.
@@ -852,7 +834,7 @@ class IPBServo(Servo):
             int: Actual number of Bytes x Block configured.
 
         """
-        return lib.il_net_monitornig_bytes_per_block_get(self.__cffi_network)
+        return lib.il_net_monitornig_bytes_per_block_get(self._cffi_network)
 
     def disturbance_channel_data(self, channel, dtype, data_arr):
         """Send disturbance data.
@@ -867,15 +849,15 @@ class IPBServo(Servo):
 
         """
         if dtype == REG_DTYPE.U16:
-            lib.il_net_disturbance_data_u16_set(self.__cffi_network, channel, data_arr)
+            lib.il_net_disturbance_data_u16_set(self._cffi_network, channel, data_arr)
         elif dtype == REG_DTYPE.S16:
-            lib.il_net_disturbance_data_s16_set(self.__cffi_network, channel, data_arr)
+            lib.il_net_disturbance_data_s16_set(self._cffi_network, channel, data_arr)
         elif dtype == REG_DTYPE.U32:
-            lib.il_net_disturbance_data_u32_set(self.__cffi_network, channel, data_arr)
+            lib.il_net_disturbance_data_u32_set(self._cffi_network, channel, data_arr)
         elif dtype == REG_DTYPE.S32:
-            lib.il_net_disturbance_data_s32_set(self.__cffi_network, channel, data_arr)
+            lib.il_net_disturbance_data_s32_set(self._cffi_network, channel, data_arr)
         elif dtype == REG_DTYPE.FLOAT:
-            lib.il_net_disturbance_data_flt_set(self.__cffi_network, channel, data_arr)
+            lib.il_net_disturbance_data_flt_set(self._cffi_network, channel, data_arr)
         return 0
 
     def disturbance_remove_all_mapped_registers(self):
@@ -885,7 +867,7 @@ class IPBServo(Servo):
             int: Return code.
 
         """
-        return lib.il_net_disturbance_remove_all_mapped_registers(self.__cffi_network)
+        return lib.il_net_disturbance_remove_all_mapped_registers(self._cffi_network)
 
     def disturbance_set_mapped_register(self, channel, address, dtype):
         """Set disturbance mapped register.
@@ -899,47 +881,15 @@ class IPBServo(Servo):
             int: Return code.
 
         """
-        return lib.il_net_disturbance_set_mapped_register(self.__cffi_network, channel,
+        return lib.il_net_disturbance_set_mapped_register(self._cffi_network, channel,
                                                           address, dtype)
-
-    @property
-    def name(self):
-        """Obtain servo name.
-
-        Returns:
-            str: Name.
-
-        """
-        name = ffi.new('char []', lib.IL_SERVO_NAME_SZ)
-
-        r = lib.il_servo_name_get(self.__cffi_servo, name, ffi.sizeof(name))
-        raise_err(r)
-
-        return pstr(name)
-
-    @name.setter
-    def name(self, name):
-        """Set servo name.
-
-        Args:
-            name (str): Name.
-
-        """
-        name_ = ffi.new('char []', cstr(name))
-
-        r = lib.il_servo_name_set(self.__cffi_servo, name_)
-        raise_err(r)
 
     @property
     def dictionary(self):
         """Obtain dictionary of the servo."""
-        _dict = lib.il_servo_dict_get(self.__cffi_servo)
+        _dict = lib.il_servo_dict_get(self._cffi_servo)
 
         return IPBDictionary._from_dict(_dict) if _dict else None
-
-    @dictionary.setter
-    def dictionary(self, value):
-        self._dictionary = value
 
     @property
     def info(self):
@@ -949,9 +899,9 @@ class IPBServo(Servo):
             dict: Servo information.
 
         """
-        info = ffi.new('il_servo_info_t *')
+        _info = ffi.new('il_servo_info_t *')
 
-        r = lib.il_servo_info_get(self.__cffi_servo, info)
+        r = lib.il_servo_info_get(self._cffi_servo, _info)
         raise_err(r)
 
         PRODUCT_ID_REG = IPBRegister(identifier='', address=0x06E1,
@@ -961,48 +911,48 @@ class IPBServo(Servo):
 
         product_id = self.read(PRODUCT_ID_REG)
 
-        return {'serial': info.serial,
-                'name': pstr(info.name),
-                'sw_version': pstr(info.sw_version),
-                'hw_variant': pstr(info.hw_variant),
+        return {'serial': _info.serial,
+                'name': pstr(_info.name),
+                'sw_version': pstr(_info.sw_version),
+                'hw_variant': pstr(_info.hw_variant),
                 'prod_code': product_id,
-                'revision': info.revision}
+                'revision': _info.revision}
 
     @property
     def units_torque(self):
         """SERVO_UNITS_TORQUE: Torque units."""
-        return SERVO_UNITS_TORQUE(lib.il_servo_units_torque_get(self.__cffi_servo))
+        return SERVO_UNITS_TORQUE(lib.il_servo_units_torque_get(self._cffi_servo))
 
     @units_torque.setter
     def units_torque(self, units):
-        lib.il_servo_units_torque_set(self.__cffi_servo, units.value)
+        lib.il_servo_units_torque_set(self._cffi_servo, units.value)
 
     @property
     def units_pos(self):
         """SERVO_UNITS_POS: Position units."""
-        return SERVO_UNITS_POS(lib.il_servo_units_pos_get(self.__cffi_servo))
+        return SERVO_UNITS_POS(lib.il_servo_units_pos_get(self._cffi_servo))
 
     @units_pos.setter
     def units_pos(self, units):
-        lib.il_servo_units_pos_set(self.__cffi_servo, units.value)
+        lib.il_servo_units_pos_set(self._cffi_servo, units.value)
 
     @property
     def units_vel(self):
         """SERVO_UNITS_VEL: Velocity units."""
-        return SERVO_UNITS_VEL(lib.il_servo_units_vel_get(self.__cffi_servo))
+        return SERVO_UNITS_VEL(lib.il_servo_units_vel_get(self._cffi_servo))
 
     @units_vel.setter
     def units_vel(self, units):
-        lib.il_servo_units_vel_set(self.__cffi_servo, units.value)
+        lib.il_servo_units_vel_set(self._cffi_servo, units.value)
 
     @property
     def units_acc(self):
         """SERVO_UNITS_ACC: Acceleration units."""
-        return SERVO_UNITS_ACC(lib.il_servo_units_acc_get(self.__cffi_servo))
+        return SERVO_UNITS_ACC(lib.il_servo_units_acc_get(self._cffi_servo))
 
     @units_acc.setter
     def units_acc(self, units):
-        lib.il_servo_units_acc_set(self.__cffi_servo, units.value)
+        lib.il_servo_units_acc_set(self._cffi_servo, units.value)
 
     @property
     def mode(self):
@@ -1014,7 +964,7 @@ class IPBServo(Servo):
         """
         mode = ffi.new('il_servo_mode_t *')
 
-        r = lib.il_servo_mode_get(self.__cffi_servo, mode)
+        r = lib.il_servo_mode_get(self._cffi_servo, mode)
         raise_err(r)
 
         return SERVO_MODE(mode[0])
@@ -1027,7 +977,7 @@ class IPBServo(Servo):
             mode (SERVO_MODE): Operation mode.
 
         """
-        r = lib.il_servo_mode_set(self.__cffi_servo, mode.value)
+        r = lib.il_servo_mode_set(self._cffi_servo, mode.value)
         raise_err(r)
 
     @property
@@ -1041,24 +991,6 @@ class IPBServo(Servo):
         return self._errors
 
     @property
-    def _cffi_servo(self):
-        """CFFI instance of the servo."""
-        return self.__cffi_servo
-
-    @_cffi_servo.setter
-    def _cffi_servo(self, value):
-        self.__cffi_servo = value
-
-    @property
-    def _cffi_network(self):
-        """CFFI instance of the network."""
-        return self.__cffi_network
-
-    @_cffi_network.setter
-    def _cffi_network(self, value):
-        self.__cffi_network = value
-
-    @property
     def subnodes(self):
         """Obtain number of subnodes.
 
@@ -1066,7 +998,7 @@ class IPBServo(Servo):
             int: Current number of subnodes.
 
         """
-        return int(ffi.cast('int', lib.il_servo_subnodes_get(self.__cffi_servo)))
+        return int(ffi.cast('int', lib.il_servo_subnodes_get(self._cffi_servo)))
 
     @property
     def ol_voltage(self):
@@ -1077,7 +1009,7 @@ class IPBServo(Servo):
 
         """
         voltage = ffi.new('double *')
-        r = lib.il_servo_ol_voltage_get(self.__cffi_servo, voltage)
+        r = lib.il_servo_ol_voltage_get(self._cffi_servo, voltage)
         raise_err(r)
 
         return voltage[0]
@@ -1090,7 +1022,7 @@ class IPBServo(Servo):
             float: Open loop voltage.
 
         """
-        r = lib.il_servo_ol_voltage_set(self.__cffi_servo, voltage)
+        r = lib.il_servo_ol_voltage_set(self._cffi_servo, voltage)
         raise_err(r)
 
     @property
@@ -1102,7 +1034,7 @@ class IPBServo(Servo):
 
         """
         frequency = ffi.new('double *')
-        r = lib.il_servo_ol_frequency_get(self.__cffi_servo, frequency)
+        r = lib.il_servo_ol_frequency_get(self._cffi_servo, frequency)
         raise_err(r)
 
         return frequency[0]
@@ -1115,7 +1047,7 @@ class IPBServo(Servo):
             float: Open loop frequency.
 
         """
-        r = lib.il_servo_ol_frequency_set(self.__cffi_servo, frequency)
+        r = lib.il_servo_ol_frequency_set(self._cffi_servo, frequency)
         raise_err(r)
 
     @property
@@ -1127,7 +1059,7 @@ class IPBServo(Servo):
 
         """
         torque = ffi.new('double *')
-        r = lib.il_servo_torque_get(self.__cffi_servo, torque)
+        r = lib.il_servo_torque_get(self._cffi_servo, torque)
         raise_err(r)
 
         return torque[0]
@@ -1140,7 +1072,7 @@ class IPBServo(Servo):
             float: Target torque.
 
         """
-        r = lib.il_servo_torque_set(self.__cffi_servo, torque)
+        r = lib.il_servo_torque_set(self._cffi_servo, torque)
         raise_err(r)
 
     @property
@@ -1152,7 +1084,7 @@ class IPBServo(Servo):
 
         """
         position = ffi.new('double *')
-        r = lib.il_servo_position_get(self.__cffi_servo, position)
+        r = lib.il_servo_position_get(self._cffi_servo, position)
         raise_err(r)
 
         return position[0]
@@ -1198,7 +1130,7 @@ class IPBServo(Servo):
 
             pos = pos[0]
 
-        r = lib.il_servo_position_set(self.__cffi_servo, pos, immediate, relative,
+        r = lib.il_servo_position_set(self._cffi_servo, pos, immediate, relative,
                                       sp_timeout)
         raise_err(r)
 
@@ -1211,7 +1143,7 @@ class IPBServo(Servo):
 
         """
         res = ffi.new('uint32_t *')
-        r = lib.il_servo_position_res_get(self.__cffi_servo, res)
+        r = lib.il_servo_position_res_get(self._cffi_servo, res)
         raise_err(r)
 
         return res[0]
@@ -1225,7 +1157,7 @@ class IPBServo(Servo):
 
         """
         velocity = ffi.new('double *')
-        r = lib.il_servo_velocity_get(self.__cffi_servo, velocity)
+        r = lib.il_servo_velocity_get(self._cffi_servo, velocity)
         raise_err(r)
 
         return velocity[0]
@@ -1238,7 +1170,7 @@ class IPBServo(Servo):
             velocity (float): Target velocity.
 
         """
-        r = lib.il_servo_velocity_set(self.__cffi_servo, velocity)
+        r = lib.il_servo_velocity_set(self._cffi_servo, velocity)
         raise_err(r)
 
     @property
@@ -1250,7 +1182,7 @@ class IPBServo(Servo):
 
         """
         res = ffi.new('uint32_t *')
-        r = lib.il_servo_velocity_res_get(self.__cffi_servo, res)
+        r = lib.il_servo_velocity_res_get(self._cffi_servo, res)
         raise_err(r)
 
         return res[0]
@@ -1263,7 +1195,7 @@ class IPBServo(Servo):
             array: Current monitoring data.
 
         """
-        monitoring_data = lib.il_net_monitornig_data_get(self.__cffi_network)
+        monitoring_data = lib.il_net_monitornig_data_get(self._cffi_network)
         size = int(self.monitoring_data_size / 2)
         ret_arr = []
         for i in range(0, size):
@@ -1278,7 +1210,7 @@ class IPBServo(Servo):
             int: Current monitoring data size.
 
         """
-        return lib.il_net_monitornig_data_size_get(self.__cffi_network)
+        return lib.il_net_monitornig_data_size_get(self._cffi_network)
 
     @property
     def disturbance_data(self):
@@ -1288,7 +1220,7 @@ class IPBServo(Servo):
             array: Current disturbance data.
 
         """
-        disturbance_data = lib.il_net_disturbance_data_get(self.__cffi_network)
+        disturbance_data = lib.il_net_disturbance_data_get(self._cffi_network)
         size = int(self.disturbance_data_size / 2)
         ret_arr = []
         for i in range(0, size):
@@ -1308,7 +1240,7 @@ class IPBServo(Servo):
             np.pad(disturbance_arr,
                    (0, int(self.disturbance_data_size / 2) - len(value)),
                    'constant')
-        lib.il_net_disturbance_data_set(self.__cffi_network, disturbance_arr.tolist())
+        lib.il_net_disturbance_data_set(self._cffi_network, disturbance_arr.tolist())
 
     @property
     def disturbance_data_size(self):
@@ -1318,7 +1250,7 @@ class IPBServo(Servo):
             int: Current disturbance data size.
 
         """
-        return lib.il_net_disturbance_data_size_get(self.__cffi_network)
+        return lib.il_net_disturbance_data_size_get(self._cffi_network)
 
     @disturbance_data_size.setter
     def disturbance_data_size(self, value):
@@ -1328,7 +1260,7 @@ class IPBServo(Servo):
             value (int): Disturbance data size in bytes.
 
         """
-        lib.il_net_disturbance_data_size_set(self.__cffi_network, value)
+        lib.il_net_disturbance_data_size_set(self._cffi_network, value)
 
     @property
     def extended_buffer(self):
@@ -1338,6 +1270,6 @@ class IPBServo(Servo):
             str: Current extended buffer data.
 
         """
-        ext_buff = lib.il_net_extended_buffer_get(self.__cffi_network)
+        ext_buff = lib.il_net_extended_buffer_get(self._cffi_network)
         return pstr(ext_buff)
 

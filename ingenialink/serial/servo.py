@@ -10,16 +10,15 @@ class SerialServo(IPBServo):
     """Servo object for all the Serial slave functionalities.
 
     Args:
-        net (IPBNetwork): IPB Network associated with the servo.
+        cffi_net (CData): CData instance of the network.
         target (int): Target ID for the slave.
         dictionary_path (str): Path to the dictionary.
 
     """
-    def __init__(self, net, target, dictionary_path):
-        super(SerialServo, self).__init__(net, target, dictionary_path)
-        if target:
-            _dictionary = cstr(dictionary_path) if dictionary_path else ffi.NULL
-            servo = lib.il_servo_create(net, target, _dictionary)
-            raise_null(servo)
+    def __init__(self, cffi_net, target, dictionary_path):
+        _dictionary = cstr(dictionary_path) if dictionary_path else ffi.NULL
+        servo = lib.il_servo_create(cffi_net, target, _dictionary)
+        raise_null(servo)
 
-            self._cffi_servo = ffi.gc(servo, lib.il_servo_destroy)
+        cffi_servo = ffi.gc(servo, lib.il_servo_destroy)
+        super(SerialServo, self).__init__(cffi_servo, target, dictionary_path)
