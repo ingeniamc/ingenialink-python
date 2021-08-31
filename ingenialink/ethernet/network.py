@@ -4,6 +4,7 @@ from ingenialink.ipb.network import IPBNetwork
 from ingenialink.utils._utils import *
 from .._ingenialink import lib, ffi
 from ingenialink.utils.udp import UDP
+from ingenialink.exceptions import ILFirmwareLoadError
 import ingenialogger
 
 from ftplib import FTP
@@ -37,7 +38,6 @@ class EthernetNetwork(IPBNetwork):
 
         Raises:
             ILError: If the loading firmware process fails.
-
         """
         try:
             file = open(fw_file, 'rb')
@@ -75,7 +75,7 @@ class EthernetNetwork(IPBNetwork):
             file.close()
 
         except Exception as e:
-            raise_err("Exception when flashing drive: {}".format(e))
+            raise ILFirmwareLoadError("Exception when flashing drive: {}".format(e))
 
     @staticmethod
     def load_firmware_moco(node, subnode, ip, port, moco_file):
@@ -87,9 +87,13 @@ class EthernetNetwork(IPBNetwork):
             ip: Drive address IP.
             port: Drive port.
             moco_file: Path to the firmware file.
+
         Returns:
             int: Result code.
 
+        Raises:
+            ILFirmwareLoadError: The firmware load process fails
+            with an error message.
         """
         r = 0
         upd = UDP(port, ip)
@@ -119,13 +123,9 @@ class EthernetNetwork(IPBNetwork):
 
                 logger.info("Bootload process succeeded")
             except Exception as e:
-                logger.error('Error during bootload process. %s', e)
-                r = -2
+                raise ILFirmwareLoadError('Error during bootloader process. %s', e)
         else:
-            logger.error('File not found')
-            r = -1
-
-        return r
+            raise ILFirmwareLoadError('File not found')
 
     def scan_slaves(self):
         raise NotImplementedError
@@ -158,7 +158,7 @@ class EthernetNetwork(IPBNetwork):
         net_ = ffi.cast('il_net_t *', net__[0])
         servo_ = ffi.cast('il_servo_t *', servo__[0])
 
-        self._from_existing(net_)
+        self._create_cffi_network(net_)
         servo = EthernetServo(servo_, self._cffi_network, target,
                               port, communication_protocol, dictionary)
 

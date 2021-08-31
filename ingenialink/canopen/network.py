@@ -5,7 +5,7 @@ from .._ingenialink import lib
 from .register import CanopenRegister
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import *
-from ..exceptions import ILFirmwareLoadError, ILObjectNotExist
+from ..exceptions import ILFirmwareLoadError, ILObjectNotExist, ILError
 from can.interfaces.pcan.pcan import PcanError
 from ..network import NET_PROT, NET_STATE, Network
 from can.interfaces.ixxat.exceptions import VCIDeviceNotFoundError
@@ -94,14 +94,14 @@ class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
     Args:
-        parent (Network): network instance of the CANopen communication.
-        node (int): Identifier for the targeted node ID.
+        network (CanopenNetwork): Network instance of the CANopen communication.
+        node (canopen.RemoteNode): Identifier for the targeted node ID.
 
     """
 
-    def __init__(self, parent, node):
+    def __init__(self, network, node):
         super(NetStatusListener, self).__init__()
-        self.__parent = parent
+        self.__network = network
         self.__node = node
         self.__timestamp = self.__node.nmt.timestamp
         self.__state = NET_STATE.CONNECTED
@@ -111,13 +111,13 @@ class NetStatusListener(Thread):
         while not self.__stop:
             if self.__timestamp == self.__node.nmt.timestamp:
                 if self.__state != NET_STATE.DISCONNECTED:
-                    self.__parent.net_state = NET_STATE.DISCONNECTED
+                    self.__network.net_state = NET_STATE.DISCONNECTED
                     self.__state = NET_STATE.DISCONNECTED
                 else:
-                    self.__parent._reset_connection()
+                    self.__network._reset_connection()
             else:
                 if self.__state != NET_STATE.CONNECTED:
-                    self.__parent.net_state = NET_STATE.CONNECTED
+                    self.__network.net_state = NET_STATE.CONNECTED
                     self.__state = NET_STATE.CONNECTED
                 self.__timestamp = self.__node.nmt.timestamp
             sleep(1.5)
@@ -327,7 +327,6 @@ class CanopenNetwork(Network):
 
         Raises:
             ILFirmwareLoadError: The firmware load process fails with an error message.
-
         """
         servo = None
         lfu_path = None
@@ -702,22 +701,27 @@ class CanopenNetwork(Network):
         if self._connection is None:
             raise ILObjectNotExist('CAN connection was not established.')
 
-        r = self._lss_switch_state_selective(vendor_id, product_code,
-                                             rev_number, serial_number)
-        if r >= 0:
-            self._connection.lss.configure_bit_timing(
-                CAN_BIT_TIMMING[new_target_baudrate]
+        try:
+            logger.debug("Switching LSS into CONFIGURATION state...")
+            r = self._connection.lss.send_switch_state_selective(
+                vendor_id,
+                product_code,
+                rev_number,
+                serial_number,
             )
-            sleep(0.1)
+            if r >= 0:
+                self._connection.lss.configure_bit_timing(
+                    CAN_BIT_TIMMING[new_target_baudrate]
+                )
+                sleep(0.1)
 
-            self._lss_store_configuration()
-
-        else:
-            return r
-
-        self._lss_reset_connection_nodes(target_node)
-        logger.info('Baudrate changed to {}'.format(new_target_baudrate))
-        return 0
+                self._lss_store_configuration()
+            else:
+                raise ILError('Error switching lss to selective state. '
+                              'Error code: {}'.format(r))
+        finally:
+            self._lss_reset_connection_nodes(target_node)
+            logger.info('Baudrate changed to {}'.format(new_target_baudrate))
 
     def change_node_id(self, target_node, new_target_node, vendor_id,
                        product_code, rev_number, serial_number):
@@ -738,21 +742,26 @@ class CanopenNetwork(Network):
         if self._connection is None:
             raise ILObjectNotExist('CAN connection was not established.')
 
-        r = self._lss_switch_state_selective(vendor_id, product_code,
-                                             rev_number, serial_number)
+        try:
+            logger.debug("Switching LSS into CONFIGURATION state...")
+            r = self._connection.lss.send_switch_state_selective(
+                vendor_id,
+                product_code,
+                rev_number,
+                serial_number,
+            )
+            if r >= 0:
+                self._connection.lss.configure_node_id(new_target_node)
+                sleep(0.1)
 
-        if r >= 0:
-            self._connection.lss.configure_node_id(new_target_node)
-            sleep(0.1)
+                self._lss_store_configuration()
 
-            self._lss_store_configuration()
-
-        else:
-            return r
-
-        self._lss_reset_connection_nodes(target_node)
-        logger.info('Node ID changed to {}'.format(new_target_node))
-        return 0
+            else:
+                raise ILError('Error switching lss to selective state. '
+                              'Error code: {}'.format(r))
+        finally:
+            self._lss_reset_connection_nodes(target_node)
+            logger.info('Node ID changed to {}'.format(new_target_node))
 
     def _lss_store_configuration(self):
         """Stores the current configuration of the LSS"""
@@ -762,35 +771,6 @@ class CanopenNetwork(Network):
         self._connection.lss.send_switch_state_global(
             self._connection.lss.WAITING_STATE
         )
-
-    def _lss_switch_state_selective(self, vendor_id, product_code,
-                                    rev_number, serial_number):
-        """Switches the state of the LSS to configuration state.
-
-        Args:
-            vendor_id (int): Vendor ID of the targeted device.
-            product_code (int): Product code of the targeted device.
-            rev_number (int): Revision number of the targeted device.
-            serial_number (int): Serial number of the targeted device.
-
-        Returns:
-            bool: Boolean indicating if the operation was successful.
-
-        """
-        logger.debug("Switching LSS into CONFIGURATION state...")
-
-        try:
-            r = self._connection.lss.send_switch_state_selective(
-                vendor_id,
-                product_code,
-                rev_number,
-                serial_number,
-            )
-        except Exception as e:
-            r = -1
-            logger.error('LSS Timeout. Exception: %s', e)
-
-        return r
 
     def _lss_reset_connection_nodes(self, target_node):
         """Resets the connection and starts node guarding for the connection nodes.

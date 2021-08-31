@@ -31,7 +31,6 @@ class SerialNetwork(IPBNetwork):
 
         Raises:
             TypeError: If the protocol type is invalid.
-
         """
         devs = lib.il_net_dev_list_get(NET_PROT.MCB.value)
 

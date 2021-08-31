@@ -14,14 +14,14 @@ class IPBNetwork(Network, ABC):
         self._cffi_network = None
         """CFFI instance of the network."""
 
-    def _from_existing(self, net):
+    def _create_cffi_network(self, cffi_network):
         """Create a new class instance from an existing network.
 
         Args:
-            net (Network): Instance to copy.
+            cffi_network (CData): Instance to copy.
 
         """
-        self._cffi_network = ffi.gc(net, lib.il_net_fake_destroy)
+        self._cffi_network = ffi.gc(cffi_network, lib.il_net_fake_destroy)
 
     @abstractmethod
     def scan_slaves(self):

@@ -95,23 +95,23 @@ class ServoStatusListener(threading.Thread):
     """Reads the status word to check if the drive is alive.
 
     Args:
-        parent (Servo): Servo instance of the drive.
+        servo (CanopenServo): Servo instance of the drive.
     """
-    def __init__(self, parent):
+    def __init__(self, servo):
         super(ServoStatusListener, self).__init__()
-        self.__parent = parent
+        self.__servo = servo
         self.__stop = False
 
     def run(self):
         """Checks if the drive is alive by reading the status word register"""
         while not self.__stop:
-            for subnode in range(1, self.__parent.subnodes):
+            for subnode in range(1, self.__servo.subnodes):
                 try:
-                    status_word = self.__parent.read(
+                    status_word = self.__servo.read(
                         STATUS_WORD_REGISTERS[subnode], subnode=subnode
                     )
-                    state = self.__parent.status_word_decode(status_word)
-                    self.__parent._set_state(state, subnode=subnode)
+                    state = self.__servo.status_word_decode(status_word)
+                    self.__servo._set_state(state, subnode=subnode)
                 except Exception as e:
                     logger.error("Error getting drive status. "
                                  "Exception : %s", e)
@@ -126,7 +126,7 @@ class CanopenServo(Servo):
     """CANopen Servo instance.
 
     Args:
-        node (int): Node ID of the drive.
+        node (canopen.RemoteNode): Remote Node of the drive.
         dictionary_path (str): Path to the dictionary.
         servo_status_listener (bool): Boolean to initialize the ServoStatusListener and
         check the drive status.
@@ -134,11 +134,6 @@ class CanopenServo(Servo):
     def __init__(self, target, node, dictionary_path=None, eds=None,
                  servo_status_listener=True):
         super(CanopenServo, self).__init__(target)
-        self.__node = node
-        if dictionary_path is not None:
-            self._dictionary = CanopenDictionary(dictionary_path)
-        else:
-            self._dictionary = None
         self.units_torque = None
         """SERVO_UNITS_TORQUE: Torque units."""
         self.units_pos = None
@@ -147,6 +142,11 @@ class CanopenServo(Servo):
         """SERVO_UNITS_VEL: Velocity units."""
         self.units_acc = None
         """SERVO_UNITS_ACC: Acceleration units."""
+        self.__node = node
+        if dictionary_path is not None:
+            self._dictionary = CanopenDictionary(dictionary_path)
+        else:
+            self._dictionary = None
         self.eds = eds
         self.__lock = threading.RLock()
         self.__state = {
@@ -361,7 +361,7 @@ class CanopenServo(Servo):
                 self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
             r = self.fault_reset(subnode=subnode)
             if r < 0:
-                return r
+                raise_err(r)
 
         while self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
             status_word = self.read(STATUS_WORD_REGISTERS[subnode],
@@ -369,10 +369,10 @@ class CanopenServo(Servo):
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
             if self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
-                # Check state and commandaction to reach enabled
+                # Check state and command action to reach enabled
                 cmd = IL_MC_PDS_CMD_EO
                 if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT:
-                    return lib.IL_ESTATE
+                    raise_err(lib.IL_ESTATE)
                 elif self.state[subnode].value == lib.IL_SERVO_STATE_NRDY:
                     cmd = IL_MC_PDS_CMD_DV
                 elif self.state[subnode].value == lib.IL_SERVO_STATE_DISABLED:
@@ -387,7 +387,7 @@ class CanopenServo(Servo):
                 r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
                                                  subnode=1)
                 if r < 0:
-                    return r
+                    raise_err(r)
 
                 # Read the current status word
                 status_word = self.read(STATUS_WORD_REGISTERS[subnode],
@@ -421,7 +421,7 @@ class CanopenServo(Servo):
                 # Try fault reset if faulty
                 r = self.fault_reset(subnode=subnode)
                 if r < 0:
-                    return r
+                    raise_err(r)
                 status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
@@ -431,11 +431,11 @@ class CanopenServo(Servo):
                 self.write(CONTROL_WORD_REGISTERS[subnode],
                            IL_MC_PDS_CMD_DV, subnode=subnode)
 
-                # Wait until statusword changes
+                # Wait until status word changes
                 r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
                                                  subnode=1)
                 if r < 0:
-                    return r
+                    raise_err(r)
                 status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
@@ -461,7 +461,7 @@ class CanopenServo(Servo):
                 self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
             # Check if faulty, if so try to reset (0->1)
             if retries == FAULT_RESET_RETRIES:
-                return lib.IL_ESTATE
+                raise_err(lib.IL_ESTATE)
 
             status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
@@ -472,9 +472,9 @@ class CanopenServo(Servo):
             r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
                                              subnode=1)
             if r < 0:
-                return r
+                raise_err(r)
             retries += 1
-        return r
+        raise_err(r)
 
     def save_configuration(self, new_path, subnode=0):
         """Read all dictionary registers content and put it to the dictionary
@@ -784,7 +784,7 @@ class CanopenServo(Servo):
 
     @property
     def node(self):
-        """int: Node."""
+        """canopen.RemoteNode: Remote node of the servo."""
         return self.__node
 
     @property

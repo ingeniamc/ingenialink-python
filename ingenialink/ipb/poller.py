@@ -18,7 +18,7 @@ class IPBPoller(Poller):
     """
     def __init__(self, servo, num_channels):
         super(IPBPoller, self).__init__(servo, num_channels)
-        poller = lib.il_poller_create(servo._servo, num_channels)
+        poller = lib.il_poller_create(servo._cffi_servo, num_channels)
         raise_null(poller)
 
         self._poller = ffi.gc(poller, lib.il_poller_destroy)

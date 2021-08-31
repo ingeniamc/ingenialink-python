@@ -532,7 +532,6 @@ class IPBServo(Servo):
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(dictionary)
         raise_err(r)
-        return r
 
     def save_configuration(self, new_path, subnode=0):
         """Read all dictionary registers content and save it to a
@@ -589,8 +588,6 @@ class IPBServo(Servo):
         config_file = io.open(new_path, "w", encoding='utf8')
         config_file.write(xmlstr)
         config_file.close()
-
-        return r
 
     def reload_errors(self, dictionary):
         """Force to reload all dictionary errors.

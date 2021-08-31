@@ -3,8 +3,7 @@ import collections
 from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err
 
-from ingenialink.ipb.register import IPBRegister, REG_DTYPE, \
-    LabelsDictionary, ipb_register_from_cffi
+from ingenialink.ipb.register import LabelsDictionary, ipb_register_from_cffi
 from ..dictionary import Dictionary, Categories
 
 
@@ -12,8 +11,8 @@ class SubCategories:
     """Sub-categories.
 
     Args:
-        dict_ (il_dict_t *): Ingenia dictionary instance.
-        cat_id (str): Category ID (parent).
+        dict_ (CData): Ingenia dictionary instance.
+        cat_id (str): Category ID.
 
     """
 
@@ -66,18 +65,18 @@ class IPBCategories(Categories):
     """IPB Categories for the dictionary.
 
     Args:
-        parent (IPBDictionary): Ingenia dictionary instance.
+        ipb_dictionary (IPBDictionary): Ingenia dictionary instance.
 
     """
 
-    def __init__(self, parent):
-        super(IPBCategories, self).__init__(parent)
-        self.__parent = parent
+    def __init__(self, ipb_dictionary):
+        super(IPBCategories, self).__init__(ipb_dictionary)
+        self.__ipb_dictionary = ipb_dictionary
         self._load_cat_ids()
 
     def _load_cat_ids(self):
         """Load category IDs from dictionary."""
-        cat_ids = lib.il_dict_cat_ids_get(self.__parent._cffi_dictionary)
+        cat_ids = lib.il_dict_cat_ids_get(self.__ipb_dictionary._cffi_dictionary)
 
         self._cat_ids = []
         i = 0
@@ -97,7 +96,7 @@ class IPBCategories(Categories):
 
         """
         labels_p = ffi.new('il_dict_labels_t **')
-        r = lib.il_dict_cat_get(self.__parent._cffi_dictionary,
+        r = lib.il_dict_cat_get(self.__ipb_dictionary._cffi_dictionary,
                                 cstr(category_id), labels_p)
         raise_err(r)
 
@@ -110,7 +109,7 @@ class IPBCategories(Categories):
             SubCategories: Sub-categories.
 
         """
-        return SubCategories(self.__parent._cffi_dictionary, cat_id)
+        return SubCategories(self.__ipb_dictionary._cffi_dictionary, cat_id)
 
     @property
     def category_ids(self):
@@ -127,7 +126,7 @@ class RegistersDictionary(collections.Mapping):
     """Registers dictionary.
 
     Args:
-        dict_ (il_dict_t *): Ingenia dictionary instance.
+        dict_ (CData): Ingenia dictionary instance.
 
     """
 
@@ -180,14 +179,14 @@ class IPBDictionary(Dictionary):
         dict_ = lib.il_dict_create(cstr(dictionary))
         raise_null(dict_)
 
-        self.__cffi_dictionary = ffi.gc(dict_, lib.il_dict_destroy)
+        self._cffi_dictionary = ffi.gc(dict_, lib.il_dict_destroy)
 
         self.version = pstr(lib.il_dict_version_get(dict_))
         self.subnodes = lib.il_dict_subnodes_get(dict_)
 
         self.__regs = []
         for subnode in range(0, self.subnodes):
-            register = RegistersDictionary(self.__cffi_dictionary, subnode)
+            register = RegistersDictionary(self._cffi_dictionary, subnode)
             self.__regs.append(register)
         self._cats = IPBCategories(self)
 
@@ -195,14 +194,14 @@ class IPBDictionary(Dictionary):
     def _from_dict(cls, dict_):
         """Create a new class instance from an existing dictionary."""
         inst = cls.__new__(cls)
-        inst.__cffi_dictionary = dict_
+        inst._cffi_dictionary = dict_
 
-        inst.version = pstr(lib.il_dict_version_get(inst.__cffi_dictionary))
-        inst.subnodes = lib.il_dict_subnodes_get(inst.__cffi_dictionary)
+        inst.version = pstr(lib.il_dict_version_get(inst._cffi_dictionary))
+        inst.subnodes = lib.il_dict_subnodes_get(inst._cffi_dictionary)
 
         inst.__regs = []
         for subnode in range(0, inst.subnodes):
-            rdict = RegistersDictionary(inst.__cffi_dictionary, subnode)
+            rdict = RegistersDictionary(inst._cffi_dictionary, subnode)
             inst.__regs.append(rdict)
         inst._cats = IPBCategories(inst)
 
@@ -215,14 +214,14 @@ class IPBDictionary(Dictionary):
             filename (str): Output file name/path.
 
         """
-        r = lib.il_dict_save(self.__cffi_dictionary, cstr(filename))
+        r = lib.il_dict_save(self._cffi_dictionary, cstr(filename))
         raise_err(r)
 
     def registers(self, subnode):
         """Obtain all the registers of a subnode.
 
         Args:
-            subnode: Subnode.
+            subnode (int): Subnode.
 
         Returns:
             array: List of registers.
@@ -230,50 +229,6 @@ class IPBDictionary(Dictionary):
         """
         if subnode < self.subnodes:
             return self.__regs[subnode]
-
-    def _reg_storage_update(self, id_, value):
-        """Update register storage.
-
-        Args:
-            id_ (str): Register ID.
-            value: Value.
-
-        """
-        reg = self.regs[id_]
-        value_ = ffi.new('il_reg_value_t')
-
-        if reg.dtype == REG_DTYPE.S8:
-            value_.storage.s8 = int(value)
-        elif reg.dtype == REG_DTYPE.U8:
-            value_.storage.u8 = int(value)
-        if reg.dtype == REG_DTYPE.S16:
-            value_.storage.s16 = int(value)
-        elif reg.dtype == REG_DTYPE.U16:
-            value_.storage.u16 = int(value)
-        if reg.dtype == REG_DTYPE.S32:
-            value_.storage.s32 = int(value)
-        elif reg.dtype == REG_DTYPE.U32:
-            value_.storage.u32 = int(value)
-        if reg.dtype == REG_DTYPE.S64:
-            value_.storage.s64 = int(value)
-        elif reg.dtype == REG_DTYPE.U64:
-            value_.storage.u64 = int(value)
-        elif reg.dtype == REG_DTYPE.FLOAT:
-            value_.storage.flt = float(value)
-        else:
-            raise ValueError('Unsupported register data type')
-
-        r = lib.il_dict_reg_storage_update(cstr(id_), value_)
-        raise_err(r)
-
-    @property
-    def _cffi_dictionary(self):
-        """CFFI Instance of the dictionary."""
-        return self.__cffi_dictionary
-
-    @_cffi_dictionary.setter
-    def _cffi_dictionary(self, value):
-        self.__cffi_dictionary = value
 
     @property
     def errors(self):

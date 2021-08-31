@@ -32,7 +32,7 @@ class Monitor:
 
     """
     def __init__(self, servo):
-        monitor = lib.il_monitor_create(servo._servo)
+        monitor = lib.il_monitor_create(servo._cffi_servo)
         raise_null(monitor)
 
         self._monitor = ffi.gc(monitor, lib.il_monitor_destroy)
