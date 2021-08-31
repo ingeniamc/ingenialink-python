@@ -643,15 +643,15 @@ class CanopenServo(Servo):
         """Checks if the servo responds to a reading a register.
 
         Returns:
-            int: Return code with the result of the read.
+            bool: Return code with the result of the read.
         """
-        r = 0
+        _is_alive = True
         try:
             self.read(STATUS_WORD_REGISTERS[1])
         except ILError as e:
-            r = -1
+            _is_alive = False
             logger.error(e)
-        return r
+        return _is_alive
 
     def _change_sdo_timeout(self, value):
         """Changes the SDO timeout of the node."""

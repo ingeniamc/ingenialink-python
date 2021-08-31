@@ -486,16 +486,15 @@ class IPBServo(Servo):
         """Checks if the servo responds to a reading a register.
 
         Returns:
-            int: Return code with the result of the read.
-
+            bool: Return code with the result of the read.
         """
-        r = 0
+        _is_alive = True
         try:
             self.read(STATUS_WORD)
         except ILError as e:
-            r = -1
+            _is_alive = True
             logger.error(e)
-        return r
+        return _is_alive
 
     def store_comm(self):
         """Store all servo current communications to the NVM."""
