@@ -686,6 +686,12 @@ class CanopenNetwork(Network):
                         product_code, rev_number, serial_number):
         """Changes the node ID of a given target node ID.
 
+        .. note::
+            The servo must be disconnected after this operation in order
+            to make the changes visible and update all the internal data.
+            It is also needed a power cycle of the servo otherwise the
+            changes will not be applied.
+
         Args:
             target_node (int): Node ID of the targeted device.
             new_target_baudrate (CAN_BAUDRATE): New baudrate for the targeted device.
@@ -726,6 +732,10 @@ class CanopenNetwork(Network):
     def change_node_id(self, target_node, new_target_node, vendor_id,
                        product_code, rev_number, serial_number):
         """Changes the node ID of a given target node ID.
+
+        .. note::
+            The servo must be disconnected after this operation in order
+            to make the changes visible and update all the internal data.
 
         Args:
             target_node (int): Node ID of the targeted device.

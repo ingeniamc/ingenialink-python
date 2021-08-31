@@ -21,6 +21,11 @@ class EthercatNetwork(IPBNetwork):
     def load_firmware(self, fw_file, target=1, boot_in_app=True):
         """Loads a given firmware file to a target.
 
+        .. warning::
+            Choose the ``boot_in_app`` flag accordingly to your
+            servo specifications otherwise the servo could enter
+            a blocking state.
+
         Args:
             target (int): Targeted node ID to be loaded.
             fw_file (str): Path to the firmware file.
