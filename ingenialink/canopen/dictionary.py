@@ -137,7 +137,7 @@ class CanopenDictionary(Dictionary):
         """Reads a register from the dictionary and creates a Register instance.
 
         Args:
-            register (str): Register instance from the dictionary.
+            register (Element): Register instance from the dictionary.
 
         """
         try:

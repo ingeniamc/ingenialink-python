@@ -153,7 +153,8 @@ class RegistersDictionary(collections.Mapping):
     def __getitem__(self, _id):
         reg_p = ffi.new('il_reg_t **')
         r = lib.il_dict_reg_get(self._dict, cstr(_id), reg_p, self._subnode)
-        raise_err(r)
+        if r < 0:
+            raise KeyError(_id)
 
         return ipb_register_from_cffi(reg_p[0])
 
