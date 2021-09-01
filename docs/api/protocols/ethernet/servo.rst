@@ -6,3 +6,4 @@ Servo
     :members:
     :noindex:
     :inherited-members:
+    :member-order: groupwise

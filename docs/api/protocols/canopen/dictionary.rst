@@ -2,6 +2,7 @@
 Dictionary
 ==========
 
-.. automodule:: ingenialink.canopen.dictionary.CanopenDictionary
+.. automodule:: ingenialink.canopen.dictionary
     :members:
     :inherited-members:
+    :member-order: groupwise
