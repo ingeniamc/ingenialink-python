@@ -801,7 +801,7 @@ class CanopenServo(Servo):
         revision_number = self.read(REVISION_NUMBER)
         hw_variant = 'A'
 
-        info = {
+        return {
             'serial': serial_number,
             'name': self.name,
             'sw_version': sw_version,
@@ -809,8 +809,6 @@ class CanopenServo(Servo):
             'prod_code': product_code,
             'revision': revision_number
         }
-
-        return info
 
     @property
     def state(self):
