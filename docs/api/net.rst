@@ -2,5 +2,6 @@
 Network
 =======
 
-.. automodule:: ingenialink.net
+.. automodule:: ingenialink.network
     :members:
+    :member-order: groupwise

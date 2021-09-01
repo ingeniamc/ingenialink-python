@@ -1,14 +1,16 @@
 import xml.etree.ElementTree as ET
-from .registers import Register, REG_ACCESS, REG_DTYPE, REG_PHY
-from .._utils import *
+from .register import CanopenRegister, REG_ACCESS, REG_DTYPE
+from ..dictionary import Dictionary
+from ingenialink.utils._utils import *
 from .._ingenialink import lib
 
 
-class Categories(object):
-    """ Contains all categories from a CANopen Dictionary.
+class Categories:
+    """Contains all categories from a CANopen Dictionary.
 
     Args:
         dict_ (str): Path to the Ingenia dictionary.
+
     """
     def __init__(self, dict_):
         self._dict = dict_
@@ -31,25 +33,26 @@ class Categories(object):
 
     @property
     def cat_ids(self):
-        """ list: Category IDs. """
+        """list: Category IDs."""
         return self._cat_ids
 
     def labels(self, cat_id):
-        """ Obtain labels for a certain category ID.
+        """Obtain labels for a certain category ID.
 
         Returns:
             dict: Labels dictionary.
+
         """
         return self._categories[cat_id]
 
 
-class Errors(object):
-    """ Categories.
+class Errors:
+    """Errors for the CANopen dictionary.
 
     Args:
         dict_ (str): Path to the Ingenia dictionary.
-    """
 
+    """
     def __init__(self, dict_):
         self._dict = dict_
         self._errors = {}   # { cat_id : label }
@@ -57,9 +60,7 @@ class Errors(object):
         self.load_errors()
 
     def load_errors(self):
-        """
-        Load errors from dictionary.
-        """
+        """Load errors from dictionary."""
         with open(self._dict, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -75,42 +76,45 @@ class Errors(object):
 
     @property
     def errors(self):
-        """ dict: Errors dictionary. """
+        """dict: Errors dictionary."""
         return self._errors
 
 
-class DictionaryCANOpen(object):
-    """ Contains all registers and information of a CANopen dictionary.
+class CanopenDictionary(Dictionary):
+    """Contains all registers and information of a CANopen dictionary.
 
     Args:
-        dict_ (str): Path to the Ingenia dictionary.
+        dictionary_path (str): Path to the Ingenia dictionary.
+
     """
-    def __init__(self, dict_):
-        self.__dict = dict_
+    def __init__(self, dictionary_path):
+        super(CanopenDictionary, self).__init__(dictionary_path)
         self.__version = '1'
-        self._cats = None
-        self.__subnodes = 2
-        self.__regs = []
+        self.categories = None
+        self.subnodes = 2
+        self.__registers = []
+        self.errors = None
+
         self.read_dictionary()
 
     def read_dictionary(self):
-        """ Reads the dictionary file and initializes all its components. """
-        with open(self.__dict, 'r', encoding='utf-8') as xml_file:
+        """Reads the dictionary file and initializes all its components."""
+        with open(self.path, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
         # Subnodes
         if root.findall('./Body/Device/Axes/'):
-            self.__subnodes = len(root.findall('./Body/Device/Axes/Axis'))
+            self.subnodes = len(root.findall('./Body/Device/Axes/Axis'))
 
-        for subnode in range(0, self.__subnodes):
-            self.__regs.append({})
+        for subnode in range(0, self.subnodes):
+            self.__registers.append({})
 
         # Categories
-        self._cats = Categories(self.__dict)
+        self.categories = Categories(self.path)
 
         # Errors
-        self._errors = Errors(self.__dict)
+        self.errors = Errors(self.path)
 
         # Version
         version_node = root.find('.Header/Version')
@@ -130,10 +134,11 @@ class DictionaryCANOpen(object):
         xml_file.close()
 
     def read_register(self, register):
-        """ Reads a register from the dictionary and creates a Register instance.
+        """Reads a register from the dictionary and creates a Register instance.
 
         Args:
-            register (str): Register instance from the dictionary. 
+            register (Element): Register instance from the dictionary.
+
         """
         try:
             # Identifier
@@ -236,66 +241,24 @@ class DictionaryCANOpen(object):
                 for enum in enums_elem.getchildren():
                     enums.append({enum.attrib['value']: enum.text})
 
-            reg = Register(identifier, units, cyclic, idx, subidx, dtype,
-                           access, subnode=subnode,
-                           storage=storage, range=reg_range,
-                           labels=labels, enums=enums,
-                           enums_count=len(enums), cat_id=cat_id,
-                           internal_use=internal_use)
-            self.__regs[int(subnode)][identifier] = reg
+            reg = CanopenRegister(identifier, units, cyclic, idx, subidx, dtype,
+                                  access, subnode=subnode,
+                                  storage=storage, reg_range=reg_range,
+                                  labels=labels, enums=enums,
+                                  enums_count=len(enums), cat_id=cat_id,
+                                  internal_use=internal_use)
+            self.__registers[int(subnode)][identifier] = reg
         except Exception as e:
-            # print("FAIL reading a register "+ identifier)
             pass
 
-    def get_regs(self, subnode):
-        """ Gets the register dictionary to the targeted subnode.
+    def registers(self, subnode):
+        """Gets the register dictionary to the targeted subnode.
         
         Args:
             subnode (int): Identifier for the subnode.
         
         Returns:
             dict: Dictionary of all the registers for a subnode.
+
         """
-        return self.__regs[subnode]
-
-    @property
-    def dict(self):
-        """ dict: Returns the path of the loaded dictionary. """
-        return self.__dict
-
-    @property
-    def version(self):
-        """ int: Returns the version of the dictionary """
-        return self.__version
-
-    @property
-    def regs(self):
-        """ dict: Returns the dictionary containing all registers instances. """
-        return self.__regs
-
-    @property
-    def subnodes(self):
-        """ int: Returns the total amount of subnodes. """
-        return self.__subnodes
-
-    @regs.setter
-    def regs(self, value):
-        self.__regs = value
-
-    @property
-    def cats(self):
-        """ dict: Returns the dictionary containing all categories of the dictionary. """
-        return self._cats
-
-    @cats.setter
-    def cats(self, value):
-        self._cats = value
-
-    @property
-    def errors(self):
-        """ dict: Returns a dictionary with all the errors. """
-        return self._errors
-
-    @errors.setter
-    def errors(self, value):
-        self._errors = value
+        return self.__registers[subnode]
