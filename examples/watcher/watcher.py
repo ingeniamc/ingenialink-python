@@ -8,29 +8,29 @@ from qtpy.QtWidgets import (QApplication, QDialog, QFormLayout, QLabel,
 import ingenialink as il
 
 
-POS_ACT = il.Register(address=0x0030,
-                      identifier="CL_POS_FBK_VALUE",
-                      dtype=il.REG_DTYPE.S32,
-                      access=il.REG_ACCESS.RW,
-                      phy=il.REG_PHY.POS,
-                      units="",
-                      cyclic="")
-""" Register: Position Actual. """
+POS_ACT = il.IPBRegister(address=0x0030,
+                         identifier="CL_POS_FBK_VALUE",
+                         dtype=il.REG_DTYPE.S32,
+                         access=il.REG_ACCESS.RW,
+                         phy=il.REG_PHY.POS,
+                         units="",
+                         cyclic="")
+"""Register: Position Actual."""
 
 
-VEL_ACT = il.Register(address=0x0031,
-                      identifier="CL_VEL_FBK_VALUE",
-                      dtype=il.REG_DTYPE.S32,
-                      access=il.REG_ACCESS.RW,
-                      phy=il.REG_PHY.VEL,
-                      units="",
-                      cyclic="")
+VEL_ACT = il.IPBRegister(address=0x0031,
+                         identifier="CL_VEL_FBK_VALUE",
+                         dtype=il.REG_DTYPE.S32,
+                         access=il.REG_ACCESS.RW,
+                         phy=il.REG_PHY.VEL,
+                         units="",
+                         cyclic="")
 
-""" Register: Velocity Actual. """
+"""Register: Velocity Actual."""
 
 
 class RegisterUpdater(QObject):
-    """ Register updater.
+    """Register updater.
 
         Args:
             servo (Servo): Servo instance.
@@ -39,7 +39,7 @@ class RegisterUpdater(QObject):
     """
 
     finished = Signal()
-    """ Signal: Update finished signal. """
+    """Signal: Update finished signal."""
 
     def __init__(self, servo, watched, base_period):
         QObject.__init__(self)
@@ -50,7 +50,7 @@ class RegisterUpdater(QObject):
 
     @Slot()
     def update(self):
-        """ Updates registers contents. """
+        """Updates registers contents."""
 
         for reg, cfg in self._watched.items():
             cfg['current'] += self._base_period
@@ -66,7 +66,7 @@ class RegisterUpdater(QObject):
 
 
 class RegisterWatcher(QObject):
-    """ Register watcher.
+    """Register watcher.
 
         Args:
             servo (Servo): Servo instance.
@@ -85,7 +85,7 @@ class RegisterWatcher(QObject):
 
     @Slot()
     def onUpdaterFinished(self):
-        """ Updates all items that changed once the updater has finished. """
+        """Updates all items that changed once the updater has finished."""
 
         for reg, cfg in self._watched.items():
                 if cfg['curr_data'] != cfg['item'].data():
@@ -93,7 +93,7 @@ class RegisterWatcher(QObject):
 
     @Slot()
     def onTimerExpired(self):
-        """ Triggers the updater on each timer expiration. """
+        """Triggers the updater on each timer expiration."""
 
         self._thread = QThread()
         self._updater = RegisterUpdater(self._servo, self._watched,
@@ -107,7 +107,7 @@ class RegisterWatcher(QObject):
         self._thread.start()
 
     def start(self, base_period):
-        """ Starts the register watcher.
+        """Starts the register watcher.
 
             Args:
                 base_period (int, float): Base period.
@@ -122,14 +122,14 @@ class RegisterWatcher(QObject):
         self._running = True
 
     def stop(self):
-        """ Stops the register watcher. """
+        """Stops the register watcher."""
 
         if self._running:
             self._timer.stop()
             self._running = False
 
     def add(self, reg, period, item):
-        """ Adds a register to the register watcher.
+        """Adds a register to the register watcher.
 
             Args:
                 reg (Register): Register to be watched.
@@ -146,7 +146,7 @@ class RegisterWatcher(QObject):
                               'curr_data': ''}
 
     def remove(self, reg):
-        """ Remove a register from the register watcher.
+        """Remove a register from the register watcher.
 
             Args:
                 reg (Register): Register to be removed.
@@ -159,7 +159,7 @@ class RegisterWatcher(QObject):
 
 
 class WatcherDialog(QDialog):
-    """ Watcher Dialog. """
+    """Watcher Dialog."""
 
     def __init__(self):
         QDialog.__init__(self)
@@ -172,11 +172,12 @@ class WatcherDialog(QDialog):
         self.form.addRow(QLabel('Velocity'), self.editVelocity)
 
         # configure network (take first available servo)
-        self._net, self._servo = il.lucky(il.NET_PROT.ETH,
-                                          "resources/eve-net_1.7.1.xdf",
-                                          address_ip='192.168.2.22',
-                                          port_ip=1061,
-                                          protocol=2)
+        self._net, self._servo = il.lucky(
+            il.NET_PROT.ETH,
+            "../../resources/dictionaries/eve-net_1.7.1.xdf",
+            address_ip='192.168.2.22',
+            port_ip=1061,
+            protocol=2)
 
         # create data model
         model = QStandardItemModel()

@@ -9,8 +9,9 @@ import os
 _version = re.search(r'__version__\s+=\s+\'(.*)\'',
                      open('ingenialink/__init__.py').read()).group(1)
 
+
 class BDistAppCommand(Command):
-    """ Custom command to build the application. """
+    """Custom command to build the application."""
 
     description = 'Build the application'
     user_options = []
@@ -26,8 +27,9 @@ class BDistAppCommand(Command):
         shutil.copy('resources/Packet.dll', 'ingenialink/')
         shutil.copy('resources/wpcap.dll', 'ingenialink/')
 
+
 class BCleanAppCommand(Command):
-    """ Custom command to clean the application. """
+    """Custom command to clean the application."""
 
     description = 'Clean the application'
     user_options = []
@@ -45,9 +47,12 @@ class BCleanAppCommand(Command):
         if os.path.exists("ingenialink/wpcap.dll"):
             os.remove("ingenialink/wpcap.dll")
 
+
 setup(name='ingenialink',
       version=_version,
-      packages=['ingenialink', 'ingenialink.canopen'],
+      packages=['ingenialink', 'ingenialink.canopen', 'ingenialink.ethercat',
+                'ingenialink.ethernet', 'ingenialink.serial', 'ingenialink.ipb',
+                'ingenialink.utils'],
       description='IngeniaLink Communications Library',
       long_description=open('README.rst').read(),
       author='Ingenia Motion Control',
@@ -74,10 +79,10 @@ setup(name='ingenialink',
         'bdist_app': BDistAppCommand,
         'bclean_app': BCleanAppCommand
       },
-      setup_requires=['cffi==1.12.2'],
+      setup_requires=['cffi==1.14.6'],
       cffi_modules=['ingenialink/ingenialink_build.py:ffibuilder'],
       install_requires=[
-          'cffi==1.12.2',
+          'cffi==1.14.6',
           'numpy<=1.19.5',
           'canopen>=1.0.0',
           'ingenialogger>=0.2.1'

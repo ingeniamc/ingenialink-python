@@ -65,9 +65,9 @@ else:
 
 
 def _build_deps():
-    """ Obtain and build dependencies (sercomm and ingenialink). """
+    """Obtains and build dependencies (sercomm and ingenialink)."""
 
-    # check for Git & CMake
+    # Check for Git & CMake
     git = find_executable('git')
     if not git:
         raise FileNotFoundError('Git is not installed or in PATH')
@@ -76,14 +76,14 @@ def _build_deps():
     if not cmake:
         raise FileNotFoundError('CMake is not installed or in PATH')
 
-    # clone
+    # Clone
     if not exists(_IL_SRC) and _IL_URL:
         check_call([git, 'clone', '--recursive', '-b', _IL_VER, _IL_URL,
                     _IL_SRC])
 
         # check_call([git, 'clone', '-b', _SOEM_VER, _SOEM_URL, _SOEM_SRC])
 
-    # deps: libsercomm
+    # Deps: libsercomm
     check_call([cmake, '-H' + _SER_SRC, '-B' + _SER_BUILD,
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
@@ -92,7 +92,7 @@ def _build_deps():
     check_call([cmake, '--build', _SER_BUILD, '--config', 'Release',
                 '--target', 'install'])
 
-    # deps: libxml2 (only on Windows)
+    # Deps: libxml2 (only on Windows)
     if sys.platform == 'win32':
         check_call([cmake, '-H' + _XML2_SRC, '-B' + _XML2_BUILD,
                     '-G', _CMAKE_GENERATOR,
@@ -126,15 +126,15 @@ def _build_deps():
 
 
 def _gen_cffi_header():
-    """ Generate cffi header.
+    """Generates cffi header.
 
-        All ingenialink headers are joined into a single one, and, all
-        cffi non-compatibe portions removed.
+    All ingenialink headers are joined into a single one, and, all
+    cffi non-compatibe portions removed.
 
-        Returns:
-            str: cffi header.
+    Returns:
+        str: cffi header.
+
     """
-
     remove = ['IL_EXPORT',
               'IL_BEGIN_DECL',
               'IL_END_DECL',
@@ -166,12 +166,12 @@ def _gen_cffi_header():
 
 
 def _get_libs():
-    """ Ontain the list of libraries to link against based on platform.
+    """Obtain the list of libraries to link against based on platform.
 
-        Returns:
-            list: List of libraries.
+    Returns:
+        list: List of libraries.
+
     """
-
     libs = ['ingenialink', 'sercomm', 'xml2', 'soem']
 
     if sys.platform.startswith('linux'):
@@ -186,12 +186,12 @@ def _get_libs():
 
 
 def _get_link_args():
-    """ Ontain the list of extra linker arguments based on platform.
+    """Obtain the list of extra linker arguments based on platform.
 
-        Returns:
-            list: List of extra linker arguments.
+    Returns:
+        list: List of extra linker arguments.
+
     """
-
     if sys.platform == 'darwin':
         return ['-framework', 'IOKit', '-framework', 'Foundation']
 

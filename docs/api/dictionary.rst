@@ -2,5 +2,6 @@
 Dictionary
 ==========
 
-.. automodule:: ingenialink.dict_.Dictionary
+.. automodule:: ingenialink.dictionary
     :members:
+    :member-order: groupwise

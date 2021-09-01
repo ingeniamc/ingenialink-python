@@ -1,18 +1,15 @@
 [[source]]
-
 url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
-cffi = "==1.12.2"
+cffi = "==1.14.6"
 canopen = "*"
 numpy = "==1.17.2"
 ingenialogger = ">=0.2.1"
 
 [dev-packages]
-
 pyqtgraph = "*"
 qtpy = "*"
 qtmodern = "*"
@@ -21,8 +18,11 @@ matplotlib = "*"
 "e1839a8" = {path = ".", editable = true}
 "pyqt5" = "*"
 pycodestyle = "==2.6.0"
-sphinx = "*"
+sphinx = "3.5.4"
 sphinx-rtd-theme = "*"
 sphinxcontrib-bibtex = "*"
 nbsphinx = "*"
+pytest = "==6.2.4"
+pytest-cov = "==2.12.1"
+pytest-mock = "==3.6.1"
 

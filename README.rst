@@ -77,4 +77,4 @@ Documentation
 For further details you can read the documentation_ where you will find
 simple usage examples, the API docs, etc.
 
-.. _documentation: https://ingenialink.readthedocs.io
+.. _documentation: https://distext.ingeniamc.com/doc/ingenialink-python/latest/
