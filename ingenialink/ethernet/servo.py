@@ -32,7 +32,7 @@ class EthernetServo(IPBServo):
 
     def store_tcp_ip_parameters(self):
         """Stores the TCP/IP values. Affects IP address,
-        network mask and gateway"""
+        subnet mask and gateway"""
         self.write(reg=STORE_COCO_ALL,
                    data=PASSWORD_STORE_RESTORE_TCP_IP,
                    subnode=0)
@@ -40,7 +40,7 @@ class EthernetServo(IPBServo):
 
     def restore_tcp_ip_parameters(self):
         """Restores the TCP/IP values back to default. Affects
-        IP address, network mask and gateway"""
+        IP address, subnet mask and gateway"""
         self.write(reg=RESTORE_COCO_ALL,
                    data=PASSWORD_STORE_RESTORE_TCP_IP,
                    subnode=0)
