@@ -644,9 +644,9 @@ class CanopenServo(Servo):
                         logger.info('Store all successfully done.')
             elif subnode == 0:
                 # Store subnode 0
-                raise ILError('This firmware version does not '
+                raise ILError('The current firmware version does not '
                               'have this feature implemented.')
-            elif subnode > 0:
+            elif subnode > 0 and subnode in STORE_MOCO_ALL_REGISTERS:
                 # Store axis
                 self.write(reg=STORE_MOCO_ALL_REGISTERS[subnode],
                            data=PASSWORD_STORE_ALL,
@@ -676,9 +676,9 @@ class CanopenServo(Servo):
             logger.info('Restore all successfully done.')
         elif subnode == 0:
             # Restore subnode 0
-            raise ILError('This firmware version does not '
+            raise ILError('The current firmware version does not '
                           'have this feature implemented.')
-        elif subnode > 0:
+        elif subnode > 0 and subnode in RESTORE_MOCO_ALL_REGISTERS:
             # Restore axis
             self.write(reg=RESTORE_COCO_ALL,
                        data=RESTORE_MOCO_ALL_REGISTERS[subnode],

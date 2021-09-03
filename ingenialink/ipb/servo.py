@@ -474,7 +474,7 @@ class IPBServo(Servo):
                        data=PASSWORD_STORE_RESTORE_SUB_0,
                        subnode=subnode)
             logger.info('Store subnode 0 successfully done.')
-        elif subnode > 0:
+        elif subnode > 0 and subnode in STORE_MOCO_ALL_REGISTERS:
             # Store axis
             self.write(reg=STORE_MOCO_ALL_REGISTERS[subnode],
                        data=PASSWORD_STORE_ALL,
@@ -506,7 +506,7 @@ class IPBServo(Servo):
                        data=PASSWORD_STORE_RESTORE_SUB_0,
                        subnode=0)
             logger.info('Restore subnode 0 successfully done.')
-        elif subnode > 0:
+        elif subnode > 0 and subnode in RESTORE_MOCO_ALL_REGISTERS:
             # Restore axis
             self.write(reg=RESTORE_MOCO_ALL_REGISTERS[subnode],
                        data=PASSWORD_RESTORE_ALL,
