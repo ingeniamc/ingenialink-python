@@ -529,12 +529,12 @@ class IPBServo(Servo):
             logger.error(e)
         return _is_alive
 
-    def store_comm(self):
+    def _store_comm(self):
         """Store all servo current communications to the NVM."""
         r = lib.il_servo_store_comm(self._cffi_servo)
         raise_err(r)
 
-    def store_app(self):
+    def _store_app(self):
         """Store all servo current application parameters to the NVM."""
         r = lib.il_servo_store_app(self._cffi_servo)
         raise_err(r)
