@@ -227,11 +227,11 @@ class Servo(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def store_parameters(self, subnode=0):
+    def store_parameters(self, subnode=None):
         raise NotImplementedError
 
     @abstractmethod
-    def restore_parameters(self):
+    def restore_parameters(self, subnode=None):
         raise NotImplementedError
 
     @abstractmethod
