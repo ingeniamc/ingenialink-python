@@ -6,6 +6,8 @@ from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err
 from ingenialink.ipb.register import LabelsDictionary, ipb_register_from_cffi
 from ..dictionary import Dictionary, Categories
 
+import xml.etree.ElementTree as ET
+
 
 class SubCategories:
     """Sub-categories.
@@ -186,10 +188,12 @@ class IPBDictionary(Dictionary):
         self.subnodes = lib.il_dict_subnodes_get(dict_)
 
         self.__regs = []
-        for subnode in range(0, self.subnodes):
+        for subnode in range(self.subnodes):
             register = RegistersDictionary(self._cffi_dictionary, subnode)
             self.__regs.append(register)
         self._cats = IPBCategories(self)
+
+        self.__read_device_info()
 
     @classmethod
     def _from_dict(cls, dict_):
@@ -201,12 +205,28 @@ class IPBDictionary(Dictionary):
         inst.subnodes = lib.il_dict_subnodes_get(inst._cffi_dictionary)
 
         inst.__regs = []
-        for subnode in range(0, inst.subnodes):
+        for subnode in range(inst.subnodes):
             rdict = RegistersDictionary(inst._cffi_dictionary, subnode)
             inst.__regs.append(rdict)
         inst._cats = IPBCategories(inst)
 
         return inst
+
+    def __read_device_info(self):
+        tree = ET.parse(self.path)
+        root = tree.getroot()
+
+        device = root.find('./Body/Device')
+
+        self.firmware_version = device.attrib.get('firmwareVersion')
+        product_code = device.attrib.get('ProductCode')
+        if product_code is not None and product_code.isdecimal():
+            self.product_code = int(product_code)
+        self.part_number = device.attrib.get('PartNumber')
+        revision_number = device.attrib.get('RevisionNumber')
+        if revision_number is not None and revision_number.isdecimal():
+            self.revision_number = int(revision_number)
+        self.interface = device.attrib.get('Interface')
 
     def save(self, filename):
         """Save dictionary.

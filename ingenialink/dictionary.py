@@ -35,6 +35,16 @@ class Dictionary(ABC):
         """str: Path of the dictionary."""
         self.version = None
         """str: Version of the dictionary."""
+        self.firmware_version = None
+        """str: Firmware version declared in the dictionary."""
+        self.product_code = None
+        """int: Product code declared in the dictionary."""
+        self.part_number = None
+        """str: Part number declared in the dictionary."""
+        self.revision_number = None
+        """int: Revision number declared in the dictionary."""
+        self.interface = None
+        """str: Interface declared in the dictionary."""
         self.subnodes = None
         """int: Number of subnodes in the dictionary."""
         self.categories = None
