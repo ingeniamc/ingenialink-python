@@ -165,11 +165,11 @@ class CanopenServo(Servo):
             self.__servo_status_listener = ServoStatusListener(self)
             self.__servo_status_listener.start()
 
-    def get_reg(self, reg, subnode=1):
+    def _get_reg(self, reg, subnode=1):
         """Validates a register.
 
         Args:
-            reg (Register, str): Targeted register to validate.
+            reg (CanopenRegister): Targeted register to validate.
             subnode (int): Subnode for the register.
 
         Returns:
@@ -178,9 +178,11 @@ class CanopenServo(Servo):
         Raises:
             ILIOError: If the dictionary is not loaded.
             ILWrongRegisterError: If the register has invalid format.
+
         """
         if isinstance(reg, CanopenRegister):
             _reg = reg
+            return _reg
         elif isinstance(reg, str):
             _dict = self._dictionary
             if not _dict:
@@ -188,9 +190,9 @@ class CanopenServo(Servo):
             if reg not in _dict.registers(subnode):
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
             _reg = _dict.registers(subnode)[reg]
+            return _reg
         else:
             raise_err(lib.IL_EWRONGREG, 'Invalid register')
-        return _reg
 
     def read(self, reg, subnode=1):
         """Read from servo.
@@ -206,7 +208,7 @@ class CanopenServo(Servo):
             ILAccessError: Wrong access to the register.
             ILIOError: Error reading the register.
         """
-        _reg = self.get_reg(reg, subnode)
+        _reg = self._get_reg(reg, subnode)
 
         access = _reg.access
         if access == REG_ACCESS.WO:
@@ -282,7 +284,7 @@ class CanopenServo(Servo):
             ILAccessError: Wrong access to the register.
             ILIOError: Error reading the register.
         """
-        _reg = self.get_reg(reg, subnode)
+        _reg = self._get_reg(reg, subnode)
 
         if _reg.access == REG_ACCESS.RO:
             raise_err(lib.IL_EACCESS, 'Register is Read-only')
@@ -290,9 +292,7 @@ class CanopenServo(Servo):
         # auto cast floats if register is not float
         if _reg.dtype == REG_DTYPE.FLOAT:
             data = float(data)
-        elif _reg.dtype == REG_DTYPE.DOMAIN:
-            pass
-        else:
+        elif _reg.dtype != REG_DTYPE.DOMAIN:
             data = int(data)
 
         error_raised = None

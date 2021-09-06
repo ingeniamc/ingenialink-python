@@ -113,7 +113,7 @@ class IPBServo(Servo):
             dict: Current errors definde in the dictionary.
 
         """
-        errors = dict()
+        errors = {}
         if str(dictionary) != "<cdata 'void *' NULL>":
             tree = ET.parse(dictionary)
             for error in tree.iter("Error"):
@@ -127,38 +127,40 @@ class IPBServo(Servo):
                 ]
         return errors
 
-    def get_reg(self, reg, subnode):
-        """Obtain Register object and its identifier.
+    def _get_reg(self, reg, subnode):
+        """Validates a register.
 
         Args:
-            reg (IPBRegister, str): Register.
-            subnode (int): Subnode.
+            reg (IPBRegister): Targeted register to validate.
+            subnode (int): Subnode for the register.
 
         Returns:
-            tuple (Register, string): Actual Register instance and its
-                                        identifier.
+            IPBRegister: Instance of the desired register from the dictionary.
+
+        Raises:
+            ILIOError: If the dictionary is not loaded.
+            ILWrongRegisterError: If the register has invalid format.
 
         """
-        _reg = ffi.NULL
-        _id = ffi.NULL
         if isinstance(reg, Register):
-            _reg = reg._reg
+            _reg = reg
+            return _reg
         elif isinstance(reg, str):
             _dict = self.dictionary
             if not _dict:
                 raise ValueError('No dictionary loaded')
             if reg not in _dict.registers(subnode):
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.registers(subnode)[reg]._reg
+            _reg = _dict.registers(subnode)[reg]
+            return _reg
         else:
             raise TypeError('Invalid register')
-        return _reg, _id
 
     def raw_read(self, reg, subnode=1):
         """Raw read from servo.
 
         Args:
-            reg (Register): Register.
+            reg (IPBRegister): Register.
 
         Returns:
             int: Otained value
@@ -182,17 +184,7 @@ class IPBServo(Servo):
             TypeError: If the register type is not valid.
 
         """
-        if isinstance(reg, Register):
-            _reg = reg
-        elif isinstance(reg, str):
-            _dict = self.dictionary
-            if not _dict:
-                raise ValueError('No dictionary loaded')
-            if reg not in _dict.registers(subnode):
-                raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.registers(subnode)[reg]
-        else:
-            raise TypeError('Invalid register')
+        _reg = self._get_reg(reg, subnode)
 
         # Obtain data pointer and function to call
         t, f = self._raw_read[_reg.dtype]
@@ -210,7 +202,7 @@ class IPBServo(Servo):
         """Raw write to servo.
 
         Args:
-            reg (Register): Register.
+            reg (IPBRegister): Register.
             data (int): Data.
             confirm (bool, optional): Confirm write.
             extended (int, optional): Extended frame.
@@ -226,7 +218,7 @@ class IPBServo(Servo):
         """Write to servo.
 
         Args:
-            reg (Register): Register.
+            reg (IPBRegister): Register.
             data (int): Data.
             confirm (bool, optional): Confirm write.
             extended (int, optional): Extended frame.
@@ -236,17 +228,7 @@ class IPBServo(Servo):
                 unsupported.
 
         """
-        if isinstance(reg, Register):
-            _reg = reg
-        elif isinstance(reg, str):
-            _dict = self.dictionary
-            if not _dict:
-                raise ValueError('No dictionary loaded')
-            if reg not in _dict.registers(subnode):
-                raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.registers(subnode)[reg]
-        else:
-            raise TypeError('Invalid register')
+        _reg = self._get_reg(reg, subnode)
 
         # Auto cast floats if register is not float
         if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
@@ -737,7 +719,7 @@ class IPBServo(Servo):
         """Obtain units scale factor for the given register.
 
         Args:
-            reg (Register): Register.
+            reg (IPBRegister): Register.
 
         Returns:
             float: Scale factor for the given register.
