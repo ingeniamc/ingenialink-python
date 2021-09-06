@@ -518,26 +518,58 @@ class IPBServo(Servo):
             self._errors = self._get_all_errors(dictionary)
         raise_err(r)
 
-    def load_configuration(self, dictionary, subnode=0):
-        """Load configuration from dictionary file to the servo drive.
+    @staticmethod
+    def __remove_registers(registers_category, registers, subnode):
+        """Looks for matches through all the registers' subnodes with the
+        given subnode and removes the ones that do not match. It also cleans
+        up the registers leaving only paramount information.
 
         Args:
-            dictionary (str): Dictionary.
-            subnode (int, optional): Subnode.
+            registers_category (Element): Registers element containing all registers.
+            registers (list): List of registers in the dictionary.
+            subnode (int): Subnode to keep in the dictionary.
+
+        Returns:
 
         """
-        r = lib.il_servo_dict_storage_write(self._cffi_servo, cstr(dictionary),
-                                            subnode)
-        if not hasattr(self, '_errors') or not self._errors:
-            self._errors = self._get_all_errors(dictionary)
-        raise_err(r)
+        for register in registers:
+            if subnode is not None and register.attrib['subnode'] != str(
+                    subnode) and subnode >= 0 and register in registers_category:
+                registers_category.remove(register)
+            cleanup_register(register)
 
-    def save_configuration(self, new_path, subnode=0):
+    @staticmethod
+    def __remove_axis(device, axes_category, list_axis, subnode):
+        """Looks for matches through the subnode of each axis and
+        removes all the axes that did not match the search. It also
+        cleans up all the registers leaving only paramount information.
+
+        Args:
+            device (Element): Device element containing all the dictionary info.
+            axes_category (Element): Axes element containing all the axis.
+            list_axis (list): List of all the axis in the dictionary.
+            subnode (int): Subnode to keep in the dictionary.
+
+        """
+        for axis in list_axis:
+            registers_category = axis.find('./Registers')
+            registers = registers_category.findall('./Register')
+            if subnode is not None and axis.attrib['subnode'] == str(subnode):
+                for register in registers:
+                    cleanup_register(register)
+                device.append(registers_category)
+                device.remove(axes_category)
+                break
+            for register in registers:
+                cleanup_register(register)
+
+    def save_configuration(self, new_path, subnode=None):
         """Read all dictionary registers content and save it to a
             new dictionary.
 
         Args:
             new_path (str): Dictionary.
+            subnode (int): Target subnode.
 
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
@@ -561,18 +593,15 @@ class IPBServo(Servo):
             device.attrib['RevisionNumber'] = str(rev_number)
 
         registers_category = xml_data.find('Body/Device/Registers')
-        registers = xml_data.findall('Body/Device/Registers/Register')
         if registers_category is None:
-            registers_category = xml_data.find(
-                'Body/Device/Axes/Axis/Registers')
-            registers = xml_data.findall(
-                'Body/Device/Axes/Axis/Registers/Register')
-
-        for register in registers:
-            if register.attrib['subnode'] != str(
-                    subnode) and subnode > 0 and register in registers_category:
-                registers_category.remove(register)
-            cleanup_register(register)
+            # Multiaxis dictionary
+            axes_category = xml_data.find('Body/Device/Axes')
+            list_axis = xml_data.findall('Body/Device/Axes/Axis')
+            self.__remove_axis(device, axes_category, list_axis, subnode)
+        else:
+            # Single axis dictionary
+            registers = xml_data.findall('Body/Device/Registers/Register')
+            self.__remove_registers(registers_category, registers, subnode)
 
         device.remove(categories)
         body.remove(errors)
@@ -587,6 +616,22 @@ class IPBServo(Servo):
         config_file = io.open(new_path, "w", encoding='utf8')
         config_file.write(xmlstr)
         config_file.close()
+
+    def load_configuration(self, dictionary, subnode=None):
+        """Load configuration from dictionary file to the servo drive.
+
+        Args:
+            dictionary (str): Dictionary.
+            subnode (int): Target subnode.
+
+        """
+        if subnode is None:
+            subnode = 0
+        r = lib.il_servo_dict_storage_write(self._cffi_servo, cstr(dictionary),
+                                            subnode)
+        if not hasattr(self, '_errors') or not self._errors:
+            self._errors = self._get_all_errors(dictionary)
+        raise_err(r)
 
     def reload_errors(self, dictionary):
         """Force to reload all dictionary errors.

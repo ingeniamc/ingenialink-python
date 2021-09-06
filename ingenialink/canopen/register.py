@@ -110,6 +110,20 @@ class CanopenRegister(Register):
         else:
             return None
 
+    @storage.setter
+    def storage(self, value):
+        """any: Defines if the register needs to be stored."""
+        self._storage = value
+
+    @property
+    def storage_valid(self):
+        return self._storage_valid
+
+    @storage_valid.setter
+    def storage_valid(self, value):
+        """bool: Defines if the register storage is valid."""
+        self._storage_valid = value
+
     @property
     def range(self):
         """tuple: Containing the minimum and the maximum values of the register."""

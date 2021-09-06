@@ -94,7 +94,7 @@ class EthercatNetwork(IPBNetwork):
         if r <= 0:
             _servo = None
             self._cffi_network = None
-            raise_err(r)
+            raise ILError('Could not find any servos connected.')
         else:
             net_ = ffi.cast('il_net_t *', self._cffi_network[0])
             servo_ = ffi.cast('il_servo_t *', _servo[0])

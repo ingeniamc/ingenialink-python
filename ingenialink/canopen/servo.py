@@ -476,13 +476,14 @@ class CanopenServo(Servo):
             retries += 1
         raise_err(r)
 
-    def save_configuration(self, new_path, subnode=0):
+    def save_configuration(self, new_path, subnode=None):
         """Read all dictionary registers content and put it to the dictionary
         storage.
 
         Args:
             new_path (str): Destination path for the configuration file.
             subnode (int): Subnode of the axis.
+
         """
         prod_code, rev_number = get_drive_identification(self, subnode)
 
@@ -518,14 +519,14 @@ class CanopenServo(Servo):
         for register in registers:
             try:
                 element_subnode = int(register.attrib['subnode'])
-                if subnode == 0 or subnode == element_subnode:
-                    if register.attrib['access'] == 'rw':
+                if subnode in [None, element_subnode]:
+                    if register.attrib.get('access') == 'rw':
                         storage = self.read(register.attrib['id'],
                                             subnode=element_subnode)
                         register.set('storage', str(storage))
 
                         # Update register object
-                        reg = self._dictionary.registers[element_subnode][register.attrib['id']]
+                        reg = self._dictionary.registers(element_subnode)[register.attrib['id']]
                         reg.storage = storage
                         reg.storage_valid = 1
                 else:
@@ -543,12 +544,13 @@ class CanopenServo(Servo):
         tree.write(new_path)
         xml_file.close()
 
-    def load_configuration(self, path, subnode=0):
+    def load_configuration(self, path, subnode=None):
         """Write current dictionary storage to the servo drive.
 
         Args:
             path (str): Path to the dictionary.
             subnode (int): Subnode of the axis.
+
         """
         with open(path, 'r') as xml_file:
             tree = ET.parse(xml_file)
@@ -567,10 +569,11 @@ class CanopenServo(Servo):
         for element in registers:
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
-                    if subnode == 0 or subnode == int(element.attrib['subnode']):
+                    element_subnode = int(element.attrib['subnode'])
+                    if subnode is None or subnode == element_subnode:
                         self.write(element.attrib['id'],
                                    float(element.attrib['storage']),
-                                   subnode=int(element.attrib['subnode'])
+                                   subnode=element_subnode
                                    )
             except BaseException as e:
                 logger.error("Exception during load_configuration, register "
