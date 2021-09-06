@@ -243,7 +243,7 @@ class IPBRegister(Register):
             REG_DTYPE.S64: "s64",
             REG_DTYPE.FLOAT: "flt"
         }
-        if self.dtype in REG_DTYPE:
+        if self.dtype in REG_DTYPE and self.dtype in dtype_attr:
             attr_name = dtype_attr[self.dtype]
             if self.storage:
                 if self.dtype == REG_DTYPE.FLOAT:
