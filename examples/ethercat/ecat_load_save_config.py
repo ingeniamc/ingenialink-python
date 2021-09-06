@@ -7,7 +7,7 @@ def connect_slave():
     net = EthercatNetwork("\\Device\\NPF_{192D1D2F-C684-467D-A637-EC07BD434A63}")
     servo = net.connect_to_slave(
         target=1,
-        dictionary='../../resources/dictionaries/mancos_1.7.3.xdf')
+        dictionary='../../resources/dictionaries/cap-net-e_eoe_0.7.1.xdf')
     return servo, net
 
 
