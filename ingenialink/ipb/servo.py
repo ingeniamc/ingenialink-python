@@ -76,6 +76,8 @@ class IPBServo(Servo):
         super(IPBServo, self).__init__(target)
         _dictionary_path = cstr(dictionary_path) if dictionary_path else ffi.NULL
 
+        self.__dictionary = IPBDictionary(dictionary_path, self._cffi_servo)
+
         self._state_cb = {}
         self._emcy_cb = {}
 
@@ -887,9 +889,7 @@ class IPBServo(Servo):
     @property
     def dictionary(self):
         """Obtain dictionary of the servo."""
-        _dict = lib.il_servo_dict_get(self._cffi_servo)
-
-        return IPBDictionary._from_dict(_dict) if _dict else None
+        return self.__dictionary
 
     @property
     def info(self):

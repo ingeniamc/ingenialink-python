@@ -5,7 +5,7 @@ from ingenialink.utils._utils import *
 from .._ingenialink import lib
 
 
-class Categories:
+class CanopenCategories:
     """Contains all categories from a CANopen Dictionary.
 
     Args:
@@ -46,7 +46,7 @@ class Categories:
         return self._categories[cat_id]
 
 
-class Errors:
+class CanopenErrors:
     """Errors for the CANopen dictionary.
 
     Args:
@@ -113,10 +113,10 @@ class CanopenDictionary(Dictionary):
             self.__registers.append({})
 
         # Categories
-        self.categories = Categories(self.path)
+        self.categories = CanopenCategories(self.path)
 
         # Errors
-        self.errors = Errors(self.path)
+        self.errors = CanopenErrors(self.path)
 
         # Version
         version_node = root.find('.Header/Version')
