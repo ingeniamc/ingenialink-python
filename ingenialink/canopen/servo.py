@@ -359,9 +359,7 @@ class CanopenServo(Servo):
         # Try fault reset if faulty
         if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
                 self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
-            r = self.fault_reset(subnode=subnode)
-            if r < 0:
-                raise_err(r)
+            self.fault_reset(subnode=subnode)
 
         while self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
             status_word = self.read(STATUS_WORD_REGISTERS[subnode],
@@ -419,9 +417,7 @@ class CanopenServo(Servo):
             if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
                     self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
                 # Try fault reset if faulty
-                r = self.fault_reset(subnode=subnode)
-                if r < 0:
-                    raise_err(r)
+                self.fault_reset(subnode=subnode)
                 status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
@@ -448,32 +444,29 @@ class CanopenServo(Servo):
         Args:
             subnode (int): Subnode of the drive.
 
-        Returns:
-            int: Error code.
+        Raises:
+            ILTimeoutError: If fault reset spend too much time.
+
         """
         r = 0
-        retries = 0
         status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
-        self._set_state(state, subnode)
-        while self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
-                self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
+        if state.value in [
+            lib.IL_SERVO_STATE_FAULT,
+            lib.IL_SERVO_STATE_FAULTR,
+        ]:
             # Check if faulty, if so try to reset (0->1)
-            if retries == FAULT_RESET_RETRIES:
-                raise_err(lib.IL_ESTATE)
-
-            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
-                                    subnode=subnode)
             self.write(CONTROL_WORD_REGISTERS[subnode], 0, subnode=subnode)
             self.write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR,
                        subnode=subnode)
             # Wait until status word changes
             r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
                                              subnode=1)
-            if r < 0:
-                raise_err(r)
-            retries += 1
+            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
+            state = self.status_word_decode(status_word)
+        self._set_state(state, subnode)
         raise_err(r)
 
     def save_configuration(self, new_path, subnode=0):
