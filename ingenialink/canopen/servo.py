@@ -19,73 +19,73 @@ logger = ingenialogger.get_logger(__name__)
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
 SERIAL_NUMBER = CanopenRegister(
-    identifier='', units='', subnode=1, idx="0x26E6", subidx="0x00",
+    identifier='', units='', subnode=1, idx=0x26E6, subidx=0x00,
     cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 PRODUCT_CODE = CanopenRegister(
-    identifier='', units='', subnode=1, idx="0x26E1", subidx="0x00",
+    identifier='', units='', subnode=1, idx=0x26E1, subidx=0x00,
     cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 SOFTWARE_VERSION = CanopenRegister(
-    identifier='', units='', subnode=1, idx="0x26E4", subidx="0x00",
+    identifier='', units='', subnode=1, idx=0x26E4, subidx=0x00,
     cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
 )
 REVISION_NUMBER = CanopenRegister(
-    identifier='', units='', subnode=1, idx="0x26E2", subidx="0x00",
+    identifier='', units='', subnode=1, idx=0x26E2, subidx=0x00,
     cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 
 STATUS_WORD_REGISTERS = {
     1: CanopenRegister(
-        identifier='', units='', subnode=1, idx="0x6041", subidx="0x00",
+        identifier='', units='', subnode=1, idx=0x6041, subidx=0x00,
         cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     ),
     2: CanopenRegister(
-        identifier='', units='', subnode=2, idx="0x6841", subidx="0x00",
+        identifier='', units='', subnode=2, idx=0x6841, subidx=0x00,
         cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     ),
     3: CanopenRegister(
-        identifier='', units='', subnode=3, idx="0x7041", subidx="0x00",
+        identifier='', units='', subnode=3, idx=0x7041, subidx=0x00,
         cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     )
 }
 
 CONTROL_WORD_REGISTERS = {
     1: CanopenRegister(
-        identifier='', units='', subnode=1, idx="0x2010", subidx="0x00",
+        identifier='', units='', subnode=1, idx=0x2010, subidx=0x00,
         cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     ),
     2: CanopenRegister(
-        identifier='', units='', subnode=2, idx="0x2810", subidx="0x00",
+        identifier='', units='', subnode=2, idx=0x2810, subidx=0x00,
         cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     ),
     3: CanopenRegister(
-        identifier='', units='', subnode=3, idx="0x3010", subidx="0x00",
+        identifier='', units='', subnode=3, idx=0x3010, subidx=0x00,
         cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     )
 }
 
 STORE_COCO_ALL = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x1010", subidx="0x01", cyclic='CONFIG',
+    identifier='', units='', subnode=0, idx=0x1010, subidx=0x01, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
 RESTORE_COCO_ALL = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x1011", subidx="0x01", cyclic='CONFIG',
+    identifier='', units='', subnode=0, idx=0x1011, subidx=0x01, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
 STORE_MOCO_ALL_REGISTERS = {
     1: CanopenRegister(
-        identifier='', units='', subnode=1, idx="0x26DB", subidx="0x00",
+        identifier='', units='', subnode=1, idx=0x26DB, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     2: CanopenRegister(
-        identifier='', units='', subnode=2, idx="0x2EDB", subidx="0x00",
+        identifier='', units='', subnode=2, idx=0x2EDB, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     3: CanopenRegister(
-        identifier='', units='', subnode=3, idx="0x36DB", subidx="0x00",
+        identifier='', units='', subnode=3, idx=0x36DB, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
 }
@@ -219,40 +219,40 @@ class CanopenServo(Servo):
             self.__lock.acquire()
             if dtype == REG_DTYPE.S8:
                 value = int.from_bytes(
-                    self.__node.sdo.upload(int(str(_reg.idx), 16),
-                                           int(str(_reg.subidx), 16)),
+                    self.__node.sdo.upload(_reg.idx,
+                                           _reg.subidx),
                     "little",
                     signed=True
                 )
             elif dtype == REG_DTYPE.S16:
                 value = int.from_bytes(
-                    self.__node.sdo.upload(int(str(_reg.idx), 16),
-                                           int(str(_reg.subidx), 16)),
+                    self.__node.sdo.upload(_reg.idx,
+                                           _reg.subidx),
                     "little",
                     signed=True
                 )
             elif dtype == REG_DTYPE.S32:
                 value = int.from_bytes(
-                    self.__node.sdo.upload(int(str(_reg.idx), 16),
-                                           int(str(_reg.subidx), 16)),
+                    self.__node.sdo.upload(_reg.idx,
+                                           _reg.subidx),
                     "little",
                     signed=True
                 )
             elif dtype == REG_DTYPE.FLOAT:
                 [value] = struct.unpack('f',
                                         self.__node.sdo.upload(
-                                            int(str(_reg.idx), 16),
-                                            int(str(_reg.subidx), 16))
+                                            _reg.idx,
+                                            _reg.subidx)
                                         )
             elif dtype == REG_DTYPE.STR:
                 value = self.__node.sdo.upload(
-                    int(str(_reg.idx), 16),
-                    int(str(_reg.subidx), 16)
+                    _reg.idx,
+                    _reg.subidx
                 ).decode("utf-8")
             else:
                 value = int.from_bytes(
-                    self.__node.sdo.upload(int(str(_reg.idx), 16),
-                                           int(str(_reg.subidx), 16)),
+                    self.__node.sdo.upload(_reg.idx,
+                                           _reg.subidx),
                     "little"
                 )
         except Exception as e:
@@ -299,12 +299,12 @@ class CanopenServo(Servo):
         try:
             self.__lock.acquire()
             if _reg.dtype == REG_DTYPE.FLOAT:
-                self.__node.sdo.download(int(str(_reg.idx), 16),
-                                         int(str(_reg.subidx), 16),
+                self.__node.sdo.download(_reg.idx,
+                                         _reg.subidx,
                                          struct.pack('f', data))
             elif _reg.dtype == REG_DTYPE.DOMAIN:
-                self.__node.sdo.download(int(str(_reg.idx), 16),
-                                         int(str(_reg.subidx), 16), data)
+                self.__node.sdo.download(_reg.idx,
+                                         _reg.subidx, data)
             else:
                 bytes_length = 2
                 signed = False
@@ -324,8 +324,8 @@ class CanopenServo(Servo):
                     bytes_length = 4
                     signed = True
 
-                self.__node.sdo.download(int(str(_reg.idx), 16),
-                                         int(str(_reg.subidx), 16),
+                self.__node.sdo.download(_reg.idx,
+                                         _reg.subidx,
                                          data.to_bytes(bytes_length,
                                                        byteorder='little',
                                                        signed=signed))

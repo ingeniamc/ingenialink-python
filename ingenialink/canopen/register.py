@@ -11,8 +11,8 @@ class CanopenRegister(Register):
             identifier (str): Identifier.
             units (str): Units.
             cyclic (str): Cyclic typed register.
-            idx (str): Index of the register.
-            subidx (str): Subindex of the register.
+            idx (int): Index of the register.
+            subidx (int): Subindex of the register.
             dtype (REG_DTYPE): Data type.
             access (REG_ACCESS): Access type.
             phy (REG_PHY, optional): Physical units.
