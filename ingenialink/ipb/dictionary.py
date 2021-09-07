@@ -220,6 +220,23 @@ class IPBDictionary(Dictionary):
             self.__regs.append(register)
         self.categories = IPBCategories(self)
         self.errors = IPBErrors(self.path)
+        self.__read_device_info()
+
+    def __read_device_info(self):
+        tree = ET.parse(self.path)
+        root = tree.getroot()
+
+        device = root.find('./Body/Device')
+
+        self.firmware_version = device.attrib.get('firmwareVersion')
+        product_code = device.attrib.get('ProductCode')
+        if product_code is not None and product_code.isdecimal():
+            self.product_code = int(product_code)
+        self.part_number = device.attrib.get('PartNumber')
+        revision_number = device.attrib.get('RevisionNumber')
+        if revision_number is not None and revision_number.isdecimal():
+            self.revision_number = int(revision_number)
+        self.interface = device.attrib.get('Interface')
 
     def save(self, filename):
         """Save dictionary.
