@@ -327,6 +327,7 @@ class CanopenNetwork(Network):
 
         Raises:
             ILFirmwareLoadError: The firmware load process fails with an error message.
+
         """
         servo = None
         lfu_path = None
@@ -334,6 +335,9 @@ class CanopenNetwork(Network):
         servo_connected = False
         error_connecting = False
         progress = 0
+
+        if not os.path.isfile(fw_file):
+            raise FileNotFoundError('Could not find {}.'.format(fw_file))
 
         self.__set_fw_load_status_msg('')
         self.__set_fw_load_progress(progress)

@@ -8,8 +8,9 @@ from ingenialink.exceptions import ILFirmwareLoadError
 import ingenialogger
 
 from ftplib import FTP
-from os import path
 from time import sleep
+
+import os
 
 FTP_SESSION_OK_CODE = "220"
 FTP_LOGIN_OK_CODE = "230"
@@ -38,7 +39,11 @@ class EthernetNetwork(IPBNetwork):
 
         Raises:
             ILError: If the loading firmware process fails.
+
         """
+        if not os.path.isfile(fw_file):
+            raise FileNotFoundError('Could not find {}.'.format(fw_file))
+
         try:
             file = open(fw_file, 'rb')
             ftp_output = None
@@ -62,7 +67,7 @@ class EthernetNetwork(IPBNetwork):
             logger.info("Uploading firmware file...")
             ftp.set_pasv(False)
             ftp_output = ftp.storbinary(
-                "STOR {}".format(path.basename(file.name)), file)
+                "STOR {}".format(os.path.basename(file.name)), file)
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
                 raise_err("Unable to load the FW file through FTP")
@@ -98,7 +103,7 @@ class EthernetNetwork(IPBNetwork):
         r = 0
         upd = UDP(port, ip)
 
-        if moco_file and path.isfile(moco_file):
+        if moco_file and os.path.isfile(moco_file):
             moco_in = open(moco_file, "r")
 
             logger.info("Loading firmware...")
