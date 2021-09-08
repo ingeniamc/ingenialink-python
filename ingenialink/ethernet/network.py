@@ -30,6 +30,11 @@ class EthernetNetwork(IPBNetwork):
     def load_firmware(fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
         """Loads a given firmware file to the target slave.
 
+        .. warning ::
+            It is needed to disconnect the drive(:func:`disconnect_from_slave`)
+            after loading the firmware since the `Servo` object's data will
+            become obsolete.
+
         Args:
             fw_file (str): Path to the firmware file to be loaded.
             target (str): IP of the target slave.
