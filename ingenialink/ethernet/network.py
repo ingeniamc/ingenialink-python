@@ -1,15 +1,17 @@
-from ..network import NET_PROT, NET_TRANS_PROT
 from .servo import EthernetServo
-from ingenialink.ipb.network import IPBNetwork
-from ingenialink.utils._utils import *
+from ingenialink.constants import *
 from .._ingenialink import lib, ffi
 from ingenialink.utils.udp import UDP
+from ingenialink.utils._utils import *
+from ..network import NET_PROT, NET_TRANS_PROT
+from ingenialink.ipb.network import IPBNetwork
 from ingenialink.exceptions import ILFirmwareLoadError
-import ingenialogger
 
 from ftplib import FTP
 from os import path
 from time import sleep
+
+import ingenialogger
 
 FTP_SESSION_OK_CODE = "220"
 FTP_LOGIN_OK_CODE = "230"
@@ -131,7 +133,11 @@ class EthernetNetwork(IPBNetwork):
         raise NotImplementedError
 
     def connect_to_slave(self, target, dictionary=None, port=1061,
-                         communication_protocol=NET_TRANS_PROT.UDP):
+                         communication_protocol=NET_TRANS_PROT.UDP,
+                         reconnection_retries=DEFAULT_MESSAGE_RETRIES,
+                         reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT,
+                         servo_status_listener=True,
+                         net_status_listener=True):
         """Connects to a slave through the given network settings.
 
         Args:
@@ -139,6 +145,13 @@ class EthernetNetwork(IPBNetwork):
             dictionary (str): Path to the target dictionary file.
             port (int): Port to connect to the slave.
             communication_protocol (NET_TRANS_PROT): Communication protocol, UPD or TCP.
+            reconnection_retries (int): Number of reconnection retried before declaring
+            a connected or disconnected stated.
+            reconnection_timeout (int): Time in ms of the reconnection timeout.
+            servo_status_listener (bool): Toggle the listener of the servo for
+            its status, errors, faults, etc.
+            net_status_listener (bool): Toggle the listener of the network
+            status, connection and disconnection.
 
         Returns:
             EthernetServo: Instance of the servo connected.
@@ -160,9 +173,16 @@ class EthernetNetwork(IPBNetwork):
 
         self._create_cffi_network(net_)
         servo = EthernetServo(servo_, self._cffi_network, target,
-                              port, communication_protocol, dictionary)
+                              port, communication_protocol, dictionary,
+                              servo_status_listener)
 
         self.servos.append(servo)
+
+        if net_status_listener:
+            self.start_network_monitor()
+
+        self.set_reconnection_retries(reconnection_retries)
+        self.set_recv_timeout(reconnection_timeout)
 
         return servo
 
