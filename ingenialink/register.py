@@ -202,10 +202,18 @@ class Register(ABC):
         """any: Defines if the register needs to be stored."""
         return self._storage
 
+    @storage.setter
+    def storage(self, value):
+        self._storage = value
+
     @property
     def storage_valid(self):
         """bool: Defines if the register storage is valid."""
         return self._storage_valid
+
+    @storage_valid.setter
+    def storage_valid(self, value):
+        self._storage_valid = value
 
     @property
     def range(self):
