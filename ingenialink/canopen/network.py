@@ -9,7 +9,8 @@ from ..exceptions import ILFirmwareLoadError, ILObjectNotExist, ILError
 from can.interfaces.pcan.pcan import PcanError
 from ..network import NET_PROT, NET_STATE, Network
 from can.interfaces.ixxat.exceptions import VCIDeviceNotFoundError
-from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT
+from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT, \
+    STATUS_WORD_REGISTERS
 
 import re
 import os
@@ -593,8 +594,6 @@ class CanopenNetwork(Network):
                                      time_diff, bool_timeout)
                         logger.debug("Net state after reconnection: ",
                                      self.net_state)
-
-                        # Wait for drive to be available
                         sleep(5)
 
                         self.__set_fw_load_status_msg('Starting program')
@@ -609,6 +608,18 @@ class CanopenNetwork(Network):
                             logger.info('Bootloader finished successfully!')
                             self.__set_fw_load_status_msg('Bootloader '
                                                           'finished successfully!')
+                            # Wait for the drive to reset
+                            initial_time = time()
+                            timeout = 25
+                            stop = False
+
+                            logger.info('Waiting for the drive to be available.')
+                            while (time() - initial_time) < timeout and not stop:
+                                try:
+                                    servo.read(STATUS_WORD_REGISTERS[1])
+                                    stop = True
+                                except:
+                                    pass
                         else:
                             error_detected_msg = 'Could not recover drive'
                             logger.error(error_detected_msg)
