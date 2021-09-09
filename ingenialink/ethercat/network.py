@@ -6,6 +6,8 @@ from ingenialink.constants import *
 from ingenialink.ipb.network import IPBNetwork
 from ingenialink.utils._utils import cstr, raise_err
 
+import os
+
 
 class EthercatNetwork(IPBNetwork):
     """Network for all EtherCAT communications.
@@ -45,6 +47,8 @@ class EthercatNetwork(IPBNetwork):
             with an error message.
 
         """
+        if not os.path.isfile(fw_file):
+            raise FileNotFoundError('Could not find {}.'.format(fw_file))
         try:
             _interface_name = cstr(self.interface_name) \
                 if self.interface_name else ffi.NULL
