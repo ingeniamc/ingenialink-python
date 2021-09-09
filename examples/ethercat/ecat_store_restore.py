@@ -19,7 +19,7 @@ def store_restore_example():
 
     # Store all
     try:
-        servo.store_parameters(subnode=0)
+        servo.store_parameters()
         print('Stored all parameters successfully')
     except Exception as e:
         print('Error storing all parameters')
