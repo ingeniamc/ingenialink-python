@@ -219,23 +219,19 @@ class Servo(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def load_configuration(self, dictionary, subnode=0):
+    def load_configuration(self, config_file, subnode=None):
         raise NotImplementedError
 
     @abstractmethod
-    def save_configuration(self, new_path, subnode=0):
+    def save_configuration(self, config_file, subnode=None):
         raise NotImplementedError
 
     @abstractmethod
-    def store_parameters(self, subnode=0):
+    def store_parameters(self, subnode=None):
         raise NotImplementedError
 
     @abstractmethod
-    def restore_parameters(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_reg(self, reg, subnode):
+    def restore_parameters(self, subnode=None):
         raise NotImplementedError
 
     @abstractmethod

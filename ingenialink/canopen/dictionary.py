@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
-from .register import CanopenRegister, REG_ACCESS, REG_DTYPE
 from ..dictionary import Dictionary
+from ..constants import SINGLE_AXIS_MINIMUM_SUBNODES
+from .register import CanopenRegister, REG_ACCESS, REG_DTYPE
 from ingenialink.utils._utils import *
 from .._ingenialink import lib
 
@@ -91,7 +92,7 @@ class CanopenDictionary(Dictionary):
         super(CanopenDictionary, self).__init__(dictionary_path)
         self.version = '1'
         self.categories = None
-        self.subnodes = 2
+        self.subnodes = SINGLE_AXIS_MINIMUM_SUBNODES
         self.__registers = []
         self.errors = None
 
@@ -165,8 +166,8 @@ class CanopenDictionary(Dictionary):
             else:
                 cyclic = "CONFIG"
 
-            idx = register.attrib['address'][:6]
-            subidx = "0x" + register.attrib['address'][-2:]
+            idx = int(register.attrib['address'][:6], 16)
+            subidx = int("0x" + register.attrib['address'][-2:], 16)
 
             # Data type
             dtype = register.attrib['dtype']

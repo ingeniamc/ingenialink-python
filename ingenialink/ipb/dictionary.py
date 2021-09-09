@@ -5,6 +5,7 @@ from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err
 
 from ingenialink.ipb.register import LabelsDictionary, ipb_register_from_cffi
 from ..dictionary import Dictionary, Categories
+from ..constants import SINGLE_AXIS_MINIMUM_SUBNODES
 
 import xml.etree.ElementTree as ET
 
@@ -212,7 +213,8 @@ class IPBDictionary(Dictionary):
         self._cffi_dictionary = lib.il_servo_dict_get(cffi_servo)
 
         self.version = pstr(lib.il_dict_version_get(self._cffi_dictionary))
-        self.subnodes = lib.il_dict_subnodes_get(self._cffi_dictionary)
+        self.subnodes = SINGLE_AXIS_MINIMUM_SUBNODES
+        self.__get_subnode()
 
         self.__regs = []
         for subnode in range(self.subnodes):
@@ -247,6 +249,14 @@ class IPBDictionary(Dictionary):
         """
         r = lib.il_dict_save(self._cffi_dictionary, cstr(filename))
         raise_err(r)
+
+    def __get_subnode(self):
+        with open(self.path, 'r') as xml_file:
+            tree = ET.parse(xml_file)
+        root = tree.getroot()
+
+        if root.findall('./Body/Device/Axes/'):
+            self.subnodes = len(root.findall('./Body/Device/Axes/Axis'))
 
     def registers(self, subnode):
         """Obtain all the registers of a subnode.
