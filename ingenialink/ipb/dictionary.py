@@ -5,9 +5,12 @@ from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err
 
 from ingenialink.ipb.register import LabelsDictionary, ipb_register_from_cffi
 from ..dictionary import Dictionary, Categories
+from ..constants import SINGLE_AXIS_MINIMUM_SUBNODES
+
+import xml.etree.ElementTree as ET
 
 
-class SubCategories:
+class IPBSubCategories:
     """Sub-categories.
 
     Args:
@@ -61,6 +64,35 @@ class SubCategories:
         return self._scat_ids
 
 
+class IPBErrors:
+    """Errors for the IPB dictionary.
+
+    Args:
+        dict_ (str): Path to the Ingenia dictionary.
+
+    """
+    def __init__(self, dict_):
+        self._dict = dict_
+        self._errors = {}   # { cat_id : label }
+
+        self.load_errors()
+
+    def load_errors(self):
+        """Load errors from dictionary."""
+        with open(self._dict, 'r') as xml_file:
+            tree = ET.parse(xml_file)
+        root = tree.getroot()
+
+        for element in root.findall('./Body/Errors/Error'):
+            label = element.getchildren()[0].getchildren()[0]
+            self._errors[int(element.attrib['id'], 16)] = [
+                element.attrib['id'],
+                element.attrib['affected_module'],
+                element.attrib['error_type'].capitalize(),
+                label.text
+            ]
+
+
 class IPBCategories(Categories):
     """IPB Categories for the dictionary.
 
@@ -106,10 +138,10 @@ class IPBCategories(Categories):
         """Obtain all sub-categories.
 
         Returns:
-            SubCategories: Sub-categories.
+            IPBSubCategories: Sub-categories.
 
         """
-        return SubCategories(self.__ipb_dictionary._cffi_dictionary, cat_id)
+        return IPBSubCategories(self.__ipb_dictionary._cffi_dictionary, cat_id)
 
     @property
     def category_ids(self):
@@ -122,7 +154,7 @@ class IPBCategories(Categories):
         return self._cat_ids
 
 
-class RegistersDictionary(collections.Mapping):
+class IPBRegistersDictionary(collections.Mapping):
     """Registers dictionary.
 
     Args:
@@ -169,44 +201,44 @@ class IPBDictionary(Dictionary):
     """IPB Ingenia Dictionary.
 
     Args:
-        dictionary (str): Dictionary file name.
+        dictionary_path (str): Dictionary file name.
+        cffi_servo (CData): CFFI instance of the current Servo.
 
     Raises:
         ILCreationError: If the dictionary could not be created.
 
     """
-    def __init__(self, dictionary):
-        super(IPBDictionary, self).__init__(dictionary)
-        dict_ = lib.il_dict_create(cstr(dictionary))
-        raise_null(dict_)
+    def __init__(self, dictionary_path, cffi_servo):
+        super(IPBDictionary, self).__init__(dictionary_path)
+        self._cffi_dictionary = lib.il_servo_dict_get(cffi_servo)
 
-        self._cffi_dictionary = ffi.gc(dict_, lib.il_dict_destroy)
-
-        self.version = pstr(lib.il_dict_version_get(dict_))
-        self.subnodes = lib.il_dict_subnodes_get(dict_)
+        self.version = pstr(lib.il_dict_version_get(self._cffi_dictionary))
+        self.subnodes = SINGLE_AXIS_MINIMUM_SUBNODES
+        self.__get_subnode()
 
         self.__regs = []
-        for subnode in range(0, self.subnodes):
-            register = RegistersDictionary(self._cffi_dictionary, subnode)
+        for subnode in range(self.subnodes):
+            register = IPBRegistersDictionary(self._cffi_dictionary, subnode)
             self.__regs.append(register)
-        self._cats = IPBCategories(self)
+        self.categories = IPBCategories(self)
+        self.errors = IPBErrors(self.path)
+        self.__read_device_info()
 
-    @classmethod
-    def _from_dict(cls, dict_):
-        """Create a new class instance from an existing dictionary."""
-        inst = cls.__new__(cls)
-        inst._cffi_dictionary = dict_
+    def __read_device_info(self):
+        tree = ET.parse(self.path)
+        root = tree.getroot()
 
-        inst.version = pstr(lib.il_dict_version_get(inst._cffi_dictionary))
-        inst.subnodes = lib.il_dict_subnodes_get(inst._cffi_dictionary)
+        device = root.find('./Body/Device')
 
-        inst.__regs = []
-        for subnode in range(0, inst.subnodes):
-            rdict = RegistersDictionary(inst._cffi_dictionary, subnode)
-            inst.__regs.append(rdict)
-        inst._cats = IPBCategories(inst)
-
-        return inst
+        self.firmware_version = device.attrib.get('firmwareVersion')
+        product_code = device.attrib.get('ProductCode')
+        if product_code is not None and product_code.isdecimal():
+            self.product_code = int(product_code)
+        self.part_number = device.attrib.get('PartNumber')
+        revision_number = device.attrib.get('RevisionNumber')
+        if revision_number is not None and revision_number.isdecimal():
+            self.revision_number = int(revision_number)
+        self.interface = device.attrib.get('Interface')
 
     def save(self, filename):
         """Save dictionary.
@@ -217,6 +249,14 @@ class IPBDictionary(Dictionary):
         """
         r = lib.il_dict_save(self._cffi_dictionary, cstr(filename))
         raise_err(r)
+
+    def __get_subnode(self):
+        with open(self.path, 'r') as xml_file:
+            tree = ET.parse(xml_file)
+        root = tree.getroot()
+
+        if root.findall('./Body/Device/Axes/'):
+            self.subnodes = len(root.findall('./Body/Device/Axes/Axis'))
 
     def registers(self, subnode):
         """Obtain all the registers of a subnode.
@@ -230,7 +270,3 @@ class IPBDictionary(Dictionary):
         """
         if subnode < self.subnodes:
             return self.__regs[subnode]
-
-    @property
-    def errors(self):
-        raise NotImplementedError
