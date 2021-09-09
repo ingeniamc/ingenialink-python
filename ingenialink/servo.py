@@ -235,10 +235,6 @@ class Servo(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_reg(self, reg, subnode):
-        raise NotImplementedError
-
-    @abstractmethod
     def read(self, *args, **kwargs):
         raise NotImplementedError
 
