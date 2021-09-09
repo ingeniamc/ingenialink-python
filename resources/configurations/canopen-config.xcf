@@ -228,7 +228,7 @@
         <Register access="rw" address="0x212100" dtype="float" id="DRV_PROT_INT_SHUNT_DIS_VOLT" storage="58.0" subnode="1" />
         <Register access="rw" address="0x212500" dtype="u16" id="MOT_BRAKE_HOLDING_DUTY" storage="100" subnode="1" />
         <Register access="rw" address="0x215000" dtype="float" id="COMMU_ANGLE_OFFSET" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x215100" dtype="u16" id="COMMU_ANGLE_SENSOR" subnode="1" />
+        <Register access="rw" address="0x215100" dtype="u16" id="COMMU_ANGLE_SENSOR" storage="4" subnode="1" />
         <Register access="rw" address="0x21E000" dtype="float" id="CL_CUR_REF_MAX" storage="60.0" subnode="1" />
         <Register access="rw" address="0x21E800" dtype="float" id="CL_VEL_REF_MAX" storage="500.0" subnode="1" />
         <Register access="rw" address="0x21EA00" dtype="s32" id="CL_POS_REF_MIN" storage="0" subnode="1" />
@@ -239,24 +239,24 @@
         <Register access="rw" address="0x22EC00" dtype="float" id="IO_ANA2_GAIN" storage="1.0" subnode="1" />
         <Register access="rw" address="0x22ED00" dtype="float" id="IO_ANA2_OFFSET" storage="0.0" subnode="1" />
         <Register access="r" address="0x235F00" dtype="u32" id="FBK_ENA_MASK" subnode="1" />
-        <Register access="rw" address="0x236000" dtype="u16" id="CL_VEL_FBK_SENSOR" subnode="1" />
-        <Register access="rw" address="0x236100" dtype="u16" id="CL_POS_FBK_SENSOR" subnode="1" />
+        <Register access="rw" address="0x236000" dtype="u16" id="CL_VEL_FBK_SENSOR" storage="4" subnode="1" />
+        <Register access="rw" address="0x236100" dtype="u16" id="CL_POS_FBK_SENSOR" storage="4" subnode="1" />
         <Register access="rw" address="0x237000" dtype="u16" id="FBK_BISS1_SSI1_FRAME_SIZE" storage="24" subnode="1" />
         <Register access="rw" address="0x237100" dtype="u16" id="FBK_BISS1_SSI1_ERROR_TOLERANCE" storage="5" subnode="1" />
         <Register access="rw" address="0x237200" dtype="u16" id="FBK_BISS1_SSI1_WAIT_CYCLES" storage="2" subnode="1" />
-        <Register access="rw" address="0x237300" dtype="u16" id="FBK_BISS1_SSI1_POS_POLARITY" subnode="1" />
-        <Register access="rw" address="0x238000" dtype="u16" id="FBK_GEN_MODE" subnode="1" />
+        <Register access="rw" address="0x237300" dtype="u16" id="FBK_BISS1_SSI1_POS_POLARITY" storage="0" subnode="1" />
+        <Register access="rw" address="0x238000" dtype="u16" id="FBK_GEN_MODE" storage="0" subnode="1" />
         <Register access="rw" address="0x238100" dtype="float" id="FBK_GEN_FREQ" storage="1.0" subnode="1" />
         <Register access="rw" address="0x238200" dtype="float" id="FBK_GEN_GAIN" storage="1.0" subnode="1" />
         <Register access="rw" address="0x238300" dtype="float" id="FBK_GEN_OFFSET" storage="0.0" subnode="1" />
         <Register access="rw" address="0x238400" dtype="u32" id="FBK_GEN_CYCLES" storage="0" subnode="1" />
         <Register access="rw" address="0x238800" dtype="u32" id="FBK_DIGENC1_RESOLUTION" storage="2000" subnode="1" />
-        <Register access="rw" address="0x238900" dtype="u16" id="FBK_DIGENC1_POLARITY" subnode="1" />
-        <Register access="rw" address="0x238A00" dtype="u16" id="FBK_DIGENC1_FILTER" subnode="1" />
-        <Register access="rw" address="0x239000" dtype="u16" id="FBK_DIGHALL_POLARITY" subnode="1" />
-        <Register access="rw" address="0x239100" dtype="u16" id="FBK_DIGHALL_FILTER" subnode="1" />
+        <Register access="rw" address="0x238900" dtype="u16" id="FBK_DIGENC1_POLARITY" storage="0" subnode="1" />
+        <Register access="rw" address="0x238A00" dtype="u16" id="FBK_DIGENC1_FILTER" storage="0" subnode="1" />
+        <Register access="rw" address="0x239000" dtype="u16" id="FBK_DIGHALL_POLARITY" storage="0" subnode="1" />
+        <Register access="rw" address="0x239100" dtype="u16" id="FBK_DIGHALL_FILTER" storage="0" subnode="1" />
         <Register access="rw" address="0x239200" dtype="u16" id="FBK_DIGHALL_PAIRPOLES" storage="2" subnode="1" />
-        <Register access="rw" address="0x24FF00" dtype="u16" id="FBK_CUR_RANGE_SELECTION" subnode="1" />
+        <Register access="rw" address="0x24FF00" dtype="u16" id="FBK_CUR_RANGE_SELECTION" storage="0" subnode="1" />
         <Register access="rw" address="0x250000" dtype="float" id="CL_CUR_Q_KP" storage="0.800000011920929" subnode="1" />
         <Register access="rw" address="0x250100" dtype="float" id="CL_CUR_Q_KI" storage="50.0" subnode="1" />
         <Register access="rw" address="0x250200" dtype="float" id="CL_CUR_Q_MAX_OUT" storage="60.0" subnode="1" />
@@ -279,10 +279,10 @@
         <Register access="rw" address="0x251400" dtype="float" id="CL_POS_PID_KD_FILTER" storage="0.0" subnode="1" />
         <Register access="rw" address="0x251500" dtype="float" id="CL_POS_PID_MAX_OUT" storage="200.0" subnode="1" />
         <Register access="rw" address="0x251600" dtype="float" id="CL_POS_PID_MIN_OUT" storage="-200.0" subnode="1" />
-        <Register access="rw" address="0x25FC00" dtype="u16" id="IO_OUT_MAP_1" subnode="1" />
-        <Register access="rw" address="0x25FD00" dtype="u16" id="IO_OUT_MAP_2" subnode="1" />
-        <Register access="rw" address="0x25FE00" dtype="u16" id="IO_OUT_MAP_3" subnode="1" />
-        <Register access="rw" address="0x25FF00" dtype="u16" id="IO_OUT_MAP_4" subnode="1" />
+        <Register access="rw" address="0x25FC00" dtype="u16" id="IO_OUT_MAP_1" storage="0" subnode="1" />
+        <Register access="rw" address="0x25FD00" dtype="u16" id="IO_OUT_MAP_2" storage="0" subnode="1" />
+        <Register access="rw" address="0x25FE00" dtype="u16" id="IO_OUT_MAP_3" storage="3" subnode="1" />
+        <Register access="rw" address="0x25FF00" dtype="u16" id="IO_OUT_MAP_4" storage="0" subnode="1" />
         <Register access="r" address="0x260000" dtype="u32" id="IO_IN_VALUE" subnode="1" />
         <Register access="r" address="0x260100" dtype="u32" id="IO_OUT_VALUE" subnode="1" />
         <Register access="r" address="0x264D00" dtype="u16" id="DRV_DIAG_ERROR_TOTAL" subnode="1" />
@@ -303,9 +303,9 @@
         <Register access="r" address="0x26E400" dtype="str" id="DRV_ID_SOFTWARE_VERSION" subnode="1" />
         <Register access="r" address="0x26E500" dtype="str" id="DRV_ID_WEB" subnode="1" />
         <Register access="rw" address="0x215200" dtype="float" id="COMMU_ANGLE_REF_OFFSET" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x215300" dtype="u16" id="COMMU_ANGLE_REF_SENSOR" subnode="1" />
+        <Register access="rw" address="0x215300" dtype="u16" id="COMMU_ANGLE_REF_SENSOR" storage="4" subnode="1" />
         <Register access="r" address="0x204100" dtype="float" id="COMMU_ANGLE_REF_VALUE" subnode="1" />
-        <Register access="rw" address="0x215400" dtype="u16" id="COMMU_PHASING_MODE" subnode="1" />
+        <Register access="rw" address="0x215400" dtype="u16" id="COMMU_PHASING_MODE" storage="0" subnode="1" />
         <Register access="r" address="0x252000" dtype="u32" id="DRV_POS_VEL_RATE" subnode="1" />
         <Register access="rw" address="0x215500" dtype="float" id="COMMU_PHASING_MAX_CURRENT" storage="1.5" subnode="1" />
         <Register access="rw" address="0x215600" dtype="u16" id="COMMU_PHASING_TIMEOUT" storage="500" subnode="1" />
@@ -313,9 +313,9 @@
         <Register access="rw" address="0x202500" dtype="float" id="PROF_MAX_VEL" storage="20.0" subnode="1" />
         <Register access="rw" address="0x202600" dtype="float" id="PROF_MAX_ACC" storage="20.0" subnode="1" />
         <Register access="rw" address="0x202700" dtype="float" id="PROF_MAX_DEC" storage="20.0" subnode="1" />
-        <Register access="rw" address="0x264100" dtype="u16" id="COMMS_SYNC_SIGNAL_CFG" subnode="1" />
+        <Register access="rw" address="0x264100" dtype="u16" id="COMMS_SYNC_SIGNAL_CFG" storage="2" subnode="1" />
         <Register access="r" address="0x273300" dtype="float" id="DRV_PROT_VBUS_OFFSET" subnode="1" />
-        <Register access="rw" address="0x237400" dtype="u16" id="FBK_BISS1_SSI1_FRAME_TYPE" subnode="1" />
+        <Register access="rw" address="0x237400" dtype="u16" id="FBK_BISS1_SSI1_FRAME_TYPE" storage="0" subnode="1" />
         <Register access="r" address="0x26E600" dtype="u32" id="DRV_ID_SERIAL_NUMBER" subnode="1" />
         <Register access="r" address="0x206300" dtype="float" id="MOT_PROT_TEMP_VALUE" subnode="1" />
         <Register access="rw" address="0x210900" dtype="float" id="MOT_PROT_TEMP_THRESHOLD" storage="100.0" subnode="1" />
@@ -334,7 +334,7 @@
         <Register access="r" address="0x272800" dtype="u16" id="FBK_CUR_MASK" subnode="1" />
         <Register access="r" address="0x203700" dtype="u16" id="DRV_PROT_IBUS_COUNTS" subnode="1" />
         <Register access="rw" address="0x210C00" dtype="u16" id="MOT_PROT_TEMP_B2585" storage="0" subnode="1" />
-        <Register access="rw" address="0x210A00" dtype="u16" id="MOT_PROT_TEMP_TYPE" subnode="1" />
+        <Register access="rw" address="0x210A00" dtype="u16" id="MOT_PROT_TEMP_TYPE" storage="6" subnode="1" />
         <Register access="rw" address="0x210B00" dtype="u32" id="MOT_PROT_TEMP_RES" storage="4000" subnode="1" />
         <Register access="rw" address="0x210D00" dtype="u32" id="MOT_PROT_TEMP_EXT_RES" storage="1650" subnode="1" />
         <Register access="rw" address="0x210E00" dtype="float" id="MOT_PROT_TEMP_GAIN" storage="0.0" subnode="1" />
@@ -351,54 +351,54 @@
         <Register access="r" address="0x275C00" dtype="float" id="DRV_PROT_DERATING_TEMP_THRESHOLD_3" subnode="1" />
         <Register access="r" address="0x275D00" dtype="float" id="DRV_PROT_DERATING_TEMP_THRESHOLD_4" subnode="1" />
         <Register access="r" address="0x270000" dtype="u32" id="DRV_PS_FREQ_1" subnode="1" />
-        <Register access="rw" address="0x252100" dtype="u16" id="DRV_PS_FREQ_SELECTION" subnode="1" />
+        <Register access="rw" address="0x252100" dtype="u16" id="DRV_PS_FREQ_SELECTION" storage="1" subnode="1" />
         <Register access="rw" address="0x212600" dtype="u32" id="MOT_BRAKE_PRE_TIME" storage="0" subnode="1" />
         <Register access="rw" address="0x212700" dtype="u32" id="MOT_BRAKE_POST_TIME" storage="0" subnode="1" />
-        <Register access="rw" address="0x253000" dtype="u16" id="CL_POS_FBK_FILTER1_TYPE" subnode="1" />
+        <Register access="rw" address="0x253000" dtype="u16" id="CL_POS_FBK_FILTER1_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x253100" dtype="u32" id="CL_POS_FBK_FILTER1_FREQ" storage="100" subnode="1" />
         <Register access="rw" address="0x253200" dtype="float" id="CL_POS_FBK_FILTER1_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x253300" dtype="float" id="CL_POS_FBK_FILTER1_GAIN" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x253800" dtype="u16" id="CL_POS_FBK_FILTER2_TYPE" subnode="1" />
+        <Register access="rw" address="0x253800" dtype="u16" id="CL_POS_FBK_FILTER2_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x253900" dtype="u32" id="CL_POS_FBK_FILTER2_FREQ" storage="100" subnode="1" />
         <Register access="rw" address="0x253A00" dtype="float" id="CL_POS_FBK_FILTER2_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x253B00" dtype="float" id="CL_POS_FBK_FILTER2_GAIN" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x254000" dtype="u16" id="CL_POS_REF_FILTER1_TYPE" subnode="1" />
+        <Register access="rw" address="0x254000" dtype="u16" id="CL_POS_REF_FILTER1_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x254100" dtype="u32" id="CL_POS_REF_FILTER1_FREQ" storage="100" subnode="1" />
         <Register access="rw" address="0x254200" dtype="float" id="CL_POS_REF_FILTER1_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x254300" dtype="float" id="CL_POS_REF_FILTER1_GAIN" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x254800" dtype="u16" id="CL_POS_REF_FILTER2_TYPE" subnode="1" />
+        <Register access="rw" address="0x254800" dtype="u16" id="CL_POS_REF_FILTER2_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x254900" dtype="u32" id="CL_POS_REF_FILTER2_FREQ" storage="100" subnode="1" />
         <Register access="rw" address="0x254A00" dtype="float" id="CL_POS_REF_FILTER2_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x254B00" dtype="float" id="CL_POS_REF_FILTER2_GAIN" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x255000" dtype="u16" id="CL_VEL_FBK_FILTER1_TYPE" subnode="1" />
+        <Register access="rw" address="0x255000" dtype="u16" id="CL_VEL_FBK_FILTER1_TYPE" storage="1" subnode="1" />
         <Register access="rw" address="0x255100" dtype="u32" id="CL_VEL_FBK_FILTER1_FREQ" storage="200" subnode="1" />
         <Register access="rw" address="0x255200" dtype="float" id="CL_VEL_FBK_FILTER1_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x255300" dtype="float" id="CL_VEL_FBK_FILTER1_GAIN" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x255800" dtype="u16" id="CL_VEL_FBK_FILTER2_TYPE" subnode="1" />
+        <Register access="rw" address="0x255800" dtype="u16" id="CL_VEL_FBK_FILTER2_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x255900" dtype="u32" id="CL_VEL_FBK_FILTER2_FREQ" storage="100" subnode="1" />
         <Register access="rw" address="0x255A00" dtype="float" id="CL_VEL_FBK_FILTER2_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x255B00" dtype="float" id="CL_VEL_FBK_FILTER2_GAIN" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x256000" dtype="u16" id="CL_VEL_REF_FILTER1_TYPE" subnode="1" />
+        <Register access="rw" address="0x256000" dtype="u16" id="CL_VEL_REF_FILTER1_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x256100" dtype="u32" id="CL_VEL_REF_FILTER1_FREQ" storage="100" subnode="1" />
         <Register access="rw" address="0x256200" dtype="float" id="CL_VEL_REF_FILTER1_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x256300" dtype="float" id="CL_VEL_REF_FILTER1_GAIN" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x256800" dtype="u16" id="CL_VEL_REF_FILTER2_TYPE" subnode="1" />
+        <Register access="rw" address="0x256800" dtype="u16" id="CL_VEL_REF_FILTER2_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x256900" dtype="u32" id="CL_VEL_REF_FILTER2_FREQ" storage="100" subnode="1" />
         <Register access="rw" address="0x256A00" dtype="float" id="CL_VEL_REF_FILTER2_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x256B00" dtype="float" id="CL_VEL_REF_FILTER2_GAIN" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x257000" dtype="u16" id="CL_CUR_FBK_FILTER1_TYPE" subnode="1" />
+        <Register access="rw" address="0x257000" dtype="u16" id="CL_CUR_FBK_FILTER1_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x257100" dtype="u32" id="CL_CUR_FBK_FILTER1_FREQ" storage="100" subnode="1" />
         <Register access="rw" address="0x257200" dtype="float" id="CL_CUR_FBK_FILTER1_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x257300" dtype="float" id="CL_CUR_FBK_FILTER1_GAIN" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x257800" dtype="u16" id="CL_CUR_FBK_FILTER2_TYPE" subnode="1" />
+        <Register access="rw" address="0x257800" dtype="u16" id="CL_CUR_FBK_FILTER2_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x257900" dtype="u32" id="CL_CUR_FBK_FILTER2_FREQ" storage="100" subnode="1" />
         <Register access="rw" address="0x257A00" dtype="float" id="CL_CUR_FBK_FILTER2_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x257B00" dtype="float" id="CL_CUR_FBK_FILTER2_GAIN" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x258000" dtype="u16" id="CL_CUR_REF_FILTER1_TYPE" subnode="1" />
+        <Register access="rw" address="0x258000" dtype="u16" id="CL_CUR_REF_FILTER1_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x258100" dtype="u32" id="CL_CUR_REF_FILTER1_FREQ" storage="100" subnode="1" />
         <Register access="rw" address="0x258200" dtype="float" id="CL_CUR_REF_FILTER1_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x258300" dtype="float" id="CL_CUR_REF_FILTER1_GAIN" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x258800" dtype="u16" id="CL_CUR_REF_FILTER2_TYPE" subnode="1" />
+        <Register access="rw" address="0x258800" dtype="u16" id="CL_CUR_REF_FILTER2_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x258900" dtype="u32" id="CL_CUR_REF_FILTER2_FREQ" storage="100" subnode="1" />
         <Register access="rw" address="0x258A00" dtype="float" id="CL_CUR_REF_FILTER2_Q" storage="0.707099974155426" subnode="1" />
         <Register access="rw" address="0x258B00" dtype="float" id="CL_CUR_REF_FILTER2_GAIN" storage="0.0" subnode="1" />
@@ -409,15 +409,15 @@
         <Register access="rw" address="0x259000" dtype="float" id="CL_VEL_FF_KA" storage="0.0" subnode="1" />
         <Register access="rw" address="0x259100" dtype="float" id="CL_POS_FF_KVEL" storage="0.0" subnode="1" />
         <Register access="rw" address="0x259200" dtype="float" id="CL_POS_FF_KACC" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x245000" dtype="u16" id="HOM_MODE" subnode="1" />
+        <Register access="rw" address="0x245000" dtype="u16" id="HOM_MODE" storage="0" subnode="1" />
         <Register access="rw" address="0x245100" dtype="s32" id="HOM_OFFSET" storage="0" subnode="1" />
         <Register access="rw" address="0x245200" dtype="u32" id="HOM_SEQ_TIMEOUT" storage="60000" subnode="1" />
         <Register access="rw" address="0x245300" dtype="float" id="HOM_SPEED_SEARCH" storage="0.0" subnode="1" />
         <Register access="rw" address="0x245400" dtype="float" id="HOM_SPEED_ZERO" storage="0.0" subnode="1" />
-        <Register access="rw" address="0x245500" dtype="u16" id="IO_IN_POS_HOM_SWITCH" subnode="1" />
-        <Register access="rw" address="0x245600" dtype="u16" id="IO_IN_NEG_HOM_SWITCH" subnode="1" />
-        <Register access="rw" address="0x260800" dtype="u16" id="IO_IN_POS_LIM_SWITCH" subnode="1" />
-        <Register access="rw" address="0x260900" dtype="u16" id="IO_IN_NEG_LIM_SWITCH" subnode="1" />
+        <Register access="rw" address="0x245500" dtype="u16" id="IO_IN_POS_HOM_SWITCH" storage="0" subnode="1" />
+        <Register access="rw" address="0x245600" dtype="u16" id="IO_IN_NEG_HOM_SWITCH" storage="0" subnode="1" />
+        <Register access="rw" address="0x260800" dtype="u16" id="IO_IN_POS_LIM_SWITCH" storage="0" subnode="1" />
+        <Register access="rw" address="0x260900" dtype="u16" id="IO_IN_NEG_LIM_SWITCH" storage="0" subnode="1" />
         <Register access="rw" address="0x21EF00" dtype="float" id="PROF_IP_TIME_MANTISSA" storage="1.0" subnode="1" />
         <Register access="rw" address="0x21F000" dtype="float" id="PROF_IP_TIME_EXP" storage="0.0010000000474974513" subnode="1" />
         <Register access="rw" address="0x237500" dtype="u16" id="FBK_BISS1_SSI1_POS_BITS" storage="22" subnode="1" />
@@ -428,13 +428,13 @@
         <Register access="rw" address="0x21F300" dtype="float" id="PROF_VEL_WINDOW_VALUE" storage="1.0" subnode="1" />
         <Register access="rw" address="0x21F400" dtype="u32" id="PROF_VEL_WINDOW_TIME" storage="10" subnode="1" />
         <Register access="rw" address="0x21F500" dtype="float" id="DRV_STATE_QS_DEC" storage="1.0" subnode="1" />
-        <Register access="rw" address="0x260A00" dtype="u16" id="IO_IN_QS" subnode="1" />
-        <Register access="rw" address="0x260B00" dtype="s16" id="ERROR_STATE_QS_OPTION" subnode="1" />
-        <Register access="rw" address="0x236F00" dtype="u16" id="FBK_BISS1_SSI1_PROTOCOL" subnode="1" />
-        <Register access="rw" address="0x261000" dtype="u16" id="ERROR_POS_OUT_LIMITS_OPTION" subnode="1" />
-        <Register access="rw" address="0x260F00" dtype="u16" id="ERROR_PROT_I2T_OPTION" subnode="1" />
-        <Register access="rw" address="0x261100" dtype="u16" id="ERROR_VEL_OUT_LIMITS_OPTION" subnode="1" />
-        <Register access="rw" address="0x261200" dtype="u16" id="ERROR_POS_FOLLOWING_OPTION" subnode="1" />
+        <Register access="rw" address="0x260A00" dtype="u16" id="IO_IN_QS" storage="0" subnode="1" />
+        <Register access="rw" address="0x260B00" dtype="s16" id="ERROR_STATE_QS_OPTION" storage="5" subnode="1" />
+        <Register access="rw" address="0x236F00" dtype="u16" id="FBK_BISS1_SSI1_PROTOCOL" storage="1" subnode="1" />
+        <Register access="rw" address="0x261000" dtype="u16" id="ERROR_POS_OUT_LIMITS_OPTION" storage="0" subnode="1" />
+        <Register access="rw" address="0x260F00" dtype="u16" id="ERROR_PROT_I2T_OPTION" storage="0" subnode="1" />
+        <Register access="rw" address="0x261100" dtype="u16" id="ERROR_VEL_OUT_LIMITS_OPTION" storage="0" subnode="1" />
+        <Register access="rw" address="0x261200" dtype="u16" id="ERROR_POS_FOLLOWING_OPTION" storage="0" subnode="1" />
         <Register access="rw" address="0x218100" dtype="s32" id="PROF_IP_POS_INPUT" storage="0" subnode="1" />
         <Register access="rw" address="0x218200" dtype="float" id="PROF_IP_VEL_INPUT" storage="0.0" subnode="1" />
         <Register access="rw" address="0x218300" dtype="u16" id="PROF_IP_TIME_INPUT" storage="0" subnode="1" />
@@ -447,37 +447,37 @@
         <Register access="rw" address="0x236400" dtype="float" id="PROF_POS_VEL_RATIO" storage="1.0" subnode="1" />
         <Register access="rw" address="0x274300" dtype="u32" id="MOT_BRAKE_FREQ" storage="10000" subnode="1" />
         <Register access="r" address="0x239300" dtype="u16" id="FBK_DIGHALL_VALUE" subnode="1" />
-        <Register access="rw" address="0x214F00" dtype="u16" id="MOT_COMMU_MOD" subnode="1" />
-        <Register access="rw" address="0x261300" dtype="u16" id="ERROR_PROT_OVER_TEMP_OPTION" subnode="1" />
-        <Register access="rw" address="0x261400" dtype="u16" id="ERROR_MOT_OVER_TEMP_OPTION" subnode="1" />
+        <Register access="rw" address="0x214F00" dtype="u16" id="MOT_COMMU_MOD" storage="0" subnode="1" />
+        <Register access="rw" address="0x261300" dtype="u16" id="ERROR_PROT_OVER_TEMP_OPTION" storage="0" subnode="1" />
+        <Register access="rw" address="0x261400" dtype="u16" id="ERROR_MOT_OVER_TEMP_OPTION" storage="0" subnode="1" />
         <Register access="rw" address="0x263000" dtype="float" id="DRV_PROT_USER_OVER_VOLT" storage="60.0" subnode="1" />
         <Register access="rw" address="0x263100" dtype="float" id="DRV_PROT_USER_UNDER_VOLT" storage="10.0" subnode="1" />
         <Register access="rw" address="0x263200" dtype="float" id="DRV_PROT_USER_OVER_TEMP" storage="110.0" subnode="1" />
         <Register access="rw" address="0x263300" dtype="float" id="DRV_PROT_USER_UNDER_TEMP" storage="-20.0" subnode="1" />
-        <Register access="rw" address="0x261500" dtype="u16" id="ERROR_PROT_UNDER_TEMP_OPTION" subnode="1" />
-        <Register access="rw" address="0x261600" dtype="u16" id="ERROR_PROT_OVER_VOLT_OPTION" subnode="1" />
-        <Register access="rw" address="0x261700" dtype="u16" id="ERROR_PROT_UNDER_VOLT_OPTION" subnode="1" />
+        <Register access="rw" address="0x261500" dtype="u16" id="ERROR_PROT_UNDER_TEMP_OPTION" storage="0" subnode="1" />
+        <Register access="rw" address="0x261600" dtype="u16" id="ERROR_PROT_OVER_VOLT_OPTION" storage="0" subnode="1" />
+        <Register access="rw" address="0x261700" dtype="u16" id="ERROR_PROT_UNDER_VOLT_OPTION" storage="0" subnode="1" />
         <Register access="r" address="0x251A00" dtype="u16" id="DRV_PROT_STO_STATUS" subnode="1" />
         <Register access="rw" address="0x260200" dtype="u32" id="IO_OUT_SET_POINT" storage="0" subnode="1" />
-        <Register access="rw" address="0x261800" dtype="u16" id="ERROR_PROT_EXT_FAULT_OPTION" subnode="1" />
+        <Register access="rw" address="0x261800" dtype="u16" id="ERROR_PROT_EXT_FAULT_OPTION" storage="1" subnode="1" />
         <Register access="r" address="0x205100" dtype="s32" id="FBK_SSI2_POS_VALUE" subnode="1" />
         <Register access="rw" address="0x237800" dtype="u16" id="FBK_SSI2_FRAME_SIZE" storage="24" subnode="1" />
         <Register access="rw" address="0x237900" dtype="u16" id="FBK_SSI2_ERROR_TOLERANCE" storage="5" subnode="1" />
         <Register access="rw" address="0x237A00" dtype="u16" id="FBK_SSI2_WAIT_CYCLES" storage="2" subnode="1" />
-        <Register access="rw" address="0x237B00" dtype="u16" id="FBK_SSI2_POS_POLARITY" subnode="1" />
-        <Register access="rw" address="0x237C00" dtype="u16" id="FBK_SSI2_FRAME_TYPE" subnode="1" />
+        <Register access="rw" address="0x237B00" dtype="u16" id="FBK_SSI2_POS_POLARITY" storage="0" subnode="1" />
+        <Register access="rw" address="0x237C00" dtype="u16" id="FBK_SSI2_FRAME_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x237D00" dtype="u16" id="FBK_SSI2_POS_BITS" storage="22" subnode="1" />
         <Register access="rw" address="0x237E00" dtype="u16" id="FBK_SSI2_POS_ST_BITS" storage="22" subnode="1" />
         <Register access="rw" address="0x237F00" dtype="u16" id="FBK_SSI2_POS_START_BIT" storage="0" subnode="1" />
-        <Register access="rw" address="0x239400" dtype="u16" id="FBK_PROT_AGAINST_HALLS" subnode="1" />
-        <Register access="rw" address="0x261900" dtype="u16" id="ERROR_DIGHALL_SEQ_OPTION" subnode="1" />
-        <Register access="rw" address="0x261A00" dtype="u16" id="ERROR_DIGENC_AGAINST_HALL_OPTION" subnode="1" />
+        <Register access="rw" address="0x239400" dtype="u16" id="FBK_PROT_AGAINST_HALLS" storage="4" subnode="1" />
+        <Register access="rw" address="0x261900" dtype="u16" id="ERROR_DIGHALL_SEQ_OPTION" storage="0" subnode="1" />
+        <Register access="rw" address="0x261A00" dtype="u16" id="ERROR_DIGENC_AGAINST_HALL_OPTION" storage="0" subnode="1" />
         <Register access="rw" address="0x260300" dtype="u32" id="IO_OUT_POLARITY" storage="0" subnode="1" />
         <Register access="rw" address="0x239500" dtype="u16" id="FBK_BISS_CHAIN" storage="1" subnode="1" />
         <Register access="rw" address="0x240000" dtype="u16" id="FBK_BISS2_FRAME_SIZE" storage="24" subnode="1" />
         <Register access="rw" address="0x240100" dtype="u16" id="FBK_BISS2_ERROR_TOLERANCE" storage="5" subnode="1" />
-        <Register access="rw" address="0x240300" dtype="u16" id="FBK_BISS2_POS_POLARITY" subnode="1" />
-        <Register access="rw" address="0x240400" dtype="u16" id="FBK_BISS2_FRAME_TYPE" subnode="1" />
+        <Register access="rw" address="0x240300" dtype="u16" id="FBK_BISS2_POS_POLARITY" storage="0" subnode="1" />
+        <Register access="rw" address="0x240400" dtype="u16" id="FBK_BISS2_FRAME_TYPE" storage="0" subnode="1" />
         <Register access="rw" address="0x240500" dtype="u16" id="FBK_BISS2_POS_BITS" storage="22" subnode="1" />
         <Register access="rw" address="0x240600" dtype="u16" id="FBK_BISS2_POS_ST_BITS" storage="22" subnode="1" />
         <Register access="rw" address="0x240700" dtype="u16" id="FBK_BISS2_POS_START_BIT" storage="0" subnode="1" />
@@ -490,23 +490,23 @@
         <Register access="rw" address="0x212200" dtype="float" id="DRV_PROT_EXT_SHUNT_ENA_VOLT" storage="60.0" subnode="1" />
         <Register access="rw" address="0x212300" dtype="float" id="DRV_PROT_EXT_SHUNT_DIS_VOLT" storage="58.0" subnode="1" />
         <Register access="rw" address="0x238C00" dtype="u32" id="FBK_DIGENC2_RESOLUTION" storage="2000" subnode="1" />
-        <Register access="rw" address="0x238D00" dtype="u16" id="FBK_DIGENC2_POLARITY" subnode="1" />
-        <Register access="rw" address="0x238E00" dtype="u16" id="FBK_DIGENC2_FILTER" subnode="1" />
+        <Register access="rw" address="0x238D00" dtype="u16" id="FBK_DIGENC2_POLARITY" storage="0" subnode="1" />
+        <Register access="rw" address="0x238E00" dtype="u16" id="FBK_DIGENC2_FILTER" storage="0" subnode="1" />
         <Register access="r" address="0x238F00" dtype="s32" id="FBK_DIGENC2_VALUE" subnode="1" />
-        <Register access="rw" address="0x245700" dtype="u16" id="HOM_IDX_PULSE_SRC" subnode="1" />
-        <Register access="rw" address="0x261B00" dtype="u16" id="ERROR_PROT_OVER_CUR_OPTION" subnode="1" />
+        <Register access="rw" address="0x245700" dtype="u16" id="HOM_IDX_PULSE_SRC" storage="0" subnode="1" />
+        <Register access="rw" address="0x261B00" dtype="u16" id="ERROR_PROT_OVER_CUR_OPTION" storage="0" subnode="1" />
         <Register access="r" address="0x207600" dtype="float" id="FBK_CUR_MODULE_VALUE" subnode="1" />
         <Register access="r" address="0x207700" dtype="float" id="CL_CUR_CMD_VALUE" subnode="1" />
-        <Register access="rw" address="0x236200" dtype="u16" id="CL_AUX_FBK_SENSOR" subnode="1" />
+        <Register access="rw" address="0x236200" dtype="u16" id="CL_AUX_FBK_SENSOR" storage="4" subnode="1" />
         <Register access="r" address="0x203300" dtype="u32" id="CL_AUX_FBK_VALUE" subnode="1" />
-        <Register access="rw" address="0x201400" dtype="u16" id="DRV_OP_CMD" subnode="1" />
-        <Register access="rw" address="0x238600" dtype="u32" id="FBK_BISS1_SSI1_BAUD" subnode="1" />
-        <Register access="rw" address="0x238700" dtype="u32" id="FBK_SSI2_BAUD" subnode="1" />
+        <Register access="rw" address="0x201400" dtype="u16" id="DRV_OP_CMD" storage="0" subnode="1" />
+        <Register access="rw" address="0x238600" dtype="u32" id="FBK_BISS1_SSI1_BAUD" storage="1000" subnode="1" />
+        <Register access="rw" address="0x238700" dtype="u32" id="FBK_SSI2_BAUD" storage="1000" subnode="1" />
         <Register access="rw" address="0x21DF00" dtype="s32" id="CL_POS_REF_MAX_RANGE" storage="0" subnode="1" />
         <Register access="rw" address="0x21DE00" dtype="s32" id="CL_POS_REF_MIN_RANGE" storage="0" subnode="1" />
         <Register access="r" address="0x206E00" dtype="float" id="CL_VOL_D_CMD" subnode="1" />
         <Register access="r" address="0x206F00" dtype="float" id="CL_VOL_Q_CMD" subnode="1" />
-        <Register access="rw" address="0x207F00" dtype="u16" id="CL_CUR_FBK_BYPASS" subnode="1" />
+        <Register access="rw" address="0x207F00" dtype="u16" id="CL_CUR_FBK_BYPASS" storage="0" subnode="1" />
         <Register access="rw" address="0x212400" dtype="u16" id="MOT_BRAKE_ACTIVATION_DUTY" storage="100" subnode="1" />
         <Register access="rw" address="0x212800" dtype="u32" id="MOT_BRAKE_ACTIVATION_TIME" storage="0" subnode="1" />
         <Register access="rw" address="0x211000" dtype="float" id="MOT_PROT_TEMP_VREF" storage="3.299999952316284" subnode="1" />
@@ -523,12 +523,12 @@
         <Register access="r" address="0x240D00" dtype="u16" id="FBK_BISS2_CRC_SEED" subnode="1" />
         <Register access="r" address="0x245800" dtype="u32" id="CL_CUR_FREQ" subnode="1" />
         <Register access="rw" address="0x264200" dtype="u32" id="COMMS_WATCHDOG_WINDOW" storage="0" subnode="1" />
-        <Register access="rw" address="0x261C00" dtype="u16" id="COMMS_WATCHDOG_ERROR_OPTION" subnode="1" />
-        <Register access="rw" address="0x261D00" dtype="u16" id="CL_VEL_FOLLOWING_OPTION" subnode="1" />
+        <Register access="rw" address="0x261C00" dtype="u16" id="COMMS_WATCHDOG_ERROR_OPTION" storage="0" subnode="1" />
+        <Register access="rw" address="0x261D00" dtype="u16" id="CL_VEL_FOLLOWING_OPTION" storage="0" subnode="1" />
         <Register access="rw" address="0x21DC00" dtype="float" id="CL_VEL_FOLLOWING_WINDOW" storage="1.0" subnode="1" />
         <Register access="rw" address="0x21DD00" dtype="u32" id="CL_VEL_FOLLOWING_TIMEOUT" storage="0" subnode="1" />
-        <Register access="rw" address="0x212900" dtype="u16" id="MOT_BRAKE_OVERRIDE" subnode="1" />
-        <Register access="rw" address="0x21FB00" dtype="u16" id="MON_DIST_SELECTION" subnode="1" />
+        <Register access="rw" address="0x212900" dtype="u16" id="MOT_BRAKE_OVERRIDE" storage="0" subnode="1" />
+        <Register access="rw" address="0x21FB00" dtype="u16" id="MON_DIST_SELECTION" storage="0" subnode="1" />
         <Register access="rw" address="0x21FC00" dtype="u16" id="MON_CFG_CH1_MAP" storage="0" subnode="1" />
         <Register access="rw" address="0x21FD00" dtype="u16" id="MON_CFG_CH2_MAP" storage="0" subnode="1" />
         <Register access="rw" address="0x21FE00" dtype="u16" id="MON_CFG_CH3_MAP" storage="0" subnode="1" />
@@ -553,14 +553,14 @@
         <Register access="rw" address="0x221100" dtype="u32" id="DIST_HR_CH2_SAMP2" storage="0" subnode="1" />
         <Register access="rw" address="0x221200" dtype="u32" id="DIST_HR_CH3_SAMP2" storage="0" subnode="1" />
         <Register access="rw" address="0x221300" dtype="u32" id="DIST_HR_CH4_SAMP2" storage="0" subnode="1" />
-        <Register access="rw" address="0x246000" dtype="u16" id="HOM_LATCH_IDX_PULSE_SRC" subnode="1" />
-        <Register access="rw" address="0x246100" dtype="u16" id="HOM_LATCH_CH1_SRC" subnode="1" />
-        <Register access="rw" address="0x246200" dtype="u16" id="HOM_LATCH_CH2_SRC" subnode="1" />
+        <Register access="rw" address="0x246000" dtype="u16" id="HOM_LATCH_IDX_PULSE_SRC" storage="0" subnode="1" />
+        <Register access="rw" address="0x246100" dtype="u16" id="HOM_LATCH_CH1_SRC" storage="4" subnode="1" />
+        <Register access="rw" address="0x246200" dtype="u16" id="HOM_LATCH_CH2_SRC" storage="4" subnode="1" />
         <Register access="rw" address="0x246500" dtype="u16" id="HOM_LATCH_CONTROL" storage="0" subnode="1" />
         <Register access="r" address="0x246600" dtype="u16" id="HOM_LATCH_STATUS" subnode="1" />
         <Register access="r" address="0x246300" dtype="u32" id="HOM_LATCH_CH1_VALUE" subnode="1" />
         <Register access="r" address="0x246400" dtype="u32" id="HOM_LATCH_CH2_VALUE" subnode="1" />
-        <Register access="rw" address="0x262F00" dtype="u16" id="DRV_PROT_OVER_VOLT_SENS" subnode="1" />
+        <Register access="rw" address="0x262F00" dtype="u16" id="DRV_PROT_OVER_VOLT_SENS" storage="0" subnode="1" />
         <Register access="rw" address="0x252200" dtype="u32" id="CL_CFG_OPTION" storage="0" subnode="1" />
         <Register access="rw" address="0x21C800" dtype="u16" id="PROF_LATCH_MODE" storage="64" subnode="1" />
         <Register access="rw" address="0x264300" dtype="u32" id="COMMS_SYNC_SIGNAL_FREQ" storage="1000" subnode="1" />
@@ -568,8 +568,8 @@
         <Register access="rw" address="0x264500" dtype="float" id="COMMS_SYNC_PLL_PHASE" storage="0.25" subnode="1" />
         <Register access="rw" address="0x264600" dtype="float" id="COMMS_SYNC_PLL_KP" storage="0.009999999776482582" subnode="1" />
         <Register access="w" address="0x238500" dtype="u16" id="FBK_GEN_REARM" subnode="1" />
-        <Register access="rw" address="0x262000" dtype="s16" id="ERROR_STATE_HALT_OPTION" subnode="1" />
-        <Register access="rw" address="0x262100" dtype="u16" id="IO_IN_HALT" subnode="1" />
+        <Register access="rw" address="0x262000" dtype="s16" id="ERROR_STATE_HALT_OPTION" storage="0" subnode="1" />
+        <Register access="rw" address="0x262100" dtype="u16" id="IO_IN_HALT" storage="0" subnode="1" />
         <Register access="r" address="0x276300" dtype="u32" id="DRV_PROT_THIRD_TEMP_EXT_RES" subnode="1" />
         <Register access="r" address="0x276400" dtype="float" id="DRV_PROT_THIRD_TEMP_GAIN" subnode="1" />
         <Register access="r" address="0x276500" dtype="float" id="DRV_PROT_THIRD_TEMP_OFFSET" subnode="1" />
@@ -581,7 +581,7 @@
         <Register access="r" address="0x270900" dtype="u16" id="DRV_PROT_CURR_OVER_RANGE_THRESHOLD" subnode="1" />
         <Register access="r" address="0x270A00" dtype="u16" id="DRV_PROT_CURR_UNDER_RANGE_THRESHOLD" subnode="1" />
         <Register access="rw" address="0x202400" dtype="u16" id="PROF_POS_OPTION_CODE" storage="0" subnode="1" />
-        <Register access="rw" address="0x262400" dtype="u16" id="IO_IN_FLT_RESET" subnode="1" />
+        <Register access="rw" address="0x262400" dtype="u16" id="IO_IN_FLT_RESET" storage="0" subnode="1" />
         <Register access="r" address="0x22E100" dtype="u16" id="SET_POINT_SRC_2" subnode="1" />
         <Register access="rw" address="0x243800" dtype="s32" id="FBK_BISS1_SSI1_OFFSET" storage="0" subnode="1" />
         <Register access="rw" address="0x243900" dtype="s32" id="FBK_BISS2_OFFSET" storage="0" subnode="1" />
@@ -630,7 +630,7 @@
         <Register access="rw" address="0x606500" dtype="u32" id="CIA402_CL_POS_ERROR_WINDOW" storage="100" subnode="1" />
         <Register access="rw" address="0x606600" dtype="u16" id="CIA402_CL_POS_ERROR_TIMEOUT" storage="0" subnode="1" />
         <Register access="r" address="0x606C00" dtype="s32" id="CIA402_CL_VEL_FBK_VALUE" subnode="1" />
-        <Register access="rw" address="0x607300" dtype="u16" id="CIA402_CL_CUR_REF_MAX" storage="65535" subnode="1" />
+        <Register access="rw" address="0x607300" dtype="u16" id="CIA402_CL_CUR_REF_MAX" storage="6000" subnode="1" />
         <Register access="rw" address="0x607500" dtype="u32" id="CIA402_MOT_RATED_CURRENT" storage="10000" subnode="1" />
         <Register access="rw" address="0x607A00" dtype="s32" id="CIA402_CL_POS_SET_POINTVALUE" storage="0" subnode="1" />
         <Register access="rw" address="0x607C00" dtype="s32" id="CIA402_HOM_OFFSET" storage="0" subnode="1" />
@@ -651,8 +651,8 @@
         <Register access="rw" address="0x608300" dtype="u32" id="CIA402_PROF_ACC" storage="20000" subnode="1" />
         <Register access="rw" address="0x608400" dtype="u32" id="CIA402_PROF_DEC" storage="20000" subnode="1" />
         <Register access="rw" address="0x60F200" dtype="u16" id="CIA402_CL_POS_REF_OPTION" storage="0" subnode="1" />
-        <Register access="rw" address="0x600700" dtype="s16" id="CIA402_COMMS_CAN_DISCONNECT_OPTION" subnode="1" />
-        <Register access="rw" address="0x605D00" dtype="s16" id="CIA402_DRV_STATE_HALT_OPTION_CODE" subnode="1" />
+        <Register access="rw" address="0x600700" dtype="s16" id="CIA402_COMMS_CAN_DISCONNECT_OPTION" storage="1" subnode="1" />
+        <Register access="rw" address="0x605D00" dtype="s16" id="CIA402_DRV_STATE_HALT_OPTION_CODE" storage="0" subnode="1" />
         <Register access="rw" address="0x607600" dtype="u32" id="CIA402_MOT_RATED_TORQUE" storage="1000" subnode="1" />
       </Registers>
     </Device>

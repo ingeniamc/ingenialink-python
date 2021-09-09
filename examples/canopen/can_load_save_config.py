@@ -33,6 +33,7 @@ def load_config_example():
 
 def save_config_example():
     """Saves the drive configuration into a file."""
+
     servo, net = connect_slave()
     servo.save_configuration(
         'can_config.xcf')
