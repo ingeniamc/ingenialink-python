@@ -20,20 +20,20 @@ import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
 PROG_STAT_1 = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x1F51", subidx="0x01", cyclic='CONFIG',
+    identifier='', units='', subnode=0, idx=0x1F51, subidx=0x01, cyclic='CONFIG',
     dtype=REG_DTYPE.U8, access=REG_ACCESS.RW
 )
 PROG_DL_1 = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x1F50", subidx="0x01", cyclic='CONFIG',
+    identifier='', units='', subnode=0, idx=0x1F50, subidx=0x01, cyclic='CONFIG',
     dtype=REG_DTYPE.DOMAIN, access=REG_ACCESS.RW
 )
 FORCE_BOOT = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x5EDE", subidx="0x00", cyclic='CONFIG',
+    identifier='', units='', subnode=0, idx=0x5EDE, subidx=0x00, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.WO
 )
 
 CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x1000", subidx="0x00", cyclic='CONFIG',
+    identifier='', units='', subnode=0, idx=0x1000, subidx=0x00, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 
