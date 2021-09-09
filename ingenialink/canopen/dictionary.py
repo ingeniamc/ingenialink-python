@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
-from .register import CanopenRegister, REG_ACCESS, REG_DTYPE
 from ..dictionary import Dictionary
+from ..constants import SINGLE_AXIS_MINIMUM_SUBNODES
+from .register import CanopenRegister, REG_ACCESS, REG_DTYPE
 from ingenialink.utils._utils import *
 from .._ingenialink import lib
 
@@ -91,7 +92,7 @@ class CanopenDictionary(Dictionary):
         super(CanopenDictionary, self).__init__(dictionary_path)
         self.__version = '1'
         self.categories = None
-        self.subnodes = 2
+        self.subnodes = SINGLE_AXIS_MINIMUM_SUBNODES
         self.__registers = []
         self.errors = None
 
@@ -107,7 +108,7 @@ class CanopenDictionary(Dictionary):
         if root.findall('./Body/Device/Axes/'):
             self.subnodes = len(root.findall('./Body/Device/Axes/Axis'))
 
-        for subnode in range(0, self.subnodes):
+        for _ in range(self.subnodes):
             self.__registers.append({})
 
         # Categories

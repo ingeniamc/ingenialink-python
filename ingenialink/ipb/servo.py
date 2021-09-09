@@ -994,7 +994,7 @@ class IPBServo(Servo):
             int: Current number of subnodes.
 
         """
-        return int(ffi.cast('int', lib.il_servo_subnodes_get(self._cffi_servo)))
+        return self.__dictionary.subnodes
 
     @property
     def ol_voltage(self):
