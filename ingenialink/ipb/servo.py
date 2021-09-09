@@ -19,42 +19,62 @@ import io
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
+PRODUCT_ID_COCO = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06E1, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+)
+
+SERIAL_NUMBER_COCO = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06E6, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+)
+
+SOFTWARE_VERSION = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06E4, cyclic='CONFIG',
+    dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+)
+
+REV_NUMBER_COCO = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06E2, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+)
+
 DIST_NUMBER_SAMPLES = IPBRegister(
     identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 DIST_DATA = IPBRegister(
     identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO, reg_range=None
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
 )
 
 STORE_COCO_ALL = IPBRegister(
     identifier='', units='', subnode=0, address=0x06DB, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
 RESTORE_COCO_ALL = IPBRegister(
     identifier='', units='', subnode=0, address=0x06DC, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
 STATUS_WORD = IPBRegister(
     identifier='', units='', subnode=1, address=0x0011, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW, reg_range=None
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
 )
 
 STORE_MOCO_ALL_REGISTERS = {
     1: IPBRegister(
         identifier='', units='', subnode=1, address=0x06DB, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     2: IPBRegister(
         identifier='', units='', subnode=2, address=0x06DB, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     3: IPBRegister(
         identifier='', units='', subnode=3, address=0x06DB, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
 }
 
@@ -183,16 +203,7 @@ class IPBServo(Servo):
         r = f(self._cffi_servo, _reg._reg, ffi.NULL, v)
         raise_err(r)
 
-        try:
-            if self.dictionary:
-                _reg = self.dictionary.registers(subnode)[reg]
-        except Exception as e:
-            pass
-        if _reg.dtype == REG_DTYPE.STR:
-            value = self.extended_buffer
-        else:
-            value = v[0]
-
+        value = self.extended_buffer if _reg.dtype == REG_DTYPE.STR else v[0]
         if isinstance(value, str):
             value = value.replace('\x00', '')
         return value
@@ -971,30 +982,21 @@ class IPBServo(Servo):
 
     @property
     def info(self):
-        """Obtain servo information.
+        """dict: Servo information."""
+        serial_number = self.read(SERIAL_NUMBER_COCO)
+        sw_version = self.read(SOFTWARE_VERSION)
+        product_code = self.read(PRODUCT_ID_COCO)
+        revision_number = self.read(REV_NUMBER_COCO)
+        hw_variant = 'A'
 
-        Returns:
-            dict: Servo information.
-
-        """
-        _info = ffi.new('il_servo_info_t *')
-
-        r = lib.il_servo_info_get(self._cffi_servo, _info)
-        raise_err(r)
-
-        PRODUCT_ID_REG = IPBRegister(identifier='', address=0x06E1,
-                                     dtype=REG_DTYPE.U32,
-                                     access=REG_ACCESS.RO, cyclic='CONFIG',
-                                     units='0')
-
-        product_id = self.read(PRODUCT_ID_REG)
-
-        return {'serial': _info.serial,
-                'name': pstr(_info.name),
-                'sw_version': pstr(_info.sw_version),
-                'hw_variant': pstr(_info.hw_variant),
-                'prod_code': product_id,
-                'revision': _info.revision}
+        return {
+            'name': self.name,
+            'serial_number': serial_number,
+            'firmware_version': sw_version,
+            'product_code': product_code,
+            'revision_number': revision_number,
+            'hw_variant': hw_variant
+        }
 
     @property
     def units_torque(self):

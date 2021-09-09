@@ -870,12 +870,12 @@ class CanopenServo(Servo):
         hw_variant = 'A'
 
         return {
-            'serial': serial_number,
             'name': self.name,
-            'sw_version': sw_version,
-            'hw_variant': hw_variant,
-            'prod_code': product_code,
-            'revision': revision_number
+            'serial_number': serial_number,
+            'firmware_version': sw_version,
+            'product_code': product_code,
+            'revision_number': revision_number,
+            'hw_variant': hw_variant
         }
 
     @property
