@@ -11,8 +11,8 @@ class CanopenRegister(Register):
             identifier (str): Identifier.
             units (str): Units.
             cyclic (str): Cyclic typed register.
-            idx (str): Index of the register.
-            subidx (str): Subindex of the register.
+            idx (int): Index of the register.
+            subidx (int): Subindex of the register.
             dtype (REG_DTYPE): Data type.
             access (REG_ACCESS): Access type.
             phy (REG_PHY, optional): Physical units.
@@ -109,6 +109,20 @@ class CanopenRegister(Register):
             return self._storage
         else:
             return None
+
+    @storage.setter
+    def storage(self, value):
+        """any: Defines if the register needs to be stored."""
+        self._storage = value
+
+    @property
+    def storage_valid(self):
+        return self._storage_valid
+
+    @storage_valid.setter
+    def storage_valid(self, value):
+        """bool: Defines if the register storage is valid."""
+        self._storage_valid = value
 
     @property
     def range(self):

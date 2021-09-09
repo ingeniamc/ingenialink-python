@@ -1,3 +1,5 @@
+import os
+
 from ingenialink.servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
 from ingenialink.ipb.register import *
@@ -17,42 +19,62 @@ import io
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
+PRODUCT_ID_COCO = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06E1, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+)
+
+SERIAL_NUMBER_COCO = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06E6, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+)
+
+SOFTWARE_VERSION = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06E4, cyclic='CONFIG',
+    dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+)
+
+REV_NUMBER_COCO = IPBRegister(
+    identifier='', units='', subnode=0, address=0x06E2, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+)
+
 DIST_NUMBER_SAMPLES = IPBRegister(
     identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 DIST_DATA = IPBRegister(
     identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO, reg_range=None
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
 )
 
 STORE_COCO_ALL = IPBRegister(
     identifier='', units='', subnode=0, address=0x06DB, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
 RESTORE_COCO_ALL = IPBRegister(
     identifier='', units='', subnode=0, address=0x06DC, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
 STATUS_WORD = IPBRegister(
     identifier='', units='', subnode=1, address=0x0011, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW, reg_range=None
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
 )
 
 STORE_MOCO_ALL_REGISTERS = {
     1: IPBRegister(
         identifier='', units='', subnode=1, address=0x06DB, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     2: IPBRegister(
         identifier='', units='', subnode=2, address=0x06DB, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     3: IPBRegister(
         identifier='', units='', subnode=3, address=0x06DB, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
 }
 
@@ -91,8 +113,8 @@ class IPBServo(Servo):
         super(IPBServo, self).__init__(target)
         _dictionary_path = cstr(dictionary_path) if dictionary_path else ffi.NULL
 
-        self._state_cb = {}
-        self._emcy_cb = {}
+        self.__observers_servo_state = {}
+        self.__observers_emergency_state = {}
 
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(_dictionary_path)
@@ -122,38 +144,41 @@ class IPBServo(Servo):
                 ]
         return errors
 
-    def get_reg(self, reg, subnode):
-        """Obtain Register object and its identifier.
+    def _get_reg(self, reg, subnode):
+        """Validates a register.
 
         Args:
-            reg (IPBRegister, str): Register.
-            subnode (int): Subnode.
+            reg (IPBRegister): Targeted register to validate.
+            subnode (int): Subnode for the register.
 
         Returns:
-            tuple (Register, string): Actual Register instance and its
-                                        identifier.
+            IPBRegister: Instance of the desired register from the dictionary.
+
+        Raises:
+            ILIOError: If the dictionary is not loaded.
+            ILWrongRegisterError: If the register has invalid format.
 
         """
-        _reg = ffi.NULL
-        _id = ffi.NULL
         if isinstance(reg, IPBRegister):
             _reg = reg._reg
+            return _reg
+
         elif isinstance(reg, str):
             _dict = self.dictionary
             if not _dict:
                 raise ValueError('No dictionary loaded')
             if reg not in _dict.registers(subnode):
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.registers(subnode)[reg]._reg
+            _reg = _dict.registers(subnode)[reg]
+            return _reg
         else:
             raise TypeError('Invalid register')
-        return _reg, _id
 
     def raw_read(self, reg, subnode=1):
         """Raw read from servo.
 
         Args:
-            reg (Register): Register.
+            reg (IPBRegister): Register.
 
         Returns:
             int: Otained value
@@ -177,17 +202,7 @@ class IPBServo(Servo):
             TypeError: If the register type is not valid.
 
         """
-        if isinstance(reg, Register):
-            _reg = reg
-        elif isinstance(reg, str):
-            _dict = self.dictionary
-            if not _dict:
-                raise ValueError('No dictionary loaded')
-            if reg not in _dict.registers(subnode):
-                raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.registers(subnode)[reg]
-        else:
-            raise TypeError('Invalid register')
+        _reg = self._get_reg(reg, subnode)
 
         # Obtain data pointer and function to call
         t, f = self._raw_read[_reg.dtype]
@@ -196,11 +211,6 @@ class IPBServo(Servo):
         r = f(self._cffi_servo, _reg._reg, ffi.NULL, v)
         raise_err(r)
 
-        try:
-            if self.dictionary:
-                _reg = self.dictionary.registers(subnode)[reg]
-        except Exception as e:
-            pass
         value = self.extended_buffer if _reg.dtype == REG_DTYPE.STR else v[0]
         if isinstance(value, str):
             value = value.replace('\x00', '')
@@ -210,7 +220,7 @@ class IPBServo(Servo):
         """Raw write to servo.
 
         Args:
-            reg (Register): Register.
+            reg (IPBRegister): Register.
             data (int): Data.
             confirm (bool, optional): Confirm write.
             extended (int, optional): Extended frame.
@@ -236,17 +246,7 @@ class IPBServo(Servo):
                 unsupported.
 
         """
-        if isinstance(reg, Register):
-            _reg = reg
-        elif isinstance(reg, str):
-            _dict = self.dictionary
-            if not _dict:
-                raise ValueError('No dictionary loaded')
-            if reg not in _dict.registers(subnode):
-                raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.registers(subnode)[reg]
-        else:
-            raise TypeError('Invalid register')
+        _reg = self._get_reg(reg, subnode)
 
         # Auto cast floats if register is not float
         if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
@@ -358,17 +358,20 @@ class IPBServo(Servo):
 
         return SERVO_STATE(state[0]), flags[0]
 
-    def state_subs_stop(self, stop):
+    def _state_subs_stop(self, stop):
         """Stop servo state subscriptions.
 
         Args:
             stop (int): start: 0, stop: 1.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the operation returns a negative error code.
 
         """
-        return lib.il_servo_state_subs_stop(self._cffi_servo, stop)
+        r = lib.il_servo_state_subs_stop(self._cffi_servo, stop)
+
+        if r < 0:
+            raise ILError('Failed toggling servo state subscriptions.')
 
     def enable(self, timeout=2., subnode=1):
         """Enable PDS.
@@ -551,36 +554,70 @@ class IPBServo(Servo):
             self._errors = self._get_all_errors(dictionary)
         raise_err(r)
 
-    def load_configuration(self, dictionary, subnode=0):
-        """Load configuration from dictionary file to the servo drive.
+    @staticmethod
+    def __update_single_axis_dict(registers_category, registers, subnode):
+        """Looks for matches through all the registers' subnodes with the
+        given subnode and removes the ones that do not match. It also cleans
+        up the registers leaving only paramount information.
 
         Args:
-            dictionary (str): Dictionary.
-            subnode (int, optional): Subnode.
+            registers_category (Element): Registers element containing all registers.
+            registers (list): List of registers in the dictionary.
+            subnode (int): Subnode to keep in the dictionary.
+
+        Returns:
 
         """
-        r = lib.il_servo_dict_storage_write(self._cffi_servo, cstr(dictionary),
-                                            subnode)
-        if not hasattr(self, '_errors') or not self._errors:
-            self._errors = self._get_all_errors(dictionary)
-        raise_err(r)
+        for register in registers:
+            if subnode is not None and register.attrib['subnode'] != str(
+                    subnode) and subnode >= 0 and register in registers_category:
+                registers_category.remove(register)
+            cleanup_register(register)
 
-    def save_configuration(self, new_path, subnode=0):
+    @staticmethod
+    def __update_multiaxis_dict(device, axes_category, list_axis, subnode):
+        """Looks for matches through the subnode of each axis and
+        removes all the axes that did not match the search. It also
+        cleans up all the registers leaving only paramount information.
+
+        Args:
+            device (Element): Device element containing all the dictionary info.
+            axes_category (Element): Axes element containing all the axis.
+            list_axis (list): List of all the axis in the dictionary.
+            subnode (int): Subnode to keep in the dictionary.
+
+        """
+        for axis in list_axis:
+            registers_category = axis.find('./Registers')
+            registers = registers_category.findall('./Register')
+            if subnode is not None and axis.attrib['subnode'] == str(subnode):
+                for register in registers:
+                    cleanup_register(register)
+                device.append(registers_category)
+                device.remove(axes_category)
+                break
+            for register in registers:
+                cleanup_register(register)
+
+    def save_configuration(self, config_file, subnode=None):
         """Read all dictionary registers content and save it to a
-            new dictionary.
+        new dictionary.
 
         Args:
-            new_path (str): Dictionary.
+            config_file (str): Dictionary.
+            subnode (int): Target subnode.
 
         """
+        if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
+            raise ILError('Invalid subnode')
         prod_code, rev_number = get_drive_identification(self, subnode)
 
         r = lib.il_servo_dict_storage_read(self._cffi_servo)
         raise_err(r)
 
-        self.dictionary.save(new_path)
+        self.dictionary.save(config_file)
 
-        tree = ET.parse(new_path)
+        tree = ET.parse(config_file)
         xml_data = tree.getroot()
 
         body = xml_data.find('Body')
@@ -594,18 +631,15 @@ class IPBServo(Servo):
             device.attrib['RevisionNumber'] = str(rev_number)
 
         registers_category = xml_data.find('Body/Device/Registers')
-        registers = xml_data.findall('Body/Device/Registers/Register')
         if registers_category is None:
-            registers_category = xml_data.find(
-                'Body/Device/Axes/Axis/Registers')
-            registers = xml_data.findall(
-                'Body/Device/Axes/Axis/Registers/Register')
-
-        for register in registers:
-            if register.attrib['subnode'] != str(
-                    subnode) and subnode > 0 and register in registers_category:
-                registers_category.remove(register)
-            cleanup_register(register)
+            # Multiaxis dictionary
+            axes_category = xml_data.find('Body/Device/Axes')
+            list_axis = xml_data.findall('Body/Device/Axes/Axis')
+            self.__update_multiaxis_dict(device, axes_category, list_axis, subnode)
+        else:
+            # Single axis dictionary
+            registers = xml_data.findall('Body/Device/Registers/Register')
+            self.__update_single_axis_dict(registers_category, registers, subnode)
 
         device.remove(categories)
         body.remove(errors)
@@ -617,9 +651,29 @@ class IPBServo(Servo):
         xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(
             indent="  ", newl='')
 
-        config_file = io.open(new_path, "w", encoding='utf8')
+        config_file = io.open(config_file, "w", encoding='utf8')
         config_file.write(xmlstr)
         config_file.close()
+
+    def load_configuration(self, config_file, subnode=None):
+        """Load configuration from dictionary file to the servo drive.
+
+        Args:
+            config_file (str): Dictionary.
+            subnode (int): Target subnode.
+
+        """
+        if not os.path.isfile(config_file):
+            raise FileNotFoundError('Could not find {}.'.format(config_file))
+        if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
+            raise ILError('Invalid subnode')
+        if subnode is None:
+            subnode = -1
+        r = lib.il_servo_dict_storage_write(self._cffi_servo, cstr(config_file),
+                                            subnode)
+        if not hasattr(self, '_errors') or not self._errors:
+            self._errors = self._get_all_errors(config_file)
+        raise_err(r)
 
     def reload_errors(self, dictionary):
         """Force to reload all dictionary errors.
@@ -647,7 +701,7 @@ class IPBServo(Servo):
         if slot < 0:
             raise_err(slot)
 
-        self._emcy_cb[slot] = cb_handle
+        self.__observers_emergency_state[slot] = cb_handle
 
         return slot
 
@@ -660,7 +714,7 @@ class IPBServo(Servo):
         """
         lib.il_servo_emcy_unsubscribe(self._cffi_servo, slot)
 
-        del self._emcy_cb[slot]
+        del self.__observers_emergency_state[slot]
 
     def subscribe_to_status(self, callback):
         """Subscribe to state changes.
@@ -668,10 +722,10 @@ class IPBServo(Servo):
         Args:
             callback: Callback
 
-        Returns:
-            int: Assigned slot.
-
         """
+        if callback in self.__observers_servo_state.values():
+            raise ILError('Callback already subscribed.')
+
         cb_handle = ffi.new_handle(callback)
 
         slot = lib.il_servo_state_subscribe(
@@ -679,20 +733,46 @@ class IPBServo(Servo):
         if slot < 0:
             raise_err(slot)
 
-        self._state_cb[slot] = cb_handle
+        self.__observers_servo_state[slot] = cb_handle
 
-        return slot
-
-    def unsubscribe_from_status(self, slot):
+    def unsubscribe_from_status(self, callback):
         """Unsubscribe from state changes.
 
         Args:
-            slot (int): Assigned slot when subscribed.
+            callback (Callback): Callback function.
 
         """
-        lib.il_servo_state_unsubscribe(self._cffi_servo, slot)
+        for slot, cb in self.__observers_servo_state.items():
+            if cb == callback:
+                lib.il_servo_state_unsubscribe(self._cffi_servo, slot)
+                del self.__observers_servo_state[slot]
+                return
+        raise ILError('Callback not subscribed.')
 
-        del self._state_cb[slot]
+    def start_servo_monitoring(self):
+        """Start monitoring servo events (SERVO_STATE)."""
+        self._set_status_check_stop(0)
+        self._state_subs_stop(0)
+
+    def stop_servo_monitoring(self):
+        """Stop monitoring servo events (SERVO_STATE)."""
+        self._set_status_check_stop(1)
+        self._state_subs_stop(1)
+
+    def _set_status_check_stop(self, stop):
+        """Start/Stop the internal monitor of the drive status.
+
+        Args:
+            stop (int): 0 to START, 1 to STOP.
+
+        Raises:
+            ILError: If the operation returns a negative error code.
+
+        """
+        r = lib.il_net_set_status_check_stop(self._cffi_network, stop)
+
+        if r < 0:
+            raise ILError('Could not start servo monitoring')
 
     def disturbance_write_data(self, channels, dtypes, data_arr):
         """Write disturbance data.
@@ -759,7 +839,7 @@ class IPBServo(Servo):
         """Obtain units scale factor for the given register.
 
         Args:
-            reg (Register): Register.
+            reg (IPBRegister): Register.
 
         Returns:
             float: Scale factor for the given register.
@@ -922,30 +1002,21 @@ class IPBServo(Servo):
 
     @property
     def info(self):
-        """Obtain servo information.
+        """dict: Servo information."""
+        serial_number = self.read(SERIAL_NUMBER_COCO)
+        sw_version = self.read(SOFTWARE_VERSION)
+        product_code = self.read(PRODUCT_ID_COCO)
+        revision_number = self.read(REV_NUMBER_COCO)
+        hw_variant = 'A'
 
-        Returns:
-            dict: Servo information.
-
-        """
-        _info = ffi.new('il_servo_info_t *')
-
-        r = lib.il_servo_info_get(self._cffi_servo, _info)
-        raise_err(r)
-
-        PRODUCT_ID_REG = IPBRegister(identifier='', address=0x06E1,
-                                     dtype=REG_DTYPE.U32,
-                                     access=REG_ACCESS.RO, cyclic='CONFIG',
-                                     units='0')
-
-        product_id = self.read(PRODUCT_ID_REG)
-
-        return {'serial': _info.serial,
-                'name': pstr(_info.name),
-                'sw_version': pstr(_info.sw_version),
-                'hw_variant': pstr(_info.hw_variant),
-                'prod_code': product_id,
-                'revision': _info.revision}
+        return {
+            'name': self.name,
+            'serial_number': serial_number,
+            'firmware_version': sw_version,
+            'product_code': product_code,
+            'revision_number': revision_number,
+            'hw_variant': hw_variant
+        }
 
     @property
     def units_torque(self):

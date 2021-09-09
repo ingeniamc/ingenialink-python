@@ -14,7 +14,9 @@ def connect_slave():
 def load_config_example():
     """Loads a given configuration file into the drive."""
     servo, net = connect_slave()
-    servo.load_configuration('ecat_config.xcf', subnode=0)
+    servo.load_configuration('ecat_config.xcf')
+    servo.load_configuration('ecat_config_0.xcf', subnode=0)
+    servo.load_configuration('ecat_config_1.xcf', subnode=1)
 
     net.disconnect_from_slave(servo)
 
@@ -22,7 +24,9 @@ def load_config_example():
 def save_config_example():
     """Saves the drive configuration into a file."""
     servo, net = connect_slave()
-    servo.save_configuration('ecat_config.xcf', subnode=0)
+    servo.save_configuration('ecat_config.xcf')
+    servo.save_configuration('ecat_config_0.xcf', subnode=0)
+    servo.save_configuration('ecat_config_1.xcf', subnode=1)
 
     net.disconnect_from_slave(servo)
 
