@@ -9,7 +9,7 @@ def test_save_configuration(connect_canopen):
 
     filename = 'resources/configurations/can_config.xcf'
 
-    servo.save_configuration(filename, subnode=0)
+    servo.save_configuration(filename)
 
     assert os.path.isfile(filename)
 
@@ -26,7 +26,7 @@ def test_load_configuration(connect_canopen):
 
     assert os.path.isfile(filename)
 
-    servo.load_configuration(filename, subnode=0)
+    servo.load_configuration(filename)
 
 
 @pytest.mark.canopen

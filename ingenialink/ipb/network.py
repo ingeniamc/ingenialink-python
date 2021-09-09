@@ -1,10 +1,40 @@
-from ingenialink.network import Network, NET_DEV_EVT, NET_STATE
-from .._ingenialink import lib, ffi
-from abc import ABC, abstractmethod
 from time import sleep
+from threading import Thread
+from abc import ABC, abstractmethod
+from .._ingenialink import lib, ffi
+from ingenialink.network import Network, NET_DEV_EVT, NET_STATE
+from ingenialink.exceptions import ILError
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
+
+
+class NetStatusListener(Thread):
+    """Network status listener thread to check if the drive is alive.
+
+    Args:
+        network (IPBNetwork): Network instance of the IPB communication.
+
+    """
+
+    def __init__(self, network):
+        super(NetStatusListener, self).__init__()
+        self.__net = network
+        self.__stop = False
+
+    def run(self):
+        status = self.__net.status
+        while not self.__stop:
+            if status != self.__net.status:
+                if self.__net.status == NET_STATE.CONNECTED.value:
+                    self.__net._notify_status(NET_DEV_EVT.ADDED)
+                elif self.__net.status == NET_STATE.DISCONNECTED.value:
+                    self.__net._notify_status(NET_DEV_EVT.REMOVED)
+                status = self.__net.status
+            sleep(1)
+
+    def stop(self):
+        self.__stop = True
 
 
 class IPBNetwork(Network, ABC):
@@ -13,6 +43,9 @@ class IPBNetwork(Network, ABC):
         super(IPBNetwork, self).__init__()
         self._cffi_network = None
         """CFFI instance of the network."""
+
+        self.__observers_net_state = []
+        self.__listener_net_status = None
 
     def _create_cffi_network(self, cffi_network):
         """Create a new class instance from an existing network.
@@ -56,24 +89,37 @@ class IPBNetwork(Network, ABC):
             is raised.
 
         """
-        # TODO: Re-implement using observers and internal threads
-        status = self.status
-        while True:
-            if status != self.status:
-                if self.status == 0:
-                    callback(NET_DEV_EVT.ADDED)
-                elif self.status == 1:
-                    callback(NET_DEV_EVT.REMOVED)
-                status = self.status
-            sleep(1)
+        if callback in self.__observers_net_state:
+            raise ILError('Callback already subscribed.')
+        self.__observers_net_state.append(callback)
 
     def unsubscribe_from_status(self, callback):
-        # TODO: Re-implement using observers and internal threads
-        raise NotImplementedError
+        """Unsubscribe from state changes.
+
+        Args:
+            callback (Callback): Callback function.
+
+        """
+        if callback not in self.__observers_net_state:
+            raise ILError('Callback not subscribed.')
+        self.__observers_net_state.remove(callback)
+
+    def _notify_status(self, status):
+        for callback in self.__observers_net_state:
+            callback(status)
+
+    def start_network_monitor(self):
+        """Start monitoring network events"""
+        self.__listener_net_status = NetStatusListener(self)
+        self.__listener_net_status.start()
 
     def stop_network_monitor(self):
         """Stop monitoring network events."""
-        lib.il_net_mon_stop(self._cffi_network)
+        if self.__listener_net_status is not None and \
+                self.__listener_net_status.is_alive():
+            self.__listener_net_status.stop()
+            self.__listener_net_status.join()
+            self.__listener_net_status = None
 
     def set_reconnection_retries(self, retries):
         """Set the number of reconnection retries in our application.
@@ -93,39 +139,13 @@ class IPBNetwork(Network, ABC):
             int: Result code.
 
         """
-        return lib.il_net_set_recv_timeout(self._cffi_network, timeout)
-
-    def set_status_check_stop(self, stop):
-        """Start/Stop the internal monitor of the drive status.
-
-        Args:
-            stop (int): 0 to START, 1 to STOP.
-        Returns:
-            int: Result code.
-
-        """
-        return lib.il_net_set_status_check_stop(self._cffi_network, stop)
+        return lib.il_net_set_recv_timeout(self._cffi_network, timeout*1000)
 
     @property
     def protocol(self):
         raise NotImplementedError
 
     @property
-    def state(self):
-        """Obtain network state.
-
-        Returns:
-            str: Current network state.
-
-        """
-        return NET_STATE(lib.il_net_state_get(self._cffi_network))
-
-    @property
     def status(self):
-        """Obtain network status.
-
-        Returns:
-            str: Current network status.
-
-        """
+        """NET_STATE: Obtain network status"""
         return lib.il_net_status_get(self._cffi_network)
