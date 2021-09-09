@@ -90,7 +90,7 @@ class CanopenDictionary(Dictionary):
     """
     def __init__(self, dictionary_path):
         super(CanopenDictionary, self).__init__(dictionary_path)
-        self.__version = '1'
+        self.version = '1'
         self.categories = None
         self.subnodes = SINGLE_AXIS_MINIMUM_SUBNODES
         self.__registers = []
@@ -103,6 +103,8 @@ class CanopenDictionary(Dictionary):
         with open(self.path, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
+
+        device = root.find('./Body/Device')
 
         # Subnodes
         if root.findall('./Body/Device/Axes/'):
@@ -120,7 +122,17 @@ class CanopenDictionary(Dictionary):
         # Version
         version_node = root.find('.Header/Version')
         if version_node is not None:
-            self.__version = version_node.text
+            self.version = version_node.text
+
+        self.firmware_version = device.attrib.get('firmwareVersion')
+        product_code = device.attrib.get('ProductCode')
+        if product_code is not None and product_code.isdecimal():
+            self.product_code = int(product_code)
+        self.part_number = device.attrib.get('PartNumber')
+        revision_number = device.attrib.get('RevisionNumber')
+        if revision_number is not None and revision_number.isdecimal():
+            self.revision_number = int(revision_number)
+        self.interface = device.attrib.get('Interface')
 
         if root.findall('./Body/Device/Axes/'):
             # For each axis

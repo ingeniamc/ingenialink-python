@@ -165,6 +165,10 @@ class CanopenServo(Servo):
             self.__servo_status_listener = ServoStatusListener(self)
             self.__servo_status_listener.start()
 
+        prod_name = '' if self.dictionary.part_number is None \
+            else self.dictionary.part_number
+        self.full_name = '{} {}'.format(prod_name, self.name)
+
     def get_reg(self, reg, subnode=1):
         """Validates a register.
 

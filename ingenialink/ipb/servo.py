@@ -84,6 +84,10 @@ class IPBServo(Servo):
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(_dictionary_path)
 
+        prod_name = '' if self.dictionary.part_number is None \
+            else self.dictionary.part_number
+        self.full_name = '{} {} ({})'.format(prod_name, self.name, self.target)
+
     @staticmethod
     def _get_all_errors(dictionary):
         """Obtain all errors defined in the dictionary.
