@@ -321,6 +321,11 @@ class CanopenNetwork(Network):
     def load_firmware(self, target, fw_file):
         """Loads a given firmware file to a target.
 
+        .. warning ::
+            It is needed to disconnect the drive(:func:`disconnect_from_slave`)
+            after loading the firmware since the `Servo` object's data will
+            become obsolete.
+
         Args:
             target (int): Targeted node ID to be loaded.
             fw_file (str): Path to the firmware file.
