@@ -21,4 +21,5 @@ class SerialServo(IPBServo):
         raise_null(servo)
 
         cffi_servo = ffi.gc(servo, lib.il_servo_destroy)
-        super(SerialServo, self).__init__(cffi_servo, target, dictionary_path)
+        super(SerialServo, self).__init__(
+            cffi_servo, cffi_net, target, dictionary_path)

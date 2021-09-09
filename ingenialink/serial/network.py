@@ -82,9 +82,8 @@ class SerialNetwork(IPBNetwork):
         lib.il_net_servos_list_destroy(servos)
 
         servo = None
-        if len(found) > 0:
-            servo = SerialServo(self.__net_interface, target=found[0],
-                                dictionary_path=dictionary)
+        if found:
+            servo = SerialServo(self.__net_interface, found[0], dictionary)
             self._cffi_network = self.__net_interface
             self.servos.append(servo)
         return servo

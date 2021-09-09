@@ -1,9 +1,10 @@
 from ..network import NET_PROT
+from ..exceptions import *
 from .servo import EthercatServo
+from .._ingenialink import lib, ffi
+from ingenialink.constants import *
 from ingenialink.ipb.network import IPBNetwork
 from ingenialink.utils._utils import cstr, raise_err
-from ..exceptions import *
-from .._ingenialink import lib, ffi
 
 
 class EthercatNetwork(IPBNetwork):
@@ -70,18 +71,26 @@ class EthercatNetwork(IPBNetwork):
             if self.interface_name else ffi.NULL
 
         number_slaves = lib.il_net_num_slaves_get(_interface_name)
-        slaves = []
-        for slave in range(number_slaves):
-            slaves.append(slave + 1)
-        return slaves
+        return [slave + 1 for slave in range(number_slaves)]
 
-    def connect_to_slave(self, target=1, dictionary="", use_eoe_comms=1):
+    def connect_to_slave(self, target=1, dictionary="", use_eoe_comms=1,
+                         reconnection_retries=DEFAULT_MESSAGE_RETRIES,
+                         reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT,
+                         servo_status_listener=True,
+                         net_status_listener=True):
         """Connect a slave through an EtherCAT connection.
 
         Args:
             target (int): Number of the target slave.
             dictionary (str): Path to the dictionary to be loaded.
             use_eoe_comms (int): Specify which architecture is the target based on.
+            reconnection_retries (int): Number of reconnection retried before declaring
+            a connected or disconnected stated.
+            reconnection_timeout (int): Time in ms of the reconnection timeout.
+            servo_status_listener (bool): Toggle the listener of the servo for
+            its status, errors, faults, etc.
+            net_status_listener (bool): Toggle the listener of the network
+            status, connection and disconnection.
 
         Returns:
             EthercatServo: Instance of the connected servo.
@@ -103,9 +112,16 @@ class EthercatNetwork(IPBNetwork):
         else:
             net_ = ffi.cast('il_net_t *', self._cffi_network[0])
             servo_ = ffi.cast('il_servo_t *', _servo[0])
-            servo = EthercatServo(servo_, net_, target, dictionary)
+            servo = EthercatServo(servo_, net_, target, dictionary,
+                                  servo_status_listener)
             self._cffi_network = net_
             self.servos.append(servo)
+
+        if net_status_listener:
+            self.start_network_monitor()
+
+        self.set_reconnection_retries(reconnection_retries)
+        self.set_recv_timeout(reconnection_timeout)
 
         return servo
 

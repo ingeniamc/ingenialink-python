@@ -78,8 +78,8 @@ class IPBServo(Servo):
         super(IPBServo, self).__init__(target)
         _dictionary_path = cstr(dictionary_path) if dictionary_path else ffi.NULL
 
-        self._state_cb = {}
-        self._emcy_cb = {}
+        self.__observers_servo_state = {}
+        self.__observers_emergency_state = {}
 
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(_dictionary_path)
@@ -352,17 +352,20 @@ class IPBServo(Servo):
 
         return SERVO_STATE(state[0]), flags[0]
 
-    def state_subs_stop(self, stop):
+    def _state_subs_stop(self, stop):
         """Stop servo state subscriptions.
 
         Args:
             stop (int): start: 0, stop: 1.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the operation returns a negative error code.
 
         """
-        return lib.il_servo_state_subs_stop(self._cffi_servo, stop)
+        r = lib.il_servo_state_subs_stop(self._cffi_servo, stop)
+
+        if r < 0:
+            raise ILError('Failed toggling servo state subscriptions.')
 
     def enable(self, timeout=2., subnode=1):
         """Enable PDS.
@@ -667,7 +670,7 @@ class IPBServo(Servo):
         if slot < 0:
             raise_err(slot)
 
-        self._emcy_cb[slot] = cb_handle
+        self.__observers_emergency_state[slot] = cb_handle
 
         return slot
 
@@ -680,7 +683,7 @@ class IPBServo(Servo):
         """
         lib.il_servo_emcy_unsubscribe(self._cffi_servo, slot)
 
-        del self._emcy_cb[slot]
+        del self.__observers_emergency_state[slot]
 
     def subscribe_to_status(self, callback):
         """Subscribe to state changes.
@@ -688,10 +691,10 @@ class IPBServo(Servo):
         Args:
             callback: Callback
 
-        Returns:
-            int: Assigned slot.
-
         """
+        if callback in self.__observers_servo_state.values():
+            raise ILError('Callback already subscribed.')
+
         cb_handle = ffi.new_handle(callback)
 
         slot = lib.il_servo_state_subscribe(
@@ -699,20 +702,46 @@ class IPBServo(Servo):
         if slot < 0:
             raise_err(slot)
 
-        self._state_cb[slot] = cb_handle
+        self.__observers_servo_state[slot] = cb_handle
 
-        return slot
-
-    def unsubscribe_from_status(self, slot):
+    def unsubscribe_from_status(self, callback):
         """Unsubscribe from state changes.
 
         Args:
-            slot (int): Assigned slot when subscribed.
+            callback (Callback): Callback function.
 
         """
-        lib.il_servo_state_unsubscribe(self._cffi_servo, slot)
+        for slot, cb in self.__observers_servo_state.items():
+            if cb == callback:
+                lib.il_servo_state_unsubscribe(self._cffi_servo, slot)
+                del self.__observers_servo_state[slot]
+                return
+        raise ILError('Callback not subscribed.')
 
-        del self._state_cb[slot]
+    def start_servo_monitoring(self):
+        """Start monitoring servo events (SERVO_STATE)."""
+        self._set_status_check_stop(0)
+        self._state_subs_stop(0)
+
+    def stop_servo_monitoring(self):
+        """Stop monitoring servo events (SERVO_STATE)."""
+        self._set_status_check_stop(1)
+        self._state_subs_stop(1)
+
+    def _set_status_check_stop(self, stop):
+        """Start/Stop the internal monitor of the drive status.
+
+        Args:
+            stop (int): 0 to START, 1 to STOP.
+
+        Raises:
+            ILError: If the operation returns a negative error code.
+
+        """
+        r = lib.il_net_set_status_check_stop(self._cffi_network, stop)
+
+        if r < 0:
+            raise ILError('Could not start servo monitoring')
 
     def disturbance_write_data(self, channels, dtypes, data_arr):
         """Write disturbance data.

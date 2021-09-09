@@ -118,7 +118,7 @@ class ServoStatusListener(threading.Thread):
                                  "Exception : %s", e)
             time.sleep(1.5)
 
-    def activate_stop_flag(self):
+    def stop(self):
         """Stops the loop that reads the status word register"""
         self.__stop = True
 
@@ -155,16 +155,16 @@ class CanopenServo(Servo):
             2: lib.IL_SERVO_STATE_NRDY,
             3: lib.IL_SERVO_STATE_NRDY
         }
-        self.__servo_state_observers = []
-        self.__servo_status_listener = None
+        self.__observers_servo_state = []
+        self.__listener_servo_status = None
 
         if servo_status_listener:
             status_word = self.read(STATUS_WORD_REGISTERS[1])
             state = self.status_word_decode(status_word)
             self._set_state(state, 1)
 
-            self.__servo_status_listener = ServoStatusListener(self)
-            self.__servo_status_listener.start()
+            self.__listener_servo_status = ServoStatusListener(self)
+            self.__listener_servo_status.start()
 
     def get_reg(self, reg, subnode=1):
         """Validates a register.
@@ -358,25 +358,25 @@ class CanopenServo(Servo):
         self._set_state(state, subnode)
 
         # Try fault reset if faulty
-        if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
-                self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
+        if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT or \
+                self.status[subnode].value == lib.IL_SERVO_STATE_FAULTR:
             self.fault_reset(subnode=subnode)
 
-        while self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+        while self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
             status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
-            if self.state[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+            if self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
                 # Check state and command action to reach enabled
                 cmd = IL_MC_PDS_CMD_EO
-                if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT:
+                if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT:
                     raise_err(lib.IL_ESTATE)
-                elif self.state[subnode].value == lib.IL_SERVO_STATE_NRDY:
+                elif self.status[subnode].value == lib.IL_SERVO_STATE_NRDY:
                     cmd = IL_MC_PDS_CMD_DV
-                elif self.state[subnode].value == lib.IL_SERVO_STATE_DISABLED:
+                elif self.status[subnode].value == lib.IL_SERVO_STATE_DISABLED:
                     cmd = IL_MC_PDS_CMD_SD
-                elif self.state[subnode].value == lib.IL_SERVO_STATE_RDY:
+                elif self.status[subnode].value == lib.IL_SERVO_STATE_RDY:
                     cmd = IL_MC_PDS_CMD_SOEO
 
                 self.write(CONTROL_WORD_REGISTERS[subnode], cmd,
@@ -411,19 +411,19 @@ class CanopenServo(Servo):
         state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
 
-        while self.state[subnode].value != lib.IL_SERVO_STATE_DISABLED:
+        while self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
 
-            if self.state[subnode].value == lib.IL_SERVO_STATE_FAULT or \
-                    self.state[subnode].value == lib.IL_SERVO_STATE_FAULTR:
+            if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT or \
+                    self.status[subnode].value == lib.IL_SERVO_STATE_FAULTR:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
                 status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
-            elif self.state[subnode].value != lib.IL_SERVO_STATE_DISABLED:
+            elif self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
                 # Check state and command action to reach disabled
                 self.write(CONTROL_WORD_REGISTERS[subnode],
                            IL_MC_PDS_CMD_DV, subnode=subnode)
@@ -734,8 +734,8 @@ class CanopenServo(Servo):
         """
         current_state = self.__state[subnode]
         if current_state != state:
-            self.state[subnode] = state
-            for callback in self.__servo_state_observers:
+            self.status[subnode] = state
+            for callback in self.__observers_servo_state:
                 callback(state, None, subnode)
 
     def subscribe_to_status(self, callback):
@@ -747,8 +747,10 @@ class CanopenServo(Servo):
             Returns:
                 int: Assigned slot.
         """
-        slot = len(self.__servo_state_observers)
-        self.__servo_state_observers.append(callback)
+        if callback in self.__observers_servo_state:
+            raise ILError('Callback already subscribed.')
+        slot = len(self.__observers_servo_state)
+        self.__observers_servo_state.append(callback)
         return slot
 
     def unsubscribe_from_status(self, callback):
@@ -756,17 +758,19 @@ class CanopenServo(Servo):
 
         Args:
             callback (Callback): Callback function.
-        """
 
-        self.__servo_state_observers.remove(callback)
+        """
+        if callback not in self.__observers_servo_state:
+            raise ILError('Callback not subscribed.')
+        self.__observers_servo_state.remove(callback)
 
     def stop_servo_monitor(self):
         """Stops the ServoStatusListener."""
-        if self.__servo_status_listener is not None and \
-                self.__servo_status_listener.is_alive():
-            self.__servo_status_listener.activate_stop_flag()
-            self.__servo_status_listener.join()
-            self.__servo_status_listener = None
+        if self.__listener_servo_status is not None and \
+                self.__listener_servo_status.is_alive():
+            self.__listener_servo_status.stop()
+            self.__listener_servo_status.join()
+            self.__listener_servo_status = None
 
     def status_word_wait_change(self, status_word, timeout, subnode=1):
         """Waits for a status word change.
@@ -875,12 +879,12 @@ class CanopenServo(Servo):
         }
 
     @property
-    def state(self):
-        """tuple: Servo state and state flags."""
+    def status(self):
+        """tuple: Servo status and state flags."""
         return self.__state
 
-    @state.setter
-    def state(self, new_state):
+    @status.setter
+    def status(self, new_state):
         self.__state = new_state
 
     @property
