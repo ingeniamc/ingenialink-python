@@ -91,12 +91,28 @@ STORE_MOCO_ALL_REGISTERS = {
     )
 }
 
+RESTORE_MOCO_ALL_REGISTERS = {
+    1: CanopenRegister(
+        identifier='', units='', subnode=1, idx="0x26DC", subidx="0x00",
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    ),
+    2: CanopenRegister(
+        identifier='', units='', subnode=2, idx="0x2EDC", subidx="0x00",
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    ),
+    3: CanopenRegister(
+        identifier='', units='', subnode=3, idx="0x36DC", subidx="0x00",
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
+}
+
 
 class ServoStatusListener(threading.Thread):
     """Reads the status word to check if the drive is alive.
 
     Args:
         servo (CanopenServo): Servo instance of the drive.
+
     """
     def __init__(self, servo):
         super(ServoStatusListener, self).__init__()
@@ -131,6 +147,7 @@ class CanopenServo(Servo):
         dictionary_path (str): Path to the dictionary.
         servo_status_listener (bool): Boolean to initialize the ServoStatusListener and
         check the drive status.
+
     """
     def __init__(self, target, node, dictionary_path=None, eds=None,
                  servo_status_listener=True):
@@ -212,6 +229,7 @@ class CanopenServo(Servo):
             TypeError: If the register type is not valid.
             ILAccessError: Wrong access to the register.
             ILIOError: Error reading the register.
+
         """
         _reg = self._get_reg(reg, subnode)
 
@@ -288,6 +306,7 @@ class CanopenServo(Servo):
             TypeError: If the register type is not valid.
             ILAccessError: Wrong access to the register.
             ILIOError: Error reading the register.
+
         """
         _reg = self._get_reg(reg, subnode)
 
@@ -353,6 +372,7 @@ class CanopenServo(Servo):
 
         Returns:
             int: Error code.
+
         """
         r = 0
 
@@ -407,6 +427,7 @@ class CanopenServo(Servo):
 
         Returns:
             int: Error code.
+
         """
         r = 0
 
@@ -644,7 +665,7 @@ class CanopenServo(Servo):
             raise ILError('Could not find subnode {} '
                           'in the configuration file'.format(subnode))
 
-    def store_parameters(self, subnode=0, sdo_timeout=3):
+    def store_parameters(self, subnode=None, sdo_timeout=3):
         """Store all the current parameters of the target subnode.
 
         Args:
@@ -654,17 +675,18 @@ class CanopenServo(Servo):
         Raises:
             ILError: Invalid subnode.
             ILObjectNotExist: Failed to write to the registers.
+
         """
         r = 0
         self._change_sdo_timeout(sdo_timeout)
 
         try:
-            if subnode == 0:
+            if subnode is None:
                 # Store all
                 try:
                     self.write(reg=STORE_COCO_ALL,
                                data=PASSWORD_STORE_ALL,
-                               subnode=subnode)
+                               subnode=0)
                     logger.info('Store all successfully done.')
                 except Exception as e:
                     logger.warning('Store all COCO failed. Trying MOCO...')
@@ -684,7 +706,11 @@ class CanopenServo(Servo):
                                    data=PASSWORD_STORE_ALL,
                                    subnode=1)
                         logger.info('Store all successfully done.')
-            elif subnode > 0:
+            elif subnode == 0:
+                # Store subnode 0
+                raise ILError('The current firmware version does not '
+                              'have this feature implemented.')
+            elif subnode > 0 and subnode in STORE_MOCO_ALL_REGISTERS:
                 # Store axis
                 self.write(reg=STORE_MOCO_ALL_REGISTERS[subnode],
                            data=PASSWORD_STORE_ALL,
@@ -695,23 +721,46 @@ class CanopenServo(Servo):
         finally:
             self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
-    def restore_parameters(self):
+    def restore_parameters(self, subnode=None):
         """Restore all the current parameters of all the slave to default.
+
+        Args:
+            subnode (int): Subnode of the axis.
 
         Raises:
             ILError: Invalid subnode.
             ILObjectNotExist: Failed to write to the registers.
+
         """
-        self.write(reg=RESTORE_COCO_ALL,
-                   data=PASSWORD_RESTORE_ALL,
-                   subnode=0)
-        logger.info('Restore all successfully done.')
+        if subnode is None:
+            # Restore all
+            self.write(reg=RESTORE_COCO_ALL,
+                       data=PASSWORD_RESTORE_ALL,
+                       subnode=0)
+            logger.info('Restore all successfully done.')
+        elif subnode == 0:
+            # Restore subnode 0
+            raise ILError('The current firmware version does not '
+                          'have this feature implemented.')
+        elif subnode > 0 and subnode in RESTORE_MOCO_ALL_REGISTERS:
+            # Restore axis
+            self.write(reg=RESTORE_COCO_ALL,
+                       data=RESTORE_MOCO_ALL_REGISTERS[subnode],
+                       subnode=subnode)
+            logger.info('Restore subnode {} successfully done.'.format(subnode))
+        else:
+            raise ILError('Invalid subnode.')
+
+    def _change_sdo_timeout(self, value):
+        """Changes the SDO timeout of the node."""
+        self.__node.sdo.RESPONSE_TIMEOUT = value
 
     def is_alive(self):
         """Checks if the servo responds to a reading a register.
 
         Returns:
             bool: Return code with the result of the read.
+
         """
         _is_alive = True
         try:
@@ -720,10 +769,6 @@ class CanopenServo(Servo):
             _is_alive = False
             logger.error(e)
         return _is_alive
-
-    def _change_sdo_timeout(self, value):
-        """Changes the SDO timeout of the node."""
-        self.__node.sdo.RESPONSE_TIMEOUT = value
 
     def get_state(self, subnode=1):
         """SERVO_STATE: Current drive state."""
@@ -735,6 +780,7 @@ class CanopenServo(Servo):
         Args:
             state (SERVO_STATE): Current servo state.
             subnode (int): Subnode of the drive.
+
         """
         current_state = self.__state[subnode]
         if current_state != state:
@@ -750,6 +796,7 @@ class CanopenServo(Servo):
 
             Returns:
                 int: Assigned slot.
+
         """
         if callback in self.__observers_servo_state:
             raise ILError('Callback already subscribed.')
@@ -786,6 +833,7 @@ class CanopenServo(Servo):
 
         Returns:
             int: Error code.
+
         """
         r = 0
         start_time = int(round(time.time() * 1000))
@@ -807,6 +855,7 @@ class CanopenServo(Servo):
 
         Args:
             dictionary (str): Dictionary.
+
         """
         pass
 
@@ -819,6 +868,7 @@ class CanopenServo(Servo):
 
         Returns:
             SERVO_STATE: Status word value.
+
         """
         if (status_word & IL_MC_PDS_STA_NRTSO_MSK) == IL_MC_PDS_STA_NRTSO:
             state = lib.IL_SERVO_STATE_NRDY

@@ -78,6 +78,21 @@ STORE_MOCO_ALL_REGISTERS = {
     )
 }
 
+RESTORE_MOCO_ALL_REGISTERS = {
+    1: IPBRegister(
+        identifier='', units='', subnode=1, address=0x06DC, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+    ),
+    2: IPBRegister(
+        identifier='', units='', subnode=2, address=0x06DC, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+    ),
+    3: IPBRegister(
+        identifier='', units='', subnode=3, address=0x06DC, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+    )
+}
+
 
 class IPBServo(Servo):
     """IPB Servo defines a general class for all IPB based slaves.
@@ -150,9 +165,10 @@ class IPBServo(Servo):
             ILWrongRegisterError: If the register has invalid format.
 
         """
-        if isinstance(reg, Register):
-            _reg = reg
+        if isinstance(reg, IPBRegister):
+            _reg = reg._reg
             return _reg
+
         elif isinstance(reg, str):
             _dict = self.dictionary
             if not _dict:
@@ -226,8 +242,8 @@ class IPBServo(Servo):
         """Write to servo.
 
         Args:
-            reg (IPBRegister): Register.
-            data (int): Data.
+            reg (IPBRegister, str): Register or UID to be written.
+            data (int): Data to be written.
             confirm (bool, optional): Confirm write.
             extended (int, optional): Extended frame.
 
@@ -268,8 +284,7 @@ class IPBServo(Servo):
         r = lib.il_net_SDO_read(self._cffi_network, slave, idx, subidx, dtype, v)
         raise_err(r)
 
-        value = v[0]
-        return value
+        return v[0]
 
     def read_string_sdo(self, idx, subidx, size, slave=1):
         """Read string SDO from network.
@@ -291,8 +306,7 @@ class IPBServo(Servo):
         r = lib.il_net_SDO_read_string(self._cffi_network, slave, idx, subidx, size, v)
         raise_err(r)
 
-        value = pstr(v)
-        return value
+        return pstr(v)
 
     def write_sdo(self, idx, subidx, dtype, value, slave=1):
         """Write SDO from network.
@@ -321,8 +335,7 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        r = lib.il_servo_destroy(self._cffi_servo)
-        return r
+        return lib.il_servo_destroy(self._cffi_servo)
 
     def reset(self):
         """Reset servo.
@@ -427,7 +440,7 @@ class IPBServo(Servo):
         r = lib.il_servo_homing_wait(self._cffi_servo, to_ms(timeout))
         raise_err(r)
 
-    def store_parameters(self, subnode=0):
+    def store_parameters(self, subnode=None):
         """Store all the current parameters of the target subnode.
 
         Args:
@@ -438,13 +451,13 @@ class IPBServo(Servo):
             ILObjectNotExist: Failed to write to the registers.
 
         """
-        if subnode == 0:
+        if subnode is None:
             # Store all
             r = 0
             try:
                 self.write(reg=STORE_COCO_ALL,
                            data=PASSWORD_STORE_ALL,
-                           subnode=subnode)
+                           subnode=0)
                 logger.info('Store all successfully done.')
             except Exception as e:
                 logger.warning('Store all COCO failed. Trying MOCO...')
@@ -464,7 +477,13 @@ class IPBServo(Servo):
                                data=PASSWORD_STORE_ALL,
                                subnode=1)
                     logger.info('Store all successfully done.')
-        elif subnode > 0:
+        elif subnode == 0:
+            # Store only subnode 0
+            self.write(reg=STORE_COCO_ALL,
+                       data=PASSWORD_STORE_RESTORE_SUB_0,
+                       subnode=subnode)
+            logger.info('Store subnode 0 successfully done.')
+        elif subnode > 0 and subnode in STORE_MOCO_ALL_REGISTERS:
             # Store axis
             self.write(reg=STORE_MOCO_ALL_REGISTERS[subnode],
                        data=PASSWORD_STORE_ALL,
@@ -473,18 +492,37 @@ class IPBServo(Servo):
         else:
             raise ILError('Invalid subnode.')
 
-    def restore_parameters(self):
+    def restore_parameters(self, subnode=None):
         """Restore all the current parameters of all the slave to default.
+
+        Args:
+            subnode (int): Subnode of the axis.
 
         Raises:
             ILError: Invalid subnode.
             ILObjectNotExist: Failed to write to the registers.
 
         """
-        self.write(reg=RESTORE_COCO_ALL,
-                   data=PASSWORD_RESTORE_ALL,
-                   subnode=0)
-        logger.info('Restore all successfully done.')
+        if subnode is None:
+            # Restore All
+            self.write(reg=RESTORE_COCO_ALL,
+                       data=PASSWORD_RESTORE_ALL,
+                       subnode=0)
+            logger.info('Restore all successfully done.')
+        elif subnode == 0:
+            # Restore only axis 0
+            self.write(reg=RESTORE_COCO_ALL,
+                       data=PASSWORD_STORE_RESTORE_SUB_0,
+                       subnode=0)
+            logger.info('Restore subnode 0 successfully done.')
+        elif subnode > 0 and subnode in RESTORE_MOCO_ALL_REGISTERS:
+            # Restore axis
+            self.write(reg=RESTORE_MOCO_ALL_REGISTERS[subnode],
+                       data=PASSWORD_RESTORE_ALL,
+                       subnode=subnode)
+            logger.info('Restore subnode {} successfully done.'.format(subnode))
+        else:
+            raise ILError('Invalid subnode.')
 
     def is_alive(self):
         """Checks if the servo responds to a reading a register.
@@ -500,12 +538,12 @@ class IPBServo(Servo):
             logger.error(e)
         return _is_alive
 
-    def store_comm(self):
+    def _store_comm(self):
         """Store all servo current communications to the NVM."""
         r = lib.il_servo_store_comm(self._cffi_servo)
         raise_err(r)
 
-    def store_app(self):
+    def _store_app(self):
         """Store all servo current application parameters to the NVM."""
         r = lib.il_servo_store_app(self._cffi_servo)
         raise_err(r)
