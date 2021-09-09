@@ -1,3 +1,5 @@
+import os
+
 from ingenialink.servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
 from ingenialink.ipb.register import *
@@ -519,7 +521,7 @@ class IPBServo(Servo):
         raise_err(r)
 
     @staticmethod
-    def __remove_registers(registers_category, registers, subnode):
+    def __update_single_axis_dict(registers_category, registers, subnode):
         """Looks for matches through all the registers' subnodes with the
         given subnode and removes the ones that do not match. It also cleans
         up the registers leaving only paramount information.
@@ -539,7 +541,7 @@ class IPBServo(Servo):
             cleanup_register(register)
 
     @staticmethod
-    def __remove_axis(device, axes_category, list_axis, subnode):
+    def __update_multiaxis_dict(device, axes_category, list_axis, subnode):
         """Looks for matches through the subnode of each axis and
         removes all the axes that did not match the search. It also
         cleans up all the registers leaving only paramount information.
@@ -563,23 +565,25 @@ class IPBServo(Servo):
             for register in registers:
                 cleanup_register(register)
 
-    def save_configuration(self, new_path, subnode=None):
+    def save_configuration(self, config_file, subnode=None):
         """Read all dictionary registers content and save it to a
-            new dictionary.
+        new dictionary.
 
         Args:
-            new_path (str): Dictionary.
+            config_file (str): Dictionary.
             subnode (int): Target subnode.
 
         """
+        if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
+            raise ILError('Invalid subnode')
         prod_code, rev_number = get_drive_identification(self, subnode)
 
         r = lib.il_servo_dict_storage_read(self._cffi_servo)
         raise_err(r)
 
-        self.dictionary.save(new_path)
+        self.dictionary.save(config_file)
 
-        tree = ET.parse(new_path)
+        tree = ET.parse(config_file)
         xml_data = tree.getroot()
 
         body = xml_data.find('Body')
@@ -597,11 +601,11 @@ class IPBServo(Servo):
             # Multiaxis dictionary
             axes_category = xml_data.find('Body/Device/Axes')
             list_axis = xml_data.findall('Body/Device/Axes/Axis')
-            self.__remove_axis(device, axes_category, list_axis, subnode)
+            self.__update_multiaxis_dict(device, axes_category, list_axis, subnode)
         else:
             # Single axis dictionary
             registers = xml_data.findall('Body/Device/Registers/Register')
-            self.__remove_registers(registers_category, registers, subnode)
+            self.__update_single_axis_dict(registers_category, registers, subnode)
 
         device.remove(categories)
         body.remove(errors)
@@ -613,24 +617,28 @@ class IPBServo(Servo):
         xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(
             indent="  ", newl='')
 
-        config_file = io.open(new_path, "w", encoding='utf8')
+        config_file = io.open(config_file, "w", encoding='utf8')
         config_file.write(xmlstr)
         config_file.close()
 
-    def load_configuration(self, dictionary, subnode=None):
+    def load_configuration(self, config_file, subnode=None):
         """Load configuration from dictionary file to the servo drive.
 
         Args:
-            dictionary (str): Dictionary.
+            config_file (str): Dictionary.
             subnode (int): Target subnode.
 
         """
+        if not os.path.isfile(config_file):
+            raise FileNotFoundError('Could not find {}.'.format(config_file))
+        if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
+            raise ILError('Invalid subnode')
         if subnode is None:
-            subnode = 0
-        r = lib.il_servo_dict_storage_write(self._cffi_servo, cstr(dictionary),
+            subnode = -1
+        r = lib.il_servo_dict_storage_write(self._cffi_servo, cstr(config_file),
                                             subnode)
         if not hasattr(self, '_errors') or not self._errors:
-            self._errors = self._get_all_errors(dictionary)
+            self._errors = self._get_all_errors(config_file)
         raise_err(r)
 
     def reload_errors(self, dictionary):

@@ -1,3 +1,4 @@
+import os
 import time
 import threading
 import canopen
@@ -476,15 +477,94 @@ class CanopenServo(Servo):
             retries += 1
         raise_err(r)
 
-    def save_configuration(self, new_path, subnode=None):
+    def __update_register_dict(self, register, subnode):
+        """Updates the register from a dictionary with the
+        storage parameters.
+
+        Args:
+            register (Element): Register element to be updated.
+            subnode (int): Target subnode.
+
+        Returns:
+
+        """
+        try:
+            storage = self.read(register.attrib['id'],
+                                subnode=subnode)
+            register.set('storage', str(storage))
+
+            # Update register object
+            reg = self._dictionary.registers(subnode)[register.attrib['id']]
+            reg.storage = storage
+            reg.storage_valid = 1
+        except BaseException as e:
+            logger.error("Exception during save_configuration, "
+                         "register %s: %s",
+                         str(register.attrib['id']), e)
+
+    def __update_single_axis_dict(self, registers_category,
+                                  registers, subnode):
+        """Looks for matches through all the registers' subnodes with the
+        given subnode and removes the ones that do not match. It also cleans
+        up the registers leaving only paramount information.
+
+        Args:
+            registers_category (Element): Registers element containing all registers.
+            registers (list): List of registers in the dictionary.
+            subnode (int): Subnode to keep in the dictionary.
+
+        Returns:
+
+        """
+        for register in registers:
+            element_subnode = int(register.attrib['subnode'])
+            if subnode in [None, element_subnode]:
+                if register.attrib.get('access') == 'rw':
+                    self.__update_register_dict(register, element_subnode)
+            else:
+                registers_category.remove(register)
+            cleanup_register(register)
+
+    def __update_multiaxis_dict(self, device, axes_category, list_axis, subnode):
+        """Looks for matches through the subnode of each axis and
+        removes all the axes that did not match the search. It also
+        cleans up all the registers leaving only paramount information.
+
+        Args:
+            device (Element): Device element containing all the dictionary info.
+            axes_category (Element): Axes element containing all the axis.
+            list_axis (list): List of all the axis in the dictionary.
+            subnode (int): Subnode to keep in the dictionary.
+
+        """
+        for axis in list_axis:
+            registers_category = axis.find('./Registers')
+            registers = registers_category.findall('./Register')
+            if subnode is not None and axis.attrib['subnode'] == str(subnode):
+                self.__update_single_axis_dict(registers_category, registers, subnode)
+                device.append(registers_category)
+                device.remove(axes_category)
+                break
+            for register in registers:
+                element_subnode = int(register.attrib['subnode'])
+                if (
+                    subnode in [None, element_subnode]
+                    and register.attrib.get('access') == 'rw'
+                ):
+                    self.__update_register_dict(register, element_subnode)
+                cleanup_register(register)
+
+    def save_configuration(self, config_file, subnode=None):
         """Read all dictionary registers content and put it to the dictionary
         storage.
 
         Args:
-            new_path (str): Destination path for the configuration file.
+            config_file (str): Destination path for the configuration file.
             subnode (int): Subnode of the axis.
 
         """
+        if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
+            raise ILError('Invalid subnode')
         prod_code, rev_number = get_drive_identification(self, subnode)
 
         with open(self._dictionary.path, 'r') as xml_file:
@@ -496,63 +576,45 @@ class CanopenServo(Servo):
         categories = root.find('Body/Device/Categories')
         errors = root.find('Body/Errors')
 
-        device.remove(categories)
-        body.remove(errors)
-
         if 'ProductCode' in device.attrib and prod_code is not None:
             device.attrib['ProductCode'] = str(prod_code)
         if 'RevisionNumber' in device.attrib and rev_number is not None:
             device.attrib['RevisionNumber'] = str(rev_number)
 
-        axis = tree.findall('*/Device/Axes/Axis')
-        if axis:
-            # Multiaxis
-            registers = root.findall(
-                './Body/Device/Axes/Axis/Registers/Register'
-            )
-        else:
-            # Single axis
-            registers = root.findall('./Body/Device/Registers/Register')
-
         registers_category = root.find('Body/Device/Registers')
+        if registers_category is None:
+            # Multiaxis dictionary
+            axes_category = root.find('Body/Device/Axes')
+            list_axis = root.findall('Body/Device/Axes/Axis')
+            self.__update_multiaxis_dict(device, axes_category, list_axis, subnode)
+        else:
+            # Single axis dictionary
+            registers = root.findall('Body/Device/Registers/Register')
+            self.__update_single_axis_dict(registers_category, registers, subnode)
 
-        for register in registers:
-            try:
-                element_subnode = int(register.attrib['subnode'])
-                if subnode in [None, element_subnode]:
-                    if register.attrib.get('access') == 'rw':
-                        storage = self.read(register.attrib['id'],
-                                            subnode=element_subnode)
-                        register.set('storage', str(storage))
-
-                        # Update register object
-                        reg = self._dictionary.registers(element_subnode)[register.attrib['id']]
-                        reg.storage = storage
-                        reg.storage_valid = 1
-                else:
-                    registers_category.remove(register)
-            except BaseException as e:
-                logger.error("Exception during save_configuration, "
-                             "register %s: %s",
-                             str(register.attrib['id']), e)
-            cleanup_register(register)
+        device.remove(categories)
+        body.remove(errors)
 
         image = root.find('./DriveImage')
         if image is not None:
             root.remove(image)
 
-        tree.write(new_path)
+        tree.write(config_file)
         xml_file.close()
 
-    def load_configuration(self, path, subnode=None):
+    def load_configuration(self, config_file, subnode=None):
         """Write current dictionary storage to the servo drive.
 
         Args:
-            path (str): Path to the dictionary.
+            config_file (str): Path to the dictionary.
             subnode (int): Subnode of the axis.
 
         """
-        with open(path, 'r') as xml_file:
+        if not os.path.isfile(config_file):
+            raise FileNotFoundError('Could not find {}.'.format(config_file))
+        if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
+            raise ILError('Invalid subnode')
+        with open(config_file, 'r') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
@@ -566,11 +628,14 @@ class CanopenServo(Servo):
             # Single axis
             registers = root.findall('./Body/Device/Registers/Register')
 
+        r = -1
         for element in registers:
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
                     element_subnode = int(element.attrib['subnode'])
                     if subnode is None or subnode == element_subnode:
+                        r = 0
+                        print('Loading subnode {}'.format(element_subnode))
                         self.write(element.attrib['id'],
                                    float(element.attrib['storage']),
                                    subnode=element_subnode
@@ -578,6 +643,9 @@ class CanopenServo(Servo):
             except BaseException as e:
                 logger.error("Exception during load_configuration, register "
                              "%s: %s", str(element.attrib['id']), e)
+        if r < 0:
+            raise ILError('Could not find subnode {} '
+                          'in the configuration file'.format(subnode))
 
     def store_parameters(self, subnode=0, sdo_timeout=3):
         """Store all the current parameters of the target subnode.
