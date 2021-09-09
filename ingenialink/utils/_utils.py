@@ -166,7 +166,7 @@ def cleanup_register(register):
     register.text = ''
 
 
-def get_drive_identification(servo, subnode=0):
+def get_drive_identification(servo, subnode=None):
     """Gets the identification information of a given subnode.
 
     Args:
@@ -179,9 +179,9 @@ def get_drive_identification(servo, subnode=0):
     prod_code = None
     re_number = None
     try:
-        if subnode == 0:
-            prod_code = servo.read('DRV_ID_PRODUCT_CODE_COCO', subnode)
-            re_number = servo.read('DRV_ID_REVISION_NUMBER_COCO', subnode)
+        if subnode is None or subnode == 0:
+            prod_code = servo.read('DRV_ID_PRODUCT_CODE_COCO', 0)
+            re_number = servo.read('DRV_ID_REVISION_NUMBER_COCO', 0)
         else:
             prod_code = servo.read('DRV_ID_PRODUCT_CODE', subnode=subnode)
             re_number = servo.read('DRV_ID_REVISION_NUMBER', subnode)

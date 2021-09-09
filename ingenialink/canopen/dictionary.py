@@ -153,8 +153,8 @@ class CanopenDictionary(Dictionary):
             else:
                 cyclic = "CONFIG"
 
-            idx = register.attrib['address'][:6]
-            subidx = "0x" + register.attrib['address'][-2:]
+            idx = int(register.attrib['address'][:6], 16)
+            subidx = int("0x" + register.attrib['address'][-2:], 16)
 
             # Data type
             dtype = register.attrib['dtype']
