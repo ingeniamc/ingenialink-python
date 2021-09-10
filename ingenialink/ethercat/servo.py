@@ -24,6 +24,6 @@ class EthercatServo(IPBServo):
             servo, cffi_net, target, dictionary_path)
 
         if not servo_status_listener:
-            self.stop_servo_monitoring()
+            self.stop_status_listener()
         else:
-            self.start_servo_monitoring()
+            self.start_status_listener()

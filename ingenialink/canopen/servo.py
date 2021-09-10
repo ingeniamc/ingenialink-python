@@ -176,12 +176,7 @@ class CanopenServo(Servo):
         self.__listener_servo_status = None
 
         if servo_status_listener:
-            status_word = self.read(STATUS_WORD_REGISTERS[1])
-            state = self.status_word_decode(status_word)
-            self._set_state(state, 1)
-
-            self.__listener_servo_status = ServoStatusListener(self)
-            self.__listener_servo_status.start()
+            self.start_status_listener()
 
         prod_name = '' if self.dictionary.part_number is None \
             else self.dictionary.part_number
@@ -203,16 +198,14 @@ class CanopenServo(Servo):
 
         """
         if isinstance(reg, CanopenRegister):
-            _reg = reg
-            return _reg
+            return reg
         elif isinstance(reg, str):
             _dict = self._dictionary
             if not _dict:
                 raise_err(lib.IL_EIO, 'No dictionary loaded')
             if reg not in _dict.registers(subnode):
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.registers(subnode)[reg]
-            return _reg
+            return _dict.registers(subnode)[reg]
         else:
             raise_err(lib.IL_EWRONGREG, 'Invalid register')
 
@@ -788,6 +781,26 @@ class CanopenServo(Servo):
             for callback in self.__observers_servo_state:
                 callback(state, None, subnode)
 
+    def start_status_listener(self):
+        """Start listening for servo status events (SERVO_STATE)."""
+        if self.__listener_servo_status is not None:
+            raise ILError('Listener already started')
+        status_word = self.read(STATUS_WORD_REGISTERS[1])
+        state = self.status_word_decode(status_word)
+        self._set_state(state, 1)
+
+        self.__listener_servo_status = ServoStatusListener(self)
+        self.__listener_servo_status.start()
+
+    def stop_status_listener(self):
+        """Stop listening for servo status events (SERVO_STATE)."""
+        if self.__listener_servo_status is None:
+            raise ILError('Listener already stopped')
+        if self.__listener_servo_status.is_alive():
+            self.__listener_servo_status.stop()
+            self.__listener_servo_status.join()
+        self.__listener_servo_status = None
+
     def subscribe_to_status(self, callback):
         """Subscribe to state changes.
 
@@ -814,14 +827,6 @@ class CanopenServo(Servo):
         if callback not in self.__observers_servo_state:
             raise ILError('Callback not subscribed.')
         self.__observers_servo_state.remove(callback)
-
-    def stop_servo_monitor(self):
-        """Stops the ServoStatusListener."""
-        if self.__listener_servo_status is not None and \
-                self.__listener_servo_status.is_alive():
-            self.__listener_servo_status.stop()
-            self.__listener_servo_status.join()
-            self.__listener_servo_status = None
 
     def status_word_wait_change(self, status_word, timeout, subnode=1):
         """Waits for a status word change.

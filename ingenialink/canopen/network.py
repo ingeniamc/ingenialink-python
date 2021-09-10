@@ -232,7 +232,7 @@ class CanopenNetwork(Network):
 
         """
         self.stop_network_monitor()
-        servo.stop_servo_monitor()
+        servo.stop_status_listener()
         self._connection.disconnect()
         self.servos.remove(servo)
 
