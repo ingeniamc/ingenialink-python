@@ -1,4 +1,5 @@
 from .._ingenialink import lib, ffi
+from ingenialink.utils._utils import *
 from ingenialink.network import NET_TRANS_PROT
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
 from ingenialink.ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS
@@ -47,9 +48,9 @@ class EthernetServo(IPBServo):
         """NET_TRANS_PROT: Protocol used to connect to the servo."""
 
         if not servo_status_listener:
-            self.stop_servo_monitoring()
+            self.stop_status_listener()
         else:
-            self.start_servo_monitoring()
+            self.start_status_listener()
 
     def store_tcp_ip_parameters(self):
         """Stores the TCP/IP values. Affects IP address,

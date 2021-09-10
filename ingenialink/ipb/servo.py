@@ -166,8 +166,7 @@ class IPBServo(Servo):
 
         """
         if isinstance(reg, IPBRegister):
-            _reg = reg._reg
-            return _reg
+            return reg
 
         elif isinstance(reg, str):
             _dict = self.dictionary
@@ -175,8 +174,7 @@ class IPBServo(Servo):
                 raise ValueError('No dictionary loaded')
             if reg not in _dict.registers(subnode):
                 raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
-            _reg = _dict.registers(subnode)[reg]
-            return _reg
+            return _dict.registers(subnode)[reg]
         else:
             raise TypeError('Invalid register')
 
@@ -755,13 +753,13 @@ class IPBServo(Servo):
                 return
         raise ILError('Callback not subscribed.')
 
-    def start_servo_monitoring(self):
-        """Start monitoring servo events (SERVO_STATE)."""
+    def start_status_listener(self):
+        """Start listening for servo status events (SERVO_STATE)."""
         self._set_status_check_stop(0)
         self._state_subs_stop(0)
 
-    def stop_servo_monitoring(self):
-        """Stop monitoring servo events (SERVO_STATE)."""
+    def stop_status_listener(self):
+        """Stop listening for servo status events (SERVO_STATE)."""
         self._set_status_check_stop(1)
         self._state_subs_stop(1)
 
