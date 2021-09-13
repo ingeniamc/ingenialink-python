@@ -16,7 +16,7 @@ class EthercatNetwork(IPBNetwork):
         interface_name (str): Interface name to be targeted.
 
     """
-    def __init__(self, interface_name=""):
+    def __init__(self, interface_name):
         super(EthercatNetwork, self).__init__()
         self._cffi_network = ffi.new('il_net_t **')
         self.interface_name = interface_name

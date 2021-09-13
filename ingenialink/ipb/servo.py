@@ -557,6 +557,7 @@ class IPBServo(Servo):
         if not hasattr(self, '_errors') or not self._errors:
             self._errors = self._get_all_errors(dictionary)
         raise_err(r)
+        self.__dictionary = IPBDictionary(dictionary, self._cffi_servo)
 
     @staticmethod
     def __update_single_axis_dict(registers_category, registers, subnode):

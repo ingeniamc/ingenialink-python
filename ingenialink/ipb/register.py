@@ -121,10 +121,13 @@ def ipb_register_from_cffi(cffi_register):
         cat_id = pstr(cffi_register.cat_id)
     if cffi_register.scat_id != ffi.NULL:
         scat_id = pstr(cffi_register.scat_id)
+    if cffi_register.labels != ffi.NULL:
+        labels = LabelsDictionary._from_labels(cffi_register.labels)
 
     return IPBRegister(identifier, units, cyclic, dtype, access,
                        address, phy, subnode, storage, reg_range,
-                       labels, enums, enums_count, cat_id, scat_id, internal_use, cffi_register)
+                       labels, enums, enums_count, cat_id, scat_id,
+                       internal_use, cffi_register)
 
 
 class IPBRegister(Register):
