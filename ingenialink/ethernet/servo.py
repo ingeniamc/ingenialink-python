@@ -82,41 +82,12 @@ class EthernetServo(IPBServo):
             gateway (str): Gateway to be changed.
 
         """
-        int_ip_address = self._convert_ip_to_int(ip_address)
-        int_subnet_mask = self._convert_ip_to_int(subnet_mask)
-        int_gateway = self._convert_ip_to_int(gateway)
+        int_ip_address = convert_ip_to_int(ip_address)
+        int_subnet_mask = convert_ip_to_int(subnet_mask)
+        int_gateway = convert_ip_to_int(gateway)
 
         self.write(COMMS_ETH_IP, int_ip_address)
         self.write(COMMS_ETH_NET_MASK, int_subnet_mask)
         self.write(COMMS_ETH_NET_GATEWAY, int_gateway)
 
         self.store_tcp_ip_parameters()
-
-    @staticmethod
-    def _convert_ip_to_int(ip):
-        """Converts a string type IP to its integer value.
-
-        Args:
-            ip (str): IP to be converted.
-
-        """
-        split_ip = ip.split('.')
-        drive_ip1 = int(split_ip[0]) << 24
-        drive_ip2 = int(split_ip[1]) << 16
-        drive_ip3 = int(split_ip[2]) << 8
-        drive_ip4 = int(split_ip[3])
-        return drive_ip1 + drive_ip2 + drive_ip3 + drive_ip4
-
-    @staticmethod
-    def _convert_int_to_ip(int_ip):
-        """Converts an integer type IP to its string form.
-
-        Args:
-            int_ip (int): IP to be converted.
-
-        """
-        drive_ip1 = (int_ip >> 24) & 0x000000FF
-        drive_ip2 = (int_ip >> 16) & 0x000000FF
-        drive_ip3 = (int_ip >> 8) & 0x000000FF
-        drive_ip4 = int_ip & 0x000000FF
-        return '{}.{}.{}.{}'.format(drive_ip1, drive_ip2, drive_ip3, drive_ip4)
