@@ -40,7 +40,7 @@ __all__ = ['NetworkMonitor', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE', 'NET_TRANS_
            'CanopenServo', 'CanopenPoller', 'CanopenRegister', 'CanopenDictionary',
            'err_ipb_last']
 
-__version__ = '6.0.0'
+__version__ = '6.1.0'
 
 try:
     __ingenialink_C_version__ = pstr(lib.il_version())
