@@ -738,7 +738,7 @@ class IPBServo(Servo):
         if slot < 0:
             raise_err(slot)
 
-        self.__observers_servo_state[slot] = cb_handle
+        self.__observers_servo_state[slot] = callback
 
     def unsubscribe_from_status(self, callback):
         """Unsubscribe from state changes.
