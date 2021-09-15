@@ -793,7 +793,7 @@ class CanopenServo(Servo):
     def start_status_listener(self):
         """Start listening for servo status events (SERVO_STATE)."""
         if self.__listener_servo_status is not None:
-            raise ILError('Listener already started')
+            return
         status_word = self.read(STATUS_WORD_REGISTERS[1])
         state = self.status_word_decode(status_word)
         self._set_state(state, 1)
@@ -804,7 +804,7 @@ class CanopenServo(Servo):
     def stop_status_listener(self):
         """Stop listening for servo status events (SERVO_STATE)."""
         if self.__listener_servo_status is None:
-            raise ILError('Listener already stopped')
+            return
         if self.__listener_servo_status.is_alive():
             self.__listener_servo_status.stop()
             self.__listener_servo_status.join()

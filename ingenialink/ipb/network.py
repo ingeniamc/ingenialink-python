@@ -126,8 +126,9 @@ class IPBNetwork(Network, ABC):
     def start_status_listener(self):
         """Start monitoring network events"""
         self._set_status_check_stop(0)
-        self.__listener_net_status = NetStatusListener(self)
-        self.__listener_net_status.start()
+        if not self.__listener_net_status:
+            self.__listener_net_status = NetStatusListener(self)
+            self.__listener_net_status.start()
 
     def stop_status_listener(self):
         """Stop monitoring network events."""
@@ -136,7 +137,7 @@ class IPBNetwork(Network, ABC):
                 self.__listener_net_status.is_alive():
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
-            self.__listener_net_status = None
+        self.__listener_net_status = None
 
     def set_reconnection_retries(self, retries):
         """Set the number of reconnection retries in our application.
