@@ -1,5 +1,6 @@
 from .._ingenialink import lib, ffi
 from ingenialink.utils._utils import *
+from ingenialink.exceptions import ILError
 from ingenialink.network import NET_TRANS_PROT
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
 from ingenialink.ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS
@@ -90,4 +91,7 @@ class EthernetServo(IPBServo):
         self.write(COMMS_ETH_NET_MASK, int_subnet_mask)
         self.write(COMMS_ETH_NET_GATEWAY, int_gateway)
 
-        self.store_tcp_ip_parameters()
+        try:
+            self.store_tcp_ip_parameters()
+        except ILError:
+            self.store_parameters()
