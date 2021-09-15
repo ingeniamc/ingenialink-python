@@ -23,7 +23,7 @@ class EthercatServo(IPBServo):
         super(EthercatServo, self).__init__(
             servo, cffi_net, target, dictionary_path)
 
-        if not servo_status_listener:
-            self.stop_status_listener()
-        else:
+        if servo_status_listener:
             self.start_status_listener()
+        else:
+            self.stop_status_listener()

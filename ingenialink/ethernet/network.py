@@ -188,6 +188,8 @@ class EthernetNetwork(IPBNetwork):
 
         if net_status_listener:
             self.start_status_listener()
+        else:
+            self.stop_status_listener()
 
         self.set_reconnection_retries(reconnection_retries)
         self.set_recv_timeout(reconnection_timeout)

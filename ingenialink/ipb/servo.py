@@ -116,6 +116,7 @@ class IPBServo(Servo):
         self.__dictionary = IPBDictionary(dictionary_path, self._cffi_servo)
 
         self.__observers_servo_state = {}
+        self.__handlers_servo_state = {}
         self.__observers_emergency_state = {}
 
         if not hasattr(self, '_errors') or not self._errors:
@@ -361,21 +362,6 @@ class IPBServo(Servo):
         lib.il_servo_state_get(self._cffi_servo, state, flags, subnode)
 
         return SERVO_STATE(state[0]), flags[0]
-
-    def _state_subs_stop(self, stop):
-        """Stop servo state subscriptions.
-
-        Args:
-            stop (int): start: 0, stop: 1.
-
-        Raises:
-            ILError: If the operation returns a negative error code.
-
-        """
-        r = lib.il_servo_state_subs_stop(self._cffi_servo, stop)
-
-        if r < 0:
-            raise ILError('Failed toggling servo state subscriptions.')
 
     def enable(self, timeout=2., subnode=1):
         """Enable PDS.
@@ -739,6 +725,7 @@ class IPBServo(Servo):
             raise_err(slot)
 
         self.__observers_servo_state[slot] = callback
+        self.__handlers_servo_state[slot] = cb_handle
 
     def unsubscribe_from_status(self, callback):
         """Unsubscribe from state changes.
@@ -751,33 +738,32 @@ class IPBServo(Servo):
             if cb == callback:
                 lib.il_servo_state_unsubscribe(self._cffi_servo, slot)
                 del self.__observers_servo_state[slot]
+                del self.__handlers_servo_state[slot]
                 return
         raise ILError('Callback not subscribed.')
 
-    def start_status_listener(self):
-        """Start listening for servo status events (SERVO_STATE)."""
-        self._set_status_check_stop(0)
-        self._state_subs_stop(0)
-
-    def stop_status_listener(self):
-        """Stop listening for servo status events (SERVO_STATE)."""
-        self._set_status_check_stop(1)
-        self._state_subs_stop(1)
-
-    def _set_status_check_stop(self, stop):
-        """Start/Stop the internal monitor of the drive status.
+    def _state_subs_stop(self, stop):
+        """Stop servo state subscriptions.
 
         Args:
-            stop (int): 0 to START, 1 to STOP.
+            stop (int): start: 0, stop: 1.
 
         Raises:
             ILError: If the operation returns a negative error code.
 
         """
-        r = lib.il_net_set_status_check_stop(self._cffi_network, stop)
+        r = lib.il_servo_state_subs_stop(self._cffi_servo, stop)
 
         if r < 0:
-            raise ILError('Could not start servo monitoring')
+            raise ILError('Failed toggling servo state subscriptions.')
+
+    def start_status_listener(self):
+        """Start listening for servo status events (SERVO_STATE)."""
+        self._state_subs_stop(0)
+
+    def stop_status_listener(self):
+        """Stop listening for servo status events (SERVO_STATE)."""
+        self._state_subs_stop(1)
 
     def disturbance_write_data(self, channels, dtypes, data_arr):
         """Write disturbance data.

@@ -48,10 +48,10 @@ class EthernetServo(IPBServo):
         self.communication_protocol = communication_protocol
         """NET_TRANS_PROT: Protocol used to connect to the servo."""
 
-        if not servo_status_listener:
-            self.stop_status_listener()
-        else:
+        if servo_status_listener:
             self.start_status_listener()
+        else:
+            self.stop_status_listener()
 
     def store_tcp_ip_parameters(self):
         """Stores the TCP/IP values. Affects IP address,

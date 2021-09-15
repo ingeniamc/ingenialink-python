@@ -108,13 +108,30 @@ class IPBNetwork(Network, ABC):
         for callback in self.__observers_net_state:
             callback(status)
 
+    def _set_status_check_stop(self, stop):
+        """Start/Stop the internal monitor of the drive status.
+
+        Args:
+            stop (int): 0 to START, 1 to STOP.
+
+        Raises:
+            ILError: If the operation returns a negative error code.
+
+        """
+        r = lib.il_net_set_status_check_stop(self._cffi_network, stop)
+
+        if r < 0:
+            raise ILError('Could not start servo monitoring')
+
     def start_status_listener(self):
         """Start monitoring network events"""
+        self._set_status_check_stop(0)
         self.__listener_net_status = NetStatusListener(self)
         self.__listener_net_status.start()
 
     def stop_status_listener(self):
         """Stop monitoring network events."""
+        self._set_status_check_stop(1)
         if self.__listener_net_status is not None and \
                 self.__listener_net_status.is_alive():
             self.__listener_net_status.stop()
