@@ -546,8 +546,8 @@ class IPBServo(Servo):
         r = lib.il_servo_store_app(self._cffi_servo)
         raise_err(r)
 
-    def _dict_load(self, dictionary):
-        """Load dictionary.
+    def replace_dictionary(self, dictionary):
+        """Deletes and creates a new instance of the dictionary.
 
         Args:
             dictionary (str): Dictionary.

@@ -347,7 +347,7 @@ class CanopenServo(Servo):
                                                        byteorder='little',
                                                        signed=signed))
         except Exception as e:
-            logger.error("Failed reading %s. Exception: %s",
+            logger.error("Failed writing %s. Exception: %s",
                          str(_reg.identifier), e)
             error_raised = "Error writing {}".format(_reg.identifier)
         finally:
@@ -612,6 +612,15 @@ class CanopenServo(Servo):
 
         tree.write(config_file)
         xml_file.close()
+
+    def replace_dictionary(self, dictionary):
+        """Deletes and creates a new instance of the dictionary.
+
+        Args:
+            dictionary (str): Dictionary.
+
+        """
+        self._dictionary = CanopenDictionary(dictionary)
 
     def load_configuration(self, config_file, subnode=None):
         """Write current dictionary storage to the servo drive.
