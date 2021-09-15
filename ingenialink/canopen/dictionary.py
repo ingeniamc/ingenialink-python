@@ -33,7 +33,7 @@ class CanopenCategories:
             }
 
     @property
-    def cat_ids(self):
+    def category_ids(self):
         """list: Category IDs."""
         return self._cat_ids
 
