@@ -187,7 +187,7 @@ class EthernetNetwork(IPBNetwork):
         self.servos.append(servo)
 
         if net_status_listener:
-            self.start_network_monitor()
+            self.start_status_listener()
 
         self.set_reconnection_retries(reconnection_retries)
         self.set_recv_timeout(reconnection_timeout)
@@ -204,9 +204,9 @@ class EthernetNetwork(IPBNetwork):
         # TODO: This stops all connections no only the target servo.
         self.servos.remove(servo)
         if len(self.servos) == 0:
-            self.stop_network_monitor()
+            self.stop_status_listener()
+            lib.il_net_mon_stop(self._cffi_network)
             self.close_socket()
-            self.destroy_network()
         self._cffi_network = None
 
     @property

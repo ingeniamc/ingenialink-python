@@ -122,7 +122,7 @@ class EthercatNetwork(IPBNetwork):
             self.servos.append(servo)
 
         if net_status_listener:
-            self.start_network_monitor()
+            self.start_status_listener()
 
         self.set_reconnection_retries(reconnection_retries)
         self.set_recv_timeout(reconnection_timeout)
@@ -139,8 +139,8 @@ class EthercatNetwork(IPBNetwork):
         # TODO: This stops all connections no only the target servo.
         if servo in self.servos:
             self.servos.remove(servo)
+        self.stop_status_listener()
         r = lib.il_net_master_stop(self._cffi_network)
-        self.destroy_network()
         self._cffi_network = None
         if r < 0:
             raise ILError('Error disconnecting the drive. '

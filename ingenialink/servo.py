@@ -207,6 +207,14 @@ class Servo(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def start_status_listener(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def stop_status_listener(self):
+        raise NotImplementedError
+
+    @abstractmethod
     def subscribe_to_status(self, callback):
         raise NotImplementedError
 

@@ -92,7 +92,11 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def stop_network_monitor(self, *args, **kwargs):
+    def start_status_listener(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def stop_status_listener(self, *args, **kwargs):
         raise NotImplementedError
 
     @property

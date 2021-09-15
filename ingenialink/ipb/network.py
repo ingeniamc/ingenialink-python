@@ -108,12 +108,12 @@ class IPBNetwork(Network, ABC):
         for callback in self.__observers_net_state:
             callback(status)
 
-    def start_network_monitor(self):
+    def start_status_listener(self):
         """Start monitoring network events"""
         self.__listener_net_status = NetStatusListener(self)
         self.__listener_net_status.start()
 
-    def stop_network_monitor(self):
+    def stop_status_listener(self):
         """Stop monitoring network events."""
         if self.__listener_net_status is not None and \
                 self.__listener_net_status.is_alive():

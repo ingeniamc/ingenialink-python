@@ -7,7 +7,7 @@ from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import *
 from ..exceptions import ILFirmwareLoadError, ILObjectNotExist, ILError
 from can.interfaces.pcan.pcan import PcanError
-from ..network import NET_PROT, NET_STATE, Network
+from ..network import NET_PROT, NET_STATE, NET_DEV_EVT, Network
 from can.interfaces.ixxat.exceptions import VCIDeviceNotFoundError
 from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT, \
     STATUS_WORD_REGISTERS
@@ -114,12 +114,14 @@ class NetStatusListener(Thread):
                 if self.__state != NET_STATE.DISCONNECTED:
                     self.__network.status = NET_STATE.DISCONNECTED
                     self.__state = NET_STATE.DISCONNECTED
+                    self.__network._notify_status(NET_DEV_EVT.REMOVED)
                 else:
                     self.__network._reset_connection()
             else:
                 if self.__state != NET_STATE.CONNECTED:
                     self.__network.status = NET_STATE.CONNECTED
                     self.__state = NET_STATE.CONNECTED
+                    self.__network._notify_status(NET_DEV_EVT.ADDED)
                 self.__timestamp = self.__node.nmt.timestamp
             sleep(1.5)
 
@@ -231,9 +233,9 @@ class CanopenNetwork(Network):
             servo (CanopenServo): Instance of the servo connected.
 
         """
-        self.stop_network_monitor()
+        self.stop_status_listener()
         servo.stop_status_listener()
-        self._connection.disconnect()
+        self._teardown_connection()
         self.servos.remove(servo)
 
     def _setup_connection(self):
@@ -848,7 +850,11 @@ class CanopenNetwork(Network):
             raise ILError('Callback not subscribed.')
         self.__observers_net_state.remove(callback)
 
-    def stop_network_monitor(self):
+    def _notify_status(self, status):
+        for callback in self.__observers_net_state:
+            callback(status)
+
+    def stop_status_listener(self):
         """Stops the NetStatusListener from listening to the drive."""
         try:
             for node_id, node_obj in self._connection.nodes.items():
@@ -894,5 +900,3 @@ class CanopenNetwork(Network):
     @status.setter
     def status(self, new_state):
         self.__net_state = new_state
-        for callback in self.__observers_net_state:
-            callback(self.__net_state)
