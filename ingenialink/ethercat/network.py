@@ -18,7 +18,6 @@ class EthercatNetwork(IPBNetwork):
     """
     def __init__(self, interface_name):
         super(EthercatNetwork, self).__init__()
-        self._cffi_network = ffi.new('il_net_t **')
         self.interface_name = interface_name
         """str: Interface name used in the network settings."""
 
@@ -50,6 +49,7 @@ class EthercatNetwork(IPBNetwork):
         if not os.path.isfile(fw_file):
             raise FileNotFoundError('Could not find {}.'.format(fw_file))
         try:
+            self._cffi_network = ffi.new('il_net_t **')
             _interface_name = cstr(self.interface_name) \
                 if self.interface_name else ffi.NULL
             _fw_file = cstr(fw_file) if fw_file else ffi.NULL
@@ -106,6 +106,7 @@ class EthercatNetwork(IPBNetwork):
         _dictionary = cstr(dictionary) if dictionary else ffi.NULL
 
         _servo = ffi.new('il_servo_t **')
+        self._cffi_network = ffi.new('il_net_t **')
         r = lib.il_servo_connect_ecat(3, _interface_name, self._cffi_network,
                                       _servo, _dictionary, 1061,
                                       target, use_eoe_comms)
