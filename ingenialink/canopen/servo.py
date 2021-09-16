@@ -726,6 +726,10 @@ class CanopenServo(Servo):
     def restore_parameters(self, subnode=None):
         """Restore all the current parameters of all the slave to default.
 
+        .. note::
+            The drive needs a power cycle after this
+            in order for the changes to be properly applied.
+
         Args:
             subnode (int): Subnode of the axis.
 
@@ -814,7 +818,7 @@ class CanopenServo(Servo):
         """Subscribe to state changes.
 
             Args:
-                callback (Callback): Callback function.
+                callback (function): Callback function.
 
             Returns:
                 int: Assigned slot.
@@ -830,7 +834,7 @@ class CanopenServo(Servo):
         """Unsubscribe from state changes.
 
         Args:
-            callback (Callback): Callback function.
+            callback (function): Callback function.
 
         """
         if callback not in self.__observers_servo_state:

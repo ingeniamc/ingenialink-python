@@ -85,7 +85,7 @@ class IPBNetwork(Network, ABC):
         raised.
 
         Args:
-            callback (Callback): Function that will be called every time an event
+            callback (function): Function that will be called every time an event
             is raised.
 
         """
@@ -97,7 +97,7 @@ class IPBNetwork(Network, ABC):
         """Unsubscribe from state changes.
 
         Args:
-            callback (Callback): Callback function.
+            callback (function): Callback function.
 
         """
         if callback not in self.__observers_net_state:
@@ -124,14 +124,14 @@ class IPBNetwork(Network, ABC):
             raise ILError('Could not start servo monitoring')
 
     def start_status_listener(self):
-        """Start monitoring network events"""
+        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         self._set_status_check_stop(0)
         if not self.__listener_net_status:
             self.__listener_net_status = NetStatusListener(self)
             self.__listener_net_status.start()
 
     def stop_status_listener(self):
-        """Stop monitoring network events."""
+        """Stop monitoring network events (CONNECTION/DISCONNECTION)."""
         self._set_status_check_stop(1)
         if self.__listener_net_status is not None and \
                 self.__listener_net_status.is_alive():

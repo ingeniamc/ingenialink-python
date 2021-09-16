@@ -207,12 +207,12 @@ class CanopenNetwork(Network):
 
                 node.nmt.start_node_guarding(1)
 
-                if net_status_listener:
-                    self.__listener_net_status = NetStatusListener(self, node)
-                    self.__listener_net_status.start()
-
                 servo = CanopenServo(target, node, dictionary, eds,
                                      servo_status_listener=servo_status_listener)
+
+                if net_status_listener:
+                    self.start_status_listener(servo)
+
                 self.servos.append(servo)
                 return servo
             except Exception as e:
@@ -832,7 +832,7 @@ class CanopenNetwork(Network):
         """Subscribe to network state changes.
 
         Args:
-            callback (Callback): Callback function.
+            callback (function): Callback function.
 
         """
         if callback in self.__observers_net_state:
@@ -843,7 +843,7 @@ class CanopenNetwork(Network):
         """Unsubscribe from network state changes.
 
         Args:
-            callback (Callback): Callback function.
+            callback (function): Callback function.
 
         """
         if callback not in self.__observers_net_state:
@@ -853,6 +853,12 @@ class CanopenNetwork(Network):
     def _notify_status(self, status):
         for callback in self.__observers_net_state:
             callback(status)
+
+    def start_status_listener(self, servo):
+        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+        if self.__listener_net_status is None:
+            self.__listener_net_status = NetStatusListener(self, servo.node)
+            self.__listener_net_status.start()
 
     def stop_status_listener(self):
         """Stops the NetStatusListener from listening to the drive."""
@@ -865,7 +871,7 @@ class CanopenNetwork(Network):
                 self.__listener_net_status.is_alive():
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
-            self.__listener_net_status = None
+        self.__listener_net_status = None
 
     @property
     def device(self):
