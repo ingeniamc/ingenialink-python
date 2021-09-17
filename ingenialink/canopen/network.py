@@ -299,29 +299,8 @@ class CanopenNetwork(Network):
         except BaseException as e:
             logger.error("Connection failed. Exception: %s", e)
 
-    def subscribe_to_load_firmware_process(self, callback_status_msg=None,
-                                           callback_progress=None,
-                                           callback_errors_enabled=None):
-        """Subscribe all the callback methods to its specific variable observer.
-
-        Args:
-            callback_status_msg (object): Subscribed callback function for the status
-            message when loading a firmware.
-            callback_progress (object): Subscribed callback function for the live
-            progress when loading a firmware.
-            progress when loading a firmware.
-            callback_errors_enabled (object): Subscribed callback function for
-            knowing when to toggle the error detection when loading firmware.
-
-        """
-        if callback_status_msg is not None:
-            self.__observers_fw_load_status_msg.append(callback_status_msg)
-        if callback_progress is not None:
-            self.__observers_fw_load_progress.append(callback_progress)
-        if callback_errors_enabled is not None:
-            self.__observers_fw_load_errors_enabled.append(callback_errors_enabled)
-
-    def load_firmware(self, target, fw_file):
+    def load_firmware(self, target, fw_file, callback_status_msg=None,
+                      callback_progress=None, callback_errors_enabled=None):
         """Loads a given firmware file to a target.
 
         .. warning ::
@@ -332,6 +311,13 @@ class CanopenNetwork(Network):
         Args:
             target (int): Targeted node ID to be loaded.
             fw_file (str): Path to the firmware file.
+            callback_status_msg (object): Subscribed callback function for the status
+            message when loading a firmware.
+            callback_progress (object): Subscribed callback function for the live
+            progress when loading a firmware.
+            progress when loading a firmware.
+            callback_errors_enabled (object): Subscribed callback function for
+            knowing when to toggle the error detection when loading firmware.
 
         Raises:
             ILFirmwareLoadError: The firmware load process fails with an error message.
@@ -346,6 +332,14 @@ class CanopenNetwork(Network):
 
         if not os.path.isfile(fw_file):
             raise FileNotFoundError('Could not find {}.'.format(fw_file))
+
+        # Subscribe to firmware loader process
+        if callback_status_msg is not None:
+            self.__observers_fw_load_status_msg.append(callback_status_msg)
+        if callback_progress is not None:
+            self.__observers_fw_load_progress.append(callback_progress)
+        if callback_errors_enabled is not None:
+            self.__observers_fw_load_errors_enabled.append(callback_errors_enabled)
 
         self.__set_fw_load_status_msg('')
         self.__set_fw_load_progress(progress)
@@ -665,6 +659,14 @@ class CanopenNetwork(Network):
             logger.warning('Could not remove {}. Exception: {}'.format(lfu_path, e))
 
         self.__set_fw_load_errors_enabled(True)
+
+        # Unsubscribe to firmware loader process
+        if callback_status_msg is not None:
+            self.__observers_fw_load_status_msg.remove(callback_status_msg)
+        if callback_progress is not None:
+            self.__observers_fw_load_progress.remove(callback_progress)
+        if callback_errors_enabled is not None:
+            self.__observers_fw_load_errors_enabled.remove(callback_errors_enabled)
 
         if error_detected_msg != '':
             raise ILFirmwareLoadError(error_detected_msg)
