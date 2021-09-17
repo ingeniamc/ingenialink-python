@@ -124,7 +124,7 @@ class IPBServo(Servo):
 
         prod_name = '' if self.dictionary.part_number is None \
             else self.dictionary.part_number
-        self.full_name = '{} {} ({})'.format(prod_name, self.name, self.target)
+        self.full_name = '{} {}'.format(prod_name, self.name)
 
     @staticmethod
     def _get_all_errors(dictionary):

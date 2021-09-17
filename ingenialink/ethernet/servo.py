@@ -48,6 +48,10 @@ class EthernetServo(IPBServo):
         self.communication_protocol = communication_protocol
         """NET_TRANS_PROT: Protocol used to connect to the servo."""
 
+        prod_name = '' if self.dictionary.part_number is None \
+            else self.dictionary.part_number
+        self.full_name = '{} {} ({})'.format(prod_name, self.name, self.target)
+
         if servo_status_listener:
             self.start_status_listener()
         else:
