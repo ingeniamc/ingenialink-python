@@ -825,10 +825,9 @@ class CanopenServo(Servo):
 
         """
         if callback in self.__observers_servo_state:
-            raise ILError('Callback already subscribed.')
-        slot = len(self.__observers_servo_state)
+            logger.info('Callback already subscribed.')
+            return
         self.__observers_servo_state.append(callback)
-        return slot
 
     def unsubscribe_from_status(self, callback):
         """Unsubscribe from state changes.
@@ -838,7 +837,8 @@ class CanopenServo(Servo):
 
         """
         if callback not in self.__observers_servo_state:
-            raise ILError('Callback not subscribed.')
+            logger.info('Callback not subscribed.')
+            return
         self.__observers_servo_state.remove(callback)
 
     def status_word_wait_change(self, status_word, timeout, subnode=1):

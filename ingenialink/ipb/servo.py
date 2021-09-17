@@ -719,7 +719,8 @@ class IPBServo(Servo):
 
         """
         if callback in self.__observers_servo_state.values():
-            raise ILError('Callback already subscribed.')
+            logger.info('Callback already subscribed.')
+            return
 
         cb_handle = ffi.new_handle(callback)
 
@@ -738,13 +739,15 @@ class IPBServo(Servo):
             callback (function): Callback function.
 
         """
+        if callback not in self.__observers_servo_state.values():
+            logger.info('Callback not subscribed.')
+            return
         for slot, cb in self.__observers_servo_state.items():
             if cb == callback:
                 lib.il_servo_state_unsubscribe(self._cffi_servo, slot)
                 del self.__observers_servo_state[slot]
                 del self.__handlers_servo_state[slot]
                 return
-        raise ILError('Callback not subscribed.')
 
     def _state_subs_stop(self, stop):
         """Stop servo state subscriptions.

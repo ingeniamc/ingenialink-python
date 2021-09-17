@@ -90,7 +90,8 @@ class IPBNetwork(Network, ABC):
 
         """
         if callback in self.__observers_net_state:
-            raise ILError('Callback already subscribed.')
+            logger.info('Callback already subscribed.')
+            return
         self.__observers_net_state.append(callback)
 
     def unsubscribe_from_status(self, callback):
@@ -101,7 +102,8 @@ class IPBNetwork(Network, ABC):
 
         """
         if callback not in self.__observers_net_state:
-            raise ILError('Callback not subscribed.')
+            logger.info('Callback not subscribed.')
+            return
         self.__observers_net_state.remove(callback)
 
     def _notify_status(self, status):
