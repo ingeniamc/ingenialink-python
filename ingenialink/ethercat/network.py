@@ -4,7 +4,10 @@ from .servo import EthercatServo
 from .._ingenialink import lib, ffi
 from ingenialink.constants import *
 from ingenialink.ipb.network import IPBNetwork
-from ingenialink.utils._utils import cstr, raise_err
+from ingenialink.utils._utils import cstr
+
+import ingenialogger
+logger = ingenialogger.get_logger(__name__)
 
 import os
 
@@ -59,10 +62,13 @@ class EthercatNetwork(IPBNetwork):
                                            _fw_file,
                                            boot_in_app)
             if r < 0:
-                raise ILFirmwareLoadError('Error updating firmware. '
-                                          'Error code: {}'.format(r))
+                logger.error('Error updating firmware. '
+                             'Error code: {}'.format(r))
+                raise ILFirmwareLoadError('Error updating firmware.')
         except Exception as e:
-            raise ILFirmwareLoadError(e)
+            logger.error(e)
+            raise ILFirmwareLoadError('Error updating firmware '
+                                      'due to an internal error.')
 
     def scan_slaves(self):
         """Scan all the slaves connected in the network.
