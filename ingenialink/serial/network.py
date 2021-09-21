@@ -1,8 +1,9 @@
-from ingenialink.network import NET_PROT
-from ingenialink.ipb.network import IPBNetwork
 from .._ingenialink import lib, ffi
-from ingenialink.utils._utils import pstr, cstr, raise_null, to_ms
+from ingenialink.network import NET_PROT
+from ingenialink.exceptions import ILError
+from ingenialink.ipb.network import IPBNetwork
 from ingenialink.serial.servo import SerialServo
+from ingenialink.utils._utils import pstr, cstr, raise_null, to_ms
 
 
 class SerialNetwork(IPBNetwork):
@@ -45,7 +46,7 @@ class SerialNetwork(IPBNetwork):
 
         return found
 
-    def connect_to_slave(self, target=None, dictionary=""):
+    def connect_to_slave(self, target, dictionary=""):
         """Connects to a slave through the given network settings.
 
         Args:
@@ -81,11 +82,12 @@ class SerialNetwork(IPBNetwork):
 
         lib.il_net_servos_list_destroy(servos)
 
-        servo = None
-        if found:
-            servo = SerialServo(self.__net_interface, found[0], dictionary)
-            self._cffi_network = self.__net_interface
-            self.servos.append(servo)
+        if not found:
+            raise ILError('Could not connect to "{}"'.format(target))
+
+        servo = SerialServo(self.__net_interface, target, found[0], dictionary)
+        self._cffi_network = self.__net_interface
+        self.servos.append(servo)
         return servo
 
     def disconnect_from_slave(self, servo):
@@ -98,7 +100,6 @@ class SerialNetwork(IPBNetwork):
         self.servos.remove(servo)
         if len(self.servos) == 0:
             lib.il_net_disconnect(self._cffi_network)
-            self.destroy_network()
         self._cffi_network = None
 
     @property
