@@ -16,8 +16,8 @@ class SerialNetwork(IPBNetwork):
     """
     def __init__(self, timeout_rd=0.5, timeout_wr=0.5):
         super(SerialNetwork, self).__init__()
-        self.__timeout_rd = timeout_rd
-        self.__timeout_wr = timeout_wr
+        self.timeout_rd = timeout_rd
+        self.timeout_wr = timeout_wr
 
         self.__net_interface = None
 
@@ -65,8 +65,8 @@ class SerialNetwork(IPBNetwork):
         opts = ffi.new('il_net_opts_t *')
         _port = ffi.new('char []', cstr(target))
         opts.port = _port
-        opts.timeout_rd = to_ms(self.__timeout_rd)
-        opts.timeout_wr = to_ms(self.__timeout_wr)
+        opts.timeout_rd = to_ms(self.timeout_rd)
+        opts.timeout_wr = to_ms(self.timeout_wr)
 
         self.__net_interface = lib.il_net_create(NET_PROT.MCB.value, opts)
         raise_null(self.__net_interface)
@@ -106,21 +106,3 @@ class SerialNetwork(IPBNetwork):
     def protocol(self):
         """NET_PROT: Obtain network protocol."""
         return NET_PROT.MCB
-
-    @property
-    def timeout_rd(self):
-        """int: Read timeout"""
-        return self.__timeout_rd
-
-    @timeout_rd.setter
-    def timeout_rd(self, value):
-        self.__timeout_rd = value
-
-    @property
-    def timeout_wr(self):
-        """int: Write timeout"""
-        return self.__timeout_wr
-
-    @timeout_wr.setter
-    def timeout_wr(self, value):
-        self.__timeout_wr = value
