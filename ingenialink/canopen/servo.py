@@ -19,22 +19,49 @@ logger = ingenialogger.get_logger(__name__)
 
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
-SERIAL_NUMBER = CanopenRegister(
-    identifier='', units='', subnode=1, idx=0x26E6, subidx=0x00,
-    cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-)
-PRODUCT_CODE = CanopenRegister(
-    identifier='', units='', subnode=1, idx=0x26E1, subidx=0x00,
-    cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-)
-SOFTWARE_VERSION = CanopenRegister(
-    identifier='', units='', subnode=1, idx=0x26E4, subidx=0x00,
-    cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
-)
-REVISION_NUMBER = CanopenRegister(
-    identifier='', units='', subnode=1, idx=0x26E2, subidx=0x00,
-    cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-)
+PRODUCT_ID_REGISTERS = {
+    0: CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x5EE1, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    ),
+    1: CanopenRegister(
+        identifier='', units='', subnode=1, idx=0x26E1, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    )
+}
+
+SERIAL_NUMBER_REGISTERS = {
+    0: CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x5EE6, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    ),
+    1: CanopenRegister(
+        identifier='', units='', subnode=1, idx=0x26E6, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    )
+}
+
+SOFTWARE_VERSION_REGISTERS = {
+    0: CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x5EE4, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+    ),
+    1: CanopenRegister(
+        identifier='', units='', subnode=1, idx=0x26E4, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+    )
+}
+
+REVISION_NUMBER_REGISTERS = {
+    0: CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x5EE2, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    ),
+    1: CanopenRegister(
+        identifier='', units='', subnode=1, idx=0x26E2, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    )
+}
 
 STATUS_WORD_REGISTERS = {
     1: CanopenRegister(
@@ -93,15 +120,15 @@ STORE_MOCO_ALL_REGISTERS = {
 
 RESTORE_MOCO_ALL_REGISTERS = {
     1: CanopenRegister(
-        identifier='', units='', subnode=1, idx="0x26DC", subidx="0x00",
+        identifier='', units='', subnode=1, idx=0x26DC, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     2: CanopenRegister(
-        identifier='', units='', subnode=2, idx="0x2EDC", subidx="0x00",
+        identifier='', units='', subnode=2, idx=0x2EDC, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     3: CanopenRegister(
-        identifier='', units='', subnode=3, idx="0x36DC", subidx="0x00",
+        identifier='', units='', subnode=3, idx=0x36DC, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
 }
@@ -908,6 +935,28 @@ class CanopenServo(Servo):
             state = lib.IL_SERVO_STATE_NRDY
         return SERVO_STATE(state)
 
+    def __read_coco_moco_register(self, register_coco, register_moco):
+        """Reads the COCO register and if it does not exist,
+        reads the MOCO register
+
+        Args:
+            register_coco (IPBRegister): COCO Register to be read.
+            register_moco (IPBRegister: MOCO Register to be read.
+
+        Returns:
+            int: Read value of the register.
+
+        """
+        try:
+            return self.read(register_coco, subnode=0)
+        except ILError:
+            pass
+
+        try:
+            return self.read(register_moco, subnode=1)
+        except ILError:
+            pass
+
     @property
     def dictionary(self):
         """Returns dictionary object"""
@@ -935,10 +984,14 @@ class CanopenServo(Servo):
     @property
     def info(self):
         """dict: Servo information."""
-        serial_number = self.read(SERIAL_NUMBER)
-        product_code = self.read(PRODUCT_CODE)
-        sw_version = self.read(SOFTWARE_VERSION)
-        revision_number = self.read(REVISION_NUMBER)
+        serial_number = self.__read_coco_moco_register(
+            SERIAL_NUMBER_REGISTERS[0], SERIAL_NUMBER_REGISTERS[1])
+        sw_version = self.__read_coco_moco_register(
+            SOFTWARE_VERSION_REGISTERS[0], SOFTWARE_VERSION_REGISTERS[1])
+        product_code = self.__read_coco_moco_register(
+            PRODUCT_ID_REGISTERS[0], PRODUCT_ID_REGISTERS[1])
+        revision_number = self.__read_coco_moco_register(
+            REVISION_NUMBER_REGISTERS[0], REVISION_NUMBER_REGISTERS[1])
         hw_variant = 'A'
 
         return {

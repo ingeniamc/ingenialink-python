@@ -19,25 +19,49 @@ import io
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
-PRODUCT_ID_COCO = IPBRegister(
-    identifier='', units='', subnode=0, address=0x06E1, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-)
+PRODUCT_ID_REGISTERS = {
+    0: IPBRegister(
+        identifier='', units='', subnode=0, address=0x06E1, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    ),
+    1: IPBRegister(
+        identifier='', units='', subnode=1, address=0x06E1, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    )
+}
 
-SERIAL_NUMBER_COCO = IPBRegister(
-    identifier='', units='', subnode=0, address=0x06E6, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-)
+SERIAL_NUMBER_REGISTERS = {
+    0: IPBRegister(
+        identifier='', units='', subnode=0, address=0x06E6, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    ),
+    1: IPBRegister(
+        identifier='', units='', subnode=1, address=0x06E6, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    )
+}
 
-SOFTWARE_VERSION = IPBRegister(
-    identifier='', units='', subnode=0, address=0x06E4, cyclic='CONFIG',
-    dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
-)
+SOFTWARE_VERSION_REGISTERS = {
+    0: IPBRegister(
+        identifier='', units='', subnode=0, address=0x06E4, cyclic='CONFIG',
+        dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+    ),
+    1: IPBRegister(
+        identifier='', units='', subnode=1, address=0x06E4, cyclic='CONFIG',
+        dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+    )
+}
 
-REV_NUMBER_COCO = IPBRegister(
-    identifier='', units='', subnode=0, address=0x06E2, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-)
+REVISION_NUMBER_REGISTERS = {
+    0: IPBRegister(
+        identifier='', units='', subnode=0, address=0x06E2, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    ),
+    1: IPBRegister(
+        identifier='', units='', subnode=1, address=0x06E2, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    )
+}
 
 DIST_NUMBER_SAMPLES = IPBRegister(
     identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
@@ -991,6 +1015,28 @@ class IPBServo(Servo):
         return lib.il_net_disturbance_set_mapped_register(self._cffi_network, channel,
                                                           address, dtype)
 
+    def __read_coco_moco_register(self, register_coco, register_moco):
+        """Reads the COCO register and if it does not exist,
+        reads the MOCO register
+
+        Args:
+            register_coco (IPBRegister): COCO Register to be read.
+            register_moco (IPBRegister: MOCO Register to be read.
+
+        Returns:
+            int: Read value of the register.
+
+        """
+        try:
+            return self.read(register_coco, subnode=0)
+        except ILError:
+            pass
+
+        try:
+            return self.read(register_moco, subnode=1)
+        except ILError:
+            pass
+
     @property
     def dictionary(self):
         """Obtain dictionary of the servo."""
@@ -999,10 +1045,14 @@ class IPBServo(Servo):
     @property
     def info(self):
         """dict: Servo information."""
-        serial_number = self.read(SERIAL_NUMBER_COCO)
-        sw_version = self.read(SOFTWARE_VERSION)
-        product_code = self.read(PRODUCT_ID_COCO)
-        revision_number = self.read(REV_NUMBER_COCO)
+        serial_number = self.__read_coco_moco_register(
+            SERIAL_NUMBER_REGISTERS[0], SERIAL_NUMBER_REGISTERS[1])
+        sw_version = self.__read_coco_moco_register(
+            SOFTWARE_VERSION_REGISTERS[0], SOFTWARE_VERSION_REGISTERS[1])
+        product_code = self.__read_coco_moco_register(
+            PRODUCT_ID_REGISTERS[0], PRODUCT_ID_REGISTERS[1])
+        revision_number = self.__read_coco_moco_register(
+            REVISION_NUMBER_REGISTERS[0], REVISION_NUMBER_REGISTERS[1])
         hw_variant = 'A'
 
         return {
