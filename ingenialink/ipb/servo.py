@@ -943,6 +943,24 @@ class IPBServo(Servo):
         """
         return lib.il_net_disable_disturbance(self._cffi_network)
 
+    def monitoring_remove_data(self):
+        """Remove monitoring data.
+
+        Returns:
+            int: Result code.
+
+        """
+        return lib.il_net_monitoring_remove_data(self._cffi_network)
+
+    def disturbance_remove_data(self):
+        """Remove disturbance data.
+
+        Returns:
+            int: Result code.
+
+        """
+        return lib.il_net_disturbance_remove_data(self._cffi_network)
+
     def monitoring_read_data(self):
         """Obtain processed monitoring data.
 
