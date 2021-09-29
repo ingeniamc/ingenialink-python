@@ -907,7 +907,7 @@ class IPBServo(Servo):
         """
         return lib.il_net_remove_all_mapped_registers(self._cffi_network)
 
-    def monitoring_set_mapped_register(self, channel, reg_idx, dtype):
+    def monitoring_set_mapped_register(self, channel, address, subnode, dtype, size):
         """Set monitoring mapped register.
 
         Args:
@@ -920,7 +920,7 @@ class IPBServo(Servo):
 
         """
         return lib.il_net_set_mapped_register(self._cffi_network, channel,
-                                              reg_idx, dtype)
+                                              address, subnode, dtype, size)
 
     def monitoring_get_num_mapped_registers(self):
         """Obtain the number of mapped registers.
@@ -948,6 +948,42 @@ class IPBServo(Servo):
 
         """
         return lib.il_net_disable_monitoring(self._cffi_network)
+
+    def disturbance_enable(self):
+        """Enable disturbance process.
+
+        Returns:
+            int: Result code.
+
+        """
+        return lib.il_net_enable_disturbance(self._cffi_network)
+
+    def disturbance_disable(self):
+        """Disable disturbance process.
+
+        Returns:
+            int: Result code.
+
+        """
+        return lib.il_net_disable_disturbance(self._cffi_network)
+
+    def monitoring_remove_data(self):
+        """Remove monitoring data.
+
+        Returns:
+            int: Result code.
+
+        """
+        return lib.il_net_monitoring_remove_data(self._cffi_network)
+
+    def disturbance_remove_data(self):
+        """Remove disturbance data.
+
+        Returns:
+            int: Result code.
+
+        """
+        return lib.il_net_disturbance_remove_data(self._cffi_network)
 
     def monitoring_read_data(self):
         """Obtain processed monitoring data.
@@ -1000,7 +1036,7 @@ class IPBServo(Servo):
         """
         return lib.il_net_disturbance_remove_all_mapped_registers(self._cffi_network)
 
-    def disturbance_set_mapped_register(self, channel, address, dtype):
+    def disturbance_set_mapped_register(self, channel, address, subnode, dtype, size):
         """Set disturbance mapped register.
 
         Args:
@@ -1013,7 +1049,7 @@ class IPBServo(Servo):
 
         """
         return lib.il_net_disturbance_set_mapped_register(self._cffi_network, channel,
-                                                          address, dtype)
+                                                          address, subnode, dtype, size)
 
     def __read_coco_moco_register(self, register_coco, register_moco):
         """Reads the COCO register and if it does not exist,
