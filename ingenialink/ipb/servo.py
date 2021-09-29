@@ -1083,12 +1083,11 @@ class IPBServo(Servo):
         """dict: Servo information."""
         serial_number = self.__read_coco_moco_register(
             SERIAL_NUMBER_REGISTERS[0], SERIAL_NUMBER_REGISTERS[1])
-        sw_version = self.__read_coco_moco_register(
-            SOFTWARE_VERSION_REGISTERS[0], SOFTWARE_VERSION_REGISTERS[1])
         product_code = self.__read_coco_moco_register(
             PRODUCT_ID_REGISTERS[0], PRODUCT_ID_REGISTERS[1])
         revision_number = self.__read_coco_moco_register(
             REVISION_NUMBER_REGISTERS[0], REVISION_NUMBER_REGISTERS[1])
+        sw_version = None
         hw_variant = 'A'
 
         return {
