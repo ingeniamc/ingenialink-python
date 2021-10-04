@@ -467,7 +467,7 @@ class IPBServo(Servo):
                            data=PASSWORD_STORE_ALL,
                            subnode=0)
                 logger.info('Store all successfully done.')
-            except Exception as e:
+            except Exception:
                 logger.warning('Store all COCO failed. Trying MOCO...')
                 r = -1
             if r < 0:
@@ -499,6 +499,7 @@ class IPBServo(Servo):
             logger.info('Store axis {} successfully done.'.format(subnode))
         else:
             raise ILError('Invalid subnode.')
+        sleep(0.5)
 
     def restore_parameters(self, subnode=None):
         """Restore all the current parameters of all the slave to default.
@@ -535,6 +536,7 @@ class IPBServo(Servo):
             logger.info('Restore subnode {} successfully done.'.format(subnode))
         else:
             raise ILError('Invalid subnode.')
+        sleep(0.5)
 
     def is_alive(self):
         """Checks if the servo responds to a reading a register.
