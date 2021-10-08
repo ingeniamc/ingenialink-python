@@ -1,9 +1,22 @@
+from enum import Enum
+from ..exceptions import *
 from ..network import NET_PROT
 from .servo import EthercatServo
-from ingenialink.ipb.network import IPBNetwork
-from ingenialink.utils._utils import cstr, raise_err
-from ..exceptions import *
 from .._ingenialink import lib, ffi
+from ingenialink.ipb.network import IPBNetwork
+from ingenialink.network import EEPROM_FILE_FORMAT
+from ingenialink.utils._utils import cstr, raise_err
+
+
+class EEPROM_TOOL_MODE(Enum):
+    """EEPROM tool mode."""
+    MODE_NONE = 0
+    MODE_READBIN = 1
+    MODE_READINTEL = 2
+    MODE_WRITEBIN = 3
+    MODE_WRITEINTEL = 4
+    MODE_WRITEALIAS = 5
+    MODE_INFO = 6
 
 
 class EthercatNetwork(IPBNetwork):
@@ -53,6 +66,83 @@ class EthercatNetwork(IPBNetwork):
                                           'Error code: {}'.format(r))
         except Exception as e:
             raise ILFirmwareLoadError(e)
+
+    def _read_eeprom(self, eeprom_file, slave, file_format):
+        """Reads the EEPROM.
+
+        Args:
+            eeprom_file (str): Path to the EEPROM file.
+            slave (int): Target slave number to be connected
+            file_format (EEPROM_FILE_FORMAT): EEPROM tool mode.
+
+        Raises:
+            ILError: In case the operation does not succeed.
+
+        """
+        if file_format not in EEPROM_FILE_FORMAT:
+            raise ILError('Invalid file format')
+        if file_format == EEPROM_FILE_FORMAT.BINARY:
+            mode = EEPROM_TOOL_MODE.MODE_READBIN
+        else:
+            mode = EEPROM_TOOL_MODE.MODE_READINTEL
+
+        self._cffi_network = ffi.new('il_net_t **')
+        _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
+        _eeprom_file = cstr(eeprom_file) if eeprom_file else ffi.NULL
+
+        r = lib.il_net_eeprom_tool(
+            self._cffi_network, _interface_name, slave, mode, _eeprom_file)
+        if r < 0:
+            raise ILError('Failed reading EEPROM file.')
+
+    def _write_eeprom(self, eeprom_file, slave, file_format):
+        """Loads an EEPROM file to use as configuration.
+
+        Args:
+            eeprom_file (str): Path to the EEPROM file.
+            slave (int): Target slave number to be connected
+            file_format (EEPROM_FILE_FORMAT): EEPROM tool mode.
+
+        Raises:
+            ILError: In case the operation does not succeed.
+
+        """
+        if file_format not in EEPROM_FILE_FORMAT:
+            raise ILError('Invalid file format')
+        if file_format == EEPROM_FILE_FORMAT.BINARY:
+            mode = EEPROM_TOOL_MODE.MODE_WRITEBIN
+        else:
+            mode = EEPROM_TOOL_MODE.MODE_WRITEINTEL
+
+        self._cffi_network = ffi.new('il_net_t **')
+        _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
+        _eeprom_file = cstr(eeprom_file) if eeprom_file else ffi.NULL
+
+        r = lib.il_net_eeprom_tool(
+            self._cffi_network, _interface_name, slave, mode, _eeprom_file)
+        if r < 0:
+            raise ILError('Failed writing EEPROM file.')
+
+    def _write_eeprom_alias(self, eeprom_file, slave):
+        """Writes the configuration station alias.
+
+        Args:
+            eeprom_file (str): Path to the EEPROM file.
+            slave (int): Target slave number to be connected
+
+        Raises:
+            ILError: In case the operation does not succeed.
+
+        """
+        self._cffi_network = ffi.new('il_net_t **')
+        _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
+        _eeprom_file = cstr(eeprom_file) if eeprom_file else ffi.NULL
+
+        r = lib.il_net_eeprom_tool(
+            self._cffi_network, _interface_name, slave,
+            EEPROM_TOOL_MODE.MODE_WRITEALIAS, _eeprom_file)
+        if r < 0:
+            raise ILError('Failed writing EEPROM alias.')
 
     def scan_slaves(self):
         """Scan all the slaves connected in the network.
