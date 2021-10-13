@@ -1,20 +1,19 @@
 import os
 
-from ingenialink.servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
-    SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
-from ingenialink.ipb.register import *
+from .._ingenialink import lib, ffi
 from ingenialink.constants import *
 from ingenialink.exceptions import *
-from ingenialink.ipb.dictionary import IPBDictionary
-from .network import IPBNetwork
+from ingenialink.ipb.register import *
 from ingenialink.utils._utils import *
-from .._ingenialink import lib, ffi
 from ingenialink.register import dtype_size
+from ingenialink.ipb.dictionary import IPBDictionary
+from ingenialink.servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
+    SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
 
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
-import numpy as np
 import io
+import numpy as np
+from xml.dom import minidom
+import xml.etree.ElementTree as ET
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -387,20 +386,34 @@ class IPBServo(Servo):
 
         return SERVO_STATE(state[0]), flags[0]
 
-    def enable(self, timeout=2., subnode=1):
+    def enable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Enable PDS.
 
         Args:
-            timeout (int, float, optional): Timeout (s).
             subnode (int, optional): Subnode.
+            timeout (int): Timeout in milliseconds.
+
+        Raises:
+            ILTimeoutError: The servo could not be enabled due to timeout.
+            ILError: The servo could not be enabled.
 
         """
-        r = lib.il_servo_enable(self._cffi_servo, to_ms(timeout), subnode)
+        r = lib.il_servo_enable(self._cffi_servo, timeout, subnode)
         raise_err(r)
 
-    def disable(self, subnode=1):
-        """Disable PDS."""
-        r = lib.il_servo_disable(self._cffi_servo, subnode)
+    def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
+        """Disable PDS.
+
+        Args:
+            subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
+
+        Raises:
+            ILTimeoutError: The servo could not be disabled due to timeout.
+            ILError: Failed to disable PDS.
+
+        """
+        r = lib.il_servo_disable(self._cffi_servo, timeout, subnode)
         raise_err(r)
 
     def fault_reset(self, subnode=1):
@@ -421,7 +434,12 @@ class IPBServo(Servo):
         function.
 
         Args:
-            timeout (int, float, optional): Timeout (s).
+            subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
+
+        Raises:
+            ILTimeoutError: The servo could not be disabled due to timeout.
+            ILError: Failed to disable PDS.
 
         """
         r = lib.il_servo_switch_on(self._cffi_servo, to_ms(timeout))
