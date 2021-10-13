@@ -416,14 +416,19 @@ class IPBServo(Servo):
         r = lib.il_servo_disable(self._cffi_servo, timeout, subnode)
         raise_err(r)
 
-    def fault_reset(self, subnode=1):
+    def fault_reset(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Fault reset.
 
         Args:
             subnode (int, optional): Subnode.
+            timeout (int): Timeout in milliseconds.
+
+        Raises:
+            ILTimeoutError: The servo could not be reset due to timeout.
+            ILError: Failed to fault reset.
 
         """
-        r = lib.il_servo_fault_reset(self._cffi_servo, subnode)
+        r = lib.il_servo_fault_reset(self._cffi_servo, timeout, subnode)
         raise_err(r)
 
     def switch_on(self, timeout=2.):
