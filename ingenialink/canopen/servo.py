@@ -5,11 +5,11 @@ import canopen
 import struct
 import xml.etree.ElementTree as ET
 
-from ingenialink.utils._utils import *
 from .constants import *
 from ..constants import *
 from ..exceptions import *
 from .._ingenialink import lib
+from ingenialink.utils._utils import *
 from ..servo import SERVO_STATE, Servo
 from .dictionary import CanopenDictionary
 from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
@@ -383,15 +383,16 @@ class CanopenServo(Servo):
         if error_raised is not None:
             raise_err(lib.IL_EIO, error_raised)
 
-    def enable(self, timeout=2000, subnode=1):
+    def enable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Enable PDS.
 
         Args:
-            timeout (int): Maximum value to wait for the operation to be done.
             subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
 
-        Returns:
-            int: Error code.
+       Raises:
+            ILTimeoutError: The servo could not be enabled due to timeout.
+            ILError: Failed to enable PDS.
 
         """
         r = 0
@@ -402,8 +403,10 @@ class CanopenServo(Servo):
         self._set_state(state, subnode)
 
         # Try fault reset if faulty
-        if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT or \
-                self.status[subnode].value == lib.IL_SERVO_STATE_FAULTR:
+        if self.status[subnode].value in [
+            lib.IL_SERVO_STATE_FAULT,
+            lib.IL_SERVO_STATE_FAULTR,
+        ]:
             self.fault_reset(subnode=subnode)
 
         while self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
@@ -427,7 +430,7 @@ class CanopenServo(Servo):
                            subnode=subnode)
 
                 # Wait for state change
-                r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
+                r = self.status_word_wait_change(status_word, timeout,
                                                  subnode=1)
                 if r < 0:
                     raise_err(r)
@@ -439,14 +442,16 @@ class CanopenServo(Servo):
                 self._set_state(state, subnode)
         raise_err(r)
 
-    def disable(self, subnode=1):
+    def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Disable PDS.
 
         Args:
             subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
 
-        Returns:
-            int: Error code.
+        Raises:
+            ILTimeoutError: The servo could not be disabled due to timeout.
+            ILError: Failed to disable PDS.
 
         """
         r = 0
@@ -460,8 +465,10 @@ class CanopenServo(Servo):
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
 
-            if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT or \
-                    self.status[subnode].value == lib.IL_SERVO_STATE_FAULTR:
+            if self.status[subnode].value in [
+                lib.IL_SERVO_STATE_FAULT,
+                lib.IL_SERVO_STATE_FAULTR,
+            ]:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
                 status_word = self.read(STATUS_WORD_REGISTERS[subnode],
@@ -474,7 +481,7 @@ class CanopenServo(Servo):
                            IL_MC_PDS_CMD_DV, subnode=subnode)
 
                 # Wait until status word changes
-                r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
+                r = self.status_word_wait_change(status_word, timeout,
                                                  subnode=1)
                 if r < 0:
                     raise_err(r)
@@ -484,14 +491,16 @@ class CanopenServo(Servo):
                 self._set_state(state, subnode)
         raise_err(r)
 
-    def fault_reset(self, subnode=1):
+    def fault_reset(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Executes a fault reset on the drive.
 
         Args:
             subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
 
         Raises:
             ILTimeoutError: If fault reset spend too much time.
+            ILError: Failed to fault reset.
 
         """
         r = 0
@@ -507,7 +516,7 @@ class CanopenServo(Servo):
             self.write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR,
                        subnode=subnode)
             # Wait until status word changes
-            r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
+            r = self.status_word_wait_change(status_word, timeout,
                                              subnode=1)
             status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
