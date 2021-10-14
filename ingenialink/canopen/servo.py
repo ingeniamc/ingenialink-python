@@ -707,7 +707,8 @@ class CanopenServo(Servo):
         """Store all the current parameters of the target subnode.
 
         Args:
-            subnode (int): Subnode of the axis.
+            subnode (int): Subnode of the axis. `None` by default which stores
+            all the parameters.
             sdo_timeout (int): Timeout value for each SDO response.
 
         Raises:
@@ -768,7 +769,8 @@ class CanopenServo(Servo):
             in order for the changes to be properly applied.
 
         Args:
-            subnode (int): Subnode of the axis.
+            subnode (int): Subnode of the axis. `None` by default which restores
+            all the parameters.
 
         Raises:
             ILError: Invalid subnode.

@@ -475,7 +475,8 @@ class IPBServo(Servo):
         """Store all the current parameters of the target subnode.
 
         Args:
-            subnode (int): Subnode of the axis.
+            subnode (int): Subnode of the axis. `None` by default which stores
+            all the parameters.
 
         Raises:
             ILError: Invalid subnode.
@@ -532,7 +533,8 @@ class IPBServo(Servo):
             in order for the changes to be properly applied.
 
         Args:
-            subnode (int): Subnode of the axis.
+            subnode (int): Subnode of the axis. `None` by default which restores
+            all the parameters.
 
         Raises:
             ILError: Invalid subnode.
