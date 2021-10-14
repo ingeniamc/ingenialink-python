@@ -1,5 +1,5 @@
 from .network import NetworkMonitor, NET_PROT, \
-    NET_STATE, NET_DEV_EVT, NET_TRANS_PROT, Network
+    NET_STATE, NET_DEV_EVT, NET_TRANS_PROT, Network, EEPROM_FILE_FORMAT
 from .servo import SERVO_STATE, SERVO_FLAGS, SERVO_MODE, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL, SERVO_UNITS_ACC, Servo
 from .monitor import Monitor, MONITOR_TRIGGER
@@ -30,10 +30,10 @@ from ingenialink.utils.errors import err_ipb_last
 from ._ingenialink import lib
 from ingenialink.utils._utils import pstr
 
-__all__ = ['NetworkMonitor', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE', 'NET_TRANS_PROT',
+__all__ = ['EEPROM_FILE_FORMAT', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE', 'NET_TRANS_PROT',
            'SERVO_STATE', 'SERVO_FLAGS', 'SERVO_MODE', 'SERVO_UNITS_TORQUE',
-           'Servo', 'Network'
            'SERVO_UNITS_POS', 'SERVO_UNITS_VEL', 'SERVO_UNITS_ACC',
+           'NetworkMonitor', 'Network', 'Servo',
            'IPBDictionary', 'IPBRegister', 'REG_DTYPE', 'REG_ACCESS', 'REG_PHY',
            'Monitor', 'MONITOR_TRIGGER', 'IPBPoller', 'IPBServo',
            'SerialNetwork', 'SerialServo', 'EthercatNetwork', 'EthercatServo',
@@ -46,5 +46,5 @@ __version__ = '6.1.0'
 
 try:
     __ingenialink_C_version__ = pstr(lib.il_version())
-except Exception as e:
+except Exception:
     __ingenialink_C_version__ = '-'
