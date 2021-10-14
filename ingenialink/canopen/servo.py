@@ -758,7 +758,7 @@ class CanopenServo(Servo):
             else:
                 raise ILError('Invalid subnode.')
         finally:
-            sleep(0.5)
+            sleep(1.5)
             self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
     def restore_parameters(self, subnode=None):
@@ -795,7 +795,7 @@ class CanopenServo(Servo):
             logger.info('Restore subnode {} successfully done.'.format(subnode))
         else:
             raise ILError('Invalid subnode.')
-        sleep(0.5)
+        sleep(1.5)
 
     def _change_sdo_timeout(self, value):
         """Changes the SDO timeout of the node."""
