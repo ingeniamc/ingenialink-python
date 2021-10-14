@@ -398,7 +398,7 @@ class IPBServo(Servo):
             ILError: The servo could not be enabled.
 
         """
-        r = lib.il_servo_enable(self._cffi_servo, timeout, subnode)
+        r = lib.il_servo_enable(self._cffi_servo, subnode, timeout)
         raise_err(r)
 
     def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
@@ -413,7 +413,7 @@ class IPBServo(Servo):
             ILError: Failed to disable PDS.
 
         """
-        r = lib.il_servo_disable(self._cffi_servo, timeout, subnode)
+        r = lib.il_servo_disable(self._cffi_servo, subnode, timeout)
         raise_err(r)
 
     def fault_reset(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
@@ -428,7 +428,7 @@ class IPBServo(Servo):
             ILError: Failed to fault reset.
 
         """
-        r = lib.il_servo_fault_reset(self._cffi_servo, timeout, subnode)
+        r = lib.il_servo_fault_reset(self._cffi_servo, subnode, timeout)
         raise_err(r)
 
     def switch_on(self, timeout=2.):
