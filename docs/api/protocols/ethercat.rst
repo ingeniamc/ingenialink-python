@@ -5,4 +5,8 @@ EtherCAT API documentation
 .. toctree::
     :glob:
 
-    ethercat/*
+    ethercat/network
+    ethercat/servo
+    ipb/dictionary
+    ipb/register
+    ipb/poller

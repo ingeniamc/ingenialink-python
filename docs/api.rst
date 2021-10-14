@@ -5,4 +5,6 @@ API documentation
 .. toctree::
     :glob:
 
-    api/*
+    api/protocols
+    api/exceptions
+    api/base_classes
