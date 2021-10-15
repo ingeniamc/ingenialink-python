@@ -36,9 +36,30 @@ def test_store_parameters(connect_to_slave):
 
     servo.store_parameters()
 
+    value = servo.read('DRV_STATE_STATUS')
+    assert value is not None
+
 
 def test_restore_parameters(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
 
     servo.restore_parameters()
+
+    value = servo.read('DRV_STATE_STATUS')
+    assert value is not None
+
+
+def test_read(connect_to_slave):
+    servo, net = connect_to_slave
+    assert servo is not None and net is not None
+
+    value = servo.read('DRV_STATE_STATUS')
+    assert value is not None
+
+
+def test_write(connect_to_slave):
+    servo, net = connect_to_slave
+    assert servo is not None and net is not None
+
+    servo.write('CL_AUX_FBK_SENSOR', 4)

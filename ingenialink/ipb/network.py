@@ -85,41 +85,61 @@ class IPBNetwork(Network, ABC):
         raised.
 
         Args:
-            callback (Callback): Function that will be called every time an event
+            callback (function): Function that will be called every time an event
             is raised.
 
         """
         if callback in self.__observers_net_state:
-            raise ILError('Callback already subscribed.')
+            logger.info('Callback already subscribed.')
+            return
         self.__observers_net_state.append(callback)
 
     def unsubscribe_from_status(self, callback):
         """Unsubscribe from state changes.
 
         Args:
-            callback (Callback): Callback function.
+            callback (function): Callback function.
 
         """
         if callback not in self.__observers_net_state:
-            raise ILError('Callback not subscribed.')
+            logger.info('Callback not subscribed.')
+            return
         self.__observers_net_state.remove(callback)
 
     def _notify_status(self, status):
         for callback in self.__observers_net_state:
             callback(status)
 
-    def start_network_monitor(self):
-        """Start monitoring network events"""
-        self.__listener_net_status = NetStatusListener(self)
-        self.__listener_net_status.start()
+    def _set_status_check_stop(self, stop):
+        """Start/Stop the internal monitor of the drive status.
 
-    def stop_network_monitor(self):
-        """Stop monitoring network events."""
+        Args:
+            stop (int): 0 to START, 1 to STOP.
+
+        Raises:
+            ILError: If the operation returns a negative error code.
+
+        """
+        r = lib.il_net_set_status_check_stop(self._cffi_network, stop)
+
+        if r < 0:
+            raise ILError('Could not start servo monitoring')
+
+    def start_status_listener(self):
+        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+        self._set_status_check_stop(0)
+        if not self.__listener_net_status:
+            self.__listener_net_status = NetStatusListener(self)
+            self.__listener_net_status.start()
+
+    def stop_status_listener(self):
+        """Stop monitoring network events (CONNECTION/DISCONNECTION)."""
+        self._set_status_check_stop(1)
         if self.__listener_net_status is not None and \
                 self.__listener_net_status.is_alive():
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
-            self.__listener_net_status = None
+        self.__listener_net_status = None
 
     def set_reconnection_retries(self, retries):
         """Set the number of reconnection retries in our application.

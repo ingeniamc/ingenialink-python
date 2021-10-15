@@ -5,11 +5,11 @@ import canopen
 import struct
 import xml.etree.ElementTree as ET
 
-from ingenialink.utils._utils import *
 from .constants import *
 from ..constants import *
 from ..exceptions import *
 from .._ingenialink import lib
+from ingenialink.utils._utils import *
 from ..servo import SERVO_STATE, Servo
 from .dictionary import CanopenDictionary
 from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
@@ -19,22 +19,49 @@ logger = ingenialogger.get_logger(__name__)
 
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
-SERIAL_NUMBER = CanopenRegister(
-    identifier='', units='', subnode=1, idx=0x26E6, subidx=0x00,
-    cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-)
-PRODUCT_CODE = CanopenRegister(
-    identifier='', units='', subnode=1, idx=0x26E1, subidx=0x00,
-    cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-)
-SOFTWARE_VERSION = CanopenRegister(
-    identifier='', units='', subnode=1, idx=0x26E4, subidx=0x00,
-    cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
-)
-REVISION_NUMBER = CanopenRegister(
-    identifier='', units='', subnode=1, idx=0x26E2, subidx=0x00,
-    cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-)
+PRODUCT_ID_REGISTERS = {
+    0: CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x5EE1, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    ),
+    1: CanopenRegister(
+        identifier='', units='', subnode=1, idx=0x26E1, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    )
+}
+
+SERIAL_NUMBER_REGISTERS = {
+    0: CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x5EE6, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    ),
+    1: CanopenRegister(
+        identifier='', units='', subnode=1, idx=0x26E6, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    )
+}
+
+SOFTWARE_VERSION_REGISTERS = {
+    0: CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x5EE4, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+    ),
+    1: CanopenRegister(
+        identifier='', units='', subnode=1, idx=0x26E4, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+    )
+}
+
+REVISION_NUMBER_REGISTERS = {
+    0: CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x5EE2, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    ),
+    1: CanopenRegister(
+        identifier='', units='', subnode=1, idx=0x26E2, subidx=0x00,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    )
+}
 
 STATUS_WORD_REGISTERS = {
     1: CanopenRegister(
@@ -93,15 +120,15 @@ STORE_MOCO_ALL_REGISTERS = {
 
 RESTORE_MOCO_ALL_REGISTERS = {
     1: CanopenRegister(
-        identifier='', units='', subnode=1, idx="0x26DC", subidx="0x00",
+        identifier='', units='', subnode=1, idx=0x26DC, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     2: CanopenRegister(
-        identifier='', units='', subnode=2, idx="0x2EDC", subidx="0x00",
+        identifier='', units='', subnode=2, idx=0x2EDC, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     ),
     3: CanopenRegister(
-        identifier='', units='', subnode=3, idx="0x36DC", subidx="0x00",
+        identifier='', units='', subnode=3, idx=0x36DC, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
 }
@@ -347,7 +374,7 @@ class CanopenServo(Servo):
                                                        byteorder='little',
                                                        signed=signed))
         except Exception as e:
-            logger.error("Failed reading %s. Exception: %s",
+            logger.error("Failed writing %s. Exception: %s",
                          str(_reg.identifier), e)
             error_raised = "Error writing {}".format(_reg.identifier)
         finally:
@@ -356,15 +383,16 @@ class CanopenServo(Servo):
         if error_raised is not None:
             raise_err(lib.IL_EIO, error_raised)
 
-    def enable(self, timeout=2000, subnode=1):
+    def enable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Enable PDS.
 
         Args:
-            timeout (int): Maximum value to wait for the operation to be done.
             subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
 
-        Returns:
-            int: Error code.
+       Raises:
+            ILTimeoutError: The servo could not be enabled due to timeout.
+            ILError: Failed to enable PDS.
 
         """
         r = 0
@@ -375,8 +403,10 @@ class CanopenServo(Servo):
         self._set_state(state, subnode)
 
         # Try fault reset if faulty
-        if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT or \
-                self.status[subnode].value == lib.IL_SERVO_STATE_FAULTR:
+        if self.status[subnode].value in [
+            lib.IL_SERVO_STATE_FAULT,
+            lib.IL_SERVO_STATE_FAULTR,
+        ]:
             self.fault_reset(subnode=subnode)
 
         while self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
@@ -400,7 +430,7 @@ class CanopenServo(Servo):
                            subnode=subnode)
 
                 # Wait for state change
-                r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
+                r = self.status_word_wait_change(status_word, timeout,
                                                  subnode=1)
                 if r < 0:
                     raise_err(r)
@@ -412,14 +442,16 @@ class CanopenServo(Servo):
                 self._set_state(state, subnode)
         raise_err(r)
 
-    def disable(self, subnode=1):
+    def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Disable PDS.
 
         Args:
             subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
 
-        Returns:
-            int: Error code.
+        Raises:
+            ILTimeoutError: The servo could not be disabled due to timeout.
+            ILError: Failed to disable PDS.
 
         """
         r = 0
@@ -433,8 +465,10 @@ class CanopenServo(Servo):
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
 
-            if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT or \
-                    self.status[subnode].value == lib.IL_SERVO_STATE_FAULTR:
+            if self.status[subnode].value in [
+                lib.IL_SERVO_STATE_FAULT,
+                lib.IL_SERVO_STATE_FAULTR,
+            ]:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
                 status_word = self.read(STATUS_WORD_REGISTERS[subnode],
@@ -447,7 +481,7 @@ class CanopenServo(Servo):
                            IL_MC_PDS_CMD_DV, subnode=subnode)
 
                 # Wait until status word changes
-                r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
+                r = self.status_word_wait_change(status_word, timeout,
                                                  subnode=1)
                 if r < 0:
                     raise_err(r)
@@ -457,14 +491,16 @@ class CanopenServo(Servo):
                 self._set_state(state, subnode)
         raise_err(r)
 
-    def fault_reset(self, subnode=1):
+    def fault_reset(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Executes a fault reset on the drive.
 
         Args:
             subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
 
         Raises:
             ILTimeoutError: If fault reset spend too much time.
+            ILError: Failed to fault reset.
 
         """
         r = 0
@@ -480,7 +516,7 @@ class CanopenServo(Servo):
             self.write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR,
                        subnode=subnode)
             # Wait until status word changes
-            r = self.status_word_wait_change(status_word, PDS_TIMEOUT,
+            r = self.status_word_wait_change(status_word, timeout,
                                              subnode=1)
             status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
@@ -613,6 +649,15 @@ class CanopenServo(Servo):
         tree.write(config_file)
         xml_file.close()
 
+    def replace_dictionary(self, dictionary):
+        """Deletes and creates a new instance of the dictionary.
+
+        Args:
+            dictionary (str): Dictionary.
+
+        """
+        self._dictionary = CanopenDictionary(dictionary)
+
     def load_configuration(self, config_file, subnode=None):
         """Write current dictionary storage to the servo drive.
 
@@ -662,7 +707,8 @@ class CanopenServo(Servo):
         """Store all the current parameters of the target subnode.
 
         Args:
-            subnode (int): Subnode of the axis.
+            subnode (int): Subnode of the axis. `None` by default which stores
+            all the parameters.
             sdo_timeout (int): Timeout value for each SDO response.
 
         Raises:
@@ -712,13 +758,19 @@ class CanopenServo(Servo):
             else:
                 raise ILError('Invalid subnode.')
         finally:
+            sleep(1.5)
             self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
     def restore_parameters(self, subnode=None):
         """Restore all the current parameters of all the slave to default.
 
+        .. note::
+            The drive needs a power cycle after this
+            in order for the changes to be properly applied.
+
         Args:
-            subnode (int): Subnode of the axis.
+            subnode (int): Subnode of the axis. `None` by default which restores
+            all the parameters.
 
         Raises:
             ILError: Invalid subnode.
@@ -743,6 +795,7 @@ class CanopenServo(Servo):
             logger.info('Restore subnode {} successfully done.'.format(subnode))
         else:
             raise ILError('Invalid subnode.')
+        sleep(1.5)
 
     def _change_sdo_timeout(self, value):
         """Changes the SDO timeout of the node."""
@@ -784,7 +837,7 @@ class CanopenServo(Servo):
     def start_status_listener(self):
         """Start listening for servo status events (SERVO_STATE)."""
         if self.__listener_servo_status is not None:
-            raise ILError('Listener already started')
+            return
         status_word = self.read(STATUS_WORD_REGISTERS[1])
         state = self.status_word_decode(status_word)
         self._set_state(state, 1)
@@ -795,7 +848,7 @@ class CanopenServo(Servo):
     def stop_status_listener(self):
         """Stop listening for servo status events (SERVO_STATE)."""
         if self.__listener_servo_status is None:
-            raise ILError('Listener already stopped')
+            return
         if self.__listener_servo_status.is_alive():
             self.__listener_servo_status.stop()
             self.__listener_servo_status.join()
@@ -805,27 +858,27 @@ class CanopenServo(Servo):
         """Subscribe to state changes.
 
             Args:
-                callback (Callback): Callback function.
+                callback (function): Callback function.
 
             Returns:
                 int: Assigned slot.
 
         """
         if callback in self.__observers_servo_state:
-            raise ILError('Callback already subscribed.')
-        slot = len(self.__observers_servo_state)
+            logger.info('Callback already subscribed.')
+            return
         self.__observers_servo_state.append(callback)
-        return slot
 
     def unsubscribe_from_status(self, callback):
         """Unsubscribe from state changes.
 
         Args:
-            callback (Callback): Callback function.
+            callback (function): Callback function.
 
         """
         if callback not in self.__observers_servo_state:
-            raise ILError('Callback not subscribed.')
+            logger.info('Callback not subscribed.')
+            return
         self.__observers_servo_state.remove(callback)
 
     def status_word_wait_change(self, status_word, timeout, subnode=1):
@@ -895,6 +948,28 @@ class CanopenServo(Servo):
             state = lib.IL_SERVO_STATE_NRDY
         return SERVO_STATE(state)
 
+    def __read_coco_moco_register(self, register_coco, register_moco):
+        """Reads the COCO register and if it does not exist,
+        reads the MOCO register
+
+        Args:
+            register_coco (IPBRegister): COCO Register to be read.
+            register_moco (IPBRegister: MOCO Register to be read.
+
+        Returns:
+            int: Read value of the register.
+
+        """
+        try:
+            return self.read(register_coco, subnode=0)
+        except ILError:
+            pass
+
+        try:
+            return self.read(register_moco, subnode=1)
+        except ILError:
+            pass
+
     @property
     def dictionary(self):
         """Returns dictionary object"""
@@ -922,10 +997,14 @@ class CanopenServo(Servo):
     @property
     def info(self):
         """dict: Servo information."""
-        serial_number = self.read(SERIAL_NUMBER)
-        product_code = self.read(PRODUCT_CODE)
-        sw_version = self.read(SOFTWARE_VERSION)
-        revision_number = self.read(REVISION_NUMBER)
+        serial_number = self.__read_coco_moco_register(
+            SERIAL_NUMBER_REGISTERS[0], SERIAL_NUMBER_REGISTERS[1])
+        sw_version = self.__read_coco_moco_register(
+            SOFTWARE_VERSION_REGISTERS[0], SOFTWARE_VERSION_REGISTERS[1])
+        product_code = self.__read_coco_moco_register(
+            PRODUCT_ID_REGISTERS[0], PRODUCT_ID_REGISTERS[1])
+        revision_number = self.__read_coco_moco_register(
+            REVISION_NUMBER_REGISTERS[0], REVISION_NUMBER_REGISTERS[1])
         hw_variant = 'A'
 
         return {

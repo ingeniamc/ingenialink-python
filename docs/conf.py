@@ -22,6 +22,7 @@ _version = re.search(r'__version__\s+=\s+\'(.*)\'',
 
 project = 'ingenialink'
 version = _version
+release = version
 author = 'Ingenia Motion Control'
 year = datetime.now().year
 copyright = '{}, Ingenia-CAT S.L.'.format(year)
@@ -33,11 +34,6 @@ pygments_style = 'sphinx'
 # html
 html_static_path = ['_static']
 html_theme = 'sphinx_rtd_theme'
-html_logo = '_static/images/logo.svg'
-html_theme_options = {
-    'logo_only': True,
-    'display_version': False,
-}
 
 
 def setup(app):

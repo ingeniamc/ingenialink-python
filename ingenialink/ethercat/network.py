@@ -1,12 +1,27 @@
-from ..network import NET_PROT
+from enum import Enum
 from ..exceptions import *
+from ..network import NET_PROT
 from .servo import EthercatServo
-from .._ingenialink import lib, ffi
 from ingenialink.constants import *
+from .._ingenialink import lib, ffi
+from ingenialink.utils._utils import cstr
 from ingenialink.ipb.network import IPBNetwork
-from ingenialink.utils._utils import cstr, raise_err
+from ingenialink.network import EEPROM_FILE_FORMAT
 
 import os
+import ingenialogger
+logger = ingenialogger.get_logger(__name__)
+
+
+class EEPROM_TOOL_MODE(Enum):
+    """EEPROM tool mode."""
+    MODE_NONE = 0
+    MODE_READBIN = 1
+    MODE_READINTEL = 2
+    MODE_WRITEBIN = 3
+    MODE_WRITEINTEL = 4
+    MODE_WRITEALIAS = 5
+    MODE_INFO = 6
 
 
 class EthercatNetwork(IPBNetwork):
@@ -16,9 +31,8 @@ class EthercatNetwork(IPBNetwork):
         interface_name (str): Interface name to be targeted.
 
     """
-    def __init__(self, interface_name=""):
+    def __init__(self, interface_name):
         super(EthercatNetwork, self).__init__()
-        self._cffi_network = ffi.new('il_net_t **')
         self.interface_name = interface_name
         """str: Interface name used in the network settings."""
 
@@ -50,6 +64,7 @@ class EthercatNetwork(IPBNetwork):
         if not os.path.isfile(fw_file):
             raise FileNotFoundError('Could not find {}.'.format(fw_file))
         try:
+            self._cffi_network = ffi.new('il_net_t **')
             _interface_name = cstr(self.interface_name) \
                 if self.interface_name else ffi.NULL
             _fw_file = cstr(fw_file) if fw_file else ffi.NULL
@@ -59,10 +74,90 @@ class EthercatNetwork(IPBNetwork):
                                            _fw_file,
                                            boot_in_app)
             if r < 0:
-                raise ILFirmwareLoadError('Error updating firmware. '
-                                          'Error code: {}'.format(r))
+                logger.error('Error updating firmware. '
+                             'Error code: {}'.format(r))
+                raise ILFirmwareLoadError('Error updating firmware.')
         except Exception as e:
-            raise ILFirmwareLoadError(e)
+            logger.error(e)
+            raise ILFirmwareLoadError('Error updating firmware '
+                                      'due to an internal error.')
+
+    def _read_eeprom(self, eeprom_file, slave, file_format):
+        """Reads the EEPROM.
+
+        Args:
+            eeprom_file (str): Path to the EEPROM file.
+            slave (int): Target slave number to be connected
+            file_format (EEPROM_FILE_FORMAT): EEPROM tool mode.
+
+        Raises:
+            ILError: In case the operation does not succeed.
+
+        """
+        if file_format not in EEPROM_FILE_FORMAT:
+            raise ILError('Invalid file format')
+        if file_format == EEPROM_FILE_FORMAT.BINARY:
+            mode = EEPROM_TOOL_MODE.MODE_READBIN
+        else:
+            mode = EEPROM_TOOL_MODE.MODE_READINTEL
+
+        self._cffi_network = ffi.new('il_net_t **')
+        _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
+        _eeprom_file = cstr(eeprom_file) if eeprom_file else ffi.NULL
+
+        r = lib.il_net_eeprom_tool(
+            self._cffi_network, _interface_name, slave, mode, _eeprom_file)
+        if r < 0:
+            raise ILError('Failed reading EEPROM file.')
+
+    def _write_eeprom(self, eeprom_file, slave, file_format):
+        """Loads an EEPROM file to use as configuration.
+
+        Args:
+            eeprom_file (str): Path to the EEPROM file.
+            slave (int): Target slave number to be connected
+            file_format (EEPROM_FILE_FORMAT): EEPROM tool mode.
+
+        Raises:
+            ILError: In case the operation does not succeed.
+
+        """
+        if file_format not in EEPROM_FILE_FORMAT:
+            raise ILError('Invalid file format')
+        if file_format == EEPROM_FILE_FORMAT.BINARY:
+            mode = EEPROM_TOOL_MODE.MODE_WRITEBIN
+        else:
+            mode = EEPROM_TOOL_MODE.MODE_WRITEINTEL
+
+        self._cffi_network = ffi.new('il_net_t **')
+        _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
+        _eeprom_file = cstr(eeprom_file) if eeprom_file else ffi.NULL
+
+        r = lib.il_net_eeprom_tool(
+            self._cffi_network, _interface_name, slave, mode, _eeprom_file)
+        if r < 0:
+            raise ILError('Failed writing EEPROM file.')
+
+    def _write_eeprom_alias(self, eeprom_file, slave):
+        """Writes the configuration station alias.
+
+        Args:
+            eeprom_file (str): Path to the EEPROM file.
+            slave (int): Target slave number to be connected
+
+        Raises:
+            ILError: In case the operation does not succeed.
+
+        """
+        self._cffi_network = ffi.new('il_net_t **')
+        _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
+        _eeprom_file = cstr(eeprom_file) if eeprom_file else ffi.NULL
+
+        r = lib.il_net_eeprom_tool(
+            self._cffi_network, _interface_name, slave,
+            EEPROM_TOOL_MODE.MODE_WRITEALIAS, _eeprom_file)
+        if r < 0:
+            raise ILError('Failed writing EEPROM alias.')
 
     def scan_slaves(self):
         """Scan all the slaves connected in the network.
@@ -106,6 +201,7 @@ class EthercatNetwork(IPBNetwork):
         _dictionary = cstr(dictionary) if dictionary else ffi.NULL
 
         _servo = ffi.new('il_servo_t **')
+        self._cffi_network = ffi.new('il_net_t **')
         r = lib.il_servo_connect_ecat(3, _interface_name, self._cffi_network,
                                       _servo, _dictionary, 1061,
                                       target, use_eoe_comms)
@@ -122,7 +218,7 @@ class EthercatNetwork(IPBNetwork):
             self.servos.append(servo)
 
         if net_status_listener:
-            self.start_network_monitor()
+            self.start_status_listener()
 
         self.set_reconnection_retries(reconnection_retries)
         self.set_recv_timeout(reconnection_timeout)
@@ -139,8 +235,8 @@ class EthercatNetwork(IPBNetwork):
         # TODO: This stops all connections no only the target servo.
         if servo in self.servos:
             self.servos.remove(servo)
+        self.stop_status_listener()
         r = lib.il_net_master_stop(self._cffi_network)
-        self.destroy_network()
         self._cffi_network = None
         if r < 0:
             raise ILError('Error disconnecting the drive. '

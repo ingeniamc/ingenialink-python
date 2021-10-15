@@ -1,3 +1,5 @@
+import ftplib
+
 from .servo import EthernetServo
 from ingenialink.constants import *
 from .._ingenialink import lib, ffi
@@ -85,7 +87,8 @@ class EthernetNetwork(IPBNetwork):
             file.close()
 
         except Exception as e:
-            raise ILFirmwareLoadError("Exception when flashing drive: {}".format(e))
+            logger.error(e)
+            raise ILFirmwareLoadError('Error during bootloader process.')
 
     @staticmethod
     def load_firmware_moco(node, subnode, ip, port, moco_file):
@@ -108,34 +111,37 @@ class EthernetNetwork(IPBNetwork):
         r = 0
         upd = UDP(port, ip)
 
-        if moco_file and os.path.isfile(moco_file):
-            moco_in = open(moco_file, "r")
-
-            logger.info("Loading firmware...")
-            try:
-                for line in moco_in:
-                    words = line.split()
-
-                    # Get command and address
-                    cmd = int(words[1] + words[0], 16)
-                    data = b''
-                    data_start_byte = 2
-                    while data_start_byte in range(data_start_byte, len(words)):
-                        # Load UDP data
-                        data = data + bytes([int(words[data_start_byte], 16)])
-                        data_start_byte = data_start_byte + 1
-
-                    # Send message
-                    upd.raw_cmd(node, subnode, cmd, data)
-
-                    if cmd == CMD_CHANGE_CPU:
-                        sleep(1)
-
-                logger.info("Bootload process succeeded")
-            except Exception as e:
-                raise ILFirmwareLoadError('Error during bootloader process. %s', e)
-        else:
+        if not moco_file or not os.path.isfile(moco_file):
             raise ILFirmwareLoadError('File not found')
+        moco_in = open(moco_file, "r")
+
+        logger.info("Loading firmware...")
+        try:
+            for line in moco_in:
+                words = line.split()
+
+                # Get command and address
+                cmd = int(words[1] + words[0], 16)
+                data = b''
+                data_start_byte = 2
+                while data_start_byte in range(data_start_byte, len(words)):
+                        # Load UDP data
+                    data += bytes([int(words[data_start_byte], 16)])
+                    data_start_byte += 1
+
+                # Send message
+                upd.raw_cmd(node, subnode, cmd, data)
+
+                if cmd == CMD_CHANGE_CPU:
+                    sleep(1)
+
+            logger.info("Bootload process succeeded")
+        except ftplib.error_temp as e:
+            logger.error(e)
+            raise ILFirmwareLoadError('Firewall might be blocking the access.')
+        except Exception as e:
+            logger.error(e)
+            raise ILFirmwareLoadError('Error during bootloader process.')
 
     def scan_slaves(self):
         raise NotImplementedError
@@ -187,7 +193,9 @@ class EthernetNetwork(IPBNetwork):
         self.servos.append(servo)
 
         if net_status_listener:
-            self.start_network_monitor()
+            self.start_status_listener()
+        else:
+            self.stop_status_listener()
 
         self.set_reconnection_retries(reconnection_retries)
         self.set_recv_timeout(reconnection_timeout)
@@ -204,9 +212,9 @@ class EthernetNetwork(IPBNetwork):
         # TODO: This stops all connections no only the target servo.
         self.servos.remove(servo)
         if len(self.servos) == 0:
-            self.stop_network_monitor()
+            self.stop_status_listener()
+            lib.il_net_mon_stop(self._cffi_network)
             self.close_socket()
-            self.destroy_network()
         self._cffi_network = None
 
     @property

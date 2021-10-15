@@ -10,6 +10,10 @@ _version = re.search(r'__version__\s+=\s+\'(.*)\'',
                      open('ingenialink/__init__.py').read()).group(1)
 
 
+def get_docs_url():
+    return "https://distext.ingeniamc.com/doc/ingenialink-python/{}".format(_version)
+
+
 class BDistAppCommand(Command):
     """Custom command to build the application."""
 
@@ -58,6 +62,10 @@ setup(name='ingenialink',
       author='Ingenia Motion Control',
       author_email='support@ingeniamc.com',
       url='https://www.ingeniamc.com',
+      project_urls={
+          'Documentation': get_docs_url(),
+          'Source': 'https://github.com/ingeniamc/ingenialink-python'
+      },
       classifiers=[
           'Development Status :: 4 - Beta',
           'Intended Audience :: Developers',

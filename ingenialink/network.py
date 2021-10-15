@@ -30,15 +30,10 @@ class NET_DEV_EVT(Enum):
     REMOVED = lib.IL_NET_DEV_EVT_REMOVED
 
 
-class EEPROM_TOOL_MODE(Enum):
-    """EEPROM tool mode."""
-    MODE_NONE = 0
-    MODE_READBIN = 1
-    MODE_READINTEL = 2
-    MODE_WRITEBIN = 3
-    MODE_WRITEINTEL = 4
-    MODE_WRITEALIAS = 5
-    MODE_INFO = 6
+class EEPROM_FILE_FORMAT(Enum):
+    """EEPROM file format"""
+    BINARY = 0
+    INTEL = 1
 
 
 class NET_TRANS_PROT(Enum):
@@ -92,7 +87,11 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def stop_network_monitor(self, *args, **kwargs):
+    def start_status_listener(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def stop_status_listener(self, *args, **kwargs):
         raise NotImplementedError
 
     @property

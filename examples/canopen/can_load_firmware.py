@@ -41,11 +41,8 @@ def load_firmware_example_connected():
         fw_version = servo.read('DRV_ID_SOFTWARE_VERSION')
         print('Firmware version before loading new firmware', fw_version)
 
-        net.subscribe_to_load_firmware_process(
-            callback_status_msg=print_status_message,
-            callback_progress=print_progress,
-            callback_errors_enabled=print_errors_enabled)
-        net.load_firmware(nodes[0], '../../resources/firmware/eve-net-c_1.8.1.sfu')
+        net.load_firmware(nodes[0], '../../resources/firmware/eve-net-c_1.8.1.sfu',
+                          print_status_message, print_progress, print_errors_enabled)
 
         fw_version = servo.read('DRV_ID_SOFTWARE_VERSION')
         print('Firmware version after loading new firmware', fw_version)
@@ -60,12 +57,8 @@ def load_firmware_example_disconnected():
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,
                          baudrate=CAN_BAUDRATE.Baudrate_1M)
-
-    net.subscribe_to_load_firmware_process(
-        callback_status_msg=print_status_message,
-        callback_progress=print_progress,
-        callback_errors_enabled=print_errors_enabled)
-    net.load_firmware(32, '../../resources/firmware/eve-net-c_1.8.1.sfu')
+    net.load_firmware(32, '../../resources/firmware/eve-net-c_1.8.1.sfu',
+                      print_status_message, print_progress, print_errors_enabled)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 from .._ingenialink import lib, ffi
 from ingenialink.utils._utils import *
+from ingenialink.exceptions import ILError
 from ingenialink.network import NET_TRANS_PROT
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
 from ingenialink.ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS
@@ -47,10 +48,14 @@ class EthernetServo(IPBServo):
         self.communication_protocol = communication_protocol
         """NET_TRANS_PROT: Protocol used to connect to the servo."""
 
-        if not servo_status_listener:
-            self.stop_status_listener()
-        else:
+        prod_name = '' if self.dictionary.part_number is None \
+            else self.dictionary.part_number
+        self.full_name = '{} {} ({})'.format(prod_name, self.name, self.target)
+
+        if servo_status_listener:
             self.start_status_listener()
+        else:
+            self.stop_status_listener()
 
     def store_tcp_ip_parameters(self):
         """Stores the TCP/IP values. Affects IP address,
@@ -90,4 +95,7 @@ class EthernetServo(IPBServo):
         self.write(COMMS_ETH_NET_MASK, int_subnet_mask)
         self.write(COMMS_ETH_NET_GATEWAY, int_gateway)
 
-        self.store_tcp_ip_parameters()
+        try:
+            self.store_tcp_ip_parameters()
+        except ILError:
+            self.store_parameters()
