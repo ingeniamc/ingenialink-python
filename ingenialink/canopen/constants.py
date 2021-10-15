@@ -123,8 +123,6 @@ IL_MC_PP_SW_SPACK = (1 << 12)
 IL_MC_PP_SW_FOLLOWERR = (1 << 13)
 
 # PDS
-# PDS default timeout (ms).
-PDS_TIMEOUT = 1000
 # Flags position offset in statusword.
 FLAGS_SW_POS = 10
 # Number of retries to reset fault state

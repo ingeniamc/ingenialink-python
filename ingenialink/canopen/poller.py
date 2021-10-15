@@ -147,7 +147,7 @@ class CanopenPoller(Poller):
             raise_err(IL_EINVAL)
 
         # Obtain register
-        _reg = self.servo.get_reg(reg)
+        _reg = self.servo._get_reg(reg)
 
         # Reg identifier obtained and set enabled
         self.__mappings[channel] = {}

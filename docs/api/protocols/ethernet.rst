@@ -5,4 +5,8 @@ Ethernet API documentation
 .. toctree::
     :glob:
 
-    ethernet/*
+    ethernet/network
+    ethernet/servo
+    ipb/dictionary
+    ipb/register
+    ipb/poller

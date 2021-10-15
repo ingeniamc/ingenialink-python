@@ -1,15 +1,20 @@
-from ..network import NET_PROT, NET_TRANS_PROT
+import ftplib
+
 from .servo import EthernetServo
-from ingenialink.ipb.network import IPBNetwork
-from ingenialink.utils._utils import *
+from ingenialink.constants import *
 from .._ingenialink import lib, ffi
 from ingenialink.utils.udp import UDP
+from ingenialink.utils._utils import *
+from ..network import NET_PROT, NET_TRANS_PROT
+from ingenialink.ipb.network import IPBNetwork
 from ingenialink.exceptions import ILFirmwareLoadError
-import ingenialogger
 
 from ftplib import FTP
-from os import path
 from time import sleep
+
+import os
+import ingenialogger
+logger = ingenialogger.get_logger(__name__)
 
 FTP_SESSION_OK_CODE = "220"
 FTP_LOGIN_OK_CODE = "230"
@@ -17,8 +22,6 @@ FTP_FILE_TRANSFER_OK_CODE = "226"
 FTP_CLOSE_OK_CODE = "221"
 
 CMD_CHANGE_CPU = 0x67E4
-
-logger = ingenialogger.get_logger(__name__)
 
 
 class EthernetNetwork(IPBNetwork):
@@ -30,6 +33,11 @@ class EthernetNetwork(IPBNetwork):
     def load_firmware(fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
         """Loads a given firmware file to the target slave.
 
+        .. warning ::
+            It is needed to disconnect the drive(:func:`disconnect_from_slave`)
+            after loading the firmware since the `Servo` object's data will
+            become obsolete.
+
         Args:
             fw_file (str): Path to the firmware file to be loaded.
             target (str): IP of the target slave.
@@ -38,7 +46,11 @@ class EthernetNetwork(IPBNetwork):
 
         Raises:
             ILError: If the loading firmware process fails.
+
         """
+        if not os.path.isfile(fw_file):
+            raise FileNotFoundError('Could not find {}.'.format(fw_file))
+
         try:
             file = open(fw_file, 'rb')
             ftp_output = None
@@ -62,7 +74,7 @@ class EthernetNetwork(IPBNetwork):
             logger.info("Uploading firmware file...")
             ftp.set_pasv(False)
             ftp_output = ftp.storbinary(
-                "STOR {}".format(path.basename(file.name)), file)
+                "STOR {}".format(os.path.basename(file.name)), file)
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
                 raise_err("Unable to load the FW file through FTP")
@@ -75,7 +87,8 @@ class EthernetNetwork(IPBNetwork):
             file.close()
 
         except Exception as e:
-            raise ILFirmwareLoadError("Exception when flashing drive: {}".format(e))
+            logger.error(e)
+            raise ILFirmwareLoadError('Error during bootloader process.')
 
     @staticmethod
     def load_firmware_moco(node, subnode, ip, port, moco_file):
@@ -98,40 +111,47 @@ class EthernetNetwork(IPBNetwork):
         r = 0
         upd = UDP(port, ip)
 
-        if moco_file and path.isfile(moco_file):
-            moco_in = open(moco_file, "r")
-
-            logger.info("Loading firmware...")
-            try:
-                for line in moco_in:
-                    words = line.split()
-
-                    # Get command and address
-                    cmd = int(words[1] + words[0], 16)
-                    data = b''
-                    data_start_byte = 2
-                    while data_start_byte in range(data_start_byte, len(words)):
-                        # Load UDP data
-                        data = data + bytes([int(words[data_start_byte], 16)])
-                        data_start_byte = data_start_byte + 1
-
-                    # Send message
-                    upd.raw_cmd(node, subnode, cmd, data)
-
-                    if cmd == CMD_CHANGE_CPU:
-                        sleep(1)
-
-                logger.info("Bootload process succeeded")
-            except Exception as e:
-                raise ILFirmwareLoadError('Error during bootloader process. %s', e)
-        else:
+        if not moco_file or not os.path.isfile(moco_file):
             raise ILFirmwareLoadError('File not found')
+        moco_in = open(moco_file, "r")
+
+        logger.info("Loading firmware...")
+        try:
+            for line in moco_in:
+                words = line.split()
+
+                # Get command and address
+                cmd = int(words[1] + words[0], 16)
+                data = b''
+                data_start_byte = 2
+                while data_start_byte in range(data_start_byte, len(words)):
+                        # Load UDP data
+                    data += bytes([int(words[data_start_byte], 16)])
+                    data_start_byte += 1
+
+                # Send message
+                upd.raw_cmd(node, subnode, cmd, data)
+
+                if cmd == CMD_CHANGE_CPU:
+                    sleep(1)
+
+            logger.info("Bootload process succeeded")
+        except ftplib.error_temp as e:
+            logger.error(e)
+            raise ILFirmwareLoadError('Firewall might be blocking the access.')
+        except Exception as e:
+            logger.error(e)
+            raise ILFirmwareLoadError('Error during bootloader process.')
 
     def scan_slaves(self):
         raise NotImplementedError
 
     def connect_to_slave(self, target, dictionary=None, port=1061,
-                         communication_protocol=NET_TRANS_PROT.UDP):
+                         communication_protocol=NET_TRANS_PROT.UDP,
+                         reconnection_retries=DEFAULT_MESSAGE_RETRIES,
+                         reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT,
+                         servo_status_listener=True,
+                         net_status_listener=True):
         """Connects to a slave through the given network settings.
 
         Args:
@@ -139,6 +159,13 @@ class EthernetNetwork(IPBNetwork):
             dictionary (str): Path to the target dictionary file.
             port (int): Port to connect to the slave.
             communication_protocol (NET_TRANS_PROT): Communication protocol, UPD or TCP.
+            reconnection_retries (int): Number of reconnection retried before declaring
+            a connected or disconnected stated.
+            reconnection_timeout (int): Time in ms of the reconnection timeout.
+            servo_status_listener (bool): Toggle the listener of the servo for
+            its status, errors, faults, etc.
+            net_status_listener (bool): Toggle the listener of the network
+            status, connection and disconnection.
 
         Returns:
             EthernetServo: Instance of the servo connected.
@@ -160,9 +187,18 @@ class EthernetNetwork(IPBNetwork):
 
         self._create_cffi_network(net_)
         servo = EthernetServo(servo_, self._cffi_network, target,
-                              port, communication_protocol, dictionary)
+                              port, communication_protocol, dictionary,
+                              servo_status_listener)
 
         self.servos.append(servo)
+
+        if net_status_listener:
+            self.start_status_listener()
+        else:
+            self.stop_status_listener()
+
+        self.set_reconnection_retries(reconnection_retries)
+        self.set_recv_timeout(reconnection_timeout)
 
         return servo
 
@@ -176,9 +212,9 @@ class EthernetNetwork(IPBNetwork):
         # TODO: This stops all connections no only the target servo.
         self.servos.remove(servo)
         if len(self.servos) == 0:
-            self.stop_network_monitor()
+            self.stop_status_listener()
+            lib.il_net_mon_stop(self._cffi_network)
             self.close_socket()
-            self.destroy_network()
         self._cffi_network = None
 
     @property

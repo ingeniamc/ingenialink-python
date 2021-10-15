@@ -1,11 +1,12 @@
 import xml.etree.ElementTree as ET
-from .register import CanopenRegister, REG_ACCESS, REG_DTYPE
 from ..dictionary import Dictionary
+from ..constants import SINGLE_AXIS_MINIMUM_SUBNODES
+from .register import CanopenRegister, REG_ACCESS, REG_DTYPE
 from ingenialink.utils._utils import *
 from .._ingenialink import lib
 
 
-class Categories:
+class CanopenCategories:
     """Contains all categories from a CANopen Dictionary.
 
     Args:
@@ -32,7 +33,7 @@ class Categories:
             }
 
     @property
-    def cat_ids(self):
+    def category_ids(self):
         """list: Category IDs."""
         return self._cat_ids
 
@@ -46,7 +47,7 @@ class Categories:
         return self._categories[cat_id]
 
 
-class Errors:
+class CanopenErrors:
     """Errors for the CANopen dictionary.
 
     Args:
@@ -89,9 +90,9 @@ class CanopenDictionary(Dictionary):
     """
     def __init__(self, dictionary_path):
         super(CanopenDictionary, self).__init__(dictionary_path)
-        self.__version = '1'
+        self.version = '1'
         self.categories = None
-        self.subnodes = 2
+        self.subnodes = SINGLE_AXIS_MINIMUM_SUBNODES
         self.__registers = []
         self.errors = None
 
@@ -103,23 +104,35 @@ class CanopenDictionary(Dictionary):
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
+        device = root.find('./Body/Device')
+
         # Subnodes
         if root.findall('./Body/Device/Axes/'):
             self.subnodes = len(root.findall('./Body/Device/Axes/Axis'))
 
-        for subnode in range(0, self.subnodes):
+        for _ in range(self.subnodes):
             self.__registers.append({})
 
         # Categories
-        self.categories = Categories(self.path)
+        self.categories = CanopenCategories(self.path)
 
         # Errors
-        self.errors = Errors(self.path)
+        self.errors = CanopenErrors(self.path)
 
         # Version
         version_node = root.find('.Header/Version')
         if version_node is not None:
-            self.__version = version_node.text
+            self.version = version_node.text
+
+        self.firmware_version = device.attrib.get('firmwareVersion')
+        product_code = device.attrib.get('ProductCode')
+        if product_code is not None and product_code.isdecimal():
+            self.product_code = int(product_code)
+        self.part_number = device.attrib.get('PartNumber')
+        revision_number = device.attrib.get('RevisionNumber')
+        if revision_number is not None and revision_number.isdecimal():
+            self.revision_number = int(revision_number)
+        self.interface = device.attrib.get('Interface')
 
         if root.findall('./Body/Device/Axes/'):
             # For each axis
@@ -153,8 +166,8 @@ class CanopenDictionary(Dictionary):
             else:
                 cyclic = "CONFIG"
 
-            idx = register.attrib['address'][:6]
-            subidx = "0x" + register.attrib['address'][-2:]
+            idx = int(register.attrib['address'][:6], 16)
+            subidx = int("0x" + register.attrib['address'][-2:], 16)
 
             # Data type
             dtype = register.attrib['dtype']

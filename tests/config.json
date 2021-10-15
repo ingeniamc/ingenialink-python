@@ -1,0 +1,34 @@
+{
+  "ethernet": {
+    "dictionary": "resources/dictionaries/eve-net-c_eth_1.8.1.xdf",
+    "ip": "192.168.2.22",
+    "port": 1061,
+    "protocol": "UDP",
+    "save_config_file": "ethernetconfig.xcf",
+    "load_config_file": "resources/configurations/ethernet-config.xcf"
+  },
+  "ethercat": {
+    "dictionary": "resources/dictionaries/eve-xcr-e_eoe_1.8.1.xdf",
+    "slave": 1,
+    "ifname": "\\Device\\NPF_{192D1D2F-C684-467D-A637-EC07BD434A63}",
+    "eoe_comm": true,
+    "save_config_file": "ethercat-config.xcf",
+    "load_config_file": "resources/configurations/ethercat-config.xcf"
+  },
+  "canopen": {
+    "dictionary": "resources/dictionaries/eve-net-c_can_1.8.1.xdf",
+    "eds": "resources/dictionaries/eve-net-c_1.8.1.eds",
+    "node_id": 32,
+    "device": "ixxat",
+    "baudrate": 1000000,
+    "channel": 0,
+    "save_config_file": "canopen-config.xcf",
+    "load_config_file": "resources/configurations/canopen-config.xcf"
+  },
+  "serial": {
+    "dictionary": "resources/dictionaries/eve-core_1.8.1.xdf",
+    "com_port": "COM5",
+    "save_config_file": "serial-config.xcf.xcf",
+    "load_config_file": "resources/configurations/serial-config.xcf.xcf"
+  }
+}

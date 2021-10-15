@@ -7,9 +7,10 @@ from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import *
 from ..exceptions import ILFirmwareLoadError, ILObjectNotExist, ILError
 from can.interfaces.pcan.pcan import PcanError
-from ..network import NET_PROT, NET_STATE, Network
+from ..network import NET_PROT, NET_STATE, NET_DEV_EVT, Network
 from can.interfaces.ixxat.exceptions import VCIDeviceNotFoundError
-from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT
+from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT, \
+    STATUS_WORD_REGISTERS
 
 import re
 import os
@@ -20,20 +21,20 @@ import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
 PROG_STAT_1 = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x1F51", subidx="0x01", cyclic='CONFIG',
+    identifier='', units='', subnode=0, idx=0x1F51, subidx=0x01, cyclic='CONFIG',
     dtype=REG_DTYPE.U8, access=REG_ACCESS.RW
 )
 PROG_DL_1 = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x1F50", subidx="0x01", cyclic='CONFIG',
+    identifier='', units='', subnode=0, idx=0x1F50, subidx=0x01, cyclic='CONFIG',
     dtype=REG_DTYPE.DOMAIN, access=REG_ACCESS.RW
 )
 FORCE_BOOT = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x5EDE", subidx="0x00", cyclic='CONFIG',
+    identifier='', units='', subnode=0, idx=0x5EDE, subidx=0x00, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.WO
 )
 
 CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
-    identifier='', units='', subnode=0, idx="0x1000", subidx="0x00", cyclic='CONFIG',
+    identifier='', units='', subnode=0, idx=0x1000, subidx=0x00, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 
@@ -111,18 +112,20 @@ class NetStatusListener(Thread):
         while not self.__stop:
             if self.__timestamp == self.__node.nmt.timestamp:
                 if self.__state != NET_STATE.DISCONNECTED:
-                    self.__network.net_state = NET_STATE.DISCONNECTED
+                    self.__network.status = NET_STATE.DISCONNECTED
                     self.__state = NET_STATE.DISCONNECTED
+                    self.__network._notify_status(NET_DEV_EVT.REMOVED)
                 else:
                     self.__network._reset_connection()
             else:
                 if self.__state != NET_STATE.CONNECTED:
-                    self.__network.net_state = NET_STATE.CONNECTED
+                    self.__network.status = NET_STATE.CONNECTED
                     self.__state = NET_STATE.CONNECTED
+                    self.__network._notify_status(NET_DEV_EVT.ADDED)
                 self.__timestamp = self.__node.nmt.timestamp
             sleep(1.5)
 
-    def activate_stop_flag(self):
+    def stop(self):
         self.__stop = True
 
 
@@ -142,7 +145,7 @@ class CanopenNetwork(Network):
         self.__channel = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
         self._connection = None
-        self.__net_status_listener = None
+        self.__listener_net_status = None
         self.__net_state = NET_STATE.DISCONNECTED
 
         self.__observers_net_state = []
@@ -204,12 +207,12 @@ class CanopenNetwork(Network):
 
                 node.nmt.start_node_guarding(1)
 
-                if net_status_listener:
-                    self.__net_status_listener = NetStatusListener(self, node)
-                    self.__net_status_listener.start()
-
                 servo = CanopenServo(target, node, dictionary, eds,
                                      servo_status_listener=servo_status_listener)
+
+                if net_status_listener:
+                    self.start_status_listener(servo)
+
                 self.servos.append(servo)
                 return servo
             except Exception as e:
@@ -230,9 +233,9 @@ class CanopenNetwork(Network):
             servo (CanopenServo): Instance of the servo connected.
 
         """
-        self.stop_network_monitor()
-        servo.stop_servo_monitor()
-        self._connection.disconnect()
+        self.stop_status_listener()
+        servo.stop_status_listener()
+        self._teardown_connection()
         self.servos.remove(servo)
 
     def _setup_connection(self):
@@ -296,12 +299,18 @@ class CanopenNetwork(Network):
         except BaseException as e:
             logger.error("Connection failed. Exception: %s", e)
 
-    def subscribe_to_load_firmware_process(self, callback_status_msg=None,
-                                           callback_progress=None,
-                                           callback_errors_enabled=None):
-        """Subscribe all the callback methods to its specific variable observer.
+    def load_firmware(self, target, fw_file, callback_status_msg=None,
+                      callback_progress=None, callback_errors_enabled=None):
+        """Loads a given firmware file to a target.
+
+        .. warning ::
+            It is needed to disconnect the drive(:func:`disconnect_from_slave`)
+            after loading the firmware since the `Servo` object's data will
+            become obsolete.
 
         Args:
+            target (int): Targeted node ID to be loaded.
+            fw_file (str): Path to the firmware file.
             callback_status_msg (object): Subscribed callback function for the status
             message when loading a firmware.
             callback_progress (object): Subscribed callback function for the live
@@ -310,23 +319,9 @@ class CanopenNetwork(Network):
             callback_errors_enabled (object): Subscribed callback function for
             knowing when to toggle the error detection when loading firmware.
 
-        """
-        if callback_status_msg is not None:
-            self.__observers_fw_load_status_msg.append(callback_status_msg)
-        if callback_progress is not None:
-            self.__observers_fw_load_progress.append(callback_progress)
-        if callback_errors_enabled is not None:
-            self.__observers_fw_load_errors_enabled.append(callback_errors_enabled)
-
-    def load_firmware(self, target, fw_file):
-        """Loads a given firmware file to a target.
-
-        Args:
-            target (int): Targeted node ID to be loaded.
-            fw_file (str): Path to the firmware file.
-
         Raises:
             ILFirmwareLoadError: The firmware load process fails with an error message.
+
         """
         servo = None
         lfu_path = None
@@ -334,6 +329,17 @@ class CanopenNetwork(Network):
         servo_connected = False
         error_connecting = False
         progress = 0
+
+        if not os.path.isfile(fw_file):
+            raise FileNotFoundError('Could not find {}.'.format(fw_file))
+
+        # Subscribe to firmware loader process
+        if callback_status_msg is not None:
+            self.__observers_fw_load_status_msg.append(callback_status_msg)
+        if callback_progress is not None:
+            self.__observers_fw_load_progress.append(callback_progress)
+        if callback_errors_enabled is not None:
+            self.__observers_fw_load_errors_enabled.append(callback_errors_enabled)
 
         self.__set_fw_load_status_msg('')
         self.__set_fw_load_progress(progress)
@@ -578,7 +584,7 @@ class CanopenNetwork(Network):
                         initial_time = time()
                         time_diff = time() - initial_time
                         bool_timeout = False
-                        while self.net_state != NET_STATE.CONNECTED \
+                        while self.status != NET_STATE.CONNECTED \
                                 and time_diff < RECONNECTION_TIMEOUT:
                             time_diff = time() - initial_time
                             sleep(0.5)
@@ -588,9 +594,8 @@ class CanopenNetwork(Network):
                         logger.debug("Time waited for reconnection: ",
                                      time_diff, bool_timeout)
                         logger.debug("Net state after reconnection: ",
-                                     self.net_state)
+                                     self.status)
 
-                        # Wait for drive to be available
                         sleep(5)
 
                         self.__set_fw_load_status_msg('Starting program')
@@ -605,6 +610,18 @@ class CanopenNetwork(Network):
                             logger.info('Bootloader finished successfully!')
                             self.__set_fw_load_status_msg('Bootloader '
                                                           'finished successfully!')
+                            # Wait for the drive to reset
+                            initial_time = time()
+                            timeout = 25
+                            stop = False
+
+                            logger.info('Waiting for the drive to be available.')
+                            while (time() - initial_time) < timeout and not stop:
+                                try:
+                                    servo.read(STATUS_WORD_REGISTERS[1])
+                                    stop = True
+                                except:
+                                    pass
                         else:
                             error_detected_msg = 'Could not recover drive'
                             logger.error(error_detected_msg)
@@ -642,6 +659,14 @@ class CanopenNetwork(Network):
             logger.warning('Could not remove {}. Exception: {}'.format(lfu_path, e))
 
         self.__set_fw_load_errors_enabled(True)
+
+        # Unsubscribe to firmware loader process
+        if callback_status_msg is not None:
+            self.__observers_fw_load_status_msg.remove(callback_status_msg)
+        if callback_progress is not None:
+            self.__observers_fw_load_progress.remove(callback_progress)
+        if callback_errors_enabled is not None:
+            self.__observers_fw_load_errors_enabled.remove(callback_errors_enabled)
 
         if error_detected_msg != '':
             raise ILFirmwareLoadError(error_detected_msg)
@@ -809,37 +834,48 @@ class CanopenNetwork(Network):
         """Subscribe to network state changes.
 
         Args:
-            callback (Callback): Callback function.
-
-        Returns:
-            int: Assigned slot.
+            callback (function): Callback function.
 
         """
-        r = len(self.__observers_net_state)
+        if callback in self.__observers_net_state:
+            logger.info('Callback already subscribed.')
+            return
         self.__observers_net_state.append(callback)
-        return r
 
     def unsubscribe_from_status(self, callback):
         """Unsubscribe from network state changes.
 
         Args:
-            callback (Callback): Callback function.
+            callback (function): Callback function.
 
         """
+        if callback not in self.__observers_net_state:
+            logger.info('Callback not subscribed.')
+            return
         self.__observers_net_state.remove(callback)
 
-    def stop_network_monitor(self):
+    def _notify_status(self, status):
+        for callback in self.__observers_net_state:
+            callback(status)
+
+    def start_status_listener(self, servo):
+        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+        if self.__listener_net_status is None:
+            self.__listener_net_status = NetStatusListener(self, servo.node)
+            self.__listener_net_status.start()
+
+    def stop_status_listener(self):
         """Stops the NetStatusListener from listening to the drive."""
         try:
             for node_id, node_obj in self._connection.nodes.items():
                 node_obj.nmt.stop_node_guarding()
         except Exception as e:
             logger.error('Could not stop node guarding. Exception: %s', str(e))
-        if self.__net_status_listener is not None and \
-                self.__net_status_listener.is_alive():
-            self.__net_status_listener.activate_stop_flag()
-            self.__net_status_listener.join()
-            self.__net_status_listener = None
+        if self.__listener_net_status is not None and \
+                self.__listener_net_status.is_alive():
+            self.__listener_net_status.stop()
+            self.__listener_net_status.join()
+        self.__listener_net_status = None
 
     @property
     def device(self):
@@ -867,12 +903,10 @@ class CanopenNetwork(Network):
         return NET_PROT.CAN
 
     @property
-    def net_state(self):
+    def status(self):
         """NET_STATE: Network state."""
         return self.__net_state
 
-    @net_state.setter
-    def net_state(self, new_state):
+    @status.setter
+    def status(self, new_state):
         self.__net_state = new_state
-        for callback in self.__observers_net_state:
-            callback(self.__net_state)

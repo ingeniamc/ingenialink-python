@@ -166,7 +166,7 @@ def cleanup_register(register):
     register.text = ''
 
 
-def get_drive_identification(servo, subnode=0):
+def get_drive_identification(servo, subnode=None):
     """Gets the identification information of a given subnode.
 
     Args:
@@ -179,9 +179,9 @@ def get_drive_identification(servo, subnode=0):
     prod_code = None
     re_number = None
     try:
-        if subnode == 0:
-            prod_code = servo.read('DRV_ID_PRODUCT_CODE_COCO', subnode)
-            re_number = servo.read('DRV_ID_REVISION_NUMBER_COCO', subnode)
+        if subnode is None or subnode == 0:
+            prod_code = servo.read('DRV_ID_PRODUCT_CODE_COCO', 0)
+            re_number = servo.read('DRV_ID_REVISION_NUMBER_COCO', 0)
         else:
             prod_code = servo.read('DRV_ID_PRODUCT_CODE', subnode=subnode)
             re_number = servo.read('DRV_ID_REVISION_NUMBER', subnode)
@@ -189,6 +189,35 @@ def get_drive_identification(servo, subnode=0):
         pass
 
     return prod_code, re_number
+
+
+def convert_ip_to_int(ip):
+    """Converts a string type IP to its integer value.
+
+    Args:
+        ip (str): IP to be converted.
+
+    """
+    split_ip = ip.split('.')
+    drive_ip1 = int(split_ip[0]) << 24
+    drive_ip2 = int(split_ip[1]) << 16
+    drive_ip3 = int(split_ip[2]) << 8
+    drive_ip4 = int(split_ip[3])
+    return drive_ip1 + drive_ip2 + drive_ip3 + drive_ip4
+
+
+def convert_int_to_ip(int_ip):
+    """Converts an integer type IP to its string form.
+
+    Args:
+        int_ip (int): IP to be converted.
+
+    """
+    drive_ip1 = (int_ip >> 24) & 0x000000FF
+    drive_ip2 = (int_ip >> 16) & 0x000000FF
+    drive_ip3 = (int_ip >> 8) & 0x000000FF
+    drive_ip4 = int_ip & 0x000000FF
+    return '{}.{}.{}.{}'.format(drive_ip1, drive_ip2, drive_ip3, drive_ip4)
 
 
 class INT_SIZES(Enum):

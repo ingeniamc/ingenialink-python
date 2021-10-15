@@ -121,10 +121,13 @@ def ipb_register_from_cffi(cffi_register):
         cat_id = pstr(cffi_register.cat_id)
     if cffi_register.scat_id != ffi.NULL:
         scat_id = pstr(cffi_register.scat_id)
+    if cffi_register.labels != ffi.NULL:
+        labels = LabelsDictionary._from_labels(cffi_register.labels)
 
     return IPBRegister(identifier, units, cyclic, dtype, access,
                        address, phy, subnode, storage, reg_range,
-                       labels, enums, enums_count, cat_id, scat_id, internal_use, cffi_register)
+                       labels, enums, enums_count, cat_id, scat_id,
+                       internal_use, cffi_register)
 
 
 class IPBRegister(Register):
@@ -243,7 +246,7 @@ class IPBRegister(Register):
             REG_DTYPE.S64: "s64",
             REG_DTYPE.FLOAT: "flt"
         }
-        if self.dtype in REG_DTYPE:
+        if self.dtype in REG_DTYPE and self.dtype in dtype_attr:
             attr_name = dtype_attr[self.dtype]
             if self.storage:
                 if self.dtype == REG_DTYPE.FLOAT:

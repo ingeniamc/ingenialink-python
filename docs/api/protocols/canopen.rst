@@ -5,4 +5,8 @@ CANopen API documentation
 .. toctree::
     :glob:
 
-    canopen/*
+    canopen/network
+    canopen/servo
+    canopen/dictionary
+    canopen/register
+    canopen/poller

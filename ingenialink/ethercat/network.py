@@ -2,10 +2,15 @@ from enum import Enum
 from ..exceptions import *
 from ..network import NET_PROT
 from .servo import EthercatServo
+from ingenialink.constants import *
 from .._ingenialink import lib, ffi
+from ingenialink.utils._utils import cstr
 from ingenialink.ipb.network import IPBNetwork
 from ingenialink.network import EEPROM_FILE_FORMAT
-from ingenialink.utils._utils import cstr, raise_err
+
+import os
+import ingenialogger
+logger = ingenialogger.get_logger(__name__)
 
 
 class EEPROM_TOOL_MODE(Enum):
@@ -26,9 +31,8 @@ class EthercatNetwork(IPBNetwork):
         interface_name (str): Interface name to be targeted.
 
     """
-    def __init__(self, interface_name=""):
+    def __init__(self, interface_name):
         super(EthercatNetwork, self).__init__()
-        self._cffi_network = ffi.new('il_net_t **')
         self.interface_name = interface_name
         """str: Interface name used in the network settings."""
 
@@ -39,6 +43,11 @@ class EthercatNetwork(IPBNetwork):
             Choose the ``boot_in_app`` flag accordingly to your
             servo specifications otherwise the servo could enter
             a blocking state.
+
+        .. warning ::
+            It is needed to disconnect the drive(:func:`disconnect_from_slave`)
+            after loading the firmware since the `Servo` object's data will
+            become obsolete.
 
         Args:
             target (int): Targeted node ID to be loaded.
@@ -52,7 +61,10 @@ class EthercatNetwork(IPBNetwork):
             with an error message.
 
         """
+        if not os.path.isfile(fw_file):
+            raise FileNotFoundError('Could not find {}.'.format(fw_file))
         try:
+            self._cffi_network = ffi.new('il_net_t **')
             _interface_name = cstr(self.interface_name) \
                 if self.interface_name else ffi.NULL
             _fw_file = cstr(fw_file) if fw_file else ffi.NULL
@@ -62,10 +74,13 @@ class EthercatNetwork(IPBNetwork):
                                            _fw_file,
                                            boot_in_app)
             if r < 0:
-                raise ILFirmwareLoadError('Error updating firmware. '
-                                          'Error code: {}'.format(r))
+                logger.error('Error updating firmware. '
+                             'Error code: {}'.format(r))
+                raise ILFirmwareLoadError('Error updating firmware.')
         except Exception as e:
-            raise ILFirmwareLoadError(e)
+            logger.error(e)
+            raise ILFirmwareLoadError('Error updating firmware '
+                                      'due to an internal error.')
 
     def _read_eeprom(self, eeprom_file, slave, file_format):
         """Reads the EEPROM.
@@ -155,18 +170,26 @@ class EthercatNetwork(IPBNetwork):
             if self.interface_name else ffi.NULL
 
         number_slaves = lib.il_net_num_slaves_get(_interface_name)
-        slaves = []
-        for slave in range(number_slaves):
-            slaves.append(slave + 1)
-        return slaves
+        return [slave + 1 for slave in range(number_slaves)]
 
-    def connect_to_slave(self, target=1, dictionary="", use_eoe_comms=1):
+    def connect_to_slave(self, target=1, dictionary="", use_eoe_comms=1,
+                         reconnection_retries=DEFAULT_MESSAGE_RETRIES,
+                         reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT,
+                         servo_status_listener=True,
+                         net_status_listener=True):
         """Connect a slave through an EtherCAT connection.
 
         Args:
             target (int): Number of the target slave.
             dictionary (str): Path to the dictionary to be loaded.
             use_eoe_comms (int): Specify which architecture is the target based on.
+            reconnection_retries (int): Number of reconnection retried before declaring
+            a connected or disconnected stated.
+            reconnection_timeout (int): Time in ms of the reconnection timeout.
+            servo_status_listener (bool): Toggle the listener of the servo for
+            its status, errors, faults, etc.
+            net_status_listener (bool): Toggle the listener of the network
+            status, connection and disconnection.
 
         Returns:
             EthercatServo: Instance of the connected servo.
@@ -178,19 +201,27 @@ class EthercatNetwork(IPBNetwork):
         _dictionary = cstr(dictionary) if dictionary else ffi.NULL
 
         _servo = ffi.new('il_servo_t **')
+        self._cffi_network = ffi.new('il_net_t **')
         r = lib.il_servo_connect_ecat(3, _interface_name, self._cffi_network,
                                       _servo, _dictionary, 1061,
                                       target, use_eoe_comms)
         if r <= 0:
             _servo = None
             self._cffi_network = None
-            raise_err(r)
+            raise ILError('Could not find any servos connected.')
         else:
             net_ = ffi.cast('il_net_t *', self._cffi_network[0])
             servo_ = ffi.cast('il_servo_t *', _servo[0])
-            servo = EthercatServo(servo_, net_, target, dictionary)
+            servo = EthercatServo(servo_, net_, target, dictionary,
+                                  servo_status_listener)
             self._cffi_network = net_
             self.servos.append(servo)
+
+        if net_status_listener:
+            self.start_status_listener()
+
+        self.set_reconnection_retries(reconnection_retries)
+        self.set_recv_timeout(reconnection_timeout)
 
         return servo
 
@@ -204,8 +235,8 @@ class EthercatNetwork(IPBNetwork):
         # TODO: This stops all connections no only the target servo.
         if servo in self.servos:
             self.servos.remove(servo)
+        self.stop_status_listener()
         r = lib.il_net_master_stop(self._cffi_network)
-        self.destroy_network()
         self._cffi_network = None
         if r < 0:
             raise ILError('Error disconnecting the drive. '
