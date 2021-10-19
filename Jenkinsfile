@@ -2,7 +2,7 @@ node('sw') {
     deleteDir()
 
 
-    if (env.BRANCH_NAME == 'libraries-refactor') {
+    if (env.BRANCH_NAME == 'test-jenkins') {
         stage('Checkout') {
             checkout scm
         }
