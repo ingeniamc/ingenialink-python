@@ -50,6 +50,40 @@ node('sw') {
                 '''
             }
         }
+        stage('Python 3.8') {
+            stage('Remove previous build files') {
+                bat """
+                    rmdir /Q /S "_build"
+                    rmdir /Q /S "_deps"
+                    rmdir /Q /S "_install"
+                    rmdir /Q /S "build"
+                    del /f "Pipfile.lock"
+                """
+            }
+            stage('Remove previous environments') {
+                bat """
+                    pipenv --rm
+                """
+            }
+            stage('Set environment Python version to 3.8') {
+                bat """
+                    @set "PATH=C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python38\\;C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python38\\Scripts\\;%PATH%"
+                """
+            }
+            stage('Install environment') {
+                bat '''
+                    python -m pipenv install --dev --python 3.8
+                '''
+            }
+
+            stage('Build libraries') {
+                bat '''
+                    python -m pipenv run python setup.py build sdist bdist_wheel
+                '''
+            }
+
+
+        }
         stage('Python 3.9') {
             stage('Remove previous build files') {
                 bat """
