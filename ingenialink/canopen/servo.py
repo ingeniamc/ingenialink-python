@@ -614,7 +614,7 @@ class CanopenServo(Servo):
             raise ILError('Invalid subnode')
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        with open(self._dictionary.path, 'r') as xml_file:
+        with open(self._dictionary.path, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
@@ -670,7 +670,7 @@ class CanopenServo(Servo):
             raise FileNotFoundError('Could not find {}.'.format(config_file))
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ILError('Invalid subnode')
-        with open(config_file, 'r') as xml_file:
+        with open(config_file, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 

@@ -22,7 +22,7 @@ class CanopenCategories:
 
     def load_cat_ids(self):
         """Load category IDs from dictionary."""
-        with open(self._dict, 'r') as xml_file:
+        with open(self._dict, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
@@ -62,7 +62,7 @@ class CanopenErrors:
 
     def load_errors(self):
         """Load errors from dictionary."""
-        with open(self._dict, 'r') as xml_file:
+        with open(self._dict, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
