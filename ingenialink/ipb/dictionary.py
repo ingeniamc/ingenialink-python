@@ -79,7 +79,7 @@ class IPBErrors:
 
     def load_errors(self):
         """Load errors from dictionary."""
-        with open(self._dict, 'r') as xml_file:
+        with open(self._dict, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
@@ -251,7 +251,7 @@ class IPBDictionary(Dictionary):
         raise_err(r)
 
     def __get_subnode(self):
-        with open(self.path, 'r') as xml_file:
+        with open(self.path, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
