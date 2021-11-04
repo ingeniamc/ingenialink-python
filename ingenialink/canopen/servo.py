@@ -431,7 +431,7 @@ class CanopenServo(Servo):
 
                 # Wait for state change
                 r = self.status_word_wait_change(status_word, timeout,
-                                                 subnode=1)
+                                                 subnode=subnode)
                 if r < 0:
                     raise_err(r)
 
@@ -482,7 +482,7 @@ class CanopenServo(Servo):
 
                 # Wait until status word changes
                 r = self.status_word_wait_change(status_word, timeout,
-                                                 subnode=1)
+                                                 subnode=subnode)
                 if r < 0:
                     raise_err(r)
                 status_word = self.read(STATUS_WORD_REGISTERS[subnode],
@@ -517,7 +517,7 @@ class CanopenServo(Servo):
                        subnode=subnode)
             # Wait until status word changes
             r = self.status_word_wait_change(status_word, timeout,
-                                             subnode=1)
+                                             subnode=subnode)
             status_word = self.read(STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
@@ -743,7 +743,7 @@ class CanopenServo(Servo):
                         # Single axis
                         self.write(reg=STORE_MOCO_ALL_REGISTERS[1],
                                    data=PASSWORD_STORE_ALL,
-                                   subnode=1)
+                                   subnode=subnode)
                         logger.info('Store all successfully done.')
             elif subnode == 0:
                 # Store subnode 0
@@ -896,7 +896,7 @@ class CanopenServo(Servo):
         r = 0
         start_time = int(round(time.time() * 1000))
         actual_status_word = self.read(STATUS_WORD_REGISTERS[subnode],
-                                       subnode=1)
+                                       subnode=subnode)
         while actual_status_word == status_word:
             current_time = int(round(time.time() * 1000))
             time_diff = (current_time - start_time)
@@ -905,7 +905,7 @@ class CanopenServo(Servo):
                 return r
             actual_status_word = self.read(
                 STATUS_WORD_REGISTERS[subnode],
-                subnode=1)
+                subnode=subnode)
         return r
 
     def reload_errors(self, dictionary):
