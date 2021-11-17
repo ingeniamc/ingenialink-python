@@ -10,14 +10,20 @@ This is a Python binding for the ingenialink_ C library. The binding is built as
 a native Python extension thanks to cffi_ and then exposed through an
 object-oriented API.
 
-Python versions >=3.5 are supported.
-
 .. image:: https://ingeniamc.com/wp-content/uploads/2021/04/ingenia-servo-drives.jpg
      :target: http://www.ingeniamc.com
      :alt: Ingenia Servodrives
 
 .. _ingenialink: https://github.com/ingeniamc/ingenialink
 .. _cffi: https://cffi.readthedocs.io/en/latest/
+
+Requirements
+------------
+
+* Python 3.6
+* WinPcap_ 4.1.3
+
+.. _WinPcap: https://www.winpcap.org/install/
 
 Installation
 ------------
