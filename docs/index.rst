@@ -16,6 +16,14 @@ same functionality as the C library, which summarizes to:
 .. _ingenialink: https://github.com/ingeniamc/ingenialink
 .. _cffi: https://cffi.readthedocs.io/en/latest/
 
+Requirements
+------------
+
+* Python 3.6
+* WinPcap_ 4.1.3
+
+.. _WinPcap: https://www.winpcap.org/install/
+
 Contents
 --------
 
