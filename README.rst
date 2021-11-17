@@ -2,25 +2,9 @@
 ingenialink-python
 ==================
 
-.. image:: https://travis-ci.org/ingeniamc/ingenialink-python.svg?branch=master
-    :target: https://travis-ci.org/ingeniamc/ingenialink-python
-    :alt: Build Status
-
-.. image:: https://ci.appveyor.com/api/projects/status/evmgqlo3r0i6fr1d?svg=true
-    :target: https://ci.appveyor.com/project/gmarull/ingenialink-python
-    :alt: Build Status
-
-.. image:: https://readthedocs.org/projects/ingenialink/badge/?version=latest
-    :target: http://ingenialink.readthedocs.io/en/latest/?badge=latest
-    :alt: Documentation Status
-
 .. image:: https://img.shields.io/pypi/v/ingenialink.svg
     :target: https://pypi.python.org/pypi/ingenialink
     :alt: PyPI Version
-
-.. image:: https://api.codacy.com/project/badge/Grade/6bccc35bdbdb474c8fefa98f6c4a425e
-    :target: https://www.codacy.com/app/gmarull/ingenialink-python
-    :alt: Code Quality
 
 This is a Python binding for the ingenialink_ C library. The binding is built as
 a native Python extension thanks to cffi_ and then exposed through an
@@ -28,7 +12,7 @@ object-oriented API.
 
 Python versions >=3.5 are supported.
 
-.. image:: https://s3.eu-central-1.amazonaws.com/ingeniamc-cdn/images/all-servodrives.png
+.. image:: https://ingeniamc.com/wp-content/uploads/2021/04/ingenia-servo-drives.jpg
      :target: http://www.ingeniamc.com
      :alt: Ingenia Servodrives
 
