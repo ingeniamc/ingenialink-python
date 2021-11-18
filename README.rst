@@ -6,6 +6,10 @@ ingenialink-python
     :target: https://pypi.python.org/pypi/ingenialink
     :alt: PyPI Version
 
+.. image:: https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg
+   :alt: CC by-nc-sa
+   :target: http://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+
 This is a Python binding for the ingenialink_ C library. The binding is built as
 a native Python extension thanks to cffi_ and then exposed through an
 object-oriented API.
