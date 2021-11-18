@@ -20,6 +20,7 @@ _build
 *.pyd
 *.so
 *.dylib
+out.txt
 
 # os
 .DS_Store
@@ -27,3 +28,6 @@ _build
 # Pipenv
 Pipfile.lock
 pyproject.toml
+
+# Documentation
+_docs
