@@ -198,7 +198,7 @@ class CanopenDictionary(Dictionary):
                 raise_err(lib.IL_EACCESS, 'Invalid access type')
 
             # Subnode
-            subnode = register.attrib['subnode'] if 'subnode' in register.attrib else 1
+            subnode = int(register.attrib['subnode']) if 'subnode' in register.attrib else 1
 
             # Storage
             storage = register.attrib['storage'] if 'storage' in register.attrib else None
