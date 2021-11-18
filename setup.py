@@ -69,7 +69,6 @@ setup(name='ingenialink',
       classifiers=[
           'Development Status :: 4 - Beta',
           'Intended Audience :: Developers',
-          'License :: OSI Approved :: MIT License',
           'Operating System :: POSIX :: Linux',
           'Operating System :: MacOS',
           'Operating System :: Microsoft :: Windows',
