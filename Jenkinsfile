@@ -1,145 +1,72 @@
-node('sw')
+def NODE_NAME = 'sw'
+def BRANCH_NAME_RELEASE = 'release'
+def BRANCH_NAME_MASTER = 'test-jenkins'
+def PYTHON_VERSIONS = ['3.6', '3.7', '3.8', '3.9']
+
+node(NODE_NAME)
 {
     deleteDir()
-    if (env.BRANCH_NAME == 'test-jenkins' || env.BRANCH_NAME.contains('release'))
+    if (env.BRANCH_NAME == BRANCH_NAME_MASTER || env.BRANCH_NAME.contains(BRANCH_NAME_RELEASE))
     {
         stage('Checkout')
         {
             checkout scm
         }
-        stage('Python 3.6')
+        stage('Remove existing dist and docs')
         {
-            stage('Remove previous build files')
+            bat """
+                rmdir /Q /S "_dist"
+                rmdir /Q /S "_docs"
+            """
+        }
+        def style_check = false
+        for (version in PYTHON_VERSIONS) 
+        {   
+            stage(String.format('Python %s', version))
             {
-                bat """
-                    rmdir /Q /S "_build"
-                    rmdir /Q /S "_deps"
-                    rmdir /Q /S "_install"
-                    rmdir /Q /S "_dist"
-                    rmdir /Q /S "build"
-                    rmdir /Q /S "_docs"
-                    del /f "Pipfile.lock"
-                """
-            }
-            stage('Install environment')
-            {
-                bat '''
-                    pipenv install --dev --python 3.6
-                '''
-            }
-            stage('PEP8 style check')
-            {
-                bat '''
-                    pipenv run pycodestyle --first ingenialink/ --config=setup.cfg
-                '''
-            }
-            stage('Build libraries')
-            {
-                bat '''
-                    pipenv run python setup.py build sdist bdist_wheel
-                '''
-            }
-            stage('Generate documentation')
-            {
-                bat '''
-                    pipenv run sphinx-build -b html docs _docs
-                '''
+                stage('Remove previous build files')
+                {
+                    bat """
+                        rmdir /Q /S "_build"
+                        rmdir /Q /S "_deps"
+                        rmdir /Q /S "_install"
+                        rmdir /Q /S "build"
+                        del /f "Pipfile.lock"
+                    """
+                }
+                stage('Remove previous environments')
+                {
+                    bat """
+                        pipenv --rm
+                    """
+                }
+                stage('Install environment')
+                {
+                    bat String.format('pipenv install --dev --python %s', version)
+                }
+                if (!style_check) 
+                {
+                    stage('PEP8 style check')
+                    {
+                        bat """
+                            pipenv run pycodestyle --first ingenialink/ --config=setup.cfg
+                        """
+                    }
+                    style_check = true
+                }
+                stage('Build libraries')
+                {
+                    bat """
+                        pipenv run python setup.py build sdist bdist_wheel
+                    """
+                }
             }
         }
-        stage('Python 3.7')
+        stage('Generate documentation')
         {
-            stage('Remove previous build files')
-            {
-                bat """
-                    rmdir /Q /S "_build"
-                    rmdir /Q /S "_deps"
-                    rmdir /Q /S "_install"
-                    rmdir /Q /S "_dist"
-                    rmdir /Q /S "build"
-                    rmdir /Q /S "_docs"
-                    del /f "Pipfile.lock"
-                """
-            }
-            stage('Remove previous environments')
-            {
-                bat """
-                    pipenv --rm
-                """
-            }
-            stage('Install environment')
-            {
-                bat '''
-                    pipenv install --dev --python 3.7
-                '''
-            }
-            stage('Build libraries')
-            {
-                bat '''
-                    pipenv run python setup.py build sdist bdist_wheel
-                '''
-            }
-        }
-        stage('Python 3.8')
-        {
-            stage('Remove previous build files')
-            {
-                bat """
-                    rmdir /Q /S "_build"
-                    rmdir /Q /S "_deps"
-                    rmdir /Q /S "_install"
-                    rmdir /Q /S "build"
-                    del /f "Pipfile.lock"
-                """
-            }
-            stage('Remove previous environments')
-            {
-                bat """
-                    pipenv --rm
-                """
-            }
-            stage('Install environment')
-            {
-                bat '''
-                    pipenv install --dev --python 3.8
-                '''
-            }
-            stage('Build libraries')
-            {
-                bat '''
-                    pipenv run python setup.py build sdist bdist_wheel
-                '''
-            }
-        }
-        stage('Python 3.9')
-        {
-            stage('Remove previous build files')
-            {
-                bat """
-                    rmdir /Q /S "_build"
-                    rmdir /Q /S "_deps"
-                    rmdir /Q /S "_install"
-                    rmdir /Q /S "build"
-                    del /f "Pipfile.lock"
-                """
-            }
-            stage('Remove previous environments')
-            {
-                bat """
-                    pipenv --rm
-                """
-            }
-            stage('Install environment')
-            {
-                bat '''
-                    pipenv install --dev --python 3.9
-                '''
-            }
-            stage('Build libraries')
-            {
-                bat '''
-                    pipenv run python setup.py build sdist bdist_wheel
-                '''
-            }
+            bat """
+                pipenv run sphinx-build -b html docs _docs
+            """
         }
         stage('Archive whl package')
         {
