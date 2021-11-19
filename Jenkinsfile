@@ -18,35 +18,67 @@ node('sw') {
                     del /f "Pipfile.lock"
                 """
             }
-            stage('Set environment Python version to 3.6') {
-                bat """
-                    @set "PATH=C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python36\\;C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python36\\Scripts\\;%PATH%"
-                """
-            }
+
             stage('Install environment') {
                 bat '''
-                    python -m pipenv install --dev --python 3.6
+                    pipenv install --dev --python 3.6
                 '''
             }
 
             stage('PEP8 style check')
             {
                 // bat '''
-                //     python -m pipenv run pycodestyle --first ingenialink/
+                //     pipenv run pycodestyle --first ingenialink/
                 // '''
             }
 
             stage('Build libraries') {
                 bat '''
-                    python -m pipenv run python setup.py build sdist bdist_wheel
+                    pipenv run python setup.py build sdist bdist_wheel
                 '''
             }
 
-            
+            stage('Generate documentation') {
+                bat '''
+                    pipenv run sphinx-build -b html docs _docs
+                '''
+            }
+        }
+        stage('Python 3.7') {
+            stage('Remove previous build files') {
+                bat """
+                    rmdir /Q /S "_build"
+                    rmdir /Q /S "_deps"
+                    rmdir /Q /S "_install"
+                    rmdir /Q /S "_dist"
+                    rmdir /Q /S "build"
+                    rmdir /Q /S "_docs"
+                    del /f "Pipfile.lock"
+                """
+            }
+
+            stage('Install environment') {
+                bat '''
+                    pipenv install --dev --python 3.7
+                '''
+            }
+
+            stage('PEP8 style check')
+            {
+                // bat '''
+                //     pipenv run pycodestyle --first ingenialink/
+                // '''
+            }
+
+            stage('Build libraries') {
+                bat '''
+                    pipenv run python setup.py build sdist bdist_wheel
+                '''
+            }
 
             stage('Generate documentation') {
                 bat '''
-                    python -m pipenv run sphinx-build -b html docs _docs
+                    pipenv run sphinx-build -b html docs _docs
                 '''
             }
         }
@@ -65,20 +97,16 @@ node('sw') {
                     pipenv --rm
                 """
             }
-            stage('Set environment Python version to 3.8') {
-                bat """
-                    @set "PATH=C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python38\\;C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python38\\Scripts\\;%PATH%"
-                """
-            }
+
             stage('Install environment') {
                 bat '''
-                    python -m pipenv install --dev --python 3.8
+                    pipenv install --dev --python 3.8
                 '''
             }
 
             stage('Build libraries') {
                 bat '''
-                    python -m pipenv run python setup.py build sdist bdist_wheel
+                    pipenv run python setup.py build sdist bdist_wheel
                 '''
             }
 
@@ -99,20 +127,16 @@ node('sw') {
                     pipenv --rm
                 """
             }
-            stage('Set environment Python version to 3.9') {
-                bat """
-                    @set "PATH=C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python39\\;C:\\Users\\win-test-01\\AppData\\Local\\Programs\\Python\\Python39\\Scripts\\;%PATH%"
-                """
-            }
+
             stage('Install environment') {
                 bat '''
-                    python -m pipenv install --dev --python 3.9
+                    pipenv install --dev --python 3.9
                 '''
             }
 
             stage('Build libraries') {
                 bat '''
-                    python -m pipenv run python setup.py build sdist bdist_wheel
+                    pipenv run python setup.py build sdist bdist_wheel
                 '''
             }
         }
