@@ -1,6 +1,3 @@
-import java.io.Files
-import java.io.Paths
-
 def NODE_NAME = "sw"
 def BRANCH_NAME_RELEASE = "release"
 def BRANCH_NAME_MASTER = "test-jenkins"
@@ -16,15 +13,17 @@ node(NODE_NAME)
         {
             checkout scm
         }
-        if (Files.isDirectory(Paths.get("_dist")) || Files.isDirectory(Paths.get("_docs"))) 
+        stage('Remove previous distributed files')
         {
-            stage('Remove previous distributed files')
-            {
-                bat """
-                    rmdir /Q /S "_dist"
-                    rmdir /Q /S "_docs"
-                """
-            }   
+            bat """
+                rmdir /Q /S "_build"
+                rmdir /Q /S "_deps"
+                rmdir /Q /S "_install"
+                rmdir /Q /S "_dist"
+                rmdir /Q /S "build"
+                rmdir /Q /S "_docs"
+                del /f "Pipfile.lock"
+            """
         }
         for (version in PYTHON_VERSIONS) 
         {   
