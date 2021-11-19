@@ -1,7 +1,7 @@
-def NODE_NAME = 'sw'
-def BRANCH_NAME_RELEASE = 'release'
-def BRANCH_NAME_MASTER = 'test-jenkins'
-def PYTHON_VERSIONS = ['3.6', '3.7', '3.8', '3.9']
+def NODE_NAME = "sw"
+def BRANCH_NAME_RELEASE = "release"
+def BRANCH_NAME_MASTER = "test-jenkins"
+def PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9"]
 def style_check = false
 
 node(NODE_NAME)
@@ -9,11 +9,11 @@ node(NODE_NAME)
     deleteDir()
     if (env.BRANCH_NAME == BRANCH_NAME_MASTER || env.BRANCH_NAME.contains(BRANCH_NAME_RELEASE))
     {
-        stage('Checkout')
+        stage("Checkout")
         {
             checkout scm
         }
-        stage('Remove existing dist and docs')
+        stage("Remove existing dist and docs")
         {
             bat """
                 rmdir /Q /S "_dist"
@@ -22,9 +22,9 @@ node(NODE_NAME)
         }
         for (version in PYTHON_VERSIONS) 
         {   
-            stage(String.format('Python %s', version))
+            stage("Python ${version}")
             {
-                stage('Remove previous build files')
+                stage("Remove previous build files")
                 {
                     bat """
                         rmdir /Q /S "_build"
@@ -34,19 +34,21 @@ node(NODE_NAME)
                         del /f "Pipfile.lock"
                     """
                 }
-                stage('Remove previous environments')
+                stage("Remove previous environments")
                 {
                     bat """
                         pipenv --rm
                     """
                 }
-                stage('Install environment')
+                stage("Install environment")
                 {
-                    bat String.format('pipenv install --dev --python %s', version)
+                    bat """
+                        pipenv install --dev --python ${version}
+                    """
                 }
                 if (!style_check) 
                 {
-                    stage('PEP8 style check')
+                    stage("PEP8 style check")
                     {
                         bat """
                             pipenv run pycodestyle --first ingenialink/ --config=setup.cfg
@@ -54,7 +56,7 @@ node(NODE_NAME)
                     }
                     style_check = true
                 }
-                stage('Build libraries')
+                stage("Build libraries")
                 {
                     bat """
                         pipenv run python setup.py build sdist bdist_wheel
@@ -62,13 +64,13 @@ node(NODE_NAME)
                 }
             }
         }
-        stage('Generate documentation')
+        stage("Generate documentation")
         {
             bat """
                 pipenv run sphinx-build -b html docs _docs
             """
         }
-        stage('Archive whl package')
+        stage("Archive whl package")
         {
             bat """
                 "C:/Program Files/7-Zip/7z.exe" a -r docs.zip -w _docs -mem=AES256
