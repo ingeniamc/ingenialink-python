@@ -13,7 +13,7 @@ node(NODE_NAME)
         {
             checkout scm
         }
-        stage('Remove previous distributed files')
+        stage('Remove all previous files')
         {
             bat """
                 rmdir /Q /S "_build"
