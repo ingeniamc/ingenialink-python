@@ -20,6 +20,16 @@ node(NODE_NAME)
                 rmdir /Q /S "_docs"
             """
         }
+        for (int i = 0; i < 5; i++) {
+            stage("Stage ${i}") {
+                echo "This is ${i}"
+            }
+        }
+        for (version in PYTHON_VERSIONS) {
+            stage("Stage ${version}") {
+                echo "This is ${version}"
+            }
+        }
         for (version in PYTHON_VERSIONS) 
         {   
             stage("Python ${version}")
