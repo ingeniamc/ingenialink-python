@@ -13,16 +13,6 @@ node(NODE_NAME)
         {
             checkout scm
         }
-        if (Files.exists("_dist") || Files.exists("_docs"))
-        {
-            stage("Remove existing dist and docs")
-            {
-                bat """
-                    rmdir /Q /S "_dist"
-                    rmdir /Q /S "_docs"
-                """
-            }
-        }
         for (int i = 0; i < 5; i++) {
             stage("Stage ${i}") {
                 echo "This is ${i}"
