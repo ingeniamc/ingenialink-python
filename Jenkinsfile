@@ -1,3 +1,6 @@
+import java.io.Files
+import java.io.Paths
+
 def NODE_NAME = "sw"
 def BRANCH_NAME_RELEASE = "release"
 def BRANCH_NAME_MASTER = "test-jenkins"
