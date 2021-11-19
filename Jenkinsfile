@@ -2,6 +2,7 @@ def NODE_NAME = 'sw'
 def BRANCH_NAME_RELEASE = 'release'
 def BRANCH_NAME_MASTER = 'test-jenkins'
 def PYTHON_VERSIONS = ['3.6', '3.7', '3.8', '3.9']
+def style_check = false
 
 node(NODE_NAME)
 {
@@ -19,7 +20,6 @@ node(NODE_NAME)
                 rmdir /Q /S "_docs"
             """
         }
-        def style_check = false
         for (version in PYTHON_VERSIONS) 
         {   
             stage(String.format('Python %s', version))
