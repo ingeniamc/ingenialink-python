@@ -19,7 +19,7 @@ def pytest_addoption(parser):
 def read_config():
     config = 'tests/config.json'
     print('current config file:', config)
-    with open(config, "r") as fp:
+    with open(config, "r", encoding='utf-8') as fp:
         contents = json.load(fp)
     return contents
 
