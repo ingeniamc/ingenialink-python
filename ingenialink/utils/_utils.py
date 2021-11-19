@@ -78,7 +78,8 @@ def wait_for_register_value(servo, subnode, register, expected_value):
     Returns:
         int: Return code of the operation.
     """
-    logger.debug('Waiting for register {} to return <{}>'.format(register, expected_value))
+    logger.debug('Waiting for register {} '
+                 'to return <{}>'.format(register, expected_value))
     num_tries = 0
     r = -2
     while num_tries < POLLING_MAX_TRIES:
@@ -144,7 +145,8 @@ def pop_element(dictionary, element):
 
 
 def cleanup_register(register):
-    """Cleans a ElementTree register to remove all unnecessary fields for a configuration file
+    """Cleans a ElementTree register to remove all
+    unnecessary fields for a configuration file
 
     Args:
         register (Register): Register to be cleaned.

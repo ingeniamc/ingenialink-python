@@ -278,4 +278,3 @@ class Servo(ABC):
     @property
     def subnodes(self):
         raise NotImplementedError
-

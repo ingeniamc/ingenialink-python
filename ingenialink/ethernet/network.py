@@ -125,7 +125,7 @@ class EthernetNetwork(IPBNetwork):
                 data = b''
                 data_start_byte = 2
                 while data_start_byte in range(data_start_byte, len(words)):
-                        # Load UDP data
+                    # Load UDP data
                     data += bytes([int(words[data_start_byte], 16)])
                     data_start_byte += 1
 

@@ -285,7 +285,7 @@ class IPBServo(Servo):
 
         r = f(self._cffi_servo, _reg._reg, ffi.NULL, data, confirm, extended)
         raise_err(r)
-    
+
     def read_sdo(self, idx, subidx, dtype, slave=1):
         """Read SDO from network.
 
@@ -1394,7 +1394,7 @@ class IPBServo(Servo):
         raise_err(r)
 
         return res[0]
-    
+
     @property
     def monitoring_data(self):
         """Obtain monitoring data.
@@ -1480,4 +1480,3 @@ class IPBServo(Servo):
         """
         ext_buff = lib.il_net_extended_buffer_get(self._cffi_network)
         return pstr(ext_buff)
-

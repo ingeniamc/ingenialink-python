@@ -224,7 +224,8 @@ class CanopenNetwork(Network):
                           'the transceiver is properly connected.'.format(target))
         else:
             logger.error('Node id not found')
-            raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(target))
+            raise_err(lib.IL_EFAIL,
+                      'Node id {} not found in the network.'.format(target))
 
     def disconnect_from_slave(self, servo):
         """Disconnects the slave from the network.
@@ -388,7 +389,8 @@ class CanopenNetwork(Network):
 
                     if file_extension != '' and file_extension == '.sfu':
                         fd, lfu_path = tempfile.mkstemp(suffix=".lfu")
-                        logger.debug('>> FD: {}. \n>> LFU PATH: {}.'.format(fd, lfu_path))
+                        logger.debug('>> FD: {}. \n>> '
+                                     'LFU PATH: {}.'.format(fd, lfu_path))
 
                         try:
                             # Convert the sfu file to lfu
@@ -620,7 +622,7 @@ class CanopenNetwork(Network):
                                 try:
                                     servo.read(STATUS_WORD_REGISTERS[1])
                                     stop = True
-                                except:
+                                except ILError:
                                     pass
                         else:
                             error_detected_msg = 'Could not recover drive'

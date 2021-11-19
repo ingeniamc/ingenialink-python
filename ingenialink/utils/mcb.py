@@ -35,11 +35,14 @@ class MCB:
             cmd = cmd + 1
             head = struct.pack('<H', cmd)
             head_size = struct.pack('<H', size)
-            head_size = head_size + bytes([0] * (self.EXTENDED_MESSAGE_SIZE - len(head_size)))
-            ret = node_head + head + head_size + struct.pack('<H', binascii.crc_hqx(node_head + head + head_size, 0)) + data
+            head_size = head_size + bytes(
+                [0] * (self.EXTENDED_MESSAGE_SIZE - len(head_size)))
+            ret = node_head + head + head_size + struct.pack(
+                '<H', binascii.crc_hqx(node_head + head + head_size, 0)) + data
         else:
             head = struct.pack('<H', cmd)
-            ret = node_head + head + data + struct.pack('<H', binascii.crc_hqx(node_head + head + data, 0))
+            ret = node_head + head + data + struct.pack(
+                '<H', binascii.crc_hqx(node_head + head + data, 0))
 
         return ret
 
@@ -53,10 +56,7 @@ class MCB:
             data (bytes): Data to be added to the message.
             output (file): File object to store the message.
         """
-        if len(data) > self.EXTENDED_MESSAGE_SIZE:
-            frame = self.create_msg(node, subnode, cmd, data, len(data))
-        else:
+        if len(data) <= self.EXTENDED_MESSAGE_SIZE:
             data = data + bytes([0] * (self.EXTENDED_MESSAGE_SIZE - len(data)))
-            frame = self.create_msg(node, subnode, cmd, data, len(data))
-
+        frame = self.create_msg(node, subnode, cmd, data, len(data))
         output.write(frame)
