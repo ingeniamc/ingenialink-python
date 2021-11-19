@@ -13,15 +13,12 @@ node(NODE_NAME)
         {
             checkout scm
         }
-        for (int i = 0; i < 5; i++) {
-            stage("Stage ${i}") {
-                echo "This is ${i}"
-            }
-        }
-        for (version in PYTHON_VERSIONS) {
-            stage("Stage ${version}") {
-                echo "This is ${version}"
-            }
+        stage('Remove previous distributed files')
+        {
+            bat """
+                rmdir /Q /S "_dist"
+                rmdir /Q /S "_docs"
+            """
         }
         for (version in PYTHON_VERSIONS) 
         {   
@@ -43,7 +40,7 @@ node(NODE_NAME)
                         pipenv --rm
                     """
                 }
-                stage("Install environment")
+                stage("Install environment ${version}")
                 {
                     bat """
                         pipenv install --dev --python ${version}
@@ -59,7 +56,7 @@ node(NODE_NAME)
                     }
                     style_check = true
                 }
-                stage("Build libraries")
+                stage("Build libraries ${version}")
                 {
                     bat """
                         pipenv run python setup.py build sdist bdist_wheel
