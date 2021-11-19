@@ -13,12 +13,15 @@ node(NODE_NAME)
         {
             checkout scm
         }
-        stage('Remove previous distributed files')
+        if (Files.isDirectory(Paths.get("_dist")) || Files.isDirectory(Paths.get("_docs"))) 
         {
-            bat """
-                rmdir /Q /S "_dist"
-                rmdir /Q /S "_docs"
-            """
+            stage('Remove previous distributed files')
+            {
+                bat """
+                    rmdir /Q /S "_dist"
+                    rmdir /Q /S "_docs"
+                """
+            }   
         }
         for (version in PYTHON_VERSIONS) 
         {   
