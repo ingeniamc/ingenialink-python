@@ -1,13 +1,16 @@
-node('sw') {
+node('sw')
+{
     deleteDir()
-
-
-    if (env.BRANCH_NAME == 'test-jenkins' || env.BRANCH_NAME.contains('release') {
-        stage('Checkout') {
+    if (env.BRANCH_NAME == 'test-jenkins' || env.BRANCH_NAME.contains('release'))
+    {
+        stage('Checkout')
+        {
             checkout scm
         }
-        stage('Python 3.6') {
-            stage('Remove previous build files') {
+        stage('Python 3.6')
+        {
+            stage('Remove previous build files')
+            {
                 bat """
                     rmdir /Q /S "_build"
                     rmdir /Q /S "_deps"
@@ -18,34 +21,35 @@ node('sw') {
                     del /f "Pipfile.lock"
                 """
             }
-
-            stage('Install environment') {
+            stage('Install environment')
+            {
                 bat '''
                     pipenv install --dev --python 3.6
                 '''
             }
-
             stage('PEP8 style check')
             {
                 bat '''
                     pipenv run pycodestyle --first ingenialink/ --config=setup.cfg
                 '''
             }
-
-            stage('Build libraries') {
+            stage('Build libraries')
+            {
                 bat '''
                     pipenv run python setup.py build sdist bdist_wheel
                 '''
             }
-
-            stage('Generate documentation') {
+            stage('Generate documentation')
+            {
                 bat '''
                     pipenv run sphinx-build -b html docs _docs
                 '''
             }
         }
-        stage('Python 3.7') {
-            stage('Remove previous build files') {
+        stage('Python 3.7')
+        {
+            stage('Remove previous build files')
+            {
                 bat """
                     rmdir /Q /S "_build"
                     rmdir /Q /S "_deps"
@@ -56,27 +60,29 @@ node('sw') {
                     del /f "Pipfile.lock"
                 """
             }
-
-            stage('Remove previous environments') {
+            stage('Remove previous environments')
+            {
                 bat """
                     pipenv --rm
                 """
             }
-
-            stage('Install environment') {
+            stage('Install environment')
+            {
                 bat '''
                     pipenv install --dev --python 3.7
                 '''
             }
-
-            stage('Build libraries') {
+            stage('Build libraries')
+            {
                 bat '''
                     pipenv run python setup.py build sdist bdist_wheel
                 '''
             }
         }
-        stage('Python 3.8') {
-            stage('Remove previous build files') {
+        stage('Python 3.8')
+        {
+            stage('Remove previous build files')
+            {
                 bat """
                     rmdir /Q /S "_build"
                     rmdir /Q /S "_deps"
@@ -85,28 +91,29 @@ node('sw') {
                     del /f "Pipfile.lock"
                 """
             }
-            stage('Remove previous environments') {
+            stage('Remove previous environments')
+            {
                 bat """
                     pipenv --rm
                 """
             }
-
-            stage('Install environment') {
+            stage('Install environment')
+            {
                 bat '''
                     pipenv install --dev --python 3.8
                 '''
             }
-
-            stage('Build libraries') {
+            stage('Build libraries')
+            {
                 bat '''
                     pipenv run python setup.py build sdist bdist_wheel
                 '''
             }
-
-
         }
-        stage('Python 3.9') {
-            stage('Remove previous build files') {
+        stage('Python 3.9')
+        {
+            stage('Remove previous build files')
+            {
                 bat """
                     rmdir /Q /S "_build"
                     rmdir /Q /S "_deps"
@@ -115,26 +122,27 @@ node('sw') {
                     del /f "Pipfile.lock"
                 """
             }
-            stage('Remove previous environments') {
+            stage('Remove previous environments')
+            {
                 bat """
                     pipenv --rm
                 """
             }
-
-            stage('Install environment') {
+            stage('Install environment')
+            {
                 bat '''
                     pipenv install --dev --python 3.9
                 '''
             }
-
-            stage('Build libraries') {
+            stage('Build libraries')
+            {
                 bat '''
                     pipenv run python setup.py build sdist bdist_wheel
                 '''
             }
         }
-
-        stage('Archive whl package') {
+        stage('Archive whl package')
+        {
             bat """
                 "C:/Program Files/7-Zip/7z.exe" a -r docs.zip -w _docs -mem=AES256
             """
