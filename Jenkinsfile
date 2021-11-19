@@ -2,7 +2,7 @@ node('sw') {
     deleteDir()
 
 
-    if (env.BRANCH_NAME == 'test-jenkins') {
+    if (env.BRANCH_NAME == 'test-jenkins' || env.BRANCH_NAME.contains('release') {
         stage('Checkout') {
             checkout scm
         }
@@ -28,7 +28,7 @@ node('sw') {
             stage('PEP8 style check')
             {
                 bat '''
-                    pipenv run pycodestyle --first ingenialink/
+                    pipenv run pycodestyle --first ingenialink/ --config=setup.cfg
                 '''
             }
 
