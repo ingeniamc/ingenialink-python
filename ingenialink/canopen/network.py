@@ -191,9 +191,9 @@ class CanopenNetwork(Network):
             dictionary (str): Path to the dictionary file.
             eds (str): Path to the EDS file.
             servo_status_listener (bool): Toggle the listener of the servo for
-            its status, errors, faults, etc.
+                its status, errors, faults, etc.
             net_status_listener (bool): Toggle the listener of the network
-            status, connection and disconnection.
+                status, connection and disconnection.
 
         """
         nodes = self.scan_slaves()
@@ -312,12 +312,11 @@ class CanopenNetwork(Network):
             target (int): Targeted node ID to be loaded.
             fw_file (str): Path to the firmware file.
             callback_status_msg (object): Subscribed callback function for the status
-            message when loading a firmware.
+                message when loading a firmware.
             callback_progress (object): Subscribed callback function for the live
-            progress when loading a firmware.
-            progress when loading a firmware.
+                progress when loading a firmware.
             callback_errors_enabled (object): Subscribed callback function for
-            knowing when to toggle the error detection when loading firmware.
+                knowing when to toggle the error detection when loading firmware.
 
         Raises:
             ILFirmwareLoadError: The firmware load process fails with an error message.
