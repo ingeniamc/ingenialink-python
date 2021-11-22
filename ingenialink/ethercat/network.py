@@ -58,7 +58,7 @@ class EthercatNetwork(IPBNetwork):
 
         Raises:
             ILFirmwareLoadError: The firmware load process fails
-            with an error message.
+                with an error message.
 
         """
         if not os.path.isfile(fw_file):
@@ -184,12 +184,12 @@ class EthercatNetwork(IPBNetwork):
             dictionary (str): Path to the dictionary to be loaded.
             use_eoe_comms (int): Specify which architecture is the target based on.
             reconnection_retries (int): Number of reconnection retried before declaring
-            a connected or disconnected stated.
+                a connected or disconnected stated.
             reconnection_timeout (int): Time in ms of the reconnection timeout.
             servo_status_listener (bool): Toggle the listener of the servo for
-            its status, errors, faults, etc.
+                its status, errors, faults, etc.
             net_status_listener (bool): Toggle the listener of the network
-            status, connection and disconnection.
+                status, connection and disconnection.
 
         Returns:
             EthercatServo: Instance of the connected servo.

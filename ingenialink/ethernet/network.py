@@ -106,7 +106,7 @@ class EthernetNetwork(IPBNetwork):
 
         Raises:
             ILFirmwareLoadError: The firmware load process fails
-            with an error message.
+                with an error message.
         """
         r = 0
         upd = UDP(port, ip)
@@ -160,12 +160,12 @@ class EthernetNetwork(IPBNetwork):
             port (int): Port to connect to the slave.
             communication_protocol (NET_TRANS_PROT): Communication protocol, UPD or TCP.
             reconnection_retries (int): Number of reconnection retried before declaring
-            a connected or disconnected stated.
+                a connected or disconnected stated.
             reconnection_timeout (int): Time in ms of the reconnection timeout.
             servo_status_listener (bool): Toggle the listener of the servo for
-            its status, errors, faults, etc.
+                its status, errors, faults, etc.
             net_status_listener (bool): Toggle the listener of the network
-            status, connection and disconnection.
+                status, connection and disconnection.
 
         Returns:
             EthernetServo: Instance of the servo connected.

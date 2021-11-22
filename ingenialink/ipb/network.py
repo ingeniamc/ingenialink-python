@@ -86,7 +86,7 @@ class IPBNetwork(Network, ABC):
 
         Args:
             callback (function): Function that will be called every time an event
-            is raised.
+                is raised.
 
         """
         if callback in self.__observers_net_state:
