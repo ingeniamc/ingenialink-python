@@ -236,10 +236,10 @@ class CanopenDictionary(Dictionary):
 
     def registers(self, subnode):
         """Gets the register dictionary to the targeted subnode.
-        
+
         Args:
             subnode (int): Identifier for the subnode.
-        
+
         Returns:
             dict: Dictionary of all the registers for a subnode.
 
