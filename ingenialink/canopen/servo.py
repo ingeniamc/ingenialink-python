@@ -691,7 +691,6 @@ class CanopenServo(Servo):
                     element_subnode = int(element.attrib['subnode'])
                     if subnode is None or subnode == element_subnode:
                         r = 0
-                        print('Loading subnode {}'.format(element_subnode))
                         self.write(element.attrib['id'],
                                    float(element.attrib['storage']),
                                    subnode=element_subnode

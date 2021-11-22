@@ -29,7 +29,7 @@ class CanopenCategories:
         for element in root.findall('./Body/Device/Categories/Category'):
             self._cat_ids.append(element.attrib['id'])
             self._categories[element.attrib['id']] = {
-                'en_US': element.getchildren()[0].getchildren()[0].text
+                'en_US': element.find('./Labels/Label').text
             }
 
     @property
@@ -67,7 +67,7 @@ class CanopenErrors:
         root = tree.getroot()
 
         for element in root.findall('./Body/Errors/Error'):
-            label = element.getchildren()[0].getchildren()[0]
+            label = element.find('./Labels/Label')
             self._errors[int(element.attrib['id'], 16)] = [
                 element.attrib['id'],
                 element.attrib['affected_module'],
@@ -136,8 +136,8 @@ class CanopenDictionary(Dictionary):
 
         if root.findall('./Body/Device/Axes/'):
             # For each axis
-            for axis in root.findall('./Body/Device/Axes/Axis/Registers'):
-                for register in axis.getchildren():
+            for axis in root.findall('./Body/Device/Axes/Axis'):
+                for register in axis.findall('./Registers/Register'):
                     self.read_register(register)
         else:
             for register in root.findall('./Body/Device/Registers/Register'):
@@ -161,11 +161,7 @@ class CanopenDictionary(Dictionary):
             units = register.attrib['units']
 
             # Cyclic
-            if 'cyclic' in register.attrib:
-                cyclic = register.attrib['cyclic']
-            else:
-                cyclic = "CONFIG"
-
+            cyclic = register.attrib['cyclic'] if 'cyclic' in register.attrib else "CONFIG"
             idx = int(register.attrib['address'][:6], 16)
             subidx = int("0x" + register.attrib['address'][-2:], 16)
 
@@ -202,46 +198,22 @@ class CanopenDictionary(Dictionary):
                 raise_err(lib.IL_EACCESS, 'Invalid access type')
 
             # Subnode
-            if 'subnode' in register.attrib:
-                subnode = register.attrib['subnode']
-            else:
-                subnode = 1
+            subnode = int(register.attrib['subnode']) if 'subnode' in register.attrib else 1
 
             # Storage
-            if 'storage' in register.attrib:
-                storage = register.attrib['storage']
-            else:
-                storage = None
-
-            if 'cat_id' in register.attrib:
-                cat_id = register.attrib['cat_id']
-            else:
-                cat_id = None
-
+            storage = register.attrib['storage'] if 'storage' in register.attrib else None
+            cat_id = register.attrib['cat_id'] if 'cat_id' in register.attrib else None
             if 'internal_use' in register.attrib:
                 internal_use = register.attrib['internal_use']
             else:
                 internal_use = 0
 
-            # Children
-            labels_elem = None
-            range_elem = None
-            enums_elem = None
-            for child in register.getchildren():
-                if child.tag == 'Labels':
-                    labels_elem = child
-                elif child.tag == 'Range':
-                    range_elem = child
-                elif child.tag == 'Enumerations':
-                    enums_elem = child
-
             # Labels
-            labels = {}
-            if labels_elem is not None:
-                for label in labels_elem.getchildren():
-                    labels[label.attrib['lang']] = label.text
+            labels_elem = register.findall('./Labels/Label')
+            labels = {label.attrib['lang']: label.text for label in labels_elem}
 
             # Range
+            range_elem = register.find('./Range')
             reg_range = (None, None)
             if range_elem is not None:
                 range_min = range_elem.attrib['min']
@@ -249,10 +221,8 @@ class CanopenDictionary(Dictionary):
                 reg_range = (range_min, range_max)
 
             # Enumerations
-            enums = []
-            if enums_elem is not None:
-                for enum in enums_elem.getchildren():
-                    enums.append({enum.attrib['value']: enum.text})
+            enums_elem = register.findall('./Enumerations/Enum')
+            enums = [{enum.attrib['value']: enum.text} for enum in enums_elem]
 
             reg = CanopenRegister(identifier, units, cyclic, idx, subidx, dtype,
                                   access, subnode=subnode,
