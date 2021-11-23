@@ -13,10 +13,11 @@ class CanopenCategories:
         dict_ (str): Path to the Ingenia dictionary.
 
     """
+
     def __init__(self, dict_):
         self._dict = dict_
         self._cat_ids = []
-        self._categories = {}   # { cat_id : label }
+        self._categories = {}  # { cat_id : label }
 
         self.load_cat_ids()
 
@@ -54,9 +55,10 @@ class CanopenErrors:
         dict_ (str): Path to the Ingenia dictionary.
 
     """
+
     def __init__(self, dict_):
         self._dict = dict_
-        self._errors = {}   # { cat_id : label }
+        self._errors = {}  # { cat_id : label }
 
         self.load_errors()
 
@@ -88,6 +90,7 @@ class CanopenDictionary(Dictionary):
         dictionary_path (str): Path to the Ingenia dictionary.
 
     """
+
     def __init__(self, dictionary_path):
         super(CanopenDictionary, self).__init__(dictionary_path)
         self.version = '1'
@@ -161,7 +164,8 @@ class CanopenDictionary(Dictionary):
             units = register.attrib['units']
 
             # Cyclic
-            cyclic = register.attrib['cyclic'] if 'cyclic' in register.attrib else "CONFIG"
+            cyclic = register.attrib[
+                'cyclic'] if 'cyclic' in register.attrib else "CONFIG"
             idx = int(register.attrib['address'][:6], 16)
             subidx = int("0x" + register.attrib['address'][-2:], 16)
 
@@ -198,10 +202,12 @@ class CanopenDictionary(Dictionary):
                 raise_err(lib.IL_EACCESS, 'Invalid access type')
 
             # Subnode
-            subnode = int(register.attrib['subnode']) if 'subnode' in register.attrib else 1
+            subnode = int(
+                register.attrib['subnode']) if 'subnode' in register.attrib else 1
 
             # Storage
-            storage = register.attrib['storage'] if 'storage' in register.attrib else None
+            storage = register.attrib[
+                'storage'] if 'storage' in register.attrib else None
             cat_id = register.attrib['cat_id'] if 'cat_id' in register.attrib else None
             if 'internal_use' in register.attrib:
                 internal_use = register.attrib['internal_use']

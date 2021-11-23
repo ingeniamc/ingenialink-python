@@ -1,7 +1,7 @@
 def NODE_NAME = "sw"
 def BRANCH_NAME_RELEASE = "release"
 def BRANCH_NAME_MASTER = "master"
-def PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9", "3.10"]
+def PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9"]
 def style_check = false
 
 node(NODE_NAME)
@@ -37,12 +37,6 @@ node(NODE_NAME)
                         rmdir /Q /S "_install"
                         rmdir /Q /S "build"
                         del /f "Pipfile.lock"
-                    """
-                }
-                stage("Remove previous environments")
-                {
-                    bat """
-                        pipenv --rm
                     """
                 }
                 stage("Install environment ${version}")
@@ -81,6 +75,12 @@ node(NODE_NAME)
                 "C:/Program Files/7-Zip/7z.exe" a -r docs.zip -w _docs -mem=AES256
             """
             archiveArtifacts artifacts: "dist/*, docs.zip"
+        }
+        stage("Remove previous environments")
+        {
+            bat """
+                pipenv --rm
+            """
         }
     }
 }
