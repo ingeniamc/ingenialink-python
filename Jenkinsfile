@@ -1,7 +1,7 @@
 def NODE_NAME = "sw"
 def BRANCH_NAME_RELEASE = "release"
 def BRANCH_NAME_MASTER = "master"
-def PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9", "3.10"]
+def PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9"]
 def style_check = false
 
 node(NODE_NAME)
