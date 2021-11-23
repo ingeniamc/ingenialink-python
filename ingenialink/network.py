@@ -135,6 +135,3 @@ class NetworkMonitor:
     def stop(self):
         """Stop the monitor."""
         lib.il_net_dev_mon_stop(self._mon)
-
-
-

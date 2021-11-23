@@ -191,9 +191,9 @@ class CanopenNetwork(Network):
             dictionary (str): Path to the dictionary file.
             eds (str): Path to the EDS file.
             servo_status_listener (bool): Toggle the listener of the servo for
-            its status, errors, faults, etc.
+                its status, errors, faults, etc.
             net_status_listener (bool): Toggle the listener of the network
-            status, connection and disconnection.
+                status, connection and disconnection.
 
         """
         nodes = self.scan_slaves()
@@ -224,7 +224,8 @@ class CanopenNetwork(Network):
                           'the transceiver is properly connected.'.format(target))
         else:
             logger.error('Node id not found')
-            raise_err(lib.IL_EFAIL, 'Node id {} not found in the network.'.format(target))
+            raise_err(lib.IL_EFAIL,
+                      'Node id {} not found in the network.'.format(target))
 
     def disconnect_from_slave(self, servo):
         """Disconnects the slave from the network.
@@ -312,12 +313,11 @@ class CanopenNetwork(Network):
             target (int): Targeted node ID to be loaded.
             fw_file (str): Path to the firmware file.
             callback_status_msg (object): Subscribed callback function for the status
-            message when loading a firmware.
+                message when loading a firmware.
             callback_progress (object): Subscribed callback function for the live
-            progress when loading a firmware.
-            progress when loading a firmware.
+                progress when loading a firmware.
             callback_errors_enabled (object): Subscribed callback function for
-            knowing when to toggle the error detection when loading firmware.
+                knowing when to toggle the error detection when loading firmware.
 
         Raises:
             ILFirmwareLoadError: The firmware load process fails with an error message.
@@ -388,7 +388,8 @@ class CanopenNetwork(Network):
 
                     if file_extension != '' and file_extension == '.sfu':
                         fd, lfu_path = tempfile.mkstemp(suffix=".lfu")
-                        logger.debug('>> FD: {}. \n>> LFU PATH: {}.'.format(fd, lfu_path))
+                        logger.debug('>> FD: {}. \n>> '
+                                     'LFU PATH: {}.'.format(fd, lfu_path))
 
                         try:
                             # Convert the sfu file to lfu
@@ -620,7 +621,7 @@ class CanopenNetwork(Network):
                                 try:
                                     servo.read(STATUS_WORD_REGISTERS[1])
                                     stop = True
-                                except:
+                                except ILError:
                                     pass
                         else:
                             error_detected_msg = 'Could not recover drive'

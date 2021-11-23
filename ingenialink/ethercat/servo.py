@@ -14,7 +14,7 @@ class EthercatServo(IPBServo):
         target (int): Target ID for the slave.
         dictionary_path (str): Path to the dictionary.
         servo_status_listener (bool): Toggle the listener of the servo for
-        its status, errors, faults, etc.
+            its status, errors, faults, etc.
 
     """
     def __init__(self, cffi_servo, cffi_net, target, dictionary_path=None,

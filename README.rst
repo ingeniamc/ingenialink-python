@@ -24,7 +24,7 @@ object-oriented API.
 Requirements
 ------------
 
-* Python 3.6
+* Python 3.6, 3.7, 3.8 or 3.9
 * WinPcap_ 4.1.3
 
 .. _WinPcap: https://www.winpcap.org/install/

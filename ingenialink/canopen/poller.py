@@ -191,15 +191,14 @@ class CanopenPoller(Poller):
             int: Status code.
 
         """
-
-        for channel in range(0, self.num_channels):
+        for channel in range(self.num_channels):
             r = self.ch_disable(channel)
             if r < 0:
                 raise_err(r)
         return 0
-    
+
     def _reset_acq(self):
-        """Resets the aquired channels."""
+        """Resets the acquired channels."""
         self.__acq = {
             "t": [],
             "d": []
@@ -236,7 +235,7 @@ class CanopenPoller(Poller):
             self.__samples_count += 1
 
         self.__lock.release()
-    
+
     @property
     def data(self):
         """tuple (list, list, bool): Time vector, array of data vectors and a
@@ -250,7 +249,7 @@ class CanopenPoller(Poller):
             enumerate(self.__mappings_enabled) if is_enabled
         ]
 
-        for channel in range(0, self.num_channels):
+        for channel in range(self.num_channels):
             if self.__mappings_enabled[channel]:
                 d.append(
                     list(self.__acq['d'][channel][0:self.__samples_count])

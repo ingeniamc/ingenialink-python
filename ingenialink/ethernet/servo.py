@@ -35,7 +35,7 @@ class EthernetServo(IPBServo):
         communication_protocol (NET_TRANS_PROT): Transmission protocol.
         dictionary_path (str): Path to the dictionary.
         servo_status_listener (bool): Toggle the listener of the servo for
-        its status, errors, faults, etc.
+            its status, errors, faults, etc.
 
     """
     def __init__(self, cffi_servo, cffi_net, target, port, communication_protocol,

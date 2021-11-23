@@ -173,7 +173,7 @@ class CanopenServo(Servo):
         node (canopen.RemoteNode): Remote Node of the drive.
         dictionary_path (str): Path to the dictionary.
         servo_status_listener (bool): Boolean to initialize the ServoStatusListener and
-        check the drive status.
+            check the drive status.
 
     """
     def __init__(self, target, node, dictionary_path=None, eds=None,
@@ -691,7 +691,6 @@ class CanopenServo(Servo):
                     element_subnode = int(element.attrib['subnode'])
                     if subnode is None or subnode == element_subnode:
                         r = 0
-                        print('Loading subnode {}'.format(element_subnode))
                         self.write(element.attrib['id'],
                                    float(element.attrib['storage']),
                                    subnode=element_subnode
