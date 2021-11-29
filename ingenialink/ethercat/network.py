@@ -93,7 +93,7 @@ class EthercatNetwork(IPBNetwork):
         _fw_file = cstr(fw_file) if fw_file else ffi.NULL
         r = lib.il_net_update_firmware(
             self._cffi_network, _interface_name, target, _fw_file, boot_in_app)
-        if r < 1:
+        if r < 0:
             error_msg = 'Error updating firmware. Error code: {}'.format(r)
             if r in FIRMWARE_UPDATE_ERROR:
                 error_msg = FIRMWARE_UPDATE_ERROR[r]
