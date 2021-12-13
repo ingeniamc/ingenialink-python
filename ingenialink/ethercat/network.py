@@ -13,6 +13,29 @@ import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
 
+FIRMWARE_UPDATE_ERROR = {
+    lib.UP_STATEMACHINE_ERROR: 'Slave could not enter the expected state',
+    lib.UP_NOT_IN_BOOT_ERROR: 'Slave is not in Boot Mode',
+    lib.UP_EEPROM_PDI_ERROR: 'EEPROM PDI Error',
+    lib.UP_EEPROM_FILE_ERROR: 'File was not read properly',
+    lib.UP_NOT_FOUND_ERROR: 'No slaves were found',
+    lib.UP_NO_SOCKET: 'No socket connection was found. Execute as Root',
+    lib.UP_FORCE_BOOT_ERROR: 'Could not force Boot mode',
+
+    lib.SOEM_EC_ERR_TYPE_SDO_ERROR: 'EtherCAT Error. SDO error',
+    lib.SOEM_EC_ERR_TYPE_EMERGENCY: 'EtherCAT Error. Emergency error',
+    lib.SOEM_EC_ERR_TYPE_PACKET_ERROR: 'EtherCAT Error. Packet error',
+    lib.SOEM_EC_ERR_TYPE_SDOINFO_ERROR: 'EtherCAT Error. SDO Info error',
+    lib.SOEM_EC_ERR_TYPE_FOE_ERROR: 'EtherCAT Error. FOE error',
+    lib.SOEM_EC_ERR_TYPE_FOE_BUF2SMALL: 'EtherCAT Error. Buffer too small error',
+    lib.SOEM_EC_ERR_TYPE_FOE_PACKETNUMBER: 'EtherCAT Error. FOE Packet number error',
+    lib.SOEM_EC_ERR_TYPE_SOE_ERROR: 'EtherCAT Error. SOE error',
+    lib.SOEM_EC_ERR_TYPE_MBX_ERROR: 'EtherCAT Error. MBX error',
+    lib.SOEM_EC_ERR_TYPE_FOE_FILE_NOTFOUND: 'EtherCAT Error. FOE File not found error',
+    lib.SOEM_EC_ERR_TYPE_EOE_INVALID_RX_DATA: 'EtherCAT Error. Invalid RX Data error'
+}
+
+
 class EEPROM_TOOL_MODE(Enum):
     """EEPROM tool mode."""
     MODE_NONE = 0
@@ -63,24 +86,18 @@ class EthercatNetwork(IPBNetwork):
         """
         if not os.path.isfile(fw_file):
             raise FileNotFoundError('Could not find {}.'.format(fw_file))
-        try:
-            self._cffi_network = ffi.new('il_net_t **')
-            _interface_name = cstr(self.interface_name) \
-                if self.interface_name else ffi.NULL
-            _fw_file = cstr(fw_file) if fw_file else ffi.NULL
-            r = lib.il_net_update_firmware(self._cffi_network,
-                                           _interface_name,
-                                           target,
-                                           _fw_file,
-                                           boot_in_app)
-            if r < 0:
-                logger.error('Error updating firmware. '
-                             'Error code: {}'.format(r))
-                raise ILFirmwareLoadError('Error updating firmware.')
-        except Exception as e:
-            logger.error(e)
-            raise ILFirmwareLoadError('Error updating firmware '
-                                      'due to an internal error.')
+
+        self._cffi_network = ffi.new('il_net_t **')
+        _interface_name = cstr(self.interface_name) \
+            if self.interface_name else ffi.NULL
+        _fw_file = cstr(fw_file) if fw_file else ffi.NULL
+        r = lib.il_net_update_firmware(
+            self._cffi_network, _interface_name, target, _fw_file, boot_in_app)
+        if r < 0:
+            error_msg = 'Error updating firmware. Error code: {}'.format(r)
+            if r in FIRMWARE_UPDATE_ERROR:
+                error_msg = FIRMWARE_UPDATE_ERROR[r]
+            raise ILFirmwareLoadError(error_msg)
 
     def _read_eeprom(self, eeprom_file, slave, file_format):
         """Reads the EEPROM.
