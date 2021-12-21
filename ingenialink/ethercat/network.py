@@ -254,6 +254,8 @@ class EthercatNetwork(IPBNetwork):
             self.servos.remove(servo)
         self.stop_status_listener()
         r = lib.il_net_master_stop(self._cffi_network)
+        lib.il_servo_destroy(servo._cffi_servo)
+        lib.il_net_destroy(self._cffi_network)
         self._cffi_network = None
         if r < 0:
             raise ILError('Error disconnecting the drive. '
