@@ -325,10 +325,64 @@ class IPBServo(Servo):
 
         """
         v = ffi.new("char[" + str(size) + "]")
-        r = lib.il_net_SDO_read_string(self._cffi_network, slave, idx, subidx, size, v)
+        r = lib.il_net_SDO_read_array(self._cffi_network, slave, idx, subidx, size, v)
         raise_err(r)
 
         return pstr(v)
+
+    def read_array_sdo(self, idx, subidx, length, dtype, slave=1):
+        """Read array SDO from network.
+
+        Args:
+            idx (int): Register index.
+            subidx (int): Register subindex.
+            length (int): Array length.
+            dtype (REG_DTYPE): Register data type.
+            slave (int, Optional): Identifier of an slave in the network.
+
+        Returns:
+            list: Obtained value
+
+        Raises:
+            ValueError: If the register type is not valid.
+
+        """
+        enum_dtype = REG_DTYPE(dtype)
+        size = dtype_size(enum_dtype)*length
+        var_type = {
+            REG_DTYPE.U8: "uint8_t",
+            REG_DTYPE.S8: "int8_t",
+            REG_DTYPE.U16: "uint16_t",
+            REG_DTYPE.S16: "int16_t",
+            REG_DTYPE.U32: "uint32_t",
+            REG_DTYPE.S32: "int32_t",
+            REG_DTYPE.U64: "uint64_t",
+            REG_DTYPE.S64: "int64_t",
+            REG_DTYPE.FLOAT: "float"
+        }
+        v = ffi.new("{}[{}]".format(var_type[enum_dtype], length))
+        r = lib.il_net_SDO_read_array(self._cffi_network, slave, idx, subidx, size, v)
+        raise_err(r)
+        return list(v)
+
+    def read_sdo_complete_access(self, idx, size, slave=1):
+        """Read SDO complete access from network.
+
+        Args:
+            idx (int): Register index.
+            size (int): Size in bytes to read.
+            slave (int, Optional): Identifier of an slave in the network.
+
+        Returns:
+            bytes: Obtained value
+
+        """
+        v = ffi.new("char[" + str(size) + "]")
+        r = lib.il_net_SDO_read_complete_access(
+            self._cffi_network, slave, idx, size, v)
+        raise_err(r)
+
+        return b"".join(v)
 
     def write_sdo(self, idx, subidx, dtype, value, slave=1):
         """Write SDO from network.
