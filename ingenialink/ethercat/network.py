@@ -114,9 +114,9 @@ class EthercatNetwork(IPBNetwork):
         if file_format not in EEPROM_FILE_FORMAT:
             raise ILError('Invalid file format')
         if file_format == EEPROM_FILE_FORMAT.BINARY:
-            mode = EEPROM_TOOL_MODE.MODE_READBIN
+            mode = EEPROM_TOOL_MODE.MODE_READBIN.value
         else:
-            mode = EEPROM_TOOL_MODE.MODE_READINTEL
+            mode = EEPROM_TOOL_MODE.MODE_READINTEL.value
 
         self._cffi_network = ffi.new('il_net_t **')
         _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
@@ -142,9 +142,9 @@ class EthercatNetwork(IPBNetwork):
         if file_format not in EEPROM_FILE_FORMAT:
             raise ILError('Invalid file format')
         if file_format == EEPROM_FILE_FORMAT.BINARY:
-            mode = EEPROM_TOOL_MODE.MODE_WRITEBIN
+            mode = EEPROM_TOOL_MODE.MODE_WRITEBIN.value
         else:
-            mode = EEPROM_TOOL_MODE.MODE_WRITEINTEL
+            mode = EEPROM_TOOL_MODE.MODE_WRITEINTEL.value
 
         self._cffi_network = ffi.new('il_net_t **')
         _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
@@ -172,7 +172,7 @@ class EthercatNetwork(IPBNetwork):
 
         r = lib.il_net_eeprom_tool(
             self._cffi_network, _interface_name, slave,
-            EEPROM_TOOL_MODE.MODE_WRITEALIAS, _eeprom_file)
+            EEPROM_TOOL_MODE.MODE_WRITEALIAS.value, _eeprom_file)
         if r < 0:
             raise ILError('Failed writing EEPROM alias.')
 
