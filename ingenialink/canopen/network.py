@@ -103,14 +103,14 @@ class NetStatusListener(Thread):
     def __init__(self, network, node):
         super(NetStatusListener, self).__init__()
         self.__network = network
-        self.__node = node
-        self.__timestamp = self.__node.nmt.timestamp
+        self.node = node
+        self.__timestamp = self.node.nmt.timestamp
         self.__state = NET_STATE.CONNECTED
         self.__stop = False
 
     def run(self):
         while not self.__stop:
-            if self.__timestamp == self.__node.nmt.timestamp:
+            if self.__timestamp == self.node.nmt.timestamp:
                 if self.__state != NET_STATE.DISCONNECTED:
                     self.__network.status = NET_STATE.DISCONNECTED
                     self.__state = NET_STATE.DISCONNECTED
@@ -122,7 +122,7 @@ class NetStatusListener(Thread):
                     self.__network.status = NET_STATE.CONNECTED
                     self.__state = NET_STATE.CONNECTED
                     self.__network._notify_status(NET_DEV_EVT.ADDED)
-                self.__timestamp = self.__node.nmt.timestamp
+                self.__timestamp = self.node.nmt.timestamp
             sleep(1.5)
 
     def stop(self):
@@ -145,7 +145,7 @@ class CanopenNetwork(Network):
         self.__channel = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
         self._connection = None
-        self.__listener_net_status = None
+        self.__listeners_net_status = []
         self.__net_state = NET_STATE.DISCONNECTED
 
         self.__observers_net_state = []
@@ -164,7 +164,10 @@ class CanopenNetwork(Network):
             list: Containing all the detected node IDs.
 
         """
-        self._setup_connection()
+        is_connection_created = False
+        if self._connection is None:
+            is_connection_created = True
+            self._setup_connection()
 
         self._connection.scanner.reset()
         try:
@@ -178,7 +181,8 @@ class CanopenNetwork(Network):
 
         nodes = self._connection.scanner.nodes
 
-        self._teardown_connection()
+        if is_connection_created:
+            self._teardown_connection()
 
         return nodes
 
@@ -234,9 +238,10 @@ class CanopenNetwork(Network):
             servo (CanopenServo): Instance of the servo connected.
 
         """
-        self.stop_status_listener()
+        self.stop_status_listener(servo)
         servo.stop_status_listener()
-        self._teardown_connection()
+        if not self.servos:
+            self._teardown_connection()
         self.servos.remove(servo)
 
     def _setup_connection(self):
@@ -861,22 +866,30 @@ class CanopenNetwork(Network):
 
     def start_status_listener(self, servo):
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
-        if self.__listener_net_status is None:
-            self.__listener_net_status = NetStatusListener(self, servo.node)
-            self.__listener_net_status.start()
+        for listener in self.__listeners_net_status:
+            if listener.node == servo.node:
+                logger.info(
+                    f'Listener on node {servo.node} is already started.'
+                )
+                return
+        listener = NetStatusListener(
+            self, servo.node
+        )
+        listener.start()
+        self.__listeners_net_status.append(listener)
 
-    def stop_status_listener(self):
+    def stop_status_listener(self, servo):
         """Stops the NetStatusListener from listening to the drive."""
         try:
             for node_id, node_obj in self._connection.nodes.items():
-                node_obj.nmt.stop_node_guarding()
+                if node_id == servo.node:
+                    node_obj.nmt.stop_node_guarding()
         except Exception as e:
             logger.error('Could not stop node guarding. Exception: %s', str(e))
-        if self.__listener_net_status is not None and \
-                self.__listener_net_status.is_alive():
-            self.__listener_net_status.stop()
-            self.__listener_net_status.join()
-        self.__listener_net_status = None
+        for listener in self.__listeners_net_status:
+            if listener.node == servo.node and listener.is_alive:
+                listener.stop()
+                listener.join()
 
     @property
     def device(self):
