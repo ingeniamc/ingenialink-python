@@ -18,7 +18,7 @@ class EthercatServo(IPBServo):
 
     """
     def __init__(self, cffi_servo, cffi_net, target, dictionary_path=None,
-                 servo_status_listener=True):
+                 servo_status_listener=False):
         servo = ffi.gc(cffi_servo, lib.il_servo_fake_destroy)
         super(EthercatServo, self).__init__(
             servo, cffi_net, target, dictionary_path)

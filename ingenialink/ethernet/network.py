@@ -150,8 +150,8 @@ class EthernetNetwork(IPBNetwork):
                          communication_protocol=NET_TRANS_PROT.UDP,
                          reconnection_retries=DEFAULT_MESSAGE_RETRIES,
                          reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT,
-                         servo_status_listener=True,
-                         net_status_listener=True):
+                         servo_status_listener=False,
+                         net_status_listener=False):
         """Connects to a slave through the given network settings.
 
         Args:
