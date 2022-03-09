@@ -89,9 +89,9 @@ setup(name='ingenialink',
       install_requires=[
           'cffi==1.14.6',
           'numpy<=1.19.5',
-          'canopen>=1.0.0',
+          'canopen==1.2.1',
+          'python-can==3.3.4',
           'ingenialogger>=0.2.1'
       ],
-      include_package_data = True
-
+      include_package_data=True
       )
