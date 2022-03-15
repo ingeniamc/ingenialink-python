@@ -726,24 +726,19 @@ class CanopenServo(Servo):
                                data=PASSWORD_STORE_ALL,
                                subnode=0)
                     logger.info('Store all successfully done.')
-                except Exception as e:
+                except Exception:
                     logger.warning('Store all COCO failed. Trying MOCO...')
                     r = -1
                 if r < 0:
-                    if self._dictionary.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
-                        # Multiaxis
-                        for dict_subnode in self._dictionary.subnodes:
-                            self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
-                                       data=PASSWORD_STORE_ALL,
-                                       subnode=dict_subnode)
-                            logger.info('Store axis {} successfully done.'.format(
-                                dict_subnode))
-                    else:
-                        # Single axis
-                        self.write(reg=STORE_MOCO_ALL_REGISTERS[1],
-                                   data=PASSWORD_STORE_ALL,
-                                   subnode=subnode)
-                        logger.info('Store all successfully done.')
+                    for dict_subnode in range(1, self.dictionary.subnodes):
+                        self.write(
+                            reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
+                            data=PASSWORD_STORE_ALL,
+                            subnode=dict_subnode)
+                        logger.info(
+                            'Store axis {} successfully done.'.format(
+                                dict_subnode)
+                        )
             elif subnode == 0:
                 # Store subnode 0
                 raise ILError('The current firmware version does not '
