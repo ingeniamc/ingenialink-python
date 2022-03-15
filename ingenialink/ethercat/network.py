@@ -192,8 +192,8 @@ class EthercatNetwork(IPBNetwork):
     def connect_to_slave(self, target=1, dictionary="", use_eoe_comms=1,
                          reconnection_retries=DEFAULT_MESSAGE_RETRIES,
                          reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT,
-                         servo_status_listener=True,
-                         net_status_listener=True):
+                         servo_status_listener=False,
+                         net_status_listener=False):
         """Connect a slave through an EtherCAT connection.
 
         Args:
@@ -212,7 +212,6 @@ class EthercatNetwork(IPBNetwork):
             EthercatServo: Instance of the connected servo.
 
         """
-        servo = None
         _interface_name = cstr(self.interface_name) \
             if self.interface_name else ffi.NULL
         _dictionary = cstr(dictionary) if dictionary else ffi.NULL
@@ -226,13 +225,13 @@ class EthercatNetwork(IPBNetwork):
             _servo = None
             self._cffi_network = None
             raise ILError('Could not find any servos connected.')
-        else:
-            net_ = ffi.cast('il_net_t *', self._cffi_network[0])
-            servo_ = ffi.cast('il_servo_t *', _servo[0])
-            servo = EthercatServo(servo_, net_, target, dictionary,
-                                  servo_status_listener)
-            self._cffi_network = net_
-            self.servos.append(servo)
+
+        net_ = ffi.cast('il_net_t *', self._cffi_network[0])
+        servo_ = ffi.cast('il_servo_t *', _servo[0])
+        servo = EthercatServo(servo_, net_, target, dictionary,
+                              servo_status_listener)
+        self._cffi_network = net_
+        self.servos.append(servo)
 
         if net_status_listener:
             self.start_status_listener()
