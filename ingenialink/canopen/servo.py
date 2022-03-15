@@ -177,7 +177,7 @@ class CanopenServo(Servo):
 
     """
     def __init__(self, target, node, dictionary_path=None, eds=None,
-                 servo_status_listener=True):
+                 servo_status_listener=False):
         super(CanopenServo, self).__init__(target)
         self.units_torque = None
         """SERVO_UNITS_TORQUE: Torque units."""

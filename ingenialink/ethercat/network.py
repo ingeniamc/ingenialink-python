@@ -192,8 +192,8 @@ class EthercatNetwork(IPBNetwork):
     def connect_to_slave(self, target=1, dictionary="", use_eoe_comms=1,
                          reconnection_retries=DEFAULT_MESSAGE_RETRIES,
                          reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT,
-                         servo_status_listener=True,
-                         net_status_listener=True):
+                         servo_status_listener=False,
+                         net_status_listener=False):
         """Connect a slave through an EtherCAT connection.
 
         Args:
