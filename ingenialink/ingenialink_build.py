@@ -20,7 +20,7 @@ if 'INGENIALINK_DIR' in os.environ:
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = '6.2.2'
+    _IL_VER = '6.2.3'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
 
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
