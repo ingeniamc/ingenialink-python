@@ -4,7 +4,7 @@
     "ip": "192.168.2.22",
     "port": 1061,
     "protocol": "UDP",
-    "save_config_file": "ethernetconfig.xcf",
+    "save_config_file": "ethernet-config.xcf",
     "load_config_file": "resources/configurations/ethernet-config.xcf"
   },
   "ethercat": {
@@ -28,7 +28,7 @@
   "serial": {
     "dictionary": "resources/dictionaries/eve-core_1.8.1.xdf",
     "com_port": "COM5",
-    "save_config_file": "serial-config.xcf.xcf",
+    "save_config_file": "serial-config.xcf",
     "load_config_file": "resources/configurations/serial-config.xcf.xcf"
   }
 }

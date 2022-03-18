@@ -240,9 +240,9 @@ class CanopenNetwork(Network):
         """
         self.stop_status_listener(servo)
         servo.stop_status_listener()
+        self.servos.remove(servo)
         if not self.servos:
             self._teardown_connection()
-        self.servos.remove(servo)
 
     def _setup_connection(self):
         """Creates a network interface object establishing an empty connection
@@ -867,9 +867,9 @@ class CanopenNetwork(Network):
     def start_status_listener(self, servo):
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         for listener in self.__listeners_net_status:
-            if listener.node == servo.node:
+            if listener.node.id == servo.node.id:
                 logger.info(
-                    f'Listener on node {servo.node} is already started.'
+                    f'Listener on node {servo.node.id} is already started.'
                 )
                 return
         listener = NetStatusListener(
@@ -882,12 +882,12 @@ class CanopenNetwork(Network):
         """Stops the NetStatusListener from listening to the drive."""
         try:
             for node_id, node_obj in self._connection.nodes.items():
-                if node_id == servo.node:
+                if node_id == servo.node.id:
                     node_obj.nmt.stop_node_guarding()
         except Exception as e:
             logger.error('Could not stop node guarding. Exception: %s', str(e))
         for listener in self.__listeners_net_status:
-            if listener.node == servo.node and listener.is_alive:
+            if listener.node == servo.node.id and listener.is_alive:
                 listener.stop()
                 listener.join()
 

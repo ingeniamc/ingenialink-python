@@ -1,13 +1,11 @@
 import os
 
 
-def test_save_configuration(connect_to_slave, read_config, pytestconfig):
+def test_save_configuration(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
 
-    protocol = pytestconfig.getoption("--protocol")
-
-    filename = read_config[protocol]['save_config_file']
+    filename = 'temp_config'
 
     servo.save_configuration(filename)
 

@@ -1,7 +1,7 @@
 from ingenialink.dictionary import Dictionary
 
 
-def test_save_configuration(connect_to_slave):
+def test_dictionary(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
 
