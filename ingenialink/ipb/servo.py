@@ -549,20 +549,12 @@ class IPBServo(Servo):
                 logger.warning('Store all COCO failed. Trying MOCO...')
                 r = -1
             if r < 0:
-                if self.dictionary.subnodes > SINGLE_AXIS_MINIMUM_SUBNODES:
-                    # Multiaxis
-                    for dict_subnode in self.dictionary.subnodes:
-                        self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
-                                   data=PASSWORD_STORE_ALL,
-                                   subnode=dict_subnode)
-                        logger.info('Store axis {} successfully done.'.format(
-                            dict_subnode))
-                else:
-                    # Single axis
-                    self.write(reg=STORE_MOCO_ALL_REGISTERS[1],
+                for dict_subnode in range(1, self.dictionary.subnodes):
+                    self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
                                data=PASSWORD_STORE_ALL,
-                               subnode=1)
-                    logger.info('Store all successfully done.')
+                               subnode=dict_subnode)
+                    logger.info('Store axis {} successfully done.'.format(
+                        dict_subnode))
         elif subnode == 0:
             # Store only subnode 0
             self.write(reg=STORE_COCO_ALL,
