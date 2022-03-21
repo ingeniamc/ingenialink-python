@@ -890,6 +890,7 @@ class CanopenNetwork(Network):
             if listener.node.id == servo.node.id and listener.is_alive:
                 listener.stop()
                 listener.join()
+            self.__listeners_net_status.remove(listener)
 
     @property
     def device(self):
