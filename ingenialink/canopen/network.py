@@ -887,7 +887,7 @@ class CanopenNetwork(Network):
         except Exception as e:
             logger.error('Could not stop node guarding. Exception: %s', str(e))
         for listener in self.__listeners_net_status:
-            if listener.node == servo.node.id and listener.is_alive:
+            if listener.node.id == servo.node.id and listener.is_alive:
                 listener.stop()
                 listener.join()
 
