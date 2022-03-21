@@ -886,11 +886,14 @@ class CanopenNetwork(Network):
                     node_obj.nmt.stop_node_guarding()
         except Exception as e:
             logger.error('Could not stop node guarding. Exception: %s', str(e))
+        servo_listener = None
         for listener in self.__listeners_net_status:
             if listener.node.id == servo.node.id and listener.is_alive:
                 listener.stop()
                 listener.join()
-            self.__listeners_net_status.remove(listener)
+                servo_listener = listener
+        if servo_listener is not None:
+            self.__listeners_net_status.remove(servo_listener)
 
     @property
     def device(self):
