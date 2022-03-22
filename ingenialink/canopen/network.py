@@ -175,7 +175,11 @@ class CanopenNetwork(Network):
         except Exception as e:
             logger.error("Error searching for nodes. Exception: {}".format(e))
             logger.info("Resetting bus")
-            if self._connection is not None and self._connection.bus is not None:
+            if (
+                    self._connection is not None
+                    and self._connection.bus is not None
+                    and hasattr(self._connection.bus, 'reset')
+            ):
                 self._connection.bus.reset()
         sleep(0.05)
 
