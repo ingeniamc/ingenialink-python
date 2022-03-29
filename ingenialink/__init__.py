@@ -46,7 +46,7 @@ __all__ = ['EEPROM_FILE_FORMAT', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE',
            'CanopenServo', 'CanopenPoller', 'CanopenRegister', 'CanopenDictionary',
            'err_ipb_last']
 
-__version__ = '6.2.4'
+__version__ = '6.2.5'
 
 try:
     __ingenialink_C_version__ = pstr(lib.il_version())
