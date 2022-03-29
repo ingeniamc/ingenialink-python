@@ -1,3 +1,8 @@
+try:
+    from ._ingenialink import lib
+except ImportError as e:
+    raise ImportError("DLLs required not found: Please install WinPcap") from e
+
 from .network import NetworkMonitor, NET_PROT, \
     NET_STATE, NET_DEV_EVT, NET_TRANS_PROT, Network, EEPROM_FILE_FORMAT
 from .servo import SERVO_STATE, SERVO_FLAGS, SERVO_MODE, \
@@ -27,7 +32,6 @@ from .canopen.dictionary import CanopenDictionary
 
 from ingenialink.utils.errors import err_ipb_last
 
-from ._ingenialink import lib
 from ingenialink.utils._utils import pstr
 
 __all__ = ['EEPROM_FILE_FORMAT', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE',
