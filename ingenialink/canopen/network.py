@@ -175,7 +175,11 @@ class CanopenNetwork(Network):
         except Exception as e:
             logger.error("Error searching for nodes. Exception: {}".format(e))
             logger.info("Resetting bus")
-            if self._connection is not None and self._connection.bus is not None:
+            if (
+                    self._connection is not None
+                    and self._connection.bus is not None
+                    and hasattr(self._connection.bus, 'reset')
+            ):
                 self._connection.bus.reset()
         sleep(0.05)
 
@@ -886,10 +890,14 @@ class CanopenNetwork(Network):
                     node_obj.nmt.stop_node_guarding()
         except Exception as e:
             logger.error('Could not stop node guarding. Exception: %s', str(e))
+        servo_listener = None
         for listener in self.__listeners_net_status:
             if listener.node.id == servo.node.id and listener.is_alive:
                 listener.stop()
                 listener.join()
+                servo_listener = listener
+        if servo_listener is not None:
+            self.__listeners_net_status.remove(servo_listener)
 
     @property
     def device(self):
