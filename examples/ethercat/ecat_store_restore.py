@@ -29,7 +29,7 @@ def store_restore_example():
         servo.store_parameters(subnode=1)
         print('Stored axis 1 parameters successfully')
     except Exception as e:
-        print('Error storing parameters axis 1')
+        print('Error storing parameters axis 1.')
 
     # Restore all
     try:
