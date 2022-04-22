@@ -167,7 +167,11 @@ class CanopenNetwork(Network):
         is_connection_created = False
         if self._connection is None:
             is_connection_created = True
-            self._setup_connection()
+            try:
+                self._setup_connection()
+            except ILError:
+                self._teardown_connection()
+                return []
 
         self._connection.scanner.reset()
         try:
