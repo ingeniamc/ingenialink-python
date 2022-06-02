@@ -329,3 +329,13 @@ def raise_err(code, msg=None):
             raise exc.ILNACKError(msg)
     else:
         raise exc.ILError(msg)
+
+
+def set_logger_level(level):
+    """Set ingenialink C log level.
+
+    Args:
+        level (int): Log level to be set.
+
+    """
+    lib.set_log_level(level)
