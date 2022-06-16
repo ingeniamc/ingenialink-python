@@ -7,7 +7,6 @@ from .network import NetworkMonitor, NET_PROT, \
     NET_STATE, NET_DEV_EVT, NET_TRANS_PROT, Network, EEPROM_FILE_FORMAT
 from .servo import SERVO_STATE, SERVO_FLAGS, SERVO_MODE, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL, SERVO_UNITS_ACC, Servo
-from .monitor import Monitor, MONITOR_TRIGGER
 
 from .ipb.poller import IPBPoller
 from .ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS, REG_PHY

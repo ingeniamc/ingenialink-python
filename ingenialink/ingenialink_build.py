@@ -153,7 +153,6 @@ def _gen_cffi_header():
                join(_INC_DIR, 'ingenialink', 'net.h'),
                join(_INC_DIR, 'ingenialink', 'servo.h'),
                join(_INC_DIR, 'ingenialink', 'poller.h'),
-               join(_INC_DIR, 'ingenialink', 'monitor.h'),
                join(_INC_DIR, 'ingenialink', 'version.h')]
 
     h_stripped = ''
