@@ -42,7 +42,7 @@ _XML2_BUILD = join(_BUILD_DIR, 'libxml2')
 if 'SOEM_DIR' in os.environ:
     _SOEM_SRC = os.environ['SOEM_DIR']
 else:
-    _SOEM_SRC = join(_IL_SRC, 'external', 'soem')
+    _SOEM_SRC = join(_IL_SRC, 'external', 'SOEM')
 
 _SOEM_BUILD = join(_BUILD_DIR, 'soem')
 
@@ -102,14 +102,14 @@ def _build_deps():
         check_call([cmake, '--build', _XML2_BUILD, '--config', 'Release',
                     '--target', 'install'])
 
-    if sys.platform == 'win32':
-        check_call([cmake, '-H' + _SOEM_SRC, '-B' + _SOEM_BUILD,
-                    '-G', _CMAKE_GENERATOR,
-                    '-DCMAKE_BUILD_TYPE=Release',
-                    '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
-                    '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
-        check_call([cmake, '--build', _SOEM_BUILD, '--config', 'Release',
-                    '--target', 'install'])
+    check_call([cmake, '-H' + _SOEM_SRC, '-B' + _SOEM_BUILD,
+                '-G', _CMAKE_GENERATOR,
+                '-DCMAKE_BUILD_TYPE=Release',
+                '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
+                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON',
+                '-DCMAKE_POSITION_INDEPENDENT_CODE=ON'])
+    check_call([cmake, '--build', _SOEM_BUILD, '--config', 'Release',
+                '--target', 'install'])
 
     print("[INFO] Ingenialink build")
     check_call([cmake, '-H' + _IL_SRC, '-B' + _IL_BUILD,
