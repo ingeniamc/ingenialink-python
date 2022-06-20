@@ -91,16 +91,13 @@ def _build_deps():
                 '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
     check_call([cmake, '--build', _SER_BUILD, '--config', 'Release',
                 '--target', 'install'])
-
-    # Deps: libxml2 (only on Windows)
-    if sys.platform == 'win32':
-        check_call([cmake, '-H' + _XML2_SRC, '-B' + _XML2_BUILD,
-                    '-G', _CMAKE_GENERATOR,
-                    '-DCMAKE_BUILD_TYPE=Release',
-                    '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
-                    '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
-        check_call([cmake, '--build', _XML2_BUILD, '--config', 'Release',
-                    '--target', 'install'])
+    check_call([cmake, '-H' + _XML2_SRC, '-B' + _XML2_BUILD,
+                '-G', _CMAKE_GENERATOR,
+                '-DCMAKE_BUILD_TYPE=Release',
+                '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
+                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
+    check_call([cmake, '--build', _XML2_BUILD, '--config', 'Release',
+                '--target', 'install'])
 
     check_call([cmake, '-H' + _SOEM_SRC, '-B' + _SOEM_BUILD,
                 '-G', _CMAKE_GENERATOR,
@@ -117,9 +114,8 @@ def _build_deps():
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
                 '-DBUILD_SHARED_LIBS=OFF',
-                '-DWITH_PROT_MCB=ON',
                 '-DWITH_PROT_ECAT=ON',
-                '-DWITH_PROT_VIRTUAL=ON',
+                '-DWITH_PROT_ETH=ON',
                 '-DWITH_PIC=ON'])
     check_call([cmake, '--build', _IL_BUILD, '--config', 'Release',
                 '--target', 'install'])
