@@ -154,7 +154,7 @@ class IPBCategories(Categories):
         return self._cat_ids
 
 
-class IPBRegistersDictionary(collections.Mapping):
+class IPBRegistersDictionary(collections.abc.Mapping):
     """Registers dictionary.
 
     Args:
