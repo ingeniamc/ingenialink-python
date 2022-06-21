@@ -1,3 +1,6 @@
+import ingenialogger
+logger = ingenialogger.get_logger(__name__)
+
 try:
     from ._ingenialink import lib
 except ImportError as e:
@@ -30,8 +33,8 @@ try:
     from .canopen.poller import CanopenPoller
     from .canopen.register import CanopenRegister
     from .canopen.dictionary import CanopenDictionary
-except ImportError:
-    print("Error importing python-can library, not supported on Linux.")
+except ImportError as e:
+    logger.error('Error importing python-can library, not supported on Linux.')
 
 from ingenialink.utils.errors import err_ipb_last
 
