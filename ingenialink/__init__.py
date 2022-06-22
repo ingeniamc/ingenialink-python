@@ -1,6 +1,3 @@
-import ingenialogger
-logger = ingenialogger.get_logger(__name__)
-
 try:
     from ._ingenialink import lib
 except ImportError as e:
@@ -26,15 +23,12 @@ from .ethernet.servo import EthernetServo
 from .ethercat.network import EthercatNetwork
 from .ethercat.servo import EthercatServo
 
-try:
-    from .canopen.servo import CanopenServo
-    from .canopen.network import CanopenNetwork, CAN_DEVICE, CAN_DEVICE, \
-        CAN_BAUDRATE
-    from .canopen.poller import CanopenPoller
-    from .canopen.register import CanopenRegister
-    from .canopen.dictionary import CanopenDictionary
-except ImportError as e:
-    logger.error('Error importing python-can library, not supported on Linux.')
+from .canopen.servo import CanopenServo
+from .canopen.network import CanopenNetwork, CAN_DEVICE, CAN_DEVICE, \
+    CAN_BAUDRATE
+from .canopen.poller import CanopenPoller
+from .canopen.register import CanopenRegister
+from .canopen.dictionary import CanopenDictionary
 
 from ingenialink.utils.errors import err_ipb_last
 
