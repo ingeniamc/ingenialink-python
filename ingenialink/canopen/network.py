@@ -51,8 +51,7 @@ APPLICATION_LOADED_STATE = 402
 CAN_CHANNELS = {
     'kvaser': (0, 1),
     'pcan': ('PCAN_USBBUS1', 'PCAN_USBBUS2'),
-    'ixxat': (0, 1),
-    'socketcan': ("can0", "can1")
+    'ixxat': (0, 1)
 }
 
 
