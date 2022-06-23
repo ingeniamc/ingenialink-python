@@ -6,9 +6,8 @@ from .register import CanopenRegister
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import *
 from ..exceptions import ILFirmwareLoadError, ILObjectNotExist, ILError
-from can.interfaces.pcan.pcan import PcanError
+from can import CanError
 from ..network import NET_PROT, NET_STATE, NET_DEV_EVT, Network
-from can.interfaces.ixxat.exceptions import VCIDeviceNotFoundError
 from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT, \
     STATUS_WORD_REGISTERS
 
@@ -262,7 +261,7 @@ class CanopenNetwork(Network):
                 self._connection.connect(bustype=self.__device,
                                          channel=self.__channel,
                                          bitrate=self.__baudrate)
-            except (PcanError, VCIDeviceNotFoundError) as e:
+            except CanError as e:
                 logger.error('Transceiver not found in network. Exception: %s', e)
                 raise_err(lib.IL_EFAIL, 'Error connecting to the transceiver. '
                                         'Please verify the transceiver '
