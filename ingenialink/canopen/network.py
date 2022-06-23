@@ -604,10 +604,10 @@ class CanopenNetwork(Network):
                         if not time_diff < RECONNECTION_TIMEOUT:
                             bool_timeout = True
 
-                        logger.debug("Time waited for reconnection: ",
-                                     time_diff, bool_timeout)
-                        logger.debug("Net state after reconnection: ",
-                                     self.status)
+                        logger.debug(f'Time waited for reconnection: '
+                                     f'{time_diff} {bool_timeout}')
+                        logger.debug(f'Net state after reconnection: '
+                                     f'{self.status}')
 
                         sleep(5)
 
