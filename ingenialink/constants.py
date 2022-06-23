@@ -20,6 +20,9 @@ PASSWORD_RESTORE_ALL = 0x64616F6C
 PASSWORD_STORE_RESTORE_TCP_IP = 0x636F6D73
 PASSWORD_STORE_RESTORE_SUB_0 = 0x73756230
 
+FILE_EXT_SFU = '.sfu'
+FILE_EXT_LFU = '.lfu'
+
 
 def _load():
     """Load IngeniaLink constants to this module."""

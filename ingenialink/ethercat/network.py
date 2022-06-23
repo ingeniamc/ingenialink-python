@@ -34,7 +34,6 @@ FIRMWARE_UPDATE_ERROR = {
     lib.SOEM_EC_ERR_TYPE_FOE_FILE_NOTFOUND: 'EtherCAT Error. FOE File not found error',
     lib.SOEM_EC_ERR_TYPE_EOE_INVALID_RX_DATA: 'EtherCAT Error. Invalid RX Data error'
 }
-FILE_EXT_SFU = '.sfu'
 
 
 class EEPROM_TOOL_MODE(Enum):
@@ -82,12 +81,16 @@ class EthercatNetwork(IPBNetwork):
         Raises:
             ILFirmwareLoadError: The firmware load process fails
                 with an error message.
+            ValueError: If the firmware file has the wrong extension.
 
         """
         if not os.path.isfile(fw_file):
             raise FileNotFoundError('Could not find {}.'.format(fw_file))
 
         if boot_in_app is None:
+            if not fw_file.endswith((FILE_EXT_SFU, FILE_EXT_LFU)):
+                raise ValueError(f'Firmware file should have extension '
+                                 f'{FILE_EXT_SFU} or {FILE_EXT_LFU}')
             boot_in_app = fw_file.endswith(FILE_EXT_SFU)
         self._cffi_network = ffi.new('il_net_t **')
         _interface_name = cstr(self.interface_name) \
