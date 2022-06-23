@@ -25,13 +25,6 @@ else:
 
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
 
-if 'SERCOMM_DIR' in os.environ:
-    _SER_SRC = os.environ['SERCOMM_DIR']
-else:
-    _SER_SRC = join(_IL_SRC, 'external', 'sercomm')
-
-_SER_BUILD = join(_BUILD_DIR, 'sercomm')
-
 if 'XML2_DIR' in os.environ:
     _XML2_SRC = os.environ['XML2_DIR']
 else:
@@ -65,7 +58,7 @@ else:
 
 
 def _build_deps():
-    """Obtains and build dependencies (sercomm and ingenialink)."""
+    """Obtains and build dependencies."""
 
     # Check for Git & CMake
     git = find_executable('git')
@@ -83,14 +76,6 @@ def _build_deps():
 
         # check_call([git, 'clone', '-b', _SOEM_VER, _SOEM_URL, _SOEM_SRC])
 
-    # Deps: libsercomm
-    check_call([cmake, '-H' + _SER_SRC, '-B' + _SER_BUILD,
-                '-G', _CMAKE_GENERATOR,
-                '-DCMAKE_BUILD_TYPE=Release',
-                '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
-                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
-    check_call([cmake, '--build', _SER_BUILD, '--config', 'Release',
-                '--target', 'install'])
     check_call([cmake, '-H' + _XML2_SRC, '-B' + _XML2_BUILD,
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
@@ -167,7 +152,7 @@ def _get_libs():
         list: List of libraries.
 
     """
-    libs = ['ingenialink', 'sercomm', 'xml2', 'soem']
+    libs = ['ingenialink', 'xml2', 'soem']
 
     if sys.platform.startswith('linux'):
         libs.extend(['udev', 'rt', 'pthread'])
