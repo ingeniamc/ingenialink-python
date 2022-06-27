@@ -17,15 +17,6 @@ node(NODE_NAME)
         {   
             stage("Python ${version}")
             {
-                stage("Remove previous build files")
-                {
-                    bat """
-                        rmdir /Q /S "_build"
-                        rmdir /Q /S "_deps"
-                        rmdir /Q /S "_install"
-                        rmdir /Q /S "build"
-                    """
-                }
                 stage("Install environment ${version}")
                 {
                     bat """
@@ -69,7 +60,7 @@ node(NODE_NAME)
             for (version in PYTHON_VERSIONS)
             {
                 bat """
-                    rd /s /q "python${version}"
+                    rmdir /Q /S "python${version}"
                 """
             }
         }
