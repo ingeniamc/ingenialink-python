@@ -20,8 +20,8 @@ node(NODE_NAME)
                 stage("Install environment ${version}")
                 {
                     bat """
-                        python${version} -m venv python${version}
-                        python${version}\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                        py -${version} -m venv py${version}
+                        py${version}\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
                     """
                 }
                 if (!style_check) 
@@ -29,7 +29,7 @@ node(NODE_NAME)
                     stage("PEP8 style check")
                     {
                         bat """
-                            python${version}\\Scripts\\python.exe run pycodestyle --first ingenialink/ --config=setup.cfg
+                            py${version}\\Scripts\\python.exe run pycodestyle --first ingenialink/ --config=setup.cfg
                         """
                     }
                     style_check = true
@@ -37,7 +37,7 @@ node(NODE_NAME)
                 stage("Build libraries ${version}")
                 {
                     bat """
-                        python${version}\\Scripts\\python.exe setup.py build sdist bdist_wheel
+                        py${version}\\Scripts\\python.exe setup.py build sdist bdist_wheel
                     """
                 }
             }
@@ -45,7 +45,7 @@ node(NODE_NAME)
         stage("Generate documentation")
         {
             bat """
-                python${PYTHON_VERSIONS[0]}\\Scripts\\python.exe -m sphinx -b html docs _docs
+                py${PYTHON_VERSIONS[0]}\\Scripts\\python.exe -m sphinx -b html docs _docs
             """
         }
         stage("Archive whl package")
