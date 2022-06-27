@@ -3,7 +3,7 @@ import re
 import os
 from os.path import join, exists
 from distutils.spawn import find_executable
-from subprocess import check_call, call, Popen, PIPE
+from subprocess import check_call
 
 from cffi import FFI
 
@@ -39,12 +39,6 @@ else:
 
 _SOEM_BUILD = join(_BUILD_DIR, 'soem')
 
-# SOEM dirname
-# _SOEM_URL = 'https://github.com/OpenEtherCATsociety/SOEM'
-# _SOEM_VER = 'master'
-# _SOEM_SRC = join(_IL_SRC, 'external', 'SOEM')
-# _SOEM_BUILD = join(_SOEM_SRC, _BUILD_DIR)
-
 if sys.platform == 'win32':
     if sys.version_info >= (3, 5):
         _CMAKE_GENERATOR = 'Visual Studio 14 2015'
@@ -73,8 +67,6 @@ def _build_deps():
     if not exists(_IL_SRC) and _IL_URL:
         check_call([git, 'clone', '--recursive', '-b', _IL_VER, _IL_URL,
                     _IL_SRC])
-
-        # check_call([git, 'clone', '-b', _SOEM_VER, _SOEM_URL, _SOEM_SRC])
 
     check_call([cmake, '-H' + _XML2_SRC, '-B' + _XML2_BUILD,
                 '-G', _CMAKE_GENERATOR,
