@@ -3,7 +3,7 @@ import re
 import os
 from os.path import join, exists
 from distutils.spawn import find_executable
-from subprocess import check_call, call, Popen, PIPE
+from subprocess import check_call
 
 from cffi import FFI
 
@@ -25,13 +25,6 @@ else:
 
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
 
-if 'SERCOMM_DIR' in os.environ:
-    _SER_SRC = os.environ['SERCOMM_DIR']
-else:
-    _SER_SRC = join(_IL_SRC, 'external', 'sercomm')
-
-_SER_BUILD = join(_BUILD_DIR, 'sercomm')
-
 if 'XML2_DIR' in os.environ:
     _XML2_SRC = os.environ['XML2_DIR']
 else:
@@ -46,12 +39,6 @@ else:
 
 _SOEM_BUILD = join(_BUILD_DIR, 'soem')
 
-# SOEM dirname
-# _SOEM_URL = 'https://github.com/OpenEtherCATsociety/SOEM'
-# _SOEM_VER = 'master'
-# _SOEM_SRC = join(_IL_SRC, 'external', 'SOEM')
-# _SOEM_BUILD = join(_SOEM_SRC, _BUILD_DIR)
-
 if sys.platform == 'win32':
     if sys.version_info >= (3, 5):
         _CMAKE_GENERATOR = 'Visual Studio 14 2015'
@@ -65,7 +52,7 @@ else:
 
 
 def _build_deps():
-    """Obtains and build dependencies (sercomm and ingenialink)."""
+    """Obtains and build dependencies."""
 
     # Check for Git & CMake
     git = find_executable('git')
@@ -81,16 +68,6 @@ def _build_deps():
         check_call([git, 'clone', '--recursive', '-b', _IL_VER, _IL_URL,
                     _IL_SRC])
 
-        # check_call([git, 'clone', '-b', _SOEM_VER, _SOEM_URL, _SOEM_SRC])
-
-    # Deps: libsercomm
-    check_call([cmake, '-H' + _SER_SRC, '-B' + _SER_BUILD,
-                '-G', _CMAKE_GENERATOR,
-                '-DCMAKE_BUILD_TYPE=Release',
-                '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
-                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
-    check_call([cmake, '--build', _SER_BUILD, '--config', 'Release',
-                '--target', 'install'])
     check_call([cmake, '-H' + _XML2_SRC, '-B' + _XML2_BUILD,
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
@@ -167,7 +144,7 @@ def _get_libs():
         list: List of libraries.
 
     """
-    libs = ['ingenialink', 'sercomm', 'xml2', 'soem']
+    libs = ['ingenialink', 'xml2', 'soem']
 
     if sys.platform.startswith('linux'):
         libs.extend(['udev', 'rt', 'pthread'])
