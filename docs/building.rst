@@ -29,7 +29,7 @@ Developers
 The builder script will automatically clone the underlying C libraries from
 their respective Git repos. However, when you are changing the C libraries you
 will likely not want that behavior. For this reason, you can *tell* to the
-building script the location of the libraries by setting the ``SERCOMM_DIR``,
+building script the location of the libraries by setting the ``SOEM_DIR``,
 ``XML2_DIR`` and ``INGENIALINK_DIR`` environment variables. Furthermore, you can
 also make a build by directly calling the build script::
 
