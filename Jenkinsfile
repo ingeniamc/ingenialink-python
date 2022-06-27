@@ -29,7 +29,7 @@ node(NODE_NAME)
                     stage("PEP8 style check")
                     {
                         bat """
-                            py${version}\\Scripts\\python.exe run pycodestyle --first ingenialink/ --config=setup.cfg
+                            py${version}\\Scripts\\python.exe -m pycodestyle --first ingenialink/ --config=setup.cfg
                         """
                     }
                     style_check = true
