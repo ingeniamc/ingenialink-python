@@ -60,7 +60,7 @@ node(NODE_NAME)
             for (version in PYTHON_VERSIONS)
             {
                 bat """
-                    rmdir /Q /S "python${version}"
+                    rmdir /Q /S "py${version}"
                 """
             }
         }
