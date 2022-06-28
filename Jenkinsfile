@@ -7,7 +7,7 @@ def style_check = false
 node(NODE_NAME)
 {
     deleteDir()
-    if (true)
+    if (env.BRANCH_NAME == BRANCH_NAME_MASTER || env.BRANCH_NAME.contains(BRANCH_NAME_RELEASE))
     {
         stage("Checkout")
         {
