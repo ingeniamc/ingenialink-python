@@ -13,36 +13,15 @@ node(NODE_NAME)
         {
             checkout scm
         }
-        stage('Remove all previous files')
-        {
-            bat """
-                rmdir /Q /S "_build"
-                rmdir /Q /S "_deps"
-                rmdir /Q /S "_install"
-                rmdir /Q /S "_dist"
-                rmdir /Q /S "build"
-                rmdir /Q /S "_docs"
-                del /f "Pipfile.lock"
-            """
-        }
-        for (version in PYTHON_VERSIONS) 
+        for (version in PYTHON_VERSIONS)
         {   
             stage("Python ${version}")
             {
-                stage("Remove previous build files")
-                {
-                    bat """
-                        rmdir /Q /S "_build"
-                        rmdir /Q /S "_deps"
-                        rmdir /Q /S "_install"
-                        rmdir /Q /S "build"
-                        del /f "Pipfile.lock"
-                    """
-                }
                 stage("Install environment ${version}")
                 {
                     bat """
-                        pipenv install --dev --python ${version}
+                        py -${version} -m venv py${version}
+                        py${version}\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
                     """
                 }
                 if (!style_check) 
@@ -50,7 +29,7 @@ node(NODE_NAME)
                     stage("PEP8 style check")
                     {
                         bat """
-                            pipenv run pycodestyle --first ingenialink/ --config=setup.cfg
+                            py${version}\\Scripts\\python.exe -m pycodestyle --first ingenialink/ --config=setup.cfg
                         """
                     }
                     style_check = true
@@ -58,7 +37,7 @@ node(NODE_NAME)
                 stage("Build libraries ${version}")
                 {
                     bat """
-                        pipenv run python setup.py build sdist bdist_wheel
+                        py${version}\\Scripts\\python.exe setup.py build sdist bdist_wheel
                     """
                 }
             }
@@ -66,7 +45,7 @@ node(NODE_NAME)
         stage("Generate documentation")
         {
             bat """
-                pipenv run sphinx-build -b html docs _docs
+                py${PYTHON_VERSIONS[0]}\\Scripts\\python.exe -m sphinx -b html docs _docs
             """
         }
         stage("Archive whl package")
@@ -78,9 +57,12 @@ node(NODE_NAME)
         }
         stage("Remove previous environments")
         {
-            bat """
-                pipenv --rm
-            """
+            for (version in PYTHON_VERSIONS)
+            {
+                bat """
+                    rmdir /Q /S "py${version}"
+                """
+            }
         }
     }
 }
