@@ -3,7 +3,7 @@ import re
 import os
 from os.path import join, exists
 from distutils.spawn import find_executable
-from subprocess import check_call, call, Popen, PIPE
+from subprocess import check_call
 
 from cffi import FFI
 
@@ -20,17 +20,10 @@ if 'INGENIALINK_DIR' in os.environ:
     _IL_SRC = os.environ['INGENIALINK_DIR']
 else:
     _IL_URL = 'https://github.com/ingeniamc/ingenialink'
-    _IL_VER = '6.2.4'
+    _IL_VER = '6.3.0'
     _IL_SRC = join(_SRC_DIR, 'ingenialink')
 
 _IL_BUILD = join(_BUILD_DIR, 'ingenialink')
-
-if 'SERCOMM_DIR' in os.environ:
-    _SER_SRC = os.environ['SERCOMM_DIR']
-else:
-    _SER_SRC = join(_IL_SRC, 'external', 'sercomm')
-
-_SER_BUILD = join(_BUILD_DIR, 'sercomm')
 
 if 'XML2_DIR' in os.environ:
     _XML2_SRC = os.environ['XML2_DIR']
@@ -42,15 +35,9 @@ _XML2_BUILD = join(_BUILD_DIR, 'libxml2')
 if 'SOEM_DIR' in os.environ:
     _SOEM_SRC = os.environ['SOEM_DIR']
 else:
-    _SOEM_SRC = join(_IL_SRC, 'external', 'soem')
+    _SOEM_SRC = join(_IL_SRC, 'external', 'SOEM')
 
 _SOEM_BUILD = join(_BUILD_DIR, 'soem')
-
-# SOEM dirname
-# _SOEM_URL = 'https://github.com/OpenEtherCATsociety/SOEM'
-# _SOEM_VER = 'master'
-# _SOEM_SRC = join(_IL_SRC, 'external', 'SOEM')
-# _SOEM_BUILD = join(_SOEM_SRC, _BUILD_DIR)
 
 if sys.platform == 'win32':
     if sys.version_info >= (3, 5):
@@ -65,7 +52,7 @@ else:
 
 
 def _build_deps():
-    """Obtains and build dependencies (sercomm and ingenialink)."""
+    """Obtains and build dependencies."""
 
     # Check for Git & CMake
     git = find_executable('git')
@@ -81,35 +68,22 @@ def _build_deps():
         check_call([git, 'clone', '--recursive', '-b', _IL_VER, _IL_URL,
                     _IL_SRC])
 
-        # check_call([git, 'clone', '-b', _SOEM_VER, _SOEM_URL, _SOEM_SRC])
-
-    # Deps: libsercomm
-    check_call([cmake, '-H' + _SER_SRC, '-B' + _SER_BUILD,
+    check_call([cmake, '-H' + _XML2_SRC, '-B' + _XML2_BUILD,
                 '-G', _CMAKE_GENERATOR,
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
                 '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
-    check_call([cmake, '--build', _SER_BUILD, '--config', 'Release',
+    check_call([cmake, '--build', _XML2_BUILD, '--config', 'Release',
                 '--target', 'install'])
 
-    # Deps: libxml2 (only on Windows)
-    if sys.platform == 'win32':
-        check_call([cmake, '-H' + _XML2_SRC, '-B' + _XML2_BUILD,
-                    '-G', _CMAKE_GENERATOR,
-                    '-DCMAKE_BUILD_TYPE=Release',
-                    '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
-                    '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
-        check_call([cmake, '--build', _XML2_BUILD, '--config', 'Release',
-                    '--target', 'install'])
-
-    if sys.platform == 'win32':
-        check_call([cmake, '-H' + _SOEM_SRC, '-B' + _SOEM_BUILD,
-                    '-G', _CMAKE_GENERATOR,
-                    '-DCMAKE_BUILD_TYPE=Release',
-                    '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
-                    '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON'])
-        check_call([cmake, '--build', _SOEM_BUILD, '--config', 'Release',
-                    '--target', 'install'])
+    check_call([cmake, '-H' + _SOEM_SRC, '-B' + _SOEM_BUILD,
+                '-G', _CMAKE_GENERATOR,
+                '-DCMAKE_BUILD_TYPE=Release',
+                '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
+                '-DBUILD_SHARED_LIBS=OFF', '-DWITH_PIC=ON',
+                '-DCMAKE_POSITION_INDEPENDENT_CODE=ON'])
+    check_call([cmake, '--build', _SOEM_BUILD, '--config', 'Release',
+                '--target', 'install'])
 
     print("[INFO] Ingenialink build")
     check_call([cmake, '-H' + _IL_SRC, '-B' + _IL_BUILD,
@@ -117,9 +91,8 @@ def _build_deps():
                 '-DCMAKE_BUILD_TYPE=Release',
                 '-DCMAKE_INSTALL_PREFIX=' + _INSTALL_DIR,
                 '-DBUILD_SHARED_LIBS=OFF',
-                '-DWITH_PROT_MCB=ON',
                 '-DWITH_PROT_ECAT=ON',
-                '-DWITH_PROT_VIRTUAL=ON',
+                '-DWITH_PROT_ETH=ON',
                 '-DWITH_PIC=ON'])
     check_call([cmake, '--build', _IL_BUILD, '--config', 'Release',
                 '--target', 'install'])
@@ -153,7 +126,6 @@ def _gen_cffi_header():
                join(_INC_DIR, 'ingenialink', 'net.h'),
                join(_INC_DIR, 'ingenialink', 'servo.h'),
                join(_INC_DIR, 'ingenialink', 'poller.h'),
-               join(_INC_DIR, 'ingenialink', 'monitor.h'),
                join(_INC_DIR, 'ingenialink', 'version.h')]
 
     h_stripped = ''
@@ -172,7 +144,7 @@ def _get_libs():
         list: List of libraries.
 
     """
-    libs = ['ingenialink', 'sercomm', 'xml2', 'soem']
+    libs = ['ingenialink', 'xml2', 'soem']
 
     if sys.platform.startswith('linux'):
         libs.extend(['udev', 'rt', 'pthread'])

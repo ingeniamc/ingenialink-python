@@ -34,11 +34,11 @@ def disturbance_example():
 
     servo.monitoring_disable()
     servo.disturbance_remove_all_mapped_registers()
-    servo.disturbance_set_mapped_register(0, 0x0021, il.register.REG_DTYPE.FLOAT.value)
-    servo.disturbance_set_mapped_register(1, 0x0020, il.register.REG_DTYPE.S32.value)
-    servo.disturbance_set_mapped_register(2, 0x001A, il.register.REG_DTYPE.FLOAT.value)
-    servo.disturbance_set_mapped_register(3, 0x001B, il.register.REG_DTYPE.FLOAT.value)
-    servo.disturbance_set_mapped_register(4, 0x0024, il.register.REG_DTYPE.U16.value)
+    servo.disturbance_set_mapped_register(0, 0x0021, 1, il.register.REG_DTYPE.FLOAT.value, 4)
+    servo.disturbance_set_mapped_register(1, 0x0020, 1, il.register.REG_DTYPE.S32.value, 4)
+    servo.disturbance_set_mapped_register(2, 0x001A, 1, il.register.REG_DTYPE.FLOAT.value, 4)
+    servo.disturbance_set_mapped_register(3, 0x001B, 1, il.register.REG_DTYPE.FLOAT.value, 4)
+    servo.disturbance_set_mapped_register(4, 0x0024, 1, il.register.REG_DTYPE.U16.value, 2)
 
     servo.disturbance_write_data([0,1,2,3,4],
                                  [il.register.REG_DTYPE.FLOAT,

@@ -6,9 +6,8 @@ from .register import CanopenRegister
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import *
 from ..exceptions import ILFirmwareLoadError, ILObjectNotExist, ILError
-from can.interfaces.pcan.pcan import PcanError
+from can import CanError
 from ..network import NET_PROT, NET_STATE, NET_DEV_EVT, Network
-from can.interfaces.ixxat.exceptions import VCIDeviceNotFoundError
 from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT, \
     STATUS_WORD_REGISTERS
 
@@ -167,7 +166,11 @@ class CanopenNetwork(Network):
         is_connection_created = False
         if self._connection is None:
             is_connection_created = True
-            self._setup_connection()
+            try:
+                self._setup_connection()
+            except ILError:
+                self._teardown_connection()
+                return []
 
         self._connection.scanner.reset()
         try:
@@ -258,7 +261,7 @@ class CanopenNetwork(Network):
                 self._connection.connect(bustype=self.__device,
                                          channel=self.__channel,
                                          bitrate=self.__baudrate)
-            except (PcanError, VCIDeviceNotFoundError) as e:
+            except CanError as e:
                 logger.error('Transceiver not found in network. Exception: %s', e)
                 raise_err(lib.IL_EFAIL, 'Error connecting to the transceiver. '
                                         'Please verify the transceiver '
@@ -601,10 +604,10 @@ class CanopenNetwork(Network):
                         if not time_diff < RECONNECTION_TIMEOUT:
                             bool_timeout = True
 
-                        logger.debug("Time waited for reconnection: ",
-                                     time_diff, bool_timeout)
-                        logger.debug("Net state after reconnection: ",
-                                     self.status)
+                        logger.debug(f'Time waited for reconnection: '
+                                     f'{time_diff} {bool_timeout}')
+                        logger.debug(f'Net state after reconnection: '
+                                     f'{self.status}')
 
                         sleep(5)
 

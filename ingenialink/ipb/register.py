@@ -282,7 +282,7 @@ class IPBRegister(Register):
         return self._address
 
 
-class LabelsDictionary(collections.MutableMapping):
+class LabelsDictionary(collections.abc.MutableMapping):
     """Labels dictionary.
 
     Args:

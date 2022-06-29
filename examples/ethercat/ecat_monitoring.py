@@ -32,31 +32,25 @@ def monitoring_example():
     read_process_finished = False
     tmp_mon_data = []
     monitor_data = []
-    # if add_time:
-    #     monitor_data.append([])
+
     for idx, key in enumerate(registers_key):
         mapped_reg = servo.dictionary.registers(1)[key].address
         dtype = servo.dictionary.registers(1)[key].dtype.value
         servo.monitoring_set_mapped_register(
-            idx, mapped_reg, dtype
+            idx, mapped_reg, 1, dtype, 4
         )
         tmp_mon_data.append([])
         monitor_data.append([])
-    servo.write('MON_CFG_TRIGGER_REPETITIONS', 1, subnode=0)
     # Configure monitoring SOC as forced
     servo.write('MON_CFG_SOC_TYPE', 0, subnode=0)
     # Configure monitoring EoC as number of samples
     servo.write('MON_CFG_EOC_TYPE', 3, subnode=0)
     # Configure number of samples
-    tg_delay_samples = 1
     window_samples = 599
-    total_num_samples = tg_delay_samples + window_samples
-    servo.write('MON_CFG_TRIGGER_DELAY', tg_delay_samples, subnode=0)
+    total_num_samples = window_samples
     servo.write('MON_CFG_WINDOW_SAMP', window_samples, subnode=0)
-    # servo.disable()
     # Enable monitoring
     servo.monitoring_enable()
-    # servo.enable()
     # Check monitoring status
     monitor_status = servo.raw_read('MON_DIST_STATUS', subnode=0)
     if (monitor_status & 0x1) != 1:
@@ -88,7 +82,6 @@ def monitoring_example():
                             tmp_mon_data[index], total_num_samples
                         )
                         data_x = np.arange(
-                            -tg_delay_samples * sampling_time_s,
                             (window_samples) * sampling_time_s,
                             sampling_time_s
                         )
@@ -98,13 +91,6 @@ def monitoring_example():
                                 data_x, len(tmp_mon_data[index])
                             )
                         data_y = tmp_mon_data[index]
-                        # if add_time:
-                        #     if len(monitor_data[0]) == 0:
-                        #         monitor_data[0] = np.round(data_x, decimals=4)
-                        #     monitor_data[index + 1] = np.round(data_y,
-                        #                                        decimals=2)
-                        # else:
-                        #     monitor_data[index] = np.round(data_y, decimals=2)
                         monitor_data[index] = np.round(data_y, decimals=2)
                         data_obtained = True
                 if data_obtained:

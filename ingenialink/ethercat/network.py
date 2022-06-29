@@ -59,7 +59,7 @@ class EthercatNetwork(IPBNetwork):
         self.interface_name = interface_name
         """str: Interface name used in the network settings."""
 
-    def load_firmware(self, fw_file, target=1, boot_in_app=True):
+    def load_firmware(self, fw_file, target=1, boot_in_app=None):
         """Loads a given firmware file to a target.
 
         .. warning::
@@ -75,18 +75,23 @@ class EthercatNetwork(IPBNetwork):
         Args:
             target (int): Targeted node ID to be loaded.
             fw_file (str): Path to the firmware file.
-            boot_in_app (bool): If summit series -> True.
-                                If capitan series -> False.
-                                If custom device -> Contact manufacturer.
+            boot_in_app (bool): If ``fw_file`` extension is .sfu -> True.
+                                Otherwise -> False.
 
         Raises:
             ILFirmwareLoadError: The firmware load process fails
                 with an error message.
+            ValueError: If the firmware file has the wrong extension.
 
         """
         if not os.path.isfile(fw_file):
             raise FileNotFoundError('Could not find {}.'.format(fw_file))
 
+        if boot_in_app is None:
+            if not fw_file.endswith((FILE_EXT_SFU, FILE_EXT_LFU)):
+                raise ValueError(f'Firmware file should have extension '
+                                 f'{FILE_EXT_SFU} or {FILE_EXT_LFU}')
+            boot_in_app = fw_file.endswith(FILE_EXT_SFU)
         self._cffi_network = ffi.new('il_net_t **')
         _interface_name = cstr(self.interface_name) \
             if self.interface_name else ffi.NULL

@@ -7,7 +7,6 @@ from .network import NetworkMonitor, NET_PROT, \
     NET_STATE, NET_DEV_EVT, NET_TRANS_PROT, Network, EEPROM_FILE_FORMAT
 from .servo import SERVO_STATE, SERVO_FLAGS, SERVO_MODE, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL, SERVO_UNITS_ACC, Servo
-from .monitor import Monitor, MONITOR_TRIGGER
 
 from .ipb.poller import IPBPoller
 from .ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS, REG_PHY
@@ -46,7 +45,7 @@ __all__ = ['EEPROM_FILE_FORMAT', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE',
            'CanopenServo', 'CanopenPoller', 'CanopenRegister', 'CanopenDictionary',
            'err_ipb_last']
 
-__version__ = '6.2.5'
+__version__ = '6.3.0'
 
 try:
     __ingenialink_C_version__ = pstr(lib.il_version())
