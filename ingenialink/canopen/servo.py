@@ -698,15 +698,12 @@ class CanopenServo(Servo):
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
                     if subnode is None:
                         element_subnode = int(element.attrib['subnode'])
-                        self.write(element.attrib['id'],
-                                   float(element.attrib['storage']),
-                                   subnode=element_subnode
-                                   )
                     else:
-                        self.write(element.attrib['id'],
-                                   float(element.attrib['storage']),
-                                   subnode=subnode
-                                   )
+                        element_subnode = subnode
+                    self.write(element.attrib['id'],
+                               float(element.attrib['storage']),
+                               subnode=element_subnode
+                               )
             except BaseException as e:
                 logger.error("Exception during load_configuration, register "
                              "%s: %s", str(element.attrib['id']), e)
