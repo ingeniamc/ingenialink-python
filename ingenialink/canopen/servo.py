@@ -669,7 +669,7 @@ class CanopenServo(Servo):
             FileNotFoundError: If the configuration file cannot be found.
             ILError: If a configuration file from a subnode different from 0
             is attempted to be loaded to subnode 0.
-            ILError: If an invalid subnode is provided.
+            ValueError: If an invalid subnode is provided.
 
         """
         if not os.path.isfile(config_file):
@@ -691,7 +691,7 @@ class CanopenServo(Servo):
             registers = root.findall('./Body/Device/Registers/Register')
         dest_subnodes = [int(element.attrib['subnode']) for element in registers]
         if subnode == 0 and subnode not in dest_subnodes:
-            raise ILError(f'Cannot load {config_file} '
+            raise ValueError(f'Cannot load {config_file} '
                           f'to subnode {subnode}')
         for element in registers:
             try:
@@ -704,7 +704,7 @@ class CanopenServo(Servo):
                                float(element.attrib['storage']),
                                subnode=element_subnode
                                )
-            except BaseException as e:
+            except ILIOError as e:
                 logger.error("Exception during load_configuration, register "
                              "%s: %s", str(element.attrib['id']), e)
 
