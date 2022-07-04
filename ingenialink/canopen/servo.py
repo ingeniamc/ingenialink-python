@@ -667,7 +667,7 @@ class CanopenServo(Servo):
 
         Raises:
             FileNotFoundError: If the configuration file cannot be found.
-            ILError: If a configuration file from a subnode different from 0
+            ValueError: If a configuration file from a subnode different from 0
             is attempted to be loaded to subnode 0.
             ValueError: If an invalid subnode is provided.
 
@@ -675,7 +675,7 @@ class CanopenServo(Servo):
         if not os.path.isfile(config_file):
             raise FileNotFoundError(f'Could not find {config_file}.')
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
-            raise ILError('Invalid subnode')
+            raise ValueError('Invalid subnode')
         with open(config_file, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()

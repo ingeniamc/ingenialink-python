@@ -52,7 +52,7 @@ def test_load_configuration_invalid_subnode(read_config, connect_to_slave, subno
     assert servo is not None and net is not None
 
     filename = read_config['canopen']['load_config_file']
-    with pytest.raises(ILError):
+    with pytest.raises(ValueError):
         servo.load_configuration(filename, subnode=subnode)
 
 
@@ -81,7 +81,7 @@ def test_load_configuration_to_subnode_zero(read_config, connect_to_slave):
         for element in registers:
             element.attrib['subnode'] = "1"
         tree.write(modified_path)
-    with pytest.raises(ILError):
+    with pytest.raises(ValueError):
         servo.load_configuration(modified_path, subnode=0)
 
 
