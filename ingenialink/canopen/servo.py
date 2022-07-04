@@ -133,6 +133,25 @@ RESTORE_MOCO_ALL_REGISTERS = {
     )
 }
 
+MONITORING_ENABLE = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58C0, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+
+MONITORING_REMOVE_MAPPED_REGISTERS = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58E3, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+
+MONITORING_REMOVE_DATA = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58EA, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+)
+
+MONITORING_BYTES_PER_BLOCK = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58E4, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+)
 
 class ServoStatusListener(threading.Thread):
     """Reads the status word to check if the drive is alive.
@@ -208,6 +227,7 @@ class CanopenServo(Servo):
         prod_name = '' if self.dictionary.part_number is None \
             else self.dictionary.part_number
         self.full_name = '{} {}'.format(prod_name, self.name)
+        self.__num_mapped_registers = 0
 
     def _get_reg(self, reg, subnode=1):
         """Validates a register.
@@ -1023,3 +1043,88 @@ class CanopenServo(Servo):
     def subnodes(self):
         """int: Number of subnodes."""
         return self._dictionary.subnodes
+
+    @property
+    def number_mapped_registers(self):
+        """Get the number of mapped registers."""
+        return self.__num_mapped_registers
+
+    def monitoring_enable(self):
+        """Enable monitoring process."""
+        self.write(MONITORING_ENABLE, data=1, subnode=0)
+
+    def monitoring_disable(self):
+        """Disable monitoring process."""
+        self.write(MONITORING_ENABLE, data=0, subnode=0)
+
+    def monitoring_remove_all_mapped_registers(self):
+        """Remove all monitoring mapped registers."""
+        self.write(MONITORING_REMOVE_MAPPED_REGISTERS, data=0, subnode=0)
+        self.__num_mapped_registers = self.monitoring_get_num_mapped_registers()
+
+    def monitoring_set_mapped_register(self, address, subnode,
+                                       data_type, data_size):
+        """Set monitoring mapped register.
+
+        Args:
+            address (int): Register address to map.
+            subnode (int): Subnode to be targeted.
+            data_type (int): Register data type.
+            data_size (int): Size of data in bytes.
+
+        Raises:
+            ILError: If max number of mapped registers
+            is reached.
+
+        """
+        data_h = subnode << 12 | \
+                 self.__monitoring_map_can_address(address, subnode)
+        data_l = data_type << 8 | data_size
+        data = (data_h << 16) | data_l
+        if self.number_mapped_registers == 16:
+            raise ILError('Maximum number of mapped registers reached.')
+        self.write(self.__monitoring_map_register(), data=data,
+                   subnode=0)
+        self.__num_mapped_registers = self.monitoring_get_num_mapped_registers()
+        self.write(MONITORING_REMOVE_MAPPED_REGISTERS,
+                   data=self.number_mapped_registers, subnode=subnode)
+
+    def __monitoring_map_register(self):
+        """Get the first available Monitoring Mapped Register slot.
+
+        Returns:
+            CanopenRegister: Monitoring Mapped Register.
+
+        """
+        if self.number_mapped_registers < 10:
+            register_id = f'MON_CFG_REG{self.number_mapped_registers}_MAP'
+        else:
+            register_id = f'MON_CFG_REFG{self.number_mapped_registers}_MAP'
+        return register_id
+
+    def __monitoring_map_can_address(self, address, subnode):
+        return address - (0x2000 + (0x800 * (subnode - 1)))
+
+    def monitoring_get_num_mapped_registers(self):
+        """Obtain the number of mapped registers.
+
+        Returns:
+            int: Actual number of mapped registers.
+
+        """
+        return self.read('MON_CFG_TOTAL_MAP', 0)
+
+    def monitoring_remove_data(self):
+        """Remove monitoring data."""
+        self.write(MONITORING_REMOVE_DATA,
+                   data=1, subnode=0)
+
+    def monitoring_get_bytes_per_block(self):
+        """Obtain Bytes x Block configured.
+
+        Returns:
+            int: Actual number of Bytes x Block configured.
+
+        """
+        return self.read(MONITORING_REMOVE_MAPPED_REGISTERS, subnode=0)
+
