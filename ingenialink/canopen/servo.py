@@ -1082,26 +1082,26 @@ class CanopenServo(Servo):
         self.__channels_dtype = {}
 
     def monitoring_set_mapped_register(self, channel, address, subnode,
-                                       data_type, data_size):
+                                       dtype, size):
         """Set monitoring mapped register.
 
         Args:
             channel (int): Identity channel number.
             address (int): Register address to map.
             subnode (int): Subnode to be targeted.
-            data_type (int): Register data type.
-            data_size (int): Size of data in bytes.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
 
         Raises:
             ILError: If max number of mapped registers
             is reached.
 
         """
-        self.__channels_size[channel] = data_size
-        self.__channels_dtype[channel] = REG_DTYPE(data_type).name
+        self.__channels_size[channel] = size
+        self.__channels_dtype[channel] = REG_DTYPE(dtype).name
         data_h = subnode << 12 | \
                  self.__monitoring_map_can_address(address, subnode)
-        data_l = data_type << 8 | data_size
+        data_l = dtype << 8 | size
         data = (data_h << 16) | data_l
         if self.number_mapped_registers == 16:
             raise ILError('Maximum number of mapped registers reached.')
@@ -1169,7 +1169,11 @@ class CanopenServo(Servo):
         num_available_bytes = self.monitoring_actual_number_bytes()
         self.__monitoring_data = []
         while num_available_bytes > 0:
-            tmp_data = self.__monitoring_read_data()
+            if num_available_bytes < MONITORING_BUFFER_SIZE:
+                limit = num_available_bytes
+            else:
+                limit = MONITORING_BUFFER_SIZE
+            tmp_data = self.__monitoring_read_data()[:limit]
             self.__monitoring_data.append(tmp_data)
             num_available_bytes = self.monitoring_actual_number_bytes()
         self.__monitoring_process_data()
@@ -1228,11 +1232,16 @@ class CanopenServo(Servo):
             )
         return value
 
-    def monitoring_channel_data(self, channel):
+    def monitoring_channel_data(self, channel, dtype=None):
         """Obtain processed monitoring data of a channel.
 
         Args:
             channel (int): Identity channel number.
+            dtype (REG_DTYPE): Data type of the register to map.
+
+        Note:
+            The dtype argument is not necessary for this function, it was
+        added to maintain compatibility with IPB's implementation of monitoring.
 
         Returns:
             List: Monitoring data.
@@ -1259,5 +1268,5 @@ class CanopenServo(Servo):
             array: Current monitoring data.
 
         """
-        return self.__monitoring_data
+        return self.__processed_monitoring_data
 

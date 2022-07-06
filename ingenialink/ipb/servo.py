@@ -978,22 +978,32 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        return lib.il_net_remove_all_mapped_registers(self._cffi_network)
+        r = lib.il_net_remove_all_mapped_registers(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error removing monitoring mapped registers. '
+                          f'Error code: {r}')
 
-    def monitoring_set_mapped_register(self, channel, address, subnode, dtype, size):
+    def monitoring_set_mapped_register(self, channel, address, subnode,
+                                       dtype, size):
         """Set monitoring mapped register.
 
         Args:
             channel (int): Identity channel number.
-            reg_idx (int): Register address to map.
-            dtype (REG_DTYPE): Data type of the register to map.
+            address (int): Register address to map.
+            subnode (int): Subnode to be targeted.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
 
         Returns:
             int: Result code.
 
         """
-        return lib.il_net_set_mapped_register(self._cffi_network, channel,
-                                              address, subnode, dtype, size)
+        r = lib.il_net_set_mapped_register(self._cffi_network, channel,
+                                              address, subnode, dtype,
+                                              size)
+        if r < 0:
+            raise ILError(f'Error mapping monitoring register {address}. '
+                          f'Error code: {r}')
 
     def monitoring_get_num_mapped_registers(self):
         """Obtain the number of mapped registers.
@@ -1011,7 +1021,10 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        return lib.il_net_enable_monitoring(self._cffi_network)
+        r = lib.il_net_enable_monitoring(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error enabling monitoring. '
+                          f'Error code: {r}')
 
     def monitoring_disable(self):
         """Disable monitoring process.
@@ -1020,7 +1033,10 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        return lib.il_net_disable_monitoring(self._cffi_network)
+        r = lib.il_net_disable_monitoring(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error disabling monitoring. '
+                          f'Error code: {r}')
 
     def disturbance_enable(self):
         """Enable disturbance process.
@@ -1062,10 +1078,13 @@ class IPBServo(Servo):
         """Obtain processed monitoring data.
 
         Returns:
-            array: Actual processed monitoring data.
+            int: Result code.
 
         """
-        return lib.il_net_read_monitoring_data(self._cffi_network)
+        r = lib.il_net_read_monitoring_data(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error reading monitoring data. '
+                          f'Error code: {r}')
 
     def monitoring_get_bytes_per_block(self):
         """Obtain Bytes x Block configured.
