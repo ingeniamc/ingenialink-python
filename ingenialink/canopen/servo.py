@@ -241,6 +241,8 @@ class CanopenServo(Servo):
         self.__num_mapped_registers = 0
         self.__channels_size = {}
         self.__channels_dtype = {}
+        self.__monitoring_data = []
+        self.__processed_monitoring_data = []
 
     def _get_reg(self, reg, subnode=1):
         """Validates a register.
@@ -295,48 +297,13 @@ class CanopenServo(Servo):
         error_raised = None
         try:
             self.__lock.acquire()
-            if dtype == REG_DTYPE.S8:
-                value = int.from_bytes(
-                    self.__node.sdo.upload(_reg.idx,
-                                           _reg.subidx),
-                    "little",
-                    signed=True
-                )
-            elif dtype == REG_DTYPE.S16:
-                value = int.from_bytes(
-                    self.__node.sdo.upload(_reg.idx,
-                                           _reg.subidx),
-                    "little",
-                    signed=True
-                )
-            elif dtype == REG_DTYPE.S32:
-                value = int.from_bytes(
-                    self.__node.sdo.upload(_reg.idx,
-                                           _reg.subidx),
-                    "little",
-                    signed=True
-                )
-            elif dtype == REG_DTYPE.FLOAT:
-                [value] = struct.unpack('f',
-                                        self.__node.sdo.upload(
-                                            _reg.idx,
-                                            _reg.subidx)
-                                        )
-            elif dtype == REG_DTYPE.STR:
-                value = self.__node.sdo.upload(
-                    _reg.idx,
-                    _reg.subidx
-                ).decode("utf-8")
-            else:
-                value = int.from_bytes(
-                    self.__node.sdo.upload(_reg.idx,
-                                           _reg.subidx),
-                    "little"
-                )
+            raw_read = self.__node.sdo.upload(_reg.idx,
+                                              _reg.subidx)
+            value = self.__convert_bytes_to_dtype(raw_read, dtype.name)
         except Exception as e:
             logger.error("Failed reading %s. Exception: %s",
                          str(_reg.identifier), e)
-            error_raised = "Error reading {}".format(_reg.identifier)
+            error_raised = f"Error reading {_reg.identifier}"
         finally:
             self.__lock.release()
 
@@ -417,7 +384,7 @@ class CanopenServo(Servo):
             raise_err(lib.IL_EIO, error_raised)
 
     def read_raw(self, reg, subnode=1):
-        """Read from raw bytes from servo.
+        """Read raw bytes from servo.
 
         Args:
             reg (str, Register): Register.
@@ -1109,7 +1076,10 @@ class CanopenServo(Servo):
     def monitoring_remove_all_mapped_registers(self):
         """Remove all monitoring mapped registers."""
         self.write(MONITORING_REMOVE_MAPPED_REGISTERS, data=0, subnode=0)
-        self.__num_mapped_registers = self.monitoring_get_num_mapped_registers()
+        self.__num_mapped_registers = \
+            self.monitoring_get_num_mapped_registers()
+        self.__channels_size = {}
+        self.__channels_dtype = {}
 
     def monitoring_set_mapped_register(self, channel, address, subnode,
                                        data_type, data_size):
@@ -1138,7 +1108,8 @@ class CanopenServo(Servo):
         self.write(self.__monitoring_map_register(), data=data,
                    subnode=0)
         self.__monitoring_update_num_mapped_registers()
-        self.__num_mapped_registers = self.monitoring_get_num_mapped_registers()
+        self.__num_mapped_registers = \
+            self.monitoring_get_num_mapped_registers()
         self.write(MONITORING_REMOVE_MAPPED_REGISTERS,
                    data=self.number_mapped_registers, subnode=subnode)
 
@@ -1196,12 +1167,12 @@ class CanopenServo(Servo):
 
         """
         num_available_bytes = self.monitoring_actual_number_bytes()
-        data = []
+        self.__monitoring_data = []
         while num_available_bytes > 0:
             tmp_data = self.__monitoring_read_data()
-            data.append(tmp_data)
+            self.__monitoring_data.append(tmp_data)
             num_available_bytes = self.monitoring_actual_number_bytes()
-        return self.__monitoring_process_data(data)
+        self.__monitoring_process_data()
 
     def monitoring_actual_number_bytes(self):
         """Get the number of monitoring bytes left to be read."""
@@ -1211,39 +1182,34 @@ class CanopenServo(Servo):
         """Read monitoring data frame."""
         return self.read_raw(MONITORING_DATA, subnode=0)
 
-    def __monitoring_process_data(self, data):
+    def __monitoring_process_data(self):
         """Arrange monitoring data."""
         data_bytes = bytearray()
-        for i in range(len(data)):
-            data_bytes += data[i]
+        for i in range(len(self.__monitoring_data)):
+            data_bytes += self.__monitoring_data[i]
         bytes_per_block = self.monitoring_get_bytes_per_block()
         number_of_blocks = len(data_bytes) // bytes_per_block
         number_of_channels = self.monitoring_get_num_mapped_registers()
         res = [[] for _ in range(number_of_channels)]
         for block in range(number_of_blocks):
-            block_data = data_bytes[block * bytes_per_block:block * bytes_per_block + bytes_per_block]
+            block_data = data_bytes[block * bytes_per_block:
+                                    block * bytes_per_block +
+                                    bytes_per_block]
             for channel in range(number_of_channels):
                 channel_data_size = self.__channels_size[channel]
-                val = self.__convert_bytes_to_dtype(block_data[:channel_data_size], self.__channels_dtype[channel])
+                val = self.__convert_bytes_to_dtype(
+                    block_data[:channel_data_size],
+                    self.__channels_dtype[channel])
                 res[channel].append(val)
                 block_data = block_data[channel_data_size:]
-        return res
+        self.__processed_monitoring_data = res
 
-    def __convert_bytes_to_dtype(self, data, dtype):
+    @staticmethod
+    def __convert_bytes_to_dtype(data, dtype):
         """Convert data in bytes to corresponding dtype."""
-        if dtype == REG_DTYPE.S8.name:
-            value = int.from_bytes(
-                data,
-                "little",
-                signed=True
-            )
-        elif dtype == REG_DTYPE.S16.name:
-            value = int.from_bytes(
-                data,
-                "little",
-                signed=True
-            )
-        elif dtype == REG_DTYPE.S32.name:
+        if dtype in [REG_DTYPE.S8.name,
+                     REG_DTYPE.S16.name,
+                     REG_DTYPE.S32.name]:
             value = int.from_bytes(
                 data,
                 "little",
@@ -1261,3 +1227,37 @@ class CanopenServo(Servo):
                 "little"
             )
         return value
+
+    def monitoring_channel_data(self, channel):
+        """Obtain processed monitoring data of a channel.
+
+        Args:
+            channel (int): Identity channel number.
+
+        Returns:
+            List: Monitoring data.
+
+        """
+        return self.__processed_monitoring_data[channel]
+
+    @property
+    def monitoring_data_size(self):
+        """Obtain monitoring data size.
+
+        Returns:
+            int: Current monitoring data size in bytes.
+
+        """
+        number_of_samples = self.read('MON_CFG_WINDOW_SAMP', subnode=0)
+        return self.monitoring_get_bytes_per_block() * number_of_samples
+
+    @property
+    def monitoring_data(self):
+        """Obtain monitoring data.
+
+        Returns:
+            array: Current monitoring data.
+
+        """
+        return self.__monitoring_data
+
