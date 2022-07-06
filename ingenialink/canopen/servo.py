@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 import threading
 import canopen
@@ -1260,13 +1259,4 @@ class CanopenServo(Servo):
         number_of_samples = self.read('MON_CFG_WINDOW_SAMP', subnode=0)
         return self.monitoring_get_bytes_per_block() * number_of_samples
 
-    @property
-    def monitoring_data(self):
-        """Obtain monitoring data.
-
-        Returns:
-            array: Current monitoring data.
-
-        """
-        return self.__processed_monitoring_data
 
