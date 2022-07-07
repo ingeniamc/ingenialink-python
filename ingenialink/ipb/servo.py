@@ -1006,7 +1006,7 @@ class IPBServo(Servo):
                           f'Error code: {r}')
 
     def monitoring_get_num_mapped_registers(self):
-        """Obtain the number of mapped registers.
+        """Obtain the number of monitoring mapped registers.
 
         Returns:
             int: Actual number of mapped registers.
@@ -1045,7 +1045,10 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        return lib.il_net_enable_disturbance(self._cffi_network)
+        r = lib.il_net_enable_disturbance(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error enabling disturbance. '
+                          f'Error code: {r}')
 
     def disturbance_disable(self):
         """Disable disturbance process.
@@ -1054,7 +1057,10 @@ class IPBServo(Servo):
             int: Result code.
 
         """
-        return lib.il_net_disable_disturbance(self._cffi_network)
+        r = lib.il_net_disable_disturbance(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error disabling disturbance. '
+                          f'Error code: {r}')
 
     def monitoring_remove_data(self):
         """Remove monitoring data.
@@ -1126,7 +1132,10 @@ class IPBServo(Servo):
             int: Return code.
 
         """
-        return lib.il_net_disturbance_remove_all_mapped_registers(self._cffi_network)
+        r = lib.il_net_disturbance_remove_all_mapped_registers(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error removing disturbance mapped registers. '
+                          f'Error code: {r}')
 
     def disturbance_set_mapped_register(self, channel, address, subnode, dtype, size):
         """Set disturbance mapped register.
@@ -1140,8 +1149,11 @@ class IPBServo(Servo):
             int: Return code.
 
         """
-        return lib.il_net_disturbance_set_mapped_register(self._cffi_network, channel,
+        r = lib.il_net_disturbance_set_mapped_register(self._cffi_network, channel,
                                                           address, subnode, dtype, size)
+        if r < 0:
+            raise ILError(f'Error mapping disturbance register {address}. '
+                          f'Error code: {r}')
 
     def __read_coco_moco_register(self, register_coco, register_moco):
         """Reads the COCO register and if it does not exist,
