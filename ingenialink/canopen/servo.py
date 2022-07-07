@@ -1406,7 +1406,7 @@ class CanopenServo(Servo):
             str: Disturbance Mapped Register ID.
 
         """
-        return f'DIST_CFG_REG {self.disturbance_number_mapped_registers}_MAP'
+        return f'DIST_CFG_REG{self.disturbance_number_mapped_registers}_MAP'
 
     @property
     def disturbance_number_mapped_registers(self):
@@ -1479,7 +1479,9 @@ class CanopenServo(Servo):
                 val = self.__convert_dtype_to_bytes(
                     data_arr[channel][sample_idx], dtypes[channel])
                 data += val
-        self.write_raw(DIST_DATA, data=data, subnode=0)
+        chunks = [data[i:i + CAN_MAX_WRITE_SIZE] for i in range(0, len(data), CAN_MAX_WRITE_SIZE)]
+        for chunk in chunks:
+            self.write_raw(DIST_DATA, data=chunk, subnode=0)
         self.disturbance_data = data
         self.disturbance_data_size = len(data)
 

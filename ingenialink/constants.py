@@ -40,6 +40,8 @@ data_type_size = {
     REG_DTYPE.FLOAT: 4
 }
 
+CAN_MAX_WRITE_SIZE = 512
+
 
 def _load():
     """Load IngeniaLink constants to this module."""
