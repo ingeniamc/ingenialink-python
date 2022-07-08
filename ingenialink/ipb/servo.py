@@ -974,8 +974,9 @@ class IPBServo(Servo):
     def monitoring_remove_all_mapped_registers(self):
         """Remove all monitoring mapped registers.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to remove
+            the mapped monitoring registers.
 
         """
         r = lib.il_net_remove_all_mapped_registers(self._cffi_network)
@@ -994,8 +995,9 @@ class IPBServo(Servo):
             dtype (int): Register data type.
             size (int): Size of data in bytes.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to map
+            the monitoring register.
 
         """
         r = lib.il_net_set_mapped_register(self._cffi_network, channel,
@@ -1017,8 +1019,9 @@ class IPBServo(Servo):
     def monitoring_enable(self):
         """Enable monitoring process.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to enable
+            the monitoring process.
 
         """
         r = lib.il_net_enable_monitoring(self._cffi_network)
@@ -1029,8 +1032,9 @@ class IPBServo(Servo):
     def monitoring_disable(self):
         """Disable monitoring process.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to disable
+            the monitoring process.
 
         """
         r = lib.il_net_disable_monitoring(self._cffi_network)
@@ -1041,8 +1045,9 @@ class IPBServo(Servo):
     def disturbance_enable(self):
         """Enable disturbance process.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to enable
+            the disturbance process.
 
         """
         r = lib.il_net_enable_disturbance(self._cffi_network)
@@ -1053,8 +1058,9 @@ class IPBServo(Servo):
     def disturbance_disable(self):
         """Disable disturbance process.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to disable
+            the disturbance process.
 
         """
         r = lib.il_net_disable_disturbance(self._cffi_network)
@@ -1083,8 +1089,9 @@ class IPBServo(Servo):
     def monitoring_read_data(self):
         """Obtain processed monitoring data.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to read
+            the monitoring data.
 
         """
         r = lib.il_net_read_monitoring_data(self._cffi_network)
@@ -1128,8 +1135,9 @@ class IPBServo(Servo):
     def disturbance_remove_all_mapped_registers(self):
         """Remove all disturbance mapped registers.
 
-        Returns:
-            int: Return code.
+        Raises:
+            ILError: If the drive is unable to remove
+            the disturbance mapped registers.
 
         """
         r = lib.il_net_disturbance_remove_all_mapped_registers(self._cffi_network)
@@ -1145,8 +1153,9 @@ class IPBServo(Servo):
             address (int): Register address to map.
             dtype (REG_DTYPE): Data type of the register to map.
 
-        Returns:
-            int: Return code.
+        Raises:
+            ILError: If the drive is unable to map
+            the disturbance register.
 
         """
         r = lib.il_net_disturbance_set_mapped_register(self._cffi_network, channel,
