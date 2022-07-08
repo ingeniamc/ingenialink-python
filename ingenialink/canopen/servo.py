@@ -665,11 +665,17 @@ class CanopenServo(Servo):
             config_file (str): Path to the dictionary.
             subnode (int): Subnode of the axis.
 
+        Raises:
+            FileNotFoundError: If the configuration file cannot be found.
+            ValueError: If a configuration file from a subnode different from 0
+            is attempted to be loaded to subnode 0.
+            ValueError: If an invalid subnode is provided.
+
         """
         if not os.path.isfile(config_file):
-            raise FileNotFoundError('Could not find {}.'.format(config_file))
+            raise FileNotFoundError(f'Could not find {config_file}.')
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
-            raise ILError('Invalid subnode')
+            raise ValueError('Invalid subnode')
         with open(config_file, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -683,24 +689,24 @@ class CanopenServo(Servo):
         else:
             # Single axis
             registers = root.findall('./Body/Device/Registers/Register')
-
-        r = -1
+        dest_subnodes = [int(element.attrib['subnode']) for element in registers]
+        if subnode == 0 and subnode not in dest_subnodes:
+            raise ValueError(f'Cannot load {config_file} '
+                          f'to subnode {subnode}')
         for element in registers:
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
-                    element_subnode = int(element.attrib['subnode'])
-                    if subnode is None or subnode == element_subnode:
-                        r = 0
-                        self.write(element.attrib['id'],
-                                   float(element.attrib['storage']),
-                                   subnode=element_subnode
-                                   )
-            except BaseException as e:
+                    if subnode is None:
+                        element_subnode = int(element.attrib['subnode'])
+                    else:
+                        element_subnode = subnode
+                    self.write(element.attrib['id'],
+                               float(element.attrib['storage']),
+                               subnode=element_subnode
+                               )
+            except ILIOError as e:
                 logger.error("Exception during load_configuration, register "
                              "%s: %s", str(element.attrib['id']), e)
-        if r < 0:
-            raise ILError('Could not find subnode {} '
-                          'in the configuration file'.format(subnode))
 
     def store_parameters(self, subnode=None, sdo_timeout=3):
         """Store all the current parameters of the target subnode.
