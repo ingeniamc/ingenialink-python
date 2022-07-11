@@ -1486,13 +1486,15 @@ class IPBServo(Servo):
         """Obtain monitoring data.
 
         .. warning::
-            This function is deprecated.
+            This function is deprecated.  Please use
+            "monitoring_channel_data" instead.
 
         Returns:
             array: Current monitoring data.
 
         """
-        logger.warning('Function ingenialink.ipb.servo.monitoring_data is deprecated.')
+        logger.warning('Function ingenialink.ipb.servo.monitoring_data is'
+                       ' deprecated. Please use "monitoring_channel_data" instead.')
         monitoring_data = lib.il_net_monitornig_data_get(self._cffi_network)
         size = int(self.monitoring_data_size / 2)
         ret_arr = []

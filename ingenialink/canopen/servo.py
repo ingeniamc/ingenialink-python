@@ -1328,24 +1328,13 @@ class CanopenServo(Servo):
         number_of_samples = self.read('MON_CFG_WINDOW_SAMP', subnode=0)
         return self.monitoring_get_bytes_per_block() * number_of_samples
 
-    @property
-    def __monitoring_disturbance_version(self):
-        """Get the Monitoring/Disturbance version."""
-        return self.read(MONITORING_DISTURBANCE_VERSION, subnode=0)
-
     def disturbance_enable(self):
         """Enable disturbance process."""
-        if self.__monitoring_disturbance_version & 1:
-            self.write(DISTURBANCE_ENABLE, data=1, subnode=0)
-        else:
-            self.monitoring_enable()
+        self.write(DISTURBANCE_ENABLE, data=1, subnode=0)
 
     def disturbance_disable(self):
         """Disable disturbance process."""
-        if self.__monitoring_disturbance_version & 1:
-            self.write(DISTURBANCE_ENABLE, data=0, subnode=0)
-        else:
-            self.monitoring_disable()
+        self.write(DISTURBANCE_ENABLE, data=0, subnode=0)
 
     def disturbance_remove_data(self):
         """Remove disturbance data."""
