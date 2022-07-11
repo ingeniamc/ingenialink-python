@@ -2,6 +2,7 @@ import os
 import time
 import threading
 import canopen
+from canopen.emcy import EmcyConsumer
 import struct
 import xml.etree.ElementTree as ET
 
@@ -201,6 +202,8 @@ class CanopenServo(Servo):
         }
         self.__observers_servo_state = []
         self.__listener_servo_status = None
+
+        self.__emcy_consumer = EmcyConsumer()
 
         if servo_status_listener:
             self.start_status_listener()
@@ -1029,3 +1032,26 @@ class CanopenServo(Servo):
     def subnodes(self):
         """int: Number of subnodes."""
         return self._dictionary.subnodes
+
+    def emcy_subscribe(self, cb):
+        """Subscribe to emergency messages.
+
+        Args:
+            cb: Callback
+
+        Returns:
+            int: Assigned slot.
+
+        """
+        self.__emcy_consumer.add_callback(cb)
+
+        return len(self.__emcy_consumer.callbacks) - 1
+
+    def emcy_unsubscribe(self, slot):
+        """Unsubscribe from emergency messages.
+
+        Args:
+            slot (int): Assigned slot when subscribed.
+
+        """
+        del self.__emcy_consumer.callbacks[slot]
