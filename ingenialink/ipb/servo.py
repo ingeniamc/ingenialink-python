@@ -974,29 +974,41 @@ class IPBServo(Servo):
     def monitoring_remove_all_mapped_registers(self):
         """Remove all monitoring mapped registers.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to remove
+            the mapped monitoring registers.
 
         """
-        return lib.il_net_remove_all_mapped_registers(self._cffi_network)
+        r = lib.il_net_remove_all_mapped_registers(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error removing monitoring mapped registers. '
+                          f'Error code: {r}')
 
-    def monitoring_set_mapped_register(self, channel, address, subnode, dtype, size):
+    def monitoring_set_mapped_register(self, channel, address, subnode,
+                                       dtype, size):
         """Set monitoring mapped register.
 
         Args:
             channel (int): Identity channel number.
-            reg_idx (int): Register address to map.
-            dtype (REG_DTYPE): Data type of the register to map.
+            address (int): Register address to map.
+            subnode (int): Subnode to be targeted.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to map
+            the monitoring register.
 
         """
-        return lib.il_net_set_mapped_register(self._cffi_network, channel,
-                                              address, subnode, dtype, size)
+        r = lib.il_net_set_mapped_register(self._cffi_network, channel,
+                                              address, subnode, dtype,
+                                              size)
+        if r < 0:
+            raise ILError(f'Error mapping monitoring register {address}. '
+                          f'Error code: {r}')
 
     def monitoring_get_num_mapped_registers(self):
-        """Obtain the number of mapped registers.
+        """Obtain the number of monitoring mapped registers.
 
         Returns:
             int: Actual number of mapped registers.
@@ -1007,38 +1019,54 @@ class IPBServo(Servo):
     def monitoring_enable(self):
         """Enable monitoring process.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to enable
+            the monitoring process.
 
         """
-        return lib.il_net_enable_monitoring(self._cffi_network)
+        r = lib.il_net_enable_monitoring(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error enabling monitoring. '
+                          f'Error code: {r}')
 
     def monitoring_disable(self):
         """Disable monitoring process.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to disable
+            the monitoring process.
 
         """
-        return lib.il_net_disable_monitoring(self._cffi_network)
+        r = lib.il_net_disable_monitoring(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error disabling monitoring. '
+                          f'Error code: {r}')
 
     def disturbance_enable(self):
         """Enable disturbance process.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to enable
+            the disturbance process.
 
         """
-        return lib.il_net_enable_disturbance(self._cffi_network)
+        r = lib.il_net_enable_disturbance(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error enabling disturbance. '
+                          f'Error code: {r}')
 
     def disturbance_disable(self):
         """Disable disturbance process.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to disable
+            the disturbance process.
 
         """
-        return lib.il_net_disable_disturbance(self._cffi_network)
+        r = lib.il_net_disable_disturbance(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error disabling disturbance. '
+                          f'Error code: {r}')
 
     def monitoring_remove_data(self):
         """Remove monitoring data.
@@ -1066,11 +1094,15 @@ class IPBServo(Servo):
     def monitoring_read_data(self):
         """Obtain processed monitoring data.
 
-        Returns:
-            array: Actual processed monitoring data.
+        Raises:
+            ILError: If the drive is unable to read
+            the monitoring data.
 
         """
-        return lib.il_net_read_monitoring_data(self._cffi_network)
+        r = lib.il_net_read_monitoring_data(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error reading monitoring data. '
+                          f'Error code: {r}')
 
     def monitoring_get_bytes_per_block(self):
         """Obtain Bytes x Block configured.
@@ -1108,11 +1140,15 @@ class IPBServo(Servo):
     def disturbance_remove_all_mapped_registers(self):
         """Remove all disturbance mapped registers.
 
-        Returns:
-            int: Return code.
+        Raises:
+            ILError: If the drive is unable to remove
+            the disturbance mapped registers.
 
         """
-        return lib.il_net_disturbance_remove_all_mapped_registers(self._cffi_network)
+        r = lib.il_net_disturbance_remove_all_mapped_registers(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error removing disturbance mapped registers. '
+                          f'Error code: {r}')
 
     def disturbance_set_mapped_register(self, channel, address, subnode, dtype, size):
         """Set disturbance mapped register.
@@ -1122,12 +1158,16 @@ class IPBServo(Servo):
             address (int): Register address to map.
             dtype (REG_DTYPE): Data type of the register to map.
 
-        Returns:
-            int: Return code.
+        Raises:
+            ILError: If the drive is unable to map
+            the disturbance register.
 
         """
-        return lib.il_net_disturbance_set_mapped_register(self._cffi_network, channel,
+        r = lib.il_net_disturbance_set_mapped_register(self._cffi_network, channel,
                                                           address, subnode, dtype, size)
+        if r < 0:
+            raise ILError(f'Error mapping disturbance register {address}. '
+                          f'Error code: {r}')
 
     def __read_coco_moco_register(self, register_coco, register_moco):
         """Reads the COCO register and if it does not exist,
@@ -1450,10 +1490,16 @@ class IPBServo(Servo):
     def monitoring_data(self):
         """Obtain monitoring data.
 
+        .. warning::
+            This function is deprecated.  Please use
+            "monitoring_channel_data" instead.
+
         Returns:
             array: Current monitoring data.
 
         """
+        logger.warning('Function ingenialink.ipb.servo.monitoring_data is'
+                       ' deprecated. Please use "monitoring_channel_data" instead.')
         monitoring_data = lib.il_net_monitornig_data_get(self._cffi_network)
         size = int(self.monitoring_data_size / 2)
         ret_arr = []
