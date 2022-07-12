@@ -1,5 +1,4 @@
 import ipaddress
-from ipaddress import NetmaskValueError
 
 from .._ingenialink import lib, ffi
 from ingenialink.utils._utils import *
@@ -98,12 +97,9 @@ class EthernetServo(IPBServo):
             netmask.
 
         """
-        try:
-            drive_ip = ipaddress.ip_address(ip_address)
-            gateway_ip = ipaddress.ip_address(gateway)
-            net = ipaddress.IPv4Network(f'{drive_ip}/{subnet_mask}', strict=False)
-        except (ValueError, NetmaskValueError) as e:
-            raise e
+        drive_ip = ipaddress.ip_address(ip_address)
+        gateway_ip = ipaddress.ip_address(gateway)
+        net = ipaddress.IPv4Network(f'{drive_ip}/{subnet_mask}', strict=False)
 
         if gateway_ip not in net:
             raise ValueError(f'Drive IP {ip_address} and Gateway IP {gateway} '
