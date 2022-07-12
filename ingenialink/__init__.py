@@ -31,7 +31,9 @@ from .canopen.dictionary import CanopenDictionary
 
 from ingenialink.utils.errors import err_ipb_last
 
-from ingenialink.utils._utils import pstr
+from ingenialink.utils._utils import pstr, set_logger_level
+
+set_logger_level(3)
 
 __all__ = ['EEPROM_FILE_FORMAT', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE',
            'NET_TRANS_PROT', 'SERVO_STATE', 'SERVO_FLAGS', 'SERVO_MODE',
