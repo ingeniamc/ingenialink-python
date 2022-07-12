@@ -1085,11 +1085,15 @@ class IPBServo(Servo):
     def disturbance_remove_data(self):
         """Remove disturbance data.
 
-        Returns:
-            int: Result code.
+        Raises:
+            ILError: If the drive is unable to remove
+            the disturbance data.
 
         """
-        return lib.il_net_disturbance_remove_data(self._cffi_network)
+        r = lib.il_net_disturbance_remove_data(self._cffi_network)
+        if r < 0:
+            raise ILError(f'Error removing disturbance data. '
+                          f'Error code: {r}')
 
     def monitoring_read_data(self):
         """Obtain processed monitoring data.
