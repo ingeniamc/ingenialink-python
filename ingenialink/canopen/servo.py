@@ -323,29 +323,9 @@ class CanopenServo(Servo):
 
         """
         _reg = self._get_reg(reg, subnode)
-
-        access = _reg.access
-        if access == REG_ACCESS.WO:
-            raise_err(lib.IL_EACCESS, 'Register is Write-only')
-
-        value = None
         dtype = _reg.dtype
-        error_raised = None
-        try:
-            self.__lock.acquire()
-            raw_read = self.__node.sdo.upload(_reg.idx,
-                                              _reg.subidx)
-            value = self.__convert_bytes_to_dtype(raw_read, dtype.name)
-        except Exception as e:
-            logger.error("Failed reading %s. Exception: %s",
-                         str(_reg.identifier), e)
-            error_raised = f"Error reading {_reg.identifier}"
-        finally:
-            self.__lock.release()
-
-        if error_raised is not None:
-            raise_err(lib.IL_EIO, error_raised)
-
+        raw_read = self._read_raw(reg, subnode)
+        value = self.__convert_bytes_to_dtype(raw_read, dtype.name)
         if isinstance(value, str):
             value = value.replace('\x00', '')
         return value
@@ -359,67 +339,15 @@ class CanopenServo(Servo):
             subnode (int): Target axis of the drive.
 
         Raises:
-            TypeError: If the register type is not valid.
             ILAccessError: Wrong access to the register.
             ILIOError: Error reading the register.
 
         """
         _reg = self._get_reg(reg, subnode)
+        value = self.__convert_dtype_to_bytes(data, _reg.dtype)
+        self._write_raw(reg, value, subnode)
 
-        if _reg.access == REG_ACCESS.RO:
-            raise_err(lib.IL_EACCESS, 'Register is Read-only')
-
-        # auto cast floats if register is not float
-        if _reg.dtype == REG_DTYPE.FLOAT:
-            data = float(data)
-        elif _reg.dtype != REG_DTYPE.DOMAIN:
-            data = int(data)
-
-        error_raised = None
-        try:
-            self.__lock.acquire()
-            if _reg.dtype == REG_DTYPE.FLOAT:
-                self.__node.sdo.download(_reg.idx,
-                                         _reg.subidx,
-                                         struct.pack('f', data))
-            elif _reg.dtype == REG_DTYPE.DOMAIN:
-                self.__node.sdo.download(_reg.idx,
-                                         _reg.subidx, data)
-            else:
-                bytes_length = 2
-                signed = False
-                if _reg.dtype == REG_DTYPE.U8:
-                    bytes_length = 1
-                elif _reg.dtype == REG_DTYPE.S8:
-                    bytes_length = 1
-                    signed = True
-                elif _reg.dtype == REG_DTYPE.U16:
-                    bytes_length = 2
-                elif _reg.dtype == REG_DTYPE.S16:
-                    bytes_length = 2
-                    signed = True
-                elif _reg.dtype == REG_DTYPE.U32:
-                    bytes_length = 4
-                elif _reg.dtype == REG_DTYPE.S32:
-                    bytes_length = 4
-                    signed = True
-
-                self.__node.sdo.download(_reg.idx,
-                                         _reg.subidx,
-                                         data.to_bytes(bytes_length,
-                                                       byteorder='little',
-                                                       signed=signed))
-        except Exception as e:
-            logger.error("Failed writing %s. Exception: %s",
-                         str(_reg.identifier), e)
-            error_raised = "Error writing {}".format(_reg.identifier)
-        finally:
-            self.__lock.release()
-
-        if error_raised is not None:
-            raise_err(lib.IL_EIO, error_raised)
-
-    def write_raw(self, reg, data, subnode=1):
+    def _write_raw(self, reg, data, subnode=1):
         """Writes a data to a target register.
 
         Args:
@@ -436,7 +364,6 @@ class CanopenServo(Servo):
 
         if _reg.access == REG_ACCESS.RO:
             raise_err(lib.IL_EACCESS, 'Register is Read-only')
-        error_raised = None
         try:
             self.__lock.acquire()
             self.__node.sdo.download(_reg.idx,
@@ -446,13 +373,11 @@ class CanopenServo(Servo):
             logger.error("Failed writing %s. Exception: %s",
                          str(_reg.identifier), e)
             error_raised = "Error writing {}".format(_reg.identifier)
+            raise_err(lib.IL_EIO, error_raised)
         finally:
             self.__lock.release()
 
-        if error_raised is not None:
-            raise_err(lib.IL_EIO, error_raised)
-
-    def read_raw(self, reg, subnode=1):
+    def _read_raw(self, reg, subnode=1):
         """Read raw bytes from servo.
 
         Args:
@@ -471,9 +396,7 @@ class CanopenServo(Servo):
         access = _reg.access
         if access == REG_ACCESS.WO:
             raise_err(lib.IL_EACCESS, 'Register is Write-only')
-
         value = None
-        error_raised = None
         try:
             self.__lock.acquire()
             value = self.__node.sdo.upload(_reg.idx, _reg.subidx)
@@ -481,11 +404,9 @@ class CanopenServo(Servo):
             logger.error("Failed reading %s. Exception: %s",
                          str(_reg.identifier), e)
             error_raised = f"Error reading {_reg.identifier}"
+            raise_err(lib.IL_EIO, error_raised)
         finally:
             self.__lock.release()
-
-        if error_raised is not None:
-            raise_err(lib.IL_EIO, error_raised)
         return value
 
     def enable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
@@ -1257,7 +1178,7 @@ class CanopenServo(Servo):
 
     def __monitoring_read_data(self):
         """Read monitoring data frame."""
-        return self.read_raw(MONITORING_DATA, subnode=0)
+        return self._read_raw(MONITORING_DATA, subnode=0)
 
     def __monitoring_process_data(self):
         """Arrange monitoring data."""
@@ -1476,7 +1397,7 @@ class CanopenServo(Servo):
                 data += val
         chunks = [data[i:i + CAN_MAX_WRITE_SIZE] for i in range(0, len(data), CAN_MAX_WRITE_SIZE)]
         for chunk in chunks:
-            self.write_raw(DIST_DATA, data=chunk, subnode=0)
+            self._write_raw(DIST_DATA, data=chunk, subnode=0)
         self.disturbance_data = data
         self.disturbance_data_size = len(data)
 
