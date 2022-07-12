@@ -323,9 +323,8 @@ class CanopenServo(Servo):
 
         """
         _reg = self._get_reg(reg, subnode)
-        dtype = _reg.dtype
         raw_read = self._read_raw(reg, subnode)
-        value = self.__convert_bytes_to_dtype(raw_read, dtype.name)
+        value = self.__convert_bytes_to_dtype(raw_read, _reg.dtype)
         if isinstance(value, str):
             value = value.replace('\x00', '')
         return value
@@ -1205,19 +1204,19 @@ class CanopenServo(Servo):
     @staticmethod
     def __convert_bytes_to_dtype(data, dtype):
         """Convert data in bytes to corresponding dtype."""
-        if dtype in [REG_DTYPE.S8.name,
-                     REG_DTYPE.S16.name,
-                     REG_DTYPE.S32.name]:
+        if dtype in [REG_DTYPE.S8,
+                     REG_DTYPE.S16,
+                     REG_DTYPE.S32]:
             value = int.from_bytes(
                 data,
                 "little",
                 signed=True
             )
-        elif dtype == REG_DTYPE.FLOAT.name:
+        elif dtype == REG_DTYPE.FLOAT:
             [value] = struct.unpack('f',
                                     data
                                     )
-        elif dtype == REG_DTYPE.STR.name:
+        elif dtype == REG_DTYPE.STR:
             value = data.decode("utf-8")
         else:
             value = int.from_bytes(
