@@ -1001,8 +1001,8 @@ class IPBServo(Servo):
 
         """
         r = lib.il_net_set_mapped_register(self._cffi_network, channel,
-                                              address, subnode, dtype,
-                                              size)
+                                           address, subnode, dtype,
+                                           size)
         if r < 0:
             raise ILError(f'Error mapping monitoring register {address}. '
                           f'Error code: {r}')
@@ -1080,7 +1080,6 @@ class IPBServo(Servo):
         if r < 0:
             raise ILError(f'Error removing monitoring data. '
                           f'Error code: {r}')
-
 
     def disturbance_remove_data(self):
         """Remove disturbance data.
@@ -1168,7 +1167,7 @@ class IPBServo(Servo):
 
         """
         r = lib.il_net_disturbance_set_mapped_register(self._cffi_network, channel,
-                                                          address, subnode, dtype, size)
+                                                       address, subnode, dtype, size)
         if r < 0:
             raise ILError(f'Error mapping disturbance register {address}. '
                           f'Error code: {r}')
