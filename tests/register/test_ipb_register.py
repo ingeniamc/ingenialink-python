@@ -7,7 +7,6 @@ from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY
 
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-@pytest.mark.serial
 def test_ipb_register(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None

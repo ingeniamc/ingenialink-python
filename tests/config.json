@@ -24,11 +24,5 @@
     "channel": 0,
     "save_config_file": "canopen-config.xcf",
     "load_config_file": "resources/configurations/canopen-config.xcf"
-  },
-  "serial": {
-    "dictionary": "resources/dictionaries/eve-core_1.8.1.xdf",
-    "com_port": "COM5",
-    "save_config_file": "serial-config.xcf",
-    "load_config_file": "resources/configurations/serial-config.xcf.xcf"
   }
 }
