@@ -4,10 +4,9 @@ import pytest
 from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
 from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT
 from ingenialink.ethercat.network import EthercatNetwork
-from ingenialink.serial.network import SerialNetwork
 
 
-ALLOW_PROTOCOLS = ["ethernet", "ethercat", "canopen", "serial"]
+ALLOW_PROTOCOLS = ["ethernet", "ethercat", "canopen"]
 
 
 def pytest_addoption(parser):
@@ -69,15 +68,6 @@ def connect_ethercat(protocol_contents):
     return servo, net
 
 
-def connect_serial(protocol_contents):
-    net = SerialNetwork()
-
-    servo = net.connect_to_slave(
-        protocol_contents['com_port'],
-        protocol_contents['dictionary'])
-    return servo, net
-
-
 @pytest.fixture
 def connect_to_slave(pytestconfig, read_config):
     servo = None
@@ -90,8 +80,6 @@ def connect_to_slave(pytestconfig, read_config):
         servo, net = connect_ethercat(protocol_contents)
     elif protocol == "canopen":
         servo, net = connect_canopen(protocol_contents)
-    elif protocol == "serial":
-        servo, net = connect_serial(protocol_contents)
 
     yield servo, net
     net.disconnect_from_slave(servo)

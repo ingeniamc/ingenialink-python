@@ -2,6 +2,7 @@ import sys
 import re
 
 from ._ingenialink import lib
+from .register import REG_DTYPE
 
 
 DIST_FRAME_SIZE_BYTES = 128
@@ -22,6 +23,24 @@ PASSWORD_STORE_RESTORE_SUB_0 = 0x73756230
 
 FILE_EXT_SFU = '.sfu'
 FILE_EXT_LFU = '.lfu'
+
+CAN_MONITORING_MAPPED_REGISTERS_START_ADD = 0x58D000
+
+MONITORING_BUFFER_SIZE = 512
+
+data_type_size = {
+    REG_DTYPE.U8: 1,
+    REG_DTYPE.S8: 1,
+    REG_DTYPE.U16: 2,
+    REG_DTYPE.S16: 2,
+    REG_DTYPE.U32: 4,
+    REG_DTYPE.S32: 4,
+    REG_DTYPE.U64: 8,
+    REG_DTYPE.S64: 8,
+    REG_DTYPE.FLOAT: 4
+}
+
+CAN_MAX_WRITE_SIZE = 512
 
 
 def _load():
