@@ -1115,7 +1115,7 @@ class CanopenServo(Servo):
 
         """
         self.__monitoring_channels_size[channel] = size
-        self.__monitoring_channels_dtype[channel] = REG_DTYPE(dtype).name
+        self.__monitoring_channels_dtype[channel] = REG_DTYPE(dtype)
         data = self.__monitoring_disturbance_data_to_map_register(subnode,
                                                                   address,
                                                                   dtype,
