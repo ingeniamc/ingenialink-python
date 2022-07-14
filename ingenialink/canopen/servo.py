@@ -720,7 +720,7 @@ class CanopenServo(Servo):
         dest_subnodes = [int(element.attrib['subnode']) for element in registers]
         if subnode == 0 and subnode not in dest_subnodes:
             raise ValueError(f'Cannot load {config_file} '
-                          f'to subnode {subnode}')
+                             f'to subnode {subnode}')
         for element in registers:
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
@@ -1420,7 +1420,8 @@ class CanopenServo(Servo):
                 val = self.__convert_dtype_to_bytes(
                     data_arr[channel][sample_idx], dtypes[channel])
                 data += val
-        chunks = [data[i:i + CAN_MAX_WRITE_SIZE] for i in range(0, len(data), CAN_MAX_WRITE_SIZE)]
+        chunks = [data[i:i + CAN_MAX_WRITE_SIZE]
+                  for i in range(0, len(data), CAN_MAX_WRITE_SIZE)]
         for chunk in chunks:
             self._write_raw(DIST_DATA, data=chunk, subnode=0)
         self.disturbance_data = data
@@ -1462,8 +1463,8 @@ class CanopenServo(Servo):
                 bytes_length = 4
                 signed = True
             data = data.to_bytes(bytes_length,
-                          byteorder='little',
-                          signed=signed)
+                                 byteorder='little',
+                                 signed=signed)
         return data
 
     @property
