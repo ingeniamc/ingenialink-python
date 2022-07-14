@@ -2,6 +2,7 @@ import os
 import time
 import threading
 import canopen
+from canopen.emcy import EmcyConsumer
 import struct
 import xml.etree.ElementTree as ET
 
@@ -13,6 +14,7 @@ from ingenialink.utils._utils import *
 from ..servo import SERVO_STATE, Servo
 from .dictionary import CanopenDictionary
 from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
+from ingenialink.register import dtype_size
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -133,6 +135,66 @@ RESTORE_MOCO_ALL_REGISTERS = {
     )
 }
 
+MONITORING_DIST_ENABLE = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58C0, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+
+MONITORING_NUMBER_MAPPED_REGISTERS = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58E3, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+
+MONITORING_REMOVE_DATA = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58EA, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+)
+
+MONITORING_BYTES_PER_BLOCK = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58E4, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+)
+
+MONITORING_ACTUAL_NUMBER_BYTES = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58B7, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+)
+
+MONITORING_DATA = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58B2, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+)
+
+MONITORING_DISTURBANCE_VERSION = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58BA, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+)
+
+DISTURBANCE_ENABLE = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58C7, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+
+DISTURBANCE_REMOVE_DATA = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58EB, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+)
+
+DISTURBANCE_NUMBER_MAPPED_REGISTERS = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58E8, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+
+DIST_DATA = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58B4, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+
+DIST_NUMBER_SAMPLES = CanopenRegister(
+    identifier='', units='', subnode=0, idx=0x58C4, subidx=0x00, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+)
+
 
 class ServoStatusListener(threading.Thread):
     """Reads the status word to check if the drive is alive.
@@ -202,12 +264,24 @@ class CanopenServo(Servo):
         self.__observers_servo_state = []
         self.__listener_servo_status = None
 
+        self.__emcy_consumer = EmcyConsumer()
+
         if servo_status_listener:
             self.start_status_listener()
 
         prod_name = '' if self.dictionary.part_number is None \
             else self.dictionary.part_number
         self.full_name = '{} {}'.format(prod_name, self.name)
+        self.__monitoring_num_mapped_registers = 0
+        self.__monitoring_channels_size = {}
+        self.__monitoring_channels_dtype = {}
+        self.__monitoring_data = []
+        self.__processed_monitoring_data = []
+        self.__disturbance_num_mapped_registers = 0
+        self.__disturbance_channels_size = {}
+        self.__disturbance_channels_dtype = {}
+        self.__disturbance_data_size = 0
+        self.__disturbance_data = bytearray()
 
     def _get_reg(self, reg, subnode=1):
         """Validates a register.
@@ -252,64 +326,8 @@ class CanopenServo(Servo):
 
         """
         _reg = self._get_reg(reg, subnode)
-
-        access = _reg.access
-        if access == REG_ACCESS.WO:
-            raise_err(lib.IL_EACCESS, 'Register is Write-only')
-
-        value = None
-        dtype = _reg.dtype
-        error_raised = None
-        try:
-            self.__lock.acquire()
-            if dtype == REG_DTYPE.S8:
-                value = int.from_bytes(
-                    self.__node.sdo.upload(_reg.idx,
-                                           _reg.subidx),
-                    "little",
-                    signed=True
-                )
-            elif dtype == REG_DTYPE.S16:
-                value = int.from_bytes(
-                    self.__node.sdo.upload(_reg.idx,
-                                           _reg.subidx),
-                    "little",
-                    signed=True
-                )
-            elif dtype == REG_DTYPE.S32:
-                value = int.from_bytes(
-                    self.__node.sdo.upload(_reg.idx,
-                                           _reg.subidx),
-                    "little",
-                    signed=True
-                )
-            elif dtype == REG_DTYPE.FLOAT:
-                [value] = struct.unpack('f',
-                                        self.__node.sdo.upload(
-                                            _reg.idx,
-                                            _reg.subidx)
-                                        )
-            elif dtype == REG_DTYPE.STR:
-                value = self.__node.sdo.upload(
-                    _reg.idx,
-                    _reg.subidx
-                ).decode("utf-8")
-            else:
-                value = int.from_bytes(
-                    self.__node.sdo.upload(_reg.idx,
-                                           _reg.subidx),
-                    "little"
-                )
-        except Exception as e:
-            logger.error("Failed reading %s. Exception: %s",
-                         str(_reg.identifier), e)
-            error_raised = "Error reading {}".format(_reg.identifier)
-        finally:
-            self.__lock.release()
-
-        if error_raised is not None:
-            raise_err(lib.IL_EIO, error_raised)
-
+        raw_read = self._read_raw(reg, subnode)
+        value = self.__convert_bytes_to_dtype(raw_read, _reg.dtype)
         if isinstance(value, str):
             value = value.replace('\x00', '')
         return value
@@ -323,7 +341,23 @@ class CanopenServo(Servo):
             subnode (int): Target axis of the drive.
 
         Raises:
-            TypeError: If the register type is not valid.
+            ILAccessError: Wrong access to the register.
+            ILIOError: Error reading the register.
+
+        """
+        _reg = self._get_reg(reg, subnode)
+        value = self.__convert_dtype_to_bytes(data, _reg.dtype)
+        self._write_raw(reg, value, subnode)
+
+    def _write_raw(self, reg, data, subnode=1):
+        """Writes a data to a target register.
+
+        Args:
+            reg (CanopenRegister, str): Target register to be written.
+            data (int, str, float): Data to be written.
+            subnode (int): Target axis of the drive.
+
+        Raises:
             ILAccessError: Wrong access to the register.
             ILIOError: Error reading the register.
 
@@ -332,56 +366,50 @@ class CanopenServo(Servo):
 
         if _reg.access == REG_ACCESS.RO:
             raise_err(lib.IL_EACCESS, 'Register is Read-only')
-
-        # auto cast floats if register is not float
-        if _reg.dtype == REG_DTYPE.FLOAT:
-            data = float(data)
-        elif _reg.dtype != REG_DTYPE.DOMAIN:
-            data = int(data)
-
-        error_raised = None
         try:
             self.__lock.acquire()
-            if _reg.dtype == REG_DTYPE.FLOAT:
-                self.__node.sdo.download(_reg.idx,
-                                         _reg.subidx,
-                                         struct.pack('f', data))
-            elif _reg.dtype == REG_DTYPE.DOMAIN:
-                self.__node.sdo.download(_reg.idx,
-                                         _reg.subidx, data)
-            else:
-                bytes_length = 2
-                signed = False
-                if _reg.dtype == REG_DTYPE.U8:
-                    bytes_length = 1
-                elif _reg.dtype == REG_DTYPE.S8:
-                    bytes_length = 1
-                    signed = True
-                elif _reg.dtype == REG_DTYPE.U16:
-                    bytes_length = 2
-                elif _reg.dtype == REG_DTYPE.S16:
-                    bytes_length = 2
-                    signed = True
-                elif _reg.dtype == REG_DTYPE.U32:
-                    bytes_length = 4
-                elif _reg.dtype == REG_DTYPE.S32:
-                    bytes_length = 4
-                    signed = True
-
-                self.__node.sdo.download(_reg.idx,
-                                         _reg.subidx,
-                                         data.to_bytes(bytes_length,
-                                                       byteorder='little',
-                                                       signed=signed))
+            self.__node.sdo.download(_reg.idx,
+                                     _reg.subidx,
+                                     data)
         except Exception as e:
             logger.error("Failed writing %s. Exception: %s",
                          str(_reg.identifier), e)
             error_raised = "Error writing {}".format(_reg.identifier)
+            raise_err(lib.IL_EIO, error_raised)
         finally:
             self.__lock.release()
 
-        if error_raised is not None:
+    def _read_raw(self, reg, subnode=1):
+        """Read raw bytes from servo.
+
+        Args:
+            reg (str, Register): Register.
+
+        Returns:
+            bytearray: Raw bytes reading from servo.
+
+        Raises:
+            ILAccessError: Wrong access to the register.
+            ILIOError: Error reading the register.
+
+        """
+        _reg = self._get_reg(reg, subnode)
+
+        access = _reg.access
+        if access == REG_ACCESS.WO:
+            raise_err(lib.IL_EACCESS, 'Register is Write-only')
+        value = None
+        try:
+            self.__lock.acquire()
+            value = self.__node.sdo.upload(_reg.idx, _reg.subidx)
+        except Exception as e:
+            logger.error("Failed reading %s. Exception: %s",
+                         str(_reg.identifier), e)
+            error_raised = f"Error reading {_reg.identifier}"
             raise_err(lib.IL_EIO, error_raised)
+        finally:
+            self.__lock.release()
+        return value
 
     def enable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Enable PDS.
@@ -665,11 +693,17 @@ class CanopenServo(Servo):
             config_file (str): Path to the dictionary.
             subnode (int): Subnode of the axis.
 
+        Raises:
+            FileNotFoundError: If the configuration file cannot be found.
+            ValueError: If a configuration file from a subnode different from 0
+            is attempted to be loaded to subnode 0.
+            ValueError: If an invalid subnode is provided.
+
         """
         if not os.path.isfile(config_file):
-            raise FileNotFoundError('Could not find {}.'.format(config_file))
+            raise FileNotFoundError(f'Could not find {config_file}.')
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
-            raise ILError('Invalid subnode')
+            raise ValueError('Invalid subnode')
         with open(config_file, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -683,24 +717,24 @@ class CanopenServo(Servo):
         else:
             # Single axis
             registers = root.findall('./Body/Device/Registers/Register')
-
-        r = -1
+        dest_subnodes = [int(element.attrib['subnode']) for element in registers]
+        if subnode == 0 and subnode not in dest_subnodes:
+            raise ValueError(f'Cannot load {config_file} '
+                             f'to subnode {subnode}')
         for element in registers:
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
-                    element_subnode = int(element.attrib['subnode'])
-                    if subnode is None or subnode == element_subnode:
-                        r = 0
-                        self.write(element.attrib['id'],
-                                   float(element.attrib['storage']),
-                                   subnode=element_subnode
-                                   )
-            except BaseException as e:
+                    if subnode is None:
+                        element_subnode = int(element.attrib['subnode'])
+                    else:
+                        element_subnode = subnode
+                    self.write(element.attrib['id'],
+                               float(element.attrib['storage']),
+                               subnode=element_subnode
+                               )
+            except ILIOError as e:
                 logger.error("Exception during load_configuration, register "
                              "%s: %s", str(element.attrib['id']), e)
-        if r < 0:
-            raise ILError('Could not find subnode {} '
-                          'in the configuration file'.format(subnode))
 
     def store_parameters(self, subnode=None, sdo_timeout=3):
         """Store all the current parameters of the target subnode.
@@ -948,7 +982,7 @@ class CanopenServo(Servo):
 
         Args:
             register_coco (IPBRegister): COCO Register to be read.
-            register_moco (IPBRegister: MOCO Register to be read.
+            register_moco (IPBRegister): MOCO Register to be read.
 
         Returns:
             int: Read value of the register.
@@ -1023,3 +1057,432 @@ class CanopenServo(Servo):
     def subnodes(self):
         """int: Number of subnodes."""
         return self._dictionary.subnodes
+
+    def emcy_subscribe(self, cb):
+        """Subscribe to emergency messages.
+
+        Args:
+            cb: Callback
+
+        Returns:
+            int: Assigned slot.
+
+        """
+        self.__emcy_consumer.add_callback(cb)
+
+        return len(self.__emcy_consumer.callbacks) - 1
+
+    def emcy_unsubscribe(self, slot):
+        """Unsubscribe from emergency messages.
+
+        Args:
+            slot (int): Assigned slot when subscribed.
+
+        """
+        del self.__emcy_consumer.callbacks[slot]
+
+    @property
+    def monitoring_number_mapped_registers(self):
+        """Get the number of mapped monitoring registers."""
+        return self.__monitoring_num_mapped_registers
+
+    def monitoring_enable(self):
+        """Enable monitoring process."""
+        self.write(MONITORING_DIST_ENABLE, data=1, subnode=0)
+
+    def monitoring_disable(self):
+        """Disable monitoring process."""
+        self.write(MONITORING_DIST_ENABLE, data=0, subnode=0)
+
+    def monitoring_remove_all_mapped_registers(self):
+        """Remove all monitoring mapped registers."""
+        self.write(MONITORING_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
+        self.__monitoring_num_mapped_registers = \
+            self.monitoring_get_num_mapped_registers()
+        self.__monitoring_channels_size = {}
+        self.__monitoring_channels_dtype = {}
+
+    def monitoring_set_mapped_register(self, channel, address, subnode,
+                                       dtype, size):
+        """Set monitoring mapped register.
+
+        Args:
+            channel (int): Identity channel number.
+            address (int): Register address to map.
+            subnode (int): Subnode to be targeted.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
+
+        """
+        self.__monitoring_channels_size[channel] = size
+        self.__monitoring_channels_dtype[channel] = REG_DTYPE(dtype)
+        data = self.__monitoring_disturbance_data_to_map_register(subnode,
+                                                                  address,
+                                                                  dtype,
+                                                                  size)
+        self.write(self.__monitoring_map_register(), data=data,
+                   subnode=0)
+        self.__monitoring_update_num_mapped_registers()
+        self.__monitoring_num_mapped_registers = \
+            self.monitoring_get_num_mapped_registers()
+        self.write(MONITORING_NUMBER_MAPPED_REGISTERS,
+                   data=self.monitoring_number_mapped_registers,
+                   subnode=subnode)
+
+    def __monitoring_map_register(self):
+        """Get the first available Monitoring Mapped Register slot.
+
+        Returns:
+            str: Monitoring Mapped Register ID.
+
+        """
+        if self.monitoring_number_mapped_registers < 10:
+            register_id = f'MON_CFG_REG' \
+                          f'{self.monitoring_number_mapped_registers}_MAP'
+        else:
+            register_id = f'MON_CFG_REFG' \
+                          f'{self.monitoring_number_mapped_registers}_MAP'
+        return register_id
+
+    def __monitoring_update_num_mapped_registers(self):
+        """Update the number of mapped monitoring registers."""
+        self.__monitoring_num_mapped_registers += 1
+        self.write('MON_CFG_TOTAL_MAP',
+                   data=self.__monitoring_num_mapped_registers,
+                   subnode=0)
+
+    def __monitoring_disturbance_map_can_address(self, address, subnode):
+        """Map CAN register address to IPB register address."""
+        return address - (0x2000 + (0x800 * (subnode - 1)))
+
+    def monitoring_get_num_mapped_registers(self):
+        """Obtain the number of monitoring mapped registers.
+
+        Returns:
+            int: Actual number of mapped registers.
+
+        """
+        return self.read('MON_CFG_TOTAL_MAP', 0)
+
+    def monitoring_remove_data(self):
+        """Remove monitoring data."""
+        self.write(MONITORING_REMOVE_DATA,
+                   data=1, subnode=0)
+
+    def monitoring_get_bytes_per_block(self):
+        """Obtain Bytes x Block configured.
+
+        Returns:
+            int: Actual number of Bytes x Block configured.
+
+        """
+        return self.read(MONITORING_BYTES_PER_BLOCK, subnode=0)
+
+    def monitoring_read_data(self):
+        """Obtain processed monitoring data.
+
+        Returns:
+            array: Actual processed monitoring data.
+
+        """
+        num_available_bytes = self.monitoring_actual_number_bytes()
+        self.__monitoring_data = []
+        while num_available_bytes > 0:
+            if num_available_bytes < MONITORING_BUFFER_SIZE:
+                limit = num_available_bytes
+            else:
+                limit = MONITORING_BUFFER_SIZE
+            tmp_data = self.__monitoring_read_data()[:limit]
+            self.__monitoring_data.append(tmp_data)
+            num_available_bytes = self.monitoring_actual_number_bytes()
+        self.__monitoring_process_data()
+
+    def monitoring_actual_number_bytes(self):
+        """Get the number of monitoring bytes left to be read."""
+        return self.read(MONITORING_ACTUAL_NUMBER_BYTES, subnode=0)
+
+    def __monitoring_read_data(self):
+        """Read monitoring data frame."""
+        return self._read_raw(MONITORING_DATA, subnode=0)
+
+    def __monitoring_process_data(self):
+        """Arrange monitoring data."""
+        data_bytes = bytearray()
+        for i in range(len(self.__monitoring_data)):
+            data_bytes += self.__monitoring_data[i]
+        bytes_per_block = self.monitoring_get_bytes_per_block()
+        number_of_blocks = len(data_bytes) // bytes_per_block
+        number_of_channels = self.monitoring_get_num_mapped_registers()
+        res = [[] for _ in range(number_of_channels)]
+        for block in range(number_of_blocks):
+            block_data = data_bytes[block * bytes_per_block:
+                                    block * bytes_per_block +
+                                    bytes_per_block]
+            for channel in range(number_of_channels):
+                channel_data_size = self.__monitoring_channels_size[channel]
+                val = self.__convert_bytes_to_dtype(
+                    block_data[:channel_data_size],
+                    self.__monitoring_channels_dtype[channel])
+                res[channel].append(val)
+                block_data = block_data[channel_data_size:]
+        self.__processed_monitoring_data = res
+
+    @staticmethod
+    def __convert_bytes_to_dtype(data, dtype):
+        """Convert data in bytes to corresponding dtype."""
+        if dtype in [REG_DTYPE.S8,
+                     REG_DTYPE.S16,
+                     REG_DTYPE.S32]:
+            value = int.from_bytes(
+                data,
+                "little",
+                signed=True
+            )
+        elif dtype == REG_DTYPE.FLOAT:
+            [value] = struct.unpack('f',
+                                    data
+                                    )
+        elif dtype == REG_DTYPE.STR:
+            value = data.decode("utf-8")
+        else:
+            value = int.from_bytes(
+                data,
+                "little"
+            )
+        return value
+
+    def monitoring_channel_data(self, channel, dtype=None):
+        """Obtain processed monitoring data of a channel.
+
+        Args:
+            channel (int): Identity channel number.
+            dtype (REG_DTYPE): Data type of the register to map.
+
+        Note:
+            The dtype argument is not necessary for this function, it
+            was added to maintain compatibility with IPB's implementation
+            of monitoring.
+
+        Returns:
+            List: Monitoring data.
+
+        """
+        return self.__processed_monitoring_data[channel]
+
+    @property
+    def monitoring_data_size(self):
+        """Obtain monitoring data size.
+
+        Returns:
+            int: Current monitoring data size in bytes.
+
+        """
+        number_of_samples = self.read('MON_CFG_WINDOW_SAMP', subnode=0)
+        return self.monitoring_get_bytes_per_block() * number_of_samples
+
+    def disturbance_enable(self):
+        """Enable disturbance process."""
+        self.write(DISTURBANCE_ENABLE, data=1, subnode=0)
+
+    def disturbance_disable(self):
+        """Disable disturbance process."""
+        self.write(DISTURBANCE_ENABLE, data=0, subnode=0)
+
+    def disturbance_remove_data(self):
+        """Remove disturbance data."""
+        self.write(DISTURBANCE_REMOVE_DATA,
+                   data=1, subnode=0)
+        self.disturbance_data = bytearray()
+        self.disturbance_data_size = 0
+
+    def disturbance_remove_all_mapped_registers(self):
+        """Remove all disturbance mapped registers."""
+        self.write(DISTURBANCE_NUMBER_MAPPED_REGISTERS,
+                   data=0, subnode=0)
+        self.__disturbance_num_mapped_registers = \
+            self.disturbance_get_num_mapped_registers()
+        self.__disturbance_channels_size = {}
+        self.__disturbance_channels_dtype = {}
+
+    def disturbance_set_mapped_register(self, channel, address, subnode,
+                                        dtype, size):
+        """Set monitoring mapped register.
+
+        Args:
+            channel (int): Identity channel number.
+            address (int): Register address to map.
+            subnode (int): Subnode to be targeted.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
+
+        """
+        self.__disturbance_channels_size[channel] = size
+        self.__disturbance_channels_dtype[channel] = REG_DTYPE(dtype).name
+        data = self.__monitoring_disturbance_data_to_map_register(subnode,
+                                                                  address,
+                                                                  dtype,
+                                                                  size)
+        self.write(self.__disturbance_map_register(), data=data,
+                   subnode=0)
+        self.__disturbance_update_num_mapped_registers()
+        self.__disturbance_num_mapped_registers = \
+            self.disturbance_get_num_mapped_registers()
+        self.write(DISTURBANCE_NUMBER_MAPPED_REGISTERS,
+                   data=self.disturbance_number_mapped_registers,
+                   subnode=subnode)
+
+    def disturbance_get_num_mapped_registers(self):
+        """Obtain the number of disturbance mapped registers.
+
+        Returns:
+            int: Actual number of mapped registers.
+
+        """
+        return self.read('DIST_CFG_MAP_REGS', 0)
+
+    def __disturbance_map_register(self):
+        """Get the first available Disturbance Mapped Register slot.
+
+        Returns:
+            str: Disturbance Mapped Register ID.
+
+        """
+        return f'DIST_CFG_REG{self.disturbance_number_mapped_registers}_MAP'
+
+    @property
+    def disturbance_number_mapped_registers(self):
+        """Get the number of mapped disturbance registers."""
+        return self.__disturbance_num_mapped_registers
+
+    def __disturbance_update_num_mapped_registers(self):
+        """Update the number of mapped disturbance registers."""
+        self.__disturbance_num_mapped_registers += 1
+        self.write('DIST_CFG_MAP_REGS',
+                   data=self.__disturbance_num_mapped_registers,
+                   subnode=0)
+
+    def __monitoring_disturbance_data_to_map_register(self, subnode, address,
+                                                      dtype, size):
+        """Arrange necessary data to map a monitoring/disturbance register.
+
+        Args:
+            subnode (int): Subnode to be targeted.
+            address (int): Register address to map.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
+
+        """
+        data_h = self.__monitoring_disturbance_map_can_address(
+                     address, subnode) | subnode << 12
+        data_l = dtype << 8 | size
+        return (data_h << 16) | data_l
+
+    @property
+    def disturbance_data_size(self):
+        """Obtain disturbance data size.
+
+        Returns:
+            int: Current disturbance data size.
+
+        """
+        return self.__disturbance_data_size
+
+    @disturbance_data_size.setter
+    def disturbance_data_size(self, value):
+        """Set disturbance data size.
+
+        Args:
+            value (int): Disturbance data size in bytes.
+
+        """
+        self.__disturbance_data_size = value
+
+    def disturbance_write_data(self, channels, dtypes, data_arr):
+        """Write disturbance data.
+
+        Args:
+            channels (int or list of int): Channel identifier.
+            dtypes (int or list of int): Data type.
+            data_arr (list or list of list): Data array.
+
+        """
+        if not isinstance(channels, list):
+            channels = [channels]
+        if not isinstance(dtypes, list):
+            dtypes = [dtypes]
+        if not isinstance(data_arr[0], list):
+            data_arr = [data_arr]
+        num_samples = len(data_arr[0])
+        self.write(DIST_NUMBER_SAMPLES, num_samples, subnode=0)
+        data = bytearray()
+        for sample_idx in range(num_samples):
+            for channel in range(len(data_arr)):
+                val = self.__convert_dtype_to_bytes(
+                    data_arr[channel][sample_idx], dtypes[channel])
+                data += val
+        chunks = [data[i:i + CAN_MAX_WRITE_SIZE]
+                  for i in range(0, len(data), CAN_MAX_WRITE_SIZE)]
+        for chunk in chunks:
+            self._write_raw(DIST_DATA, data=chunk, subnode=0)
+        self.disturbance_data = data
+        self.disturbance_data_size = len(data)
+
+    @staticmethod
+    def __convert_dtype_to_bytes(data, dtype):
+        """Convert data in dtype to bytes.
+
+        Args:
+            data: Data to convert.
+            dtype (REG_DTYPE): Data type.
+
+        """
+        # auto cast floats if register is not float
+        if dtype == REG_DTYPE.FLOAT:
+            data = float(data)
+        elif dtype != REG_DTYPE.DOMAIN:
+            data = int(data)
+
+        if dtype == REG_DTYPE.FLOAT:
+            data = struct.pack('f', data)
+        elif dtype != REG_DTYPE.DOMAIN:
+            bytes_length = 2
+            signed = False
+            if dtype == REG_DTYPE.U8:
+                bytes_length = 1
+            elif dtype == REG_DTYPE.S8:
+                bytes_length = 1
+                signed = True
+            elif dtype == REG_DTYPE.U16:
+                bytes_length = 2
+            elif dtype == REG_DTYPE.S16:
+                bytes_length = 2
+                signed = True
+            elif dtype == REG_DTYPE.U32:
+                bytes_length = 4
+            elif dtype == REG_DTYPE.S32:
+                bytes_length = 4
+                signed = True
+            data = data.to_bytes(bytes_length,
+                                 byteorder='little',
+                                 signed=signed)
+        return data
+
+    @property
+    def disturbance_data(self):
+        """Obtain disturbance data.
+
+        Returns:
+            array: Current disturbance data.
+
+        """
+        return self.__disturbance_data
+
+    @disturbance_data.setter
+    def disturbance_data(self, value):
+        """Set disturbance data.
+
+        Args:
+            value (array): Array with the disturbance to send.
+
+        """
+        self.__disturbance_data = value

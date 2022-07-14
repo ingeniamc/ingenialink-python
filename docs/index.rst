@@ -33,3 +33,4 @@ Contents
     api
     building
     examples
+    changelog

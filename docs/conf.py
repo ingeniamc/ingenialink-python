@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # options
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               'sphinx.ext.coverage', 'sphinx.ext.viewcode',
-              'sphinx.ext.napoleon']
+              'sphinx.ext.napoleon', 'm2r2']
 
 _version = re.search(r'__version__\s+=\s+\'(.*)\'',
                      open('../ingenialink/__init__.py').read()).group(1)
