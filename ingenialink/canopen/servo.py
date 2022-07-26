@@ -732,7 +732,7 @@ class CanopenServo(Servo):
                                float(element.attrib['storage']),
                                subnode=element_subnode
                                )
-            except ILIOError as e:
+            except ILError as e:
                 logger.error("Exception during load_configuration, register "
                              "%s: %s", str(element.attrib['id']), e)
 
