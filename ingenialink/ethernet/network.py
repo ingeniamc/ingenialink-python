@@ -13,6 +13,7 @@ from ftplib import FTP
 from time import sleep
 
 import os
+import socket
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
@@ -171,21 +172,12 @@ class EthernetNetwork(IPBNetwork):
             EthernetServo: Instance of the servo connected.
 
         """
-        net__ = ffi.new('il_net_t **')
-        servo__ = ffi.new('il_servo_t **')
-        _dictionary = cstr(dictionary) if dictionary else ffi.NULL
-        _target = cstr(target) if target else ffi.NULL
-
-        r = lib.il_servo_lucky_eth(NET_PROT.ETH.value, net__, servo__,
-                                   _dictionary, _target,
-                                   port, communication_protocol.value)
-
-        raise_err(r)
-
-        net_ = ffi.cast('il_net_t *', net__[0])
-        servo_ = ffi.cast('il_servo_t *', servo__[0])
-
-        self._create_cffi_network(net_)
+        if communication_protocol == NET_TRANS_PROT.UDP:
+            protocol = socket.SOCK_DGRAM
+        else:
+            protocol = socket.SOCK_STREAM
+        sock = socket.socket(socket.AF_INET, protocol)
+        sock.connect((target, port))
         servo = EthernetServo(servo_, self._cffi_network, target,
                               port, communication_protocol, dictionary,
                               servo_status_listener)
