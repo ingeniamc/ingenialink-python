@@ -1,12 +1,13 @@
 import ipaddress
 
-from .._ingenialink import lib, ffi
 from ingenialink.utils._utils import *
 from ingenialink.exceptions import ILError
-from ingenialink.network import NET_TRANS_PROT
-from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
+from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
+    DEFAULT_MCB_NODE, MCB_CMD_READ, MCB_CMD_WRITE
 from ingenialink.ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS
-from ingenialink.ipb.servo import IPBServo, STORE_COCO_ALL, RESTORE_COCO_ALL
+from ingenialink.ipb.servo import STORE_COCO_ALL, RESTORE_COCO_ALL
+from ingenialink.servo import Servo
+from crccheck.crc import CrcXmodem
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -26,33 +27,21 @@ COMMS_ETH_NET_GATEWAY = IPBRegister(
 )
 
 
-class EthernetServo(IPBServo):
+class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
 
     Args:
-        cffi_servo (CData): CData instance of the servo.
-        cffi_net (CData): CData instance of the network.
-        target (str): Target ID for the slave.
-        port (int): Port for the communication.
-        communication_protocol (NET_TRANS_PROT): Transmission protocol.
+        socket (socket):
         dictionary_path (str): Path to the dictionary.
         servo_status_listener (bool): Toggle the listener of the servo for
             its status, errors, faults, etc.
 
     """
-    def __init__(self, cffi_servo, cffi_net, target, port, communication_protocol,
+    def __init__(self, socket,
                  dictionary_path=None, servo_status_listener=False):
-        servo = ffi.gc(cffi_servo, lib.il_servo_fake_destroy)
-        super(EthernetServo, self).__init__(
-            servo, cffi_net, target, dictionary_path)
-        self.port = port
-        """int: Port number used for connections to the servo."""
-        self.communication_protocol = communication_protocol
-        """NET_TRANS_PROT: Protocol used to connect to the servo."""
-
-        prod_name = '' if self.dictionary.part_number is None \
-            else self.dictionary.part_number
-        self.full_name = '{} {} ({})'.format(prod_name, self.name, self.target)
+        self.socket = socket
+        self.ip_address, self.port = self.socket.getpeername()
+        super(EthernetServo, self).__init__(self.ip_address)
 
         if servo_status_listener:
             self.start_status_listener()
@@ -117,3 +106,53 @@ class EthernetServo(IPBServo):
             self.store_tcp_ip_parameters()
         except ILError:
             self.store_parameters()
+
+    def write(self, reg, data, subnode):
+        """Writes data to a register.
+
+        Args:
+            reg (IPBRegister, str): Target register to be written.
+            data (int, str, float): Data to be written.
+            subnode (int): Target axis of the drive.
+
+        """
+        frame = self._build_mcb_frame(MCB_CMD_WRITE, subnode, reg, data)
+        self.socket.sendall(frame)
+
+    def read(self, reg, subnode):
+        """Read a register value from servo.
+
+        Args:
+            reg (str, Register): Register.
+            subnode (int): Target axis of the drive.
+
+        Returns:
+            int, float or str: Value stored in the register.
+        """
+        pass
+
+    def _build_mcb_frame(self, cmd, subnode, address, data=0, extended=0):
+        """Build an MCB frame.
+
+        Args:
+            cmd (int): Read/write command.
+            subnode (int): Target axis of the drive.
+            address (int): Register address to be read/written.
+            data (int): Data to be written to the register.
+            extended (int): Indicates that the frame is longer than a basic frame
+
+        Returns:
+            bytearray: MCB frame.
+        """
+        header_h = (DEFAULT_MCB_NODE << 4) | subnode
+        header_l = (address << 4) | (cmd << 1) | extended
+        header = (header_l << 16) | header_h
+        header_bytes = header.to_bytes(4, 'little')
+        config_data = data.to_bytes(8, 'little')
+
+        frame = bytearray()
+        frame.extend(header_bytes)
+        frame.extend(config_data)
+        crc_cal = CrcXmodem.calc(frame)
+        frame.extend(crc_cal.to_bytes(2, 'little'))
+        return frame
