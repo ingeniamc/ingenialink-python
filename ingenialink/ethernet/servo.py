@@ -1,13 +1,13 @@
 import ipaddress
-from binascii import crc_hqx
 
 from ingenialink.utils._utils import *
 from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
-    DEFAULT_MCB_NODE, MCB_CMD_READ, MCB_CMD_WRITE
+    MCB_CMD_READ, MCB_CMD_WRITE
 from ingenialink.ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS
 from ingenialink.ipb.servo import STORE_COCO_ALL, RESTORE_COCO_ALL
 from ingenialink.servo import Servo
+from ingenialink.utils.mcb import MCB
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -116,7 +116,7 @@ class EthernetServo(Servo):
             subnode (int): Target axis of the drive.
 
         """
-        frame = self._build_mcb_frame(MCB_CMD_WRITE, subnode, reg, data)
+        frame = MCB.build_mcb_frame(MCB_CMD_WRITE, subnode, reg, data)
         self.socket.sendall(frame)
 
     def read(self, reg, subnode):
@@ -129,31 +129,7 @@ class EthernetServo(Servo):
         Returns:
             int, float or str: Value stored in the register.
         """
-        frame = self._build_mcb_frame(MCB_CMD_READ, subnode, reg)
+        frame = MCB.build_mcb_frame(MCB_CMD_READ, subnode, reg)
         self.socket.sendall(frame)
         response = self.socket.recv(1024)
         return response
-
-    def _build_mcb_frame(self, cmd, subnode, address, data=0, extended=0):
-        """Build an MCB frame.
-
-        Args:
-            cmd (int): Read/write command.
-            subnode (int): Target axis of the drive.
-            address (int): Register address to be read/written.
-            data (int): Data to be written to the register.
-            extended (int): Indicates that the frame is longer than a basic frame
-
-        Returns:
-            bytearray: MCB frame.
-        """
-        header_h = (DEFAULT_MCB_NODE << 4) | subnode
-        header_l = (address << 4) | (cmd << 1) | extended
-        header = (header_l << 16) | header_h
-        header_bytes = header.to_bytes(4, 'little')
-        config_data = data.to_bytes(8, 'little')
-
-        frame = header_bytes + config_data
-        crc = crc_hqx(frame, 0)
-        frame += crc.to_bytes(2, 'little')
-        return frame
