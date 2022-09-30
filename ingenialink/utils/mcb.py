@@ -1,7 +1,8 @@
 import struct
 from binascii import crc_hqx
 
-from ingenialink.constants import MCB_DEFAULT_NODE, MCB_DATA_SIZE
+from ingenialink.constants import MCB_DEFAULT_NODE, MCB_DATA_SIZE, \
+    MCB_CRC_SIZE, MCB_HEADER_H_SIZE, MCB_HEADER_L_SIZE
 
 
 class MCB:
@@ -77,15 +78,37 @@ class MCB:
             bytes: MCB frame.
         """
         if data is None:
-            data = b'\x00' * 8
+            data = b'\x00' * MCB_DATA_SIZE
         data_size = len(data)
         extended = data_size > MCB_DATA_SIZE
         header_h = (MCB_DEFAULT_NODE << 4) | subnode
         header_l = (address << 4) | (cmd << 1) | extended
-        header = header_h.to_bytes(2, 'little') + header_l.to_bytes(2, 'little')
-        frame = header + data_size.to_bytes(8, 'little') if extended else header + data
+        header = header_h.to_bytes(MCB_HEADER_H_SIZE, 'little') + \
+                 header_l.to_bytes(MCB_HEADER_L_SIZE, 'little')
+        if extended:
+            config_data = data_size.to_bytes(MCB_DATA_SIZE, 'little')
+        else:
+            config_data = data + b'\x00' * (MCB_DATA_SIZE - data_size)
+        frame = header + config_data
         crc = crc_hqx(frame, 0)
-        frame += crc.to_bytes(2, 'little')
+        frame += crc.to_bytes(MCB_CRC_SIZE, 'little')
         if extended:
             frame += data
         return frame
+
+    @staticmethod
+    def read_mcb_data(frame):
+        """Read an MCB frame and return its data.
+
+        Args:
+            frame (bytes): MCB frame.
+
+        Returns:
+            bytes: data contained in frame.
+        """
+        extended = int(frame.hex()[5]) & 1
+        if extended:
+            data = frame.hex()[28:]
+        else:
+            data = frame.hex()[8:24]
+        return bytes.fromhex(data)
