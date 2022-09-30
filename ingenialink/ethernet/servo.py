@@ -1,4 +1,5 @@
 import ipaddress
+from binascii import crc_hqx
 
 from ingenialink.utils._utils import *
 from ingenialink.exceptions import ILError
@@ -7,7 +8,6 @@ from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
 from ingenialink.ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS
 from ingenialink.ipb.servo import STORE_COCO_ALL, RESTORE_COCO_ALL
 from ingenialink.servo import Servo
-from crccheck.crc import CrcXmodem
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -129,7 +129,10 @@ class EthernetServo(Servo):
         Returns:
             int, float or str: Value stored in the register.
         """
-        pass
+        frame = self._build_mcb_frame(MCB_CMD_READ, subnode, reg)
+        self.socket.sendall(frame)
+        response = self.socket.recv(1024)
+        return response
 
     def _build_mcb_frame(self, cmd, subnode, address, data=0, extended=0):
         """Build an MCB frame.
@@ -150,9 +153,7 @@ class EthernetServo(Servo):
         header_bytes = header.to_bytes(4, 'little')
         config_data = data.to_bytes(8, 'little')
 
-        frame = bytearray()
-        frame.extend(header_bytes)
-        frame.extend(config_data)
-        crc_cal = CrcXmodem.calc(frame)
-        frame.extend(crc_cal.to_bytes(2, 'little'))
+        frame = header_bytes + config_data
+        crc = crc_hqx(frame, 0)
+        frame += crc.to_bytes(2, 'little')
         return frame
