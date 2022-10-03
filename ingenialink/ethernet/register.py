@@ -2,17 +2,16 @@ from ingenialink.register_can_eth import CanEthRegister
 from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY
 
 
-class CanopenRegister(CanEthRegister):
-    """CANopen Register.
+class EthernetRegister(CanEthRegister):
+    """Ethernet Register.
 
         Args:
-            identifier (str, optional): Identifier.
-            units (str, optional): Units.
-            cyclic (str): Cyclic typed register.
             idx (int): Index of the register.
-            subidx (int): Subindex of the register.
             dtype (REG_DTYPE): Data type.
             access (REG_ACCESS): Access type.
+            identifier (str, optional): Identifier.
+            units (str, optional): Units.
+            cyclic (str, optional): Cyclic typed register.
             phy (REG_PHY, optional): Physical units.
             subnode (int): Subnode.
             storage (any, optional): Storage.
@@ -31,18 +30,11 @@ class CanopenRegister(CanEthRegister):
 
         """
 
-    def __init__(self, identifier, units, cyclic, idx, subidx, dtype,
-                 access, phy=REG_PHY.NONE, subnode=1, storage=None,
-                 reg_range=(None, None), labels=None, enums=None, enums_count=0,
-                 cat_id=None, scat_id=None, internal_use=0):
+    def __init__(self, idx, dtype, access, identifier=None, units=None, cyclic="CONFIG",
+                 phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=(None, None),
+                 labels=None, enums=None, enums_count=0, cat_id=None, scat_id=None,
+                 internal_use=0):
 
-        super().__init__(idx, dtype, access, identifier, units, cyclic,
-                         phy, subnode, storage, reg_range, labels, enums,
-                         enums_count, cat_id, scat_id, internal_use)
-
-        self.__subidx = subidx
-
-    @property
-    def subidx(self):
-        """int: Register subindex."""
-        return self.__subidx
+        super().__init__(idx, dtype, access, identifier, units, cyclic, phy, subnode,
+                         storage, reg_range, labels, enums, enums_count, cat_id,
+                         scat_id, internal_use)
