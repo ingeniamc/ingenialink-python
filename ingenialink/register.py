@@ -136,6 +136,7 @@ class Register(ABC):
             labels = {}
         if enums is None:
             enums = []
+
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
 
