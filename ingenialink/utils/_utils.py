@@ -3,6 +3,7 @@ from enum import Enum
 from .._ingenialink import lib, ffi
 from ingenialink import exceptions as exc
 from ingenialink.utils.errors import *
+from ingenialink.register import REG_DTYPE
 from time import sleep
 
 import warnings
@@ -339,3 +340,64 @@ def set_logger_level(level):
 
     """
     lib.set_log_level(level)
+
+
+def convert_bytes_to_dtype(data, dtype):
+    """Convert data in bytes to corresponding dtype."""
+    if dtype in [REG_DTYPE.S8,
+                 REG_DTYPE.S16,
+                 REG_DTYPE.S32]:
+        value = int.from_bytes(
+            data,
+            "little",
+            signed=True
+        )
+    elif dtype == REG_DTYPE.FLOAT:
+        [value] = struct.unpack('f',
+                                data
+                                )
+    elif dtype == REG_DTYPE.STR:
+        value = data.decode("utf-8")
+    else:
+        value = int.from_bytes(
+            data,
+            "little"
+        )
+    return value
+
+
+def convert_dtype_to_bytes(data, dtype):
+    """Convert data in dtype to bytes.
+    Args:
+        data: Data to convert.
+        dtype (REG_DTYPE): Data type.
+    """
+    # auto cast floats if register is not float
+    if dtype == REG_DTYPE.FLOAT:
+        data = float(data)
+    elif dtype != REG_DTYPE.DOMAIN:
+        data = int(data)
+    if dtype == REG_DTYPE.FLOAT:
+        data = struct.pack('f', data)
+    elif dtype != REG_DTYPE.DOMAIN:
+        bytes_length = 2
+        signed = False
+        if dtype == REG_DTYPE.U8:
+            bytes_length = 1
+        elif dtype == REG_DTYPE.S8:
+            bytes_length = 1
+            signed = True
+        elif dtype == REG_DTYPE.U16:
+            bytes_length = 2
+        elif dtype == REG_DTYPE.S16:
+            bytes_length = 2
+            signed = True
+        elif dtype == REG_DTYPE.U32:
+            bytes_length = 4
+        elif dtype == REG_DTYPE.S32:
+            bytes_length = 4
+            signed = True
+        data = data.to_bytes(bytes_length,
+                             byteorder='little',
+                             signed=signed)
+    return data

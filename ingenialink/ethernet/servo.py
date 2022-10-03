@@ -5,9 +5,12 @@ from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
     MCB_CMD_READ, MCB_CMD_WRITE
 from ingenialink.ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS
+from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.ipb.servo import STORE_COCO_ALL, RESTORE_COCO_ALL
 from ingenialink.servo import Servo
 from ingenialink.utils.mcb import MCB
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.exceptions import ILRegisterNotFoundError
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -107,7 +110,7 @@ class EthernetServo(Servo):
         except ILError:
             self.store_parameters()
 
-    def write(self, reg, data, subnode):
+    def write(self, reg, data, subnode=1):
         """Writes data to a register.
 
         Args:
@@ -116,10 +119,13 @@ class EthernetServo(Servo):
             subnode (int): Target axis of the drive.
 
         """
-        frame = MCB.build_mcb_frame(MCB_CMD_WRITE, subnode, reg, data)
-        self.socket.sendall(frame)
+        _reg = self._get_reg(reg, subnode)
+        if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
+            data = int(data)
+        data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
+        self._send_mcb_frame(MCB_CMD_WRITE, _reg.subnode, _reg.idx, data_bytes)
 
-    def read(self, reg, subnode):
+    def read(self, reg, subnode=1):
         """Read a register value from servo.
 
         Args:
@@ -129,7 +135,79 @@ class EthernetServo(Servo):
         Returns:
             int, float or str: Value stored in the register.
         """
-        frame = MCB.build_mcb_frame(MCB_CMD_READ, subnode, reg)
-        self.socket.sendall(frame)
+        _reg = self._get_reg(reg, subnode)
+        self._send_mcb_frame(MCB_CMD_READ, _reg.subnode, _reg.idx)
         response = self.socket.recv(1024)
-        return response
+        data = MCB.read_mcb_data(_reg.idx, response)
+        return convert_bytes_to_dtype(data, _reg.dtype)
+
+    def _get_reg(self, reg, subnode):
+        """Validates a register.
+        Args:
+            reg (EthernetRegister): Targeted register to validate.
+            subnode (int): Subnode for the register.
+        Returns:
+            EthernetRegister: Instance of the desired register from the dictionary.
+        Raises:
+            ValueError: If the dictionary is not loaded.
+            ILWrongRegisterError: If the register has invalid format.
+        """
+        if isinstance(reg, EthernetRegister):
+            return reg
+
+        elif isinstance(reg, str):
+            _dict = self.dictionary
+            if not _dict:
+                raise ValueError('No dictionary loaded')
+            if reg not in _dict.registers(subnode):
+                raise ILRegisterNotFoundError(f'Register {reg} not found.')
+            return _dict.registers(subnode)[reg]
+        else:
+            raise TypeError('Invalid register')
+
+    def _send_mcb_frame(self, cmd, reg, subnode, data=None):
+        frame = MCB.build_mcb_frame(cmd,  reg.subnode, reg.idx, data)
+        self.socket.sendall(frame)
+
+    def get_state(self, subnode=1):
+        raise NotImplementedError
+
+    def start_status_listener(self):
+        raise NotImplementedError
+
+    def stop_status_listener(self):
+        raise NotImplementedError
+
+    def subscribe_to_status(self, callback):
+        raise NotImplementedError
+
+    def unsubscribe_from_status(self, callback):
+        raise NotImplementedError
+
+    def reload_errors(self, dictionary):
+        raise NotImplementedError
+
+    def load_configuration(self, config_file, subnode=None):
+        raise NotImplementedError
+
+    def save_configuration(self, config_file, subnode=None):
+        raise NotImplementedError
+
+    def store_parameters(self, subnode=None):
+        raise NotImplementedError
+
+    def restore_parameters(self, subnode=None):
+        raise NotImplementedError
+
+    def disable(self, subnode=1):
+        raise NotImplementedError
+
+    def enable(self, timeout=2., subnode=1):
+        raise NotImplementedError
+
+    def fault_reset(self, subnode=1):
+        raise NotImplementedError
+
+    def is_alive(self):
+        raise NotImplementedError
+

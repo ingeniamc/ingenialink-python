@@ -126,7 +126,8 @@ class MCB:
         Returns:
             bytes: data contained in frame.
         """
-        recv_crc_bytes = frame[cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE:cls.MCB_FRAME_SIZE]
+        recv_crc_bytes = frame[cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE
+                               :cls.MCB_FRAME_SIZE]
         recv_crc = int.from_bytes(recv_crc_bytes, 'little')
         calc_crc = crc_hqx(frame[:cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE], 0)
         if recv_crc != calc_crc:
@@ -137,7 +138,8 @@ class MCB:
         if ack_cmd != 3:
             err = frame[cls.DATA_START_BYTE:cls.DATA_END_BYTE].hex()
             raise ILNACKError(f'Communications error (NACK -> {err})')
-        recv_add = (int.from_bytes(frame[2:4], 'little')) >> 4
+        header = frame[cls.MCB_HEADER_L_SIZE:cls.MCB_HEADER_SIZE]
+        recv_add = (int.from_bytes(header, 'little')) >> 4
         if expected_address != recv_add:
             raise ILWrongRegisterError(f'Received address: {recv_add} does '
                                        f'not match expected address: '
