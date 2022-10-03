@@ -2,7 +2,7 @@ import pytest
 
 from ingenialink.ipb.dictionary import IPBDictionary
 from ingenialink.ipb.register import IPBRegister
-from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.register_deprecated import REG_DTYPE, REG_ACCESS, REG_PHY
 
 
 @pytest.mark.ethernet

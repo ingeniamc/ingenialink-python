@@ -5,7 +5,7 @@ from ingenialink.constants import *
 from ingenialink.exceptions import *
 from ingenialink.ipb.register import *
 from ingenialink.utils._utils import *
-from ingenialink.register import dtype_size
+from ingenialink.register_deprecated import dtype_size
 from ingenialink.ipb.dictionary import IPBDictionary
 from ingenialink.servo import Servo, SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL

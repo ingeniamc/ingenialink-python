@@ -1,8 +1,7 @@
-from ingenialink.register_can_eth import CanEthRegister
-from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.register import Register, REG_DTYPE, REG_ACCESS, REG_PHY
 
 
-class EthernetRegister(CanEthRegister):
+class EthernetRegister(Register):
     """Ethernet Register.
 
         Args:
@@ -30,11 +29,18 @@ class EthernetRegister(CanEthRegister):
 
         """
 
-    def __init__(self, idx, dtype, access, identifier=None, units=None, cyclic="CONFIG",
+    def __init__(self, address, dtype, access, identifier=None, units=None, cyclic="CONFIG",
                  phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=(None, None),
                  labels=None, enums=None, enums_count=0, cat_id=None, scat_id=None,
                  internal_use=0):
 
-        super().__init__(idx, dtype, access, identifier, units, cyclic, phy, subnode,
+        super().__init__(dtype, access, identifier, units, cyclic, phy, subnode,
                          storage, reg_range, labels, enums, enums_count, cat_id,
                          scat_id, internal_use)
+
+        self.__address = address
+
+    @property
+    def address(self):
+        """int: Register address."""
+        return self.__address

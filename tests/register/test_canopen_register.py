@@ -1,8 +1,8 @@
 import pytest
 
 from ingenialink.canopen.dictionary import CanopenDictionary
-from ingenialink.canopen.register import CanopenRegister
-from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.utils._utils import *
 
 
 @pytest.mark.develop
@@ -65,7 +65,7 @@ def test_getters_canopen_register(test_identification, test_units,test_cyclic, t
 #     register.range()
 
 
-@pytest.mark.develop
+#@pytest.mark.develop
 @pytest.mark.canopen
 def test_canopen_connection_register(connect_to_slave):
     servo, net = connect_to_slave

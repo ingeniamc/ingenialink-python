@@ -1,6 +1,6 @@
 from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import raise_null, raise_err, to_ms
-from ingenialink.register import _get_reg_id
+from ingenialink.register_deprecated import _get_reg_id
 from ingenialink.ipb.servo import IPBServo
 from ingenialink.poller import Poller
 
