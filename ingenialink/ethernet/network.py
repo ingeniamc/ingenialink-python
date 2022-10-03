@@ -178,19 +178,18 @@ class EthernetNetwork(IPBNetwork):
             protocol = socket.SOCK_STREAM
         sock = socket.socket(socket.AF_INET, protocol)
         sock.connect((target, port))
-        servo = EthernetServo(servo_, self._cffi_network, target,
-                              port, communication_protocol, dictionary,
+        servo = EthernetServo(sock, dictionary,
                               servo_status_listener)
 
         self.servos.append(servo)
 
-        if net_status_listener:
-            self.start_status_listener()
-        else:
-            self.stop_status_listener()
+        #if net_status_listener:
+        #    self.start_status_listener()
+        #else:
+        #    self.stop_status_listener()
 
-        self.set_reconnection_retries(reconnection_retries)
-        self.set_recv_timeout(reconnection_timeout)
+        #self.set_reconnection_retries(reconnection_retries)
+        #self.set_recv_timeout(reconnection_timeout)
 
         return servo
 
@@ -203,11 +202,11 @@ class EthernetNetwork(IPBNetwork):
         """
         # TODO: This stops all connections no only the target servo.
         self.servos.remove(servo)
-        if len(self.servos) == 0:
-            self.stop_status_listener()
-            lib.il_net_mon_stop(self._cffi_network)
-            self.close_socket()
-        self._cffi_network = None
+        #if len(self.servos) == 0:
+        #    self.stop_status_listener()
+        #    lib.il_net_mon_stop(self._cffi_network)
+        #    self.close_socket()
+        #self._cffi_network = None
 
     @property
     def protocol(self):

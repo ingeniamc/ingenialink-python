@@ -354,6 +354,8 @@ def convert_bytes_to_dtype(data, dtype):
             signed=True
         )
     elif dtype == REG_DTYPE.FLOAT:
+        if len(data) > 4:
+            data = data[:4]
         [value] = struct.unpack('f',
                                 data
                                 )
