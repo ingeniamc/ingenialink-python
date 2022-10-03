@@ -29,6 +29,7 @@ class EthernetNetwork(IPBNetwork):
     """Network for all Ethernet communications."""
     def __init__(self):
         super(EthernetNetwork, self).__init__()
+        self.socket = None
 
     @staticmethod
     def load_firmware(fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
@@ -176,20 +177,20 @@ class EthernetNetwork(IPBNetwork):
             protocol = socket.SOCK_DGRAM
         else:
             protocol = socket.SOCK_STREAM
-        sock = socket.socket(socket.AF_INET, protocol)
-        sock.connect((target, port))
-        servo = EthernetServo(sock, dictionary,
+        self.socket = socket.socket(socket.AF_INET, protocol)
+        self.socket.connect((target, port))
+        servo = EthernetServo(self.socket, dictionary,
                               servo_status_listener)
 
         self.servos.append(servo)
 
-        #if net_status_listener:
-        #    self.start_status_listener()
-        #else:
-        #    self.stop_status_listener()
+        if net_status_listener:
+            self.start_status_listener()
+        else:
+            self.stop_status_listener()
 
-        #self.set_reconnection_retries(reconnection_retries)
-        #self.set_recv_timeout(reconnection_timeout)
+        self.set_reconnection_retries(reconnection_retries)
+        self.set_recv_timeout(reconnection_timeout)
 
         return servo
 
@@ -202,11 +203,16 @@ class EthernetNetwork(IPBNetwork):
         """
         # TODO: This stops all connections no only the target servo.
         self.servos.remove(servo)
-        #if len(self.servos) == 0:
-        #    self.stop_status_listener()
-        #    lib.il_net_mon_stop(self._cffi_network)
-        #    self.close_socket()
-        #self._cffi_network = None
+        if len(self.servos) == 0:
+            self.stop_status_listener()
+            lib.il_net_mon_stop(self._cffi_network)
+            self.close_socket()
+        self._cffi_network = None
+
+    def close_socket(self):
+        """Closes the established network socket."""
+        self.socket.shutdown(socket.SHUT_RDWR)
+        self.socket.close()
 
     @property
     def protocol(self):
