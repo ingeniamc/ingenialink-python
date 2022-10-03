@@ -123,7 +123,7 @@ class EthernetServo(Servo):
         if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
             data = int(data)
         data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
-        self._send_mcb_frame(MCB_CMD_WRITE, _reg.subnode, _reg.idx, data_bytes)
+        self._send_mcb_frame(MCB_CMD_WRITE, _reg.idx, _reg.subnode, data_bytes)
 
     def read(self, reg, subnode=1):
         """Read a register value from servo.
@@ -136,7 +136,7 @@ class EthernetServo(Servo):
             int, float or str: Value stored in the register.
         """
         _reg = self._get_reg(reg, subnode)
-        self._send_mcb_frame(MCB_CMD_READ, _reg.subnode, _reg.idx)
+        self._send_mcb_frame(MCB_CMD_READ, _reg.idx, _reg.subnode)
         response = self.socket.recv(1024)
         data = MCB.read_mcb_data(_reg.idx, response)
         return convert_bytes_to_dtype(data, _reg.dtype)
@@ -166,7 +166,7 @@ class EthernetServo(Servo):
             raise TypeError('Invalid register')
 
     def _send_mcb_frame(self, cmd, reg, subnode, data=None):
-        frame = MCB.build_mcb_frame(cmd,  reg.subnode, reg.idx, data)
+        frame = MCB.build_mcb_frame(cmd,  subnode, reg, data)
         self.socket.sendall(frame)
 
     def get_state(self, subnode=1):
