@@ -1,8 +1,8 @@
 import struct
 from binascii import crc_hqx
 
-from ingenialink.constants import MCB_DEFAULT_NODE, MCB_DATA_SIZE, \
-    MCB_CRC_SIZE, MCB_HEADER_H_SIZE, MCB_HEADER_L_SIZE
+from ingenialink.exceptions import ILWrongCRCError, ILNACKError,\
+    ILWrongRegisterError
 
 
 class MCB:
@@ -11,6 +11,17 @@ class MCB:
     work at high update rates (tens of kHz).
     """
     EXTENDED_MESSAGE_SIZE = 8
+    MCB_DEFAULT_NODE = 0xA
+    MCB_HEADER_H_SIZE = 2
+    MCB_HEADER_L_SIZE = 2
+    MCB_HEADER_SIZE = MCB_HEADER_H_SIZE + MCB_HEADER_L_SIZE
+    MCB_DATA_SIZE = 8
+    MCB_CRC_SIZE = 2
+    MCB_FRAME_SIZE = MCB_HEADER_SIZE + MCB_DATA_SIZE + MCB_CRC_SIZE
+    EXTENDED_DATA_START_BYTE = MCB_FRAME_SIZE
+    EXTENDED_DATA_END_BYTE = None
+    DATA_START_BYTE = MCB_HEADER_SIZE
+    DATA_END_BYTE = MCB_FRAME_SIZE - MCB_CRC_SIZE
 
     def __init__(self):
         pass
@@ -64,8 +75,8 @@ class MCB:
         frame = self.create_msg(node, subnode, cmd, data, len(data))
         output.write(frame)
 
-    @staticmethod
-    def build_mcb_frame(cmd, subnode, address, data=None):
+    @classmethod
+    def build_mcb_frame(cls, cmd, subnode, address, data=None):
         """Build an MCB frame.
 
         Args:
@@ -78,37 +89,63 @@ class MCB:
             bytes: MCB frame.
         """
         if data is None:
-            data = b'\x00' * MCB_DATA_SIZE
+            data = b'\x00' * cls.MCB_DATA_SIZE
         data_size = len(data)
-        extended = data_size > MCB_DATA_SIZE
-        header_h = (MCB_DEFAULT_NODE << 4) | subnode
+        extended = data_size > cls.MCB_DATA_SIZE
+        header_h = (cls.MCB_DEFAULT_NODE << 4) | subnode
         header_l = (address << 4) | (cmd << 1) | extended
-        header = header_h.to_bytes(MCB_HEADER_H_SIZE, 'little') + \
-                 header_l.to_bytes(MCB_HEADER_L_SIZE, 'little')
+        header = header_h.to_bytes(cls.MCB_HEADER_H_SIZE, 'little') + \
+                 header_l.to_bytes(cls.MCB_HEADER_L_SIZE, 'little')
         if extended:
-            config_data = data_size.to_bytes(MCB_DATA_SIZE, 'little')
+            config_data = data_size.to_bytes(cls.MCB_DATA_SIZE, 'little')
         else:
-            config_data = data + b'\x00' * (MCB_DATA_SIZE - data_size)
+            config_data = data + b'\x00' * (cls.MCB_DATA_SIZE - data_size)
         frame = header + config_data
         crc = crc_hqx(frame, 0)
-        frame += crc.to_bytes(MCB_CRC_SIZE, 'little')
+        frame += crc.to_bytes(cls.MCB_CRC_SIZE, 'little')
         if extended:
             frame += data
         return frame
 
-    @staticmethod
-    def read_mcb_data(frame):
+    @classmethod
+    def read_mcb_data(cls, expected_address, frame):
         """Read an MCB frame and return its data.
 
         Args:
+            expected_address (int): Address of the expected register to be
+            read.
             frame (bytes): MCB frame.
+
+        Raises:
+            ILWrongCRCError: If the received CRC code does not match
+            the calculated CRC code.
+            ILNACKError: If the received command is a NACK.
+            ILWrongRegisterError: If the received address does not match
+            the expected address.
 
         Returns:
             bytes: data contained in frame.
         """
-        extended = int(frame.hex()[5]) & 1
+        recv_crc_bytes = frame[cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE:cls.MCB_FRAME_SIZE]
+        recv_crc = int.from_bytes(recv_crc_bytes, 'little')
+        calc_crc = crc_hqx(frame[:cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE], 0)
+        if recv_crc != calc_crc:
+            raise ILWrongCRCError
+        header_l = frame[cls.MCB_HEADER_L_SIZE]
+        extended = header_l & 1
+        ack_cmd = (header_l & 0xE) >> 1
+        if ack_cmd != 3:
+            err = frame[cls.DATA_START_BYTE:cls.DATA_END_BYTE].hex()
+            raise ILNACKError(f'Communications error (NACK -> {err})')
+        recv_add = (int.from_bytes(frame[2:4], 'little')) >> 4
+        if expected_address != recv_add:
+            raise ILWrongRegisterError(f'Received address: {recv_add} does '
+                                       f'not match expected address: '
+                                       f'{expected_address}')
         if extended:
-            data = frame.hex()[28:]
+            data_start_byte = cls.EXTENDED_DATA_START_BYTE
+            data_end_byte = cls.EXTENDED_DATA_END_BYTE
         else:
-            data = frame.hex()[8:24]
-        return bytes.fromhex(data)
+            data_start_byte = cls.DATA_START_BYTE
+            data_end_byte = cls.DATA_END_BYTE
+        return frame[data_start_byte:data_end_byte]
