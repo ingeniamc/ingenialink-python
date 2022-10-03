@@ -46,10 +46,10 @@ class EthernetServo(Servo):
         self.ip_address, self.port = self.socket.getpeername()
         super(EthernetServo, self).__init__(self.ip_address)
 
-        #if servo_status_listener:
-        #    self.start_status_listener()
-        #else:
-        #    self.stop_status_listener()
+        if servo_status_listener:
+            self.start_status_listener()
+        else:
+            self.stop_status_listener()
 
     def store_tcp_ip_parameters(self):
         """Stores the TCP/IP values. Affects IP address,
