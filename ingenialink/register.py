@@ -77,7 +77,6 @@ class Register(ABC):
     """Register Base class.
 
         Args:
-            idx (int): Index of the register.
             dtype (REG_DTYPE): Data type.
             access (REG_ACCESS): Access type.
             identifier (str, optional): Identifier.
