@@ -110,20 +110,22 @@ class EthernetServo(Servo):
         except ILError:
             self.store_parameters()
 
-    def write(self, reg, data, subnode=1):
+    def write(self, reg, data, subnode=1, confirm=True):
         """Writes data to a register.
 
         Args:
             reg (IPBRegister, str): Target register to be written.
             data (int, str, float): Data to be written.
             subnode (int): Target axis of the drive.
+            confirm (bool): Confirm that the write command is
+            acknowledged by the drive.
 
         """
         _reg = self._get_reg(reg, subnode)
         if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
             data = int(data)
         data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
-        self._send_mcb_frame(MCB_CMD_WRITE, _reg.idx, _reg.subnode, data_bytes)
+        self._send_mcb_frame(MCB_CMD_WRITE, _reg.idx, _reg.subnode, data_bytes, confirm)
 
     def read(self, reg, subnode=1):
         """Read a register value from servo.
@@ -136,9 +138,7 @@ class EthernetServo(Servo):
             int, float or str: Value stored in the register.
         """
         _reg = self._get_reg(reg, subnode)
-        self._send_mcb_frame(MCB_CMD_READ, _reg.idx, _reg.subnode)
-        response = self.socket.recv(1024)
-        data = MCB.read_mcb_data(_reg.idx, response)
+        data = self._send_mcb_frame(MCB_CMD_READ, _reg.idx, _reg.subnode)
         return convert_bytes_to_dtype(data, _reg.dtype)
 
     def _get_reg(self, reg, subnode):
@@ -165,9 +165,26 @@ class EthernetServo(Servo):
         else:
             raise TypeError('Invalid register')
 
-    def _send_mcb_frame(self, cmd, reg, subnode, data=None):
-        frame = MCB.build_mcb_frame(cmd,  subnode, reg, data)
+    def _send_mcb_frame(self, cmd, reg, subnode, data=None, confirm=True):
+        """Send an MCB frame to the drive.
+
+        Args:
+            cmd (int): Read/write command.
+            reg (int): Register address to be read/written.
+            subnode (int): Target axis of the drive.
+            data (bytes): Data to be written to the register.
+            confirm (bool): Confirm that command send is acknowledged
+             by the drive.
+
+        Returns:
+            bytes: The response frame if ``confirm`` is True.
+        """
+        frame = MCB.build_mcb_frame(cmd, subnode, reg, data)
         self.socket.sendall(frame)
+        if confirm:
+            response = self.socket.recv(1024)
+            return MCB.read_mcb_data(reg, response)
+
 
     def get_state(self, subnode=1):
         raise NotImplementedError
