@@ -1,8 +1,7 @@
-from ingenialink.register_can_eth import CanEthRegister
-from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.register import Register, REG_DTYPE, REG_ACCESS, REG_PHY
 
 
-class CanopenRegister(CanEthRegister):
+class CanopenRegister(Register):
     """CANopen Register.
 
         Args:
@@ -36,11 +35,17 @@ class CanopenRegister(CanEthRegister):
                  reg_range=(None, None), labels=None, enums=None, enums_count=0,
                  cat_id=None, scat_id=None, internal_use=0):
 
-        super().__init__(idx, dtype, access, identifier, units, cyclic,
+        super().__init__(dtype, access, identifier, units, cyclic,
                          phy, subnode, storage, reg_range, labels, enums,
                          enums_count, cat_id, scat_id, internal_use)
 
+        self.__idx = idx
         self.__subidx = subidx
+
+    @property
+    def idx(self):
+        """int: Register index."""
+        return self.__idx
 
     @property
     def subidx(self):
