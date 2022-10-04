@@ -53,6 +53,10 @@ DISTURBANCE_REMOVE_DATA = EthernetRegister(
     dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
 )
 
+DISTURBANCE_NUMBER_MAPPED_REGISTERS = EthernetRegister(
+    identifier='', units='', subnode=0, address=0x00E8, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
 
 class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
@@ -324,6 +328,63 @@ class EthernetServo(Servo):
                    data=1, subnode=0)
         self.disturbance_data = bytearray()
         self.disturbance_data_size = 0
+
+    def disturbance_set_mapped_register(self, channel, address, subnode,
+                                        dtype, size):
+        """Set monitoring mapped register.
+
+        Args:
+            channel (int): Identity channel number.
+            address (int): Register address to map.
+            subnode (int): Subnode to be targeted.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
+
+        """
+        self.__disturbance_channels_size[channel] = size
+        self.__disturbance_channels_dtype[channel] = REG_DTYPE(dtype).name
+        data = self.__monitoring_disturbance_data_to_map_register(subnode,
+                                                                  address,
+                                                                  dtype,
+                                                                  size)
+        self.write(self.__disturbance_map_register(), data=data,
+                   subnode=0)
+        self.__disturbance_update_num_mapped_registers()
+        self.__disturbance_num_mapped_registers = \
+            self.disturbance_get_num_mapped_registers()
+        self.write(DISTURBANCE_NUMBER_MAPPED_REGISTERS,
+                   data=self.disturbance_number_mapped_registers,
+                   subnode=subnode)
+
+    def disturbance_get_num_mapped_registers(self):
+        """Obtain the number of disturbance mapped registers.
+
+        Returns:
+            int: Actual number of mapped registers.
+
+        """
+        return self.read('DIST_CFG_MAP_REGS', 0)
+
+    def __disturbance_map_register(self):
+        """Get the first available Disturbance Mapped Register slot.
+
+        Returns:
+            str: Disturbance Mapped Register ID.
+
+        """
+        return f'DIST_CFG_REG{self.disturbance_number_mapped_registers}_MAP'
+
+    def __disturbance_update_num_mapped_registers(self):
+        """Update the number of mapped disturbance registers."""
+        self.__disturbance_num_mapped_registers += 1
+        self.write('DIST_CFG_MAP_REGS',
+                   data=self.__disturbance_num_mapped_registers,
+                   subnode=0)
+
+    @property
+    def disturbance_number_mapped_registers(self):
+        """Get the number of mapped disturbance registers."""
+        return self.__disturbance_num_mapped_registers
 
     @property
     def disturbance_data(self):
