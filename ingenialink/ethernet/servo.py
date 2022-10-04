@@ -4,8 +4,7 @@ from ingenialink.utils._utils import *
 from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
     MCB_CMD_READ, MCB_CMD_WRITE
-from ingenialink.ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS
-from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
 from ingenialink.ipb.servo import STORE_COCO_ALL, RESTORE_COCO_ALL
 from ingenialink.servo import Servo
 from ingenialink.utils.mcb import MCB
@@ -16,17 +15,42 @@ import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
 
-COMMS_ETH_IP = IPBRegister(
+COMMS_ETH_IP = EthernetRegister(
     identifier='', units='', subnode=0, address=0x00A1, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
-COMMS_ETH_NET_MASK = IPBRegister(
+COMMS_ETH_NET_MASK = EthernetRegister(
     identifier='', units='', subnode=0, address=0x00A2, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
-COMMS_ETH_NET_GATEWAY = IPBRegister(
+COMMS_ETH_NET_GATEWAY = EthernetRegister(
     identifier='', units='', subnode=0, address=0x00A3, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+)
+
+MONITORING_DIST_ENABLE = EthernetRegister(
+    identifier='', units='', subnode=0, address=0x00C0, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+
+DISTURBANCE_ENABLE = EthernetRegister(
+    identifier='', units='', subnode=0, address=0x00C7, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+
+MONITORING_REMOVE_DATA = EthernetRegister(
+    identifier='', units='', subnode=0, address=0x00EA, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+)
+
+MONITORING_NUMBER_MAPPED_REGISTERS = EthernetRegister(
+    identifier='', units='', subnode=0, address=0x00E3, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+
+DISTURBANCE_REMOVE_DATA = EthernetRegister(
+    identifier='', units='', subnode=0, address=0x00EB, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
 )
 
 
@@ -45,6 +69,16 @@ class EthernetServo(Servo):
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
         super(EthernetServo, self).__init__(self.ip_address)
+        self.__monitoring_num_mapped_registers = 0
+        self.__monitoring_channels_size = {}
+        self.__monitoring_channels_dtype = {}
+        self.__monitoring_data = []
+        self.__processed_monitoring_data = []
+        self.__disturbance_num_mapped_registers = 0
+        self.__disturbance_channels_size = {}
+        self.__disturbance_channels_dtype = {}
+        self.__disturbance_data_size = 0
+        self.__disturbance_data = bytearray()
 
         if servo_status_listener:
             self.start_status_listener()
@@ -114,7 +148,7 @@ class EthernetServo(Servo):
         """Writes data to a register.
 
         Args:
-            reg (IPBRegister, str): Target register to be written.
+            reg (EthernetRegister, str): Target register to be written.
             data (int, str, float): Data to be written.
             subnode (int): Target axis of the drive.
             confirm (bool): Confirm that the write command is
@@ -184,6 +218,152 @@ class EthernetServo(Servo):
         if confirm:
             response = self.socket.recv(1024)
             return MCB.read_mcb_data(reg, response)
+
+    def monitoring_enable(self):
+        """Enable monitoring process."""
+        self.write(MONITORING_DIST_ENABLE, data=1, subnode=0)
+
+    def monitoring_disable(self):
+        """Disable monitoring process."""
+        self.write(MONITORING_DIST_ENABLE, data=0, subnode=0)
+
+    def monitoring_remove_data(self):
+        """Remove monitoring data."""
+        self.write(MONITORING_REMOVE_DATA,
+                   data=1, subnode=0)
+
+    def monitoring_set_mapped_register(self, channel, address, subnode,
+                                       dtype, size):
+        """Set monitoring mapped register.
+
+        Args:
+            channel (int): Identity channel number.
+            address (int): Register address to map.
+            subnode (int): Subnode to be targeted.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
+
+        """
+        self.__monitoring_channels_size[channel] = size
+        self.__monitoring_channels_dtype[channel] = REG_DTYPE(dtype)
+        data = self.__monitoring_disturbance_data_to_map_register(subnode,
+                                                                  address,
+                                                                  dtype,
+                                                                  size)
+        self.write(self.__monitoring_map_register(), data=data,
+                   subnode=0)
+        self.__monitoring_update_num_mapped_registers()
+        self.__monitoring_num_mapped_registers = \
+            self.monitoring_get_num_mapped_registers()
+        self.write(MONITORING_NUMBER_MAPPED_REGISTERS,
+                   data=self.monitoring_number_mapped_registers,
+                   subnode=subnode)
+
+    def monitoring_get_num_mapped_registers(self):
+        """Obtain the number of monitoring mapped registers.
+
+        Returns:
+            int: Actual number of mapped registers.
+
+        """
+        return self.read('MON_CFG_TOTAL_MAP', 0)
+
+    def __monitoring_disturbance_data_to_map_register(self, subnode, address,
+                                                      dtype, size):
+        """Arrange necessary data to map a monitoring/disturbance register.
+
+        Args:
+            subnode (int): Subnode to be targeted.
+            address (int): Register address to map.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
+
+        """
+        data_h = address | subnode << 12
+        data_l = dtype << 8 | size
+        return (data_h << 16) | data_l
+
+    def __monitoring_map_register(self):
+        """Get the first available Monitoring Mapped Register slot.
+
+        Returns:
+            str: Monitoring Mapped Register ID.
+
+        """
+        if self.monitoring_number_mapped_registers < 10:
+            register_id = f'MON_CFG_REG' \
+                          f'{self.monitoring_number_mapped_registers}_MAP'
+        else:
+            register_id = f'MON_CFG_REFG' \
+                          f'{self.monitoring_number_mapped_registers}_MAP'
+        return register_id
+
+    def __monitoring_update_num_mapped_registers(self):
+        """Update the number of mapped monitoring registers."""
+        self.__monitoring_num_mapped_registers += 1
+        self.write('MON_CFG_TOTAL_MAP',
+                   data=self.__monitoring_num_mapped_registers,
+                   subnode=0)
+
+    @property
+    def monitoring_number_mapped_registers(self):
+        """Get the number of mapped monitoring registers."""
+        return self.__monitoring_num_mapped_registers
+
+    def disturbance_enable(self):
+        """Enable disturbance process."""
+        self.write(DISTURBANCE_ENABLE, data=1, subnode=0)
+
+    def disturbance_disable(self):
+        """Disable disturbance process."""
+        self.write(DISTURBANCE_ENABLE, data=0, subnode=0)
+
+    def disturbance_remove_data(self):
+        """Remove disturbance data."""
+        self.write(DISTURBANCE_REMOVE_DATA,
+                   data=1, subnode=0)
+        self.disturbance_data = bytearray()
+        self.disturbance_data_size = 0
+
+    @property
+    def disturbance_data(self):
+        """Obtain disturbance data.
+
+        Returns:
+            array: Current disturbance data.
+
+        """
+        return self.__disturbance_data
+
+    @disturbance_data.setter
+    def disturbance_data(self, value):
+        """Set disturbance data.
+
+        Args:
+            value (array): Array with the disturbance to send.
+
+        """
+        self.__disturbance_data = value
+
+    @property
+    def disturbance_data_size(self):
+        """Obtain disturbance data size.
+
+        Returns:
+            int: Current disturbance data size.
+
+        """
+        return self.__disturbance_data_size
+
+    @disturbance_data_size.setter
+    def disturbance_data_size(self, value):
+        """Set disturbance data size.
+
+        Args:
+            value (int): Disturbance data size in bytes.
+
+        """
+        self.__disturbance_data_size = value
 
 
     def get_state(self, subnode=1):
