@@ -125,7 +125,7 @@ class EthernetServo(Servo):
         if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
             data = int(data)
         data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
-        self._send_mcb_frame(MCB_CMD_WRITE, _reg.idx, _reg.subnode, data_bytes, confirm)
+        self._send_mcb_frame(MCB_CMD_WRITE, _reg.address, _reg.subnode, data_bytes, confirm)
 
     def read(self, reg, subnode=1):
         """Read a register value from servo.
@@ -138,7 +138,7 @@ class EthernetServo(Servo):
             int, float or str: Value stored in the register.
         """
         _reg = self._get_reg(reg, subnode)
-        data = self._send_mcb_frame(MCB_CMD_READ, _reg.idx, _reg.subnode)
+        data = self._send_mcb_frame(MCB_CMD_READ, _reg.address, _reg.subnode)
         return convert_bytes_to_dtype(data, _reg.dtype)
 
     def _get_reg(self, reg, subnode):
