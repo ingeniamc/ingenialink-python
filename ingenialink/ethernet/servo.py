@@ -3,7 +3,7 @@ import ipaddress
 from ingenialink.utils._utils import *
 from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
-    MCB_CMD_READ, MCB_CMD_WRITE, MONITORING_BUFFER_SIZE
+    MCB_CMD_READ, MCB_CMD_WRITE, MONITORING_BUFFER_SIZE, ETH_MAX_WRITE_SIZE
 from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
 from ingenialink.ipb.servo import STORE_COCO_ALL, RESTORE_COCO_ALL
 from ingenialink.servo import Servo
@@ -71,6 +71,16 @@ DISTURBANCE_REMOVE_DATA = EthernetRegister(
 DISTURBANCE_NUMBER_MAPPED_REGISTERS = EthernetRegister(
     identifier='', units='', subnode=0, address=0x00E8, cyclic='CONFIG',
     dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+)
+
+DIST_DATA = EthernetRegister(
+    identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
+    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+)
+
+DIST_NUMBER_SAMPLES = EthernetRegister(
+    identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
 class EthernetServo(Servo):
@@ -538,6 +548,46 @@ class EthernetServo(Servo):
 
         """
         self.__disturbance_data_size = value
+
+    def disturbance_remove_all_mapped_registers(self):
+        """Remove all disturbance mapped registers."""
+        self.write(DISTURBANCE_NUMBER_MAPPED_REGISTERS,
+                   data=0, subnode=0)
+        self.__disturbance_num_mapped_registers = \
+            self.disturbance_get_num_mapped_registers()
+        self.__disturbance_channels_size = {}
+        self.__disturbance_channels_dtype = {}
+
+    def disturbance_write_data(self, channels, dtypes, data_arr):
+        """Write disturbance data.
+
+        Args:
+            channels (int or list of int): Channel identifier.
+            dtypes (int or list of int): Data type.
+            data_arr (list or list of list): Data array.
+
+        """
+        if not isinstance(channels, list):
+            channels = [channels]
+        if not isinstance(dtypes, list):
+            dtypes = [dtypes]
+        if not isinstance(data_arr[0], list):
+            data_arr = [data_arr]
+        num_samples = len(data_arr[0])
+        self.write(DIST_NUMBER_SAMPLES, num_samples, subnode=0)
+        data = bytearray()
+        for sample_idx in range(num_samples):
+            for channel in range(len(data_arr)):
+                val = convert_dtype_to_bytes(
+                    data_arr[channel][sample_idx], dtypes[channel])
+                data += val
+        chunks = [data[i:i + ETH_MAX_WRITE_SIZE]
+                  for i in range(0, len(data), ETH_MAX_WRITE_SIZE)]
+        for chunk in chunks:
+            self._send_mcb_frame(MCB_CMD_WRITE, DIST_DATA.address,
+                                 DIST_DATA.subnode, chunk)
+        self.disturbance_data = data
+        self.disturbance_data_size = len(data)
 
 
     def get_state(self, subnode=1):

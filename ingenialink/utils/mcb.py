@@ -141,9 +141,9 @@ class MCB:
         header = frame[cls.MCB_HEADER_L_SIZE:cls.MCB_HEADER_SIZE]
         recv_add = (int.from_bytes(header, 'little')) >> 4
         if expected_address != recv_add:
-            raise ILWrongRegisterError(f'Received address: {recv_add} does '
+            raise ILWrongRegisterError(f'Received address: {hex(recv_add)} does '
                                        f'not match expected address: '
-                                       f'{expected_address}')
+                                       f'{hex(expected_address)}')
         if extended:
             data_start_byte = cls.EXTENDED_DATA_START_BYTE
             data_end_byte = cls.EXTENDED_DATA_END_BYTE

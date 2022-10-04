@@ -44,6 +44,7 @@ data_type_size = {
 }
 
 CAN_MAX_WRITE_SIZE = 512
+ETH_MAX_WRITE_SIZE = 512
 
 
 def _load():
