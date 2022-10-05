@@ -1131,8 +1131,39 @@ class EthernetServo(Servo):
                 subnode=subnode)
         return r
 
-    def fault_reset(self, subnode=1):
-        raise NotImplementedError
+    def fault_reset(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
+        """Executes a fault reset on the drive.
+
+        Args:
+            subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
+
+        Raises:
+            ILTimeoutError: If fault reset spend too much time.
+            ILError: Failed to fault reset.
+
+        """
+        r = 0
+        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
+        state = self.status_word_decode(status_word)
+        if state.value in [
+            lib.IL_SERVO_STATE_FAULT,
+            lib.IL_SERVO_STATE_FAULTR,
+        ]:
+            # Check if faulty, if so try to reset (0->1)
+            self.write(CONTROL_WORD_REGISTERS[subnode], 0,
+                       subnode=subnode)
+            self.write(CONTROL_WORD_REGISTERS[subnode],
+                       constants.IL_MC_CW_FR, subnode=subnode)
+            # Wait until status word changes
+            r = self.status_word_wait_change(status_word, timeout,
+                                             subnode=subnode)
+            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
+            state = self.status_word_decode(status_word)
+        self._set_state(state, subnode)
+        raise_err(r)
 
     def is_alive(self):
         raise NotImplementedError
