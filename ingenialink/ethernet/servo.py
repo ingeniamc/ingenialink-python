@@ -2,18 +2,20 @@ import os
 import ipaddress
 import time
 
-from ingenialink.utils._utils import convert_ip_to_int, \
-    get_drive_identification, cleanup_register
+from .._ingenialink import lib
 from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
     MCB_CMD_READ, MCB_CMD_WRITE, MONITORING_BUFFER_SIZE, ETH_MAX_WRITE_SIZE
 from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
 from ingenialink.ipb.servo import STORE_COCO_ALL, RESTORE_COCO_ALL
-from ingenialink.servo import Servo
+from ingenialink.servo import Servo, SERVO_STATE
 from ingenialink.utils.mcb import MCB
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes,\
+    raise_err, convert_ip_to_int, get_drive_identification, cleanup_register
 from ingenialink.exceptions import ILRegisterNotFoundError
-from ingenialink.constants import PASSWORD_STORE_ALL, PASSWORD_RESTORE_ALL
+from ingenialink.constants import PASSWORD_STORE_ALL, PASSWORD_RESTORE_ALL, \
+    DEFAULT_PDS_TIMEOUT
+from ingenialink.canopen import constants
 
 import ingenialogger
 import xml.etree.ElementTree as ET
@@ -118,6 +120,36 @@ RESTORE_MOCO_ALL_REGISTERS = {
     )
 }
 
+STATUS_WORD_REGISTERS = {
+    1: EthernetRegister(
+        identifier='', units='', subnode=1, address=0x0011,
+        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+    ),
+    2: EthernetRegister(
+        identifier='', units='', subnode=2, address=0x0011,
+        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+    ),
+    3: EthernetRegister(
+        identifier='', units='', subnode=3, address=0x0011,
+        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+    )
+}
+
+CONTROL_WORD_REGISTERS = {
+    1: EthernetRegister(
+        identifier='', units='', subnode=1, address=0x0010,
+        cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    ),
+    2: EthernetRegister(
+        identifier='', units='', subnode=2, address=0x0010,
+        cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    ),
+    3: EthernetRegister(
+        identifier='', units='', subnode=3, address=0x0010,
+        cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    )
+}
+
 class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
 
@@ -135,6 +167,12 @@ class EthernetServo(Servo):
         super(EthernetServo, self).__init__(self.ip_address)
         # TO-DO: Load EthernetDictionary when implemented
         self._dictionary = None
+        self.__state = {
+            1: lib.IL_SERVO_STATE_NRDY,
+            2: lib.IL_SERVO_STATE_NRDY,
+            3: lib.IL_SERVO_STATE_NRDY
+        }
+        self.__observers_servo_state = []
         self.__monitoring_num_mapped_registers = 0
         self.__monitoring_channels_size = {}
         self.__monitoring_channels_dtype = {}
@@ -907,8 +945,145 @@ class EthernetServo(Servo):
     def disable(self, subnode=1):
         raise NotImplementedError
 
-    def enable(self, timeout=2., subnode=1):
-        raise NotImplementedError
+    def enable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
+        """Enable PDS.
+
+        Args:
+            subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
+
+       Raises:
+            ILTimeoutError: The servo could not be enabled due to timeout.
+            ILError: Failed to enable PDS.
+
+        """
+        r = 0
+
+        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
+        state = self.status_word_decode(status_word)
+        self._set_state(state, subnode)
+
+        # Try fault reset if faulty
+        if self.status[subnode].value in [
+            lib.IL_SERVO_STATE_FAULT,
+            lib.IL_SERVO_STATE_FAULTR,
+        ]:
+            self.fault_reset(subnode=subnode)
+
+        while self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
+            state = self.status_word_decode(status_word)
+            self._set_state(state, subnode)
+            if self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+                # Check state and command action to reach enabled
+                cmd = constants.IL_MC_PDS_CMD_EO
+                if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT:
+                    raise_err(lib.IL_ESTATE)
+                elif self.status[subnode].value == lib.IL_SERVO_STATE_NRDY:
+                    cmd = constants.IL_MC_PDS_CMD_DV
+                elif self.status[subnode].value == \
+                        lib.IL_SERVO_STATE_DISABLED:
+                    cmd = constants.IL_MC_PDS_CMD_SD
+                elif self.status[subnode].value == lib.IL_SERVO_STATE_RDY:
+                    cmd = constants.IL_MC_PDS_CMD_SOEO
+
+                self.write(CONTROL_WORD_REGISTERS[subnode], cmd,
+                           subnode=subnode)
+
+                # Wait for state change
+                r = self.status_word_wait_change(status_word, timeout,
+                                                 subnode=subnode)
+                if r < 0:
+                    raise_err(r)
+
+                # Read the current status word
+                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
+                state = self.status_word_decode(status_word)
+                self._set_state(state, subnode)
+        raise_err(r)
+
+    @staticmethod
+    def status_word_decode(status_word):
+        """Decodes the status word to a known value.
+
+        Args:
+            status_word (int): Read value for the status word.
+
+        Returns:
+            SERVO_STATE: Status word value.
+
+        """
+        if (status_word & constants.IL_MC_PDS_STA_NRTSO_MSK) == \
+                constants.IL_MC_PDS_STA_NRTSO:
+            state = lib.IL_SERVO_STATE_NRDY
+        elif (status_word & constants.IL_MC_PDS_STA_SOD_MSK) == \
+                constants.IL_MC_PDS_STA_SOD:
+            state = lib.IL_SERVO_STATE_DISABLED
+        elif (status_word & constants.IL_MC_PDS_STA_RTSO_MSK) == \
+                constants.IL_MC_PDS_STA_RTSO:
+            state = lib.IL_SERVO_STATE_RDY
+        elif (status_word & constants.IL_MC_PDS_STA_SO_MSK) == \
+                constants.IL_MC_PDS_STA_SO:
+            state = lib.IL_SERVO_STATE_ON
+        elif (status_word & constants.IL_MC_PDS_STA_OE_MSK) == \
+                constants.IL_MC_PDS_STA_OE:
+            state = lib.IL_SERVO_STATE_ENABLED
+        elif (status_word & constants.IL_MC_PDS_STA_QSA_MSK) == \
+                constants.IL_MC_PDS_STA_QSA:
+            state = lib.IL_SERVO_STATE_QSTOP
+        elif (status_word & constants.IL_MC_PDS_STA_FRA_MSK) == \
+                constants.IL_MC_PDS_STA_FRA:
+            state = lib.IL_SERVO_STATE_FAULTR
+        elif (status_word & constants.IL_MC_PDS_STA_F_MSK) == \
+                constants.IL_MC_PDS_STA_F:
+            state = lib.IL_SERVO_STATE_FAULT
+        else:
+            state = lib.IL_SERVO_STATE_NRDY
+        return SERVO_STATE(state)
+
+    def _set_state(self, state, subnode):
+        """Sets the state internally.
+
+        Args:
+            state (SERVO_STATE): Current servo state.
+            subnode (int): Subnode of the drive.
+
+        """
+        current_state = self.__state[subnode]
+        if current_state != state:
+            self.status[subnode] = state
+            for callback in self.__observers_servo_state:
+                callback(state, None, subnode)
+
+    def status_word_wait_change(self, status_word, timeout, subnode=1):
+        """Waits for a status word change.
+
+        Args:
+            status_word (int): Status word to wait for.
+            timeout (int): Maximum value to wait for the change.
+            subnode (int): Subnode of the drive.
+
+        Returns:
+            int: Error code.
+
+        """
+        r = 0
+        start_time = int(round(time.time() * 1000))
+        actual_status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                       subnode=subnode)
+        while actual_status_word == status_word:
+            current_time = int(round(time.time() * 1000))
+            time_diff = (current_time - start_time)
+            if time_diff > timeout:
+                r = lib.IL_ETIMEDOUT
+                return r
+            actual_status_word = self.read(
+                STATUS_WORD_REGISTERS[subnode],
+                subnode=subnode)
+        return r
 
     def fault_reset(self, subnode=1):
         raise NotImplementedError
@@ -920,4 +1095,9 @@ class EthernetServo(Servo):
     def dictionary(self):
         """Returns dictionary object"""
         return self._dictionary
+
+    @property
+    def status(self):
+        """tuple: Servo status and state flags."""
+        return self.__state
 
