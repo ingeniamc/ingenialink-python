@@ -942,8 +942,54 @@ class EthernetServo(Servo):
             raise ILError('Invalid subnode.')
         time.sleep(1.5)
 
-    def disable(self, subnode=1):
-        raise NotImplementedError
+    def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
+        """Disable PDS.
+
+        Args:
+            subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
+
+        Raises:
+            ILTimeoutError: The servo could not be disabled due to timeout.
+            ILError: Failed to disable PDS.
+
+        """
+        r = 0
+
+        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
+        state = self.status_word_decode(status_word)
+        self._set_state(state, subnode)
+
+        while self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
+            state = self.status_word_decode(status_word)
+            self._set_state(state, subnode)
+
+            if self.status[subnode].value in [
+                lib.IL_SERVO_STATE_FAULT,
+                lib.IL_SERVO_STATE_FAULTR,
+            ]:
+                # Try fault reset if faulty
+                self.fault_reset(subnode=subnode)
+                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
+                state = self.status_word_decode(status_word)
+                self._set_state(state, subnode)
+            elif self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
+                # Check state and command action to reach disabled
+                self.write(CONTROL_WORD_REGISTERS[subnode],
+                           constants.IL_MC_PDS_CMD_DV, subnode=subnode)
+
+                # Wait until status word changes
+                r = self.status_word_wait_change(status_word, timeout,
+                                                 subnode=subnode)
+                if r < 0:
+                    raise_err(r)
+                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
+                state = self.status_word_decode(status_word)
+                self._set_state(state, subnode)
+        raise_err(r)
 
     def enable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Enable PDS.
