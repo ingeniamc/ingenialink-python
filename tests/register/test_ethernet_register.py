@@ -81,13 +81,14 @@ def test_storage_dtype(test2_dtype, test2_storage):
 
 
 @pytest.mark.smoke
-@pytest.mark.parametrize("test2_range", [(None, None), (-20, 20)])
+@pytest.mark.parametrize("test2_range", "test_expected", [(None, None), (-20, 20)],
+                         [(dtypes_ranges[test2_dtype]["min"], )])
 @pytest.mark.parametrize("test3_dtype", [REG_DTYPE.S8, REG_DTYPE.FLOAT])
 def test_range_ethernet_register(test2_range, test3_dtype):
-    enums_count = [{'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}]
+    enums = [{'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}]
     register = EthernetRegister(0x58F0, test3_dtype, REG_ACCESS.RW, "MON_CFG_SOC_TYPE",
                                 "none", "CONFIG", REG_PHY.NONE, 1, 1,
-                                test2_range, "Monitoring trigger type", enums_count,
+                                test2_range, "Monitoring trigger type", enums, len(enums),
                                 "MONITORING", "SUB_CATEGORY_TEST", "No description (invent here)")
 
     if test2_range == (None, None):
@@ -95,7 +96,7 @@ def test_range_ethernet_register(test2_range, test3_dtype):
             dtypes_ranges[test3_dtype]["min"],
             dtypes_ranges[test3_dtype]["max"],
         )
-    elif test2_range == (-20, 20) and test3_dtype == REG_DTYPE.FLOAT:
+    elif test3_dtype == REG_DTYPE.FLOAT:
         test_aux_range = (
             float(test2_range[0]),
             float(test2_range[1])
