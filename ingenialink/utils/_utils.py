@@ -400,6 +400,11 @@ def convert_dtype_to_bytes(data, dtype):
         elif dtype == REG_DTYPE.S32:
             bytes_length = 4
             signed = True
+        elif dtype == REG_DTYPE.U64:
+            bytes_length = 8
+        elif dtype == REG_DTYPE.S64:
+            bytes_length = 8
+            signed = True
         data = data.to_bytes(bytes_length,
                              byteorder='little',
                              signed=signed)
