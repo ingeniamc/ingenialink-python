@@ -4,7 +4,7 @@ from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err
 
 from ingenialink.ipb.register import LabelsDictionary, ipb_register_from_cffi
-from ..dictionary import Dictionary, Categories
+from ..dictionary_deprecated import Dictionary, Categories
 from ..constants import SINGLE_AXIS_MINIMUM_SUBNODES
 
 import xml.etree.ElementTree as ET
