@@ -112,7 +112,7 @@ class Dictionary(ABC):
         """Categories: Instance of all the categories in the dictionary."""
         self.errors = None
         """Errors: Instance of all the errors in the dictionary."""
-        self.__registers = []
+        self._registers = []
         """Registers: Instance of all the registers in the dictionary"""
 
     def registers(self, subnode):
@@ -125,7 +125,7 @@ class Dictionary(ABC):
             dict: Dictionary of all the registers for a subnode.
 
         """
-        return self.__registers[subnode]
+        return self._registers[subnode]
 
     def read_dictionary(self):
         """Reads the dictionary file and initializes all its components."""
@@ -143,7 +143,7 @@ class Dictionary(ABC):
             self.subnodes = len(root.findall('./Body/Device/Axes/Axis'))
 
         for _ in range(self.subnodes):
-            self.__registers.append({})
+            self._registers.append({})
 
         # Categories
         self.categories = DictionaryCategories(self.path)
@@ -188,6 +188,7 @@ class Dictionary(ABC):
             register (Element): Register instance from the dictionary.
 
         """
+
         # Identifier
         identifier = register.attrib['id']
 
