@@ -1,5 +1,6 @@
 import os
 import ipaddress
+import time
 
 from ingenialink.utils._utils import convert_ip_to_int, \
     get_drive_identification, cleanup_register
@@ -12,6 +13,7 @@ from ingenialink.servo import Servo
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.exceptions import ILRegisterNotFoundError
+from ingenialink.constants import PASSWORD_STORE_ALL, PASSWORD_RESTORE_ALL
 
 import ingenialogger
 import xml.etree.ElementTree as ET
@@ -85,6 +87,36 @@ DIST_NUMBER_SAMPLES = EthernetRegister(
     identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
+
+STORE_MOCO_ALL_REGISTERS = {
+    1: EthernetRegister(
+        identifier='', units='', subnode=1, address=0x06DB,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    ),
+    2: EthernetRegister(
+        identifier='', units='', subnode=2, address=0x06DB,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    ),
+    3: EthernetRegister(
+        identifier='', units='', subnode=3, address=0x06DB,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
+}
+
+RESTORE_MOCO_ALL_REGISTERS = {
+    1: EthernetRegister(
+        identifier='', units='', subnode=1, address=0x06DC,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    ),
+    2: EthernetRegister(
+        identifier='', units='', subnode=2, address=0x06DC,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    ),
+    3: EthernetRegister(
+        identifier='', units='', subnode=3, address=0x06DC,
+        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
+}
 
 class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
@@ -789,10 +821,88 @@ class EthernetServo(Servo):
                          str(register.attrib['id']), e)
 
     def store_parameters(self, subnode=None):
-        raise NotImplementedError
+        """Store all the current parameters of the target subnode.
+
+        Args:
+            subnode (int): Subnode of the axis. `None` by default which stores
+            all the parameters.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        r = 0
+        try:
+            if subnode is None:
+                # Store all
+                try:
+                    self.write(reg=STORE_COCO_ALL,
+                               data=PASSWORD_STORE_ALL,
+                               subnode=0)
+                    logger.info('Store all successfully done.')
+                except ILError as e:
+                    logger.warning(f'Store all COCO failed. Reason: {e}. '
+                                   f'Trying MOCO...')
+                    r = -1
+                if r < 0:
+                    for dict_subnode in range(1, self.dictionary.subnodes):
+                        self.write(
+                            reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
+                            data=PASSWORD_STORE_ALL,
+                            subnode=dict_subnode)
+                        logger.info(f'Store axis {dict_subnode} successfully'
+                                    f' done.')
+            elif subnode == 0:
+                # Store subnode 0
+                raise ILError('The current firmware version does not '
+                              'have this feature implemented.')
+            elif subnode > 0 and subnode in STORE_MOCO_ALL_REGISTERS:
+                # Store axis
+                self.write(reg=STORE_MOCO_ALL_REGISTERS[subnode],
+                           data=PASSWORD_STORE_ALL,
+                           subnode=subnode)
+                logger.info(f'Store axis {subnode} successfully done.')
+            else:
+                raise ILError('Invalid subnode.')
+        finally:
+            time.sleep(1.5)
 
     def restore_parameters(self, subnode=None):
-        raise NotImplementedError
+        """Restore all the current parameters of all the slave to default.
+
+        .. note::
+            The drive needs a power cycle after this
+            in order for the changes to be properly applied.
+
+        Args:
+            subnode (int): Subnode of the axis. `None` by default which restores
+            all the parameters.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        if subnode is None:
+            # Restore all
+            self.write(reg=RESTORE_COCO_ALL,
+                       data=PASSWORD_RESTORE_ALL,
+                       subnode=0)
+            logger.info('Restore all successfully done.')
+        elif subnode == 0:
+            # Restore subnode 0
+            raise ILError('The current firmware version does not '
+                          'have this feature implemented.')
+        elif subnode > 0 and subnode in RESTORE_MOCO_ALL_REGISTERS:
+            # Restore axis
+            self.write(reg=RESTORE_COCO_ALL,
+                       data=RESTORE_MOCO_ALL_REGISTERS[subnode],
+                       subnode=subnode)
+            logger.info(f'Restore subnode {subnode} successfully done.')
+        else:
+            raise ILError('Invalid subnode.')
+        time.sleep(1.5)
 
     def disable(self, subnode=1):
         raise NotImplementedError
