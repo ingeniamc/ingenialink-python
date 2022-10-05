@@ -137,7 +137,7 @@ class MCB:
         ack_cmd = (header_l & 0xE) >> 1
         if ack_cmd != 3:
             err = frame[cls.DATA_START_BYTE:cls.DATA_END_BYTE].hex()
-            raise ILNACKError(f'Communications error (NACK -> {err})')
+            raise ILNACKError(f'Communications error (NACK -> {err[::-1]})')
         header = frame[cls.MCB_HEADER_L_SIZE:cls.MCB_HEADER_SIZE]
         recv_add = (int.from_bytes(header, 'little')) >> 4
         if expected_address != recv_add:
