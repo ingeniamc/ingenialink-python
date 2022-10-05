@@ -1166,7 +1166,19 @@ class EthernetServo(Servo):
         raise_err(r)
 
     def is_alive(self):
-        raise NotImplementedError
+        """Checks if the servo responds to a reading a register.
+
+        Returns:
+            bool: Return code with the result of the read.
+
+        """
+        _is_alive = True
+        try:
+            self.read(STATUS_WORD_REGISTERS[1])
+        except ILError as e:
+            _is_alive = False
+            logger.error(e)
+        return _is_alive
 
     @property
     def dictionary(self):
