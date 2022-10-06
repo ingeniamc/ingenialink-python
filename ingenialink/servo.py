@@ -164,7 +164,7 @@ class ServoStatusListener(threading.Thread):
     """Reads the status word to check if the drive is alive.
 
     Args:
-        servo (CanopenServo): Servo instance of the drive.
+        servo (Servo): Servo instance of the drive.
 
     """
     def __init__(self, servo):

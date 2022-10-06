@@ -754,10 +754,31 @@ class EthernetServo(Servo):
         self.__listener_servo_status = None
 
     def subscribe_to_status(self, callback):
-        raise NotImplementedError
+        """Subscribe to state changes.
+
+            Args:
+                callback (function): Callback function.
+
+            Returns:
+                int: Assigned slot.
+
+        """
+        if callback in self.__observers_servo_state:
+            logger.info('Callback already subscribed.')
+            return
+        self.__observers_servo_state.append(callback)
 
     def unsubscribe_from_status(self, callback):
-        raise NotImplementedError
+        """Unsubscribe from state changes.
+
+        Args:
+            callback (function): Callback function.
+
+        """
+        if callback not in self.__observers_servo_state:
+            logger.info('Callback not subscribed.')
+            return
+        self.__observers_servo_state.remove(callback)
 
     def load_configuration(self, config_file, subnode=None):
         """Write current dictionary storage to the servo drive.
