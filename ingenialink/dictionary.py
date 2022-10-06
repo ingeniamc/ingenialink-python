@@ -8,24 +8,20 @@ class DictionaryCategories:
     """Contains all categories from a Dictionary.
 
     Args:
-        dict_ (str): Path to the Ingenia dictionary.
+        root (Element):  Element from xdf file
 
     """
 
-    def __init__(self, dict_):
-        self._dict = dict_
+    def __init__(self, root):
+        self._root = root
         self._cat_ids = []
-        self._categories = {}  # { cat_id : label }
+        self._categories = {}
 
         self.load_cat_ids()
 
     def load_cat_ids(self):
         """Load category IDs from dictionary."""
-        with open(self._dict, 'r', encoding='utf-8') as xml_file:
-            tree = ET.parse(xml_file)
-        root = tree.getroot()
-
-        for element in root.findall('./Body/Device/Categories/Category'):
+        for element in self._root.findall('./Body/Device/Categories/Category'):
             self._cat_ids.append(element.attrib['id'])
             self._categories[element.attrib['id']] = {
                 'en_US': element.find('./Labels/Label').text
@@ -50,23 +46,18 @@ class DictionaryErrors:
     """Errors for the dictionary.
 
     Args:
-        dict_ (str): Path to the Ingenia dictionary.
-
+        root (Element):  Element from xdf file
     """
 
-    def __init__(self, dict_):
-        self._dict = dict_
+    def __init__(self, root):
+        self._root = root
         self._errors = {}  # { cat_id : label }
 
         self.load_errors()
 
     def load_errors(self):
         """Load errors from dictionary."""
-        with open(self._dict, 'r', encoding='utf-8') as xml_file:
-            tree = ET.parse(xml_file)
-        root = tree.getroot()
-
-        for element in root.findall('./Body/Errors/Error'):
+        for element in self._root.findall('./Body/Errors/Error'):
             label = element.find('./Labels/Label')
             self._errors[int(element.attrib['id'], 16)] = [
                 element.attrib['id'],
@@ -130,8 +121,8 @@ class Dictionary(ABC):
     def read_dictionary(self):
         """Reads the dictionary file and initializes all its components."""
         try:
-            with open(self.path, 'r', encoding='utf-8') as xml_file:
-                tree = ET.parse(xml_file)
+            with open(self.path, 'r', encoding='utf-8') as xdf_file:
+                tree = ET.parse(xdf_file)
         except FileNotFoundError:
             raise FileNotFoundError(f"There is not any xml file in the path: {self.path}")
         root = tree.getroot()
@@ -146,10 +137,11 @@ class Dictionary(ABC):
             self._registers.append({})
 
         # Categories
-        self.categories = DictionaryCategories(self.path)
+
+        self.categories = DictionaryCategories(root)
 
         # Errors
-        self.errors = DictionaryErrors(self.path)
+        self.errors = DictionaryErrors(root)
 
         # Version
         version_node = root.find('.Header/Version')
@@ -176,7 +168,7 @@ class Dictionary(ABC):
                 self.read_register(register)
 
         # Closing xml file
-        xml_file.close()
+        xdf_file.close()
 
     def __invalid_dtype(self, dtype):
         raise exc.ILValueError('Invalid data type')
