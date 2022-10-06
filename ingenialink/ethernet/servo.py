@@ -1243,28 +1243,6 @@ class EthernetServo(Servo):
         # TO-DO: Load EthernetDictionary when implemented
         self._dictionary = None
 
-    @property
-    def info(self):
-        """dict: Servo information."""
-        serial_number = self.__read_coco_moco_register(
-            SERIAL_NUMBER_REGISTERS[0], SERIAL_NUMBER_REGISTERS[1])
-        sw_version = self.__read_coco_moco_register(
-            SOFTWARE_VERSION_REGISTERS[0], SOFTWARE_VERSION_REGISTERS[1])
-        product_code = self.__read_coco_moco_register(
-            PRODUCT_ID_REGISTERS[0], PRODUCT_ID_REGISTERS[1])
-        revision_number = self.__read_coco_moco_register(
-            REVISION_NUMBER_REGISTERS[0], REVISION_NUMBER_REGISTERS[1])
-        hw_variant = 'A'
-
-        return {
-            'name': self.name,
-            'serial_number': serial_number,
-            'firmware_version': sw_version,
-            'product_code': product_code,
-            'revision_number': revision_number,
-            'hw_variant': hw_variant
-        }
-
     def __read_coco_moco_register(self, register_coco, register_moco):
         """Reads the COCO register and if it does not exist,
         reads the MOCO register
@@ -1296,3 +1274,35 @@ class EthernetServo(Servo):
     def status(self):
         """tuple: Servo status and state flags."""
         return self.__state
+
+    @property
+    def info(self):
+        """dict: Servo information."""
+        serial_number = self.__read_coco_moco_register(
+            SERIAL_NUMBER_REGISTERS[0], SERIAL_NUMBER_REGISTERS[1])
+        sw_version = self.__read_coco_moco_register(
+            SOFTWARE_VERSION_REGISTERS[0], SOFTWARE_VERSION_REGISTERS[1])
+        product_code = self.__read_coco_moco_register(
+            PRODUCT_ID_REGISTERS[0], PRODUCT_ID_REGISTERS[1])
+        revision_number = self.__read_coco_moco_register(
+            REVISION_NUMBER_REGISTERS[0], REVISION_NUMBER_REGISTERS[1])
+        hw_variant = 'A'
+
+        return {
+            'name': self.name,
+            'serial_number': serial_number,
+            'firmware_version': sw_version,
+            'product_code': product_code,
+            'revision_number': revision_number,
+            'hw_variant': hw_variant
+        }
+
+    @property
+    def errors(self):
+        """dict: Errors."""
+        return self._dictionary.errors.errors
+
+    @property
+    def subnodes(self):
+        """int: Number of subnodes."""
+        return self._dictionary.subnodes
