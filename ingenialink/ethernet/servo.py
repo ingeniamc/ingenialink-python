@@ -7,7 +7,6 @@ from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
     MCB_CMD_READ, MCB_CMD_WRITE, MONITORING_BUFFER_SIZE, ETH_MAX_WRITE_SIZE
 from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
-from ingenialink.ipb.servo import STORE_COCO_ALL, RESTORE_COCO_ALL
 from ingenialink.servo import Servo, SERVO_STATE
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, \
@@ -16,6 +15,7 @@ from ingenialink.exceptions import ILRegisterNotFoundError
 from ingenialink.constants import PASSWORD_STORE_ALL, PASSWORD_RESTORE_ALL, \
     DEFAULT_PDS_TIMEOUT
 from ingenialink.canopen import constants
+from ingenialink.ethernet.dictionary import EthernetDictionary
 
 import ingenialogger
 import xml.etree.ElementTree as ET
@@ -104,6 +104,16 @@ STORE_MOCO_ALL_REGISTERS = {
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
 }
+
+STORE_COCO_ALL = EthernetRegister(
+    identifier='', units='', subnode=0, address=0x06DB, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+)
+
+RESTORE_COCO_ALL = EthernetRegister(
+    identifier='', units='', subnode=0, address=0x06DC, cyclic='CONFIG',
+    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+)
 
 RESTORE_MOCO_ALL_REGISTERS = {
     1: EthernetRegister(
@@ -209,8 +219,10 @@ class EthernetServo(Servo):
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
         super(EthernetServo, self).__init__(self.ip_address)
-        # TO-DO: Load EthernetDictionary when implemented
-        self._dictionary = None
+        if dictionary_path is not None:
+            self._dictionary = EthernetDictionary(dictionary_path)
+        else:
+            self._dictionary = None
         prod_name = '' if self.dictionary.part_number is None \
             else self.dictionary.part_number
         self.full_name = f'{prod_name} {self.name} ({self.target})'
@@ -1240,8 +1252,7 @@ class EthernetServo(Servo):
             dictionary (str): Dictionary.
 
         """
-        # TO-DO: Load EthernetDictionary when implemented
-        self._dictionary = None
+        self._dictionary = EthernetDictionary(dictionary)
 
     def __read_coco_moco_register(self, register_coco, register_moco):
         """Reads the COCO register and if it does not exist,
