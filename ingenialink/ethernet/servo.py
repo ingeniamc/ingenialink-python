@@ -1,5 +1,6 @@
 import os
 import ipaddress
+import threading
 import time
 
 from .._ingenialink import lib
@@ -7,7 +8,7 @@ from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
     MCB_CMD_READ, MCB_CMD_WRITE, MONITORING_BUFFER_SIZE, ETH_MAX_WRITE_SIZE
 from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
-from ingenialink.servo import Servo, SERVO_STATE
+from ingenialink.servo import Servo, SERVO_STATE, ServoStatusListener
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, \
     raise_err, convert_ip_to_int, get_drive_identification, cleanup_register
@@ -130,21 +131,6 @@ RESTORE_MOCO_ALL_REGISTERS = {
     )
 }
 
-STATUS_WORD_REGISTERS = {
-    1: EthernetRegister(
-        identifier='', units='', subnode=1, address=0x0011,
-        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-    ),
-    2: EthernetRegister(
-        identifier='', units='', subnode=2, address=0x0011,
-        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-    ),
-    3: EthernetRegister(
-        identifier='', units='', subnode=3, address=0x0011,
-        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-    )
-}
-
 CONTROL_WORD_REGISTERS = {
     1: EthernetRegister(
         identifier='', units='', subnode=1, address=0x0010,
@@ -204,6 +190,7 @@ REVISION_NUMBER_REGISTERS = {
     )
 }
 
+
 class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
 
@@ -214,6 +201,21 @@ class EthernetServo(Servo):
             its status, errors, faults, etc.
 
     """
+    STATUS_WORD_REGISTERS = {
+        1: EthernetRegister(
+            identifier='', units='', subnode=1, address=0x0011,
+            cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        ),
+        2: EthernetRegister(
+            identifier='', units='', subnode=2, address=0x0011,
+            cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        ),
+        3: EthernetRegister(
+            identifier='', units='', subnode=3, address=0x0011,
+            cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        )
+    }
+
     def __init__(self, socket,
                  dictionary_path=None, servo_status_listener=False):
         self.socket = socket
@@ -231,7 +233,9 @@ class EthernetServo(Servo):
             2: lib.IL_SERVO_STATE_NRDY,
             3: lib.IL_SERVO_STATE_NRDY
         }
+        self.__lock = threading.RLock()
         self.__observers_servo_state = []
+        self.__listener_servo_status = None
         self.__monitoring_num_mapped_registers = 0
         self.__monitoring_channels_size = {}
         self.__monitoring_channels_dtype = {}
@@ -377,7 +381,9 @@ class EthernetServo(Servo):
             bytes: The response frame if ``confirm`` is True.
         """
         frame = MCB.build_mcb_frame(cmd, subnode, reg, data)
+        self.__lock.acquire()
         self.socket.sendall(frame)
+        self.__lock.release()
         if confirm:
             response = self.socket.recv(1024)
             return MCB.read_mcb_data(reg, response)
@@ -728,10 +734,24 @@ class EthernetServo(Servo):
         return self.__state[subnode], None
 
     def start_status_listener(self):
-        raise NotImplementedError
+        """Start listening for servo status events (SERVO_STATE)."""
+        if self.__listener_servo_status is not None:
+            return
+        status_word = self.read(self.STATUS_WORD_REGISTERS[1])
+        state = self.status_word_decode(status_word)
+        self._set_state(state, 1)
+
+        self.__listener_servo_status = ServoStatusListener(self)
+        self.__listener_servo_status.start()
 
     def stop_status_listener(self):
-        raise NotImplementedError
+        """Stop listening for servo status events (SERVO_STATE)."""
+        if self.__listener_servo_status is None:
+            return
+        if self.__listener_servo_status.is_alive():
+            self.__listener_servo_status.stop()
+            self.__listener_servo_status.join()
+        self.__listener_servo_status = None
 
     def subscribe_to_status(self, callback):
         raise NotImplementedError
@@ -1012,7 +1032,7 @@ class EthernetServo(Servo):
         """
         r = 0
 
-        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
@@ -1027,7 +1047,7 @@ class EthernetServo(Servo):
             ]:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
-                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
@@ -1041,7 +1061,7 @@ class EthernetServo(Servo):
                                                  subnode=subnode)
                 if r < 0:
                     raise_err(r)
-                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
@@ -1061,7 +1081,7 @@ class EthernetServo(Servo):
         """
         r = 0
 
-        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
@@ -1074,7 +1094,7 @@ class EthernetServo(Servo):
             self.fault_reset(subnode=subnode)
 
         while self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
-            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+            status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
@@ -1101,7 +1121,7 @@ class EthernetServo(Servo):
                     raise_err(r)
 
                 # Read the current status word
-                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
@@ -1174,7 +1194,7 @@ class EthernetServo(Servo):
         """
         r = 0
         start_time = int(round(time.time() * 1000))
-        actual_status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+        actual_status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                        subnode=subnode)
         while actual_status_word == status_word:
             current_time = int(round(time.time() * 1000))
@@ -1183,7 +1203,7 @@ class EthernetServo(Servo):
                 r = lib.IL_ETIMEDOUT
                 return r
             actual_status_word = self.read(
-                STATUS_WORD_REGISTERS[subnode],
+                self.STATUS_WORD_REGISTERS[subnode],
                 subnode=subnode)
         return r
 
@@ -1200,7 +1220,7 @@ class EthernetServo(Servo):
 
         """
         r = 0
-        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
         if state.value in [
@@ -1215,7 +1235,7 @@ class EthernetServo(Servo):
             # Wait until status word changes
             r = self.status_word_wait_change(status_word, timeout,
                                              subnode=subnode)
-            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+            status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
@@ -1230,7 +1250,7 @@ class EthernetServo(Servo):
         """
         _is_alive = True
         try:
-            self.read(STATUS_WORD_REGISTERS[1])
+            self.read(self.STATUS_WORD_REGISTERS[1])
         except ILError as e:
             _is_alive = False
             logger.error(e)

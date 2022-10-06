@@ -1,3 +1,5 @@
+import time
+import threading
 from abc import ABC, abstractmethod
 
 from ._ingenialink import ffi, lib
@@ -156,6 +158,38 @@ def _on_emcy_cb(ctx, code):
     """On emergency callback shim."""
     cb = ffi.from_handle(ctx)
     cb(code)
+
+
+class ServoStatusListener(threading.Thread):
+    """Reads the status word to check if the drive is alive.
+
+    Args:
+        servo (CanopenServo): Servo instance of the drive.
+
+    """
+    def __init__(self, servo):
+        super(ServoStatusListener, self).__init__()
+        self.__servo = servo
+        self.__stop = False
+
+    def run(self):
+        """Checks if the drive is alive by reading the status word register"""
+        while not self.__stop:
+            for subnode in range(1, self.__servo.subnodes):
+                try:
+                    status_word = self.__servo.read(
+                        self.__servo.STATUS_WORD_REGISTERS[subnode], subnode=subnode
+                    )
+                    state = self.__servo.status_word_decode(status_word)
+                    self.__servo._set_state(state, subnode=subnode)
+                except Exception as e:
+                    logger.error("Error getting drive status. "
+                                 "Exception : %s", e)
+            time.sleep(1.5)
+
+    def stop(self):
+        """Stops the loop that reads the status word register"""
+        self.__stop = True
 
 
 class Servo(ABC):

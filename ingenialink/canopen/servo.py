@@ -11,7 +11,7 @@ from ..constants import *
 from ..exceptions import *
 from .._ingenialink import lib
 from ingenialink.utils._utils import *
-from ..servo import SERVO_STATE, Servo
+from ..servo import SERVO_STATE, Servo, ServoStatusListener
 from .dictionary import CanopenDictionary
 from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
 from ingenialink.register_deprecated import dtype_size
@@ -62,21 +62,6 @@ REVISION_NUMBER_REGISTERS = {
     1: CanopenRegister(
         identifier='', units='', subnode=1, idx=0x26E2, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-    )
-}
-
-STATUS_WORD_REGISTERS = {
-    1: CanopenRegister(
-        identifier='', units='', subnode=1, idx=0x6041, subidx=0x00,
-        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-    ),
-    2: CanopenRegister(
-        identifier='', units='', subnode=2, idx=0x6841, subidx=0x00,
-        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-    ),
-    3: CanopenRegister(
-        identifier='', units='', subnode=3, idx=0x7041, subidx=0x00,
-        cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
     )
 }
 
@@ -196,38 +181,6 @@ DIST_NUMBER_SAMPLES = CanopenRegister(
 )
 
 
-class ServoStatusListener(threading.Thread):
-    """Reads the status word to check if the drive is alive.
-
-    Args:
-        servo (CanopenServo): Servo instance of the drive.
-
-    """
-    def __init__(self, servo):
-        super(ServoStatusListener, self).__init__()
-        self.__servo = servo
-        self.__stop = False
-
-    def run(self):
-        """Checks if the drive is alive by reading the status word register"""
-        while not self.__stop:
-            for subnode in range(1, self.__servo.subnodes):
-                try:
-                    status_word = self.__servo.read(
-                        STATUS_WORD_REGISTERS[subnode], subnode=subnode
-                    )
-                    state = self.__servo.status_word_decode(status_word)
-                    self.__servo._set_state(state, subnode=subnode)
-                except Exception as e:
-                    logger.error("Error getting drive status. "
-                                 "Exception : %s", e)
-            time.sleep(1.5)
-
-    def stop(self):
-        """Stops the loop that reads the status word register"""
-        self.__stop = True
-
-
 class CanopenServo(Servo):
     """CANopen Servo instance.
 
@@ -238,6 +191,21 @@ class CanopenServo(Servo):
             check the drive status.
 
     """
+    STATUS_WORD_REGISTERS = {
+        1: CanopenRegister(
+            identifier='', units='', subnode=1, idx=0x6041, subidx=0x00,
+            cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        ),
+        2: CanopenRegister(
+            identifier='', units='', subnode=2, idx=0x6841, subidx=0x00,
+            cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        ),
+        3: CanopenRegister(
+            identifier='', units='', subnode=3, idx=0x7041, subidx=0x00,
+            cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        )
+    }
+
     def __init__(self, target, node, dictionary_path=None, eds=None,
                  servo_status_listener=False):
         super(CanopenServo, self).__init__(target)
@@ -425,7 +393,7 @@ class CanopenServo(Servo):
         """
         r = 0
 
-        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
@@ -438,7 +406,7 @@ class CanopenServo(Servo):
             self.fault_reset(subnode=subnode)
 
         while self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
-            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+            status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
@@ -464,7 +432,7 @@ class CanopenServo(Servo):
                     raise_err(r)
 
                 # Read the current status word
-                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
@@ -484,7 +452,7 @@ class CanopenServo(Servo):
         """
         r = 0
 
-        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
@@ -499,7 +467,7 @@ class CanopenServo(Servo):
             ]:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
-                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
@@ -513,7 +481,7 @@ class CanopenServo(Servo):
                                                  subnode=subnode)
                 if r < 0:
                     raise_err(r)
-                status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
@@ -532,7 +500,7 @@ class CanopenServo(Servo):
 
         """
         r = 0
-        status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
         if state.value in [
@@ -546,7 +514,7 @@ class CanopenServo(Servo):
             # Wait until status word changes
             r = self.status_word_wait_change(status_word, timeout,
                                              subnode=subnode)
-            status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+            status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
@@ -838,7 +806,7 @@ class CanopenServo(Servo):
         """
         _is_alive = True
         try:
-            self.read(STATUS_WORD_REGISTERS[1])
+            self.read(self.STATUS_WORD_REGISTERS[1])
         except ILError as e:
             _is_alive = False
             logger.error(e)
@@ -866,7 +834,7 @@ class CanopenServo(Servo):
         """Start listening for servo status events (SERVO_STATE)."""
         if self.__listener_servo_status is not None:
             return
-        status_word = self.read(STATUS_WORD_REGISTERS[1])
+        status_word = self.read(self.STATUS_WORD_REGISTERS[1])
         state = self.status_word_decode(status_word)
         self._set_state(state, 1)
 
@@ -923,7 +891,7 @@ class CanopenServo(Servo):
         """
         r = 0
         start_time = int(round(time.time() * 1000))
-        actual_status_word = self.read(STATUS_WORD_REGISTERS[subnode],
+        actual_status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                        subnode=subnode)
         while actual_status_word == status_word:
             current_time = int(round(time.time() * 1000))
@@ -932,7 +900,7 @@ class CanopenServo(Servo):
                 r = lib.IL_ETIMEDOUT
                 return r
             actual_status_word = self.read(
-                STATUS_WORD_REGISTERS[subnode],
+                self.STATUS_WORD_REGISTERS[subnode],
                 subnode=subnode)
         return r
 
