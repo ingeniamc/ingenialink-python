@@ -200,8 +200,6 @@ class EthernetNetwork(Network):
 
     def connect_to_slave(self, target, dictionary=None, port=1061,
                          communication_protocol=NET_TRANS_PROT.UDP,
-                         reconnection_retries=DEFAULT_MESSAGE_RETRIES,
-                         reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT * 2,
                          servo_status_listener=False,
                          net_status_listener=False):
         """Connects to a slave through the given network settings.
@@ -211,9 +209,6 @@ class EthernetNetwork(Network):
             dictionary (str): Path to the target dictionary file.
             port (int): Port to connect to the slave.
             communication_protocol (NET_TRANS_PROT): Communication protocol, UPD or TCP.
-            reconnection_retries (int): Number of reconnection retried before declaring
-                a connected or disconnected stated.
-            reconnection_timeout (int): Time in ms of the reconnection timeout.
             servo_status_listener (bool): Toggle the listener of the servo for
                 its status, errors, faults, etc.
             net_status_listener (bool): Toggle the listener of the network
