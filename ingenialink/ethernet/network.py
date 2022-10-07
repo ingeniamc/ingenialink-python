@@ -50,7 +50,8 @@ class NetStatusListener(Thread):
         servo = self.__network.servos[0]
         unsuccessful_pings = 0
         while not self.__stop:
-            if ping(servo.ip_address) is None:
+            response = ping(servo.ip_address, timeout=1)
+            if not isinstance(response, float):
                 unsuccessful_pings += 1
             else:
                 unsuccessful_pings -= 1
