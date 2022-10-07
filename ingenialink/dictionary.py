@@ -33,6 +33,23 @@ DICT_RANGE = f"./Range"
 DICT_ENUMERATIONS = f"./Enumerations"
 DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
 
+dtype_xdf_options = {
+            "float": REG_DTYPE.FLOAT,
+            "s8": REG_DTYPE.S8,
+            "u8": REG_DTYPE.U8,
+            "s16": REG_DTYPE.S16,
+            "u16": REG_DTYPE.U16,
+            "s32": REG_DTYPE.S32,
+            "u32": REG_DTYPE.U32,
+            "str": REG_DTYPE.STR
+        }
+
+access_xdf_options = {
+            "r": REG_ACCESS.RO,
+            "w": REG_ACCESS.WO,
+            "rw": REG_ACCESS.RW
+        }
+
 
 class DictionaryCategories:
     """Contains all categories from a Dictionary.
@@ -219,30 +236,17 @@ class Dictionary(ABC):
 
         # Data type
         dtype_aux = register.attrib['dtype']
-        dtype_options = {
-            "float": REG_DTYPE.FLOAT,
-            "s8": REG_DTYPE.S8,
-            "u8": REG_DTYPE.U8,
-            "s16": REG_DTYPE.S16,
-            "u16": REG_DTYPE.U16,
-            "s32": REG_DTYPE.S32,
-            "u32": REG_DTYPE.U32,
-            "str": REG_DTYPE.STR
-        }
-        if dtype_aux in dtype_options:
-            dtype = dtype_options[dtype_aux]
+
+        if dtype_aux in dtype_xdf_options:
+            dtype = dtype_xdf_options[dtype_aux]
         else:
             raise exc.ILValueError(f"The data type {dtype_aux} does not exist the register: {identifier}")
 
         # Access type
         access_aux = register.attrib['access']
-        access_options = {
-            "r": REG_ACCESS.RO,
-            "w": REG_ACCESS.WO,
-            "rw": REG_ACCESS.RW
-        }
-        if access_aux in access_options:
-            access = access_options[access_aux]
+
+        if access_aux in access_xdf_options:
+            access = access_xdf_options[access_aux]
         else:
             raise exc.ILAccessError(f"The access type {access_aux} does not exist the register: {identifier}")
 
