@@ -311,22 +311,20 @@ class EthernetServo(Servo):
         except ILError:
             self.store_parameters()
 
-    def write(self, reg, data, subnode=1, confirm=True):
+    def write(self, reg, data, subnode=1):
         """Writes data to a register.
 
         Args:
             reg (EthernetRegister, str): Target register to be written.
             data (int, str, float): Data to be written.
             subnode (int): Target axis of the drive.
-            confirm (bool): Confirm that the write command is
-            acknowledged by the drive.
 
         """
         _reg = self._get_reg(reg, subnode)
         if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
             data = int(data)
         data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
-        self._send_mcb_frame(MCB_CMD_WRITE, _reg.address, _reg.subnode, data_bytes, confirm)
+        self._send_mcb_frame(MCB_CMD_WRITE, _reg.address, _reg.subnode, data_bytes)
 
     def read(self, reg, subnode=1):
         """Read a register value from servo.
@@ -366,7 +364,7 @@ class EthernetServo(Servo):
         else:
             raise TypeError('Invalid register')
 
-    def _send_mcb_frame(self, cmd, reg, subnode, data=None, confirm=True):
+    def _send_mcb_frame(self, cmd, reg, subnode, data=None):
         """Send an MCB frame to the drive.
 
         Args:
@@ -374,19 +372,16 @@ class EthernetServo(Servo):
             reg (int): Register address to be read/written.
             subnode (int): Target axis of the drive.
             data (bytes): Data to be written to the register.
-            confirm (bool): Confirm that command send is acknowledged
-             by the drive.
 
         Returns:
-            bytes: The response frame if ``confirm`` is True.
+            bytes: The response frame.
         """
         frame = MCB.build_mcb_frame(cmd, subnode, reg, data)
         self.__lock.acquire()
         self.socket.sendall(frame)
+        response = self.socket.recv(1024)
         self.__lock.release()
-        if confirm:
-            response = self.socket.recv(1024)
-            return MCB.read_mcb_data(reg, response)
+        return MCB.read_mcb_data(reg, response)
 
     def monitoring_enable(self):
         """Enable monitoring process."""
