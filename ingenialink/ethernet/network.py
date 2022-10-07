@@ -1,8 +1,6 @@
 import ftplib
 
 from .servo import EthernetServo
-from ingenialink.constants import *
-from .._ingenialink import lib, ffi
 from ingenialink.utils.udp import UDP
 from ingenialink.utils._utils import *
 from ..network import NET_PROT, NET_TRANS_PROT
@@ -77,6 +75,7 @@ class EthernetNetwork(Network):
     """Network for all Ethernet communications."""
     def __init__(self):
         super(EthernetNetwork, self).__init__()
+        self.__net_state = NET_STATE.DISCONNECTED
         self.socket = None
         self.__listener_net_status = None
         self.__observers_net_state = []
@@ -268,7 +267,6 @@ class EthernetNetwork(Network):
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
         self.__listener_net_status = None
-
 
     def _notify_status(self, status):
         for callback in self.__observers_net_state:
