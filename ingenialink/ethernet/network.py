@@ -6,7 +6,7 @@ from .._ingenialink import lib, ffi
 from ingenialink.utils.udp import UDP
 from ingenialink.utils._utils import *
 from ..network import NET_PROT, NET_TRANS_PROT
-from ingenialink.ipb.network import IPBNetwork
+from ingenialink.network import Network, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError
 
 from ftplib import FTP
@@ -15,6 +15,10 @@ from time import sleep
 import os
 import socket
 import ingenialogger
+from threading import Thread
+
+from ping3 import ping
+
 logger = ingenialogger.get_logger(__name__)
 
 FTP_SESSION_OK_CODE = "220"
@@ -24,12 +28,57 @@ FTP_CLOSE_OK_CODE = "221"
 
 CMD_CHANGE_CPU = 0x67E4
 
+MAX_NUM_UNSUCCESSFUL_PINGS = 3
 
-class EthernetNetwork(IPBNetwork):
+
+class NetStatusListener(Thread):
+    """Network status listener thread to check if the drive is alive.
+
+    Args:
+        network (EthernetNetwork): Network instance of the Ethernet communication.
+
+    """
+
+    def __init__(self, network):
+        super(NetStatusListener, self).__init__()
+        self.__network = network
+        self.__state = NET_STATE.CONNECTED
+        self.__stop = False
+        self.__max_unsuccessful_pings = MAX_NUM_UNSUCCESSFUL_PINGS
+
+    def run(self):
+        servo = self.__network.servos[0]
+        unsuccessful_pings = 0
+        while not self.__stop:
+            if ping(servo.ip_address) is None:
+                unsuccessful_pings += 1
+            else:
+                unsuccessful_pings -= 1
+                unsuccessful_pings = max(0, unsuccessful_pings)
+            if unsuccessful_pings > self.__max_unsuccessful_pings:
+                if self.__state != NET_STATE.DISCONNECTED:
+                    self.__state = NET_STATE.DISCONNECTED
+                    self.__network.status = NET_STATE.DISCONNECTED
+                    self.__network._notify_status(NET_DEV_EVT.REMOVED)
+                unsuccessful_pings = self.__max_unsuccessful_pings
+            elif unsuccessful_pings == 0:
+                if self.__state != NET_STATE.CONNECTED:
+                    self.__network.status = NET_STATE.CONNECTED
+                    self.__state = NET_STATE.CONNECTED
+                    self.__network._notify_status(NET_DEV_EVT.ADDED)
+            sleep(1)
+
+    def stop(self):
+        self.__stop = True
+
+
+class EthernetNetwork(Network):
     """Network for all Ethernet communications."""
     def __init__(self):
         super(EthernetNetwork, self).__init__()
         self.socket = None
+        self.__listener_net_status = None
+        self.__observers_net_state = []
 
     @staticmethod
     def load_firmware(fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
@@ -151,7 +200,7 @@ class EthernetNetwork(IPBNetwork):
     def connect_to_slave(self, target, dictionary=None, port=1061,
                          communication_protocol=NET_TRANS_PROT.UDP,
                          reconnection_retries=DEFAULT_MESSAGE_RETRIES,
-                         reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT,
+                         reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT * 2,
                          servo_status_listener=False,
                          net_status_listener=False):
         """Connects to a slave through the given network settings.
@@ -189,9 +238,6 @@ class EthernetNetwork(IPBNetwork):
         else:
             self.stop_status_listener()
 
-        self.set_reconnection_retries(reconnection_retries)
-        self.set_recv_timeout(reconnection_timeout)
-
         return servo
 
     def disconnect_from_slave(self, servo):
@@ -203,18 +249,69 @@ class EthernetNetwork(IPBNetwork):
         """
         # TODO: This stops all connections no only the target servo.
         self.servos.remove(servo)
+        servo.stop_status_listener()
         if len(self.servos) == 0:
             self.stop_status_listener()
-            lib.il_net_mon_stop(self._cffi_network)
             self.close_socket()
-        self._cffi_network = None
 
     def close_socket(self):
         """Closes the established network socket."""
         self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
 
+    def start_status_listener(self,):
+        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+        listener = NetStatusListener(self)
+        listener.start()
+        self.__listener_net_status = listener
+
+    def stop_status_listener(self):
+        """Stops the NetStatusListener from listening to the drive."""
+        if self.__listener_net_status is not None and \
+                self.__listener_net_status.is_alive():
+            self.__listener_net_status.stop()
+            self.__listener_net_status.join()
+        self.__listener_net_status = None
+
+
+    def _notify_status(self, status):
+        for callback in self.__observers_net_state:
+            callback(status)
+
+    def subscribe_to_status(self, callback):
+        """Subscribe to network state changes.
+
+        Args:
+            callback (function): Callback function.
+
+        """
+        if callback in self.__observers_net_state:
+            logger.info('Callback already subscribed.')
+            return
+        self.__observers_net_state.append(callback)
+
+    def unsubscribe_from_status(self, callback):
+        """Unsubscribe from network state changes.
+
+        Args:
+            callback (function): Callback function.
+
+        """
+        if callback not in self.__observers_net_state:
+            logger.info('Callback not subscribed.')
+            return
+        self.__observers_net_state.remove(callback)
+
     @property
     def protocol(self):
         """NET_PROT: Obtain network protocol."""
         return NET_PROT.ETH
+
+    @property
+    def status(self):
+        """NET_STATE: Network state."""
+        return self.__net_state
+
+    @status.setter
+    def status(self, new_state):
+        self.__net_state = new_state
