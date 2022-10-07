@@ -247,21 +247,16 @@ class Dictionary(ABC):
             raise exc.ILAccessError(f"The access type {access_aux} does not exist the register: {identifier}")
 
         # Subnode
-        subnode = int(
-            register.attrib['subnode']) if 'subnode' in register.attrib else 1
+        subnode = int(register.attrib.get("subnode"), 1)
 
         # Storage
-        storage = register.attrib[
-            'storage'] if 'storage' in register.attrib else None
+        storage = register.attrib.get("storage", None)
 
         # Category Id
-        cat_id = register.attrib['cat_id'] if 'cat_id' in register.attrib else None
+        cat_id = register.attrib.get("cat_id", None)
 
         # Description
-        if 'desc' in register.attrib:
-            internal_use = register.attrib['desc']
-        else:
-            internal_use = 0
+        internal_use = register.attrib.get("desc", 0)
 
         # Labels
         labels_elem = register.findall(DICT_LABELS_LABEL)
