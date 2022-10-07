@@ -8,7 +8,7 @@ from ingenialink import exceptions as exc
 # ORIGIN: The start point of the path
 # END: The end point of the path
 # ORIGIN: ROOT
-DICT_ROOT = f"/IngeniaDictionary"
+DICT_ROOT = f"."
 DICT_ROOT_HEADER = f"{DICT_ROOT}/Header"
 DICT_ROOT_VERSION = f"{DICT_ROOT_HEADER}/Version"
 DICT_ROOT_BODY = f"{DICT_ROOT}/Body"
@@ -251,7 +251,7 @@ class Dictionary(ABC):
             raise exc.ILAccessError(f"The access type {access_aux} does not exist the register: {identifier}")
 
         # Subnode
-        subnode = int(register.attrib.get("subnode"), 1)
+        subnode = int(register.attrib.get("subnode", 1))
 
         # Storage
         storage = register.attrib.get("storage", None)
