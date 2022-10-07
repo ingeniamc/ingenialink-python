@@ -3,6 +3,36 @@ import xml.etree.ElementTree as ET
 from ingenialink.register import REG_DTYPE, REG_ACCESS
 from ingenialink import exceptions as exc
 
+# Dictionary constants guide:
+# Each constant has this structure: DICT_ORIGIN_END
+# ORIGIN: The start point of the path
+# END: The end point of the path
+# ORIGIN: ROOT
+DICT_ROOT = f"/IngeniaDictionary"
+DICT_ROOT_HEADER = f"{DICT_ROOT}/Header"
+DICT_ROOT_VERSION = f"{DICT_ROOT_HEADER}/Version"
+DICT_ROOT_BODY = f"{DICT_ROOT}/Body"
+DICT_ROOT_DEVICE = f"{DICT_ROOT_BODY}/Device"
+DICT_ROOT_CATEGORIES = f"{DICT_ROOT_DEVICE}/Categories"
+DICT_ROOT_CATEGORY = f"{DICT_ROOT_CATEGORIES}/Category"
+DICT_ROOT_ERRORS = f"{DICT_ROOT_BODY}/Errors"
+DICT_ROOT_ERROR = f"{DICT_ROOT_ERRORS}/Error"
+DICT_ROOT_AXES = f"{DICT_ROOT_DEVICE}/Axes"
+DICT_ROOT_AXIS = f"{DICT_ROOT_AXES}/Axis"
+DICT_ROOT_REGISTERS = f"{DICT_ROOT_DEVICE}/Registers"
+DICT_ROOT_REGISTER = f"{DICT_ROOT_REGISTERS}/Register"
+# ORIGIN: REGISTERS
+DICT_REGISTERS = f"./Registers"
+DICT_REGISTERS_REGISTER = f"{DICT_REGISTERS}/Register"
+# ORIGIN: LABELS
+DICT_LABELS = f"./Labels"
+DICT_LABELS_LABEL = f"{DICT_LABELS}/Label"
+# ORIGIN: RANGE
+DICT_RANGE = f"./Range"
+# ORIGIN: ENUMERATIONS
+DICT_ENUMERATIONS = f"./Enumerations"
+DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
+
 
 class DictionaryCategories:
     """Contains all categories from a Dictionary.
@@ -21,10 +51,10 @@ class DictionaryCategories:
 
     def load_cat_ids(self):
         """Load category IDs from dictionary."""
-        for element in self._root.findall('./Body/Device/Categories/Category'):
+        for element in self._root.findall(DICT_ROOT_CATEGORY):
             self._cat_ids.append(element.attrib['id'])
             self._categories[element.attrib['id']] = {
-                'en_US': element.find('./Labels/Label').text
+                'en_US': element.find(DICT_LABELS_LABEL).text
             }
 
     @property
@@ -51,14 +81,14 @@ class DictionaryErrors:
 
     def __init__(self, root):
         self._root = root
-        self._errors = {}  # { cat_id : label }
+        self._errors = {}
 
         self.load_errors()
 
     def load_errors(self):
         """Load errors from dictionary."""
-        for element in self._root.findall('./Body/Errors/Error'):
-            label = element.find('./Labels/Label')
+        for element in self._root.findall(DICT_ROOT_ERROR):
+            label = element.find(DICT_LABELS_LABEL)
             self._errors[int(element.attrib['id'], 16)] = [
                 element.attrib['id'],
                 element.attrib['affected_module'],
@@ -127,11 +157,11 @@ class Dictionary(ABC):
             raise FileNotFoundError(f"There is not any xml file in the path: {self.path}")
         root = tree.getroot()
 
-        device = root.find('./Body/Device')
+        device = root.find(DICT_ROOT_DEVICE)
 
         # Subnodes
-        if root.findall('./Body/Device/Axes/'):
-            self.subnodes = len(root.findall('./Body/Device/Axes/Axis'))
+        if root.findall(DICT_ROOT_AXES):
+            self.subnodes = len(root.findall(DICT_ROOT_AXIS))
 
         for _ in range(self.subnodes):
             self._registers.append({})
@@ -144,7 +174,7 @@ class Dictionary(ABC):
         self.errors = DictionaryErrors(root)
 
         # Version
-        version_node = root.find('.Header/Version')
+        version_node = root.find(DICT_ROOT_VERSION)
         if version_node is not None:
             self.version = version_node.text
 
@@ -158,13 +188,13 @@ class Dictionary(ABC):
             self.revision_number = int(revision_number)
         self.interface = device.attrib.get('Interface')
 
-        if root.findall('./Body/Device/Axes/'):
+        if root.findall(DICT_ROOT_AXES):
             # For each axis
-            for axis in root.findall('./Body/Device/Axes/Axis'):
-                for register in axis.findall('./Registers/Register'):
+            for axis in root.findall(DICT_ROOT_AXIS):
+                for register in axis.findall(DICT_REGISTERS_REGISTER):
                     self.read_register(register)
         else:
-            for register in root.findall('./Body/Device/Registers/Register'):
+            for register in root.findall(DICT_ROOT_REGISTER):
                 self.read_register(register)
 
         # Closing xml file
@@ -237,11 +267,11 @@ class Dictionary(ABC):
             internal_use = 0
 
         # Labels
-        labels_elem = register.findall('./Labels/Label')
+        labels_elem = register.findall(DICT_LABELS_LABEL)
         labels = {label.attrib['lang']: label.text for label in labels_elem}
 
         # Range
-        range_elem = register.find('./Range')
+        range_elem = register.find(DICT_RANGE)
         reg_range = (None, None)
         if range_elem is not None:
             range_min = range_elem.attrib['min']
@@ -249,7 +279,7 @@ class Dictionary(ABC):
             reg_range = (range_min, range_max)
 
         # Enumerations
-        enums_elem = register.findall('./Enumerations/Enum')
+        enums_elem = register.findall(DICT_ENUMERATIONS_ENUMERATION)
         enums = [{enum.attrib['value']: enum.text} for enum in enums_elem]
 
         return identifier, units, cyclic, dtype, access, subnode, \
