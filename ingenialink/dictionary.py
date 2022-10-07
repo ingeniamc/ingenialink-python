@@ -200,9 +200,6 @@ class Dictionary(ABC):
         # Closing xml file
         xdf_file.close()
 
-    def __invalid_dtype(self, dtype):
-        raise exc.ILValueError('Invalid data type')
-
     def read_register(self, register):
         """Reads a register from the dictionary and creates a Register instance.
 
