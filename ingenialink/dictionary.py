@@ -9,7 +9,7 @@ from ingenialink import exceptions as exc
 # ORIGIN: The start point of the path
 # END: The end point of the path
 # ORIGIN: ROOT
-DICT_ROOT = f"."
+DICT_ROOT = "."
 DICT_ROOT_HEADER = f"{DICT_ROOT}/Header"
 DICT_ROOT_VERSION = f"{DICT_ROOT_HEADER}/Version"
 DICT_ROOT_BODY = f"{DICT_ROOT}/Body"
@@ -23,15 +23,15 @@ DICT_ROOT_AXIS = f"{DICT_ROOT_AXES}/Axis"
 DICT_ROOT_REGISTERS = f"{DICT_ROOT_DEVICE}/Registers"
 DICT_ROOT_REGISTER = f"{DICT_ROOT_REGISTERS}/Register"
 # ORIGIN: REGISTERS
-DICT_REGISTERS = f"./Registers"
+DICT_REGISTERS = "./Registers"
 DICT_REGISTERS_REGISTER = f"{DICT_REGISTERS}/Register"
 # ORIGIN: LABELS
-DICT_LABELS = f"./Labels"
+DICT_LABELS = "./Labels"
 DICT_LABELS_LABEL = f"{DICT_LABELS}/Label"
 # ORIGIN: RANGE
-DICT_RANGE = f"./Range"
+DICT_RANGE = "./Range"
 # ORIGIN: ENUMERATIONS
-DICT_ENUMERATIONS = f"./Enumerations"
+DICT_ENUMERATIONS = "./Enumerations"
 DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
 
 dtype_xdf_options = {
@@ -99,6 +99,9 @@ class DictionaryCategories:
     def labels(self, cat_id):
         """Obtain labels for a certain category ID.
 
+        Args:
+        cat_id (str):  Category ID
+
         Returns:
             dict: Labels dictionary.
 
@@ -132,7 +135,11 @@ class DictionaryErrors:
 
     @property
     def errors(self):
-        """dict: Errors dictionary."""
+        """Get the errors dictionary.
+
+        Returns:
+            dict: Errors dictionary.
+        """
         return self._errors
 
 
@@ -238,11 +245,15 @@ class Dictionary(ABC):
         # Closing xml file
         xdf_file.close()
 
+    @staticmethod
     def _read_register(self, register):
         """Reads a register from the dictionary and creates a Register instance.
 
         Args:
             register (Element): Register instance from the dictionary.
+
+        Returns:
+            dict: The current register which it has been reading
 
         """
         # Dictionary where the current register attributes will be saved
@@ -263,7 +274,7 @@ class Dictionary(ABC):
         if dtype_aux in dtype_xdf_options:
             current_read_register[AttrRegDict.DTYPE] = dtype_xdf_options[dtype_aux]
         else:
-            raise exc.ILValueError(f'The data type {dtype_aux} does not exist the register: '
+            raise exc.ILValueError(f'The data type {dtype_aux} does not exist for the register: '
                                    f'{current_read_register["identifier"]}')
 
         # Access type
@@ -272,7 +283,7 @@ class Dictionary(ABC):
         if access_aux in access_xdf_options:
             current_read_register[AttrRegDict.ACCESS] = access_xdf_options[access_aux]
         else:
-            raise exc.ILAccessError(f'The access type {access_aux} does not exist the register: '
+            raise exc.ILAccessError(f'The access type {access_aux} does not exist for the register: '
                                     f'{current_read_register[AttrRegDict.IDENTIFIER]}')
 
         # Subnode
@@ -297,7 +308,7 @@ class Dictionary(ABC):
         if range_elem is not None:
             range_min = range_elem.attrib['min']
             range_max = range_elem.attrib['max']
-            reg_range = (range_min, range_max)
+            current_read_register[AttrRegDict.REG_RANGE] = (range_min, range_max)
 
         # Enumerations
         enums_elem = register.findall(DICT_ENUMERATIONS_ENUMERATION)
