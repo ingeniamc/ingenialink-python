@@ -3,14 +3,14 @@ import time
 import threading
 import canopen
 from canopen.emcy import EmcyConsumer
-import struct
 import xml.etree.ElementTree as ET
 
 from .constants import *
 from ..constants import *
 from ..exceptions import *
 from .._ingenialink import lib
-from ingenialink.utils._utils import *
+from ingenialink.utils._utils import cleanup_register, raise_err,\
+    convert_bytes_to_dtype, convert_dtype_to_bytes, get_drive_identification
 from ..servo import SERVO_STATE, Servo
 from .dictionary import CanopenDictionary
 from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
@@ -326,7 +326,7 @@ class CanopenServo(Servo):
         """
         _reg = self._get_reg(reg, subnode)
         raw_read = self._read_raw(reg, subnode)
-        value = self.__convert_bytes_to_dtype(raw_read, _reg.dtype)
+        value = convert_bytes_to_dtype(raw_read, _reg.dtype)
         if isinstance(value, str):
             value = value.replace('\x00', '')
         return value
@@ -345,7 +345,7 @@ class CanopenServo(Servo):
 
         """
         _reg = self._get_reg(reg, subnode)
-        value = self.__convert_dtype_to_bytes(data, _reg.dtype)
+        value = convert_dtype_to_bytes(data, _reg.dtype)
         self._write_raw(reg, value, subnode)
 
     def _write_raw(self, reg, data, subnode=1):
@@ -785,7 +785,7 @@ class CanopenServo(Servo):
             else:
                 raise ILError('Invalid subnode.')
         finally:
-            sleep(1.5)
+            time.sleep(1.5)
             self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
     def restore_parameters(self, subnode=None):
@@ -822,7 +822,7 @@ class CanopenServo(Servo):
             logger.info('Restore subnode {} successfully done.'.format(subnode))
         else:
             raise ILError('Invalid subnode.')
-        sleep(1.5)
+        time.sleep(1.5)
 
     def _change_sdo_timeout(self, value):
         """Changes the SDO timeout of the node."""
@@ -1219,36 +1219,12 @@ class CanopenServo(Servo):
                                     bytes_per_block]
             for channel in range(number_of_channels):
                 channel_data_size = self.__monitoring_channels_size[channel]
-                val = self.__convert_bytes_to_dtype(
-                    block_data[:channel_data_size],
-                    self.__monitoring_channels_dtype[channel])
+                val = convert_bytes_to_dtype(
+                        block_data[:channel_data_size],
+                        self.__monitoring_channels_dtype[channel])
                 res[channel].append(val)
                 block_data = block_data[channel_data_size:]
         self.__processed_monitoring_data = res
-
-    @staticmethod
-    def __convert_bytes_to_dtype(data, dtype):
-        """Convert data in bytes to corresponding dtype."""
-        if dtype in [REG_DTYPE.S8,
-                     REG_DTYPE.S16,
-                     REG_DTYPE.S32]:
-            value = int.from_bytes(
-                data,
-                "little",
-                signed=True
-            )
-        elif dtype == REG_DTYPE.FLOAT:
-            [value] = struct.unpack('f',
-                                    data
-                                    )
-        elif dtype == REG_DTYPE.STR:
-            value = data.decode("utf-8")
-        else:
-            value = int.from_bytes(
-                data,
-                "little"
-            )
-        return value
 
     def monitoring_channel_data(self, channel, dtype=None):
         """Obtain processed monitoring data of a channel.
@@ -1416,7 +1392,7 @@ class CanopenServo(Servo):
         data = bytearray()
         for sample_idx in range(num_samples):
             for channel in range(len(data_arr)):
-                val = self.__convert_dtype_to_bytes(
+                val = convert_dtype_to_bytes(
                     data_arr[channel][sample_idx], dtypes[channel])
                 data += val
         chunks = [data[i:i + CAN_MAX_WRITE_SIZE]
@@ -1425,46 +1401,6 @@ class CanopenServo(Servo):
             self._write_raw(DIST_DATA, data=chunk, subnode=0)
         self.disturbance_data = data
         self.disturbance_data_size = len(data)
-
-    @staticmethod
-    def __convert_dtype_to_bytes(data, dtype):
-        """Convert data in dtype to bytes.
-
-        Args:
-            data: Data to convert.
-            dtype (REG_DTYPE): Data type.
-
-        """
-        # auto cast floats if register is not float
-        if dtype == REG_DTYPE.FLOAT:
-            data = float(data)
-        elif dtype != REG_DTYPE.DOMAIN:
-            data = int(data)
-
-        if dtype == REG_DTYPE.FLOAT:
-            data = struct.pack('f', data)
-        elif dtype != REG_DTYPE.DOMAIN:
-            bytes_length = 2
-            signed = False
-            if dtype == REG_DTYPE.U8:
-                bytes_length = 1
-            elif dtype == REG_DTYPE.S8:
-                bytes_length = 1
-                signed = True
-            elif dtype == REG_DTYPE.U16:
-                bytes_length = 2
-            elif dtype == REG_DTYPE.S16:
-                bytes_length = 2
-                signed = True
-            elif dtype == REG_DTYPE.U32:
-                bytes_length = 4
-            elif dtype == REG_DTYPE.S32:
-                bytes_length = 4
-                signed = True
-            data = data.to_bytes(bytes_length,
-                                 byteorder='little',
-                                 signed=signed)
-        return data
 
     @property
     def disturbance_data(self):

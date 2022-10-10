@@ -1,12 +1,16 @@
 import ipaddress
 
-from .._ingenialink import lib, ffi
 from ingenialink.utils._utils import *
 from ingenialink.exceptions import ILError
-from ingenialink.network import NET_TRANS_PROT
-from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
+from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
+    MCB_CMD_READ, MCB_CMD_WRITE
 from ingenialink.ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS
-from ingenialink.ipb.servo import IPBServo, STORE_COCO_ALL, RESTORE_COCO_ALL
+from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.ipb.servo import STORE_COCO_ALL, RESTORE_COCO_ALL
+from ingenialink.servo import Servo
+from ingenialink.utils.mcb import MCB
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.exceptions import ILRegisterNotFoundError
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -26,33 +30,21 @@ COMMS_ETH_NET_GATEWAY = IPBRegister(
 )
 
 
-class EthernetServo(IPBServo):
+class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
 
     Args:
-        cffi_servo (CData): CData instance of the servo.
-        cffi_net (CData): CData instance of the network.
-        target (str): Target ID for the slave.
-        port (int): Port for the communication.
-        communication_protocol (NET_TRANS_PROT): Transmission protocol.
+        socket (socket):
         dictionary_path (str): Path to the dictionary.
         servo_status_listener (bool): Toggle the listener of the servo for
             its status, errors, faults, etc.
 
     """
-    def __init__(self, cffi_servo, cffi_net, target, port, communication_protocol,
+    def __init__(self, socket,
                  dictionary_path=None, servo_status_listener=False):
-        servo = ffi.gc(cffi_servo, lib.il_servo_fake_destroy)
-        super(EthernetServo, self).__init__(
-            servo, cffi_net, target, dictionary_path)
-        self.port = port
-        """int: Port number used for connections to the servo."""
-        self.communication_protocol = communication_protocol
-        """NET_TRANS_PROT: Protocol used to connect to the servo."""
-
-        prod_name = '' if self.dictionary.part_number is None \
-            else self.dictionary.part_number
-        self.full_name = '{} {} ({})'.format(prod_name, self.name, self.target)
+        self.socket = socket
+        self.ip_address, self.port = self.socket.getpeername()
+        super(EthernetServo, self).__init__(self.ip_address)
 
         if servo_status_listener:
             self.start_status_listener()
@@ -117,3 +109,122 @@ class EthernetServo(IPBServo):
             self.store_tcp_ip_parameters()
         except ILError:
             self.store_parameters()
+
+    def write(self, reg, data, subnode=1, confirm=True):
+        """Writes data to a register.
+
+        Args:
+            reg (IPBRegister, str): Target register to be written.
+            data (int, str, float): Data to be written.
+            subnode (int): Target axis of the drive.
+            confirm (bool): Confirm that the write command is
+            acknowledged by the drive.
+
+        """
+        _reg = self._get_reg(reg, subnode)
+        if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
+            data = int(data)
+        data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
+        self._send_mcb_frame(MCB_CMD_WRITE, _reg.address, _reg.subnode, data_bytes, confirm)
+
+    def read(self, reg, subnode=1):
+        """Read a register value from servo.
+
+        Args:
+            reg (str, Register): Register.
+            subnode (int): Target axis of the drive.
+
+        Returns:
+            int, float or str: Value stored in the register.
+        """
+        _reg = self._get_reg(reg, subnode)
+        data = self._send_mcb_frame(MCB_CMD_READ, _reg.address, _reg.subnode)
+        return convert_bytes_to_dtype(data, _reg.dtype)
+
+    def _get_reg(self, reg, subnode):
+        """Validates a register.
+        Args:
+            reg (EthernetRegister): Targeted register to validate.
+            subnode (int): Subnode for the register.
+        Returns:
+            EthernetRegister: Instance of the desired register from the dictionary.
+        Raises:
+            ValueError: If the dictionary is not loaded.
+            ILWrongRegisterError: If the register has invalid format.
+        """
+        if isinstance(reg, EthernetRegister):
+            return reg
+
+        elif isinstance(reg, str):
+            _dict = self.dictionary
+            if not _dict:
+                raise ValueError('No dictionary loaded')
+            if reg not in _dict.registers(subnode):
+                raise ILRegisterNotFoundError(f'Register {reg} not found.')
+            return _dict.registers(subnode)[reg]
+        else:
+            raise TypeError('Invalid register')
+
+    def _send_mcb_frame(self, cmd, reg, subnode, data=None, confirm=True):
+        """Send an MCB frame to the drive.
+
+        Args:
+            cmd (int): Read/write command.
+            reg (int): Register address to be read/written.
+            subnode (int): Target axis of the drive.
+            data (bytes): Data to be written to the register.
+            confirm (bool): Confirm that command send is acknowledged
+             by the drive.
+
+        Returns:
+            bytes: The response frame if ``confirm`` is True.
+        """
+        frame = MCB.build_mcb_frame(cmd, subnode, reg, data)
+        self.socket.sendall(frame)
+        if confirm:
+            response = self.socket.recv(1024)
+            return MCB.read_mcb_data(reg, response)
+
+
+    def get_state(self, subnode=1):
+        raise NotImplementedError
+
+    def start_status_listener(self):
+        raise NotImplementedError
+
+    def stop_status_listener(self):
+        raise NotImplementedError
+
+    def subscribe_to_status(self, callback):
+        raise NotImplementedError
+
+    def unsubscribe_from_status(self, callback):
+        raise NotImplementedError
+
+    def reload_errors(self, dictionary):
+        raise NotImplementedError
+
+    def load_configuration(self, config_file, subnode=None):
+        raise NotImplementedError
+
+    def save_configuration(self, config_file, subnode=None):
+        raise NotImplementedError
+
+    def store_parameters(self, subnode=None):
+        raise NotImplementedError
+
+    def restore_parameters(self, subnode=None):
+        raise NotImplementedError
+
+    def disable(self, subnode=1):
+        raise NotImplementedError
+
+    def enable(self, timeout=2., subnode=1):
+        raise NotImplementedError
+
+    def fault_reset(self, subnode=1):
+        raise NotImplementedError
+
+    def is_alive(self):
+        raise NotImplementedError
+

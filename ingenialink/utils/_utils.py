@@ -1,8 +1,10 @@
+import struct
 from enum import Enum
 
 from .._ingenialink import lib, ffi
 from ingenialink import exceptions as exc
 from ingenialink.utils.errors import *
+from ingenialink.register import REG_DTYPE
 from time import sleep
 
 import warnings
@@ -339,3 +341,56 @@ def set_logger_level(level):
 
     """
     lib.set_log_level(level)
+
+
+def convert_bytes_to_dtype(data, dtype):
+    """Convert data in bytes to corresponding dtype."""
+    if dtype in [REG_DTYPE.S8,
+                 REG_DTYPE.S16,
+                 REG_DTYPE.S32]:
+        value = int.from_bytes(
+            data,
+            "little",
+            signed=True
+        )
+    elif dtype == REG_DTYPE.FLOAT:
+        if len(data) > 4:
+            data = data[:4]
+        [value] = struct.unpack('f',
+                                data
+                                )
+    elif dtype == REG_DTYPE.STR:
+        value = data.decode("utf-8")
+    else:
+        value = int.from_bytes(
+            data,
+            "little"
+        )
+    return value
+
+
+def convert_dtype_to_bytes(data, dtype):
+    """Convert data in dtype to bytes.
+    Args:
+        data: Data to convert.
+        dtype (REG_DTYPE): Data type.
+    """
+    if dtype == REG_DTYPE.DOMAIN:
+        return data
+    if dtype == REG_DTYPE.FLOAT:
+        return struct.pack('f', float(data))
+    if dtype == REG_DTYPE.STR:
+        return data.encode('utf_8')
+    __dtype_value = {
+        REG_DTYPE.U8: (1, False),
+        REG_DTYPE.S8: (1, True),
+        REG_DTYPE.U16: (2, False),
+        REG_DTYPE.S16: (2, True),
+        REG_DTYPE.U32: (4, False),
+        REG_DTYPE.S32: (4, True)
+    }
+    bytes_length, signed = __dtype_value[dtype]
+    data = data.to_bytes(bytes_length,
+                         byteorder='little',
+                         signed=signed)
+    return data

@@ -13,6 +13,7 @@ from ftplib import FTP
 from time import sleep
 
 import os
+import socket
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
@@ -28,6 +29,7 @@ class EthernetNetwork(IPBNetwork):
     """Network for all Ethernet communications."""
     def __init__(self):
         super(EthernetNetwork, self).__init__()
+        self.socket = None
 
     @staticmethod
     def load_firmware(fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
@@ -171,23 +173,13 @@ class EthernetNetwork(IPBNetwork):
             EthernetServo: Instance of the servo connected.
 
         """
-        net__ = ffi.new('il_net_t **')
-        servo__ = ffi.new('il_servo_t **')
-        _dictionary = cstr(dictionary) if dictionary else ffi.NULL
-        _target = cstr(target) if target else ffi.NULL
-
-        r = lib.il_servo_lucky_eth(NET_PROT.ETH.value, net__, servo__,
-                                   _dictionary, _target,
-                                   port, communication_protocol.value)
-
-        raise_err(r)
-
-        net_ = ffi.cast('il_net_t *', net__[0])
-        servo_ = ffi.cast('il_servo_t *', servo__[0])
-
-        self._create_cffi_network(net_)
-        servo = EthernetServo(servo_, self._cffi_network, target,
-                              port, communication_protocol, dictionary,
+        if communication_protocol == NET_TRANS_PROT.UDP:
+            protocol = socket.SOCK_DGRAM
+        else:
+            protocol = socket.SOCK_STREAM
+        self.socket = socket.socket(socket.AF_INET, protocol)
+        self.socket.connect((target, port))
+        servo = EthernetServo(self.socket, dictionary,
                               servo_status_listener)
 
         self.servos.append(servo)
@@ -216,6 +208,11 @@ class EthernetNetwork(IPBNetwork):
             lib.il_net_mon_stop(self._cffi_network)
             self.close_socket()
         self._cffi_network = None
+
+    def close_socket(self):
+        """Closes the established network socket."""
+        self.socket.shutdown(socket.SHUT_RDWR)
+        self.socket.close()
 
     @property
     def protocol(self):
