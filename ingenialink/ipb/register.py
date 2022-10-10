@@ -2,7 +2,7 @@ from enum import Enum
 
 from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import *
-from ..register import Register, REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
+from ..register_deprecated import Register, REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
 
 import collections
 

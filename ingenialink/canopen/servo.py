@@ -14,7 +14,6 @@ from ingenialink.utils._utils import *
 from ..servo import SERVO_STATE, Servo
 from .dictionary import CanopenDictionary
 from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
-from ingenialink.register import dtype_size
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)

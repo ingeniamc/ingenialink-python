@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from ._ingenialink import ffi, lib
 from ingenialink.utils._utils import *
 from .network import Network
-from .register import REG_DTYPE
+from .register_deprecated import REG_DTYPE
 
 from .constants import *
 
