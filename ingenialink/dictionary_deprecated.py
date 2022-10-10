@@ -26,9 +26,6 @@ class Dictionary(ABC):
     Args:
         dictionary_path (str): Dictionary file path.
 
-    Raises:
-        ILCreationError: If the dictionary could not be created.
-
     """
     def __init__(self, dictionary_path):
         self.path = dictionary_path

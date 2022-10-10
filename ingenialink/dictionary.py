@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 import xml.etree.ElementTree as ET
 from ingenialink.register import REG_DTYPE, REG_ACCESS
 from ingenialink import exceptions as exc
@@ -8,7 +9,7 @@ from ingenialink import exceptions as exc
 # ORIGIN: The start point of the path
 # END: The end point of the path
 # ORIGIN: ROOT
-DICT_ROOT = f"."
+DICT_ROOT = "."
 DICT_ROOT_HEADER = f"{DICT_ROOT}/Header"
 DICT_ROOT_VERSION = f"{DICT_ROOT_HEADER}/Version"
 DICT_ROOT_BODY = f"{DICT_ROOT}/Body"
@@ -22,15 +23,15 @@ DICT_ROOT_AXIS = f"{DICT_ROOT_AXES}/Axis"
 DICT_ROOT_REGISTERS = f"{DICT_ROOT_DEVICE}/Registers"
 DICT_ROOT_REGISTER = f"{DICT_ROOT_REGISTERS}/Register"
 # ORIGIN: REGISTERS
-DICT_REGISTERS = f"./Registers"
+DICT_REGISTERS = "./Registers"
 DICT_REGISTERS_REGISTER = f"{DICT_REGISTERS}/Register"
 # ORIGIN: LABELS
-DICT_LABELS = f"./Labels"
+DICT_LABELS = "./Labels"
 DICT_LABELS_LABEL = f"{DICT_LABELS}/Label"
 # ORIGIN: RANGE
-DICT_RANGE = f"./Range"
+DICT_RANGE = "./Range"
 # ORIGIN: ENUMERATIONS
-DICT_ENUMERATIONS = f"./Enumerations"
+DICT_ENUMERATIONS = "./Enumerations"
 DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
 
 dtype_xdf_options = {
@@ -49,6 +50,22 @@ access_xdf_options = {
             "w": REG_ACCESS.WO,
             "rw": REG_ACCESS.RW
         }
+
+
+# Attributes of a register
+class AttrRegDict:
+    IDENTIFIER = 'identifier'
+    UNITS = 'units'
+    CYCLIC = 'cyclic'
+    DTYPE = 'dtype'
+    ACCESS = 'access'
+    SUBNODE = 'subnode'
+    STORAGE = 'storage'
+    REG_RANGE = 'reg_range'
+    LABELS = 'labels'
+    ENUMS = 'enums'
+    CAT_ID = 'cat_id'
+    DESC = 'intenal_use'
 
 
 class DictionaryCategories:
@@ -81,6 +98,9 @@ class DictionaryCategories:
 
     def labels(self, cat_id):
         """Obtain labels for a certain category ID.
+
+        Args:
+        cat_id (str):  Category ID
 
         Returns:
             dict: Labels dictionary.
@@ -115,7 +135,11 @@ class DictionaryErrors:
 
     @property
     def errors(self):
-        """dict: Errors dictionary."""
+        """Get the errors dictionary.
+
+        Returns:
+            dict: Errors dictionary.
+        """
         return self._errors
 
 
@@ -209,74 +233,90 @@ class Dictionary(ABC):
             # For each axis
             for axis in root.findall(DICT_ROOT_AXIS):
                 for register in axis.findall(DICT_REGISTERS_REGISTER):
-                    self.read_register(register)
+                    current_read_register = self._read_register(register)
+                    if current_read_register:
+                        self._add_register_list(current_read_register)
         else:
             for register in root.findall(DICT_ROOT_REGISTER):
-                self.read_register(register)
+                current_read_register = self._read_register(register)
+                if current_read_register:
+                    self._add_register_list(current_read_register)
 
         # Closing xml file
         xdf_file.close()
 
-    def read_register(self, register):
+    @staticmethod
+    def _read_register(self, register):
         """Reads a register from the dictionary and creates a Register instance.
 
         Args:
             register (Element): Register instance from the dictionary.
 
+        Returns:
+            dict: The current register which it has been reading
+
         """
+        # Dictionary where the current register attributes will be saved
+        current_read_register = dict()
 
         # Identifier
-        identifier = register.attrib['id']
+        current_read_register[AttrRegDict.IDENTIFIER] = register.attrib['id']
 
         # Units
-        units = register.attrib['units']
+        current_read_register[AttrRegDict.UNITS] = register.attrib['units']
 
         # Cyclic
-        cyclic = register.attrib['cyclic'] if 'cyclic' in register.attrib else "CONFIG"
+        current_read_register[AttrRegDict.CYCLIC] = register.attrib.get('cyclic', 'CONFIG')
 
         # Data type
         dtype_aux = register.attrib['dtype']
 
         if dtype_aux in dtype_xdf_options:
-            dtype = dtype_xdf_options[dtype_aux]
+            current_read_register[AttrRegDict.DTYPE] = dtype_xdf_options[dtype_aux]
         else:
-            raise exc.ILValueError(f"The data type {dtype_aux} does not exist the register: {identifier}")
+            raise exc.ILValueError(f'The data type {dtype_aux} does not exist for the register: '
+                                   f'{current_read_register["identifier"]}')
 
         # Access type
         access_aux = register.attrib['access']
 
         if access_aux in access_xdf_options:
-            access = access_xdf_options[access_aux]
+            current_read_register[AttrRegDict.ACCESS] = access_xdf_options[access_aux]
         else:
-            raise exc.ILAccessError(f"The access type {access_aux} does not exist the register: {identifier}")
+            raise exc.ILAccessError(f'The access type {access_aux} does not exist for the register: '
+                                    f'{current_read_register[AttrRegDict.IDENTIFIER]}')
 
         # Subnode
-        subnode = int(register.attrib.get("subnode", 1))
+        current_read_register[AttrRegDict.SUBNODE] = int(register.attrib.get('subnode', 1))
 
         # Storage
-        storage = register.attrib.get("storage", None)
+        current_read_register[AttrRegDict.STORAGE] = register.attrib.get('storage', None)
 
         # Category Id
-        cat_id = register.attrib.get("cat_id", None)
+        current_read_register[AttrRegDict.CAT_ID] = register.attrib.get('cat_id', None)
 
         # Description
-        internal_use = register.attrib.get("desc", 0)
+        current_read_register[AttrRegDict.DESC] = register.attrib.get("desc", 0)
 
         # Labels
         labels_elem = register.findall(DICT_LABELS_LABEL)
-        labels = {label.attrib['lang']: label.text for label in labels_elem}
+        current_read_register[AttrRegDict.LABELS] = {label.attrib['lang']: label.text for label in labels_elem}
 
         # Range
         range_elem = register.find(DICT_RANGE)
-        reg_range = (None, None)
+        current_read_register[AttrRegDict.REG_RANGE] = (None, None)
         if range_elem is not None:
             range_min = range_elem.attrib['min']
             range_max = range_elem.attrib['max']
-            reg_range = (range_min, range_max)
+            current_read_register[AttrRegDict.REG_RANGE] = (range_min, range_max)
 
         # Enumerations
         enums_elem = register.findall(DICT_ENUMERATIONS_ENUMERATION)
-        enums = [{enum.attrib['value']: enum.text} for enum in enums_elem]
+        current_read_register[AttrRegDict.ENUMS] = [{enum.attrib['value']: enum.text} for enum in enums_elem]
 
-        return identifier, units, cyclic, dtype, access, subnode, \
-            storage, reg_range, labels, enums, cat_id, internal_use
+        return current_read_register
+
+    @abstractmethod
+    def _add_register_list(self, register):
+        """Adds the current read register into the _registers list"""
+        pass
