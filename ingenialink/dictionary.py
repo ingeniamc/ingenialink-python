@@ -69,7 +69,7 @@ class AttrRegDict:
     LABELS = 'labels'
     ENUMS = 'enums'
     CAT_ID = 'cat_id'
-    DESC = 'intenal_use'
+    INT_USE = 'internal_use'
 
 
 class DictionaryCategories:
@@ -299,7 +299,7 @@ class Dictionary(ABC):
         current_read_register[AttrRegDict.CAT_ID] = register.attrib.get('cat_id', None)
 
         # Description
-        current_read_register[AttrRegDict.DESC] = register.attrib.get("desc", 0)
+        current_read_register[AttrRegDict.INT_USE] = int(register.attrib.get("internal_use", 0))
 
         # Labels
         labels_elem = register.findall(DICT_LABELS_LABEL)

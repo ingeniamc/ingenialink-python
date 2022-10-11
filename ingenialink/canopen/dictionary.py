@@ -61,7 +61,7 @@ class CanopenDictionary(Dictionary):
         enums = register[AttrRegCanDict.ENUMS]
         enums_count = len(register[AttrRegCanDict.ENUMS])
         cat_id = register[AttrRegCanDict.CAT_ID]
-        internal_use = register[AttrRegCanDict.DESC]
+        internal_use = register[AttrRegCanDict.INT_USE]
 
         reg = CanopenRegister(identifier, units, cyclic, idx, subidx, dtype,
                               access, subnode=subnode, storage=storage, reg_range=reg_range,
