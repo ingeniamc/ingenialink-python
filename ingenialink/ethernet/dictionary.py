@@ -12,7 +12,7 @@ class AttrRegEthDict(AttrRegDict):
 
 
 class EthernetDictionary(Dictionary):
-    """Contains all registers and information of a CANopen dictionary.
+    """Contains all registers and information of a Ethernet dictionary.
 
     Args:
         dictionary_path (str): Path to the Ingenia dictionary.
@@ -36,7 +36,7 @@ class EthernetDictionary(Dictionary):
         try:
             current_read_register = super()._read_register(register)
 
-            current_read_register[AttrRegEthDict.ADDR] = int(register.attrib['address'][:6], 16)
+            current_read_register[AttrRegEthDict.ADDR] = int(register.attrib['address'], 16)
 
             return current_read_register
 
