@@ -1,8 +1,10 @@
-from abc import ABC, abstractmethod
-from enum import Enum
 import xml.etree.ElementTree as ET
+
+from abc import ABC, abstractmethod
 from ingenialink.register import REG_DTYPE, REG_ACCESS
 from ingenialink import exceptions as exc
+from enum import Enum
+
 
 # Dictionary constants guide:
 # Each constant has this structure: DICT_ORIGIN_END
@@ -42,6 +44,8 @@ dtype_xdf_options = {
             "u16": REG_DTYPE.U16,
             "s32": REG_DTYPE.S32,
             "u32": REG_DTYPE.U32,
+            "s64": REG_DTYPE.S64,
+            "u64": REG_DTYPE.U64,
             "str": REG_DTYPE.STR
         }
 
@@ -195,7 +199,7 @@ class Dictionary(ABC):
             with open(self.path, 'r', encoding='utf-8') as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError:
-            raise FileNotFoundError(f"There is not any xml file in the path: {self.path}")
+            raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}")
         root = tree.getroot()
 
         device = root.find(DICT_ROOT_DEVICE)
@@ -242,10 +246,9 @@ class Dictionary(ABC):
                 if current_read_register:
                     self._add_register_list(current_read_register)
 
-        # Closing xml file
+        # Closing xdf file
         xdf_file.close()
 
-    @staticmethod
     def _read_register(self, register):
         """Reads a register from the dictionary and creates a Register instance.
 
