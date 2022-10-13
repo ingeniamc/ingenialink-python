@@ -5,8 +5,8 @@ class CanopenRegister(Register):
     """CANopen Register.
 
         Args:
-            identifier (str, optional): Identifier.
-            units (str, optional): Units.
+            identifier (str): Identifier.
+            units (str): Units.
             cyclic (str): Cyclic typed register.
             idx (int): Index of the register.
             subidx (int): Subindex of the register.

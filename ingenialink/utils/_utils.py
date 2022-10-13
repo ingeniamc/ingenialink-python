@@ -375,37 +375,24 @@ def convert_dtype_to_bytes(data, dtype):
         data: Data to convert.
         dtype (REG_DTYPE): Data type.
     """
-    # auto cast floats if register is not float
+    if dtype == REG_DTYPE.DOMAIN:
+        return data
     if dtype == REG_DTYPE.FLOAT:
-        data = float(data)
-    elif dtype != REG_DTYPE.DOMAIN:
-        data = int(data)
-    if dtype == REG_DTYPE.FLOAT:
-        data = struct.pack('f', data)
-    elif dtype != REG_DTYPE.DOMAIN:
-        bytes_length = 2
-        signed = False
-        if dtype == REG_DTYPE.U8:
-            bytes_length = 1
-        elif dtype == REG_DTYPE.S8:
-            bytes_length = 1
-            signed = True
-        elif dtype == REG_DTYPE.U16:
-            bytes_length = 2
-        elif dtype == REG_DTYPE.S16:
-            bytes_length = 2
-            signed = True
-        elif dtype == REG_DTYPE.U32:
-            bytes_length = 4
-        elif dtype == REG_DTYPE.S32:
-            bytes_length = 4
-            signed = True
-        elif dtype == REG_DTYPE.U64:
-            bytes_length = 8
-        elif dtype == REG_DTYPE.S64:
-            bytes_length = 8
-            signed = True
-        data = data.to_bytes(bytes_length,
-                             byteorder='little',
-                             signed=signed)
+        return struct.pack('f', float(data))
+    if dtype == REG_DTYPE.STR:
+        return data.encode('utf_8')
+    __dtype_value = {
+        REG_DTYPE.U8: (1, False),
+        REG_DTYPE.S8: (1, True),
+        REG_DTYPE.U16: (2, False),
+        REG_DTYPE.S16: (2, True),
+        REG_DTYPE.U32: (4, False),
+        REG_DTYPE.S32: (4, True),
+        REG_DTYPE.U64: (8, False),
+        REG_DTYPE.S64: (8, True)
+    }
+    bytes_length, signed = __dtype_value[dtype]
+    data = data.to_bytes(bytes_length,
+                         byteorder='little',
+                         signed=signed)
     return data

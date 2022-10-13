@@ -3,18 +3,17 @@ import time
 import threading
 import canopen
 from canopen.emcy import EmcyConsumer
-import struct
 import xml.etree.ElementTree as ET
 
 from .constants import *
 from ..constants import *
 from ..exceptions import *
 from .._ingenialink import lib
-from ingenialink.utils._utils import *
+from ingenialink.utils._utils import cleanup_register, raise_err,\
+    convert_bytes_to_dtype, convert_dtype_to_bytes, get_drive_identification
 from ..servo import SERVO_STATE, Servo
 from .dictionary import CanopenDictionary
 from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
-from ingenialink.register_deprecated import dtype_size
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
@@ -786,7 +785,7 @@ class CanopenServo(Servo):
             else:
                 raise ILError('Invalid subnode.')
         finally:
-            sleep(1.5)
+            time.sleep(1.5)
             self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
     def restore_parameters(self, subnode=None):
@@ -823,7 +822,7 @@ class CanopenServo(Servo):
             logger.info('Restore subnode {} successfully done.'.format(subnode))
         else:
             raise ILError('Invalid subnode.')
-        sleep(1.5)
+        time.sleep(1.5)
 
     def _change_sdo_timeout(self, value):
         """Changes the SDO timeout of the node."""

@@ -1,4 +1,5 @@
-from ingenialink.utils._utils import *
+from enum import Enum
+from ingenialink.utils._utils import exc, pstr
 
 from abc import ABC
 
@@ -77,7 +78,6 @@ class Register(ABC):
     """Register Base class.
 
         Args:
-            idx (int): Index of the register.
             dtype (REG_DTYPE): Data type.
             access (REG_ACCESS): Access type.
             identifier (str, optional): Identifier.
@@ -282,6 +282,3 @@ class Register(ABC):
     def internal_use(self):
         """int: Defines if the register is only for internal uses."""
         return self._internal_use
-
-
-
