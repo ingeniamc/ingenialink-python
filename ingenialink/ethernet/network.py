@@ -254,7 +254,7 @@ class EthernetNetwork(Network):
         self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
 
-    def start_status_listener(self,):
+    def start_status_listener(self):
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         listener = NetStatusListener(self)
         listener.start()
