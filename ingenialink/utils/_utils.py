@@ -387,7 +387,9 @@ def convert_dtype_to_bytes(data, dtype):
         REG_DTYPE.U16: (2, False),
         REG_DTYPE.S16: (2, True),
         REG_DTYPE.U32: (4, False),
-        REG_DTYPE.S32: (4, True)
+        REG_DTYPE.S32: (4, True),
+        REG_DTYPE.U64: (8, False),
+        REG_DTYPE.S64: (8, True)
     }
     bytes_length, signed = __dtype_value[dtype]
     data = data.to_bytes(bytes_length,
