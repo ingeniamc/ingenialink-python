@@ -1,18 +1,20 @@
 import os
 import ipaddress
+import socket
 import threading
 import time
 
 from .._ingenialink import lib
 from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
-    MCB_CMD_READ, MCB_CMD_WRITE, MONITORING_BUFFER_SIZE, ETH_MAX_WRITE_SIZE
+    MCB_CMD_READ, MCB_CMD_WRITE, MONITORING_BUFFER_SIZE, ETH_MAX_WRITE_SIZE,\
+    ETH_BUF_SIZE
 from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
 from ingenialink.servo import Servo, SERVO_STATE, ServoStatusListener
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, \
     raise_err, convert_ip_to_int, get_drive_identification, cleanup_register
-from ingenialink.exceptions import ILRegisterNotFoundError
+from ingenialink.exceptions import ILRegisterNotFoundError, ILTimeoutError, ILIOError
 from ingenialink.constants import PASSWORD_STORE_ALL, PASSWORD_RESTORE_ALL, \
     DEFAULT_PDS_TIMEOUT
 from ingenialink.canopen import constants
@@ -378,9 +380,24 @@ class EthernetServo(Servo):
         """
         frame = MCB.build_mcb_frame(cmd, subnode, reg, data)
         self.__lock.acquire()
-        self.socket.sendall(frame)
-        response = self.socket.recv(1024)
-        self.__lock.release()
+        try:
+            try:
+                self.socket.sendall(frame)
+            except socket.error as e:
+                logger.error(f"Error sending data. Reason: {e}")
+                raise ILIOError from e
+            try:
+                response = self.socket.recv(ETH_BUF_SIZE)
+            except socket.timeout as e:
+                logger.error("Timeout while receiving data.")
+                raise ILTimeoutError from e
+            except socket.error as e:
+                logger.error(f"Error receiving data. Reason: {e}")
+                raise ILIOError from e
+        except (ILIOError, ILTimeoutError) as e:
+            raise e
+        finally:
+            self.__lock.release()
         return MCB.read_mcb_data(reg, response)
 
     def monitoring_enable(self):
