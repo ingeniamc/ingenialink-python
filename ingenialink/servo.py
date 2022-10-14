@@ -1,13 +1,15 @@
 import time
 import threading
 from abc import ABC, abstractmethod
+from enum import Enum
 
 from ._ingenialink import ffi, lib
-from ingenialink.utils._utils import *
-from .network import Network
 from .register_deprecated import REG_DTYPE
+from .constants import DEFAULT_DRIVE_NAME
 
-from .constants import *
+import ingenialogger
+
+logger = ingenialogger.get_logger(__name__)
 
 
 class SERVO_STATE(Enum):
