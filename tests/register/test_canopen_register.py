@@ -2,25 +2,27 @@ import pytest
 
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS, REG_PHY
-from ingenialink.utils._utils import *
 
 
-@pytest.mark.develop
-@pytest.mark.canopen
-@pytest.mark.parametrize("test_identification, test_units, test_cyclic, test_idx, test_subidx, "
-                         "test_dtype, test_access, test_phy, test_subnode, test_storage,"
-                         "test_reg_range, test_labels, test_enums, test_enums_count, "
-                         "test_cat_id, test_scat_id, test_internal_use",
-                         [("MON_CFG_SOC_TYPE", "none", "CONFIG", 0x58F0, 0x00,
-                           REG_DTYPE.U32, REG_ACCESS.RW, REG_PHY.NONE, 0, 1,
-                           (-20, 20), "Monitoring trigger type",
-                           [{'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}],
-                           2, "MONITORING", "SUB_CATEGORY_TEST", "No description (invent here)")])
-def test_getters_canopen_register(test_identification, test_units,test_cyclic, test_idx, test_subidx,
-                                  test_dtype, test_access, test_phy, test_subnode, test_storage,
-                                  test_reg_range, test_labels, test_enums, test_enums_count,
-                                  test_cat_id, test_scat_id, test_internal_use):
-
+@pytest.mark.smoke
+def test_getters_canopen_register():
+    test_identification = "MON_CFG_SOC_TYPE"
+    test_units = "none"
+    test_cyclic = "CONFIG"
+    test_idx = 0x58F0
+    test_subidx = 0x00
+    test_dtype = REG_DTYPE.U32
+    test_access = REG_ACCESS.RW
+    test_phy = REG_PHY.NONE
+    test_subnode = 0
+    test_storage = 1
+    test_reg_range = (-20, 20)
+    test_labels = "Monitoring trigger type"
+    test_enums = [{'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}]
+    test_enums_count = 2
+    test_cat_id = "MONITORING"
+    test_scat_id = "SUB_CATEGORY_TEST"
+    test_internal_use = "No description (invent here)"
     register = CanopenRegister(test_identification, test_units, test_cyclic, test_idx, test_subidx,
                                test_dtype, test_access, test_phy, test_subnode, test_storage,
                                test_reg_range, test_labels, test_enums, test_enums_count,
@@ -52,20 +54,6 @@ def test_getters_canopen_register(test_identification, test_units,test_cyclic, t
     assert register.internal_use == test_internal_use
 
 
-# @pytest.mark.develop
-# @pytest.mark.canopen
-# @pytest.mark.parametrize("dtypes", [REG_DTYPE.U8, REG_DTYPE.S8, REG_DTYPE.U16, REG_DTYPE.S16,
-#                                     REG_DTYPE.U32, REG_DTYPE.S32, REG_DTYPE.U64, REG_DTYPE.S64,
-#                                     REG_DTYPE.STR, REG_DTYPE.DOMAIN])
-# @pytest.mark.parametrize("reg_ranges", [(None, None), (-20, 20)])
-# def test_canopen_register_range(dtypes, reg_ranges):
-#     register = CanopenRegister('DRV_OP_CMD', '-', 'CYCLIC_RX', 0x2014, 0,
-#                                REG_DTYPE.U16, REG_ACCESS.RW, reg_ranges=reg_ranges)
-#
-#     register.range()
-
-
-#@pytest.mark.develop
 @pytest.mark.canopen
 def test_canopen_connection_register(connect_to_slave):
     servo, net = connect_to_slave

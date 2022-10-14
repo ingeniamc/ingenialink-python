@@ -5,7 +5,7 @@ class EthernetRegister(Register):
     """Ethernet Register.
 
         Args:
-            idx (int): Index of the register.
+            address (int): Address of the register.
             dtype (REG_DTYPE): Data type.
             access (REG_ACCESS): Access type.
             identifier (str, optional): Identifier.
