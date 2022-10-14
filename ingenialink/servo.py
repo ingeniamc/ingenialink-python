@@ -6,6 +6,7 @@ from enum import Enum
 from ._ingenialink import ffi, lib
 from .register_deprecated import REG_DTYPE
 from .constants import DEFAULT_DRIVE_NAME
+from ingenialink.exceptions import ILIOError
 
 import ingenialogger
 
@@ -184,7 +185,7 @@ class ServoStatusListener(threading.Thread):
                     )
                     state = self.__servo.status_word_decode(status_word)
                     self.__servo._set_state(state, subnode=subnode)
-                except Exception as e:
+                except ILIOError as e:
                     logger.error("Error getting drive status. "
                                  "Exception : %s", e)
             time.sleep(1.5)
