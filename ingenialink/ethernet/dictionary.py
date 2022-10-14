@@ -1,5 +1,4 @@
 from ingenialink.dictionary import Dictionary, AttrRegDict
-from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
 from ingenialink.ethernet.register import EthernetRegister
 
 import ingenialogger
@@ -21,12 +20,8 @@ class EthernetDictionary(Dictionary):
 
     def __init__(self, dictionary_path):
         super().__init__(dictionary_path)
-        self.version = '1'
-        self.subnodes = SINGLE_AXIS_MINIMUM_SUBNODES
 
-        self.read_dictionary()
-
-    def _read_register(self, register):
+    def _read_xdf_register(self, register):
         """Reads a register from the dictionary and creates a Register instance.
 
         Args:
@@ -34,7 +29,7 @@ class EthernetDictionary(Dictionary):
 
         """
         try:
-            current_read_register = super()._read_register(register)
+            current_read_register = super()._read_xdf_register(register)
 
             current_read_register[AttrRegEthDict.ADDR] = int(register.attrib['address'], 16)
 
