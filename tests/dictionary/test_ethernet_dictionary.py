@@ -1,6 +1,7 @@
 import pytest
 
-from ingenialink.ethernet.dictionary import EthernetDictionary, SINGLE_AXIS_MINIMUM_SUBNODES
+from ingenialink.ethernet.dictionary import EthernetDictionary
+from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
 from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
 
 
