@@ -384,16 +384,13 @@ class EthernetServo(Servo):
             try:
                 self.socket.sendall(frame)
             except socket.error as e:
-                logger.error(f"Error sending data. Reason: {e}")
-                raise ILIOError from e
+                raise ILIOError('Error sending data.') from e
             try:
                 response = self.socket.recv(ETH_BUF_SIZE)
             except socket.timeout as e:
-                logger.error("Timeout while receiving data.")
-                raise ILTimeoutError from e
+                raise ILTimeoutError('Timeout while receiving data.') from e
             except socket.error as e:
-                logger.error(f"Error receiving data. Reason: {e}")
-                raise ILIOError from e
+                raise ILIOError('Error receiving data.') from e
         except (ILIOError, ILTimeoutError) as e:
             raise e
         finally:
