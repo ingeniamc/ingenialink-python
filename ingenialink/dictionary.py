@@ -37,22 +37,6 @@ DICT_ENUMERATIONS = "./Enumerations"
 DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
 
 
-# Attributes of a register
-class AttrRegDict:
-    IDENTIFIER = 'identifier'
-    UNITS = 'units'
-    CYCLIC = 'cyclic'
-    DTYPE = 'dtype'
-    ACCESS = 'access'
-    SUBNODE = 'subnode'
-    STORAGE = 'storage'
-    REG_RANGE = 'reg_range'
-    LABELS = 'labels'
-    ENUMS = 'enums'
-    CAT_ID = 'cat_id'
-    DESC = 'intenal_use'
-
-
 class DictionaryCategories:
     """Contains all categories from a Dictionary.
 
@@ -138,6 +122,38 @@ class Dictionary(ABC):
         ILCreationError: If the dictionary could not be created.
 
     """
+    class AttrRegDict:
+        IDENTIFIER = 'identifier'
+        UNITS = 'units'
+        CYCLIC = 'cyclic'
+        DTYPE = 'dtype'
+        ACCESS = 'access'
+        SUBNODE = 'subnode'
+        STORAGE = 'storage'
+        REG_RANGE = 'reg_range'
+        LABELS = 'labels'
+        ENUMS = 'enums'
+        CAT_ID = 'cat_id'
+        DESC = 'intenal_use'
+
+    __dtype_xdf_options = {
+        "float": REG_DTYPE.FLOAT,
+        "s8": REG_DTYPE.S8,
+        "u8": REG_DTYPE.U8,
+        "s16": REG_DTYPE.S16,
+        "u16": REG_DTYPE.U16,
+        "s32": REG_DTYPE.S32,
+        "u32": REG_DTYPE.U32,
+        "s64": REG_DTYPE.S64,
+        "u64": REG_DTYPE.U64,
+        "str": REG_DTYPE.STR
+    }
+
+    access_xdf_options = {
+        "r": REG_ACCESS.RO,
+        "w": REG_ACCESS.WO,
+        "rw": REG_ACCESS.RW
+    }
 
     def __init__(self, dictionary_path):
         self.path = dictionary_path
@@ -162,25 +178,6 @@ class Dictionary(ABC):
         """Errors: Instance of all the errors in the dictionary."""
         self._registers = []
         """Registers: Instance of all the registers in the dictionary"""
-
-        self.__dtype_xdf_options = {
-            "float": REG_DTYPE.FLOAT,
-            "s8": REG_DTYPE.S8,
-            "u8": REG_DTYPE.U8,
-            "s16": REG_DTYPE.S16,
-            "u16": REG_DTYPE.U16,
-            "s32": REG_DTYPE.S32,
-            "u32": REG_DTYPE.U32,
-            "s64": REG_DTYPE.S64,
-            "u64": REG_DTYPE.U64,
-            "str": REG_DTYPE.STR
-        }
-
-        self.access_xdf_options = {
-            "r": REG_ACCESS.RO,
-            "w": REG_ACCESS.WO,
-            "rw": REG_ACCESS.RW
-        }
 
     def registers(self, subnode):
         """Gets the register dictionary to the targeted subnode.
@@ -265,19 +262,19 @@ class Dictionary(ABC):
         current_read_register = dict()
 
         # Identifier
-        current_read_register[AttrRegDict.IDENTIFIER] = register.attrib['id']
+        current_read_register[self.AttrRegDict.IDENTIFIER] = register.attrib['id']
 
         # Units
-        current_read_register[AttrRegDict.UNITS] = register.attrib['units']
+        current_read_register[self.AttrRegDict.UNITS] = register.attrib['units']
 
         # Cyclic
-        current_read_register[AttrRegDict.CYCLIC] = register.attrib.get('cyclic', 'CONFIG')
+        current_read_register[self.AttrRegDict.CYCLIC] = register.attrib.get('cyclic', 'CONFIG')
 
         # Data type
         dtype_aux = register.attrib['dtype']
 
         if dtype_aux in self.__dtype_xdf_options:
-            current_read_register[AttrRegDict.DTYPE] = self.__dtype_xdf_options[dtype_aux]
+            current_read_register[self.AttrRegDict.DTYPE] = self.__dtype_xdf_options[dtype_aux]
         else:
             raise exc.ILValueError(f'The data type {dtype_aux} does not exist for the register: '
                                    f'{current_read_register["identifier"]}')
@@ -286,38 +283,38 @@ class Dictionary(ABC):
         access_aux = register.attrib['access']
 
         if access_aux in self.access_xdf_options:
-            current_read_register[AttrRegDict.ACCESS] = self.access_xdf_options[access_aux]
+            current_read_register[self.AttrRegDict.ACCESS] = self.access_xdf_options[access_aux]
         else:
             raise exc.ILAccessError(f'The access type {access_aux} does not exist for the register: '
-                                    f'{current_read_register[AttrRegDict.IDENTIFIER]}')
+                                    f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')
 
         # Subnode
-        current_read_register[AttrRegDict.SUBNODE] = int(register.attrib.get('subnode', 1))
+        current_read_register[self.AttrRegDict.SUBNODE] = int(register.attrib.get('subnode', 1))
 
         # Storage
-        current_read_register[AttrRegDict.STORAGE] = register.attrib.get('storage')
+        current_read_register[self.AttrRegDict.STORAGE] = register.attrib.get('storage')
 
         # Category Id
-        current_read_register[AttrRegDict.CAT_ID] = register.attrib.get('cat_id')
+        current_read_register[self.AttrRegDict.CAT_ID] = register.attrib.get('cat_id')
 
         # Description
-        current_read_register[AttrRegDict.DESC] = register.attrib.get("desc", 0)
+        current_read_register[self.AttrRegDict.DESC] = register.attrib.get("desc", 0)
 
         # Labels
         labels_elem = register.findall(DICT_LABELS_LABEL)
-        current_read_register[AttrRegDict.LABELS] = {label.attrib['lang']: label.text for label in labels_elem}
+        current_read_register[self.AttrRegDict.LABELS] = {label.attrib['lang']: label.text for label in labels_elem}
 
         # Range
         range_elem = register.find(DICT_RANGE)
-        current_read_register[AttrRegDict.REG_RANGE] = (None, None)
+        current_read_register[self.AttrRegDict.REG_RANGE] = (None, None)
         if range_elem is not None:
             range_min = range_elem.attrib['min']
             range_max = range_elem.attrib['max']
-            current_read_register[AttrRegDict.REG_RANGE] = (range_min, range_max)
+            current_read_register[self.AttrRegDict.REG_RANGE] = (range_min, range_max)
 
         # Enumerations
         enums_elem = register.findall(DICT_ENUMERATIONS_ENUMERATION)
-        current_read_register[AttrRegDict.ENUMS] = [{enum.attrib['value']: enum.text} for enum in enums_elem]
+        current_read_register[self.AttrRegDict.ENUMS] = [{enum.attrib['value']: enum.text} for enum in enums_elem]
 
         return current_read_register
 
