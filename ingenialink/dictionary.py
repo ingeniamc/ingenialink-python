@@ -1,10 +1,11 @@
 import xml.etree.ElementTree as ET
+import ingenialogger
 
 from abc import ABC, abstractmethod
 from ingenialink.register import REG_DTYPE, REG_ACCESS
 from ingenialink import exceptions as exc
-from enum import Enum
 
+logger = ingenialogger.get_logger(__name__)
 
 # Dictionary constants guide:
 # Each constant has this structure: DICT_ORIGIN_END
@@ -258,65 +259,70 @@ class Dictionary(ABC):
             dict: The current register which it has been reading
 
         """
-        # Dictionary where the current register attributes will be saved
-        current_read_register = dict()
+        try:
+            # Dictionary where the current register attributes will be saved
+            current_read_register = dict()
 
-        # Identifier
-        current_read_register[self.AttrRegDict.IDENTIFIER] = register.attrib['id']
+            # Identifier
+            current_read_register[self.AttrRegDict.IDENTIFIER] = register.attrib['id']
 
-        # Units
-        current_read_register[self.AttrRegDict.UNITS] = register.attrib['units']
+            # Units
+            current_read_register[self.AttrRegDict.UNITS] = register.attrib['units']
 
-        # Cyclic
-        current_read_register[self.AttrRegDict.CYCLIC] = register.attrib.get('cyclic', 'CONFIG')
+            # Cyclic
+            current_read_register[self.AttrRegDict.CYCLIC] = register.attrib.get('cyclic', 'CONFIG')
 
-        # Data type
-        dtype_aux = register.attrib['dtype']
+            # Data type
+            dtype_aux = register.attrib['dtype']
 
-        if dtype_aux in self.__dtype_xdf_options:
-            current_read_register[self.AttrRegDict.DTYPE] = self.__dtype_xdf_options[dtype_aux]
-        else:
-            raise exc.ILValueError(f'The data type {dtype_aux} does not exist for the register: '
-                                   f'{current_read_register["identifier"]}')
+            if dtype_aux in self.__dtype_xdf_options:
+                current_read_register[self.AttrRegDict.DTYPE] = self.__dtype_xdf_options[dtype_aux]
+            else:
+                raise exc.ILValueError(f'The data type {dtype_aux} does not exist for the register: '
+                                       f'{current_read_register["identifier"]}')
 
-        # Access type
-        access_aux = register.attrib['access']
+            # Access type
+            access_aux = register.attrib['access']
 
-        if access_aux in self.access_xdf_options:
-            current_read_register[self.AttrRegDict.ACCESS] = self.access_xdf_options[access_aux]
-        else:
-            raise exc.ILAccessError(f'The access type {access_aux} does not exist for the register: '
-                                    f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')
+            if access_aux in self.access_xdf_options:
+                current_read_register[self.AttrRegDict.ACCESS] = self.access_xdf_options[access_aux]
+            else:
+                raise exc.ILAccessError(f'The access type {access_aux} does not exist for the register: '
+                                        f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')
 
-        # Subnode
-        current_read_register[self.AttrRegDict.SUBNODE] = int(register.attrib.get('subnode', 1))
+            # Subnode
+            current_read_register[self.AttrRegDict.SUBNODE] = int(register.attrib.get('subnode', 1))
 
-        # Storage
-        current_read_register[self.AttrRegDict.STORAGE] = register.attrib.get('storage')
+            # Storage
+            current_read_register[self.AttrRegDict.STORAGE] = register.attrib.get('storage')
 
-        # Category Id
-        current_read_register[self.AttrRegDict.CAT_ID] = register.attrib.get('cat_id')
+            # Category Id
+            current_read_register[self.AttrRegDict.CAT_ID] = register.attrib.get('cat_id')
 
-        # Description
-        current_read_register[self.AttrRegDict.DESC] = register.attrib.get("desc", 0)
+            # Description
+            current_read_register[self.AttrRegDict.DESC] = register.attrib.get("desc", 0)
 
-        # Labels
-        labels_elem = register.findall(DICT_LABELS_LABEL)
-        current_read_register[self.AttrRegDict.LABELS] = {label.attrib['lang']: label.text for label in labels_elem}
+            # Labels
+            labels_elem = register.findall(DICT_LABELS_LABEL)
+            current_read_register[self.AttrRegDict.LABELS] = {label.attrib['lang']: label.text for label in labels_elem}
 
-        # Range
-        range_elem = register.find(DICT_RANGE)
-        current_read_register[self.AttrRegDict.REG_RANGE] = (None, None)
-        if range_elem is not None:
-            range_min = range_elem.attrib['min']
-            range_max = range_elem.attrib['max']
-            current_read_register[self.AttrRegDict.REG_RANGE] = (range_min, range_max)
+            # Range
+            range_elem = register.find(DICT_RANGE)
+            current_read_register[self.AttrRegDict.REG_RANGE] = (None, None)
+            if range_elem is not None:
+                range_min = range_elem.attrib['min']
+                range_max = range_elem.attrib['max']
+                current_read_register[self.AttrRegDict.REG_RANGE] = (range_min, range_max)
 
-        # Enumerations
-        enums_elem = register.findall(DICT_ENUMERATIONS_ENUMERATION)
-        current_read_register[self.AttrRegDict.ENUMS] = [{enum.attrib['value']: enum.text} for enum in enums_elem]
+            # Enumerations
+            enums_elem = register.findall(DICT_ENUMERATIONS_ENUMERATION)
+            current_read_register[self.AttrRegDict.ENUMS] = [{enum.attrib['value']: enum.text} for enum in enums_elem]
 
-        return current_read_register
+            return current_read_register
+
+        except KeyError as ke:
+            logger.error(f'Error caught: {ke}')
+            return None
 
     @abstractmethod
     def _add_register_list(self, register):
