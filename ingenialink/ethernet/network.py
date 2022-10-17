@@ -223,6 +223,7 @@ class EthernetNetwork(Network):
             protocol = socket.SOCK_STREAM
         self.socket = socket.socket(socket.AF_INET, protocol)
         self.socket.connect((target, port))
+        self.status = NET_STATE.CONNECTED
         servo = EthernetServo(self.socket, dictionary,
                               servo_status_listener)
 
@@ -248,6 +249,7 @@ class EthernetNetwork(Network):
         if len(self.servos) == 0:
             self.stop_status_listener()
             self.close_socket()
+            self.status = NET_STATE.DISCONNECTED
 
     def close_socket(self):
         """Closes the established network socket."""
