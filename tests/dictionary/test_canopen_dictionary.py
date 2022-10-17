@@ -8,7 +8,8 @@ from ingenialink.canopen.dictionary import CanopenDictionary
 @pytest.mark.parametrize("test_file_xdf, expected_num_registers", [
     ("test_dict_can_1.xdf", 702),
     ("test_dict_can_2.xdf", 698),
-    ("test_dict_can_axis_1.xdf", 16)
+    ("test_dict_can_axis_1.xdf", 16),
+    ("test_dict_can_no_attr_reg.xdf", 0)
 ])
 def test_registers_dictionary(test_file_xdf, expected_num_registers):
     # Count the number of registers in a CanopenDictionary instance
