@@ -1,14 +1,9 @@
-from ingenialink.dictionary import Dictionary, AttrRegDict
+from ingenialink.dictionary import Dictionary
 from ingenialink.canopen.register import CanopenRegister
 
 import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
-
-
-class AttrRegCanDict(AttrRegDict):
-    IDX = 'idx'
-    SUBIDX = 'subidx'
 
 
 class CanopenDictionary(Dictionary):
@@ -18,6 +13,10 @@ class CanopenDictionary(Dictionary):
         dictionary_path (str): Path to the Ingenia dictionary.
 
     """
+
+    class AttrRegCanDict(Dictionary.AttrRegDict):
+        IDX = 'idx'
+        SUBIDX = 'subidx'
 
     def __init__(self, dictionary_path):
         super().__init__(dictionary_path)
@@ -32,8 +31,8 @@ class CanopenDictionary(Dictionary):
         try:
             current_read_register = super()._read_xdf_register(register)
 
-            current_read_register[AttrRegCanDict.IDX] = int(register.attrib['address'][:6], 16)
-            current_read_register[AttrRegCanDict.SUBIDX] = int("0x" + register.attrib['address'][-2:], 16)
+            current_read_register[self.AttrRegCanDict.IDX] = int(register.attrib['address'], 16) >> 8
+            current_read_register[self.AttrRegCanDict.SUBIDX] = int(register.attrib['address'], 16) & 0xFF
 
             return current_read_register
 
@@ -43,25 +42,9 @@ class CanopenDictionary(Dictionary):
 
     def _add_register_list(self, register):
         """Adds the current read register into the _registers list"""
-        identifier = register[AttrRegCanDict.IDENTIFIER]
-        units = register[AttrRegCanDict.UNITS]
-        cyclic = register[AttrRegCanDict.CYCLIC]
-        idx = register[AttrRegCanDict.IDX]
-        subidx = register[AttrRegCanDict.SUBIDX]
-        dtype = register[AttrRegCanDict.DTYPE]
-        access = register[AttrRegCanDict.ACCESS]
-        subnode = register[AttrRegCanDict.SUBNODE]
-        storage = register[AttrRegCanDict.STORAGE]
-        reg_range = register[AttrRegCanDict.REG_RANGE]
-        labels = register[AttrRegCanDict.LABELS]
-        enums = register[AttrRegCanDict.ENUMS]
-        enums_count = len(register[AttrRegCanDict.ENUMS])
-        cat_id = register[AttrRegCanDict.CAT_ID]
-        internal_use = register[AttrRegCanDict.INT_USE]
+        identifier = register[self.AttrRegCanDict.IDENTIFIER]
+        subnode = register[self.AttrRegCanDict.SUBNODE]
 
-        reg = CanopenRegister(identifier, units, cyclic, idx, subidx, dtype,
-                              access, subnode=subnode, storage=storage, reg_range=reg_range,
-                              labels=labels, enums=enums, enums_count=enums_count, cat_id=cat_id,
-                              internal_use=internal_use)
+        reg = CanopenRegister(**register)
 
         self._registers[subnode][identifier] = reg
