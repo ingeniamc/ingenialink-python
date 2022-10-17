@@ -11,31 +11,9 @@ logger = ingenialogger.get_logger(__name__)
 # Each constant has this structure: DICT_ORIGIN_END
 # ORIGIN: The start point of the path
 # END: The end point of the path
-# ORIGIN: ROOT
-DICT_ROOT = "."
-DICT_ROOT_HEADER = f"{DICT_ROOT}/Header"
-DICT_ROOT_VERSION = f"{DICT_ROOT_HEADER}/Version"
-DICT_ROOT_BODY = f"{DICT_ROOT}/Body"
-DICT_ROOT_DEVICE = f"{DICT_ROOT_BODY}/Device"
-DICT_ROOT_CATEGORIES = f"{DICT_ROOT_DEVICE}/Categories"
-DICT_ROOT_CATEGORY = f"{DICT_ROOT_CATEGORIES}/Category"
-DICT_ROOT_ERRORS = f"{DICT_ROOT_BODY}/Errors"
-DICT_ROOT_ERROR = f"{DICT_ROOT_ERRORS}/Error"
-DICT_ROOT_AXES = f"{DICT_ROOT_DEVICE}/Axes"
-DICT_ROOT_AXIS = f"{DICT_ROOT_AXES}/Axis"
-DICT_ROOT_REGISTERS = f"{DICT_ROOT_DEVICE}/Registers"
-DICT_ROOT_REGISTER = f"{DICT_ROOT_REGISTERS}/Register"
-# ORIGIN: REGISTERS
-DICT_REGISTERS = "./Registers"
-DICT_REGISTERS_REGISTER = f"{DICT_REGISTERS}/Register"
 # ORIGIN: LABELS
 DICT_LABELS = "./Labels"
 DICT_LABELS_LABEL = f"{DICT_LABELS}/Label"
-# ORIGIN: RANGE
-DICT_RANGE = "./Range"
-# ORIGIN: ENUMERATIONS
-DICT_ENUMERATIONS = "./Enumerations"
-DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
 
 
 class DictionaryCategories:
@@ -123,6 +101,34 @@ class Dictionary(ABC):
         ILCreationError: If the dictionary could not be created.
 
     """
+
+    # Dictionary constants guide:
+    # Each constant has this structure: DICT_ORIGIN_END
+    # ORIGIN: The start point of the path
+    # END: The end point of the path
+    # ORIGIN: ROOT
+    DICT_ROOT = "."
+    DICT_ROOT_HEADER = f"{DICT_ROOT}/Header"
+    DICT_ROOT_VERSION = f"{DICT_ROOT_HEADER}/Version"
+    DICT_ROOT_BODY = f"{DICT_ROOT}/Body"
+    DICT_ROOT_DEVICE = f"{DICT_ROOT_BODY}/Device"
+    DICT_ROOT_CATEGORIES = f"{DICT_ROOT_DEVICE}/Categories"
+    DICT_ROOT_CATEGORY = f"{DICT_ROOT_CATEGORIES}/Category"
+    DICT_ROOT_ERRORS = f"{DICT_ROOT_BODY}/Errors"
+    DICT_ROOT_ERROR = f"{DICT_ROOT_ERRORS}/Error"
+    DICT_ROOT_AXES = f"{DICT_ROOT_DEVICE}/Axes"
+    DICT_ROOT_AXIS = f"{DICT_ROOT_AXES}/Axis"
+    DICT_ROOT_REGISTERS = f"{DICT_ROOT_DEVICE}/Registers"
+    DICT_ROOT_REGISTER = f"{DICT_ROOT_REGISTERS}/Register"
+    # ORIGIN: REGISTERS
+    DICT_REGISTERS = "./Registers"
+    DICT_REGISTERS_REGISTER = f"{DICT_REGISTERS}/Register"
+    # ORIGIN: RANGE
+    DICT_RANGE = "./Range"
+    # ORIGIN: ENUMERATIONS
+    DICT_ENUMERATIONS = "./Enumerations"
+    DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
+
     class AttrRegDict:
         IDENTIFIER = 'identifier'
         UNITS = 'units'
@@ -135,7 +141,7 @@ class Dictionary(ABC):
         LABELS = 'labels'
         ENUMS = 'enums'
         CAT_ID = 'cat_id'
-        DESC = 'intenal_use'
+        DESC = 'internal_use'
 
     __dtype_xdf_options = {
         "float": REG_DTYPE.FLOAT,
@@ -201,25 +207,25 @@ class Dictionary(ABC):
             raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}")
         root = tree.getroot()
 
-        device = root.find(DICT_ROOT_DEVICE)
+        device = root.find(self.DICT_ROOT_DEVICE)
 
         # Subnodes
-        if root.findall(DICT_ROOT_AXES):
-            self.subnodes = len(root.findall(DICT_ROOT_AXIS))
+        if root.findall(self.DICT_ROOT_AXES):
+            self.subnodes = len(root.findall(self.DICT_ROOT_AXIS))
 
         for _ in range(self.subnodes):
             self._registers.append({})
 
         # Categories
-        list_xdf_categories = root.findall(DICT_ROOT_CATEGORY)
+        list_xdf_categories = root.findall(self.DICT_ROOT_CATEGORY)
         self.categories = DictionaryCategories(list_xdf_categories)
 
         # Errors
-        list_xdf_errors = root.findall(DICT_ROOT_ERROR)
+        list_xdf_errors = root.findall(self.DICT_ROOT_ERROR)
         self.errors = DictionaryErrors(list_xdf_errors)
 
         # Version
-        version_node = root.find(DICT_ROOT_VERSION)
+        version_node = root.find(self.DICT_ROOT_VERSION)
         if version_node is not None:
             self.version = version_node.text
 
@@ -233,15 +239,15 @@ class Dictionary(ABC):
             self.revision_number = int(revision_number)
         self.interface = device.attrib.get('Interface')
 
-        if root.findall(DICT_ROOT_AXES):
+        if root.findall(self.DICT_ROOT_AXES):
             # For each axis
-            for axis in root.findall(DICT_ROOT_AXIS):
-                for register in axis.findall(DICT_REGISTERS_REGISTER):
+            for axis in root.findall(self.DICT_ROOT_AXIS):
+                for register in axis.findall(self.DICT_REGISTERS_REGISTER):
                     current_read_register = self._read_register(register)
                     if current_read_register:
                         self._add_register_list(current_read_register)
         else:
-            for register in root.findall(DICT_ROOT_REGISTER):
+            for register in root.findall(self.DICT_ROOT_REGISTER):
                 current_read_register = self._read_register(register)
                 if current_read_register:
                     self._add_register_list(current_read_register)
@@ -307,7 +313,7 @@ class Dictionary(ABC):
             current_read_register[self.AttrRegDict.LABELS] = {label.attrib['lang']: label.text for label in labels_elem}
 
             # Range
-            range_elem = register.find(DICT_RANGE)
+            range_elem = register.find(self.DICT_RANGE)
             current_read_register[self.AttrRegDict.REG_RANGE] = (None, None)
             if range_elem is not None:
                 range_min = range_elem.attrib['min']
@@ -315,7 +321,7 @@ class Dictionary(ABC):
                 current_read_register[self.AttrRegDict.REG_RANGE] = (range_min, range_max)
 
             # Enumerations
-            enums_elem = register.findall(DICT_ENUMERATIONS_ENUMERATION)
+            enums_elem = register.findall(self.DICT_ENUMERATIONS_ENUMERATION)
             current_read_register[self.AttrRegDict.ENUMS] = [{enum.attrib['value']: enum.text} for enum in enums_elem]
 
             return current_read_register
