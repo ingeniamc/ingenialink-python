@@ -272,6 +272,11 @@ class Dictionary(ABC):
             # Identifier
             current_read_register[self.AttrRegDict.IDENTIFIER] = register.attrib['id']
 
+        except KeyError as ke:
+            logger.error(f"The register doesn't have an identifier. Error caught: {ke}")
+            return None
+
+        try:
             # Units
             current_read_register[self.AttrRegDict.UNITS] = register.attrib['units']
 
@@ -327,7 +332,8 @@ class Dictionary(ABC):
             return current_read_register
 
         except KeyError as ke:
-            logger.error(f'Error caught: {ke}')
+            logger.error(f"The register with the ID {current_read_register[self.AttrRegDict.IDENTIFIER]} had some "
+                         f"problem because of an attribute's reading. Error caught: {ke}")
             return None
 
     @abstractmethod
