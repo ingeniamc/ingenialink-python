@@ -34,9 +34,9 @@ class CanopenDictionary(Dictionary):
         """
         try:
             current_read_register = super()._read_register(register)
-
-            current_read_register[self.AttrRegCanDict.IDX] = int(register.attrib['address'][:6], 16)
-            current_read_register[self.AttrRegCanDict.SUBIDX] = int("0x" + register.attrib['address'][-2:], 16)
+            aux_var = int(register.attrib['address'], 16)
+            current_read_register[self.AttrRegCanDict.IDX] = aux_var >> 8
+            current_read_register[self.AttrRegCanDict.SUBIDX] = aux_var & 0xFF
 
             return current_read_register
 
