@@ -27,16 +27,21 @@ class EthernetDictionary(Dictionary):
             register (Element): Register instance from the dictionary.
 
         """
-        try:
-            current_read_register = super()._read_xdf_register(register)
-
-            current_read_register[self.AttrRegEthDict.ADDR] = int(register.attrib['address'], 16)
-
-            return current_read_register
-
-        except KeyError as ke:
-            logger.error(f'Error caught: {ke}')
+        current_read_register = super()._read_xdf_register(register)
+        if current_read_register is None:
             return None
+        else:
+            try:
+                current_read_register = super()._read_xdf_register(register)
+
+                current_read_register[self.AttrRegEthDict.ADDR] = int(register.attrib['address'], 16)
+
+                return current_read_register
+
+            except KeyError as ke:
+                logger.error(f"The register with the ID {current_read_register[self.AttrRegDict.IDENTIFIER]} had some "
+                             f"problem because of an attribute's reading. Error caught: {ke}")
+                return None
 
     def _add_register_list(self, register):
         """Adds the current read register into the _registers list"""
