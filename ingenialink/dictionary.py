@@ -266,6 +266,7 @@ class Dictionary(ABC):
 
         Returns:
             dict: The current register which it has been reading
+            None: When at least a mandatory attribute is not in a xdf file
 
         """
         try:
