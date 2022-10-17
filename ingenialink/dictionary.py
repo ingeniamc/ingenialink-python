@@ -36,25 +36,6 @@ DICT_RANGE = "./Range"
 DICT_ENUMERATIONS = "./Enumerations"
 DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
 
-dtype_xdf_options = {
-            "float": REG_DTYPE.FLOAT,
-            "s8": REG_DTYPE.S8,
-            "u8": REG_DTYPE.U8,
-            "s16": REG_DTYPE.S16,
-            "u16": REG_DTYPE.U16,
-            "s32": REG_DTYPE.S32,
-            "u32": REG_DTYPE.U32,
-            "s64": REG_DTYPE.S64,
-            "u64": REG_DTYPE.U64,
-            "str": REG_DTYPE.STR
-        }
-
-access_xdf_options = {
-            "r": REG_ACCESS.RO,
-            "w": REG_ACCESS.WO,
-            "rw": REG_ACCESS.RW
-        }
-
 
 # Attributes of a register
 class AttrRegDict:
@@ -76,12 +57,12 @@ class DictionaryCategories:
     """Contains all categories from a Dictionary.
 
     Args:
-        root (Element):  Element from xdf file
+        list_xdf_categories (list): List of Elements from xdf file
 
     """
 
-    def __init__(self, root):
-        self._root = root
+    def __init__(self, list_xdf_categories):
+        self._list_xdf_categories = list_xdf_categories
         self._cat_ids = []
         self._categories = {}
 
@@ -89,7 +70,7 @@ class DictionaryCategories:
 
     def load_cat_ids(self):
         """Load category IDs from dictionary."""
-        for element in self._root.findall(DICT_ROOT_CATEGORY):
+        for element in self._list_xdf_categories:
             self._cat_ids.append(element.attrib['id'])
             self._categories[element.attrib['id']] = {
                 'en_US': element.find(DICT_LABELS_LABEL).text
@@ -117,18 +98,18 @@ class DictionaryErrors:
     """Errors for the dictionary.
 
     Args:
-        root (Element):  Element from xdf file
+        list_xdf_errors (list):  List of Elements from xdf file
     """
 
-    def __init__(self, root):
-        self._root = root
+    def __init__(self, list_xdf_errors):
+        self._list_xdf_errors = list_xdf_errors
         self._errors = {}
 
         self.load_errors()
 
     def load_errors(self):
         """Load errors from dictionary."""
-        for element in self._root.findall(DICT_ROOT_ERROR):
+        for element in self._list_xdf_errors:
             label = element.find(DICT_LABELS_LABEL)
             self._errors[int(element.attrib['id'], 16)] = [
                 element.attrib['id'],
@@ -157,6 +138,7 @@ class Dictionary(ABC):
         ILCreationError: If the dictionary could not be created.
 
     """
+
     def __init__(self, dictionary_path):
         self.path = dictionary_path
         """str: Path of the dictionary."""
@@ -180,6 +162,25 @@ class Dictionary(ABC):
         """Errors: Instance of all the errors in the dictionary."""
         self._registers = []
         """Registers: Instance of all the registers in the dictionary"""
+
+        self.__dtype_xdf_options = {
+            "float": REG_DTYPE.FLOAT,
+            "s8": REG_DTYPE.S8,
+            "u8": REG_DTYPE.U8,
+            "s16": REG_DTYPE.S16,
+            "u16": REG_DTYPE.U16,
+            "s32": REG_DTYPE.S32,
+            "u32": REG_DTYPE.U32,
+            "s64": REG_DTYPE.S64,
+            "u64": REG_DTYPE.U64,
+            "str": REG_DTYPE.STR
+        }
+
+        self.access_xdf_options = {
+            "r": REG_ACCESS.RO,
+            "w": REG_ACCESS.WO,
+            "rw": REG_ACCESS.RW
+        }
 
     def registers(self, subnode):
         """Gets the register dictionary to the targeted subnode.
@@ -212,11 +213,12 @@ class Dictionary(ABC):
             self._registers.append({})
 
         # Categories
-
-        self.categories = DictionaryCategories(root)
+        list_xdf_categories = root.findall(DICT_ROOT_CATEGORY)
+        self.categories = DictionaryCategories(list_xdf_categories)
 
         # Errors
-        self.errors = DictionaryErrors(root)
+        list_xdf_errors = root.findall(DICT_ROOT_ERROR)
+        self.errors = DictionaryErrors(list_xdf_errors)
 
         # Version
         version_node = root.find(DICT_ROOT_VERSION)
@@ -274,8 +276,8 @@ class Dictionary(ABC):
         # Data type
         dtype_aux = register.attrib['dtype']
 
-        if dtype_aux in dtype_xdf_options:
-            current_read_register[AttrRegDict.DTYPE] = dtype_xdf_options[dtype_aux]
+        if dtype_aux in self.__dtype_xdf_options:
+            current_read_register[AttrRegDict.DTYPE] = self.__dtype_xdf_options[dtype_aux]
         else:
             raise exc.ILValueError(f'The data type {dtype_aux} does not exist for the register: '
                                    f'{current_read_register["identifier"]}')
@@ -283,8 +285,8 @@ class Dictionary(ABC):
         # Access type
         access_aux = register.attrib['access']
 
-        if access_aux in access_xdf_options:
-            current_read_register[AttrRegDict.ACCESS] = access_xdf_options[access_aux]
+        if access_aux in self.access_xdf_options:
+            current_read_register[AttrRegDict.ACCESS] = self.access_xdf_options[access_aux]
         else:
             raise exc.ILAccessError(f'The access type {access_aux} does not exist for the register: '
                                     f'{current_read_register[AttrRegDict.IDENTIFIER]}')
@@ -293,10 +295,10 @@ class Dictionary(ABC):
         current_read_register[AttrRegDict.SUBNODE] = int(register.attrib.get('subnode', 1))
 
         # Storage
-        current_read_register[AttrRegDict.STORAGE] = register.attrib.get('storage', None)
+        current_read_register[AttrRegDict.STORAGE] = register.attrib.get('storage')
 
         # Category Id
-        current_read_register[AttrRegDict.CAT_ID] = register.attrib.get('cat_id', None)
+        current_read_register[AttrRegDict.CAT_ID] = register.attrib.get('cat_id')
 
         # Description
         current_read_register[AttrRegDict.DESC] = register.attrib.get("desc", 0)
