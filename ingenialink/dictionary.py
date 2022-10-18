@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import ingenialogger
 
 from abc import ABC, abstractmethod
+from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
 from ingenialink.register import REG_DTYPE, REG_ACCESS
 from ingenialink import exceptions as exc
 
@@ -141,7 +142,7 @@ class Dictionary(ABC):
         LABELS = 'labels'
         ENUMS = 'enums'
         CAT_ID = 'cat_id'
-        DESC = 'internal_use'
+        INT_USE = 'internal_use'
 
     __dtype_xdf_options = {
         "float": REG_DTYPE.FLOAT,
@@ -165,7 +166,7 @@ class Dictionary(ABC):
     def __init__(self, dictionary_path):
         self.path = dictionary_path
         """str: Path of the dictionary."""
-        self.version = None
+        self.version = '1'
         """str: Version of the dictionary."""
         self.firmware_version = None
         """str: Firmware version declared in the dictionary."""
@@ -177,14 +178,16 @@ class Dictionary(ABC):
         """int: Revision number declared in the dictionary."""
         self.interface = None
         """str: Interface declared in the dictionary."""
-        self.subnodes = None
+        self.subnodes = SINGLE_AXIS_MINIMUM_SUBNODES
         """int: Number of subnodes in the dictionary."""
         self.categories = None
-        """Categories: Instance of all the categories in the dictionary."""
+        """DictionaryCategories: Instance of all the categories in the dictionary."""
         self.errors = None
-        """Errors: Instance of all the errors in the dictionary."""
+        """DictionaryErrors: Instance of all the errors in the dictionary."""
         self._registers = []
-        """Registers: Instance of all the registers in the dictionary"""
+        """list(dict): Instance of all the registers in the dictionary"""
+
+        self.read_dictionary()
 
     def registers(self, subnode):
         """Gets the register dictionary to the targeted subnode.
@@ -243,19 +246,19 @@ class Dictionary(ABC):
             # For each axis
             for axis in root.findall(self.DICT_ROOT_AXIS):
                 for register in axis.findall(self.DICT_REGISTERS_REGISTER):
-                    current_read_register = self._read_register(register)
+                    current_read_register = self._read_xdf_register(register)
                     if current_read_register:
                         self._add_register_list(current_read_register)
         else:
             for register in root.findall(self.DICT_ROOT_REGISTER):
-                current_read_register = self._read_register(register)
+                current_read_register = self._read_xdf_register(register)
                 if current_read_register:
                     self._add_register_list(current_read_register)
 
         # Closing xdf file
         xdf_file.close()
 
-    def _read_register(self, register):
+    def _read_xdf_register(self, register):
         """Reads a register from the dictionary and creates a Register instance.
 
         Args:
@@ -312,7 +315,7 @@ class Dictionary(ABC):
             current_read_register[self.AttrRegDict.CAT_ID] = register.attrib.get('cat_id')
 
             # Description
-            current_read_register[self.AttrRegDict.DESC] = register.attrib.get("desc", 0)
+            current_read_register[self.AttrRegDict.INT_USE] = register.attrib.get("internal_use", 0)
 
             # Labels
             labels_elem = register.findall(DICT_LABELS_LABEL)
@@ -338,5 +341,10 @@ class Dictionary(ABC):
 
     @abstractmethod
     def _add_register_list(self, register):
-        """Adds the current read register into the _registers list"""
+        """Adds the current read register into the _registers list
+
+        Args:
+            register (dict): the current read register it will be instanced
+
+        """
         pass

@@ -1,7 +1,6 @@
 import ingenialogger
 
 from ingenialink.dictionary import Dictionary
-from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
 from ingenialink.canopen.register import CanopenRegister
 
 logger = ingenialogger.get_logger(__name__)
@@ -21,17 +20,12 @@ class CanopenDictionary(Dictionary):
 
     def __init__(self, dictionary_path):
         super().__init__(dictionary_path)
-        self.version = '1'
-        self.subnodes = SINGLE_AXIS_MINIMUM_SUBNODES
 
-        self.read_dictionary()
-
-    def _read_register(self, register):
-        current_read_register = super()._read_register(register)
+    def _read_xdf_register(self, register):
+        current_read_register = super()._read_xdf_register(register)
         if current_read_register is None:
             return None
         try:
-
             aux_var = int(register.attrib['address'], 16)
             current_read_register[self.AttrRegCanDict.IDX] = aux_var >> 8
             current_read_register[self.AttrRegCanDict.SUBIDX] = aux_var & 0xFF
