@@ -2,9 +2,9 @@ import struct
 from enum import Enum
 
 from .._ingenialink import lib, ffi
-from ingenialink import exceptions as exc
 from ingenialink.utils.errors import *
-from ingenialink.register import REG_DTYPE
+from ingenialink import exceptions as exc
+from ingenialink.enums.register import REG_DTYPE
 from time import sleep
 
 import warnings
