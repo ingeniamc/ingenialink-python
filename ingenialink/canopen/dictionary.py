@@ -1,7 +1,7 @@
+import ingenialogger
+
 from ingenialink.dictionary import Dictionary
 from ingenialink.canopen.register import CanopenRegister
-
-import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
