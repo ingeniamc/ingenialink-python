@@ -1,7 +1,8 @@
+import ingenialogger
+
 from ingenialink.dictionary import Dictionary
 from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
 from ingenialink.canopen.register import CanopenRegister
-import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
