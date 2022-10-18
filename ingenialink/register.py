@@ -1,5 +1,5 @@
 from enum import Enum
-from ingenialink.utils._utils import exc, pstr
+from ingenialink.utils._utils import exc
 
 from abc import ABC
 
@@ -257,7 +257,7 @@ class Register(ABC):
             self._enums = []
             for i in range(0, self.enums_count):
                 aux_dict = {
-                    'label': pstr(self._enums[i].label),
+                    'label': self._enums[i].label,
                     'value': self._enums[i].value
                 }
                 self._enums.append(aux_dict)
