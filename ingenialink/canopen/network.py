@@ -8,8 +8,7 @@ from ingenialink.utils._utils import *
 from ..exceptions import ILFirmwareLoadError, ILObjectNotExist, ILError
 from can import CanError
 from ..network import NET_PROT, NET_STATE, NET_DEV_EVT, Network
-from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT, \
-    STATUS_WORD_REGISTERS
+from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT
 
 import re
 import os
@@ -631,7 +630,7 @@ class CanopenNetwork(Network):
                             logger.info('Waiting for the drive to be available.')
                             while (time() - initial_time) < timeout and not stop:
                                 try:
-                                    servo.read(STATUS_WORD_REGISTERS[1])
+                                    servo.read(servo.STATUS_WORD_REGISTERS[1])
                                     stop = True
                                 except ILError:
                                     pass
