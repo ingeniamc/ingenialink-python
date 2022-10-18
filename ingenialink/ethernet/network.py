@@ -3,7 +3,7 @@ import ftplib
 from .servo import EthernetServo
 from ingenialink.utils.udp import UDP
 from ingenialink.utils._utils import *
-from ..network import NET_PROT, NET_TRANS_PROT
+from ..network import NET_PROT
 from ingenialink.network import Network, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError
 
@@ -198,7 +198,6 @@ class EthernetNetwork(Network):
         raise NotImplementedError
 
     def connect_to_slave(self, target, dictionary=None, port=1061,
-                         communication_protocol=NET_TRANS_PROT.UDP,
                          servo_status_listener=False,
                          net_status_listener=False):
         """Connects to a slave through the given network settings.
@@ -207,7 +206,6 @@ class EthernetNetwork(Network):
             target (str): IP of the target slave.
             dictionary (str): Path to the target dictionary file.
             port (int): Port to connect to the slave.
-            communication_protocol (NET_TRANS_PROT): Communication protocol, UPD or TCP.
             servo_status_listener (bool): Toggle the listener of the servo for
                 its status, errors, faults, etc.
             net_status_listener (bool): Toggle the listener of the network
@@ -217,11 +215,7 @@ class EthernetNetwork(Network):
             EthernetServo: Instance of the servo connected.
 
         """
-        if communication_protocol == NET_TRANS_PROT.UDP:
-            protocol = socket.SOCK_DGRAM
-        else:
-            protocol = socket.SOCK_STREAM
-        self.socket = socket.socket(socket.AF_INET, protocol)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.connect((target, port))
         servo = EthernetServo(self.socket, dictionary,
                               servo_status_listener)
