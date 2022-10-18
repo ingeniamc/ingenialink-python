@@ -206,29 +206,6 @@ class Servo(ABC):
         ILCreationError: If the servo cannot be created.
 
     """
-    _raw_read = {REG_DTYPE.U8: ['uint8_t *', lib.il_servo_raw_read_u8],
-                 REG_DTYPE.S8: ['int8_t *', lib.il_servo_raw_read_s8],
-                 REG_DTYPE.U16: ['uint16_t *', lib.il_servo_raw_read_u16],
-                 REG_DTYPE.S16: ['int16_t *', lib.il_servo_raw_read_s16],
-                 REG_DTYPE.U32: ['uint32_t *', lib.il_servo_raw_read_u32],
-                 REG_DTYPE.S32: ['int32_t *', lib.il_servo_raw_read_s32],
-                 REG_DTYPE.U64: ['uint64_t *', lib.il_servo_raw_read_u64],
-                 REG_DTYPE.S64: ['int64_t *', lib.il_servo_raw_read_s64],
-                 REG_DTYPE.FLOAT: ['float *', lib.il_servo_raw_read_float],
-                 REG_DTYPE.STR: ['uint32_t *', lib.il_servo_raw_read_str]}
-    """dict: Data buffer and function mappings for raw read operation."""
-
-    _raw_write = {REG_DTYPE.U8: lib.il_servo_raw_write_u8,
-                  REG_DTYPE.S8: lib.il_servo_raw_write_s8,
-                  REG_DTYPE.U16: lib.il_servo_raw_write_u16,
-                  REG_DTYPE.S16: lib.il_servo_raw_write_s16,
-                  REG_DTYPE.U32: lib.il_servo_raw_write_u32,
-                  REG_DTYPE.S32: lib.il_servo_raw_write_s32,
-                  REG_DTYPE.U64: lib.il_servo_raw_write_u64,
-                  REG_DTYPE.S64: lib.il_servo_raw_write_s64,
-                  REG_DTYPE.FLOAT: lib.il_servo_raw_write_float}
-    """dict: Function mappings for raw write operation."""
-
     def __init__(self, target):
         self.target = target
 
