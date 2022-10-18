@@ -5,6 +5,9 @@ import pytest
 from ingenialink.ethernet.servo import MONITORING_DIST_ENABLE, \
     DISTURBANCE_ENABLE
 from ingenialink.ethernet.register import REG_DTYPE
+from ingenialink.servo import SERVO_STATE
+from ingenialink.exceptions import ILStateError, ILTimeoutError
+from ingenialink.utils._utils import raise_err
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -167,3 +170,42 @@ def test_disturbance_data_size(create_disturbance):
     assert servo.disturbance_data_size == \
            DISTURBANCE_CH_DATA_SIZE * DISTURBANCE_NUM_SAMPLES
     servo.disturbance_remove_data()
+
+
+@pytest.mark.ethernet
+def test_enable_disable(connect_to_slave):
+    servo, net = connect_to_slave
+    servo.enable()
+    assert servo.status[1] == SERVO_STATE.ENABLED
+    servo.disable()
+    assert servo.status[1] == SERVO_STATE.DISABLED
+
+
+@pytest.mark.ethernet
+def test_fault_reset(connect_to_slave):
+    servo, net = connect_to_slave
+    prev_val = servo.read('DRV_PROT_USER_OVER_VOLT', subnode=1)
+    servo.write('DRV_PROT_USER_OVER_VOLT', data=10.0, subnode=1)
+    with pytest.raises(ILStateError):
+        servo.enable()
+    servo.fault_reset()
+    assert servo.status[1] != SERVO_STATE.FAULT
+    servo.write('DRV_PROT_USER_OVER_VOLT', data=prev_val, subnode=1)
+
+
+@pytest.mark.ethernet
+def test_is_alive(connect_to_slave):
+    servo, net = connect_to_slave
+    assert servo.is_alive()
+
+
+@pytest.mark.ethernet
+def test_status_word_wait_change(connect_to_slave):
+    servo, net = connect_to_slave
+    subnode = 1
+    timeout = 0.5
+    status_word = servo.read(servo.STATUS_WORD_REGISTERS[subnode],
+                             subnode=subnode)
+    r = servo.status_word_wait_change(status_word, timeout, subnode)
+    with pytest.raises(ILTimeoutError):
+        raise_err(r)
