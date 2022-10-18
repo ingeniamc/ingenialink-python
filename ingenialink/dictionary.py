@@ -333,8 +333,7 @@ class Dictionary(ABC):
             return current_read_register
 
         except KeyError as ke:
-            logger.error(f"The register with the ID {current_read_register[self.AttrRegDict.IDENTIFIER]} had some "
-                         f"problem because of an attribute's reading. Error caught: {ke}")
+            logger.error(f"Register with ID {current_read_register[self.AttrRegDict.IDENTIFIER]} has not attribute {ke}")
             return None
 
     @abstractmethod
