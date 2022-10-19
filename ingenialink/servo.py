@@ -820,6 +820,57 @@ class Servo:
         self.__disturbance_channels_size = {}
         self.__disturbance_channels_dtype = {}
 
+    def subscribe_to_status(self, callback):
+        """Subscribe to state changes.
+
+            Args:
+                callback (function): Callback function.
+
+            Returns:
+                int: Assigned slot.
+
+        """
+        if callback in self.__observers_servo_state:
+            logger.info('Callback already subscribed.')
+            return
+        self.__observers_servo_state.append(callback)
+
+    def unsubscribe_from_status(self, callback):
+        """Unsubscribe from state changes.
+
+        Args:
+            callback (function): Callback function.
+
+        """
+        if callback not in self.__observers_servo_state:
+            logger.info('Callback not subscribed.')
+            return
+        self.__observers_servo_state.remove(callback)
+
+    def is_alive(self):
+        """Checks if the servo responds to a reading a register.
+
+        Returns:
+            bool: Return code with the result of the read.
+
+        """
+        _is_alive = True
+        try:
+            self.read(self.STATUS_WORD_REGISTERS[1])
+        except ILError as e:
+            _is_alive = False
+            logger.error(e)
+        return _is_alive
+
+    def reload_errors(self, dictionary):
+        """Force to reload all dictionary errors.
+
+        Args:
+            dictionary (str): Dictionary.
+
+        """
+        pass
+
     def _get_reg(self, reg, subnode=1):
         """Validates a register.
         Args:

@@ -288,6 +288,34 @@ class EthernetServo(Servo):
         data = self._send_mcb_frame(MCB_CMD_READ, _reg.address, _reg.subnode)
         return convert_bytes_to_dtype(data, _reg.dtype)
 
+    def disturbance_write_data(self, channels, dtypes, data_arr):
+        """Write disturbance data.
+
+        Args:
+            channels (int or list of int): Channel identifier.
+            dtypes (int or list of int): Data type.
+            data_arr (list or list of list): Data array.
+
+        """
+        data, chunks = self.__disturbance_create_data_chunks(channels,
+                                                             dtypes,
+                                                             data_arr,
+                                                             ETH_MAX_WRITE_SIZE)
+        for chunk in chunks:
+            self._send_mcb_frame(MCB_CMD_WRITE, DIST_DATA.address,
+                                 DIST_DATA.subnode, chunk)
+        self.disturbance_data = data
+        self.disturbance_data_size = len(data)
+
+    def replace_dictionary(self, dictionary):
+        """Deletes and creates a new instance of the dictionary.
+
+        Args:
+            dictionary (str): Dictionary.
+
+        """
+        self._dictionary = EthernetDictionary(dictionary)
+
     def _send_mcb_frame(self, cmd, reg, subnode, data=None):
         """Send an MCB frame to the drive.
 
@@ -312,82 +340,3 @@ class EthernetServo(Servo):
         return self._send_mcb_frame(MCB_CMD_READ,
                                     MONITORING_DATA.address,
                                     MONITORING_DATA.subnode)
-
-    def disturbance_write_data(self, channels, dtypes, data_arr):
-        """Write disturbance data.
-
-        Args:
-            channels (int or list of int): Channel identifier.
-            dtypes (int or list of int): Data type.
-            data_arr (list or list of list): Data array.
-
-        """
-        data, chunks = self.__disturbance_create_data_chunks(channels,
-                                                             dtypes,
-                                                             data_arr,
-                                                             ETH_MAX_WRITE_SIZE)
-        for chunk in chunks:
-            self._send_mcb_frame(MCB_CMD_WRITE, DIST_DATA.address,
-                                 DIST_DATA.subnode, chunk)
-        self.disturbance_data = data
-        self.disturbance_data_size = len(data)
-
-    def subscribe_to_status(self, callback):
-        """Subscribe to state changes.
-
-            Args:
-                callback (function): Callback function.
-
-            Returns:
-                int: Assigned slot.
-
-        """
-        if callback in self.__observers_servo_state:
-            logger.info('Callback already subscribed.')
-            return
-        self.__observers_servo_state.append(callback)
-
-    def unsubscribe_from_status(self, callback):
-        """Unsubscribe from state changes.
-
-        Args:
-            callback (function): Callback function.
-
-        """
-        if callback not in self.__observers_servo_state:
-            logger.info('Callback not subscribed.')
-            return
-        self.__observers_servo_state.remove(callback)
-
-    def is_alive(self):
-        """Checks if the servo responds to a reading a register.
-
-        Returns:
-            bool: Return code with the result of the read.
-
-        """
-        _is_alive = True
-        try:
-            self.read(self.STATUS_WORD_REGISTERS[1])
-        except ILError as e:
-            _is_alive = False
-            logger.error(e)
-        return _is_alive
-
-    def reload_errors(self, dictionary):
-        """Force to reload all dictionary errors.
-
-        Args:
-            dictionary (str): Dictionary.
-
-        """
-        pass
-
-    def replace_dictionary(self, dictionary):
-        """Deletes and creates a new instance of the dictionary.
-
-        Args:
-            dictionary (str): Dictionary.
-
-        """
-        self._dictionary = EthernetDictionary(dictionary)

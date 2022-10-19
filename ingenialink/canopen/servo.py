@@ -3,7 +3,6 @@ import canopen
 from canopen.emcy import EmcyConsumer
 
 from ..constants import *
-from ..exceptions import *
 from .._ingenialink import lib
 from ingenialink.utils._utils import raise_err,\
     convert_bytes_to_dtype, convert_dtype_to_bytes
@@ -236,6 +235,32 @@ class CanopenServo(Servo):
         value = convert_dtype_to_bytes(data, _reg.dtype)
         self._write_raw(reg, value, subnode)
 
+    def replace_dictionary(self, dictionary):
+        """Deletes and creates a new instance of the dictionary.
+
+        Args:
+            dictionary (str): Dictionary.
+
+        """
+        self._dictionary = CanopenDictionary(dictionary)
+
+    def store_parameters(self, subnode=None, sdo_timeout=3):
+        """Store all the current parameters of the target subnode.
+
+        Args:
+            subnode (int): Subnode of the axis. `None` by default which stores
+            all the parameters.
+            sdo_timeout (int): Timeout value for each SDO response.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        self._change_sdo_timeout(sdo_timeout)
+        super().store_parameters(subnode)
+        self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
+
     def _write_raw(self, reg, data, subnode=1):
         """Writes a data to a target register.
 
@@ -298,92 +323,6 @@ class CanopenServo(Servo):
             self.__lock.release()
         return value
 
-    def replace_dictionary(self, dictionary):
-        """Deletes and creates a new instance of the dictionary.
-
-        Args:
-            dictionary (str): Dictionary.
-
-        """
-        self._dictionary = CanopenDictionary(dictionary)
-
-    def store_parameters(self, subnode=None, sdo_timeout=3):
-        """Store all the current parameters of the target subnode.
-
-        Args:
-            subnode (int): Subnode of the axis. `None` by default which stores
-            all the parameters.
-            sdo_timeout (int): Timeout value for each SDO response.
-
-        Raises:
-            ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
-
-        """
-        self._change_sdo_timeout(sdo_timeout)
-        super().store_parameters(subnode)
-        self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
-
-    def _change_sdo_timeout(self, value):
-        """Changes the SDO timeout of the node."""
-        self.__node.sdo.RESPONSE_TIMEOUT = value
-
-    def is_alive(self):
-        """Checks if the servo responds to a reading a register.
-
-        Returns:
-            bool: Return code with the result of the read.
-
-        """
-        _is_alive = True
-        try:
-            self.read(self.STATUS_WORD_REGISTERS[1])
-        except ILError as e:
-            _is_alive = False
-            logger.error(e)
-        return _is_alive
-
-    def subscribe_to_status(self, callback):
-        """Subscribe to state changes.
-
-            Args:
-                callback (function): Callback function.
-
-            Returns:
-                int: Assigned slot.
-
-        """
-        if callback in self.__observers_servo_state:
-            logger.info('Callback already subscribed.')
-            return
-        self.__observers_servo_state.append(callback)
-
-    def unsubscribe_from_status(self, callback):
-        """Unsubscribe from state changes.
-
-        Args:
-            callback (function): Callback function.
-
-        """
-        if callback not in self.__observers_servo_state:
-            logger.info('Callback not subscribed.')
-            return
-        self.__observers_servo_state.remove(callback)
-
-    def reload_errors(self, dictionary):
-        """Force to reload all dictionary errors.
-
-        Args:
-            dictionary (str): Dictionary.
-
-        """
-        pass
-
-    @property
-    def node(self):
-        """canopen.RemoteNode: Remote node of the servo."""
-        return self.__node
-
     def emcy_subscribe(self, cb):
         """Subscribe to emergency messages.
 
@@ -406,6 +345,28 @@ class CanopenServo(Servo):
 
         """
         del self.__emcy_consumer.callbacks[slot]
+
+    def disturbance_write_data(self, channels, dtypes, data_arr):
+        """Write disturbance data.
+
+        Args:
+            channels (int or list of int): Channel identifier.
+            dtypes (int or list of int): Data type.
+            data_arr (list or list of list): Data array.
+
+        """
+        data, chunks = self.__disturbance_create_data_chunks(channels,
+                                                             dtypes,
+                                                             data_arr,
+                                                             CAN_MAX_WRITE_SIZE)
+        for chunk in chunks:
+            self._write_raw(DIST_DATA, data=chunk, subnode=0)
+        self.disturbance_data = data
+        self.disturbance_data_size = len(data)
+
+    def _change_sdo_timeout(self, value):
+        """Changes the SDO timeout of the node."""
+        self.__node.sdo.RESPONSE_TIMEOUT = value
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address, subnode):
@@ -432,20 +393,8 @@ class CanopenServo(Servo):
         data_l = dtype << 8 | size
         return (data_h << 16) | data_l
 
-    def disturbance_write_data(self, channels, dtypes, data_arr):
-        """Write disturbance data.
+    @property
+    def node(self):
+        """canopen.RemoteNode: Remote node of the servo."""
+        return self.__node
 
-        Args:
-            channels (int or list of int): Channel identifier.
-            dtypes (int or list of int): Data type.
-            data_arr (list or list of list): Data array.
-
-        """
-        data, chunks = self.__disturbance_create_data_chunks(channels,
-                                                             dtypes,
-                                                             data_arr,
-                                                             CAN_MAX_WRITE_SIZE)
-        for chunk in chunks:
-            self._write_raw(DIST_DATA, data=chunk, subnode=0)
-        self.disturbance_data = data
-        self.disturbance_data_size = len(data)
