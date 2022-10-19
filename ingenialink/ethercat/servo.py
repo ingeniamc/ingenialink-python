@@ -17,8 +17,6 @@ from ingenialink.utils._utils import cstr, raise_err, pstr, to_ms, \
 from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_ALL, PASSWORD_RESTORE_ALL,\
     PASSWORD_STORE_RESTORE_SUB_0, DEFAULT_PDS_TIMEOUT, DIST_FRAME_SIZE
-# from ingenialink.servo import SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
-#     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
 from ingenialink.register_deprecated import dtype_size
 
 logger = ingenialogger.get_logger(__name__)
@@ -42,30 +40,6 @@ class SERVO_STATE(Enum):
     """Fault reactive."""
     FAULT = lib.IL_SERVO_STATE_FAULT
     """Fault."""
-
-
-class SERVO_FLAGS(Enum):
-    """Status Flags."""
-    TGT_REACHED = lib.IL_SERVO_FLAG_TGT_REACHED
-    """Target reached."""
-    ILIM_ACTIVE = lib.IL_SERVO_FLAG_ILIM_ACTIVE
-    """Internal limit active."""
-    HOMING_ATT = lib.IL_SERVO_FLAG_HOMING_ATT
-    """(Homing) attained."""
-    HOMING_ERR = lib.IL_SERVO_FLAG_HOMING_ERR
-    """(Homing) error."""
-    PV_VZERO = lib.IL_SERVO_FLAG_PV_VZERO
-    """(PV) Vocity speed is zero."""
-    PP_SPACK = lib.IL_SERVO_FLAG_PP_SPACK
-    """(PP) SP acknowledge."""
-    IP_ACTIVE = lib.IL_SERVO_FLAG_IP_ACTIVE
-    """(IP) active."""
-    CS_FOLLOWS = lib.IL_SERVO_FLAG_CS_FOLLOWS
-    """(CST/CSV/CSP) follow command value."""
-    FERR = lib.IL_SERVO_FLAG_FERR
-    """(CST/CSV/CSP/PV) following error."""
-    IANGLE_DET = lib.IL_SERVO_FLAG_IANGLE_DET
-    """Initial angle determination finished."""
 
 
 class SERVO_MODE(Enum):
