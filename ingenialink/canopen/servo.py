@@ -16,16 +16,6 @@ logger = ingenialogger.get_logger(__name__)
 
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
-MONITORING_BYTES_PER_BLOCK = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58E4, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-)
-
-MONITORING_ACTUAL_NUMBER_BYTES = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58B7, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-)
-
 MONITORING_DATA = CanopenRegister(
     identifier='', units='', subnode=0, idx=0x58B2, subidx=0x00, cyclic='CONFIG',
     dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
@@ -189,6 +179,14 @@ class CanopenServo(Servo):
     MONITORING_NUMBER_MAPPED_REGISTERS = CanopenRegister(
         identifier='', units='', subnode=0, idx=0x58E3, subidx=0x00, cyclic='CONFIG',
         dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    )
+    MONITORING_BYTES_PER_BLOCK = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58E4, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+    )
+    MONITORING_ACTUAL_NUMBER_BYTES = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58B7, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
     )
 
     def __init__(self, target, node, dictionary_path=None, eds=None,
@@ -413,105 +411,14 @@ class CanopenServo(Servo):
         """
         del self.__emcy_consumer.callbacks[slot]
 
-    def monitoring_remove_all_mapped_registers(self):
-        """Remove all monitoring mapped registers."""
-        self.write(self.MONITORING_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
-        self.__monitoring_num_mapped_registers = \
-            self.monitoring_get_num_mapped_registers()
-        self.__monitoring_channels_size = {}
-        self.__monitoring_channels_dtype = {}
-
     @staticmethod
     def __monitoring_disturbance_map_can_address(address, subnode):
         """Map CAN register address to IPB register address."""
         return address - (0x2000 + (0x800 * (subnode - 1)))
 
-    def monitoring_get_bytes_per_block(self):
-        """Obtain Bytes x Block configured.
-
-        Returns:
-            int: Actual number of Bytes x Block configured.
-
-        """
-        return self.read(MONITORING_BYTES_PER_BLOCK, subnode=0)
-
-    def monitoring_read_data(self):
-        """Obtain processed monitoring data.
-
-        Returns:
-            array: Actual processed monitoring data.
-
-        """
-        num_available_bytes = self.monitoring_actual_number_bytes()
-        self.__monitoring_data = []
-        while num_available_bytes > 0:
-            if num_available_bytes < MONITORING_BUFFER_SIZE:
-                limit = num_available_bytes
-            else:
-                limit = MONITORING_BUFFER_SIZE
-            tmp_data = self.__monitoring_read_data()[:limit]
-            self.__monitoring_data.append(tmp_data)
-            num_available_bytes = self.monitoring_actual_number_bytes()
-        self.__monitoring_process_data()
-
-    def monitoring_actual_number_bytes(self):
-        """Get the number of monitoring bytes left to be read."""
-        return self.read(MONITORING_ACTUAL_NUMBER_BYTES, subnode=0)
-
     def __monitoring_read_data(self):
         """Read monitoring data frame."""
         return self._read_raw(MONITORING_DATA, subnode=0)
-
-    def __monitoring_process_data(self):
-        """Arrange monitoring data."""
-        data_bytes = bytearray()
-        for i in range(len(self.__monitoring_data)):
-            data_bytes += self.__monitoring_data[i]
-        bytes_per_block = self.monitoring_get_bytes_per_block()
-        number_of_blocks = len(data_bytes) // bytes_per_block
-        number_of_channels = self.monitoring_get_num_mapped_registers()
-        res = [[] for _ in range(number_of_channels)]
-        for block in range(number_of_blocks):
-            block_data = data_bytes[block * bytes_per_block:
-                                    block * bytes_per_block +
-                                    bytes_per_block]
-            for channel in range(number_of_channels):
-                channel_data_size = self.__monitoring_channels_size[channel]
-                val = convert_bytes_to_dtype(
-                        block_data[:channel_data_size],
-                        self.__monitoring_channels_dtype[channel])
-                res[channel].append(val)
-                block_data = block_data[channel_data_size:]
-        self.__processed_monitoring_data = res
-
-    def monitoring_channel_data(self, channel, dtype=None):
-        """Obtain processed monitoring data of a channel.
-
-        Args:
-            channel (int): Identity channel number.
-            dtype (REG_DTYPE): Data type of the register to map.
-
-        Note:
-            The dtype argument is not necessary for this function, it
-            was added to maintain compatibility with IPB's implementation
-            of monitoring.
-
-        Returns:
-            List: Monitoring data.
-
-        """
-        return self.__processed_monitoring_data[channel]
-
-    @property
-    def monitoring_data_size(self):
-        """Obtain monitoring data size.
-
-        Returns:
-            int: Current monitoring data size in bytes.
-
-        """
-        number_of_samples = self.read('MON_CFG_WINDOW_SAMP', subnode=0)
-        return self.monitoring_get_bytes_per_block() * number_of_samples
 
     def disturbance_enable(self):
         """Enable disturbance process."""
