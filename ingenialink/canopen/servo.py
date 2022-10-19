@@ -3,7 +3,7 @@ import threading
 import canopen
 from canopen.emcy import EmcyConsumer
 
-from .constants import *
+from ingenialink.utils.constants import *
 from ..constants import *
 from ..exceptions import *
 from .._ingenialink import lib
@@ -59,21 +59,6 @@ REVISION_NUMBER_REGISTERS = {
     1: CanopenRegister(
         identifier='', units='', subnode=1, idx=0x26E2, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-    )
-}
-
-CONTROL_WORD_REGISTERS = {
-    1: CanopenRegister(
-        identifier='', units='', subnode=1, idx=0x2010, subidx=0x00,
-        cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-    ),
-    2: CanopenRegister(
-        identifier='', units='', subnode=2, idx=0x2810, subidx=0x00,
-        cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-    ),
-    3: CanopenRegister(
-        identifier='', units='', subnode=3, idx=0x3010, subidx=0x00,
-        cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     )
 }
 
@@ -199,6 +184,20 @@ class CanopenServo(Servo):
             cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
         )
     }
+    CONTROL_WORD_REGISTERS = {
+        1: CanopenRegister(
+            identifier='', units='', subnode=1, idx=0x2010, subidx=0x00,
+            cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+        ),
+        2: CanopenRegister(
+            identifier='', units='', subnode=2, idx=0x2810, subidx=0x00,
+            cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+        ),
+        3: CanopenRegister(
+            identifier='', units='', subnode=3, idx=0x3010, subidx=0x00,
+            cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+        )
+    }
 
     def __init__(self, target, node, dictionary_path=None, eds=None,
                  servo_status_listener=False):
@@ -313,147 +312,6 @@ class CanopenServo(Servo):
             self.__lock.release()
         return value
 
-    def enable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
-        """Enable PDS.
-
-        Args:
-            subnode (int): Subnode of the drive.
-            timeout (int): Timeout in milliseconds.
-
-       Raises:
-            ILTimeoutError: The servo could not be enabled due to timeout.
-            ILError: Failed to enable PDS.
-
-        """
-        r = 0
-
-        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
-                                subnode=subnode)
-        state = self.status_word_decode(status_word)
-        self._set_state(state, subnode)
-
-        # Try fault reset if faulty
-        if self.status[subnode].value in [
-            lib.IL_SERVO_STATE_FAULT,
-            lib.IL_SERVO_STATE_FAULTR,
-        ]:
-            self.fault_reset(subnode=subnode)
-
-        while self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
-            status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
-                                    subnode=subnode)
-            state = self.status_word_decode(status_word)
-            self._set_state(state, subnode)
-            if self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
-                # Check state and command action to reach enabled
-                cmd = IL_MC_PDS_CMD_EO
-                if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT:
-                    raise_err(lib.IL_ESTATE)
-                elif self.status[subnode].value == lib.IL_SERVO_STATE_NRDY:
-                    cmd = IL_MC_PDS_CMD_DV
-                elif self.status[subnode].value == lib.IL_SERVO_STATE_DISABLED:
-                    cmd = IL_MC_PDS_CMD_SD
-                elif self.status[subnode].value == lib.IL_SERVO_STATE_RDY:
-                    cmd = IL_MC_PDS_CMD_SOEO
-
-                self.write(CONTROL_WORD_REGISTERS[subnode], cmd,
-                           subnode=subnode)
-
-                # Wait for state change
-                r = self.status_word_wait_change(status_word, timeout,
-                                                 subnode=subnode)
-                if r < 0:
-                    raise_err(r)
-
-                # Read the current status word
-                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
-                                        subnode=subnode)
-                state = self.status_word_decode(status_word)
-                self._set_state(state, subnode)
-        raise_err(r)
-
-    def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
-        """Disable PDS.
-
-        Args:
-            subnode (int): Subnode of the drive.
-            timeout (int): Timeout in milliseconds.
-
-        Raises:
-            ILTimeoutError: The servo could not be disabled due to timeout.
-            ILError: Failed to disable PDS.
-
-        """
-        r = 0
-
-        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
-                                subnode=subnode)
-        state = self.status_word_decode(status_word)
-        self._set_state(state, subnode)
-
-        while self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
-            state = self.status_word_decode(status_word)
-            self._set_state(state, subnode)
-
-            if self.status[subnode].value in [
-                lib.IL_SERVO_STATE_FAULT,
-                lib.IL_SERVO_STATE_FAULTR,
-            ]:
-                # Try fault reset if faulty
-                self.fault_reset(subnode=subnode)
-                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
-                                        subnode=subnode)
-                state = self.status_word_decode(status_word)
-                self._set_state(state, subnode)
-            elif self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
-                # Check state and command action to reach disabled
-                self.write(CONTROL_WORD_REGISTERS[subnode],
-                           IL_MC_PDS_CMD_DV, subnode=subnode)
-
-                # Wait until status word changes
-                r = self.status_word_wait_change(status_word, timeout,
-                                                 subnode=subnode)
-                if r < 0:
-                    raise_err(r)
-                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
-                                        subnode=subnode)
-                state = self.status_word_decode(status_word)
-                self._set_state(state, subnode)
-        raise_err(r)
-
-    def fault_reset(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
-        """Executes a fault reset on the drive.
-
-        Args:
-            subnode (int): Subnode of the drive.
-            timeout (int): Timeout in milliseconds.
-
-        Raises:
-            ILTimeoutError: If fault reset spend too much time.
-            ILError: Failed to fault reset.
-
-        """
-        r = 0
-        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
-                                subnode=subnode)
-        state = self.status_word_decode(status_word)
-        if state.value in [
-            lib.IL_SERVO_STATE_FAULT,
-            lib.IL_SERVO_STATE_FAULTR,
-        ]:
-            # Check if faulty, if so try to reset (0->1)
-            self.write(CONTROL_WORD_REGISTERS[subnode], 0, subnode=subnode)
-            self.write(CONTROL_WORD_REGISTERS[subnode], IL_MC_CW_FR,
-                       subnode=subnode)
-            # Wait until status word changes
-            r = self.status_word_wait_change(status_word, timeout,
-                                             subnode=subnode)
-            status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
-                                    subnode=subnode)
-            state = self.status_word_decode(status_word)
-        self._set_state(state, subnode)
-        raise_err(r)
-
     def replace_dictionary(self, dictionary):
         """Deletes and creates a new instance of the dictionary.
 
@@ -503,20 +361,6 @@ class CanopenServo(Servo):
         """SERVO_STATE: Current drive state."""
         return self.__state[subnode], None
 
-    def _set_state(self, state, subnode):
-        """Sets the state internally.
-
-        Args:
-            state (SERVO_STATE): Current servo state.
-            subnode (int): Subnode of the drive.
-
-        """
-        current_state = self.__state[subnode]
-        if current_state != state:
-            self.status[subnode] = state
-            for callback in self.__observers_servo_state:
-                callback(state, None, subnode)
-
     def subscribe_to_status(self, callback):
         """Subscribe to state changes.
 
@@ -543,33 +387,6 @@ class CanopenServo(Servo):
             logger.info('Callback not subscribed.')
             return
         self.__observers_servo_state.remove(callback)
-
-    def status_word_wait_change(self, status_word, timeout, subnode=1):
-        """Waits for a status word change.
-
-        Args:
-            status_word (int): Status word to wait for.
-            timeout (int): Maximum value to wait for the change.
-            subnode (int): Subnode of the drive.
-
-        Returns:
-            int: Error code.
-
-        """
-        r = 0
-        start_time = int(round(time.time() * 1000))
-        actual_status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
-                                       subnode=subnode)
-        while actual_status_word == status_word:
-            current_time = int(round(time.time() * 1000))
-            time_diff = (current_time - start_time)
-            if time_diff > timeout:
-                r = lib.IL_ETIMEDOUT
-                return r
-            actual_status_word = self.read(
-                self.STATUS_WORD_REGISTERS[subnode],
-                subnode=subnode)
-        return r
 
     def reload_errors(self, dictionary):
         """Force to reload all dictionary errors.
@@ -678,15 +495,6 @@ class CanopenServo(Servo):
             'revision_number': revision_number,
             'hw_variant': hw_variant
         }
-
-    @property
-    def status(self):
-        """tuple: Servo status and state flags."""
-        return self.__state
-
-    @status.setter
-    def status(self, new_state):
-        self.__state = new_state
 
     @property
     def subnodes(self):

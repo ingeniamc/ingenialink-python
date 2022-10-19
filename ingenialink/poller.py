@@ -1,5 +1,5 @@
 from ingenialink.utils._utils import raise_err
-from ingenialink.canopen import constants
+from ingenialink.utils import constants
 
 from datetime import datetime
 from threading import Timer, RLock

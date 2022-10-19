@@ -4,12 +4,15 @@ import threading
 from enum import Enum
 import xml.etree.ElementTree as ET
 
-from ._ingenialink import ffi, lib
+from ._ingenialink import lib
 from .constants import DEFAULT_DRIVE_NAME
 from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError
 from ingenialink.register import Register
-from ingenialink.utils._utils import get_drive_identification, cleanup_register
-from ingenialink.constants import PASSWORD_RESTORE_ALL, PASSWORD_STORE_ALL
+from ingenialink.utils._utils import get_drive_identification, cleanup_register, \
+    raise_err
+from ingenialink.constants import PASSWORD_RESTORE_ALL, PASSWORD_STORE_ALL, \
+    DEFAULT_PDS_TIMEOUT
+from ingenialink.utils import constants
 
 import ingenialogger
 
@@ -436,6 +439,215 @@ class Servo:
         finally:
             time.sleep(1.5)
 
+    def enable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
+        """Enable PDS.
+
+        Args:
+            subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
+
+       Raises:
+            ILTimeoutError: The servo could not be enabled due to timeout.
+            ILError: Failed to enable PDS.
+
+        """
+        r = 0
+
+        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
+        state = self.status_word_decode(status_word)
+        self._set_state(state, subnode)
+
+        # Try fault reset if faulty
+        if self.status[subnode].value in [
+            lib.IL_SERVO_STATE_FAULT,
+            lib.IL_SERVO_STATE_FAULTR,
+        ]:
+            self.fault_reset(subnode=subnode)
+
+        while self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+            status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
+            state = self.status_word_decode(status_word)
+            self._set_state(state, subnode)
+            if self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+                # Check state and command action to reach enabled
+                cmd = constants.IL_MC_PDS_CMD_EO
+                if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT:
+                    raise_err(lib.IL_ESTATE)
+                elif self.status[subnode].value == lib.IL_SERVO_STATE_NRDY:
+                    cmd = constants.IL_MC_PDS_CMD_DV
+                elif self.status[subnode].value == \
+                        lib.IL_SERVO_STATE_DISABLED:
+                    cmd = constants.IL_MC_PDS_CMD_SD
+                elif self.status[subnode].value == lib.IL_SERVO_STATE_RDY:
+                    cmd = constants.IL_MC_PDS_CMD_SOEO
+
+                self.write(self.CONTROL_WORD_REGISTERS[subnode], cmd,
+                           subnode=subnode)
+
+                # Wait for state change
+                r = self.status_word_wait_change(status_word, timeout,
+                                                 subnode=subnode)
+                if r < 0:
+                    raise_err(r)
+
+                # Read the current status word
+                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
+                state = self.status_word_decode(status_word)
+                self._set_state(state, subnode)
+        raise_err(r)
+
+    def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
+        """Disable PDS.
+
+        Args:
+            subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
+
+        Raises:
+            ILTimeoutError: The servo could not be disabled due to timeout.
+            ILError: Failed to disable PDS.
+
+        """
+        r = 0
+
+        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
+        state = self.status_word_decode(status_word)
+        self._set_state(state, subnode)
+
+        while self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
+            state = self.status_word_decode(status_word)
+            self._set_state(state, subnode)
+
+            if self.status[subnode].value in [
+                lib.IL_SERVO_STATE_FAULT,
+                lib.IL_SERVO_STATE_FAULTR,
+            ]:
+                # Try fault reset if faulty
+                self.fault_reset(subnode=subnode)
+                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
+                state = self.status_word_decode(status_word)
+                self._set_state(state, subnode)
+            elif self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
+                # Check state and command action to reach disabled
+                self.write(self.CONTROL_WORD_REGISTERS[subnode],
+                           constants.IL_MC_PDS_CMD_DV, subnode=subnode)
+
+                # Wait until status word changes
+                r = self.status_word_wait_change(status_word, timeout,
+                                                 subnode=subnode)
+                if r < 0:
+                    raise_err(r)
+                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                                        subnode=subnode)
+                state = self.status_word_decode(status_word)
+                self._set_state(state, subnode)
+        raise_err(r)
+
+    def fault_reset(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
+        """Executes a fault reset on the drive.
+
+        Args:
+            subnode (int): Subnode of the drive.
+            timeout (int): Timeout in milliseconds.
+
+        Raises:
+            ILTimeoutError: If fault reset spend too much time.
+            ILError: Failed to fault reset.
+
+        """
+        r = 0
+        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                                subnode=subnode)
+        state = self.status_word_decode(status_word)
+        if state.value in [
+            lib.IL_SERVO_STATE_FAULT,
+            lib.IL_SERVO_STATE_FAULTR,
+        ]:
+            # Check if faulty, if so try to reset (0->1)
+            self.write(self.CONTROL_WORD_REGISTERS[subnode], 0,
+                       subnode=subnode)
+            self.write(self.CONTROL_WORD_REGISTERS[subnode],
+                       constants.IL_MC_CW_FR, subnode=subnode)
+            # Wait until status word changes
+            r = self.status_word_wait_change(status_word, timeout,
+                                             subnode=subnode)
+            status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                                    subnode=subnode)
+            state = self.status_word_decode(status_word)
+        self._set_state(state, subnode)
+        raise_err(r)
+
+    def status_word_wait_change(self, status_word, timeout, subnode=1):
+        """Waits for a status word change.
+
+        Args:
+            status_word (int): Status word to wait for.
+            timeout (int): Maximum value to wait for the change.
+            subnode (int): Subnode of the drive.
+
+        Returns:
+            int: Error code.
+
+        """
+        r = 0
+        start_time = int(round(time.time() * 1000))
+        actual_status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                                       subnode=subnode)
+        while actual_status_word == status_word:
+            current_time = int(round(time.time() * 1000))
+            time_diff = (current_time - start_time)
+            if time_diff > timeout:
+                r = lib.IL_ETIMEDOUT
+                return r
+            actual_status_word = self.read(
+                self.STATUS_WORD_REGISTERS[subnode],
+                subnode=subnode)
+        return r
+
+    @staticmethod
+    def status_word_decode(status_word):
+        """Decodes the status word to a known value.
+
+        Args:
+            status_word (int): Read value for the status word.
+
+        Returns:
+            SERVO_STATE: Status word value.
+
+        """
+        if (status_word & constants.IL_MC_PDS_STA_NRTSO_MSK) == \
+                constants.IL_MC_PDS_STA_NRTSO:
+            state = lib.IL_SERVO_STATE_NRDY
+        elif (status_word & constants.IL_MC_PDS_STA_SOD_MSK) == \
+                constants.IL_MC_PDS_STA_SOD:
+            state = lib.IL_SERVO_STATE_DISABLED
+        elif (status_word & constants.IL_MC_PDS_STA_RTSO_MSK) == \
+                constants.IL_MC_PDS_STA_RTSO:
+            state = lib.IL_SERVO_STATE_RDY
+        elif (status_word & constants.IL_MC_PDS_STA_SO_MSK) == \
+                constants.IL_MC_PDS_STA_SO:
+            state = lib.IL_SERVO_STATE_ON
+        elif (status_word & constants.IL_MC_PDS_STA_OE_MSK) == \
+                constants.IL_MC_PDS_STA_OE:
+            state = lib.IL_SERVO_STATE_ENABLED
+        elif (status_word & constants.IL_MC_PDS_STA_QSA_MSK) == \
+                constants.IL_MC_PDS_STA_QSA:
+            state = lib.IL_SERVO_STATE_QSTOP
+        elif (status_word & constants.IL_MC_PDS_STA_FRA_MSK) == \
+                constants.IL_MC_PDS_STA_FRA:
+            state = lib.IL_SERVO_STATE_FAULTR
+        elif (status_word & constants.IL_MC_PDS_STA_F_MSK) == \
+                constants.IL_MC_PDS_STA_F:
+            state = lib.IL_SERVO_STATE_FAULT
+        else:
+            state = lib.IL_SERVO_STATE_NRDY
+        return SERVO_STATE(state)
+
     def _get_reg(self, reg, subnode=1):
         """Validates a register.
         Args:
@@ -537,6 +749,20 @@ class Servo:
                          "register %s: %s",
                          str(register.attrib['id']), e)
 
+    def _set_state(self, state, subnode):
+        """Sets the state internally.
+
+        Args:
+            state (SERVO_STATE): Current servo state.
+            subnode (int): Subnode of the drive.
+
+        """
+        current_state = self.__state[subnode]
+        if current_state != state:
+            self.status[subnode] = state
+            for callback in self.__observers_servo_state:
+                callback(state, None, subnode)
+
     @property
     def dictionary(self):
         """Returns dictionary object"""
@@ -550,3 +776,12 @@ class Servo:
     @full_name.setter
     def full_name(self, new_name):
         self.__full_name = new_name
+
+    @property
+    def status(self):
+        """tuple: Servo status and state flags."""
+        return self.__state
+
+    @status.setter
+    def status(self, new_state):
+        self.__state = new_state
