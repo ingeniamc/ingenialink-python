@@ -3,6 +3,7 @@ import io
 import os
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
+from enum import Enum
 
 import ingenialogger
 import numpy as np
@@ -16,11 +17,148 @@ from ingenialink.utils._utils import cstr, raise_err, pstr, to_ms, \
 from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_ALL, PASSWORD_RESTORE_ALL,\
     PASSWORD_STORE_RESTORE_SUB_0, DEFAULT_PDS_TIMEOUT, DIST_FRAME_SIZE
-from ingenialink.servo import SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
-    SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
+# from ingenialink.servo import SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
+#     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
 from ingenialink.register_deprecated import dtype_size
 
 logger = ingenialogger.get_logger(__name__)
+
+
+class SERVO_STATE(Enum):
+    """Servo states."""
+    NRDY = lib.IL_SERVO_STATE_NRDY
+    """Not ready to switch on."""
+    DISABLED = lib.IL_SERVO_STATE_DISABLED
+    """Switch on disabled."""
+    RDY = lib.IL_SERVO_STATE_RDY
+    """Ready to be switched on."""
+    ON = lib.IL_SERVO_STATE_ON
+    """Power switched on."""
+    ENABLED = lib.IL_SERVO_STATE_ENABLED
+    """Enabled."""
+    QSTOP = lib.IL_SERVO_STATE_QSTOP
+    """Quick stop."""
+    FAULTR = lib.IL_SERVO_STATE_FAULTR
+    """Fault reactive."""
+    FAULT = lib.IL_SERVO_STATE_FAULT
+    """Fault."""
+
+
+class SERVO_FLAGS(Enum):
+    """Status Flags."""
+    TGT_REACHED = lib.IL_SERVO_FLAG_TGT_REACHED
+    """Target reached."""
+    ILIM_ACTIVE = lib.IL_SERVO_FLAG_ILIM_ACTIVE
+    """Internal limit active."""
+    HOMING_ATT = lib.IL_SERVO_FLAG_HOMING_ATT
+    """(Homing) attained."""
+    HOMING_ERR = lib.IL_SERVO_FLAG_HOMING_ERR
+    """(Homing) error."""
+    PV_VZERO = lib.IL_SERVO_FLAG_PV_VZERO
+    """(PV) Vocity speed is zero."""
+    PP_SPACK = lib.IL_SERVO_FLAG_PP_SPACK
+    """(PP) SP acknowledge."""
+    IP_ACTIVE = lib.IL_SERVO_FLAG_IP_ACTIVE
+    """(IP) active."""
+    CS_FOLLOWS = lib.IL_SERVO_FLAG_CS_FOLLOWS
+    """(CST/CSV/CSP) follow command value."""
+    FERR = lib.IL_SERVO_FLAG_FERR
+    """(CST/CSV/CSP/PV) following error."""
+    IANGLE_DET = lib.IL_SERVO_FLAG_IANGLE_DET
+    """Initial angle determination finished."""
+
+
+class SERVO_MODE(Enum):
+    """Operation Mode."""
+    OLV = lib.IL_SERVO_MODE_OLV
+    """Open loop (vector mode)."""
+    OLS = lib.IL_SERVO_MODE_OLS
+    """Open loop (scalar mode)."""
+    PP = lib.IL_SERVO_MODE_PP
+    """Profile position mode."""
+    VEL = lib.IL_SERVO_MODE_VEL
+    """Velocity mode."""
+    PV = lib.IL_SERVO_MODE_PV
+    """Profile velocity mode."""
+    PT = lib.IL_SERVO_MODE_PT
+    """Profile torque mode."""
+    HOMING = lib.IL_SERVO_MODE_HOMING
+    """Homing mode."""
+    IP = lib.IL_SERVO_MODE_IP
+    """Interpolated position mode."""
+    CSP = lib.IL_SERVO_MODE_CSP
+    """Cyclic sync position mode."""
+    CSV = lib.IL_SERVO_MODE_CSV
+    """Cyclic sync velocity mode."""
+    CST = lib.IL_SERVO_MODE_CST
+    """Cyclic sync torque mode."""
+
+
+class SERVO_UNITS_TORQUE(Enum):
+    """Torque Units."""
+    NATIVE = lib.IL_UNITS_TORQUE_NATIVE
+    """Native"""
+    MN = lib.IL_UNITS_TORQUE_MNM
+    """Millinewtons*meter."""
+    N = lib.IL_UNITS_TORQUE_NM
+    """Newtons*meter."""
+
+
+class SERVO_UNITS_POS(Enum):
+    """Position Units."""
+    NATIVE = lib.IL_UNITS_POS_NATIVE
+    """Native."""
+    REV = lib.IL_UNITS_POS_REV
+    """Revolutions."""
+    RAD = lib.IL_UNITS_POS_RAD
+    """Radians."""
+    DEG = lib.IL_UNITS_POS_DEG
+    """Degrees."""
+    UM = lib.IL_UNITS_POS_UM
+    """Micrometers."""
+    MM = lib.IL_UNITS_POS_MM
+    """Millimeters."""
+    M = lib.IL_UNITS_POS_M
+    """Meters."""
+
+
+class SERVO_UNITS_VEL(Enum):
+    """Velocity Units."""
+    NATIVE = lib.IL_UNITS_VEL_NATIVE
+    """Native."""
+    RPS = lib.IL_UNITS_VEL_RPS
+    """Revolutions per second."""
+    RPM = lib.IL_UNITS_VEL_RPM
+    """Revolutions per minute."""
+    RAD_S = lib.IL_UNITS_VEL_RAD_S
+    """Radians/second."""
+    DEG_S = lib.IL_UNITS_VEL_DEG_S
+    """Degrees/second."""
+    UM_S = lib.IL_UNITS_VEL_UM_S
+    """Micrometers/second."""
+    MM_S = lib.IL_UNITS_VEL_MM_S
+    """Millimeters/second."""
+    M_S = lib.IL_UNITS_VEL_M_S
+    """Meters/second."""
+
+
+class SERVO_UNITS_ACC(Enum):
+    """Acceleration Units."""
+    NATIVE = lib.IL_UNITS_ACC_NATIVE
+    """Native."""
+    REV_S2 = lib.IL_UNITS_ACC_REV_S2
+    """Revolutions/second^2."""
+    RAD_S2 = lib.IL_UNITS_ACC_RAD_S2
+    """Radians/second^2."""
+    DEG_S2 = lib.IL_UNITS_ACC_DEG_S2
+    """Degrees/second^2."""
+    UM_S2 = lib.IL_UNITS_ACC_UM_S2
+    """Micrometers/second^2."""
+    MM_S2 = lib.IL_UNITS_ACC_MM_S2
+    """Millimeters/second^2."""
+    M_S2 = lib.IL_UNITS_ACC_M_S2
+    """Meters/second^2."""
+
 
 PRODUCT_ID_REGISTERS = {
     0: IPBRegister(
