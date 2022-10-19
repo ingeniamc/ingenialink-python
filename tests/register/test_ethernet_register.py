@@ -81,8 +81,7 @@ def test_storage_dtype(test2_dtype, test2_storage):
 
 
 @pytest.mark.smoke
-@pytest.mark.parametrize("test2_range", "test_expected", [(None, None), (-20, 20)],
-                         [(dtypes_ranges[test2_dtype]["min"], )])
+@pytest.mark.parametrize("test2_range", [(None, None), (-20, 20)])
 @pytest.mark.parametrize("test3_dtype", [REG_DTYPE.S8, REG_DTYPE.FLOAT])
 def test_range_ethernet_register(test2_range, test3_dtype):
     enums = [{'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}]

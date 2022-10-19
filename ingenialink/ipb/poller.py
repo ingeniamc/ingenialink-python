@@ -2,10 +2,9 @@ from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import raise_null, raise_err, to_ms
 from ingenialink.register_deprecated import _get_reg_id
 from ingenialink.ipb.servo import IPBServo
-from ingenialink.poller import Poller
 
 
-class IPBPoller(Poller):
+class IPBPoller:
     """IPB poller.
 
     Args:
@@ -17,7 +16,8 @@ class IPBPoller(Poller):
 
     """
     def __init__(self, servo, num_channels):
-        super(IPBPoller, self).__init__(servo, num_channels)
+        self.__servo = servo
+        self.__num_channels = num_channels
         poller = lib.il_poller_create(servo._cffi_servo, num_channels)
         raise_null(poller)
 
@@ -98,3 +98,21 @@ class IPBPoller(Poller):
                 d.append(None)
 
         return t, d, bool(acq.lost)
+
+    @property
+    def servo(self):
+        """Servo: Servo instance to be used."""
+        return self.__servo
+
+    @servo.setter
+    def servo(self, value):
+        self.__servo = value
+
+    @property
+    def num_channels(self):
+        """int: Number of channels in the poller."""
+        return self.__num_channels
+
+    @num_channels.setter
+    def num_channels(self, value):
+        self.__num_channels = value

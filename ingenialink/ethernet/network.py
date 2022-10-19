@@ -269,6 +269,7 @@ class EthernetNetwork(Network):
         self.__listener_net_status = None
 
     def _notify_status(self, status):
+        """Notify subscribers of a network state change."""
         for callback in self.__observers_net_state:
             callback(status)
 

@@ -1,0 +1,581 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<IngeniaDictionary>
+  <Header>
+    <Version>2</Version>
+    <DefaultLanguage>en_US</DefaultLanguage>
+  </Header>
+  <Body>
+    <Device family="Summit" firmwareVersion="2.0.0" ProductCode="57745411" PartNumber="DM2-NET-C" RevisionNumber="196613" Interface="ETH" name="Generic">
+      <Categories>
+        <Category id="OTHERS">
+          <Labels>
+            <Label lang="en_US">Others</Label>
+          </Labels>
+        </Category>
+        <Category id="IDENTIFICATION">
+          <Labels>
+            <Label lang="en_US">Product Identification</Label>
+          </Labels>
+        </Category>
+        <Category id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Commutation</Label>
+          </Labels>
+        </Category>
+        <Category id="PROTECTIONS">
+          <Labels>
+            <Label lang="en_US">Protections</Label>
+          </Labels>
+        </Category>
+        <Category id="INTERNAL">
+          <Labels>
+            <Label lang="en_US">Internal</Label>
+          </Labels>
+        </Category>
+        <Category id="CONTROL">
+          <Labels>
+            <Label lang="en_US">Control loop</Label>
+          </Labels>
+        </Category>
+        <Category id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Feedback</Label>
+          </Labels>
+        </Category>
+      </Categories>
+      <Axes>
+        <Axis subnode="0">
+          <Registers>
+            <Register access="r" address_type="NVM_NONE" address="0x000F" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" units="-" subnode="0" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Last error</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0090" dtype="u32" id="DIST_CFG_REG0_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 0." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 0</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0091" dtype="u32" id="DIST_CFG_REG1_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 1." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 1</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0092" dtype="u32" id="DIST_CFG_REG2_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 2." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 2</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0093" dtype="u32" id="DIST_CFG_REG3_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 3." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 3</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0094" dtype="u32" id="DIST_CFG_REG4_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 4." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 4</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0095" dtype="u32" id="DIST_CFG_REG5_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 5." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 5</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0096" dtype="u32" id="DIST_CFG_REG6_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 6." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 6</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0097" dtype="u32" id="DIST_CFG_REG7_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 7." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 7</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0098" dtype="u32" id="DIST_CFG_REG8_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 8." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 8</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0099" dtype="u32" id="DIST_CFG_REG9_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 9." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 9</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x009A" dtype="u32" id="DIST_CFG_REG10_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 10." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 10</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x009B" dtype="u32" id="DIST_CFG_REG11_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 11." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 11</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x009C" dtype="u32" id="DIST_CFG_REG12_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 12." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 12</Label>
+              </Labels>
+            </Register>
+          </Registers>
+        </Axis>
+        <Axis subnode="1">
+          <Registers>
+            <Register access="r" address_type="NVM_NONE" address="0x000F" dtype="s32" id="DRV_DIAG_ERROR_LAST" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Last error</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0010" dtype="u16" id="DRV_STATE_CONTROL" units="-" subnode="1" cyclic="CYCLIC_RX" desc="Parameter to manage the drive state machine. It is compliant with DS402." cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Control word</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0011" dtype="u16" id="DRV_STATE_STATUS" units="-" subnode="1" cyclic="CYCLIC_TX" desc="" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Status word</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_CFG" address="0x0014" dtype="u16" id="DRV_OP_CMD" units="-" subnode="1" cyclic="CYCLIC_RX" desc="User requested mode of operation" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Operation mode</Label>
+              </Labels>
+              <Enumerations>
+                <Enum value="0">Voltage</Enum>
+                <Enum value="1">Current amplifier</Enum>
+                <Enum value="2">Current</Enum>
+                <Enum value="34">Cyclic current</Enum>
+                <Enum value="3">Velocity</Enum>
+                <Enum value="35">Cyclic velocity</Enum>
+                <Enum value="19">Profile velocity</Enum>
+                <Enum value="4">Position</Enum>
+                <Enum value="36">Cyclic position</Enum>
+                <Enum value="20">Profile position</Enum>
+                <Enum value="68">Profile position S-curve</Enum>
+                <Enum value="180">PVT</Enum>
+                <Enum value="275">Homing</Enum>
+              </Enumerations>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0015" dtype="u16" id="DRV_OP_VALUE" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Indicates the mode of operation applied in the drive" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Operation mode display</Label>
+              </Labels>
+              <Enumerations>
+                <Enum value="0">Voltage</Enum>
+                <Enum value="1">Current amplifier</Enum>
+                <Enum value="2">Current</Enum>
+                <Enum value="34">Cyclic current</Enum>
+                <Enum value="3">Velocity</Enum>
+                <Enum value="35">Cyclic velocity</Enum>
+                <Enum value="19">Profile velocity</Enum>
+                <Enum value="4">Position</Enum>
+                <Enum value="36">Cyclic position</Enum>
+                <Enum value="20">Profile position</Enum>
+                <Enum value="68">Profile position S-curve</Enum>
+                <Enum value="180">PVT</Enum>
+                <Enum value="275">Homing</Enum>
+              </Enumerations>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0018" dtype="float" id="CL_VOL_Q_SET_POINT" units="V" subnode="1" cyclic="CYCLIC_RX" desc="User quadrature voltage set-point" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Voltage quadrature set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0019" dtype="float" id="CL_VOL_D_SET_POINT" units="V" subnode="1" cyclic="CYCLIC_RX" desc="User direct voltage set-point" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Voltage direct set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x001A" dtype="float" id="CL_CUR_Q_SET_POINT" units="A" subnode="1" cyclic="CYCLIC_RX" desc="User set-point of quadrature current in Amperes" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Current quadrature set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x001B" dtype="float" id="CL_CUR_D_SET_POINT" units="A" subnode="1" cyclic="CYCLIC_RX" desc="User set-point of direct current in Amperes" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Current direct set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x001C" dtype="float" id="CL_CUR_A_SET_POINT" units="A" subnode="1" cyclic="CYCLIC_RX" desc="User set-point for current of phase A in Amperes" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Current A set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x001D" dtype="float" id="CL_CUR_B_SET_POINT" units="A" subnode="1" cyclic="CYCLIC_RX" desc="User set-point for current of phase B in Amperes" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Current B set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0020" dtype="s32" id="CL_POS_SET_POINT_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_RX" desc="User position set-point in counts" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Position set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0021" dtype="float" id="CL_VEL_SET_POINT_VALUE" units="rev/s" subnode="1" cyclic="CYCLIC_RX" desc="User velocity set-point for velocity modes" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Velocity set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0022" dtype="float" id="CL_TOR_SET_POINT_VALUE" units="Nm" subnode="1" cyclic="CYCLIC_RX" desc="" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Torque set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_CFG" address="0x0024" dtype="u16" id="PROF_POS_OPTION_CODE" units="-" subnode="1" cyclic="CYCLIC_RX" desc="Positioning option code as per CiA402 (0x60F2)&#13;&#10;&#13;&#10;Bits 0, 1 - Relative option (not implemented)&#13;&#10;Bits 2, 3 - Change immediately option (not implemented)&#13;&#10;Bits 4, 5 - Request response option (not implemented)&#13;&#10;Bits 6, 7 - Rotary axis direction option" cat_id="OTHERS">
+              <Labels>
+                <Label lang="en_US">Positioning option code</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_CFG" address="0x0025" dtype="float" id="PROF_MAX_VEL" units="rev/s" subnode="1" cyclic="CYCLIC_RX" desc="By default indicates the profile velocity used in profile position mode." cat_id="PROFILER">
+              <Labels>
+                <Label lang="en_US">Profiler max. velocity</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_CFG" address="0x0026" dtype="float" id="PROF_MAX_ACC" units="rev/s2" subnode="1" cyclic="CYCLIC_RX" desc="By default indicates the profile acceleration used in profile position and velocity modes." cat_id="PROFILER">
+              <Labels>
+                <Label lang="en_US">Profiler max. acceleration</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_CFG" address="0x0027" dtype="float" id="PROF_MAX_DEC" units="rev/s2" subnode="1" cyclic="CYCLIC_RX" desc="By default indicates the profile deceleration used in profile position and velocity modes." cat_id="PROFILER">
+              <Labels>
+                <Label lang="en_US">Profiler max. deceleration</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0029" dtype="float" id="CL_TOR_FBK_VALUE" units="Nm" subnode="1" cyclic="CYCLIC_TX" desc="" cat_id="FEEDBACK">
+              <Labels>
+                <Label lang="en_US">Actual torque</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0030" dtype="s32" id="CL_POS_FBK_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Position obtained from position feedback sensor in counts" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Actual position</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0031" dtype="float" id="CL_VEL_FBK_VALUE" units="rev/s" subnode="1" cyclic="CYCLIC_TX" desc="Velocity obtained from velocity feedback sensor in revolution per second" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Actual velocity</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0033" dtype="u32" id="CL_AUX_FBK_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Raw value of selected auxiliar feedback" cat_id="OTHERS">
+              <Labels>
+                <Label lang="en_US">Auxiliar feedback value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0037" dtype="u16" id="DRV_PROT_IBUS_COUNTS" units="ADC" subnode="1" cyclic="CYCLIC_TX" desc="Bus current measurements in ADC counts" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Bus voltage current counts</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0038" dtype="float" id="FBK_CUR_A_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Current reading of phase A in Amperes" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Current A value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0039" dtype="float" id="FBK_CUR_B_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Current readings of phase B in Amperes." cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Current B value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003A" dtype="float" id="FBK_CUR_C_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Current readings of current C in Amperes" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Current C value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003B" dtype="float" id="CL_CUR_Q_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Readings of quadrature current in Amperes" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Current quadrature value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003C" dtype="float" id="CL_CUR_D_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Readings of direct current in Amperes" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Current direct value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003D" dtype="u16" id="FBK_CUR_A_COUNTS" units="ADC" subnode="1" cyclic="CYCLIC_TX" desc="Current readings of phase A in ADC counts" cat_id="INTERNAL">
+              <Labels>
+                <Label lang="en_US">Current A counts</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003E" dtype="u16" id="FBK_CUR_B_COUNTS" units="ADC" subnode="1" cyclic="CYCLIC_TX" desc="Current readings of phase B in ADC counts" cat_id="INTERNAL">
+              <Labels>
+                <Label lang="en_US">Current B counts</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003F" dtype="u16" id="FBK_CUR_C_COUNTS" units="ADC" subnode="1" cyclic="CYCLIC_TX" desc="Current readings of phase C in ADC counts." cat_id="INTERNAL">
+              <Labels>
+                <Label lang="en_US">Current C counts</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0040" dtype="float" id="COMMU_ANGLE_VALUE" units="rev" subnode="1" cyclic="CYCLIC_TX" desc="Angle readings in revolutions from commutation feedback after applying angle offset parameter" cat_id="COMMUTATION">
+              <Labels>
+                <Label lang="en_US">Commutation angle value</Label>
+              </Labels>
+            </Register>
+          </Registers>
+        </Axis>
+        <Axis subnode="2">
+          <Registers>
+            <Register access="r" address_type="NVM_NONE" address="0x000F" dtype="s32" id="DRV_DIAG_ERROR_LAST" units="-" subnode="2" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Last error</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0010" dtype="u16" id="DRV_STATE_CONTROL" units="-" subnode="2" cyclic="CYCLIC_RX" desc="Parameter to manage the drive state machine. It is compliant with DS402." cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Control word</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0011" dtype="u16" id="DRV_STATE_STATUS" units="-" subnode="2" cyclic="CYCLIC_TX" desc="" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Status word</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_CFG" address="0x0014" dtype="u16" id="DRV_OP_CMD" units="-" subnode="2" cyclic="CYCLIC_RX" desc="User requested mode of operation" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Operation mode</Label>
+              </Labels>
+              <Enumerations>
+                <Enum value="0">Voltage</Enum>
+                <Enum value="1">Current amplifier</Enum>
+                <Enum value="2">Current</Enum>
+                <Enum value="34">Cyclic current</Enum>
+                <Enum value="3">Velocity</Enum>
+                <Enum value="35">Cyclic velocity</Enum>
+                <Enum value="19">Profile velocity</Enum>
+                <Enum value="4">Position</Enum>
+                <Enum value="36">Cyclic position</Enum>
+                <Enum value="20">Profile position</Enum>
+                <Enum value="68">Profile position S-curve</Enum>
+                <Enum value="180">PVT</Enum>
+                <Enum value="275">Homing</Enum>
+              </Enumerations>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0015" dtype="u16" id="DRV_OP_VALUE" units="-" subnode="2" cyclic="CYCLIC_TX" desc="Indicates the mode of operation applied in the drive" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Operation mode display</Label>
+              </Labels>
+              <Enumerations>
+                <Enum value="0">Voltage</Enum>
+                <Enum value="1">Current amplifier</Enum>
+                <Enum value="2">Current</Enum>
+                <Enum value="34">Cyclic current</Enum>
+                <Enum value="3">Velocity</Enum>
+                <Enum value="35">Cyclic velocity</Enum>
+                <Enum value="19">Profile velocity</Enum>
+                <Enum value="4">Position</Enum>
+                <Enum value="36">Cyclic position</Enum>
+                <Enum value="20">Profile position</Enum>
+                <Enum value="68">Profile position S-curve</Enum>
+                <Enum value="180">PVT</Enum>
+                <Enum value="275">Homing</Enum>
+              </Enumerations>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0018" dtype="float" id="CL_VOL_Q_SET_POINT" units="V" subnode="2" cyclic="CYCLIC_RX" desc="User quadrature voltage set-point" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Voltage quadrature set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0019" dtype="float" id="CL_VOL_D_SET_POINT" units="V" subnode="2" cyclic="CYCLIC_RX" desc="User direct voltage set-point" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Voltage direct set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x001A" dtype="float" id="CL_CUR_Q_SET_POINT" units="A" subnode="2" cyclic="CYCLIC_RX" desc="User set-point of quadrature current in Amperes" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Current quadrature set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x001B" dtype="float" id="CL_CUR_D_SET_POINT" units="A" subnode="2" cyclic="CYCLIC_RX" desc="User set-point of direct current in Amperes" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Current direct set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x001C" dtype="float" id="CL_CUR_A_SET_POINT" units="A" subnode="2" cyclic="CYCLIC_RX" desc="User set-point for current of phase A in Amperes" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Current A set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x001D" dtype="float" id="CL_CUR_B_SET_POINT" units="A" subnode="2" cyclic="CYCLIC_RX" desc="User set-point for current of phase B in Amperes" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Current B set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0020" dtype="s32" id="CL_POS_SET_POINT_VALUE" units="cnt" subnode="2" cyclic="CYCLIC_RX" desc="User position set-point in counts" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Position set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0021" dtype="float" id="CL_VEL_SET_POINT_VALUE" units="rev/s" subnode="2" cyclic="CYCLIC_RX" desc="User velocity set-point for velocity modes" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Velocity set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0022" dtype="float" id="CL_TOR_SET_POINT_VALUE" units="Nm" subnode="2" cyclic="CYCLIC_RX" desc="" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Torque set-point</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_CFG" address="0x0024" dtype="u16" id="PROF_POS_OPTION_CODE" units="-" subnode="2" cyclic="CYCLIC_RX" desc="Positioning option code as per CiA402 (0x60F2)&#13;&#10;&#13;&#10;Bits 0, 1 - Relative option (not implemented)&#13;&#10;Bits 2, 3 - Change immediately option (not implemented)&#13;&#10;Bits 4, 5 - Request response option (not implemented)&#13;&#10;Bits 6, 7 - Rotary axis direction option" cat_id="OTHERS">
+              <Labels>
+                <Label lang="en_US">Positioning option code</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_CFG" address="0x0025" dtype="float" id="PROF_MAX_VEL" units="rev/s" subnode="2" cyclic="CYCLIC_RX" desc="By default indicates the profile velocity used in profile position mode." cat_id="PROFILER">
+              <Labels>
+                <Label lang="en_US">Profiler max. velocity</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_CFG" address="0x0026" dtype="float" id="PROF_MAX_ACC" units="rev/s2" subnode="2" cyclic="CYCLIC_RX" desc="By default indicates the profile acceleration used in profile position and velocity modes." cat_id="PROFILER">
+              <Labels>
+                <Label lang="en_US">Profiler max. acceleration</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_CFG" address="0x0027" dtype="float" id="PROF_MAX_DEC" units="rev/s2" subnode="2" cyclic="CYCLIC_RX" desc="By default indicates the profile deceleration used in profile position and velocity modes." cat_id="PROFILER">
+              <Labels>
+                <Label lang="en_US">Profiler max. deceleration</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0029" dtype="float" id="CL_TOR_FBK_VALUE" units="Nm" subnode="2" cyclic="CYCLIC_TX" desc="" cat_id="FEEDBACK">
+              <Labels>
+                <Label lang="en_US">Actual torque</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0030" dtype="s32" id="CL_POS_FBK_VALUE" units="cnt" subnode="2" cyclic="CYCLIC_TX" desc="Position obtained from position feedback sensor in counts" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Actual position</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0031" dtype="float" id="CL_VEL_FBK_VALUE" units="rev/s" subnode="2" cyclic="CYCLIC_TX" desc="Velocity obtained from velocity feedback sensor in revolution per second" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Actual velocity</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0033" dtype="u32" id="CL_AUX_FBK_VALUE" units="cnt" subnode="2" cyclic="CYCLIC_TX" desc="Raw value of selected auxiliar feedback" cat_id="OTHERS">
+              <Labels>
+                <Label lang="en_US">Auxiliar feedback value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0037" dtype="u16" id="DRV_PROT_IBUS_COUNTS" units="ADC" subnode="2" cyclic="CYCLIC_TX" desc="Bus current measurements in ADC counts" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Bus voltage current counts</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0038" dtype="float" id="FBK_CUR_A_VALUE" units="A" subnode="2" cyclic="CYCLIC_TX" desc="Current reading of phase A in Amperes" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Current A value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0039" dtype="float" id="FBK_CUR_B_VALUE" units="A" subnode="2" cyclic="CYCLIC_TX" desc="Current readings of phase B in Amperes." cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Current B value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003A" dtype="float" id="FBK_CUR_C_VALUE" units="A" subnode="2" cyclic="CYCLIC_TX" desc="Current readings of current C in Amperes" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Current C value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003B" dtype="float" id="CL_CUR_Q_VALUE" units="A" subnode="2" cyclic="CYCLIC_TX" desc="Readings of quadrature current in Amperes" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Current quadrature value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003C" dtype="float" id="CL_CUR_D_VALUE" units="A" subnode="2" cyclic="CYCLIC_TX" desc="Readings of direct current in Amperes" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Current direct value</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003D" dtype="u16" id="FBK_CUR_A_COUNTS" units="ADC" subnode="2" cyclic="CYCLIC_TX" desc="Current readings of phase A in ADC counts" cat_id="INTERNAL">
+              <Labels>
+                <Label lang="en_US">Current A counts</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003E" dtype="u16" id="FBK_CUR_B_COUNTS" units="ADC" subnode="2" cyclic="CYCLIC_TX" desc="Current readings of phase B in ADC counts" cat_id="INTERNAL">
+              <Labels>
+                <Label lang="en_US">Current B counts</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x003F" dtype="u16" id="FBK_CUR_C_COUNTS" units="ADC" subnode="2" cyclic="CYCLIC_TX" desc="Current readings of phase C in ADC counts." cat_id="INTERNAL">
+              <Labels>
+                <Label lang="en_US">Current C counts</Label>
+              </Labels>
+            </Register>
+            <Register access="r" address_type="NVM_NONE" address="0x0040" dtype="float" id="COMMU_ANGLE_VALUE" units="rev" subnode="2" cyclic="CYCLIC_TX" desc="Angle readings in revolutions from commutation feedback after applying angle offset parameter" cat_id="COMMUTATION">
+              <Labels>
+                <Label lang="en_US">Commutation angle value</Label>
+              </Labels>
+            </Register>
+          </Registers>
+        </Axis>
+      </Axes>
+    </Device>
+    <Errors>
+      <Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">STO Active and Power stage is shutdown</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00002280" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">HW over current</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00002288" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">User I2T limit detected without current control</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00003290" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Input stage problem</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00003210" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">HW Over-voltage detected</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00003211" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">FW Over-voltage detected</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00003221" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">FW Under-voltage detected</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00004300" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Over-Temperature detected (internal drive limit).</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00004301" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Under-Temperature detected (internal drive limit)</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00004400" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Motor Over Temperature error</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00007380" affected_module="Feedback" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Too many error bits or invalid position flags detected in absolute encoder</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00007382" affected_module="Feedback" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Too many incorrect CRC checks in absolute encoder readings</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00007385" affected_module="Control Loops" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Position out of limits out of position modes</Label>
+        </Labels>
+      </Error>
+    </Errors>
+  </Body>
+  <DriveImage encoding="xs:base64Binary"> 
+  </DriveImage>
+</IngeniaDictionary>
