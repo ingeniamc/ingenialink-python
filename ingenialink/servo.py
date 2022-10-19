@@ -9,7 +9,7 @@ from .constants import DEFAULT_DRIVE_NAME
 from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError
 from ingenialink.register import Register
 from ingenialink.utils._utils import get_drive_identification, cleanup_register
-from ingenialink.constants import PASSWORD_RESTORE_ALL
+from ingenialink.constants import PASSWORD_RESTORE_ALL, PASSWORD_STORE_ALL
 
 import ingenialogger
 
@@ -387,6 +387,54 @@ class Servo:
         else:
             raise ILError('Invalid subnode.')
         time.sleep(1.5)
+
+    def store_parameters(self, subnode=None):
+        """Store all the current parameters of the target subnode.
+
+        Args:
+            subnode (int): Subnode of the axis. `None` by default which stores
+            all the parameters.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        r = 0
+        try:
+            if subnode is None:
+                # Store all
+                try:
+                    self.write(reg=self.STORE_COCO_ALL,
+                               data=PASSWORD_STORE_ALL,
+                               subnode=0)
+                    logger.info('Store all successfully done.')
+                except ILError as e:
+                    logger.warning(f'Store all COCO failed. Reason: {e}. '
+                                   f'Trying MOCO...')
+                    r = -1
+                if r < 0:
+                    for dict_subnode in range(1, self.dictionary.subnodes):
+                        self.write(
+                            reg=self.STORE_MOCO_ALL_REGISTERS[dict_subnode],
+                            data=PASSWORD_STORE_ALL,
+                            subnode=dict_subnode)
+                        logger.info(f'Store axis {dict_subnode} successfully'
+                                    f' done.')
+            elif subnode == 0:
+                # Store subnode 0
+                raise ILError('The current firmware version does not '
+                              'have this feature implemented.')
+            elif subnode > 0 and subnode in self.STORE_MOCO_ALL_REGISTERS:
+                # Store axis
+                self.write(reg=self.STORE_MOCO_ALL_REGISTERS[subnode],
+                           data=PASSWORD_STORE_ALL,
+                           subnode=subnode)
+                logger.info(f'Store axis {subnode} successfully done.')
+            else:
+                raise ILError('Invalid subnode.')
+        finally:
+            time.sleep(1.5)
 
     def _get_reg(self, reg, subnode=1):
         """Validates a register.

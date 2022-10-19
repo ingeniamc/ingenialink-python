@@ -11,7 +11,7 @@ from ingenialink.servo import Servo, SERVO_STATE
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, \
     raise_err, convert_ip_to_int
-from ingenialink.constants import PASSWORD_STORE_ALL, DEFAULT_PDS_TIMEOUT
+from ingenialink.constants import DEFAULT_PDS_TIMEOUT
 from ingenialink.canopen import constants
 from ingenialink.ethernet.dictionary import EthernetDictionary
 
@@ -84,26 +84,6 @@ DIST_DATA = EthernetRegister(
 
 DIST_NUMBER_SAMPLES = EthernetRegister(
     identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-)
-
-STORE_MOCO_ALL_REGISTERS = {
-    1: EthernetRegister(
-        identifier='', units='', subnode=1, address=0x06DB,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    ),
-    2: EthernetRegister(
-        identifier='', units='', subnode=2, address=0x06DB,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    ),
-    3: EthernetRegister(
-        identifier='', units='', subnode=3, address=0x06DB,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    )
-}
-
-STORE_COCO_ALL = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x06DB, cyclic='CONFIG',
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
@@ -209,6 +189,24 @@ class EthernetServo(Servo):
             cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
         )
     }
+    STORE_COCO_ALL = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x06DB, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
+    STORE_MOCO_ALL_REGISTERS = {
+        1: EthernetRegister(
+            identifier='', units='', subnode=1, address=0x06DB,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        ),
+        2: EthernetRegister(
+            identifier='', units='', subnode=2, address=0x06DB,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        ),
+        3: EthernetRegister(
+            identifier='', units='', subnode=3, address=0x06DB,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        )
+    }
 
     def __init__(self, socket, dictionary_path=None,
                  servo_status_listener=False):
@@ -224,7 +222,7 @@ class EthernetServo(Servo):
     def store_tcp_ip_parameters(self):
         """Stores the TCP/IP values. Affects IP address,
         subnet mask and gateway"""
-        self.write(reg=STORE_COCO_ALL,
+        self.write(reg=self.STORE_COCO_ALL,
                    data=PASSWORD_STORE_RESTORE_TCP_IP,
                    subnode=0)
         logger.info('Store TCP/IP successfully done.')
@@ -695,54 +693,6 @@ class EthernetServo(Servo):
             logger.info('Callback not subscribed.')
             return
         self.__observers_servo_state.remove(callback)
-
-    def store_parameters(self, subnode=None):
-        """Store all the current parameters of the target subnode.
-
-        Args:
-            subnode (int): Subnode of the axis. `None` by default which stores
-            all the parameters.
-
-        Raises:
-            ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
-
-        """
-        r = 0
-        try:
-            if subnode is None:
-                # Store all
-                try:
-                    self.write(reg=STORE_COCO_ALL,
-                               data=PASSWORD_STORE_ALL,
-                               subnode=0)
-                    logger.info('Store all successfully done.')
-                except ILError as e:
-                    logger.warning(f'Store all COCO failed. Reason: {e}. '
-                                   f'Trying MOCO...')
-                    r = -1
-                if r < 0:
-                    for dict_subnode in range(1, self.dictionary.subnodes):
-                        self.write(
-                            reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
-                            data=PASSWORD_STORE_ALL,
-                            subnode=dict_subnode)
-                        logger.info(f'Store axis {dict_subnode} successfully'
-                                    f' done.')
-            elif subnode == 0:
-                # Store subnode 0
-                raise ILError('The current firmware version does not '
-                              'have this feature implemented.')
-            elif subnode > 0 and subnode in STORE_MOCO_ALL_REGISTERS:
-                # Store axis
-                self.write(reg=STORE_MOCO_ALL_REGISTERS[subnode],
-                           data=PASSWORD_STORE_ALL,
-                           subnode=subnode)
-                logger.info(f'Store axis {subnode} successfully done.')
-            else:
-                raise ILError('Invalid subnode.')
-        finally:
-            time.sleep(1.5)
 
     def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Disable PDS.

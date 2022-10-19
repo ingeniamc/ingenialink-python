@@ -77,26 +77,6 @@ CONTROL_WORD_REGISTERS = {
     )
 }
 
-STORE_COCO_ALL = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x1010, subidx=0x01, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-)
-
-STORE_MOCO_ALL_REGISTERS = {
-    1: CanopenRegister(
-        identifier='', units='', subnode=1, idx=0x26DB, subidx=0x00,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    ),
-    2: CanopenRegister(
-        identifier='', units='', subnode=2, idx=0x2EDB, subidx=0x00,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    ),
-    3: CanopenRegister(
-        identifier='', units='', subnode=3, idx=0x36DB, subidx=0x00,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    )
-}
-
 MONITORING_DIST_ENABLE = CanopenRegister(
     identifier='', units='', subnode=0, idx=0x58C0, subidx=0x00, cyclic='CONFIG',
     dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
@@ -198,6 +178,24 @@ class CanopenServo(Servo):
         ),
         3: CanopenRegister(
             identifier='', units='', subnode=3, idx=0x36DC, subidx=0x00,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        )
+    }
+    STORE_COCO_ALL = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x1010, subidx=0x01, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
+    STORE_MOCO_ALL_REGISTERS = {
+        1: CanopenRegister(
+            identifier='', units='', subnode=1, idx=0x26DB, subidx=0x00,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        ),
+        2: CanopenRegister(
+            identifier='', units='', subnode=2, idx=0x2EDB, subidx=0x00,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        ),
+        3: CanopenRegister(
+            identifier='', units='', subnode=3, idx=0x36DB, subidx=0x00,
             cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
         )
     }
@@ -478,45 +476,9 @@ class CanopenServo(Servo):
             ILObjectNotExist: Failed to write to the registers.
 
         """
-        r = 0
         self._change_sdo_timeout(sdo_timeout)
-
-        try:
-            if subnode is None:
-                # Store all
-                try:
-                    self.write(reg=STORE_COCO_ALL,
-                               data=PASSWORD_STORE_ALL,
-                               subnode=0)
-                    logger.info('Store all successfully done.')
-                except Exception:
-                    logger.warning('Store all COCO failed. Trying MOCO...')
-                    r = -1
-                if r < 0:
-                    for dict_subnode in range(1, self.dictionary.subnodes):
-                        self.write(
-                            reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
-                            data=PASSWORD_STORE_ALL,
-                            subnode=dict_subnode)
-                        logger.info(
-                            'Store axis {} successfully done.'.format(
-                                dict_subnode)
-                        )
-            elif subnode == 0:
-                # Store subnode 0
-                raise ILError('The current firmware version does not '
-                              'have this feature implemented.')
-            elif subnode > 0 and subnode in STORE_MOCO_ALL_REGISTERS:
-                # Store axis
-                self.write(reg=STORE_MOCO_ALL_REGISTERS[subnode],
-                           data=PASSWORD_STORE_ALL,
-                           subnode=subnode)
-                logger.info('Store axis {} successfully done.'.format(subnode))
-            else:
-                raise ILError('Invalid subnode.')
-        finally:
-            time.sleep(1.5)
-            self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
+        super().store_parameters(subnode)
+        self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
     def _change_sdo_timeout(self, value):
         """Changes the SDO timeout of the node."""
