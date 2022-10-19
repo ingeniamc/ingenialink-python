@@ -1,6 +1,5 @@
 import time
 import threading
-from abc import ABC, abstractmethod
 from enum import Enum
 
 from ._ingenialink import ffi, lib
@@ -180,100 +179,86 @@ class ServoStatusListener(threading.Thread):
         self.__stop = True
 
 
-class Servo(ABC):
+class Servo:
     """Declaration of a general Servo object.
 
     Args:
         target (str, int): Target ID of the servo.
-        dictionary (object):  Path to the dictionary file.
+        servo_status_listener (bool): Toggle the listener of the servo for
+            its status, errors, faults, etc.
 
     Raises:
         ILCreationError: If the servo cannot be created.
 
     """
-    def __init__(self, target):
+    def __init__(self, target, servo_status_listener=False):
         self.target = target
-
         self._info = None
-
         self.name = DEFAULT_DRIVE_NAME
-        """str: Obtains the servo name."""
-        self.full_name = None
+        prod_name = '' if self.dictionary.part_number is None \
+            else self.dictionary.part_number
+        self.full_name = f'{prod_name} {self.name} ({self.target})'
         """str: Obtains the servo full name."""
+        self.units_torque = None
+        """SERVO_UNITS_TORQUE: Torque units."""
+        self.units_pos = None
+        """SERVO_UNITS_POS: Position units."""
+        self.units_vel = None
+        """SERVO_UNITS_VEL: Velocity units."""
+        self.units_acc = None
+        """SERVO_UNITS_ACC: Acceleration units."""
+        self.__state = {
+            1: lib.IL_SERVO_STATE_NRDY,
+            2: lib.IL_SERVO_STATE_NRDY,
+            3: lib.IL_SERVO_STATE_NRDY
+        }
+        self.__observers_servo_state = []
+        self.__listener_servo_status = None
+        self.__monitoring_num_mapped_registers = 0
+        self.__monitoring_channels_size = {}
+        self.__monitoring_channels_dtype = {}
+        self.__monitoring_data = []
+        self.__processed_monitoring_data = []
+        self.__disturbance_num_mapped_registers = 0
+        self.__disturbance_channels_size = {}
+        self.__disturbance_channels_dtype = {}
+        self.__disturbance_data_size = 0
+        self.__disturbance_data = bytearray()
+        if servo_status_listener:
+            self.start_status_listener()
+        else:
+            self.stop_status_listener()
 
-    @abstractmethod
-    def get_state(self, subnode=1):
-        raise NotImplementedError
-
-    @abstractmethod
     def start_status_listener(self):
-        raise NotImplementedError
+        """Start listening for servo status events (SERVO_STATE)."""
+        if self.__listener_servo_status is not None:
+            return
+        status_word = self.read(self.STATUS_WORD_REGISTERS[1])
+        state = self.status_word_decode(status_word)
+        self._set_state(state, 1)
 
-    @abstractmethod
+        self.__listener_servo_status = ServoStatusListener(self)
+        self.__listener_servo_status.start()
+
     def stop_status_listener(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def subscribe_to_status(self, callback):
-        raise NotImplementedError
-
-    @abstractmethod
-    def unsubscribe_from_status(self, callback):
-        raise NotImplementedError
-
-    @abstractmethod
-    def reload_errors(self, dictionary):
-        raise NotImplementedError
-
-    @abstractmethod
-    def load_configuration(self, config_file, subnode=None):
-        raise NotImplementedError
-
-    @abstractmethod
-    def save_configuration(self, config_file, subnode=None):
-        raise NotImplementedError
-
-    @abstractmethod
-    def store_parameters(self, subnode=None):
-        raise NotImplementedError
-
-    @abstractmethod
-    def restore_parameters(self, subnode=None):
-        raise NotImplementedError
-
-    @abstractmethod
-    def read(self, *args, **kwargs):
-        raise NotImplementedError
-
-    @abstractmethod
-    def write(self, *args, **kwargs):
-        raise NotImplementedError
-
-    @abstractmethod
-    def disable(self, subnode=1):
-        raise NotImplementedError
-
-    @abstractmethod
-    def enable(self, timeout=2., subnode=1):
-        raise NotImplementedError
-
-    @abstractmethod
-    def fault_reset(self, subnode=1):
-        raise NotImplementedError
-
-    @abstractmethod
-    def is_alive(self):
-        raise NotImplementedError
+        """Stop listening for servo status events (SERVO_STATE)."""
+        if self.__listener_servo_status is None:
+            return
+        if self.__listener_servo_status.is_alive():
+            self.__listener_servo_status.stop()
+            self.__listener_servo_status.join()
+        self.__listener_servo_status = None
 
     @property
-    def info(self):
-        """dict: Obtains the servo information."""
-        return self._info
+    def dictionary(self):
+        """Returns dictionary object"""
+        return self._dictionary
 
     @property
-    def errors(self):
-        raise NotImplementedError
+    def full_name(self):
+        """str: Drive full name."""
+        return self.__full_name
 
-    @property
-    def subnodes(self):
-        raise NotImplementedError
+    @full_name.setter
+    def full_name(self, new_name):
+        self.__full_name = new_name

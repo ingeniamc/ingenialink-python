@@ -216,41 +216,16 @@ class EthernetServo(Servo):
         )
     }
 
-    def __init__(self, socket,
-                 dictionary_path=None, servo_status_listener=False):
+    def __init__(self, socket, dictionary_path=None,
+                 servo_status_listener=False):
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
-        super(EthernetServo, self).__init__(self.ip_address)
         if dictionary_path is not None:
             self._dictionary = EthernetDictionary(dictionary_path)
         else:
             self._dictionary = None
-        prod_name = '' if self.dictionary.part_number is None \
-            else self.dictionary.part_number
-        self.full_name = f'{prod_name} {self.name} ({self.target})'
-        self.__state = {
-            1: lib.IL_SERVO_STATE_NRDY,
-            2: lib.IL_SERVO_STATE_NRDY,
-            3: lib.IL_SERVO_STATE_NRDY
-        }
         self.__lock = threading.RLock()
-        self.__observers_servo_state = []
-        self.__listener_servo_status = None
-        self.__monitoring_num_mapped_registers = 0
-        self.__monitoring_channels_size = {}
-        self.__monitoring_channels_dtype = {}
-        self.__monitoring_data = []
-        self.__processed_monitoring_data = []
-        self.__disturbance_num_mapped_registers = 0
-        self.__disturbance_channels_size = {}
-        self.__disturbance_channels_dtype = {}
-        self.__disturbance_data_size = 0
-        self.__disturbance_data = bytearray()
-
-        if servo_status_listener:
-            self.start_status_listener()
-        else:
-            self.stop_status_listener()
+        super(EthernetServo, self).__init__(self.ip_address)
 
     def store_tcp_ip_parameters(self):
         """Stores the TCP/IP values. Affects IP address,
@@ -727,26 +702,6 @@ class EthernetServo(Servo):
     def get_state(self, subnode=1):
         """SERVO_STATE: Current drive state."""
         return self.__state[subnode], None
-
-    def start_status_listener(self):
-        """Start listening for servo status events (SERVO_STATE)."""
-        if self.__listener_servo_status is not None:
-            return
-        status_word = self.read(self.STATUS_WORD_REGISTERS[1])
-        state = self.status_word_decode(status_word)
-        self._set_state(state, 1)
-
-        self.__listener_servo_status = ServoStatusListener(self)
-        self.__listener_servo_status.start()
-
-    def stop_status_listener(self):
-        """Stop listening for servo status events (SERVO_STATE)."""
-        if self.__listener_servo_status is None:
-            return
-        if self.__listener_servo_status.is_alive():
-            self.__listener_servo_status.stop()
-            self.__listener_servo_status.join()
-        self.__listener_servo_status = None
 
     def subscribe_to_status(self, callback):
         """Subscribe to state changes.

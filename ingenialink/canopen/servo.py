@@ -186,8 +186,9 @@ class CanopenServo(Servo):
     Args:
         node (canopen.RemoteNode): Remote Node of the drive.
         dictionary_path (str): Path to the dictionary.
-        servo_status_listener (bool): Boolean to initialize the ServoStatusListener and
-            check the drive status.
+        eds (str): Path to the eds file.
+        servo_status_listener (bool): Toggle the listener of the servo for
+            its status, errors, faults, etc.
 
     """
     STATUS_WORD_REGISTERS = {
@@ -207,48 +208,15 @@ class CanopenServo(Servo):
 
     def __init__(self, target, node, dictionary_path=None, eds=None,
                  servo_status_listener=False):
-        super(CanopenServo, self).__init__(target)
-        self.units_torque = None
-        """SERVO_UNITS_TORQUE: Torque units."""
-        self.units_pos = None
-        """SERVO_UNITS_POS: Position units."""
-        self.units_vel = None
-        """SERVO_UNITS_VEL: Velocity units."""
-        self.units_acc = None
-        """SERVO_UNITS_ACC: Acceleration units."""
+        self.eds = eds
         self.__node = node
+        self.__emcy_consumer = EmcyConsumer()
         if dictionary_path is not None:
             self._dictionary = CanopenDictionary(dictionary_path)
         else:
             self._dictionary = None
-        self.eds = eds
         self.__lock = threading.RLock()
-        self.__state = {
-            1: lib.IL_SERVO_STATE_NRDY,
-            2: lib.IL_SERVO_STATE_NRDY,
-            3: lib.IL_SERVO_STATE_NRDY
-        }
-        self.__observers_servo_state = []
-        self.__listener_servo_status = None
-
-        self.__emcy_consumer = EmcyConsumer()
-
-        if servo_status_listener:
-            self.start_status_listener()
-
-        prod_name = '' if self.dictionary.part_number is None \
-            else self.dictionary.part_number
-        self.full_name = '{} {}'.format(prod_name, self.name)
-        self.__monitoring_num_mapped_registers = 0
-        self.__monitoring_channels_size = {}
-        self.__monitoring_channels_dtype = {}
-        self.__monitoring_data = []
-        self.__processed_monitoring_data = []
-        self.__disturbance_num_mapped_registers = 0
-        self.__disturbance_channels_size = {}
-        self.__disturbance_channels_dtype = {}
-        self.__disturbance_data_size = 0
-        self.__disturbance_data = bytearray()
+        super(CanopenServo, self).__init__(target)
 
     def _get_reg(self, reg, subnode=1):
         """Validates a register.
@@ -828,26 +796,6 @@ class CanopenServo(Servo):
             self.status[subnode] = state
             for callback in self.__observers_servo_state:
                 callback(state, None, subnode)
-
-    def start_status_listener(self):
-        """Start listening for servo status events (SERVO_STATE)."""
-        if self.__listener_servo_status is not None:
-            return
-        status_word = self.read(self.STATUS_WORD_REGISTERS[1])
-        state = self.status_word_decode(status_word)
-        self._set_state(state, 1)
-
-        self.__listener_servo_status = ServoStatusListener(self)
-        self.__listener_servo_status.start()
-
-    def stop_status_listener(self):
-        """Stop listening for servo status events (SERVO_STATE)."""
-        if self.__listener_servo_status is None:
-            return
-        if self.__listener_servo_status.is_alive():
-            self.__listener_servo_status.stop()
-            self.__listener_servo_status.join()
-        self.__listener_servo_status = None
 
     def subscribe_to_status(self, callback):
         """Subscribe to state changes.
