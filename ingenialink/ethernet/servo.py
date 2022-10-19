@@ -335,7 +335,7 @@ class EthernetServo(Servo):
         self.__lock.release()
         return MCB.read_mcb_data(reg, response)
 
-    def __monitoring_read_data(self):
+    def _monitoring_read_data(self):
         """Read monitoring data frame."""
         return self._send_mcb_frame(MCB_CMD_READ,
                                     MONITORING_DATA.address,

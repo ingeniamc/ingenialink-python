@@ -737,7 +737,7 @@ class Servo:
                 limit = num_available_bytes
             else:
                 limit = MONITORING_BUFFER_SIZE
-            tmp_data = self.__monitoring_read_data()[:limit]
+            tmp_data = self._monitoring_read_data()[:limit]
             self.__monitoring_data.append(tmp_data)
             num_available_bytes = self.monitoring_actual_number_bytes()
         self.__monitoring_process_data()

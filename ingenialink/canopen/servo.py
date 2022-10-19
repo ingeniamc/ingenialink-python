@@ -373,7 +373,7 @@ class CanopenServo(Servo):
         """Map CAN register address to IPB register address."""
         return address - (0x2000 + (0x800 * (subnode - 1)))
 
-    def __monitoring_read_data(self):
+    def _monitoring_read_data(self):
         """Read monitoring data frame."""
         return self._read_raw(MONITORING_DATA, subnode=0)
 
