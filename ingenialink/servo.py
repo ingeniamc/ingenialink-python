@@ -4,9 +4,8 @@ import threading
 from enum import Enum
 import xml.etree.ElementTree as ET
 
-from ._ingenialink import lib
 from .constants import DEFAULT_DRIVE_NAME
-from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError
+from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError, ILStateError
 from ingenialink.register import Register
 from ingenialink.utils._utils import get_drive_identification, cleanup_register, \
     raise_err, convert_bytes_to_dtype
@@ -22,137 +21,137 @@ logger = ingenialogger.get_logger(__name__)
 
 class SERVO_STATE(Enum):
     """Servo states."""
-    NRDY = lib.IL_SERVO_STATE_NRDY
+    NRDY = 0
     """Not ready to switch on."""
-    DISABLED = lib.IL_SERVO_STATE_DISABLED
+    DISABLED = 1
     """Switch on disabled."""
-    RDY = lib.IL_SERVO_STATE_RDY
+    RDY = 2
     """Ready to be switched on."""
-    ON = lib.IL_SERVO_STATE_ON
+    ON = 3
     """Power switched on."""
-    ENABLED = lib.IL_SERVO_STATE_ENABLED
+    ENABLED = 4
     """Enabled."""
-    QSTOP = lib.IL_SERVO_STATE_QSTOP
+    QSTOP = 5
     """Quick stop."""
-    FAULTR = lib.IL_SERVO_STATE_FAULTR
+    FAULTR = 6
     """Fault reactive."""
-    FAULT = lib.IL_SERVO_STATE_FAULT
+    FAULT = 7
     """Fault."""
 
 
 class SERVO_FLAGS(Enum):
     """Status Flags."""
-    TGT_REACHED = lib.IL_SERVO_FLAG_TGT_REACHED
+    TGT_REACHED = 0x01
     """Target reached."""
-    ILIM_ACTIVE = lib.IL_SERVO_FLAG_ILIM_ACTIVE
+    ILIM_ACTIVE = 0x02
     """Internal limit active."""
-    HOMING_ATT = lib.IL_SERVO_FLAG_HOMING_ATT
+    HOMING_ATT = 0x04
     """(Homing) attained."""
-    HOMING_ERR = lib.IL_SERVO_FLAG_HOMING_ERR
+    HOMING_ERR = 0x08
     """(Homing) error."""
-    PV_VZERO = lib.IL_SERVO_FLAG_PV_VZERO
+    PV_VZERO = 0x04
     """(PV) Vocity speed is zero."""
-    PP_SPACK = lib.IL_SERVO_FLAG_PP_SPACK
+    PP_SPACK = 0x04
     """(PP) SP acknowledge."""
-    IP_ACTIVE = lib.IL_SERVO_FLAG_IP_ACTIVE
+    IP_ACTIVE = 0x04
     """(IP) active."""
-    CS_FOLLOWS = lib.IL_SERVO_FLAG_CS_FOLLOWS
+    CS_FOLLOWS = 0x04
     """(CST/CSV/CSP) follow command value."""
-    FERR = lib.IL_SERVO_FLAG_FERR
+    FERR = 0x08
     """(CST/CSV/CSP/PV) following error."""
-    IANGLE_DET = lib.IL_SERVO_FLAG_IANGLE_DET
+    IANGLE_DET = 0x10
     """Initial angle determination finished."""
 
 
 class SERVO_MODE(Enum):
     """Operation Mode."""
-    OLV = lib.IL_SERVO_MODE_OLV
+    OLV = 0
     """Open loop (vector mode)."""
-    OLS = lib.IL_SERVO_MODE_OLS
+    OLS = 1
     """Open loop (scalar mode)."""
-    PP = lib.IL_SERVO_MODE_PP
+    PP = 2
     """Profile position mode."""
-    VEL = lib.IL_SERVO_MODE_VEL
+    VEL = 3
     """Velocity mode."""
-    PV = lib.IL_SERVO_MODE_PV
+    PV = 4
     """Profile velocity mode."""
-    PT = lib.IL_SERVO_MODE_PT
+    PT = 5
     """Profile torque mode."""
-    HOMING = lib.IL_SERVO_MODE_HOMING
+    HOMING = 6
     """Homing mode."""
-    IP = lib.IL_SERVO_MODE_IP
+    IP = 7
     """Interpolated position mode."""
-    CSP = lib.IL_SERVO_MODE_CSP
+    CSP = 8
     """Cyclic sync position mode."""
-    CSV = lib.IL_SERVO_MODE_CSV
+    CSV = 9
     """Cyclic sync velocity mode."""
-    CST = lib.IL_SERVO_MODE_CST
+    CST = 10
     """Cyclic sync torque mode."""
 
 
 class SERVO_UNITS_TORQUE(Enum):
     """Torque Units."""
-    NATIVE = lib.IL_UNITS_TORQUE_NATIVE
+    NATIVE = 0
     """Native"""
-    MN = lib.IL_UNITS_TORQUE_MNM
+    MN = 1
     """Millinewtons*meter."""
-    N = lib.IL_UNITS_TORQUE_NM
+    N = 2
     """Newtons*meter."""
 
 
 class SERVO_UNITS_POS(Enum):
     """Position Units."""
-    NATIVE = lib.IL_UNITS_POS_NATIVE
+    NATIVE = 0
     """Native."""
-    REV = lib.IL_UNITS_POS_REV
+    REV = 1
     """Revolutions."""
-    RAD = lib.IL_UNITS_POS_RAD
+    RAD = 2
     """Radians."""
-    DEG = lib.IL_UNITS_POS_DEG
+    DEG = 3
     """Degrees."""
-    UM = lib.IL_UNITS_POS_UM
+    UM = 4
     """Micrometers."""
-    MM = lib.IL_UNITS_POS_MM
+    MM = 5
     """Millimeters."""
-    M = lib.IL_UNITS_POS_M
+    M = 6
     """Meters."""
 
 
 class SERVO_UNITS_VEL(Enum):
     """Velocity Units."""
-    NATIVE = lib.IL_UNITS_VEL_NATIVE
+    NATIVE = 0
     """Native."""
-    RPS = lib.IL_UNITS_VEL_RPS
+    RPS = 1
     """Revolutions per second."""
-    RPM = lib.IL_UNITS_VEL_RPM
+    RPM = 2
     """Revolutions per minute."""
-    RAD_S = lib.IL_UNITS_VEL_RAD_S
+    RAD_S = 3
     """Radians/second."""
-    DEG_S = lib.IL_UNITS_VEL_DEG_S
+    DEG_S = 4
     """Degrees/second."""
-    UM_S = lib.IL_UNITS_VEL_UM_S
+    UM_S = 5
     """Micrometers/second."""
-    MM_S = lib.IL_UNITS_VEL_MM_S
+    MM_S = 6
     """Millimeters/second."""
-    M_S = lib.IL_UNITS_VEL_M_S
+    M_S = 7
     """Meters/second."""
 
 
 class SERVO_UNITS_ACC(Enum):
     """Acceleration Units."""
-    NATIVE = lib.IL_UNITS_ACC_NATIVE
+    NATIVE = 0
     """Native."""
-    REV_S2 = lib.IL_UNITS_ACC_REV_S2
+    REV_S2 = 1
     """Revolutions/second^2."""
-    RAD_S2 = lib.IL_UNITS_ACC_RAD_S2
+    RAD_S2 = 2
     """Radians/second^2."""
-    DEG_S2 = lib.IL_UNITS_ACC_DEG_S2
+    DEG_S2 = 3
     """Degrees/second^2."""
-    UM_S2 = lib.IL_UNITS_ACC_UM_S2
+    UM_S2 = 4
     """Micrometers/second^2."""
-    MM_S2 = lib.IL_UNITS_ACC_MM_S2
+    MM_S2 = 5
     """Millimeters/second^2."""
-    M_S2 = lib.IL_UNITS_ACC_M_S2
+    M_S2 = 6
     """Meters/second^2."""
 
 
@@ -217,9 +216,9 @@ class Servo:
         self.units_acc = None
         """SERVO_UNITS_ACC: Acceleration units."""
         self.__state = {
-            1: lib.IL_SERVO_STATE_NRDY,
-            2: lib.IL_SERVO_STATE_NRDY,
-            3: lib.IL_SERVO_STATE_NRDY
+            1: SERVO_STATE.NRDY,
+            2: SERVO_STATE.NRDY,
+            3: SERVO_STATE.NRDY
         }
         self.__observers_servo_state = []
         self.__listener_servo_status = None
@@ -461,27 +460,27 @@ class Servo:
 
         # Try fault reset if faulty
         if self.status[subnode].value in [
-            lib.IL_SERVO_STATE_FAULT,
-            lib.IL_SERVO_STATE_FAULTR,
+            SERVO_STATE.FAULT,
+            SERVO_STATE.FAULTR,
         ]:
             self.fault_reset(subnode=subnode)
 
-        while self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+        while self.status[subnode].value != SERVO_STATE.ENABLED:
             status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
-            if self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+            if self.status[subnode].value != SERVO_STATE.ENABLED:
                 # Check state and command action to reach enabled
                 cmd = constants.IL_MC_PDS_CMD_EO
-                if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT:
-                    raise_err(lib.IL_ESTATE)
-                elif self.status[subnode].value == lib.IL_SERVO_STATE_NRDY:
+                if self.status[subnode].value == SERVO_STATE.FAULT:
+                    raise ILStateError(None)
+                elif self.status[subnode].value == SERVO_STATE.NRDY:
                     cmd = constants.IL_MC_PDS_CMD_DV
                 elif self.status[subnode].value == \
-                        lib.IL_SERVO_STATE_DISABLED:
+                        SERVO_STATE.DISABLED:
                     cmd = constants.IL_MC_PDS_CMD_SD
-                elif self.status[subnode].value == lib.IL_SERVO_STATE_RDY:
+                elif self.status[subnode].value == SERVO_STATE.RDY:
                     cmd = constants.IL_MC_PDS_CMD_SOEO
 
                 self.write(self.CONTROL_WORD_REGISTERS[subnode], cmd,
@@ -519,13 +518,13 @@ class Servo:
         state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
 
-        while self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
+        while self.status[subnode].value != SERVO_STATE.DISABLED:
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
 
             if self.status[subnode].value in [
-                lib.IL_SERVO_STATE_FAULT,
-                lib.IL_SERVO_STATE_FAULTR,
+                SERVO_STATE.FAULT,
+                SERVO_STATE.FAULTR,
             ]:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
@@ -533,7 +532,7 @@ class Servo:
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
-            elif self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
+            elif self.status[subnode].value != SERVO_STATE.DISABLED:
                 # Check state and command action to reach disabled
                 self.write(self.CONTROL_WORD_REGISTERS[subnode],
                            constants.IL_MC_PDS_CMD_DV, subnode=subnode)
@@ -566,8 +565,8 @@ class Servo:
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
         if state.value in [
-            lib.IL_SERVO_STATE_FAULT,
-            lib.IL_SERVO_STATE_FAULTR,
+            SERVO_STATE.FAULT,
+            SERVO_STATE.FAULTR,
         ]:
             # Check if faulty, if so try to reset (0->1)
             self.write(self.CONTROL_WORD_REGISTERS[subnode], 0,
@@ -599,12 +598,13 @@ class Servo:
         start_time = int(round(time.time() * 1000))
         actual_status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                        subnode=subnode)
+        # Operation time out
+        il_etimedout = -3
         while actual_status_word == status_word:
             current_time = int(round(time.time() * 1000))
             time_diff = (current_time - start_time)
             if time_diff > timeout:
-                r = lib.IL_ETIMEDOUT
-                return r
+                return il_etimedout
             actual_status_word = self.read(
                 self.STATUS_WORD_REGISTERS[subnode],
                 subnode=subnode)
@@ -627,31 +627,31 @@ class Servo:
         """
         if (status_word & constants.IL_MC_PDS_STA_NRTSO_MSK) == \
                 constants.IL_MC_PDS_STA_NRTSO:
-            state = lib.IL_SERVO_STATE_NRDY
+            state = SERVO_STATE.NRDY
         elif (status_word & constants.IL_MC_PDS_STA_SOD_MSK) == \
                 constants.IL_MC_PDS_STA_SOD:
-            state = lib.IL_SERVO_STATE_DISABLED
+            state = SERVO_STATE.DISABLED
         elif (status_word & constants.IL_MC_PDS_STA_RTSO_MSK) == \
                 constants.IL_MC_PDS_STA_RTSO:
-            state = lib.IL_SERVO_STATE_RDY
+            state = SERVO_STATE.RDY
         elif (status_word & constants.IL_MC_PDS_STA_SO_MSK) == \
                 constants.IL_MC_PDS_STA_SO:
-            state = lib.IL_SERVO_STATE_ON
+            state = SERVO_STATE.ON
         elif (status_word & constants.IL_MC_PDS_STA_OE_MSK) == \
                 constants.IL_MC_PDS_STA_OE:
-            state = lib.IL_SERVO_STATE_ENABLED
+            state = SERVO_STATE.ENABLED
         elif (status_word & constants.IL_MC_PDS_STA_QSA_MSK) == \
                 constants.IL_MC_PDS_STA_QSA:
-            state = lib.IL_SERVO_STATE_QSTOP
+            state = SERVO_STATE.QSTOP
         elif (status_word & constants.IL_MC_PDS_STA_FRA_MSK) == \
                 constants.IL_MC_PDS_STA_FRA:
-            state = lib.IL_SERVO_STATE_FAULTR
+            state = SERVO_STATE.FAULTR
         elif (status_word & constants.IL_MC_PDS_STA_F_MSK) == \
                 constants.IL_MC_PDS_STA_F:
-            state = lib.IL_SERVO_STATE_FAULT
+            state = SERVO_STATE.FAULT
         else:
-            state = lib.IL_SERVO_STATE_NRDY
-        return SERVO_STATE(state)
+            state = SERVO_STATE.NRDY
+        return state
 
     def monitoring_enable(self):
         """Enable monitoring process."""
