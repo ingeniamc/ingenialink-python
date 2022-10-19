@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from enum import Enum
 
 from ._ingenialink import ffi, lib
-from .register_deprecated import REG_DTYPE
 from .constants import DEFAULT_DRIVE_NAME
 from ingenialink.exceptions import ILIOError
 
@@ -147,20 +146,6 @@ class SERVO_UNITS_ACC(Enum):
     """Millimeters/second^2."""
     M_S2 = lib.IL_UNITS_ACC_M_S2
     """Meters/second^2."""
-
-
-@ffi.def_extern()
-def _on_state_change_cb(ctx, state, flags, subnode):
-    """On state change callback shim."""
-    cb = ffi.from_handle(ctx)
-    cb(SERVO_STATE(state), flags, subnode)
-
-
-@ffi.def_extern()
-def _on_emcy_cb(ctx, code):
-    """On emergency callback shim."""
-    cb = ffi.from_handle(ctx)
-    cb(code)
 
 
 class ServoStatusListener(threading.Thread):

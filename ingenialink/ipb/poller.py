@@ -1,14 +1,14 @@
 from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import raise_null, raise_err, to_ms
 from ingenialink.register_deprecated import _get_reg_id
-from ingenialink.ipb.servo import IPBServo
+from ingenialink.ethercat.servo import EthercatServo
 
 
 class IPBPoller:
     """IPB poller.
 
     Args:
-        servo (IPBServo): Servo.
+        servo (EthercatServo): Servo.
         num_channels (int): Number of channels.
 
     Raises:

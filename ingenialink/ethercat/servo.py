@@ -121,6 +121,20 @@ RESTORE_MOCO_ALL_REGISTERS = {
 }
 
 
+@ffi.def_extern()
+def _on_state_change_cb(ctx, state, flags, subnode):
+    """On state change callback shim."""
+    cb = ffi.from_handle(ctx)
+    cb(SERVO_STATE(state), flags, subnode)
+
+
+@ffi.def_extern()
+def _on_emcy_cb(ctx, code):
+    """On emergency callback shim."""
+    cb = ffi.from_handle(ctx)
+    cb(code)
+
+
 class EthercatServo:
     """Servo object for all the EtherCAT slave functionalities.
 
