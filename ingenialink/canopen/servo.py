@@ -82,11 +82,6 @@ STORE_COCO_ALL = CanopenRegister(
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
-RESTORE_COCO_ALL = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x1011, subidx=0x01, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-)
-
 STORE_MOCO_ALL_REGISTERS = {
     1: CanopenRegister(
         identifier='', units='', subnode=1, idx=0x26DB, subidx=0x00,
@@ -98,21 +93,6 @@ STORE_MOCO_ALL_REGISTERS = {
     ),
     3: CanopenRegister(
         identifier='', units='', subnode=3, idx=0x36DB, subidx=0x00,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    )
-}
-
-RESTORE_MOCO_ALL_REGISTERS = {
-    1: CanopenRegister(
-        identifier='', units='', subnode=1, idx=0x26DC, subidx=0x00,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    ),
-    2: CanopenRegister(
-        identifier='', units='', subnode=2, idx=0x2EDC, subidx=0x00,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    ),
-    3: CanopenRegister(
-        identifier='', units='', subnode=3, idx=0x36DC, subidx=0x00,
         cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
 }
@@ -201,6 +181,24 @@ class CanopenServo(Servo):
         3: CanopenRegister(
             identifier='', units='', subnode=3, idx=0x7041, subidx=0x00,
             cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        )
+    }
+    RESTORE_COCO_ALL = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x1011, subidx=0x01, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
+    RESTORE_MOCO_ALL_REGISTERS = {
+        1: CanopenRegister(
+            identifier='', units='', subnode=1, idx=0x26DC, subidx=0x00,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        ),
+        2: CanopenRegister(
+            identifier='', units='', subnode=2, idx=0x2EDC, subidx=0x00,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        ),
+        3: CanopenRegister(
+            identifier='', units='', subnode=3, idx=0x36DC, subidx=0x00,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
         )
     }
 
@@ -519,42 +517,6 @@ class CanopenServo(Servo):
         finally:
             time.sleep(1.5)
             self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
-
-    def restore_parameters(self, subnode=None):
-        """Restore all the current parameters of all the slave to default.
-
-        .. note::
-            The drive needs a power cycle after this
-            in order for the changes to be properly applied.
-
-        Args:
-            subnode (int): Subnode of the axis. `None` by default which restores
-            all the parameters.
-
-        Raises:
-            ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
-
-        """
-        if subnode is None:
-            # Restore all
-            self.write(reg=RESTORE_COCO_ALL,
-                       data=PASSWORD_RESTORE_ALL,
-                       subnode=0)
-            logger.info('Restore all successfully done.')
-        elif subnode == 0:
-            # Restore subnode 0
-            raise ILError('The current firmware version does not '
-                          'have this feature implemented.')
-        elif subnode > 0 and subnode in RESTORE_MOCO_ALL_REGISTERS:
-            # Restore axis
-            self.write(reg=RESTORE_COCO_ALL,
-                       data=RESTORE_MOCO_ALL_REGISTERS[subnode],
-                       subnode=subnode)
-            logger.info('Restore subnode {} successfully done.'.format(subnode))
-        else:
-            raise ILError('Invalid subnode.')
-        time.sleep(1.5)
 
     def _change_sdo_timeout(self, value):
         """Changes the SDO timeout of the node."""

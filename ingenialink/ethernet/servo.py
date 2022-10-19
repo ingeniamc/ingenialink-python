@@ -11,13 +11,11 @@ from ingenialink.servo import Servo, SERVO_STATE
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, \
     raise_err, convert_ip_to_int
-from ingenialink.constants import PASSWORD_STORE_ALL, PASSWORD_RESTORE_ALL, \
-    DEFAULT_PDS_TIMEOUT
+from ingenialink.constants import PASSWORD_STORE_ALL, DEFAULT_PDS_TIMEOUT
 from ingenialink.canopen import constants
 from ingenialink.ethernet.dictionary import EthernetDictionary
 
 import ingenialogger
-import xml.etree.ElementTree as ET
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -109,26 +107,6 @@ STORE_COCO_ALL = EthernetRegister(
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
-RESTORE_COCO_ALL = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x06DC, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-)
-
-RESTORE_MOCO_ALL_REGISTERS = {
-    1: EthernetRegister(
-        identifier='', units='', subnode=1, address=0x06DC,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    ),
-    2: EthernetRegister(
-        identifier='', units='', subnode=2, address=0x06DC,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    ),
-    3: EthernetRegister(
-        identifier='', units='', subnode=3, address=0x06DC,
-        cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    )
-}
-
 CONTROL_WORD_REGISTERS = {
     1: EthernetRegister(
         identifier='', units='', subnode=1, address=0x0010,
@@ -213,6 +191,24 @@ class EthernetServo(Servo):
             cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
         )
     }
+    RESTORE_COCO_ALL = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x06DC, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
+    RESTORE_MOCO_ALL_REGISTERS = {
+        1: EthernetRegister(
+            identifier='', units='', subnode=1, address=0x06DC,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        ),
+        2: EthernetRegister(
+            identifier='', units='', subnode=2, address=0x06DC,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        ),
+        3: EthernetRegister(
+            identifier='', units='', subnode=3, address=0x06DC,
+            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        )
+    }
 
     def __init__(self, socket, dictionary_path=None,
                  servo_status_listener=False):
@@ -236,7 +232,7 @@ class EthernetServo(Servo):
     def restore_tcp_ip_parameters(self):
         """Restores the TCP/IP values back to default. Affects
         IP address, subnet mask and gateway"""
-        self.write(reg=RESTORE_COCO_ALL,
+        self.write(reg=self.RESTORE_COCO_ALL,
                    data=PASSWORD_STORE_RESTORE_TCP_IP,
                    subnode=0)
         logger.info('Restore TCP/IP successfully done.')
@@ -747,42 +743,6 @@ class EthernetServo(Servo):
                 raise ILError('Invalid subnode.')
         finally:
             time.sleep(1.5)
-
-    def restore_parameters(self, subnode=None):
-        """Restore all the current parameters of all the slave to default.
-
-        .. note::
-            The drive needs a power cycle after this
-            in order for the changes to be properly applied.
-
-        Args:
-            subnode (int): Subnode of the axis. `None` by default which restores
-            all the parameters.
-
-        Raises:
-            ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
-
-        """
-        if subnode is None:
-            # Restore all
-            self.write(reg=RESTORE_COCO_ALL,
-                       data=PASSWORD_RESTORE_ALL,
-                       subnode=0)
-            logger.info('Restore all successfully done.')
-        elif subnode == 0:
-            # Restore subnode 0
-            raise ILError('The current firmware version does not '
-                          'have this feature implemented.')
-        elif subnode > 0 and subnode in RESTORE_MOCO_ALL_REGISTERS:
-            # Restore axis
-            self.write(reg=RESTORE_COCO_ALL,
-                       data=RESTORE_MOCO_ALL_REGISTERS[subnode],
-                       subnode=subnode)
-            logger.info(f'Restore subnode {subnode} successfully done.')
-        else:
-            raise ILError('Invalid subnode.')
-        time.sleep(1.5)
 
     def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Disable PDS.

@@ -9,6 +9,7 @@ from .constants import DEFAULT_DRIVE_NAME
 from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError
 from ingenialink.register import Register
 from ingenialink.utils._utils import get_drive_identification, cleanup_register
+from ingenialink.constants import PASSWORD_RESTORE_ALL
 
 import ingenialogger
 
@@ -350,6 +351,42 @@ class Servo:
 
         tree.write(config_file)
         xml_file.close()
+
+    def restore_parameters(self, subnode=None):
+        """Restore all the current parameters of all the slave to default.
+
+        .. note::
+            The drive needs a power cycle after this
+            in order for the changes to be properly applied.
+
+        Args:
+            subnode (int): Subnode of the axis. `None` by default which restores
+            all the parameters.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        if subnode is None:
+            # Restore all
+            self.write(reg=self.RESTORE_COCO_ALL,
+                       data=PASSWORD_RESTORE_ALL,
+                       subnode=0)
+            logger.info('Restore all successfully done.')
+        elif subnode == 0:
+            # Restore subnode 0
+            raise ILError('The current firmware version does not '
+                          'have this feature implemented.')
+        elif subnode > 0 and subnode in self.RESTORE_MOCO_ALL_REGISTERS:
+            # Restore axis
+            self.write(reg=self.RESTORE_COCO_ALL,
+                       data=self.RESTORE_MOCO_ALL_REGISTERS[subnode],
+                       subnode=subnode)
+            logger.info(f'Restore subnode {subnode} successfully done.')
+        else:
+            raise ILError('Invalid subnode.')
+        time.sleep(1.5)
 
     def _get_reg(self, reg, subnode=1):
         """Validates a register.
