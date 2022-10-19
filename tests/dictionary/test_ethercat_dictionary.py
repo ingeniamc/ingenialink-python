@@ -1,4 +1,4 @@
-from ingenialink.dictionary import Dictionary
+from ingenialink.dictionary_deprecated import Dictionary
 
 
 def test_dictionary(connect_to_slave):
