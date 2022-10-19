@@ -26,16 +26,6 @@ MONITORING_DISTURBANCE_VERSION = CanopenRegister(
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 
-DISTURBANCE_ENABLE = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58C7, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-)
-
-DISTURBANCE_REMOVE_DATA = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58EB, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
-)
-
 DISTURBANCE_NUMBER_MAPPED_REGISTERS = CanopenRegister(
     identifier='', units='', subnode=0, idx=0x58E8, subidx=0x00, cyclic='CONFIG',
     dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
@@ -187,6 +177,14 @@ class CanopenServo(Servo):
     MONITORING_ACTUAL_NUMBER_BYTES = CanopenRegister(
         identifier='', units='', subnode=0, idx=0x58B7, subidx=0x00, cyclic='CONFIG',
         dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    )
+    DISTURBANCE_ENABLE = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58C7, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    )
+    DISTURBANCE_REMOVE_DATA = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58EB, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
     )
 
     def __init__(self, target, node, dictionary_path=None, eds=None,
@@ -420,21 +418,6 @@ class CanopenServo(Servo):
         """Read monitoring data frame."""
         return self._read_raw(MONITORING_DATA, subnode=0)
 
-    def disturbance_enable(self):
-        """Enable disturbance process."""
-        self.write(DISTURBANCE_ENABLE, data=1, subnode=0)
-
-    def disturbance_disable(self):
-        """Disable disturbance process."""
-        self.write(DISTURBANCE_ENABLE, data=0, subnode=0)
-
-    def disturbance_remove_data(self):
-        """Remove disturbance data."""
-        self.write(DISTURBANCE_REMOVE_DATA,
-                   data=1, subnode=0)
-        self.disturbance_data = bytearray()
-        self.disturbance_data_size = 0
-
     def disturbance_remove_all_mapped_registers(self):
         """Remove all disturbance mapped registers."""
         self.write(DISTURBANCE_NUMBER_MAPPED_REGISTERS,
@@ -517,26 +500,6 @@ class CanopenServo(Servo):
         data_l = dtype << 8 | size
         return (data_h << 16) | data_l
 
-    @property
-    def disturbance_data_size(self):
-        """Obtain disturbance data size.
-
-        Returns:
-            int: Current disturbance data size.
-
-        """
-        return self.__disturbance_data_size
-
-    @disturbance_data_size.setter
-    def disturbance_data_size(self, value):
-        """Set disturbance data size.
-
-        Args:
-            value (int): Disturbance data size in bytes.
-
-        """
-        self.__disturbance_data_size = value
-
     def disturbance_write_data(self, channels, dtypes, data_arr):
         """Write disturbance data.
 
@@ -566,23 +529,3 @@ class CanopenServo(Servo):
             self._write_raw(DIST_DATA, data=chunk, subnode=0)
         self.disturbance_data = data
         self.disturbance_data_size = len(data)
-
-    @property
-    def disturbance_data(self):
-        """Obtain disturbance data.
-
-        Returns:
-            array: Current disturbance data.
-
-        """
-        return self.__disturbance_data
-
-    @disturbance_data.setter
-    def disturbance_data(self, value):
-        """Set disturbance data.
-
-        Args:
-            value (array): Array with the disturbance to send.
-
-        """
-        self.__disturbance_data = value

@@ -760,6 +760,21 @@ class Servo:
         """
         return self.__processed_monitoring_data[channel]
 
+    def disturbance_enable(self):
+        """Enable disturbance process."""
+        self.write(self.DISTURBANCE_ENABLE, data=1, subnode=0)
+
+    def disturbance_disable(self):
+        """Disable disturbance process."""
+        self.write(self.DISTURBANCE_ENABLE, data=0, subnode=0)
+
+    def disturbance_remove_data(self):
+        """Remove disturbance data."""
+        self.write(self.DISTURBANCE_REMOVE_DATA,
+                   data=1, subnode=0)
+        self.disturbance_data = bytearray()
+        self.disturbance_data_size = 0
+
     def _get_reg(self, reg, subnode=1):
         """Validates a register.
         Args:
@@ -1031,4 +1046,45 @@ class Servo:
         """
         number_of_samples = self.read('MON_CFG_WINDOW_SAMP', subnode=0)
         return self.monitoring_get_bytes_per_block() * number_of_samples
+
+    @property
+    def disturbance_data(self):
+        """Obtain disturbance data.
+
+        Returns:
+            array: Current disturbance data.
+
+        """
+        return self.__disturbance_data
+
+    @disturbance_data.setter
+    def disturbance_data(self, value):
+        """Set disturbance data.
+
+        Args:
+            value (array): Array with the disturbance to send.
+
+        """
+        self.__disturbance_data = value
+
+    @property
+    def disturbance_data_size(self):
+        """Obtain disturbance data size.
+
+        Returns:
+            int: Current disturbance data size.
+
+        """
+        return self.__disturbance_data_size
+
+    @disturbance_data_size.setter
+    def disturbance_data_size(self, value):
+        """Set disturbance data size.
+
+        Args:
+            value (int): Disturbance data size in bytes.
+
+        """
+        self.__disturbance_data_size = value
+
 

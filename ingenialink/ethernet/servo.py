@@ -28,19 +28,9 @@ COMMS_ETH_NET_GATEWAY = EthernetRegister(
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
-DISTURBANCE_ENABLE = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x00C7, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-)
-
 MONITORING_DATA = EthernetRegister(
     identifier='', units='', subnode=0, address=0x00B2, cyclic='CONFIG',
     dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-)
-
-DISTURBANCE_REMOVE_DATA = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x00EB, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
 )
 
 DISTURBANCE_NUMBER_MAPPED_REGISTERS = EthernetRegister(
@@ -193,6 +183,14 @@ class EthernetServo(Servo):
         identifier='', units='', subnode=0, address=0x00B7, cyclic='CONFIG',
         dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
     )
+    DISTURBANCE_ENABLE = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x00C7, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    )
+    DISTURBANCE_REMOVE_DATA = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x00EB, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+    )
 
     def __init__(self, socket, dictionary_path=None,
                  servo_status_listener=False):
@@ -318,21 +316,6 @@ class EthernetServo(Servo):
                                     MONITORING_DATA.address,
                                     MONITORING_DATA.subnode)
 
-    def disturbance_enable(self):
-        """Enable disturbance process."""
-        self.write(DISTURBANCE_ENABLE, data=1, subnode=0)
-
-    def disturbance_disable(self):
-        """Disable disturbance process."""
-        self.write(DISTURBANCE_ENABLE, data=0, subnode=0)
-
-    def disturbance_remove_data(self):
-        """Remove disturbance data."""
-        self.write(DISTURBANCE_REMOVE_DATA,
-                   data=1, subnode=0)
-        self.disturbance_data = bytearray()
-        self.disturbance_data_size = 0
-
     def disturbance_set_mapped_register(self, channel, address, subnode,
                                         dtype, size):
         """Set monitoring mapped register.
@@ -389,46 +372,6 @@ class EthernetServo(Servo):
     def disturbance_number_mapped_registers(self):
         """Get the number of mapped disturbance registers."""
         return self.__disturbance_num_mapped_registers
-
-    @property
-    def disturbance_data(self):
-        """Obtain disturbance data.
-
-        Returns:
-            array: Current disturbance data.
-
-        """
-        return self.__disturbance_data
-
-    @disturbance_data.setter
-    def disturbance_data(self, value):
-        """Set disturbance data.
-
-        Args:
-            value (array): Array with the disturbance to send.
-
-        """
-        self.__disturbance_data = value
-
-    @property
-    def disturbance_data_size(self):
-        """Obtain disturbance data size.
-
-        Returns:
-            int: Current disturbance data size.
-
-        """
-        return self.__disturbance_data_size
-
-    @disturbance_data_size.setter
-    def disturbance_data_size(self, value):
-        """Set disturbance data size.
-
-        Args:
-            value (int): Disturbance data size in bytes.
-
-        """
-        self.__disturbance_data_size = value
 
     def disturbance_remove_all_mapped_registers(self):
         """Remove all disturbance mapped registers."""
