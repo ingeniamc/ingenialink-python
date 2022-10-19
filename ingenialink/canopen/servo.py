@@ -4,9 +4,7 @@ from canopen.emcy import EmcyConsumer
 
 from ..constants import *
 from ..exceptions import *
-from .._ingenialink import lib
-from ingenialink.utils._utils import raise_err,\
-    convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ..servo import Servo
 from .dictionary import CanopenDictionary
 from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
@@ -256,7 +254,7 @@ class CanopenServo(Servo):
         _reg = self._get_reg(reg, subnode)
 
         if _reg.access == REG_ACCESS.RO:
-            raise_err(lib.IL_EACCESS, 'Register is Read-only')
+            raise ILAccessError('Register is Read-only')
         try:
             self.__lock.acquire()
             self.__node.sdo.download(_reg.idx,
@@ -266,7 +264,7 @@ class CanopenServo(Servo):
             logger.error("Failed writing %s. Exception: %s",
                          str(_reg.identifier), e)
             error_raised = "Error writing {}".format(_reg.identifier)
-            raise_err(lib.IL_EIO, error_raised)
+            raise ILIOError(error_raised)
         finally:
             self.__lock.release()
 
@@ -288,7 +286,7 @@ class CanopenServo(Servo):
 
         access = _reg.access
         if access == REG_ACCESS.WO:
-            raise_err(lib.IL_EACCESS, 'Register is Write-only')
+            raise ILAccessError('Register is Write-only')
         value = None
         try:
             self.__lock.acquire()
@@ -297,7 +295,7 @@ class CanopenServo(Servo):
             logger.error("Failed reading %s. Exception: %s",
                          str(_reg.identifier), e)
             error_raised = f"Error reading {_reg.identifier}"
-            raise_err(lib.IL_EIO, error_raised)
+            raise ILIOError(error_raised)
         finally:
             self.__lock.release()
         return value
