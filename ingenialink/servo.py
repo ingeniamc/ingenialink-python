@@ -609,6 +609,10 @@ class Servo:
                 subnode=subnode)
         return r
 
+    def get_state(self, subnode=1):
+        """SERVO_STATE: Current drive state."""
+        return self.__state[subnode], None
+
     @staticmethod
     def status_word_decode(status_word):
         """Decodes the status word to a known value.
@@ -763,6 +767,28 @@ class Servo:
             for callback in self.__observers_servo_state:
                 callback(state, None, subnode)
 
+    def __read_coco_moco_register(self, register_coco, register_moco):
+        """Reads the COCO register and if it does not exist,
+        reads the MOCO register
+
+        Args:
+            register_coco (Register): COCO Register to be read.
+            register_moco (Register): MOCO Register to be read.
+
+        Returns:
+            int: Read value of the register.
+
+        """
+        try:
+            return self.read(register_coco, subnode=0)
+        except ILError:
+            pass
+
+        try:
+            return self.read(register_moco, subnode=1)
+        except ILError:
+            pass
+
     @property
     def dictionary(self):
         """Returns dictionary object"""
@@ -785,3 +811,39 @@ class Servo:
     @status.setter
     def status(self, new_state):
         self.__state = new_state
+
+    @property
+    def subnodes(self):
+        """int: Number of subnodes."""
+        return self._dictionary.subnodes
+
+    @property
+    def errors(self):
+        """dict: Errors."""
+        return self._dictionary.errors.errors
+
+    @property
+    def info(self):
+        """dict: Servo information."""
+        serial_number = self.__read_coco_moco_register(
+            self.SERIAL_NUMBER_REGISTERS[0],
+            self.SERIAL_NUMBER_REGISTERS[1])
+        sw_version = self.__read_coco_moco_register(
+            self.SOFTWARE_VERSION_REGISTERS[0],
+            self.SOFTWARE_VERSION_REGISTERS[1])
+        product_code = self.__read_coco_moco_register(
+            self.PRODUCT_ID_REGISTERS[0],
+            self.PRODUCT_ID_REGISTERS[1])
+        revision_number = self.__read_coco_moco_register(
+            self.REVISION_NUMBER_REGISTERS[0],
+            self.REVISION_NUMBER_REGISTERS[1])
+        hw_variant = 'A'
+
+        return {
+            'name': self.name,
+            'serial_number': serial_number,
+            'firmware_version': sw_version,
+            'product_code': product_code,
+            'revision_number': revision_number,
+            'hw_variant': hw_variant
+        }
