@@ -9,7 +9,7 @@ from .constants import DEFAULT_DRIVE_NAME
 from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError
 from ingenialink.register import Register
 from ingenialink.utils._utils import get_drive_identification, cleanup_register, \
-    raise_err, convert_bytes_to_dtype
+    raise_err, convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.constants import PASSWORD_RESTORE_ALL, PASSWORD_STORE_ALL, \
     DEFAULT_PDS_TIMEOUT, MONITORING_BUFFER_SIZE
 from ingenialink.utils import constants
@@ -775,6 +775,51 @@ class Servo:
         self.disturbance_data = bytearray()
         self.disturbance_data_size = 0
 
+    def disturbance_set_mapped_register(self, channel, address, subnode,
+                                        dtype, size):
+        """Set monitoring mapped register.
+
+        Args:
+            channel (int): Identity channel number.
+            address (int): Register address to map.
+            subnode (int): Subnode to be targeted.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
+
+        """
+        self.__disturbance_channels_size[channel] = size
+        self.__disturbance_channels_dtype[channel] = REG_DTYPE(dtype).name
+        data = self.__monitoring_disturbance_data_to_map_register(subnode,
+                                                                  address,
+                                                                  dtype,
+                                                                  size)
+        self.write(self.__disturbance_map_register(), data=data,
+                   subnode=0)
+        self.__disturbance_update_num_mapped_registers()
+        self.__disturbance_num_mapped_registers = \
+            self.disturbance_get_num_mapped_registers()
+        self.write(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS,
+                   data=self.disturbance_number_mapped_registers,
+                   subnode=subnode)
+
+    def disturbance_get_num_mapped_registers(self):
+        """Obtain the number of disturbance mapped registers.
+
+        Returns:
+            int: Actual number of mapped registers.
+
+        """
+        return self.read('DIST_CFG_MAP_REGS', 0)
+
+    def disturbance_remove_all_mapped_registers(self):
+        """Remove all disturbance mapped registers."""
+        self.write(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS,
+                   data=0, subnode=0)
+        self.__disturbance_num_mapped_registers = \
+            self.disturbance_get_num_mapped_registers()
+        self.__disturbance_channels_size = {}
+        self.__disturbance_channels_dtype = {}
+
     def _get_reg(self, reg, subnode=1):
         """Validates a register.
         Args:
@@ -972,6 +1017,51 @@ class Servo:
                 block_data = block_data[channel_data_size:]
         self.__processed_monitoring_data = res
 
+    def __disturbance_map_register(self):
+        """Get the first available Disturbance Mapped Register slot.
+
+        Returns:
+            str: Disturbance Mapped Register ID.
+
+        """
+        return f'DIST_CFG_REG{self.disturbance_number_mapped_registers}_MAP'
+
+    def __disturbance_update_num_mapped_registers(self):
+        """Update the number of mapped disturbance registers."""
+        self.__disturbance_num_mapped_registers += 1
+        self.write('DIST_CFG_MAP_REGS',
+                   data=self.__disturbance_num_mapped_registers,
+                   subnode=0)
+
+    def __disturbance_create_data_chunks(self, channels, dtypes,
+                                         data_arr, max_size):
+        """Divide disturbance data into chunks.
+
+        Args:
+            channels (int or list of int): Channel identifier.
+            dtypes (int or list of int): Data type.
+            data_arr (list or list of list): Data array.
+            max_size (int): Max chunk size in bytes.
+
+        """
+        if not isinstance(channels, list):
+            channels = [channels]
+        if not isinstance(dtypes, list):
+            dtypes = [dtypes]
+        if not isinstance(data_arr[0], list):
+            data_arr = [data_arr]
+        num_samples = len(data_arr[0])
+        self.write(self.DIST_NUMBER_SAMPLES, num_samples, subnode=0)
+        data = bytearray()
+        for sample_idx in range(num_samples):
+            for channel in range(len(data_arr)):
+                val = convert_dtype_to_bytes(
+                    data_arr[channel][sample_idx], dtypes[channel])
+                data += val
+        chunks = [data[i:i + max_size]
+                  for i in range(0, len(data), max_size)]
+        return data, chunks
+
     @property
     def dictionary(self):
         """Returns dictionary object"""
@@ -1086,5 +1176,10 @@ class Servo:
 
         """
         self.__disturbance_data_size = value
+
+    @property
+    def disturbance_number_mapped_registers(self):
+        """Get the number of mapped disturbance registers."""
+        return self.__disturbance_num_mapped_registers
 
 
