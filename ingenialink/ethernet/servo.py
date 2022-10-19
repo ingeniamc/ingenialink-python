@@ -28,23 +28,8 @@ COMMS_ETH_NET_GATEWAY = EthernetRegister(
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
-MONITORING_DIST_ENABLE = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x00C0, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-)
-
 DISTURBANCE_ENABLE = EthernetRegister(
     identifier='', units='', subnode=0, address=0x00C7, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-)
-
-MONITORING_REMOVE_DATA = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x00EA, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
-)
-
-MONITORING_NUMBER_MAPPED_REGISTERS = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x00E3, cyclic='CONFIG',
     dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
 )
 
@@ -198,6 +183,18 @@ class EthernetServo(Servo):
             cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
         )
     }
+    MONITORING_DIST_ENABLE = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x00C0, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    )
+    MONITORING_REMOVE_DATA = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x00EA, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+    )
+    MONITORING_NUMBER_MAPPED_REGISTERS = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x00E3, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    )
 
     def __init__(self, socket, dictionary_path=None,
                  servo_status_listener=False):
@@ -317,97 +314,9 @@ class EthernetServo(Servo):
         self.__lock.release()
         return MCB.read_mcb_data(reg, response)
 
-    def monitoring_disable(self):
-        """Disable monitoring process."""
-        self.write(MONITORING_DIST_ENABLE, data=0, subnode=0)
-
-    def monitoring_remove_data(self):
-        """Remove monitoring data."""
-        self.write(MONITORING_REMOVE_DATA,
-                   data=1, subnode=0)
-
-    def monitoring_set_mapped_register(self, channel, address, subnode,
-                                       dtype, size):
-        """Set monitoring mapped register.
-
-        Args:
-            channel (int): Identity channel number.
-            address (int): Register address to map.
-            subnode (int): Subnode to be targeted.
-            dtype (int): Register data type.
-            size (int): Size of data in bytes.
-
-        """
-        self.__monitoring_channels_size[channel] = size
-        self.__monitoring_channels_dtype[channel] = REG_DTYPE(dtype)
-        data = self.__monitoring_disturbance_data_to_map_register(subnode,
-                                                                  address,
-                                                                  dtype,
-                                                                  size)
-        self.write(self.__monitoring_map_register(), data=data,
-                   subnode=0)
-        self.__monitoring_update_num_mapped_registers()
-        self.__monitoring_num_mapped_registers = \
-            self.monitoring_get_num_mapped_registers()
-        self.write(MONITORING_NUMBER_MAPPED_REGISTERS,
-                   data=self.monitoring_number_mapped_registers,
-                   subnode=subnode)
-
-    def monitoring_get_num_mapped_registers(self):
-        """Obtain the number of monitoring mapped registers.
-
-        Returns:
-            int: Actual number of mapped registers.
-
-        """
-        return self.read('MON_CFG_TOTAL_MAP', 0)
-
-    @staticmethod
-    def __monitoring_disturbance_data_to_map_register(subnode, address,
-                                                      dtype, size):
-        """Arrange necessary data to map a monitoring/disturbance register.
-
-        Args:
-            subnode (int): Subnode to be targeted.
-            address (int): Register address to map.
-            dtype (int): Register data type.
-            size (int): Size of data in bytes.
-
-        """
-        data_h = address | subnode << 12
-        data_l = dtype << 8 | size
-        return (data_h << 16) | data_l
-
-    def __monitoring_map_register(self):
-        """Get the first available Monitoring Mapped Register slot.
-
-        Returns:
-            str: Monitoring Mapped Register ID.
-
-        """
-        if self.monitoring_number_mapped_registers < 10:
-            register_id = f'MON_CFG_REG' \
-                          f'{self.monitoring_number_mapped_registers}_MAP'
-        else:
-            register_id = f'MON_CFG_REFG' \
-                          f'{self.monitoring_number_mapped_registers}_MAP'
-        return register_id
-
-    def __monitoring_update_num_mapped_registers(self):
-        """Update the number of mapped monitoring registers."""
-        self.__monitoring_num_mapped_registers += 1
-        self.write('MON_CFG_TOTAL_MAP',
-                   data=self.__monitoring_num_mapped_registers,
-                   subnode=0)
-
-    @property
-    def monitoring_number_mapped_registers(self):
-        """Get the number of mapped monitoring registers."""
-        return self.__monitoring_num_mapped_registers
-
     def monitoring_remove_all_mapped_registers(self):
         """Remove all monitoring mapped registers."""
-        self.write(MONITORING_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
+        self.write(self.MONITORING_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
         self.__monitoring_num_mapped_registers = \
             self.monitoring_get_num_mapped_registers()
         self.__monitoring_channels_size = {}

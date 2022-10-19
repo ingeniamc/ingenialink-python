@@ -13,6 +13,7 @@ from ingenialink.utils._utils import get_drive_identification, cleanup_register,
 from ingenialink.constants import PASSWORD_RESTORE_ALL, PASSWORD_STORE_ALL, \
     DEFAULT_PDS_TIMEOUT
 from ingenialink.utils import constants
+from ingenialink.register import REG_DTYPE
 
 import ingenialogger
 
@@ -652,6 +653,55 @@ class Servo:
             state = lib.IL_SERVO_STATE_NRDY
         return SERVO_STATE(state)
 
+    def monitoring_enable(self):
+        """Enable monitoring process."""
+        self.write(self.MONITORING_DIST_ENABLE, data=1, subnode=0)
+
+    def monitoring_disable(self):
+        """Disable monitoring process."""
+        self.write(self.MONITORING_DIST_ENABLE, data=0, subnode=0)
+
+    def monitoring_remove_data(self):
+        """Remove monitoring data."""
+        self.write(self.MONITORING_REMOVE_DATA,
+                   data=1, subnode=0)
+
+    def monitoring_set_mapped_register(self, channel, address, subnode,
+                                       dtype, size):
+        """Set monitoring mapped register.
+
+        Args:
+            channel (int): Identity channel number.
+            address (int): Register address to map.
+            subnode (int): Subnode to be targeted.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
+
+        """
+        self.__monitoring_channels_size[channel] = size
+        self.__monitoring_channels_dtype[channel] = REG_DTYPE(dtype)
+        data = self.__monitoring_disturbance_data_to_map_register(subnode,
+                                                                  address,
+                                                                  dtype,
+                                                                  size)
+        self.write(self.__monitoring_map_register(), data=data,
+                   subnode=0)
+        self.__monitoring_update_num_mapped_registers()
+        self.__monitoring_num_mapped_registers = \
+            self.monitoring_get_num_mapped_registers()
+        self.write(self.MONITORING_NUMBER_MAPPED_REGISTERS,
+                   data=self.monitoring_number_mapped_registers,
+                   subnode=subnode)
+
+    def monitoring_get_num_mapped_registers(self):
+        """Obtain the number of monitoring mapped registers.
+
+        Returns:
+            int: Actual number of mapped registers.
+
+        """
+        return self.read('MON_CFG_TOTAL_MAP', 0)
+
     def _get_reg(self, reg, subnode=1):
         """Validates a register.
         Args:
@@ -789,6 +839,44 @@ class Servo:
         except ILError:
             pass
 
+    def __monitoring_map_register(self):
+        """Get the first available Monitoring Mapped Register slot.
+
+        Returns:
+            str: Monitoring Mapped Register ID.
+
+        """
+        if self.monitoring_number_mapped_registers < 10:
+            register_id = f'MON_CFG_REG' \
+                          f'{self.monitoring_number_mapped_registers}_MAP'
+        else:
+            register_id = f'MON_CFG_REFG' \
+                          f'{self.monitoring_number_mapped_registers}_MAP'
+        return register_id
+
+    @staticmethod
+    def __monitoring_disturbance_data_to_map_register(subnode, address,
+                                                      dtype, size):
+        """Arrange necessary data to map a monitoring/disturbance register.
+
+        Args:
+            subnode (int): Subnode to be targeted.
+            address (int): Register address to map.
+            dtype (int): Register data type.
+            size (int): Size of data in bytes.
+
+        """
+        data_h = address | subnode << 12
+        data_l = dtype << 8 | size
+        return (data_h << 16) | data_l
+
+    def __monitoring_update_num_mapped_registers(self):
+        """Update the number of mapped monitoring registers."""
+        self.__monitoring_num_mapped_registers += 1
+        self.write('MON_CFG_TOTAL_MAP',
+                   data=self.__monitoring_num_mapped_registers,
+                   subnode=0)
+
     @property
     def dictionary(self):
         """Returns dictionary object"""
@@ -847,3 +935,9 @@ class Servo:
             'revision_number': revision_number,
             'hw_variant': hw_variant
         }
+
+    @property
+    def monitoring_number_mapped_registers(self):
+        """Get the number of mapped monitoring registers."""
+        return self.__monitoring_num_mapped_registers
+

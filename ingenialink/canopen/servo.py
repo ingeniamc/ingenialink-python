@@ -16,21 +16,6 @@ logger = ingenialogger.get_logger(__name__)
 
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
-MONITORING_DIST_ENABLE = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58C0, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-)
-
-MONITORING_NUMBER_MAPPED_REGISTERS = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58E3, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-)
-
-MONITORING_REMOVE_DATA = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58EA, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
-)
-
 MONITORING_BYTES_PER_BLOCK = CanopenRegister(
     identifier='', units='', subnode=0, idx=0x58E4, subidx=0x00, cyclic='CONFIG',
     dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
@@ -193,6 +178,18 @@ class CanopenServo(Servo):
             cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
         )
     }
+    MONITORING_DIST_ENABLE = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58C0, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    )
+    MONITORING_REMOVE_DATA = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58EA, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+    )
+    MONITORING_NUMBER_MAPPED_REGISTERS = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58E3, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    )
 
     def __init__(self, target, node, dictionary_path=None, eds=None,
                  servo_status_listener=False):
@@ -416,93 +413,18 @@ class CanopenServo(Servo):
         """
         del self.__emcy_consumer.callbacks[slot]
 
-    @property
-    def monitoring_number_mapped_registers(self):
-        """Get the number of mapped monitoring registers."""
-        return self.__monitoring_num_mapped_registers
-
-    def monitoring_enable(self):
-        """Enable monitoring process."""
-        self.write(MONITORING_DIST_ENABLE, data=1, subnode=0)
-
-    def monitoring_disable(self):
-        """Disable monitoring process."""
-        self.write(MONITORING_DIST_ENABLE, data=0, subnode=0)
-
     def monitoring_remove_all_mapped_registers(self):
         """Remove all monitoring mapped registers."""
-        self.write(MONITORING_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
+        self.write(self.MONITORING_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
         self.__monitoring_num_mapped_registers = \
             self.monitoring_get_num_mapped_registers()
         self.__monitoring_channels_size = {}
         self.__monitoring_channels_dtype = {}
 
-    def monitoring_set_mapped_register(self, channel, address, subnode,
-                                       dtype, size):
-        """Set monitoring mapped register.
-
-        Args:
-            channel (int): Identity channel number.
-            address (int): Register address to map.
-            subnode (int): Subnode to be targeted.
-            dtype (int): Register data type.
-            size (int): Size of data in bytes.
-
-        """
-        self.__monitoring_channels_size[channel] = size
-        self.__monitoring_channels_dtype[channel] = REG_DTYPE(dtype)
-        data = self.__monitoring_disturbance_data_to_map_register(subnode,
-                                                                  address,
-                                                                  dtype,
-                                                                  size)
-        self.write(self.__monitoring_map_register(), data=data,
-                   subnode=0)
-        self.__monitoring_update_num_mapped_registers()
-        self.__monitoring_num_mapped_registers = \
-            self.monitoring_get_num_mapped_registers()
-        self.write(MONITORING_NUMBER_MAPPED_REGISTERS,
-                   data=self.monitoring_number_mapped_registers,
-                   subnode=subnode)
-
-    def __monitoring_map_register(self):
-        """Get the first available Monitoring Mapped Register slot.
-
-        Returns:
-            str: Monitoring Mapped Register ID.
-
-        """
-        if self.monitoring_number_mapped_registers < 10:
-            register_id = f'MON_CFG_REG' \
-                          f'{self.monitoring_number_mapped_registers}_MAP'
-        else:
-            register_id = f'MON_CFG_REFG' \
-                          f'{self.monitoring_number_mapped_registers}_MAP'
-        return register_id
-
-    def __monitoring_update_num_mapped_registers(self):
-        """Update the number of mapped monitoring registers."""
-        self.__monitoring_num_mapped_registers += 1
-        self.write('MON_CFG_TOTAL_MAP',
-                   data=self.__monitoring_num_mapped_registers,
-                   subnode=0)
-
-    def __monitoring_disturbance_map_can_address(self, address, subnode):
+    @staticmethod
+    def __monitoring_disturbance_map_can_address(address, subnode):
         """Map CAN register address to IPB register address."""
         return address - (0x2000 + (0x800 * (subnode - 1)))
-
-    def monitoring_get_num_mapped_registers(self):
-        """Obtain the number of monitoring mapped registers.
-
-        Returns:
-            int: Actual number of mapped registers.
-
-        """
-        return self.read('MON_CFG_TOTAL_MAP', 0)
-
-    def monitoring_remove_data(self):
-        """Remove monitoring data."""
-        self.write(MONITORING_REMOVE_DATA,
-                   data=1, subnode=0)
 
     def monitoring_get_bytes_per_block(self):
         """Obtain Bytes x Block configured.
