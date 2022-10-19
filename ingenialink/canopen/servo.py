@@ -355,10 +355,10 @@ class CanopenServo(Servo):
             data_arr (list or list of list): Data array.
 
         """
-        data, chunks = self.__disturbance_create_data_chunks(channels,
-                                                             dtypes,
-                                                             data_arr,
-                                                             CAN_MAX_WRITE_SIZE)
+        data, chunks = self._disturbance_create_data_chunks(channels,
+                                                            dtypes,
+                                                            data_arr,
+                                                            CAN_MAX_WRITE_SIZE)
         for chunk in chunks:
             self._write_raw(DIST_DATA, data=chunk, subnode=0)
         self.disturbance_data = data
@@ -377,7 +377,7 @@ class CanopenServo(Servo):
         """Read monitoring data frame."""
         return self._read_raw(MONITORING_DATA, subnode=0)
 
-    def __monitoring_disturbance_data_to_map_register(self, subnode, address,
+    def _monitoring_disturbance_data_to_map_register(self, subnode, address,
                                                       dtype, size):
         """Arrange necessary data to map a monitoring/disturbance register.
 

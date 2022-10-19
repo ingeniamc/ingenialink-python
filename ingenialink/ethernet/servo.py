@@ -297,10 +297,10 @@ class EthernetServo(Servo):
             data_arr (list or list of list): Data array.
 
         """
-        data, chunks = self.__disturbance_create_data_chunks(channels,
-                                                             dtypes,
-                                                             data_arr,
-                                                             ETH_MAX_WRITE_SIZE)
+        data, chunks = self._disturbance_create_data_chunks(channels,
+                                                            dtypes,
+                                                            data_arr,
+                                                            ETH_MAX_WRITE_SIZE)
         for chunk in chunks:
             self._send_mcb_frame(MCB_CMD_WRITE, DIST_DATA.address,
                                  DIST_DATA.subnode, chunk)

@@ -680,10 +680,10 @@ class Servo:
         """
         self.__monitoring_channels_size[channel] = size
         self.__monitoring_channels_dtype[channel] = REG_DTYPE(dtype)
-        data = self.__monitoring_disturbance_data_to_map_register(subnode,
-                                                                  address,
-                                                                  dtype,
-                                                                  size)
+        data = self._monitoring_disturbance_data_to_map_register(subnode,
+                                                                 address,
+                                                                 dtype,
+                                                                 size)
         self.write(self.__monitoring_map_register(), data=data,
                    subnode=0)
         self.__monitoring_update_num_mapped_registers()
@@ -789,7 +789,7 @@ class Servo:
         """
         self.__disturbance_channels_size[channel] = size
         self.__disturbance_channels_dtype[channel] = REG_DTYPE(dtype).name
-        data = self.__monitoring_disturbance_data_to_map_register(subnode,
+        data = self._monitoring_disturbance_data_to_map_register(subnode,
                                                                   address,
                                                                   dtype,
                                                                   size)
@@ -1024,7 +1024,7 @@ class Servo:
         return register_id
 
     @staticmethod
-    def __monitoring_disturbance_data_to_map_register(subnode, address,
+    def _monitoring_disturbance_data_to_map_register(subnode, address,
                                                       dtype, size):
         """Arrange necessary data to map a monitoring/disturbance register.
 
@@ -1084,8 +1084,8 @@ class Servo:
                    data=self.__disturbance_num_mapped_registers,
                    subnode=0)
 
-    def __disturbance_create_data_chunks(self, channels, dtypes,
-                                         data_arr, max_size):
+    def _disturbance_create_data_chunks(self, channels, dtypes,
+                                        data_arr, max_size):
         """Divide disturbance data into chunks.
 
         Args:
