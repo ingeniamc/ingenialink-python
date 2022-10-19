@@ -220,6 +220,14 @@ class EthernetServo(Servo):
 
     def __init__(self, socket,
                  dictionary_path=None, servo_status_listener=False):
+        self.units_torque = None
+        """SERVO_UNITS_TORQUE: Torque units."""
+        self.units_pos = None
+        """SERVO_UNITS_POS: Position units."""
+        self.units_vel = None
+        """SERVO_UNITS_VEL: Velocity units."""
+        self.units_acc = None
+        """SERVO_UNITS_ACC: Acceleration units."""
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
         super(EthernetServo, self).__init__(self.ip_address)
@@ -1367,3 +1375,9 @@ class EthernetServo(Servo):
     def subnodes(self):
         """int: Number of subnodes."""
         return self._dictionary.subnodes
+
+    def emcy_subscribe(self, cb):
+        pass
+
+    def emcy_unsubscribe(self, slot):
+        pass
