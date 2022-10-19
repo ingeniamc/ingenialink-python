@@ -1,15 +1,13 @@
-import time
 import threading
 import canopen
 from canopen.emcy import EmcyConsumer
 
-from ingenialink.utils.constants import *
 from ..constants import *
 from ..exceptions import *
 from .._ingenialink import lib
 from ingenialink.utils._utils import raise_err,\
     convert_bytes_to_dtype, convert_dtype_to_bytes
-from ..servo import SERVO_STATE, Servo
+from ..servo import Servo
 from .dictionary import CanopenDictionary
 from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
 
