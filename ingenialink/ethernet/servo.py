@@ -1,14 +1,15 @@
 import ipaddress
-import threading
+import socket
 
-from ingenialink.exceptions import ILError
+from ingenialink.exceptions import ILError, ILTimeoutError, ILIOError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
-    MCB_CMD_READ, MCB_CMD_WRITE, ETH_MAX_WRITE_SIZE
-from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
+    MCB_CMD_READ, MCB_CMD_WRITE, ETH_MAX_WRITE_SIZE, ETH_BUF_SIZE
+from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, \
+    REG_ACCESS
 from ingenialink.servo import Servo
 from ingenialink.utils.mcb import MCB
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, \
-    convert_ip_to_int
+from ingenialink.utils._utils import convert_bytes_to_dtype, \
+    convert_dtype_to_bytes, convert_ip_to_int
 from ingenialink.ethernet.dictionary import EthernetDictionary
 
 import ingenialogger
@@ -37,6 +38,7 @@ DIST_DATA = EthernetRegister(
     identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
     dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
 )
+
 
 class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
@@ -197,8 +199,7 @@ class EthernetServo(Servo):
             self._dictionary = EthernetDictionary(dictionary_path)
         else:
             self._dictionary = None
-        self.__lock = threading.RLock()
-        super(EthernetServo, self).__init__(self.ip_address)
+        super(EthernetServo, self).__init__(self.ip_address, servo_status_listener)
 
     def store_tcp_ip_parameters(self):
         """Stores the TCP/IP values. Affects IP address,
@@ -297,10 +298,10 @@ class EthernetServo(Servo):
             data_arr (list or list of list): Data array.
 
         """
-        data, chunks = self.__disturbance_create_data_chunks(channels,
-                                                             dtypes,
-                                                             data_arr,
-                                                             ETH_MAX_WRITE_SIZE)
+        data, chunks = self._disturbance_create_data_chunks(channels,
+                                                            dtypes,
+                                                            data_arr,
+                                                            ETH_MAX_WRITE_SIZE)
         for chunk in chunks:
             self._send_mcb_frame(MCB_CMD_WRITE, DIST_DATA.address,
                                  DIST_DATA.subnode, chunk)
@@ -329,13 +330,25 @@ class EthernetServo(Servo):
             bytes: The response frame.
         """
         frame = MCB.build_mcb_frame(cmd, subnode, reg, data)
-        self.__lock.acquire()
-        self.socket.sendall(frame)
-        response = self.socket.recv(1024)
-        self.__lock.release()
+        self._lock.acquire()
+        try:
+            try:
+                self.socket.sendall(frame)
+            except socket.error as e:
+                raise ILIOError('Error sending data.') from e
+            try:
+                response = self.socket.recv(ETH_BUF_SIZE)
+            except socket.timeout as e:
+                raise ILTimeoutError('Timeout while receiving data.') from e
+            except socket.error as e:
+                raise ILIOError('Error receiving data.') from e
+        except (ILIOError, ILTimeoutError) as e:
+            raise e
+        finally:
+            self._lock.release()
         return MCB.read_mcb_data(reg, response)
 
-    def __monitoring_read_data(self):
+    def _monitoring_read_data(self):
         """Read monitoring data frame."""
         return self._send_mcb_frame(MCB_CMD_READ,
                                     MONITORING_DATA.address,

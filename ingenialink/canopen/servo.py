@@ -1,4 +1,3 @@
-import threading
 import canopen
 from canopen.emcy import EmcyConsumer
 
@@ -192,8 +191,7 @@ class CanopenServo(Servo):
             self._dictionary = CanopenDictionary(dictionary_path)
         else:
             self._dictionary = None
-        self.__lock = threading.RLock()
-        super(CanopenServo, self).__init__(target)
+        super(CanopenServo, self).__init__(target, servo_status_listener)
 
     def read(self, reg, subnode=1):
         """Read from servo.
@@ -278,7 +276,7 @@ class CanopenServo(Servo):
         if _reg.access == REG_ACCESS.RO:
             raise ILAccessError('Register is Read-only')
         try:
-            self.__lock.acquire()
+            self._lock.acquire()
             self.__node.sdo.download(_reg.idx,
                                      _reg.subidx,
                                      data)
@@ -288,7 +286,7 @@ class CanopenServo(Servo):
             error_raised = "Error writing {}".format(_reg.identifier)
             raise ILIOError(error_raised)
         finally:
-            self.__lock.release()
+            self._lock.release()
 
     def _read_raw(self, reg, subnode=1):
         """Read raw bytes from servo.
@@ -311,7 +309,7 @@ class CanopenServo(Servo):
             raise ILAccessError('Register is Write-only')
         value = None
         try:
-            self.__lock.acquire()
+            self._lock.acquire()
             value = self.__node.sdo.upload(_reg.idx, _reg.subidx)
         except Exception as e:
             logger.error("Failed reading %s. Exception: %s",
@@ -319,7 +317,7 @@ class CanopenServo(Servo):
             error_raised = f"Error reading {_reg.identifier}"
             raise ILIOError(error_raised)
         finally:
-            self.__lock.release()
+            self._lock.release()
         return value
 
     def emcy_subscribe(self, cb):
@@ -354,10 +352,10 @@ class CanopenServo(Servo):
             data_arr (list or list of list): Data array.
 
         """
-        data, chunks = self.__disturbance_create_data_chunks(channels,
-                                                             dtypes,
-                                                             data_arr,
-                                                             CAN_MAX_WRITE_SIZE)
+        data, chunks = self._disturbance_create_data_chunks(channels,
+                                                            dtypes,
+                                                            data_arr,
+                                                            CAN_MAX_WRITE_SIZE)
         for chunk in chunks:
             self._write_raw(DIST_DATA, data=chunk, subnode=0)
         self.disturbance_data = data
@@ -372,11 +370,11 @@ class CanopenServo(Servo):
         """Map CAN register address to IPB register address."""
         return address - (0x2000 + (0x800 * (subnode - 1)))
 
-    def __monitoring_read_data(self):
+    def _monitoring_read_data(self):
         """Read monitoring data frame."""
         return self._read_raw(MONITORING_DATA, subnode=0)
 
-    def __monitoring_disturbance_data_to_map_register(self, subnode, address,
+    def _monitoring_disturbance_data_to_map_register(self, subnode, address,
                                                       dtype, size):
         """Arrange necessary data to map a monitoring/disturbance register.
 
