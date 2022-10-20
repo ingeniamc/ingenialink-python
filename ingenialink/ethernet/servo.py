@@ -16,30 +16,6 @@ import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
-COMMS_ETH_IP = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x00A1, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-)
-COMMS_ETH_NET_MASK = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x00A2, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-)
-COMMS_ETH_NET_GATEWAY = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x00A3, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-)
-
-MONITORING_DATA = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x00B2, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-)
-
-DIST_DATA = EthernetRegister(
-    identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
-)
-
-
 class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
 
@@ -50,6 +26,18 @@ class EthernetServo(Servo):
             its status, errors, faults, etc.
 
     """
+    COMMS_ETH_IP = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x00A1, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
+    COMMS_ETH_NET_MASK = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x00A2, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
+    COMMS_ETH_NET_GATEWAY = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x00A3, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
     STATUS_WORD_REGISTERS = {
         1: EthernetRegister(
             identifier='', units='', subnode=1, address=0x0011,
@@ -174,6 +162,10 @@ class EthernetServo(Servo):
         identifier='', units='', subnode=0, address=0x00B7, cyclic='CONFIG',
         dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
     )
+    MONITORING_DATA = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x00B2, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+    )
     DISTURBANCE_ENABLE = EthernetRegister(
         identifier='', units='', subnode=0, address=0x00C7, cyclic='CONFIG',
         dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
@@ -190,6 +182,10 @@ class EthernetServo(Servo):
         identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
         dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
+    DIST_DATA = EthernetRegister(
+        identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+    )
 
     def __init__(self, socket, dictionary_path=None,
                  servo_status_listener=False):
@@ -199,7 +195,8 @@ class EthernetServo(Servo):
             self._dictionary = EthernetDictionary(dictionary_path)
         else:
             self._dictionary = None
-        super(EthernetServo, self).__init__(self.ip_address, servo_status_listener)
+        super(EthernetServo, self).__init__(self.ip_address,
+                                            servo_status_listener)
 
     def store_tcp_ip_parameters(self):
         """Stores the TCP/IP values. Affects IP address,
@@ -251,9 +248,9 @@ class EthernetServo(Servo):
         int_subnet_mask = convert_ip_to_int(subnet_mask)
         int_gateway = convert_ip_to_int(gateway)
 
-        self.write(COMMS_ETH_IP, int_ip_address)
-        self.write(COMMS_ETH_NET_MASK, int_subnet_mask)
-        self.write(COMMS_ETH_NET_GATEWAY, int_gateway)
+        self.write(self.COMMS_ETH_IP, int_ip_address)
+        self.write(self.COMMS_ETH_NET_MASK, int_subnet_mask)
+        self.write(self.COMMS_ETH_NET_GATEWAY, int_gateway)
 
         try:
             self.store_tcp_ip_parameters()
@@ -273,7 +270,8 @@ class EthernetServo(Servo):
         if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
             data = int(data)
         data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
-        self._send_mcb_frame(MCB_CMD_WRITE, _reg.address, _reg.subnode, data_bytes)
+        self._send_mcb_frame(MCB_CMD_WRITE, _reg.address,
+                             _reg.subnode, data_bytes)
 
     def read(self, reg, subnode=1):
         """Read a register value from servo.
@@ -303,8 +301,8 @@ class EthernetServo(Servo):
                                                             data_arr,
                                                             ETH_MAX_WRITE_SIZE)
         for chunk in chunks:
-            self._send_mcb_frame(MCB_CMD_WRITE, DIST_DATA.address,
-                                 DIST_DATA.subnode, chunk)
+            self._send_mcb_frame(MCB_CMD_WRITE, self.DIST_DATA.address,
+                                 self.DIST_DATA.subnode, chunk)
         self.disturbance_data = data
         self.disturbance_data_size = len(data)
 
@@ -351,5 +349,5 @@ class EthernetServo(Servo):
     def _monitoring_read_data(self):
         """Read monitoring data frame."""
         return self._send_mcb_frame(MCB_CMD_READ,
-                                    MONITORING_DATA.address,
-                                    MONITORING_DATA.subnode)
+                                    self.MONITORING_DATA.address,
+                                    self.MONITORING_DATA.subnode)

@@ -14,21 +14,6 @@ logger = ingenialogger.get_logger(__name__)
 
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
-MONITORING_DATA = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58B2, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-)
-
-MONITORING_DISTURBANCE_VERSION = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58BA, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-)
-
-DIST_DATA = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58B4, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-)
-
 
 class CanopenServo(Servo):
     """CANopen Servo instance.
@@ -166,6 +151,15 @@ class CanopenServo(Servo):
         identifier='', units='', subnode=0, idx=0x58B7, subidx=0x00, cyclic='CONFIG',
         dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
     )
+    MONITORING_DATA = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58B2, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+    )
+
+    MONITORING_DISTURBANCE_VERSION = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58BA, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    )
     DISTURBANCE_ENABLE = CanopenRegister(
         identifier='', units='', subnode=0, idx=0x58C7, subidx=0x00, cyclic='CONFIG',
         dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
@@ -181,6 +175,10 @@ class CanopenServo(Servo):
     DIST_NUMBER_SAMPLES = CanopenRegister(
         identifier='', units='', subnode=0, idx=0x58C4, subidx=0x00, cyclic='CONFIG',
         dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
+    DIST_DATA = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58B4, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
     )
 
     def __init__(self, target, node, dictionary_path=None, eds=None,
@@ -358,7 +356,7 @@ class CanopenServo(Servo):
                                                             data_arr,
                                                             CAN_MAX_WRITE_SIZE)
         for chunk in chunks:
-            self._write_raw(DIST_DATA, data=chunk, subnode=0)
+            self._write_raw(self.DIST_DATA, data=chunk, subnode=0)
         self.disturbance_data = data
         self.disturbance_data_size = len(data)
 
@@ -373,7 +371,7 @@ class CanopenServo(Servo):
 
     def _monitoring_read_data(self):
         """Read monitoring data frame."""
-        return self._read_raw(MONITORING_DATA, subnode=0)
+        return self._read_raw(self.MONITORING_DATA, subnode=0)
 
     def _monitoring_disturbance_data_to_map_register(self, subnode, address,
                                                       dtype, size):
