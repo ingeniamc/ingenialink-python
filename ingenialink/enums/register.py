@@ -21,9 +21,9 @@ class REG_DTYPE(Enum):
     """Signed 64-bit integer."""
     FLOAT = 8
     """Float."""
-    STR = 9
+    STR = 10
     """String."""
-    DOMAIN = 10
+    DOMAIN = 15
     """Domain."""
 
 
