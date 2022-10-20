@@ -9,7 +9,7 @@ from .servo import SERVO_STATE, SERVO_FLAGS, SERVO_MODE, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL, SERVO_UNITS_ACC, Servo
 
 from .ipb.poller import IPBPoller
-from .ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS, REG_PHY
+from .ipb.register import IPBRegister
 from .ipb.dictionary import IPBDictionary
 from .ipb.servo import IPBServo
 
@@ -24,6 +24,8 @@ from .canopen.network import CanopenNetwork, CAN_DEVICE, CAN_DEVICE, \
     CAN_BAUDRATE
 from .canopen.register import CanopenRegister
 from .canopen.dictionary import CanopenDictionary
+
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY
 
 from ingenialink.utils.errors import err_ipb_last
 
