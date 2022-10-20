@@ -219,8 +219,8 @@ class EthernetNetwork(Network):
 
         """
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.connect((target, port))
         self.socket.settimeout(connection_timeout)
+        self.socket.connect((target, port))
         self.status = NET_STATE.CONNECTED
         servo = EthernetServo(self.socket, dictionary,
                               servo_status_listener)
