@@ -1,9 +1,11 @@
 import ipaddress
+import socket
 import threading
 
 from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
-    MCB_CMD_READ, MCB_CMD_WRITE, ETH_MAX_WRITE_SIZE
+    MCB_CMD_READ, MCB_CMD_WRITE, MONITORING_BUFFER_SIZE, ETH_MAX_WRITE_SIZE,\
+    ETH_BUF_SIZE
 from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
 from ingenialink.servo import Servo
 from ingenialink.utils.mcb import MCB
@@ -330,9 +332,21 @@ class EthernetServo(Servo):
         """
         frame = MCB.build_mcb_frame(cmd, subnode, reg, data)
         self.__lock.acquire()
-        self.socket.sendall(frame)
-        response = self.socket.recv(1024)
-        self.__lock.release()
+        try:
+            try:
+                self.socket.sendall(frame)
+            except socket.error as e:
+                raise ILIOError('Error sending data.') from e
+            try:
+                response = self.socket.recv(ETH_BUF_SIZE)
+            except socket.timeout as e:
+                raise ILTimeoutError('Timeout while receiving data.') from e
+            except socket.error as e:
+                raise ILIOError('Error receiving data.') from e
+        except (ILIOError, ILTimeoutError) as e:
+            raise e
+        finally:
+            self.__lock.release()
         return MCB.read_mcb_data(reg, response)
 
     def _monitoring_read_data(self):
