@@ -221,6 +221,7 @@ class Servo:
             2: lib.IL_SERVO_STATE_NRDY,
             3: lib.IL_SERVO_STATE_NRDY
         }
+        self._lock = threading.RLock()
         self.__observers_servo_state = []
         self.__listener_servo_status = None
         self.__monitoring_num_mapped_registers = 0

@@ -1,4 +1,3 @@
-import threading
 import canopen
 from canopen.emcy import EmcyConsumer
 
@@ -193,8 +192,7 @@ class CanopenServo(Servo):
             self._dictionary = CanopenDictionary(dictionary_path)
         else:
             self._dictionary = None
-        self.__lock = threading.RLock()
-        super(CanopenServo, self).__init__(target)
+        super(CanopenServo, self).__init__(target, servo_status_listener)
 
     def read(self, reg, subnode=1):
         """Read from servo.
@@ -279,7 +277,7 @@ class CanopenServo(Servo):
         if _reg.access == REG_ACCESS.RO:
             raise_err(lib.IL_EACCESS, 'Register is Read-only')
         try:
-            self.__lock.acquire()
+            self._lock.acquire()
             self.__node.sdo.download(_reg.idx,
                                      _reg.subidx,
                                      data)
@@ -289,7 +287,7 @@ class CanopenServo(Servo):
             error_raised = "Error writing {}".format(_reg.identifier)
             raise_err(lib.IL_EIO, error_raised)
         finally:
-            self.__lock.release()
+            self._lock.release()
 
     def _read_raw(self, reg, subnode=1):
         """Read raw bytes from servo.
@@ -312,7 +310,7 @@ class CanopenServo(Servo):
             raise_err(lib.IL_EACCESS, 'Register is Write-only')
         value = None
         try:
-            self.__lock.acquire()
+            self._lock.acquire()
             value = self.__node.sdo.upload(_reg.idx, _reg.subidx)
         except Exception as e:
             logger.error("Failed reading %s. Exception: %s",
@@ -320,7 +318,7 @@ class CanopenServo(Servo):
             error_raised = f"Error reading {_reg.identifier}"
             raise_err(lib.IL_EIO, error_raised)
         finally:
-            self.__lock.release()
+            self._lock.release()
         return value
 
     def emcy_subscribe(self, cb):
