@@ -267,8 +267,6 @@ class EthernetServo(Servo):
 
         """
         _reg = self._get_reg(reg, subnode)
-        if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
-            data = int(data)
         data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
         self._send_mcb_frame(MCB_CMD_WRITE, _reg.address,
                              _reg.subnode, data_bytes)
