@@ -460,28 +460,28 @@ class Servo:
         self._set_state(state, subnode)
 
         # Try fault reset if faulty
-        if self.status[subnode].value in [
+        if self.status[subnode] in [
             SERVO_STATE.FAULT,
             SERVO_STATE.FAULTR,
         ]:
             self.fault_reset(subnode=subnode)
 
-        while self.status[subnode].value != SERVO_STATE.ENABLED:
+        while self.status[subnode] != SERVO_STATE.ENABLED:
             status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
-            if self.status[subnode].value != SERVO_STATE.ENABLED:
+            if self.status[subnode] != SERVO_STATE.ENABLED:
                 # Check state and command action to reach enabled
                 cmd = constants.IL_MC_PDS_CMD_EO
-                if self.status[subnode].value == SERVO_STATE.FAULT:
+                if self.status[subnode] == SERVO_STATE.FAULT:
                     raise ILStateError(None)
-                elif self.status[subnode].value == SERVO_STATE.NRDY:
+                elif self.status[subnode] == SERVO_STATE.NRDY:
                     cmd = constants.IL_MC_PDS_CMD_DV
-                elif self.status[subnode].value == \
+                elif self.status[subnode] == \
                         SERVO_STATE.DISABLED:
                     cmd = constants.IL_MC_PDS_CMD_SD
-                elif self.status[subnode].value == SERVO_STATE.RDY:
+                elif self.status[subnode] == SERVO_STATE.RDY:
                     cmd = constants.IL_MC_PDS_CMD_SOEO
 
                 self.write(self.CONTROL_WORD_REGISTERS[subnode], cmd,
@@ -519,11 +519,11 @@ class Servo:
         state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
 
-        while self.status[subnode].value != SERVO_STATE.DISABLED:
+        while self.status[subnode] != SERVO_STATE.DISABLED:
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
 
-            if self.status[subnode].value in [
+            if self.status[subnode] in [
                 SERVO_STATE.FAULT,
                 SERVO_STATE.FAULTR,
             ]:
@@ -533,7 +533,7 @@ class Servo:
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
-            elif self.status[subnode].value != SERVO_STATE.DISABLED:
+            elif self.status[subnode] != SERVO_STATE.DISABLED:
                 # Check state and command action to reach disabled
                 self.write(self.CONTROL_WORD_REGISTERS[subnode],
                            constants.IL_MC_PDS_CMD_DV, subnode=subnode)
@@ -565,7 +565,7 @@ class Servo:
         status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
-        if state.value in [
+        if state in [
             SERVO_STATE.FAULT,
             SERVO_STATE.FAULTR,
         ]:
