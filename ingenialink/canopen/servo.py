@@ -24,29 +24,9 @@ MONITORING_DISTURBANCE_VERSION = CanopenRegister(
     dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
 )
 
-DISTURBANCE_ENABLE = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58C7, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-)
-
-DISTURBANCE_REMOVE_DATA = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58EB, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
-)
-
-DISTURBANCE_NUMBER_MAPPED_REGISTERS = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58E8, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-)
-
 DIST_DATA = CanopenRegister(
     identifier='', units='', subnode=0, idx=0x58B4, subidx=0x00, cyclic='CONFIG',
     dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-)
-
-DIST_NUMBER_SAMPLES = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x58C4, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
 )
 
 
@@ -186,6 +166,22 @@ class CanopenServo(Servo):
         identifier='', units='', subnode=0, idx=0x58B7, subidx=0x00, cyclic='CONFIG',
         dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
     )
+    DISTURBANCE_ENABLE = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58C7, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    )
+    DISTURBANCE_REMOVE_DATA = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58EB, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+    )
+    DISTURBANCE_NUMBER_MAPPED_REGISTERS = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58E8, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    )
+    DIST_NUMBER_SAMPLES = CanopenRegister(
+        identifier='', units='', subnode=0, idx=0x58C4, subidx=0x00, cyclic='CONFIG',
+        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    )
 
     def __init__(self, target, node, dictionary_path=None, eds=None,
                  servo_status_listener=False):
@@ -237,6 +233,32 @@ class CanopenServo(Servo):
         _reg = self._get_reg(reg, subnode)
         value = convert_dtype_to_bytes(data, _reg.dtype)
         self._write_raw(reg, value, subnode)
+
+    def replace_dictionary(self, dictionary):
+        """Deletes and creates a new instance of the dictionary.
+
+        Args:
+            dictionary (str): Dictionary.
+
+        """
+        self._dictionary = CanopenDictionary(dictionary)
+
+    def store_parameters(self, subnode=None, sdo_timeout=3):
+        """Store all the current parameters of the target subnode.
+
+        Args:
+            subnode (int): Subnode of the axis. `None` by default which stores
+            all the parameters.
+            sdo_timeout (int): Timeout value for each SDO response.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        self._change_sdo_timeout(sdo_timeout)
+        super().store_parameters(subnode)
+        self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
     def _write_raw(self, reg, data, subnode=1):
         """Writes a data to a target register.
@@ -300,92 +322,6 @@ class CanopenServo(Servo):
             self.__lock.release()
         return value
 
-    def replace_dictionary(self, dictionary):
-        """Deletes and creates a new instance of the dictionary.
-
-        Args:
-            dictionary (str): Dictionary.
-
-        """
-        self._dictionary = CanopenDictionary(dictionary)
-
-    def store_parameters(self, subnode=None, sdo_timeout=3):
-        """Store all the current parameters of the target subnode.
-
-        Args:
-            subnode (int): Subnode of the axis. `None` by default which stores
-            all the parameters.
-            sdo_timeout (int): Timeout value for each SDO response.
-
-        Raises:
-            ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
-
-        """
-        self._change_sdo_timeout(sdo_timeout)
-        super().store_parameters(subnode)
-        self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
-
-    def _change_sdo_timeout(self, value):
-        """Changes the SDO timeout of the node."""
-        self.__node.sdo.RESPONSE_TIMEOUT = value
-
-    def is_alive(self):
-        """Checks if the servo responds to a reading a register.
-
-        Returns:
-            bool: Return code with the result of the read.
-
-        """
-        _is_alive = True
-        try:
-            self.read(self.STATUS_WORD_REGISTERS[1])
-        except ILError as e:
-            _is_alive = False
-            logger.error(e)
-        return _is_alive
-
-    def subscribe_to_status(self, callback):
-        """Subscribe to state changes.
-
-            Args:
-                callback (function): Callback function.
-
-            Returns:
-                int: Assigned slot.
-
-        """
-        if callback in self.__observers_servo_state:
-            logger.info('Callback already subscribed.')
-            return
-        self.__observers_servo_state.append(callback)
-
-    def unsubscribe_from_status(self, callback):
-        """Unsubscribe from state changes.
-
-        Args:
-            callback (function): Callback function.
-
-        """
-        if callback not in self.__observers_servo_state:
-            logger.info('Callback not subscribed.')
-            return
-        self.__observers_servo_state.remove(callback)
-
-    def reload_errors(self, dictionary):
-        """Force to reload all dictionary errors.
-
-        Args:
-            dictionary (str): Dictionary.
-
-        """
-        pass
-
-    @property
-    def node(self):
-        """canopen.RemoteNode: Remote node of the servo."""
-        return self.__node
-
     def emcy_subscribe(self, cb):
         """Subscribe to emergency messages.
 
@@ -409,6 +345,28 @@ class CanopenServo(Servo):
         """
         del self.__emcy_consumer.callbacks[slot]
 
+    def disturbance_write_data(self, channels, dtypes, data_arr):
+        """Write disturbance data.
+
+        Args:
+            channels (int or list of int): Channel identifier.
+            dtypes (int or list of int): Data type.
+            data_arr (list or list of list): Data array.
+
+        """
+        data, chunks = self.__disturbance_create_data_chunks(channels,
+                                                             dtypes,
+                                                             data_arr,
+                                                             CAN_MAX_WRITE_SIZE)
+        for chunk in chunks:
+            self._write_raw(DIST_DATA, data=chunk, subnode=0)
+        self.disturbance_data = data
+        self.disturbance_data_size = len(data)
+
+    def _change_sdo_timeout(self, value):
+        """Changes the SDO timeout of the node."""
+        self.__node.sdo.RESPONSE_TIMEOUT = value
+
     @staticmethod
     def __monitoring_disturbance_map_can_address(address, subnode):
         """Map CAN register address to IPB register address."""
@@ -417,87 +375,6 @@ class CanopenServo(Servo):
     def __monitoring_read_data(self):
         """Read monitoring data frame."""
         return self._read_raw(MONITORING_DATA, subnode=0)
-
-    def disturbance_enable(self):
-        """Enable disturbance process."""
-        self.write(DISTURBANCE_ENABLE, data=1, subnode=0)
-
-    def disturbance_disable(self):
-        """Disable disturbance process."""
-        self.write(DISTURBANCE_ENABLE, data=0, subnode=0)
-
-    def disturbance_remove_data(self):
-        """Remove disturbance data."""
-        self.write(DISTURBANCE_REMOVE_DATA,
-                   data=1, subnode=0)
-        self.disturbance_data = bytearray()
-        self.disturbance_data_size = 0
-
-    def disturbance_remove_all_mapped_registers(self):
-        """Remove all disturbance mapped registers."""
-        self.write(DISTURBANCE_NUMBER_MAPPED_REGISTERS,
-                   data=0, subnode=0)
-        self.__disturbance_num_mapped_registers = \
-            self.disturbance_get_num_mapped_registers()
-        self.__disturbance_channels_size = {}
-        self.__disturbance_channels_dtype = {}
-
-    def disturbance_set_mapped_register(self, channel, address, subnode,
-                                        dtype, size):
-        """Set monitoring mapped register.
-
-        Args:
-            channel (int): Identity channel number.
-            address (int): Register address to map.
-            subnode (int): Subnode to be targeted.
-            dtype (int): Register data type.
-            size (int): Size of data in bytes.
-
-        """
-        self.__disturbance_channels_size[channel] = size
-        self.__disturbance_channels_dtype[channel] = REG_DTYPE(dtype).name
-        data = self.__monitoring_disturbance_data_to_map_register(subnode,
-                                                                  address,
-                                                                  dtype,
-                                                                  size)
-        self.write(self.__disturbance_map_register(), data=data,
-                   subnode=0)
-        self.__disturbance_update_num_mapped_registers()
-        self.__disturbance_num_mapped_registers = \
-            self.disturbance_get_num_mapped_registers()
-        self.write(DISTURBANCE_NUMBER_MAPPED_REGISTERS,
-                   data=self.disturbance_number_mapped_registers,
-                   subnode=subnode)
-
-    def disturbance_get_num_mapped_registers(self):
-        """Obtain the number of disturbance mapped registers.
-
-        Returns:
-            int: Actual number of mapped registers.
-
-        """
-        return self.read('DIST_CFG_MAP_REGS', 0)
-
-    def __disturbance_map_register(self):
-        """Get the first available Disturbance Mapped Register slot.
-
-        Returns:
-            str: Disturbance Mapped Register ID.
-
-        """
-        return f'DIST_CFG_REG{self.disturbance_number_mapped_registers}_MAP'
-
-    @property
-    def disturbance_number_mapped_registers(self):
-        """Get the number of mapped disturbance registers."""
-        return self.__disturbance_num_mapped_registers
-
-    def __disturbance_update_num_mapped_registers(self):
-        """Update the number of mapped disturbance registers."""
-        self.__disturbance_num_mapped_registers += 1
-        self.write('DIST_CFG_MAP_REGS',
-                   data=self.__disturbance_num_mapped_registers,
-                   subnode=0)
 
     def __monitoring_disturbance_data_to_map_register(self, subnode, address,
                                                       dtype, size):
@@ -516,71 +393,7 @@ class CanopenServo(Servo):
         return (data_h << 16) | data_l
 
     @property
-    def disturbance_data_size(self):
-        """Obtain disturbance data size.
+    def node(self):
+        """canopen.RemoteNode: Remote node of the servo."""
+        return self.__node
 
-        Returns:
-            int: Current disturbance data size.
-
-        """
-        return self.__disturbance_data_size
-
-    @disturbance_data_size.setter
-    def disturbance_data_size(self, value):
-        """Set disturbance data size.
-
-        Args:
-            value (int): Disturbance data size in bytes.
-
-        """
-        self.__disturbance_data_size = value
-
-    def disturbance_write_data(self, channels, dtypes, data_arr):
-        """Write disturbance data.
-
-        Args:
-            channels (int or list of int): Channel identifier.
-            dtypes (int or list of int): Data type.
-            data_arr (list or list of list): Data array.
-
-        """
-        if not isinstance(channels, list):
-            channels = [channels]
-        if not isinstance(dtypes, list):
-            dtypes = [dtypes]
-        if not isinstance(data_arr[0], list):
-            data_arr = [data_arr]
-        num_samples = len(data_arr[0])
-        self.write(DIST_NUMBER_SAMPLES, num_samples, subnode=0)
-        data = bytearray()
-        for sample_idx in range(num_samples):
-            for channel in range(len(data_arr)):
-                val = convert_dtype_to_bytes(
-                    data_arr[channel][sample_idx], dtypes[channel])
-                data += val
-        chunks = [data[i:i + CAN_MAX_WRITE_SIZE]
-                  for i in range(0, len(data), CAN_MAX_WRITE_SIZE)]
-        for chunk in chunks:
-            self._write_raw(DIST_DATA, data=chunk, subnode=0)
-        self.disturbance_data = data
-        self.disturbance_data_size = len(data)
-
-    @property
-    def disturbance_data(self):
-        """Obtain disturbance data.
-
-        Returns:
-            array: Current disturbance data.
-
-        """
-        return self.__disturbance_data
-
-    @disturbance_data.setter
-    def disturbance_data(self, value):
-        """Set disturbance data.
-
-        Args:
-            value (array): Array with the disturbance to send.
-
-        """
-        self.__disturbance_data = value
