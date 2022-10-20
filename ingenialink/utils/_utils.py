@@ -345,11 +345,14 @@ def set_logger_level(level):
 
 def convert_bytes_to_dtype(data, dtype):
     """Convert data in bytes to corresponding dtype."""
-    if dtype in [REG_DTYPE.S8,
-                 REG_DTYPE.S16,
-                 REG_DTYPE.S32]:
+    __signed_dtypes_bytes = {
+        REG_DTYPE.S8: 1,
+        REG_DTYPE.S16: 2,
+        REG_DTYPE.S32: 4
+    }
+    if dtype in __signed_dtypes_bytes:
         value = int.from_bytes(
-            data,
+            data[:__signed_dtypes_bytes[dtype]],
             "little",
             signed=True
         )
@@ -360,7 +363,7 @@ def convert_bytes_to_dtype(data, dtype):
                                 data
                                 )
     elif dtype == REG_DTYPE.STR:
-        value = data.decode("utf-8")
+        value = data.decode("utf-8").rstrip('\0')
     else:
         value = int.from_bytes(
             data,
