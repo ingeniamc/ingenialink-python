@@ -999,9 +999,17 @@ class Servo:
             (int, str): Read value of the register.
 
         """
-        coco_value = self.read(register_coco, subnode=0)
-        moco_value = self.read(register_moco, subnode=1)
-        return coco_value if coco_value is not None else moco_value
+        try:
+            return self.read(register_coco, subnode=0)
+        except ILError:
+            logger.warning(f'Error reading register '
+                           f'{register_coco.identifier} from COCO. '
+                           f'Trying MOCO')
+        try:
+            return self.read(register_moco, subnode=1)
+        except ILError:
+            raise ILError(f'Error reading register '
+                          f'{register_coco.identifier} from MOCO.')
 
     def __monitoring_map_register(self):
         """Get the first available Monitoring Mapped Register slot.

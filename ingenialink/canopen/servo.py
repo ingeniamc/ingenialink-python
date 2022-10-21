@@ -92,33 +92,39 @@ class CanopenServo(Servo):
     }
     SERIAL_NUMBER_REGISTERS = {
         0: CanopenRegister(
-            identifier='', units='', subnode=0, idx=0x5EE6, subidx=0x00,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+            identifier='DRV_ID_SERIAL_NUMBER', units='', subnode=0, idx=0x5EE6,
+            subidx=0x00, cyclic='CONFIG', dtype=REG_DTYPE.U32,
+            access=REG_ACCESS.RO
         ),
         1: CanopenRegister(
-            identifier='', units='', subnode=1, idx=0x26E6, subidx=0x00,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+            identifier='DRV_ID_SERIAL_NUMBER', units='', subnode=1, idx=0x26E6,
+            subidx=0x00, cyclic='CONFIG', dtype=REG_DTYPE.U32,
+            access=REG_ACCESS.RO
         )
     }
 
     SOFTWARE_VERSION_REGISTERS = {
         0: CanopenRegister(
-            identifier='', units='', subnode=0, idx=0x5EE4, subidx=0x00,
-            cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+            identifier='DRV_ID_SOFTWARE_VERSION', units='', subnode=0,
+            idx=0x5EE4, subidx=0x00, cyclic='CONFIG', dtype=REG_DTYPE.STR,
+            access=REG_ACCESS.RO
         ),
         1: CanopenRegister(
-            identifier='', units='', subnode=1, idx=0x26E4, subidx=0x00,
-            cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+            identifier='DRV_ID_SOFTWARE_VERSION', units='', subnode=1,
+            idx=0x26E4, subidx=0x00, cyclic='CONFIG', dtype=REG_DTYPE.STR,
+            access=REG_ACCESS.RO
         )
     }
     PRODUCT_ID_REGISTERS = {
         0: CanopenRegister(
-            identifier='', units='', subnode=0, idx=0x5EE1, subidx=0x00,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+            identifier='DRV_ID_PRODUCT_CODE', units='', subnode=0,
+            idx=0x5EE1, subidx=0x00, cyclic='CONFIG', dtype=REG_DTYPE.U32,
+            access=REG_ACCESS.RO
         ),
         1: CanopenRegister(
-            identifier='', units='', subnode=1, idx=0x26E1, subidx=0x00,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+            identifier='DRV_ID_PRODUCT_CODE', units='', subnode=1,
+            idx=0x26E1, subidx=0x00, cyclic='CONFIG', dtype=REG_DTYPE.U32,
+            access=REG_ACCESS.RO
         )
     }
     REVISION_NUMBER_REGISTERS = {
