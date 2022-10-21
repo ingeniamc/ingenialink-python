@@ -1009,7 +1009,7 @@ class Servo:
             return self.read(register_moco, subnode=1)
         except ILError:
             raise ILError(f'Error reading register '
-                          f'{register_coco.identifier} from MOCO.')
+                          f'{register_moco.identifier} from MOCO.')
 
     def __monitoring_map_register(self):
         """Get the first available Monitoring Mapped Register slot.
