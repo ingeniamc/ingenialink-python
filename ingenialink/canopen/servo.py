@@ -6,7 +6,8 @@ from ingenialink.exceptions import ILAccessError, ILIOError
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.servo import Servo
 from ingenialink.canopen.dictionary import CanopenDictionary
-from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS
+from ingenialink.canopen.register import CanopenRegister
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
