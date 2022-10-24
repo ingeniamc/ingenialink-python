@@ -250,6 +250,7 @@ class EthercatServo:
 
         Args:
             reg (IPBRegister): Register.
+            subnode (int): Subnode for the register.
 
         Returns:
             int: Otained value
@@ -265,6 +266,7 @@ class EthercatServo:
 
         Args:
             reg (str, Register): Register.
+            subnode (int): Subnode for the register.
 
         Returns:
             float: Obtained value
@@ -295,6 +297,7 @@ class EthercatServo:
             data (int): Data.
             confirm (bool, optional): Confirm write.
             extended (int, optional): Extended frame.
+            subnode (int): Subnode for the register.
 
         Raises:
             TypeError: If any of the arguments type is not valid or
@@ -311,6 +314,7 @@ class EthercatServo:
             data (int): Data to be written.
             confirm (bool, optional): Confirm write.
             extended (int, optional): Extended frame.
+            subnode (int): Subnode for the register.
 
         Raises:
             TypeError: If any of the arguments type is not valid or

@@ -878,7 +878,7 @@ class Servo:
             reg (Register): Targeted register to validate.
             subnode (int): Subnode for the register.
         Returns:
-            EthernetRegister: Instance of the desired register from the dictionary.
+            Register: Instance of the desired register from the dictionary.
         Raises:
             ValueError: If the dictionary is not loaded.
             ILWrongRegisterError: If the register has invalid format.

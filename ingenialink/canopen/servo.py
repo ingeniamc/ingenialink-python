@@ -19,6 +19,7 @@ class CanopenServo(Servo):
     """CANopen Servo instance.
 
     Args:
+        target (int): Node ID to be connected.
         node (canopen.RemoteNode): Remote Node of the drive.
         dictionary_path (str): Path to the dictionary.
         eds (str): Path to the eds file.
