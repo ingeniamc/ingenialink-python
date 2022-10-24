@@ -2,16 +2,12 @@ import ipaddress
 import socket
 
 from ingenialink.exceptions import ILError, ILTimeoutError, ILIOError
-from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
-    MCB_CMD_READ, MCB_CMD_WRITE, ETH_MAX_WRITE_SIZE, ETH_BUF_SIZE
-from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, \
-    REG_ACCESS
-from ingenialink.servo import Servo
-    MCB_CMD_READ, MCB_CMD_WRITE, MONITORING_BUFFER_SIZE, ETH_MAX_WRITE_SIZE,\
-    ETH_BUF_SIZE
+from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
 from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.constants import MCB_CMD_READ, MCB_CMD_WRITE, ETH_MAX_WRITE_SIZE,\
+    ETH_BUF_SIZE
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
-from ingenialink.servo import Servo, SERVO_STATE, ServoStatusListener
+from ingenialink.servo import Servo
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_bytes_to_dtype, \
     convert_dtype_to_bytes, convert_ip_to_int
@@ -20,6 +16,7 @@ from ingenialink.ethernet.dictionary import EthernetDictionary
 import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
+
 
 class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
