@@ -1,10 +1,9 @@
 from enum import Enum
 from time import sleep, time
 from threading import Thread
-from .._ingenialink import lib
 from .register import CanopenRegister
 from ingenialink.utils.mcb import MCB
-from ingenialink.utils._utils import *
+from ingenialink.utils._utils import count_file_lines, wait_for_register_value
 from ..exceptions import ILFirmwareLoadError, ILObjectNotExist, ILError
 from can import CanError
 from ..network import NET_PROT, NET_STATE, NET_DEV_EVT, Network
@@ -208,7 +207,7 @@ class CanopenNetwork(Network):
         """
         nodes = self.scan_slaves()
         if len(nodes) < 1:
-            raise_err(lib.IL_EFAIL, 'Could not find any nodes in the network')
+            raise ILError("Could not find any nodes in the network")
 
         self._setup_connection()
         if target in nodes:
@@ -228,14 +227,13 @@ class CanopenNetwork(Network):
             except Exception as e:
                 logger.error("Failed connecting to node %i. Exception: %s",
                              target, e)
-                raise_err(lib.IL_EFAIL,
-                          'Failed connecting to node {}. '
-                          'Please check the connection settings and verify '
-                          'the transceiver is properly connected.'.format(target))
+                raise ILError(
+                    'Failed connecting to node {}. '
+                    'Please check the connection settings and verify '
+                    'the transceiver is properly connected.'.format(target))
         else:
             logger.error('Node id not found')
-            raise_err(lib.IL_EFAIL,
-                      'Node id {} not found in the network.'.format(target))
+            raise ILError('Node id {} not found in the network.'.format(target))
 
     def disconnect_from_slave(self, servo):
         """Disconnects the slave from the network.
@@ -262,19 +260,19 @@ class CanopenNetwork(Network):
                                          bitrate=self.__baudrate)
             except CanError as e:
                 logger.error('Transceiver not found in network. Exception: %s', e)
-                raise_err(lib.IL_EFAIL, 'Error connecting to the transceiver. '
-                                        'Please verify the transceiver '
-                                        'is properly connected.')
+                raise ILError('Error connecting to the transceiver. '
+                              'Please verify the transceiver '
+                              'is properly connected.')
             except OSError as e:
                 logger.error('Transceiver drivers not properly installed. Exception: %s',
                              e)
                 if hasattr(e, 'winerror') and e.winerror == 126:
                     e.strerror = 'Driver module not found.' \
                                  ' Drivers might not be properly installed.'
-                raise_err(lib.IL_EFAIL, e)
+                raise ILError(e)
             except Exception as e:
                 logger.error('Failed trying to connect. Exception: %s', e)
-                raise_err(lib.IL_EFAIL, 'Failed trying to connect. {}'.format(e))
+                raise ILError('Failed trying to connect. {}'.format(e))
         else:
             logger.info('Connection already established')
 

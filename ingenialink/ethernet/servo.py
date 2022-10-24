@@ -9,7 +9,8 @@ from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP, \
     MCB_CMD_READ, MCB_CMD_WRITE, MONITORING_BUFFER_SIZE, ETH_MAX_WRITE_SIZE,\
     ETH_BUF_SIZE
-from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
+from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
 from ingenialink.servo import Servo, SERVO_STATE, ServoStatusListener
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, \
