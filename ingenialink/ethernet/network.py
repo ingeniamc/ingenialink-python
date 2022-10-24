@@ -1,9 +1,11 @@
 import ftplib
+import time
+from collections import defaultdict
 
 from .servo import EthernetServo
 from ingenialink.utils.udp import UDP
-from ingenialink.utils._utils import *
-from ..network import NET_PROT, NET_TRANS_PROT
+from ingenialink.utils._utils import raise_err
+from ..network import NET_PROT
 from ingenialink.network import Network, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
@@ -41,32 +43,36 @@ class NetStatusListener(Thread):
     def __init__(self, network):
         super(NetStatusListener, self).__init__()
         self.__network = network
-        self.__state = NET_STATE.CONNECTED
         self.__stop = False
         self.__max_unsuccessful_pings = MAX_NUM_UNSUCCESSFUL_PINGS
 
     def run(self):
-        servo = self.__network.servos[0]
-        unsuccessful_pings = 0
         while not self.__stop:
-            response = ping(servo.ip_address, timeout=1)
-            if not isinstance(response, float):
-                unsuccessful_pings += 1
-            else:
-                unsuccessful_pings -= 1
-                unsuccessful_pings = max(0, unsuccessful_pings)
-            if unsuccessful_pings > self.__max_unsuccessful_pings:
-                if self.__state != NET_STATE.DISCONNECTED:
-                    self.__state = NET_STATE.DISCONNECTED
-                    self.__network.status = NET_STATE.DISCONNECTED
-                    self.__network._notify_status(NET_DEV_EVT.REMOVED)
-                unsuccessful_pings = self.__max_unsuccessful_pings
-            elif unsuccessful_pings == 0:
-                if self.__state != NET_STATE.CONNECTED:
-                    self.__network.status = NET_STATE.CONNECTED
-                    self.__state = NET_STATE.CONNECTED
-                    self.__network._notify_status(NET_DEV_EVT.ADDED)
-            sleep(1)
+            for servo in self.__network.servos:
+                unsuccessful_pings = 0
+                servo_ip = servo.ip_address
+                servo_state = self.__network._get_servo_state(servo_ip)
+                while unsuccessful_pings < self.__max_unsuccessful_pings:
+                    response = ping(servo_ip, timeout=1)
+                    if not isinstance(response, float):
+                        unsuccessful_pings += 1
+                    else:
+                        break
+                ping_response = (unsuccessful_pings !=
+                                 self.__max_unsuccessful_pings)
+                if servo_state == NET_STATE.CONNECTED:
+                    if ping_response:
+                        time.sleep(0.25)
+                    else:
+                        servo_state = NET_STATE.DISCONNECTED
+                        self.__network._notify_status(servo_ip,
+                                                      NET_DEV_EVT.REMOVED)
+                elif ping_response:
+                    servo_state = NET_STATE.CONNECTED
+                    self.__network._notify_status(servo_ip,
+                                                  NET_DEV_EVT.ADDED)
+                self.__network._set_servo_state(servo_ip,
+                                                servo_state)
 
     def stop(self):
         self.__stop = True
@@ -76,10 +82,9 @@ class EthernetNetwork(Network):
     """Network for all Ethernet communications."""
     def __init__(self):
         super(EthernetNetwork, self).__init__()
-        self.__net_state = NET_STATE.DISCONNECTED
-        self.socket = None
+        self.__servos_state = {}
         self.__listener_net_status = None
-        self.__observers_net_state = []
+        self.__observers_net_state = defaultdict(list)
 
     @staticmethod
     def load_firmware(fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
@@ -101,7 +106,7 @@ class EthernetNetwork(Network):
 
         """
         if not os.path.isfile(fw_file):
-            raise FileNotFoundError('Could not find {}.'.format(fw_file))
+            raise FileNotFoundError(f'Could not find {fw_file}.')
 
         try:
             file = open(fw_file, 'rb')
@@ -125,8 +130,8 @@ class EthernetNetwork(Network):
             # Load file through FTP.
             logger.info("Uploading firmware file...")
             ftp.set_pasv(False)
-            ftp_output = ftp.storbinary(
-                "STOR {}".format(os.path.basename(file.name)), file)
+            ftp_output = ftp.storbinary(f"STOR {os.path.basename(file.name)}",
+                                        file)
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
                 raise_err("Unable to load the FW file through FTP")
@@ -218,11 +223,11 @@ class EthernetNetwork(Network):
             EthernetServo: Instance of the servo connected.
 
         """
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.settimeout(connection_timeout)
-        self.socket.connect((target, port))
-        self.status = NET_STATE.CONNECTED
-        servo = EthernetServo(self.socket, dictionary,
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(connection_timeout)
+        sock.connect((target, port))
+        self._set_servo_state(target, NET_STATE.CONNECTED)
+        servo = EthernetServo(sock, dictionary,
                               servo_status_listener)
 
         self.servos.append(servo)
@@ -241,72 +246,72 @@ class EthernetNetwork(Network):
             servo (EthernetServo): Instance of the servo connected.
 
         """
-        # TODO: This stops all connections no only the target servo.
         self.servos.remove(servo)
         servo.stop_status_listener()
+        self.close_socket(servo.socket)
+        self._set_servo_state(servo.ip_address,
+                              NET_STATE.DISCONNECTED)
         if len(self.servos) == 0:
             self.stop_status_listener()
-            self.close_socket()
-            self.status = NET_STATE.DISCONNECTED
 
-    def close_socket(self):
+    @staticmethod
+    def close_socket(sock):
         """Closes the established network socket."""
-        self.socket.shutdown(socket.SHUT_RDWR)
-        self.socket.close()
+        sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
 
     def start_status_listener(self):
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
-        listener = NetStatusListener(self)
-        listener.start()
-        self.__listener_net_status = listener
+        if self.__listener_net_status is None:
+            listener = NetStatusListener(self)
+            listener.start()
+            self.__listener_net_status = listener
 
     def stop_status_listener(self):
         """Stops the NetStatusListener from listening to the drive."""
-        if self.__listener_net_status is not None and \
-                self.__listener_net_status.is_alive():
+        if self.__listener_net_status is not None:
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
         self.__listener_net_status = None
 
-    def _notify_status(self, status):
+    def _notify_status(self, ip, status):
         """Notify subscribers of a network state change."""
-        for callback in self.__observers_net_state:
+        for callback in self.__observers_net_state[ip]:
             callback(status)
 
-    def subscribe_to_status(self, callback):
+    def subscribe_to_status(self, ip, callback):
         """Subscribe to network state changes.
 
         Args:
+            ip (str): IP of the drive to subscribe.
             callback (function): Callback function.
 
         """
-        if callback in self.__observers_net_state:
+        if callback in self.__observers_net_state[ip]:
             logger.info('Callback already subscribed.')
             return
-        self.__observers_net_state.append(callback)
+        self.__observers_net_state[ip].append(callback)
 
-    def unsubscribe_from_status(self, callback):
+    def unsubscribe_from_status(self, ip, callback):
         """Unsubscribe from network state changes.
 
         Args:
+            ip (str): IP of the drive to unsubscribe.
             callback (function): Callback function.
 
         """
-        if callback not in self.__observers_net_state:
+        if callback not in self.__observers_net_state[ip]:
             logger.info('Callback not subscribed.')
             return
-        self.__observers_net_state.remove(callback)
+        self.__observers_net_state[ip].remove(callback)
+
+    def _get_servo_state(self, ip):
+        return self.__servos_state[ip]
+
+    def _set_servo_state(self, ip, state):
+        self.__servos_state[ip] = state
 
     @property
     def protocol(self):
         """NET_PROT: Obtain network protocol."""
         return NET_PROT.ETH
-
-    @property
-    def status(self):
-        """NET_STATE: Network state."""
-        return self.__net_state
-
-    @status.setter
-    def status(self, new_state):
-        self.__net_state = new_state
