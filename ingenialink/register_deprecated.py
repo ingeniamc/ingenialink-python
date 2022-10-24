@@ -1,66 +1,13 @@
 from enum import Enum
 
 from ._ingenialink import ffi, lib
-from ingenialink.utils._utils import *
+from ingenialink.utils._utils import cstr
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY
 
 from abc import ABC
 
 # CANOPEN DTYPES
 IL_REG_DTYPE_DOMAIN = 15
-
-
-class REG_DTYPE(Enum):
-    """Data Type."""
-    U8 = lib.IL_REG_DTYPE_U8
-    """Unsigned 8-bit integer."""
-    S8 = lib.IL_REG_DTYPE_S8
-    """Signed 8-bit integer."""
-    U16 = lib.IL_REG_DTYPE_U16
-    """Unsigned 16-bit integer."""
-    S16 = lib.IL_REG_DTYPE_S16
-    """Signed 16-bit integer."""
-    U32 = lib.IL_REG_DTYPE_U32
-    """Unsigned 32-bit integer."""
-    S32 = lib.IL_REG_DTYPE_S32
-    """Signed 32-bit integer."""
-    U64 = lib.IL_REG_DTYPE_U64
-    """Unsigned 64-bit integer."""
-    S64 = lib.IL_REG_DTYPE_S64
-    """Signed 64-bit integer."""
-    FLOAT = lib.IL_REG_DTYPE_FLOAT
-    """Float."""
-    STR = lib.IL_REG_DTYPE_STR
-    """String."""
-    DOMAIN = IL_REG_DTYPE_DOMAIN
-    """Domain."""
-
-
-class REG_ACCESS(Enum):
-    """Access Type."""
-    RW = lib.IL_REG_ACCESS_RW
-    """Read/Write."""
-    RO = lib.IL_REG_ACCESS_RO
-    """Read-only."""
-    WO = lib.IL_REG_ACCESS_WO
-    """Write-only."""
-
-
-class REG_PHY(Enum):
-    """Physical Units."""
-    NONE = lib.IL_REG_PHY_NONE
-    """None."""
-    TORQUE = lib.IL_REG_PHY_TORQUE
-    """Torque."""
-    POS = lib.IL_REG_PHY_POS
-    """Position."""
-    VEL = lib.IL_REG_PHY_VEL
-    """Velocity."""
-    ACC = lib.IL_REG_PHY_ACC
-    """Acceleration."""
-    VOLT_REL = lib.IL_REG_PHY_VOLT_REL
-    """Relative voltage (DC)."""
-    RAD = lib.IL_REG_PHY_RAD
-    """Radians."""
 
 
 dtypes_ranges = {

@@ -58,6 +58,8 @@ class EthercatNetwork(IPBNetwork):
         super(EthercatNetwork, self).__init__()
         self.interface_name = interface_name
         """str: Interface name used in the network settings."""
+        self.servos = []
+        """list: List of the connected servos in the network."""
 
     def load_firmware(self, fw_file, target=1, boot_in_app=None):
         """Loads a given firmware file to a target.

@@ -1,4 +1,5 @@
-from ingenialink.register import Register, REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.register import Register
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY
 
 
 class CanopenRegister(Register):
