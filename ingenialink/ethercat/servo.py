@@ -18,8 +18,8 @@ from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_ALL, PASSWORD_RESTORE_ALL,\
     PASSWORD_STORE_RESTORE_SUB_0, DEFAULT_PDS_TIMEOUT, DIST_FRAME_SIZE
 from ingenialink.register_deprecated import dtype_size
-from ingenialink.enums.servo import SERVO_STATE, SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_ACC, \
-    SERVO_UNITS_VEL, SERVO_MODE
+from ingenialink.enums.servo import SERVO_STATE, SERVO_UNITS_TORQUE, \
+    SERVO_UNITS_POS, SERVO_UNITS_ACC, SERVO_UNITS_VEL, SERVO_MODE
 
 logger = ingenialogger.get_logger(__name__)
 
