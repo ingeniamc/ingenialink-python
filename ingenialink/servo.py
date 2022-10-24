@@ -17,6 +17,8 @@ import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
+OPERATION_TIME_OUT = -3
+
 
 class ServoStatusListener(threading.Thread):
     """Reads the status word to check if the drive is alive.
@@ -462,13 +464,12 @@ class Servo:
         start_time = int(round(time.time() * 1000))
         actual_status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                        subnode=subnode)
-        # Operation time out
-        il_etimedout = -3
+
         while actual_status_word == status_word:
             current_time = int(round(time.time() * 1000))
             time_diff = (current_time - start_time)
             if time_diff > timeout:
-                return il_etimedout
+                return OPERATION_TIME_OUT
             actual_status_word = self.read(
                 self.STATUS_WORD_REGISTERS[subnode],
                 subnode=subnode)
