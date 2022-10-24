@@ -3,14 +3,15 @@ try:
 except ImportError as e:
     raise ImportError("DLLs required not found: Please install WinPcap") from e
 
-from .network import NetworkMonitor, NET_PROT, \
-    NET_STATE, NET_DEV_EVT, NET_TRANS_PROT, Network, EEPROM_FILE_FORMAT
+from .network import NET_PROT, NET_STATE, NET_DEV_EVT, \
+    NET_TRANS_PROT, Network, EEPROM_FILE_FORMAT
 from .servo import SERVO_STATE, SERVO_FLAGS, SERVO_MODE, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL, SERVO_UNITS_ACC, Servo
 
 from .ipb.poller import IPBPoller
-from .ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS, REG_PHY
+from .ipb.register import IPBRegister
 from .ipb.dictionary import IPBDictionary
+from .ipb.network import NetworkMonitor
 
 from .ethernet.network import EthernetNetwork
 from .ethernet.servo import EthernetServo
@@ -23,6 +24,8 @@ from .canopen.network import CanopenNetwork, CAN_DEVICE, CAN_DEVICE, \
     CAN_BAUDRATE
 from .canopen.register import CanopenRegister
 from .canopen.dictionary import CanopenDictionary
+
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY
 
 from ingenialink.utils.errors import err_ipb_last
 
