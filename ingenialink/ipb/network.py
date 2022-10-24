@@ -76,6 +76,7 @@ class IPBNetwork(ABC):
     """IPB Network defines a general class for all IPB based communications."""
     def __init__(self):
         super(IPBNetwork, self).__init__()
+        self.servos = []
         self._cffi_network = None
         """CFFI instance of the network."""
 
