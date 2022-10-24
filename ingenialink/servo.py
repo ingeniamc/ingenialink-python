@@ -878,7 +878,7 @@ class Servo:
             reg (Register): Targeted register to validate.
             subnode (int): Subnode for the register.
         Returns:
-            EthernetRegister: Instance of the desired register from the dictionary.
+            Register: Instance of the desired register from the dictionary.
         Raises:
             ValueError: If the dictionary is not loaded.
             ILWrongRegisterError: If the register has invalid format.
@@ -996,18 +996,20 @@ class Servo:
             register_moco (Register): MOCO Register to be read.
 
         Returns:
-            int: Read value of the register.
+            (int, str): Read value of the register.
 
         """
         try:
             return self.read(register_coco, subnode=0)
         except ILError:
-            pass
-
+            logger.warning(f'Error reading register '
+                           f'{register_coco.identifier} from COCO. '
+                           f'Trying MOCO')
         try:
             return self.read(register_moco, subnode=1)
         except ILError:
-            pass
+            raise ILError(f'Error reading register '
+                          f'{register_moco.identifier} from MOCO.')
 
     def __monitoring_map_register(self):
         """Get the first available Monitoring Mapped Register slot.

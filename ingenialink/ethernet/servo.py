@@ -104,42 +104,50 @@ class EthernetServo(Servo):
     }
     SERIAL_NUMBER_REGISTERS = {
         0: EthernetRegister(
-            identifier='', units='', subnode=0, address=0x06E6,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+            identifier='DRV_ID_SERIAL_NUMBER', units='', subnode=0,
+            address=0x06E6, cyclic='CONFIG', dtype=REG_DTYPE.U32,
+            access=REG_ACCESS.RO
         ),
         1: EthernetRegister(
-            identifier='', units='', subnode=1, address=0x06E6,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+            identifier='DRV_ID_SERIAL_NUMBER', units='', subnode=1,
+            address=0x06E6, cyclic='CONFIG', dtype=REG_DTYPE.U32,
+            access=REG_ACCESS.RO
         )
     }
     SOFTWARE_VERSION_REGISTERS = {
         0: EthernetRegister(
-            identifier='', units='', subnode=0, address=0x06E4,
-            cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+            identifier='DRV_ID_SOFTWARE_VERSION', units='', subnode=0,
+            address=0x06E4, cyclic='CONFIG', dtype=REG_DTYPE.STR,
+            access=REG_ACCESS.RO
         ),
         1: EthernetRegister(
-            identifier='', units='', subnode=1, address=0x06E4,
-            cyclic='CONFIG', dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+            identifier='DRV_ID_SOFTWARE_VERSION', units='', subnode=1,
+            address=0x06E4, cyclic='CONFIG', dtype=REG_DTYPE.STR,
+            access=REG_ACCESS.RO
         )
     }
     PRODUCT_ID_REGISTERS = {
         0: EthernetRegister(
-            identifier='', units='', subnode=0, address=0x06E1,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+            identifier='DRV_ID_PRODUCT_CODE', units='', subnode=0,
+            address=0x06E1, cyclic='CONFIG', dtype=REG_DTYPE.U32,
+            access=REG_ACCESS.RO
         ),
         1: EthernetRegister(
-            identifier='', units='', subnode=1, address=0x06E1,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+            identifier='DRV_ID_PRODUCT_CODE', units='', subnode=1,
+            address=0x06E1, cyclic='CONFIG', dtype=REG_DTYPE.U32,
+            access=REG_ACCESS.RO
         )
     }
     REVISION_NUMBER_REGISTERS = {
         0: EthernetRegister(
-            identifier='', units='', subnode=0, address=0x06E2,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+            identifier='DRV_ID_REVISION_NUMBER', units='', subnode=0,
+            address=0x06E2, cyclic='CONFIG', dtype=REG_DTYPE.U32,
+            access=REG_ACCESS.RO
         ),
         1: EthernetRegister(
-            identifier='', units='', subnode=1, address=0x06E2,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+            identifier='DRV_ID_REVISION_NUMBER', units='', subnode=1,
+            address=0x06E2, cyclic='CONFIG', dtype=REG_DTYPE.U32,
+            access=REG_ACCESS.RO
         )
     }
     MONITORING_DIST_ENABLE = EthernetRegister(
