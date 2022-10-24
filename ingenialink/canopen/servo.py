@@ -1,12 +1,12 @@
 import canopen
 from canopen.emcy import EmcyConsumer
 
-from ..constants import *
-from ..exceptions import *
+from ingenialink.constants import CAN_MAX_WRITE_SIZE
+from ingenialink.exceptions import ILAccessError, ILIOError
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
-from ..servo import Servo
-from .dictionary import CanopenDictionary
-from .register import CanopenRegister, REG_DTYPE, REG_ACCESS
+from ingenialink.servo import Servo
+from ingenialink.canopen.dictionary import CanopenDictionary
+from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS
 
 import ingenialogger
 logger = ingenialogger.get_logger(__name__)
