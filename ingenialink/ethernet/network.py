@@ -2,7 +2,7 @@ import ftplib
 
 from .servo import EthernetServo
 from ingenialink.utils.udp import UDP
-from ingenialink.utils._utils import *
+from ingenialink.utils._utils import raise_err
 from ..network import NET_PROT, NET_TRANS_PROT
 from ingenialink.network import Network, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError
