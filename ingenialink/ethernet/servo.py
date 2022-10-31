@@ -268,14 +268,6 @@ class EthernetServo(Servo):
             self.store_parameters()
 
     def write(self, reg, data, subnode=1):
-        """Writes data to a register.
-
-        Args:
-            reg (EthernetRegister, str): Target register to be written.
-            data (int, str, float): Data to be written.
-            subnode (int): Target axis of the drive.
-
-        """
         _reg = self._get_reg(reg, subnode)
         if isinstance(data, float) and _reg.dtype != REG_DTYPE.FLOAT:
             data = int(data)
@@ -284,28 +276,11 @@ class EthernetServo(Servo):
                              _reg.subnode, data_bytes)
 
     def read(self, reg, subnode=1):
-        """Read a register value from servo.
-
-        Args:
-            reg (str, Register): Register.
-            subnode (int): Target axis of the drive.
-
-        Returns:
-            int, float or str: Value stored in the register.
-        """
         _reg = self._get_reg(reg, subnode)
         data = self._send_mcb_frame(MCB_CMD_READ, _reg.address, _reg.subnode)
         return convert_bytes_to_dtype(data, _reg.dtype)
 
     def disturbance_write_data(self, channels, dtypes, data_arr):
-        """Write disturbance data.
-
-        Args:
-            channels (int or list of int): Channel identifier.
-            dtypes (int or list of int): Data type.
-            data_arr (list or list of list): Data array.
-
-        """
         data, chunks = self._disturbance_create_data_chunks(channels,
                                                             dtypes,
                                                             data_arr,
@@ -317,12 +292,6 @@ class EthernetServo(Servo):
         self.disturbance_data_size = len(data)
 
     def replace_dictionary(self, dictionary):
-        """Deletes and creates a new instance of the dictionary.
-
-        Args:
-            dictionary (str): Dictionary.
-
-        """
         self._dictionary = EthernetDictionary(dictionary)
 
     def _send_mcb_frame(self, cmd, reg, subnode, data=None):
@@ -357,7 +326,6 @@ class EthernetServo(Servo):
         return MCB.read_mcb_data(reg, response)
 
     def _monitoring_read_data(self):
-        """Read monitoring data frame."""
         return self._send_mcb_frame(MCB_CMD_READ,
                                     self.MONITORING_DATA.address,
                                     self.MONITORING_DATA.subnode)

@@ -3,6 +3,7 @@ import time
 import threading
 from enum import Enum
 import xml.etree.ElementTree as ET
+from abc import abstractmethod
 
 from ._ingenialink import lib
 from .constants import DEFAULT_DRIVE_NAME
@@ -207,6 +208,28 @@ class Servo:
         prod_name = '' if self.dictionary.part_number is None \
             else self.dictionary.part_number
         self.full_name = f'{prod_name} {self.name} ({self.target})'
+        self.STATUS_WORD_REGISTERS = None
+        self.RESTORE_COCO_ALL = None
+        self.RESTORE_MOCO_ALL_REGISTERS = None
+        self.STORE_COCO_ALL = None
+        self.STORE_MOCO_ALL_REGISTERS = None
+        self.CONTROL_WORD_REGISTERS = None
+        self.SERIAL_NUMBER_REGISTERS = None
+        self.SOFTWARE_VERSION_REGISTERS = None
+        self.PRODUCT_ID_REGISTERS = None
+        self.REVISION_NUMBER_REGISTERS = None
+        self.MONITORING_DIST_ENABLE = None
+        self.MONITORING_REMOVE_DATA = None
+        self.MONITORING_NUMBER_MAPPED_REGISTERS = None
+        self.MONITORING_BYTES_PER_BLOCK = None
+        self.MONITORING_ACTUAL_NUMBER_BYTES = None
+        self.MONITORING_DATA = None
+        self.MONITORING_DISTURBANCE_VERSION = None
+        self.DISTURBANCE_ENABLE = None
+        self.DISTURBANCE_REMOVE_DATA = None
+        self.DISTURBANCE_NUMBER_MAPPED_REGISTERS = None
+        self.DIST_NUMBER_SAMPLES = None
+        self.DIST_DATA = None
         """str: Obtains the servo full name."""
         self.units_torque = None
         """SERVO_UNITS_TORQUE: Torque units."""
@@ -234,6 +257,7 @@ class Servo:
         self.__disturbance_channels_dtype = {}
         self.__disturbance_data_size = 0
         self.__disturbance_data = bytearray()
+        self._dictionary = None
         if servo_status_listener:
             self.start_status_listener()
         else:
@@ -1115,6 +1139,62 @@ class Servo:
         chunks = [data[i:i + max_size]
                   for i in range(0, len(data), max_size)]
         return data, chunks
+
+    @abstractmethod
+    def write(self, reg, data, subnode=1):
+        """Writes a data to a target register.
+
+        Args:
+            reg (Register, str): Target register to be written.
+            data (int, str, float): Data to be written.
+            subnode (int): Target axis of the drive.
+
+        Raises:
+            ILAccessError: Wrong access to the register.
+            ILIOError: Error reading the register.
+
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def read(self, reg, subnode=1):
+        """Read a register value from servo.
+
+        Args:
+            reg (str, Register): Register.
+            subnode (int): Target axis of the drive.
+
+        Returns:
+            int, float or str: Value stored in the register.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def replace_dictionary(self, dictionary):
+        """Deletes and creates a new instance of the dictionary.
+
+        Args:
+            dictionary (str): Path to the dictionary.
+
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def disturbance_write_data(self, channels, dtypes, data_arr):
+        """Write disturbance data.
+
+        Args:
+            channels (int or list of int): Channel identifier.
+            dtypes (int or list of int): Data type.
+            data_arr (list or list of list): Data array.
+
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def _monitoring_read_data(self):
+        """Read monitoring data frame."""
+        raise NotImplementedError
 
     @property
     def dictionary(self):

@@ -200,20 +200,6 @@ class CanopenServo(Servo):
         super(CanopenServo, self).__init__(target, servo_status_listener)
 
     def read(self, reg, subnode=1):
-        """Read from servo.
-
-        Args:
-            reg (str, Register): Register.
-
-        Returns:
-            int: Error code of the read operation.
-
-        Raises:
-            TypeError: If the register type is not valid.
-            ILAccessError: Wrong access to the register.
-            ILIOError: Error reading the register.
-
-        """
         _reg = self._get_reg(reg, subnode)
         raw_read = self._read_raw(reg, subnode)
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
@@ -222,29 +208,11 @@ class CanopenServo(Servo):
         return value
 
     def write(self, reg, data, subnode=1):
-        """Writes a data to a target register.
-
-        Args:
-            reg (CanopenRegister, str): Target register to be written.
-            data (int, str, float): Data to be written.
-            subnode (int): Target axis of the drive.
-
-        Raises:
-            ILAccessError: Wrong access to the register.
-            ILIOError: Error reading the register.
-
-        """
         _reg = self._get_reg(reg, subnode)
         value = convert_dtype_to_bytes(data, _reg.dtype)
         self._write_raw(reg, value, subnode)
 
     def replace_dictionary(self, dictionary):
-        """Deletes and creates a new instance of the dictionary.
-
-        Args:
-            dictionary (str): Dictionary.
-
-        """
         self._dictionary = CanopenDictionary(dictionary)
 
     def store_parameters(self, subnode=None, sdo_timeout=3):
@@ -350,14 +318,6 @@ class CanopenServo(Servo):
         del self.__emcy_consumer.callbacks[slot]
 
     def disturbance_write_data(self, channels, dtypes, data_arr):
-        """Write disturbance data.
-
-        Args:
-            channels (int or list of int): Channel identifier.
-            dtypes (int or list of int): Data type.
-            data_arr (list or list of list): Data array.
-
-        """
         data, chunks = self._disturbance_create_data_chunks(channels,
                                                             dtypes,
                                                             data_arr,
@@ -377,7 +337,6 @@ class CanopenServo(Servo):
         return address - (0x2000 + (0x800 * (subnode - 1)))
 
     def _monitoring_read_data(self):
-        """Read monitoring data frame."""
         return self._read_raw(self.MONITORING_DATA, subnode=0)
 
     def _monitoring_disturbance_data_to_map_register(self, subnode, address,
