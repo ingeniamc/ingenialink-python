@@ -38,14 +38,12 @@ class EoENetwork(EthernetNetwork):
                          servo_status_listener=False,
                          net_status_listener=False):
         self._configure_slave(target)
-        servo = super().connect_to_slave(target,
-                                         dictionary, port,
-                                         connection_timeout,
-                                         servo_status_listener,
-                                         net_status_listener)
         if not self._eoe_service_started:
             self._start_eoe_service()
-        return servo
+        return super().connect_to_slave(target, dictionary,
+                                        port, connection_timeout,
+                                        servo_status_listener,
+                                        net_status_listener)
 
     def disconnect_from_slave(self, servo):
         super().disconnect_from_slave(servo)
