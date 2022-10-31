@@ -135,7 +135,9 @@ class EoENetwork(EthernetNetwork):
 
         """
         self._connect_to_eoe_service()
-        msg = self._build_eoe_command_msg(EoECommand.INIT.value)
+        data = self.ifname + "\0"
+        msg = self._build_eoe_command_msg(EoECommand.INIT.value,
+                                          data=data.encode('utf-8'))
         try:
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
