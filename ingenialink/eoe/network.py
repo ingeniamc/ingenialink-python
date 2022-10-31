@@ -4,7 +4,7 @@ from enum import Enum
 
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
-from ingenialink.exceptions import ILTimeoutError, ILIOError
+from ingenialink.exceptions import ILTimeoutError, ILIOError, ILError
 
 
 class EoECommand(Enum):
@@ -47,6 +47,7 @@ class EoENetwork(EthernetNetwork):
 
     def disconnect_from_slave(self, servo):
         super().disconnect_from_slave(servo)
+        # TODO: stop the EoE service once it's implemented
         if len(self.servos) == 0:
             self._eoe_socket.shutdown(socket.SHUT_RDWR)
             self._eoe_socket.close()
@@ -58,13 +59,16 @@ class EoENetwork(EthernetNetwork):
         Returns:
             int: Number of detected slaves.
 
+        Raises:
+            ILError: If the EoE service fails to perform a scan.
+
         """
         data = self.ifname + "\0"
         msg = self._build_eoe_command_msg(EoECommand.SCAN.value,
                                           data=data.encode("utf-8"))
         r = self._send_command(msg)
         if r < 0:
-            raise ValueError("Failed to scan slaves")
+            raise ILError("Failed to scan slaves")
         return r
 
     @staticmethod
@@ -124,14 +128,19 @@ class EoENetwork(EthernetNetwork):
 
     def _initialize_eoe_service(self):
         """Initialize the virtual network interface and
-        the packet forwarder."""
+        the packet forwarder.
+
+        Raises:
+            ILError: If the EoE service fails to initialize.
+
+        """
         self._connect_to_eoe_service()
         msg = self._build_eoe_command_msg(EoECommand.INIT.value)
         try:
-            r = self._send_command(msg)
+            self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
-            raise ValueError("Failed to initialize the EoE service. "
-                             "Please verify it's running.") from e
+            raise ILError("Failed to initialize the EoE service. "
+                          "Please verify it's running.") from e
 
     def _configure_slave(self, ip_address):
         """
@@ -140,6 +149,9 @@ class EoENetwork(EthernetNetwork):
         Args:
             ip_address (str): IP address to be set to the slave.
 
+        Raises:
+            ILError: If the EoE service fails to configure a slave.
+
         """
         node = len(self.servos) + 1
         ip_int = int(ipaddress.IPv4Address(ip_address))
@@ -147,21 +159,35 @@ class EoENetwork(EthernetNetwork):
         msg = self._build_eoe_command_msg(EoECommand.CONFIG.value, node,
                                           ip_bytes)
         try:
-            r = self._send_command(msg)
+            self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
-            raise ValueError(f"Failed to configure slave {node} with IP "
-                             f"{ip_address}.") from e
+            raise ILError(f"Failed to configure slave {node} with IP "
+                          f"{ip_address}.") from e
 
     def _start_eoe_service(self):
-        """Starts the EoE service"""
+        """Starts the EoE service
+
+         Raises:
+            ILError: If the EoE service fails to start.
+
+        """
         self._eoe_service_started = True
         msg = self._build_eoe_command_msg(EoECommand.START.value)
         try:
-            r = self._send_command(msg)
+            self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
-            raise ValueError("Failed to start the EoE service.") from e
+            raise ILError("Failed to start the EoE service.") from e
 
+    def _stop_eoe_service(self):
+        """Stops the EoE service
 
+        Raises:
+            ILError: If the EoE service fails to stop.
 
-
-
+        """
+        self._eoe_service_started = False
+        msg = self._build_eoe_command_msg(EoECommand.STOP.value)
+        try:
+            self._send_command(msg)
+        except (ILIOError, ILTimeoutError) as e:
+            raise ILError("Failed to stop the EoE service.") from e
