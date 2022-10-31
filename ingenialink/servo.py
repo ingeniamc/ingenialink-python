@@ -201,6 +201,29 @@ class Servo:
         ILCreationError: If the servo cannot be created.
 
     """
+    STATUS_WORD_REGISTERS = None
+    RESTORE_COCO_ALL = None
+    RESTORE_MOCO_ALL_REGISTERS = None
+    STORE_COCO_ALL = None
+    STORE_MOCO_ALL_REGISTERS = None
+    CONTROL_WORD_REGISTERS = None
+    SERIAL_NUMBER_REGISTERS = None
+    SOFTWARE_VERSION_REGISTERS = None
+    PRODUCT_ID_REGISTERS = None
+    REVISION_NUMBER_REGISTERS = None
+    MONITORING_DIST_ENABLE = None
+    MONITORING_REMOVE_DATA = None
+    MONITORING_NUMBER_MAPPED_REGISTERS = None
+    MONITORING_BYTES_PER_BLOCK = None
+    MONITORING_ACTUAL_NUMBER_BYTES = None
+    MONITORING_DATA = None
+    MONITORING_DISTURBANCE_VERSION = None
+    DISTURBANCE_ENABLE = None
+    DISTURBANCE_REMOVE_DATA = None
+    DISTURBANCE_NUMBER_MAPPED_REGISTERS = None
+    DIST_NUMBER_SAMPLES = None
+    DIST_DATA = None
+
     def __init__(self, target, servo_status_listener=False):
         self.target = target
         self._info = None
@@ -208,28 +231,6 @@ class Servo:
         prod_name = '' if self.dictionary.part_number is None \
             else self.dictionary.part_number
         self.full_name = f'{prod_name} {self.name} ({self.target})'
-        self.STATUS_WORD_REGISTERS = None
-        self.RESTORE_COCO_ALL = None
-        self.RESTORE_MOCO_ALL_REGISTERS = None
-        self.STORE_COCO_ALL = None
-        self.STORE_MOCO_ALL_REGISTERS = None
-        self.CONTROL_WORD_REGISTERS = None
-        self.SERIAL_NUMBER_REGISTERS = None
-        self.SOFTWARE_VERSION_REGISTERS = None
-        self.PRODUCT_ID_REGISTERS = None
-        self.REVISION_NUMBER_REGISTERS = None
-        self.MONITORING_DIST_ENABLE = None
-        self.MONITORING_REMOVE_DATA = None
-        self.MONITORING_NUMBER_MAPPED_REGISTERS = None
-        self.MONITORING_BYTES_PER_BLOCK = None
-        self.MONITORING_ACTUAL_NUMBER_BYTES = None
-        self.MONITORING_DATA = None
-        self.MONITORING_DISTURBANCE_VERSION = None
-        self.DISTURBANCE_ENABLE = None
-        self.DISTURBANCE_REMOVE_DATA = None
-        self.DISTURBANCE_NUMBER_MAPPED_REGISTERS = None
-        self.DIST_NUMBER_SAMPLES = None
-        self.DIST_DATA = None
         """str: Obtains the servo full name."""
         self.units_torque = None
         """SERVO_UNITS_TORQUE: Torque units."""
@@ -257,7 +258,6 @@ class Servo:
         self.__disturbance_channels_dtype = {}
         self.__disturbance_data_size = 0
         self.__disturbance_data = bytearray()
-        self._dictionary = None
         if servo_status_listener:
             self.start_status_listener()
         else:
@@ -346,7 +346,7 @@ class Servo:
             raise ILError('Invalid subnode')
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        with open(self._dictionary.path, 'r', encoding='utf-8') as xml_file:
+        with open(self.dictionary.path, 'r', encoding='utf-8') as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
@@ -989,7 +989,7 @@ class Servo:
             register.set('storage', str(storage))
 
             # Update register object
-            reg = self._dictionary.registers(subnode)[register.attrib['id']]
+            reg = self.dictionary.registers(subnode)[register.attrib['id']]
             reg.storage = storage
             reg.storage_valid = 1
         except BaseException as e:
@@ -1222,12 +1222,12 @@ class Servo:
     @property
     def subnodes(self):
         """int: Number of subnodes."""
-        return self._dictionary.subnodes
+        return self.dictionary.subnodes
 
     @property
     def errors(self):
         """dict: Errors."""
-        return self._dictionary.errors.errors
+        return self.dictionary.errors.errors
 
     @property
     def info(self):
