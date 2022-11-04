@@ -33,7 +33,8 @@ class EoENetwork(EthernetNetwork):
         self._initialize_eoe_service()
         self._eoe_service_started = False
 
-    def connect_to_slave(self, slave_id, ip_address, dictionary=None, port=1061,
+    def connect_to_slave(self, slave_id, ip_address, dictionary=None,
+                         port=1061,
                          connection_timeout=DEFAULT_ETH_CONNECTION_TIMEOUT,
                          servo_status_listener=False,
                          net_status_listener=False):
@@ -55,8 +56,6 @@ class EoENetwork(EthernetNetwork):
 
         """
         self._configure_slave(slave_id, ip_address)
-        if not self._eoe_service_started:
-            self._start_eoe_service()
         return super().connect_to_slave(ip_address, dictionary,
                                         port, connection_timeout,
                                         servo_status_listener,
@@ -183,7 +182,7 @@ class EoENetwork(EthernetNetwork):
             raise ILError(f"Failed to configure slave {slave_id} with IP "
                           f"{ip_address}.") from e
 
-    def _start_eoe_service(self):
+    def start_eoe_service(self):
         """Starts the EoE service
 
          Raises:
