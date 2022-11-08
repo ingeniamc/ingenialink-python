@@ -2,8 +2,6 @@ from ipaddress import NetmaskValueError
 
 import pytest
 
-from ingenialink.ethernet.servo import MONITORING_DIST_ENABLE, \
-    DISTURBANCE_ENABLE
 from ingenialink.ethernet.register import REG_DTYPE
 from ingenialink.servo import SERVO_STATE
 from ingenialink.exceptions import ILStateError, ILTimeoutError
@@ -75,9 +73,9 @@ def test_change_tcp_ip_parameters_invalid_netmask(connect_to_slave):
 def test_monitoring_enable_disable(connect_to_slave):
     servo, net = connect_to_slave
     servo.monitoring_enable()
-    assert servo.read(MONITORING_DIST_ENABLE, subnode=0) == 1
+    assert servo.read(servo.MONITORING_DIST_ENABLE, subnode=0) == 1
     servo.monitoring_disable()
-    assert servo.read(MONITORING_DIST_ENABLE, subnode=0) == 0
+    assert servo.read(servo.MONITORING_DIST_ENABLE, subnode=0) == 0
 
 
 @pytest.mark.ethernet
@@ -127,9 +125,9 @@ def test_monitoring_data_size(create_monitoring):
 def test_disturbance_enable_disable(connect_to_slave):
     servo, net = connect_to_slave
     servo.disturbance_enable()
-    assert servo.read(DISTURBANCE_ENABLE, subnode=0) == 1
+    assert servo.read(servo.DISTURBANCE_ENABLE, subnode=0) == 1
     servo.disturbance_disable()
-    assert servo.read(DISTURBANCE_ENABLE, subnode=0) == 0
+    assert servo.read(servo.DISTURBANCE_ENABLE, subnode=0) == 0
 
 
 @pytest.mark.ethernet
