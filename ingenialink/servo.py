@@ -318,6 +318,10 @@ class Servo:
         if subnode == 0 and subnode not in dest_subnodes:
             raise ValueError(f'Cannot load {config_file} '
                              f'to subnode {subnode}')
+        cast_data = {
+            'float': float,
+            'str': str
+        }
         for element in registers:
             try:
                 if 'storage' in element.attrib and element.attrib['access'] == 'rw':
@@ -325,8 +329,10 @@ class Servo:
                         element_subnode = int(element.attrib['subnode'])
                     else:
                         element_subnode = subnode
+                    reg_dtype = element.attrib['dtype']
+                    reg_data = element.attrib['storage']
                     self.write(element.attrib['id'],
-                               float(element.attrib['storage']),
+                               cast_data.get(reg_dtype, int)(reg_data),
                                subnode=element_subnode
                                )
             except ILError as e:
