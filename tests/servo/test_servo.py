@@ -49,11 +49,12 @@ def test_save_configuration(connect_to_slave):
         registers = servo.dictionary.registers(subnode=subnode)
 
         assert reg_id in registers
-        address = int(saved_register.attrib.get('address'), 16)
-        assert registers[reg_id].address == address
 
         storage = saved_register.attrib.get('storage')
-        storage == registers[reg_id].storage
+        if storage is not None:
+            assert storage == str(registers[reg_id].storage)
+        else:
+            assert registers[reg_id].storage is None
 
         access = saved_register.attrib.get('access')
         assert registers[reg_id].access == servo.dictionary.access_xdf_options[access]
