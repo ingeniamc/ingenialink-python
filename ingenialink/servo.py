@@ -15,7 +15,7 @@ from ingenialink.utils._utils import get_drive_identification, cleanup_register,
 from ingenialink.constants import PASSWORD_RESTORE_ALL, PASSWORD_STORE_ALL, \
     DEFAULT_PDS_TIMEOUT, MONITORING_BUFFER_SIZE
 from ingenialink.utils import constants
-from ingenialink.register import REG_DTYPE
+from ingenialink.register import REG_DTYPE, REG_ADDRESS_TYPE, REG_ACCESS
 
 import ingenialogger
 
@@ -381,6 +381,8 @@ class Servo:
         for subnode in subnodes:
             registers_dict = self.dictionary.registers(subnode=subnode)
             for reg_id, register in registers_dict.items():
+                if (register.address_type == REG_ADDRESS_TYPE.NVM_NONE) | (register.access != REG_ACCESS.RW):
+                    continue
                 register_xml = ET.SubElement(registers, "Register")
                 register_xml.set("access", access_ops[register.access])
                 register_xml.set("dtype", dtype_ops[register.dtype])

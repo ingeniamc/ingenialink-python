@@ -3,7 +3,7 @@ import ingenialogger
 
 from abc import ABC, abstractmethod
 from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
-from ingenialink.register import REG_DTYPE, REG_ACCESS
+from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
 from ingenialink import exceptions as exc
 
 logger = ingenialogger.get_logger(__name__)
@@ -143,6 +143,7 @@ class Dictionary(ABC):
         ENUMS = 'enums'
         CAT_ID = 'cat_id'
         INT_USE = 'internal_use'
+        ADDRESS_TYPE = 'address_type'
 
     dtype_xdf_options = {
         "float": REG_DTYPE.FLOAT,
@@ -161,6 +162,14 @@ class Dictionary(ABC):
         "r": REG_ACCESS.RO,
         "w": REG_ACCESS.WO,
         "rw": REG_ACCESS.RW
+    }
+
+    address_type_xdf_options = {
+        "NVM": REG_ADDRESS_TYPE.NVM,
+        "NVM_NONE": REG_ADDRESS_TYPE.NVM_NONE,
+        "NVM_CFG": REG_ADDRESS_TYPE.NVM_CFG,
+        "NVM_LOCK": REG_ADDRESS_TYPE.NVM_LOCK,
+        "NVM_HW": REG_ADDRESS_TYPE.NVM_HW,
     }
 
     def __init__(self, dictionary_path):
@@ -304,6 +313,15 @@ class Dictionary(ABC):
             else:
                 raise exc.ILAccessError(f'The access type {access_aux} does not exist for the register: '
                                         f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')
+
+            # Address type
+            address_type_aux = register.attrib['address_type']
+
+            if address_type_aux in self.address_type_xdf_options:
+                current_read_register[self.AttrRegDict.ADDRESS_TYPE] = self.address_type_xdf_options[address_type_aux]
+            else:
+                raise exc.ILAccessError(f'The address type {address_type_aux} does not exist for the register: '
+                                        f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')                            
 
             # Subnode
             current_read_register[self.AttrRegDict.SUBNODE] = int(register.attrib.get('subnode', 1))

@@ -1,5 +1,5 @@
 from ingenialink import exceptions as exc
-from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
 
 from abc import ABC
 
@@ -38,6 +38,7 @@ class Register(ABC):
             cat_id (str, optional): Category ID.
             scat_id (str, optional): Sub-category ID.
             internal_use (int, optional): Internal use.
+            address_type (REG_ADDRESS_TYPE): Address tpye.
 
         Raises:
             TypeError: If any of the parameters has invalid type.
@@ -49,7 +50,7 @@ class Register(ABC):
     def __init__(self, dtype, access, identifier=None, units=None, cyclic="CONFIG",
                  phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=(None, None),
                  labels=None, enums=None, enums_count=0, cat_id=None, scat_id=None,
-                 internal_use=0):
+                 internal_use=0, address_type=None):
 
         if labels is None:
             labels = {}
@@ -74,6 +75,7 @@ class Register(ABC):
         self._scat_id = scat_id
         self._internal_use = internal_use
         self._storage_valid = 0 if not storage else 1
+        self._address_type = address_type
 
         self.__config_range(reg_range)
         self._enums = self.__config_enums()
@@ -227,3 +229,8 @@ class Register(ABC):
     def internal_use(self):
         """int: Defines if the register is only for internal uses."""
         return self._internal_use
+
+    @property
+    def address_type(self):
+        """REG_ADDRESS_TYPE: Address type of the register."""
+        return REG_ADDRESS_TYPE(self._address_type)

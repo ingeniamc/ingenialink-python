@@ -1,5 +1,5 @@
 from ingenialink.register import Register
-from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
 
 
 class EthernetRegister(Register):
@@ -22,6 +22,7 @@ class EthernetRegister(Register):
             cat_id (str, optional): Category ID.
             scat_id (str, optional): Sub-category ID.
             internal_use (int, optional): Internal use.
+            address_type (REG_ADDRESS_TYPE): Address Type.
 
         Raises:
             TypeError: If any of the parameters has invalid type.
@@ -33,11 +34,11 @@ class EthernetRegister(Register):
     def __init__(self, address, dtype, access, identifier=None, units=None, cyclic="CONFIG",
                  phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=(None, None),
                  labels=None, enums=None, enums_count=0, cat_id=None, scat_id=None,
-                 internal_use=0):
+                 internal_use=0, address_type=None):
 
         super().__init__(dtype, access, identifier, units, cyclic, phy, subnode,
                          storage, reg_range, labels, enums, enums_count, cat_id,
-                         scat_id, internal_use)
+                         scat_id, internal_use, address_type)
 
         self.__address = address
 
