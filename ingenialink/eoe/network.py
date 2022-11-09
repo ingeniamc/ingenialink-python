@@ -54,15 +54,7 @@ class EoENetwork(EthernetNetwork):
         Returns:
             EthernetServo: Instance of the servo connected.
 
-        Raises:
-            ILError: If a connection is attempted on a slave with an ID
-            greater than the number of connected slaves.
-
         """
-        _num_conn_slaves = self.scan_slaves()
-        if slave_id > _num_conn_slaves:
-            raise ILError(f'Cannot connect with slave {slave_id}. '
-                          f'Found {_num_conn_slaves} slaves')
         self._configure_slave(slave_id, ip_address)
         if not self._eoe_service_started:
             self._start_eoe_service()
