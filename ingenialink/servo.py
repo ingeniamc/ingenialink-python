@@ -383,8 +383,7 @@ class Servo:
             for reg_id, register in registers_dict.items():
                 register_xml = ET.SubElement(registers, "Register")
                 register_xml.set("access", access_ops[register.access])
-                #register_xml.set("address", str(hex(register.address)))  # TODO: fix length
-                register_xml.set("address", f'0x{register.address:04X}')  # TODO: fix length
+                register_xml.set("address", f'0x{register.address:04X}')
                 register_xml.set("dtype", dtype_ops[register.dtype])
                 register_xml.set("id", reg_id)
                 if access_ops[register.access] == 'rw':
