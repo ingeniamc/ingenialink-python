@@ -144,7 +144,7 @@ class Dictionary(ABC):
         CAT_ID = 'cat_id'
         INT_USE = 'internal_use'
 
-    __dtype_xdf_options = {
+    dtype_xdf_options = {
         "float": REG_DTYPE.FLOAT,
         "s8": REG_DTYPE.S8,
         "u8": REG_DTYPE.U8,
@@ -290,8 +290,8 @@ class Dictionary(ABC):
             # Data type
             dtype_aux = register.attrib['dtype']
 
-            if dtype_aux in self.__dtype_xdf_options:
-                current_read_register[self.AttrRegDict.DTYPE] = self.__dtype_xdf_options[dtype_aux]
+            if dtype_aux in self.dtype_xdf_options:
+                current_read_register[self.AttrRegDict.DTYPE] = self.dtype_xdf_options[dtype_aux]
             else:
                 raise exc.ILValueError(f'The data type {dtype_aux} does not exist for the register: '
                                        f'{current_read_register["identifier"]}')

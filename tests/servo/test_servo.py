@@ -1,4 +1,11 @@
 import os
+import xml.etree.ElementTree as ET
+from ingenialink.utils._utils import get_drive_identification
+
+
+def _clean(filename):
+    if os.path.isfile(filename):
+        os.remove(filename)
 
 
 def test_save_configuration(connect_to_slave):
@@ -6,13 +13,55 @@ def test_save_configuration(connect_to_slave):
     assert servo is not None and net is not None
 
     filename = 'temp_config'
+    _clean(filename)
 
     servo.save_configuration(filename)
 
     assert os.path.isfile(filename)
 
-    if os.path.isfile(filename):
-        os.remove(filename)
+    with open(filename, 'r', encoding='utf-8') as xml_file:
+        tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    device = root.find('Body/Device')
+    prod_code, rev_number = get_drive_identification(servo)
+    if 'ProductCode' in device.attrib and prod_code is not None:
+        assert int(device.attrib.get('ProductCode')) == prod_code
+    if 'RevisionNumber' in device.attrib and rev_number is not None:
+        assert int(device.attrib.get('RevisionNumber')) == rev_number
+
+    assert device.attrib.get("PartNumber") == servo.dictionary.part_number
+    assert device.attrib.get("Interface") == servo.dictionary.interface
+    assert device.attrib.get("firmwareVersion") == servo.dictionary.firmware_version
+    # TODO: check name and family? These are not stored at the dictionary
+
+    saved_registers = root.findall('./Body/Device/Registers/Register')
+    assert len(saved_registers) > 0
+    subnodes = [0, 1]
+
+    for saved_register in saved_registers:
+        subnode = int(saved_register.attrib.get('subnode'))
+        assert int(subnode) >= 0
+        if subnode not in subnodes:
+            continue
+
+        reg_id = saved_register.attrib.get('id')
+        registers = servo.dictionary.registers(subnode=subnode)
+
+        assert reg_id in registers
+        address = int(saved_register.attrib.get('address'), 16)
+        assert registers[reg_id].address == address
+
+        storage = saved_register.attrib.get('storage')
+        storage == registers[reg_id].storage
+
+        access = saved_register.attrib.get('access')
+        assert registers[reg_id].access == servo.dictionary.access_xdf_options[access]
+
+        dtype = saved_register.attrib.get('dtype')
+        assert registers[reg_id].dtype == servo.dictionary.dtype_xdf_options[dtype]
+
+    _clean(filename)
 
 
 def test_load_configuration(connect_to_slave, read_config, pytestconfig):
