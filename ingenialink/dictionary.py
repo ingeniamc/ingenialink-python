@@ -277,6 +277,13 @@ class Dictionary(ABC):
             dict: The current register which it has been reading
             None: When at least a mandatory attribute is not in a xdf file
 
+        Raises:
+            KeyError: If the register doesn't have an identifier.
+            ILValueError: If the register data type is invalid.
+            ILAccessError: If the register access type is invalid.
+            ILUnsupportedRegisterValue: If the register address type is invalid.
+            KeyError: If some attribute is missing.
+
         """
         try:
             # Dictionary where the current register attributes will be saved
@@ -320,7 +327,7 @@ class Dictionary(ABC):
             if address_type_aux in self.address_type_xdf_options:
                 current_read_register[self.AttrRegDict.ADDRESS_TYPE] = self.address_type_xdf_options[address_type_aux]
             else:
-                raise exc.ILAccessError(f'The address type {address_type_aux} does not exist for the register: '
+                raise exc.ILUnsupportedRegisterValue(f'The address type {address_type_aux} does not exist for the register: '
                                         f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')                            
 
             # Subnode
