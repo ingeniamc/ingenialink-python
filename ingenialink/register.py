@@ -69,7 +69,7 @@ class Register(ABC):
         self._range = (None, None) if not reg_range else reg_range
         self._labels = labels
         self._enums = enums
-        self._enums_count = enums_count
+        self._enums_count = enums_count if enums_count != 0 else len(enums)
         self._cat_id = cat_id
         self._scat_id = scat_id
         self._internal_use = internal_use
