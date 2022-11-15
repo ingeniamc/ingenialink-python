@@ -16,8 +16,9 @@ Please add a description and delete options that are not relevant.
 - [ ] Change 2 (description)
 
 
-### Test
-- [ ] Run tests
+### Tests
+- [ ] Add new unit tests if it applies.
+- [ ] Run tests.
 
 Please describe the tests that you ran to verify your changes if it applies. 
 
@@ -27,4 +28,4 @@ Please update the documentation.
 
 - [ ] Update docstrings of every function, method or class that change.
 - [ ] Build documentation locally to verify changes.
-- [ ] Add your changes at the `## [Unreleased]` section of the [CHANGELOG](CHANGELOG.md).
+- [ ] Add the changes at the `[Unreleased]` section of the [CHANGELOG](CHANGELOG.md).
