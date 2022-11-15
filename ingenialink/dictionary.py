@@ -331,7 +331,7 @@ class Dictionary(ABC):
 
             # Enumerations
             enums_elem = register.findall(self.DICT_ENUMERATIONS_ENUMERATION)
-            current_read_register[self.AttrRegDict.ENUMS] = [{enum.attrib['value']: enum.text} for enum in enums_elem]
+            current_read_register[self.AttrRegDict.ENUMS] = {enum.attrib['value']: enum.text for enum in enums_elem} 
 
             return current_read_register
 
