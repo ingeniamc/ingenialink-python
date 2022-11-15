@@ -2,11 +2,12 @@ import json
 import pytest
 
 from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
-from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT
+from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethercat.network import EthercatNetwork
+from ingenialink.eoe.network import EoENetwork
 
 
-ALLOW_PROTOCOLS = ["ethernet", "ethercat", "canopen"]
+ALLOW_PROTOCOLS = ["ethernet", "ethercat", "canopen", "eoe"]
 
 
 def pytest_addoption(parser):
@@ -53,8 +54,7 @@ def connect_ethernet(protocol_contents):
     servo = net.connect_to_slave(
         protocol_contents['ip'],
         protocol_contents['dictionary'],
-        protocol_contents['port'],
-        NET_TRANS_PROT[protocol_contents['protocol']])
+        protocol_contents['port'])
     return servo, net
 
 
@@ -63,6 +63,17 @@ def connect_ethercat(protocol_contents):
 
     servo = net.connect_to_slave(
         target=protocol_contents['slave'],
+        dictionary=protocol_contents['dictionary']
+    )
+    return servo, net
+
+
+def connect_eoe(protocol_contents):
+    net = EoENetwork(protocol_contents['ifname'])
+
+    servo = net.connect_to_slave(
+        slave_id=protocol_contents['slave'],
+        ip_address=protocol_contents['ip'],
         dictionary=protocol_contents['dictionary']
     )
     return servo, net
@@ -80,6 +91,8 @@ def connect_to_slave(pytestconfig, read_config):
         servo, net = connect_ethercat(protocol_contents)
     elif protocol == "canopen":
         servo, net = connect_canopen(protocol_contents)
+    elif protocol == 'eoe':
+        servo, net = connect_eoe(protocol_contents)
 
     yield servo, net
     net.disconnect_from_slave(servo)

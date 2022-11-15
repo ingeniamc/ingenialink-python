@@ -24,5 +24,14 @@
     "channel": 0,
     "save_config_file": "canopen-config.xcf",
     "load_config_file": "resources/configurations/canopen-config.xcf"
+  },
+  "eoe": {
+    "ifname": "\\Device\\NPF_{192D1D2F-C684-467D-A637-EC07BD434A63}",
+    "slave": 1,
+    "ip": "192.168.3.22",
+    "port": 1061,
+    "dictionary": "resources/dictionaries/eve-xcr-e_eoe_1.8.1.xdf",
+    "save_config_file": "eoe-config.xcf",
+    "load_config_file": "resources/configurations/eoe-config.xcf"
   }
 }
