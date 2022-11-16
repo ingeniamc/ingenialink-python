@@ -109,7 +109,6 @@ class Register(ABC):
 
     def __config_enums(self):
         aux_enums = []
-        #for enum in self._enums:
         for key, value in self._enums.items():
             dictionary = {
                 'label': value,
