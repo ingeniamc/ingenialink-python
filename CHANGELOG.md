@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+### Changed
+- Re-organize the tests by protocol and add a no-protocol mark to separate test that do not need a servo connected.
+
+### Deprecated 
+
+
 ## [6.4.0] - 2022-07-13
 ### Added
 - Support monitoring/disturbance with CANopen protocol.
