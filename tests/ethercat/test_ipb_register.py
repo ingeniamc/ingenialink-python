@@ -5,7 +5,6 @@ from ingenialink.ipb.register import IPBRegister
 from ingenialink.register_deprecated import REG_DTYPE, REG_ACCESS, REG_PHY
 
 
-@pytest.mark.ethernet
 @pytest.mark.ethercat
 def test_ipb_register(connect_to_slave):
     servo, net = connect_to_slave
