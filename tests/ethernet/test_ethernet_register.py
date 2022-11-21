@@ -5,6 +5,7 @@ from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYP
 from ingenialink.utils._utils import exc
 
 
+@pytest.mark.ethernet
 @pytest.mark.smoke
 def test_getters_ethernet_register():
     test_cyclic = "CONFIG"
@@ -54,6 +55,7 @@ def test_getters_ethernet_register():
     assert register.internal_use == test_internal_use
 
 
+@pytest.mark.ethernet
 @pytest.mark.smoke
 @pytest.mark.parametrize("test2_dtype", [REG_DTYPE.S8, REG_DTYPE.FLOAT, REG_DTYPE.DOMAIN, "Other type"])
 @pytest.mark.parametrize("test2_storage", [None, 1])
@@ -81,6 +83,7 @@ def test_storage_dtype(test2_dtype, test2_storage):
             assert register.storage is None
 
 
+@pytest.mark.ethernet
 @pytest.mark.smoke
 @pytest.mark.parametrize("test2_range", [(None, None), (-20, 20)])
 @pytest.mark.parametrize("test3_dtype", [REG_DTYPE.S8, REG_DTYPE.FLOAT])

@@ -5,6 +5,7 @@ from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
 from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
 
 
+@pytest.mark.ethernet
 @pytest.mark.smoke
 @pytest.mark.parametrize("test_file_xdf, expected_num_registers", [
     ("test_dict_eth_1.xdf", 523),
@@ -20,7 +21,7 @@ def test_registers_dictionary(test_file_xdf, expected_num_registers):
 
     assert test_num_registers == expected_num_registers
 
-
+@pytest.mark.ethernet
 @pytest.mark.smoke
 @pytest.mark.parametrize("test_file_xdf, expected_num_categories", [
     ("test_dict_eth_1.xdf", 19),
@@ -34,7 +35,7 @@ def test_categories_dictionary(test_file_xdf, expected_num_categories):
 
     assert test_num_categories == expected_num_categories
 
-
+@pytest.mark.ethernet
 @pytest.mark.smoke
 @pytest.mark.parametrize("test_file_xdf, expected_num_errors", [
     ("test_dict_eth_1.xdf", 71),
@@ -48,7 +49,7 @@ def test_errors_dictionary(test_file_xdf, expected_num_errors):
 
     assert test_num_errors == expected_num_errors
 
-
+@pytest.mark.ethernet
 @pytest.mark.smoke
 def test_instance_dictionary():
     ethernet_dict = EthernetDictionary(f'./tests/resources/ethernet/test_dict_eth_1.xdf')

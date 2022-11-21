@@ -13,10 +13,18 @@ def connect(read_config):
     servo = net.connect_to_slave(
         protocol_contents['ip'],
         protocol_contents['dictionary'],
-        protocol_contents['port'],
-        NET_TRANS_PROT[protocol_contents['protocol']]
+        protocol_contents['port']
     )
     return servo, net
+
+
+@pytest.mark.ethernet
+def test_connect_to_slave(connect_to_slave):
+    servo, net = connect_to_slave
+    assert servo is not None and net is not None
+    assert len(net.servos) == 1
+    fw_version = servo.read('DRV_ID_SOFTWARE_VERSION')
+    assert fw_version is not None and fw_version != ''
 
 
 @pytest.mark.ethernet
