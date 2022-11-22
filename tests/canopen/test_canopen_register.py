@@ -3,7 +3,7 @@ import pytest
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS, REG_PHY
 
-@pytest.mark.canopen
+
 @pytest.mark.smoke
 def test_getters_canopen_register():
     test_identification = "MON_CFG_SOC_TYPE"
