@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 from ingenialink.canopen.dictionary import CanopenDictionary
 
 
-@pytest.mark.canopen
+@pytest.mark.no_connection
 @pytest.mark.smoke
 @pytest.mark.parametrize("test_file_xdf, expected_num_registers", [
     ("test_dict_can_1.xdf", 702),
@@ -21,7 +21,7 @@ def test_registers_dictionary(test_file_xdf, expected_num_registers):
 
     assert test_num_registers == expected_num_registers
 
-@pytest.mark.canopen
+@pytest.mark.no_connection
 @pytest.mark.smoke
 @pytest.mark.parametrize("test_file_xdf, expected_num_categories", [
     ("test_dict_can_1.xdf", 20),
@@ -36,7 +36,7 @@ def test_categories_dictionary(test_file_xdf, expected_num_categories):
     assert test_num_categories == expected_num_categories
 
 
-@pytest.mark.canopen
+@pytest.mark.no_connection
 @pytest.mark.smoke
 @pytest.mark.parametrize("test_file_xdf, expected_num_errors", [
     ("test_dict_can_1.xdf", 71),
