@@ -157,15 +157,15 @@ class IPBRegister(Register):
 
     def __init__(self, identifier, units, cyclic, dtype, access, address,
                  phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=None,
-                 labels=None, enums=None, enums_count=0, cat_id=None, scat_id=None,
+                 labels=None, enums=None, cat_id=None, scat_id=None,
                  internal_use=0, c_reg=None):
         if labels is None:
             labels = {}
         if enums is None:
-            enums = []
+            enums = {}
         super(IPBRegister, self).__init__(
             identifier, units, cyclic, dtype, access, phy, subnode, storage,
-            reg_range, labels, enums, enums_count, cat_id, scat_id, internal_use)
+            reg_range, labels, enums, cat_id, scat_id, internal_use)
 
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
