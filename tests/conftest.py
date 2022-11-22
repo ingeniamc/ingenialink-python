@@ -6,11 +6,11 @@ from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT
 from ingenialink.ethercat.network import EthercatNetwork
 
 
-ALLOW_PROTOCOLS = ["no_protocol", "ethernet", "ethercat", "canopen"]
+ALLOW_PROTOCOLS = ["no_connection", "ethernet", "ethercat", "canopen"]
 
 
 def pytest_addoption(parser):
-    parser.addoption("--protocol", action="store", default="no_protocol",
+    parser.addoption("--protocol", action="store", default="no_connection",
                      help=",".join(ALLOW_PROTOCOLS), choices=ALLOW_PROTOCOLS)
 
 

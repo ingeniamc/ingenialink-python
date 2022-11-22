@@ -8,7 +8,7 @@ from ingenialink.constants import MCB_CMD_READ, MCB_CMD_WRITE
 from ingenialink.exceptions import ILWrongCRCError, ILNACKError,\
     ILWrongRegisterError
 
-@pytest.mark.no_protocol
+@pytest.mark.no_connection
 @pytest.mark.parametrize("cmd, subnode, address, data, reg_dtype, extended, result", [
     (MCB_CMD_READ, 1, 0x630, None, REG_DTYPE.FLOAT, False, 'a100026300000000000000009fcc'),
     (MCB_CMD_WRITE, 1, 0x630, 25.5, REG_DTYPE.FLOAT, False, 'a10004630000cc4100000000cab1'),
@@ -27,7 +27,7 @@ def test_build_mcb_frame(cmd, subnode, address, data, reg_dtype, extended, resul
     assert result == frame.hex()
 
 
-@pytest.mark.no_protocol
+@pytest.mark.no_connection
 @pytest.mark.parametrize("expected_address, data, reg_dtype, frame", [
     (0x6e5, "http://www.ingeniamc.com", REG_DTYPE.STR, 'a100576e18000000000000003e9568'
                                                        '7474703a2f2f7777772e696e67656e6'
@@ -39,7 +39,7 @@ def test_read_mcb_frame(expected_address, data, reg_dtype, frame):
     assert data == convert_bytes_to_dtype(data_bytes, reg_dtype)
 
 
-@pytest.mark.no_protocol
+@pytest.mark.no_connection
 @pytest.mark.parametrize("expected_address, frame", [
     (0x630, 'a10006630000704200000000dd71')
 ])
@@ -51,7 +51,7 @@ def test_read_mcb_frame_wrong_crc(expected_address, frame):
         MCB.read_mcb_data(expected_address, frame_byte_arr)
 
 
-@pytest.mark.no_protocol
+@pytest.mark.no_connection
 @pytest.mark.parametrize("expected_address, frame", [
     (0x11, 'a1001c0100000106000000009ad7')
 ])
@@ -61,7 +61,7 @@ def test_read_mcb_frame_nack(expected_address, frame):
         MCB.read_mcb_data(expected_address, frame_byte_arr)
 
 
-@pytest.mark.no_protocol
+@pytest.mark.no_connection
 @pytest.mark.parametrize("expected_address, frame", [
     (0x630, 'a10006630000704200000000dd71')
 ])
