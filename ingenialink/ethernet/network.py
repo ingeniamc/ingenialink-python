@@ -60,19 +60,13 @@ class NetStatusListener(Thread):
                         break
                 ping_response = (unsuccessful_pings !=
                                  self.__max_unsuccessful_pings)
-                if servo_state == NET_STATE.CONNECTED:
-                    if ping_response:
-                        time.sleep(0.25)
-                    else:
-                        servo_state = NET_STATE.DISCONNECTED
-                        self.__network._notify_status(servo_ip,
-                                                      NET_DEV_EVT.REMOVED)
-                elif ping_response:
-                    servo_state = NET_STATE.CONNECTED
-                    self.__network._notify_status(servo_ip,
-                                                  NET_DEV_EVT.ADDED)
-                self.__network._set_servo_state(servo_ip,
-                                                servo_state)
+                if servo_state == NET_STATE.CONNECTED and not ping_response:
+                    self.__network._notify_status(servo_ip, NET_DEV_EVT.REMOVED)
+                    self.__network._set_servo_state(servo_ip, NET_STATE.DISCONNECTED)
+                if servo_state == NET_STATE.DISCONNECTED and ping_response:
+                    self.__network._notify_status(servo_ip, NET_DEV_EVT.ADDED)
+                    self.__network._set_servo_state(servo_ip, NET_STATE.CONNECTED)
+            time.sleep(0.25)
 
     def stop(self):
         self.__stop = True
