@@ -58,6 +58,7 @@
           <Labels>
             <Label lang="en_US">Netmask</Label>
           </Labels>
+        </Register>
         <Register address_type="NVM_CFG" access="rw" address="0x215100" dtype="u16" id="COMMU_ANGLE_SENSOR" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the sensor used for angle readings" cat_id="COMMUTATION">
           <Labels>
             <Label lang="en_US">Commutation feedback sensor</Label>
