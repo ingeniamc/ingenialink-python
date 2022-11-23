@@ -48,6 +48,7 @@ def test_getters_register():
     assert register.storage_valid == True
 
 
+@pytest.mark.no_connection
 def test_register_type_errors():
     dtype = "False type"
     access = REG_ACCESS.RW
@@ -64,7 +65,8 @@ def test_register_type_errors():
     with pytest.raises(exc.ILValueError):
         Register(dtype, access, phy="False Phy")
 
-        
+
+@pytest.mark.no_connection
 def test_register_get_storage():
     access = REG_ACCESS.RW
 

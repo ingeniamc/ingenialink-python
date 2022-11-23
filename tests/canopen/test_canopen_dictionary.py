@@ -73,6 +73,17 @@ def test_read_dictionary_registers_multiaxis():
 
 
 @pytest.mark.no_connection
+def test_read_dictionary_registers_attr_errors():
+    dictionary_path = join_path(path_resources, "test_dict_can_no_attr_reg.xdf")
+
+    canopen_dict = CanopenDictionary(dictionary_path)
+
+    for subnode in [0, 1]:
+        num_registers = len(canopen_dict.registers(subnode))
+        assert num_registers == 0
+
+
+@pytest.mark.no_connection
 def test_read_dictionary_categories():
     expected_categories = [
         "IDENTIFICATION",

@@ -126,7 +126,7 @@ def ipb_register_from_cffi(cffi_register):
 
     return IPBRegister(identifier, units, cyclic, dtype, access,
                        address, phy, subnode, storage, reg_range,
-                       labels, enums, enums_count, cat_id, scat_id,
+                       labels, enums, cat_id, scat_id,
                        internal_use, cffi_register)
 
 
