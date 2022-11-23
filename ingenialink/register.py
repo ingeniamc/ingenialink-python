@@ -33,7 +33,7 @@ class Register(ABC):
             storage (any, optional): Storage.
             reg_range (tuple, optional): Range (min, max).
             labels (dict, optional): Register labels.
-            enums (list): Enumeration registers.
+            enums (dict): Enumeration registers.
             enums_count (int): Number of enumeration registers.
             cat_id (str, optional): Category ID.
             scat_id (str, optional): Sub-category ID.
@@ -48,13 +48,12 @@ class Register(ABC):
 
     def __init__(self, dtype, access, identifier=None, units=None, cyclic="CONFIG",
                  phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=(None, None),
-                 labels=None, enums=None, enums_count=0, cat_id=None, scat_id=None,
-                 internal_use=0):
+                 labels=None, enums=None, cat_id=None, scat_id=None, internal_use=0):
 
         if labels is None:
             labels = {}
         if enums is None:
-            enums = []
+            enums = {}
 
         self.__type_errors(dtype, access, phy)
 
@@ -69,7 +68,7 @@ class Register(ABC):
         self._range = (None, None) if not reg_range else reg_range
         self._labels = labels
         self._enums = enums
-        self._enums_count = enums_count
+        self._enums_count = len(enums)
         self._cat_id = cat_id
         self._scat_id = scat_id
         self._internal_use = internal_use
@@ -110,13 +109,12 @@ class Register(ABC):
 
     def __config_enums(self):
         aux_enums = []
-        for enum in self._enums:
-            for key, value in enum.items():
-                dictionary = {
-                    'label': value,
-                    'value': int(key)
-                }
-                aux_enums.append(dictionary)
+        for key, value in self._enums.items():
+            dictionary = {
+                'label': value,
+                'value': int(key)
+            }
+            aux_enums.append(dictionary)
 
         return aux_enums
 

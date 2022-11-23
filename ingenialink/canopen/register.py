@@ -18,7 +18,7 @@ class CanopenRegister(Register):
             storage (any, optional): Storage.
             reg_range (tuple, optional): Range (min, max).
             labels (dict, optional): Register labels.
-            enums (list): Enumeration registers.
+            enums (dict): Enumeration registers.
             enums_count (int): Number of enumeration registers.
             cat_id (str, optional): Category ID.
             scat_id (str, optional): Sub-category ID.
@@ -33,12 +33,12 @@ class CanopenRegister(Register):
 
     def __init__(self, identifier, units, cyclic, idx, subidx, dtype,
                  access, phy=REG_PHY.NONE, subnode=1, storage=None,
-                 reg_range=(None, None), labels=None, enums=None, enums_count=0,
+                 reg_range=(None, None), labels=None, enums=None,
                  cat_id=None, scat_id=None, internal_use=0):
 
         super().__init__(dtype, access, identifier, units, cyclic,
                          phy, subnode, storage, reg_range, labels, enums,
-                         enums_count, cat_id, scat_id, internal_use)
+                         cat_id, scat_id, internal_use)
 
         self.__idx = idx
         self.__subidx = subidx

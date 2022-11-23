@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+### Added
+
+### Changed
+- Remove enums_count as an argument to create a Register.
+- Convert enums type from list[dict] to dict.
+
 ## [6.4.0] - 2022-07-13
 ### Added
 - Support monitoring/disturbance with CANopen protocol.

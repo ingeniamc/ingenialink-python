@@ -77,12 +77,12 @@ class Register(ABC):
     """
     def __init__(self, identifier, units, cyclic, dtype, access,
                  phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=None,
-                 labels=None, enums=None, enums_count=0, cat_id=None, scat_id=None,
+                 labels=None, enums=None, cat_id=None, scat_id=None,
                  internal_use=0):
         if labels is None:
             labels = {}
         if enums is None:
-            enums = []
+            enums = {}
 
         if not isinstance(dtype, REG_DTYPE):
             raise TypeError('Invalid data type')
@@ -106,7 +106,7 @@ class Register(ABC):
         self._range = (None, None) if not reg_range else reg_range
         self._labels = labels
         self._enums = enums
-        self._enums_count = enums_count
+        self._enums_count = len(enums)
         self._cat_id = cat_id
         self._scat_id = scat_id
 
