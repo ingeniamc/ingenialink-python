@@ -101,3 +101,19 @@ def test_setup_and_teardown_connection(virtual_network):
     assert virtual_network._connection is not None
     virtual_network._teardown_connection()
     assert virtual_network._connection is None
+
+
+@pytest.mark.skip
+def test_load_firmware(connect_to_slave, read_config):
+    # TODO: Fix load_firmware method to work independently of status listeners
+    servo, net = connect_to_slave
+    assert servo is not None and net is not None
+    assert len(net.servos) == 1
+    fw_version = servo.read('DRV_ID_SOFTWARE_VERSION')
+    protocol_contents = read_config['canopen']
+
+    net.load_firmware(protocol_contents['node_id'], protocol_contents['test_fw_file'])
+    new_fw_version = servo.read('DRV_ID_SOFTWARE_VERSION')
+    
+    assert new_fw_version != fw_version
+    net.disconnect_from_slave(servo)
