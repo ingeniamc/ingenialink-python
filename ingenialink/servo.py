@@ -387,8 +387,7 @@ class Servo:
                 register_xml.set("access", access_ops[register.access])
                 register_xml.set("dtype", dtype_ops[register.dtype])
                 register_xml.set("id", reg_id)
-                if access_ops[register.access] == 'rw':
-                    self.__update_register_dict(register_xml, subnode)
+                self.__update_register_dict(register_xml, subnode)
                 register_xml.set("subnode", str(subnode))
 
         dom = minidom.parseString(ET.tostring(tree, encoding='utf-8'))
