@@ -805,7 +805,7 @@ class EthercatServo:
         if not os.path.isfile(config_file):
             raise FileNotFoundError('Could not find {}.'.format(config_file))
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
-            raise ILError('Invalid subnode')
+            raise ValueError('Invalid subnode')
         if subnode is None:
             subnode = -1
         r = lib.il_servo_dict_storage_write(self._cffi_servo, cstr(config_file),
