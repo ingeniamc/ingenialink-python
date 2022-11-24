@@ -279,9 +279,9 @@ class Dictionary(ABC):
 
         Raises:
             KeyError: If the register doesn't have an identifier.
-            ILValueError: If the register data type is invalid.
-            ILAccessError: If the register access type is invalid.
-            ILUnsupportedRegisterValue: If the register address type is invalid.
+            ValueError: If the register data type is invalid.
+            ValueError: If the register access type is invalid.
+            ValueError: If the register address type is invalid.
             KeyError: If some attribute is missing.
 
         """
@@ -309,8 +309,8 @@ class Dictionary(ABC):
             if dtype_aux in self.dtype_xdf_options:
                 current_read_register[self.AttrRegDict.DTYPE] = self.dtype_xdf_options[dtype_aux]
             else:
-                raise exc.ILValueError(f'The data type {dtype_aux} does not exist for the register: '
-                                       f'{current_read_register["identifier"]}')
+                raise ValueError(f'The data type {dtype_aux} does not exist for the register: '
+                                 f'{current_read_register["identifier"]}')
 
             # Access type
             access_aux = register.attrib['access']
@@ -318,8 +318,8 @@ class Dictionary(ABC):
             if access_aux in self.access_xdf_options:
                 current_read_register[self.AttrRegDict.ACCESS] = self.access_xdf_options[access_aux]
             else:
-                raise exc.ILAccessError(f'The access type {access_aux} does not exist for the register: '
-                                        f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')
+                raise ValueError(f'The access type {access_aux} does not exist for the register: '
+                                 f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')
 
             # Address type
             address_type_aux = register.attrib['address_type']
@@ -327,8 +327,8 @@ class Dictionary(ABC):
             if address_type_aux in self.address_type_xdf_options:
                 current_read_register[self.AttrRegDict.ADDRESS_TYPE] = self.address_type_xdf_options[address_type_aux]
             else:
-                raise exc.ILUnsupportedRegisterValue(f'The address type {address_type_aux} does not exist for the register: '
-                                        f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')                            
+                raise ValueError(f'The address type {address_type_aux} does not exist for the register: '
+                                 f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')                            
 
             # Subnode
             current_read_register[self.AttrRegDict.SUBNODE] = int(register.attrib.get('subnode', 1))
