@@ -18,7 +18,7 @@ def test_getters_ethernet_register():
     test_storage = 1
     test_reg_range = (-20, 20)
     test_labels = "Monitoring trigger type"
-    test_enums = [{'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}]
+    test_enums = {'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}
     test_enums_count = 2
     test_cat_id = "MONITORING"
     test_scat_id = "SUB_CATEGORY_TEST"
@@ -26,7 +26,7 @@ def test_getters_ethernet_register():
     test_address_type = REG_ADDRESS_TYPE.NVM
     register = EthernetRegister(test_addr, test_dtype, test_access, test_identification,
                                 test_units, test_cyclic, test_phy, test_subnode, test_storage,
-                                test_reg_range, test_labels, test_enums, test_enums_count,
+                                test_reg_range, test_labels, test_enums,
                                 test_cat_id, test_scat_id, test_internal_use, test_address_type)
 
     assert register.identifier == test_identification
@@ -43,10 +43,9 @@ def test_getters_ethernet_register():
     assert register.address_type == test_address_type
 
     test_aux_enums = []
-    for test_enum in test_enums:
-        for key, value in test_enum.items():
-            test_dictionary = {'label': value, 'value': int(key)}
-            test_aux_enums.append(test_dictionary)
+    for key, value in test_enums.items():
+        test_dictionary = {'label': value, 'value': int(key)}
+        test_aux_enums.append(test_dictionary)
 
     assert register.enums == test_aux_enums
     assert register.enums_count == test_enums_count
@@ -59,19 +58,19 @@ def test_getters_ethernet_register():
 @pytest.mark.parametrize("test2_dtype", [REG_DTYPE.S8, REG_DTYPE.FLOAT, REG_DTYPE.DOMAIN, "Other type"])
 @pytest.mark.parametrize("test2_storage", [None, 1])
 def test_storage_dtype(test2_dtype, test2_storage):
-    enums_count = [{'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}]
+    enums = {'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}
     # dtype test conditional
     if not isinstance(test2_dtype, REG_DTYPE):
         with pytest.raises(exc.ILValueError):
             EthernetRegister(0x58F0, test2_dtype, REG_ACCESS.RW, "MON_CFG_SOC_TYPE",
                              "none", "CONFIG", REG_PHY.NONE, 1, test2_storage,
-                             (-20, 20), "Monitoring trigger type", enums_count,
+                             (-20, 20), "Monitoring trigger type", enums,
                              "MONITORING", "SUB_CATEGORY_TEST", "No description (invent here)")
 
     else:
         register = EthernetRegister(0x58F0, test2_dtype, REG_ACCESS.RW, "MON_CFG_SOC_TYPE",
                                     "none", "CONFIG", REG_PHY.NONE, 1, test2_storage,
-                                    (-20, 20), "Monitoring trigger type", enums_count,
+                                    (-20, 20), "Monitoring trigger type", enums,
                                     "MONITORING", "SUB_CATEGORY_TEST", "No description (invent here)")
         # storage test conditional
         if test2_dtype in [REG_DTYPE.S8, REG_DTYPE.U8, REG_DTYPE.S16,
@@ -86,10 +85,10 @@ def test_storage_dtype(test2_dtype, test2_storage):
 @pytest.mark.parametrize("test2_range", [(None, None), (-20, 20)])
 @pytest.mark.parametrize("test3_dtype", [REG_DTYPE.S8, REG_DTYPE.FLOAT])
 def test_range_ethernet_register(test2_range, test3_dtype):
-    enums = [{'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}]
+    enums = {'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}
     register = EthernetRegister(0x58F0, test3_dtype, REG_ACCESS.RW, "MON_CFG_SOC_TYPE",
                                 "none", "CONFIG", REG_PHY.NONE, 1, 1,
-                                test2_range, "Monitoring trigger type", enums, len(enums),
+                                test2_range, "Monitoring trigger type", enums,
                                 "MONITORING", "SUB_CATEGORY_TEST", "No description (invent here)")
 
     if test2_range == (None, None):

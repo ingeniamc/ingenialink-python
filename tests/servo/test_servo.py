@@ -1,5 +1,6 @@
 import os
 import xml.etree.ElementTree as ET
+
 from ingenialink.utils._utils import get_drive_identification
 from ingenialink.register import REG_ADDRESS_TYPE
 
@@ -14,7 +15,6 @@ def test_save_configuration(connect_to_slave):
     assert servo is not None and net is not None
 
     filename = 'temp_config'
-    _clean(filename)
 
     servo.save_configuration(filename)
 
@@ -38,13 +38,9 @@ def test_save_configuration(connect_to_slave):
 
     saved_registers = root.findall('./Body/Device/Registers/Register')
     assert len(saved_registers) > 0
-    subnodes = [0, 1]
 
     for saved_register in saved_registers:
         subnode = int(saved_register.attrib.get('subnode'))
-        assert int(subnode) >= 0
-        if subnode not in subnodes:
-            continue
 
         reg_id = saved_register.attrib.get('id')
         registers = servo.dictionary.registers(subnode=subnode)

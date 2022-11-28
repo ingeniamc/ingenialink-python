@@ -18,7 +18,7 @@ def test_getters_canopen_register():
     test_storage = 1
     test_reg_range = (-20, 20)
     test_labels = "Monitoring trigger type"
-    test_enums = [{'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}]
+    test_enums = {'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}
     test_enums_count = 2
     test_cat_id = "MONITORING"
     test_scat_id = "SUB_CATEGORY_TEST"
@@ -26,7 +26,7 @@ def test_getters_canopen_register():
     test_address_type = REG_ADDRESS_TYPE.NVM
     register = CanopenRegister(test_identification, test_units, test_cyclic, test_idx, test_subidx,
                                test_dtype, test_access, test_phy, test_subnode, test_storage,
-                               test_reg_range, test_labels, test_enums, test_enums_count,
+                               test_reg_range, test_labels, test_enums,
                                test_cat_id, test_scat_id, test_internal_use, test_address_type)
 
     assert register.identifier == test_identification
@@ -44,10 +44,9 @@ def test_getters_canopen_register():
     assert register.address_type == test_address_type
 
     test_aux_enums = []
-    for test_enum in test_enums:
-        for key, value in test_enum.items():
-            test_dictionary = {'label': value, 'value': int(key)}
-            test_aux_enums.append(test_dictionary)
+    for key, value in test_enums.items():
+        test_dictionary = {'label': value, 'value': int(key)}
+        test_aux_enums.append(test_dictionary)
 
     assert register.enums == test_aux_enums
     assert register.enums_count == test_enums_count
