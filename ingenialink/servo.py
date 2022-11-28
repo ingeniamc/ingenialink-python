@@ -2,6 +2,7 @@ import os
 import time
 import threading
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 from abc import abstractmethod
 
 from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError, ILStateError
@@ -216,40 +217,45 @@ class Servo:
             raise ILError('Invalid subnode')
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        with open(self.dictionary.path, 'r', encoding='utf-8') as xml_file:
-            tree = ET.parse(xml_file)
-        root = tree.getroot()
+        tree = ET.Element("IngeniaDictionary")
+        header = ET.SubElement(tree, "Header")
+        version = ET.SubElement(header, "Version")
+        version.text = "2"
+        default_language = ET.SubElement(header, "DefaultLanguage")
+        default_language.text = "en_US"
 
-        body = root.find('Body')
-        device = root.find('Body/Device')
-        categories = root.find('Body/Device/Categories')
-        errors = root.find('Body/Errors')
+        body = ET.SubElement(tree, "Body")
+        device = ET.SubElement(body, "Device")
+        registers = ET.SubElement(device, "Registers")
 
-        if 'ProductCode' in device.attrib and prod_code is not None:
-            device.attrib['ProductCode'] = str(prod_code)
-        if 'RevisionNumber' in device.attrib and rev_number is not None:
-            device.attrib['RevisionNumber'] = str(rev_number)
+        device.set("Interface", self.dictionary.interface)
+        device.set("PartNumber", self.dictionary.part_number)
+        device.set("ProductCode", str(prod_code))
+        device.set("RevisionNumber", str(rev_number))
+        device.set("firmwareVersion", self.dictionary.firmware_version)
 
-        registers_category = root.find('Body/Device/Registers')
-        if registers_category is None:
-            # Multiaxis dictionary
-            axes_category = root.find('Body/Device/Axes')
-            list_axis = root.findall('Body/Device/Axes/Axis')
-            self.__update_multiaxis_dict(device, axes_category, list_axis, subnode)
+        access_ops = {value: key for key, value in self.dictionary.access_xdf_options.items()}
+        dtype_ops = {value: key for key, value in self.dictionary.dtype_xdf_options.items()}
+
+        if subnode is None:
+            subnodes = range(self.dictionary.subnodes)
         else:
-            # Single axis dictionary
-            registers = root.findall('Body/Device/Registers/Register')
-            self.__update_single_axis_dict(registers_category, registers, subnode)
+            subnodes = [subnode]
 
-        device.remove(categories)
-        body.remove(errors)
+        for subnode in subnodes:
+            registers_dict = self.dictionary.registers(subnode=subnode)
+            for reg_id, register in registers_dict.items():
+                register_xml = ET.SubElement(registers, "Register")
+                register_xml.set("access", access_ops[register.access])
+                register_xml.set("dtype", dtype_ops[register.dtype])
+                register_xml.set("id", reg_id)
+                if access_ops[register.access] == 'rw':
+                    self.__update_register_dict(register_xml, subnode)
+                register_xml.set("subnode", str(subnode))
 
-        image = root.find('./DriveImage')
-        if image is not None:
-            root.remove(image)
-
-        tree.write(config_file)
-        xml_file.close()
+        dom = minidom.parseString(ET.tostring(tree, encoding='utf-8'))
+        with open(config_file, "wb") as f:
+            f.write(dom.toprettyxml(indent='\t').encode())
 
     def restore_parameters(self, subnode=None):
         """Restore all the current parameters of all the slave to default.
@@ -789,58 +795,6 @@ class Servo:
             return _dict.registers(subnode)[reg]
         else:
             raise TypeError('Invalid register')
-
-    def __update_single_axis_dict(self, registers_category,
-                                  registers, subnode):
-        """Looks for matches through all the registers' subnodes with the
-        given subnode and removes the ones that do not match. It also cleans
-        up the registers leaving only paramount information.
-
-        Args:
-            registers_category (Element): Registers element containing all registers.
-            registers (list): List of registers in the dictionary.
-            subnode (int): Subnode to keep in the dictionary.
-
-        Returns:
-
-        """
-        for register in registers:
-            element_subnode = int(register.attrib['subnode'])
-            if subnode in [None, element_subnode]:
-                if register.attrib.get('access') == 'rw':
-                    self.__update_register_dict(register, element_subnode)
-            else:
-                registers_category.remove(register)
-            cleanup_register(register)
-
-    def __update_multiaxis_dict(self, device, axes_category, list_axis, subnode):
-        """Looks for matches through the subnode of each axis and
-        removes all the axes that did not match the search. It also
-        cleans up all the registers leaving only paramount information.
-
-        Args:
-            device (Element): Device element containing all the dictionary info.
-            axes_category (Element): Axes element containing all the axis.
-            list_axis (list): List of all the axis in the dictionary.
-            subnode (int): Subnode to keep in the dictionary.
-
-        """
-        for axis in list_axis:
-            registers_category = axis.find('./Registers')
-            registers = registers_category.findall('./Register')
-            if subnode is not None and axis.attrib['subnode'] == str(subnode):
-                self.__update_single_axis_dict(registers_category, registers, subnode)
-                device.append(registers_category)
-                device.remove(axes_category)
-                break
-            for register in registers:
-                element_subnode = int(register.attrib['subnode'])
-                if (
-                        subnode in [None, element_subnode]
-                        and register.attrib.get('access') == 'rw'
-                ):
-                    self.__update_register_dict(register, element_subnode)
-                cleanup_register(register)
 
     def __update_register_dict(self, register, subnode):
         """Updates the register from a dictionary with the
