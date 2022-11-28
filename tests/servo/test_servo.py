@@ -2,6 +2,7 @@ import os
 import xml.etree.ElementTree as ET
 
 from ingenialink.utils._utils import get_drive_identification
+from ingenialink.register import REG_ADDRESS_TYPE
 
 
 def _clean(filename):
@@ -57,6 +58,9 @@ def test_save_configuration(connect_to_slave):
 
         dtype = saved_register.attrib.get('dtype')
         assert registers[reg_id].dtype == servo.dictionary.dtype_xdf_options[dtype]
+
+        assert access == "rw"
+        assert registers[reg_id].address_type != REG_ADDRESS_TYPE.NVM_NONE
 
     _clean(filename)
 

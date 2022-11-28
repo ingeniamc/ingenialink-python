@@ -12,7 +12,7 @@ from ingenialink.utils._utils import get_drive_identification, cleanup_register,
 from ingenialink.constants import PASSWORD_RESTORE_ALL, PASSWORD_STORE_ALL, \
     DEFAULT_PDS_TIMEOUT, MONITORING_BUFFER_SIZE, DEFAULT_DRIVE_NAME
 from ingenialink.utils import constants
-from ingenialink.enums.register import REG_DTYPE
+from ingenialink.enums.register import REG_DTYPE, REG_ADDRESS_TYPE, REG_ACCESS
 from ingenialink.enums.servo import SERVO_STATE
 
 import ingenialogger
@@ -245,12 +245,13 @@ class Servo:
         for subnode in subnodes:
             registers_dict = self.dictionary.registers(subnode=subnode)
             for reg_id, register in registers_dict.items():
+                if (register.address_type == REG_ADDRESS_TYPE.NVM_NONE) or (register.access != REG_ACCESS.RW):
+                    continue
                 register_xml = ET.SubElement(registers, "Register")
                 register_xml.set("access", access_ops[register.access])
                 register_xml.set("dtype", dtype_ops[register.dtype])
                 register_xml.set("id", reg_id)
-                if access_ops[register.access] == 'rw':
-                    self.__update_register_dict(register_xml, subnode)
+                self.__update_register_dict(register_xml, subnode)
                 register_xml.set("subnode", str(subnode))
 
         dom = minidom.parseString(ET.tostring(tree, encoding='utf-8'))

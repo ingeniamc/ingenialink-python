@@ -3,7 +3,7 @@ import ingenialogger
 
 from abc import ABC, abstractmethod
 from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
-from ingenialink.register import REG_DTYPE, REG_ACCESS
+from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
 from ingenialink import exceptions as exc
 
 logger = ingenialogger.get_logger(__name__)
@@ -143,6 +143,7 @@ class Dictionary(ABC):
         ENUMS = 'enums'
         CAT_ID = 'cat_id'
         INT_USE = 'internal_use'
+        ADDRESS_TYPE = 'address_type'
 
     dtype_xdf_options = {
         "float": REG_DTYPE.FLOAT,
@@ -161,6 +162,14 @@ class Dictionary(ABC):
         "r": REG_ACCESS.RO,
         "w": REG_ACCESS.WO,
         "rw": REG_ACCESS.RW
+    }
+
+    address_type_xdf_options = {
+        "NVM": REG_ADDRESS_TYPE.NVM,
+        "NVM_NONE": REG_ADDRESS_TYPE.NVM_NONE,
+        "NVM_CFG": REG_ADDRESS_TYPE.NVM_CFG,
+        "NVM_LOCK": REG_ADDRESS_TYPE.NVM_LOCK,
+        "NVM_HW": REG_ADDRESS_TYPE.NVM_HW,
     }
 
     def __init__(self, dictionary_path):
@@ -268,6 +277,13 @@ class Dictionary(ABC):
             dict: The current register which it has been reading
             None: When at least a mandatory attribute is not in a xdf file
 
+        Raises:
+            KeyError: If the register doesn't have an identifier.
+            ValueError: If the register data type is invalid.
+            ValueError: If the register access type is invalid.
+            ValueError: If the register address type is invalid.
+            KeyError: If some attribute is missing.
+
         """
         try:
             # Dictionary where the current register attributes will be saved
@@ -293,8 +309,8 @@ class Dictionary(ABC):
             if dtype_aux in self.dtype_xdf_options:
                 current_read_register[self.AttrRegDict.DTYPE] = self.dtype_xdf_options[dtype_aux]
             else:
-                raise exc.ILValueError(f'The data type {dtype_aux} does not exist for the register: '
-                                       f'{current_read_register["identifier"]}')
+                raise ValueError(f'The data type {dtype_aux} does not exist for the register: '
+                                 f'{current_read_register["identifier"]}')
 
             # Access type
             access_aux = register.attrib['access']
@@ -302,8 +318,17 @@ class Dictionary(ABC):
             if access_aux in self.access_xdf_options:
                 current_read_register[self.AttrRegDict.ACCESS] = self.access_xdf_options[access_aux]
             else:
-                raise exc.ILAccessError(f'The access type {access_aux} does not exist for the register: '
-                                        f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')
+                raise ValueError(f'The access type {access_aux} does not exist for the register: '
+                                 f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')
+
+            # Address type
+            address_type_aux = register.attrib['address_type']
+
+            if address_type_aux in self.address_type_xdf_options:
+                current_read_register[self.AttrRegDict.ADDRESS_TYPE] = self.address_type_xdf_options[address_type_aux]
+            else:
+                raise ValueError(f'The address type {address_type_aux} does not exist for the register: '
+                                 f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')                            
 
             # Subnode
             current_read_register[self.AttrRegDict.SUBNODE] = int(register.attrib.get('subnode', 1))
