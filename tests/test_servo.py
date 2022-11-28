@@ -67,7 +67,6 @@ def test_load_configuration_invalid_subnode(read_config, pytestconfig, connect_t
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
