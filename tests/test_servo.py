@@ -35,7 +35,7 @@ def test_load_configuration(connect_to_slave, read_config, pytestconfig):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
+# @pytest.mark.ethercat # TODO: fails due to firmware issue. Uncomment after fixed.
 def test_store_parameters(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -47,7 +47,7 @@ def test_store_parameters(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
+# @pytest.mark.ethercat # TODO: fails due to firmware issue. Uncomment after fixed.
 def test_restore_parameters(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
