@@ -1,8 +1,10 @@
 import socket
 import time
+import os
 from threading import Thread
 
 import pytest
+import xml.etree.ElementTree as ET
 
 from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT, \
     NET_PROT, NET_STATE, NET_DEV_EVT, NetStatusListener
@@ -15,12 +17,18 @@ test_ip = "localhost"
 test_port = 81
 
 class VirtualDrive(Thread):
-    def __init__(self, ip, port):
+    ACK_CMD = 3
+
+    def __init__(self, ip, port, config_file="./tests/resources/virtual_drive.xcf"):
         super(VirtualDrive, self).__init__()
         self.ip = ip
         self.port = port
+        self.config_file = config_file
         self.socket = None
         self.__stop = False
+        self.device_info = None
+        self.registers = {}
+        self._load_configuration_file()
 
     def run(self):
         ''' Open socket and listen messages '''
@@ -32,14 +40,15 @@ class VirtualDrive(Thread):
             if self.socket is not None:
                 try:
                     frame, add = self.socket.recvfrom(ETH_BUF_SIZE)
-                    recv_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
+                    reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
                     if cmd == 2: # Write
-                        ack_cmd = 3
-                        response = MCB.build_mcb_frame(ack_cmd, subnode, recv_add, data)
-                        # TODO: write to local registers
+                        response = MCB.build_mcb_frame(self.ACK_CMD, subnode, reg_add, data)
                         self.socket.sendto(response, add)
+                        self.registers[subnode][reg_add] = data
                     elif cmd == 3: # Read
-                        pass # TODO: read from local registers
+                        value = self.registers[subnode][reg_add]
+                        response = MCB.build_mcb_frame(self.ACK_CMD, subnode, reg_add, value)
+                        self.socket.sendto(response, add)
                 except:
                     self.stop()
             
@@ -51,7 +60,25 @@ class VirtualDrive(Thread):
             self.socket.close()
         self.__stop = True
 
-
+    def _load_configuration_file(self):
+        if not os.path.isfile(self.config_file):
+            raise FileNotFoundError(f'Could not find {self.config_file}.')
+        with open(self.config_file, 'r', encoding='utf-8') as xml_file:
+            tree = ET.parse(xml_file)
+        root = tree.getroot()
+        device = root.find('Body/Device')
+        registers = root.findall('./Body/Device/Registers/Register')
+        self.device_info = device
+        for element in registers:
+            subnode = int(element.attrib['subnode'])
+            if subnode not in self.registers:
+                self.registers[subnode] = {}
+            address = int(element.attrib['address'], base=16)
+            self.registers[subnode][address] = {
+                "access": element.attrib['access'],
+                "dtype": element.attrib['dtype'],
+                "id": element.attrib['id']
+            }
 
 @pytest.fixture()
 def virtual_drive():
@@ -141,7 +168,7 @@ def test_connect_to_virtual(virtual_drive, read_config):
         ("DRV_DIAG_ERROR_LAST_COM", 4, 0)
     ]
 )
-def test_virtual_drive_write(connect_to_slave, virtual_drive, read_config, reg, value, subnode):
+def test_virtual_drive_write_read(connect_to_slave, virtual_drive, read_config, reg, value, subnode):
     servo, net = connect_to_slave
     server = virtual_drive
 
@@ -157,6 +184,14 @@ def test_virtual_drive_write(connect_to_slave, virtual_drive, read_config, reg, 
     response = servo.write(reg, value, subnode)
 
     assert response == virtual_response
+
+    old_value = virtual_servo.read(reg, subnode)
+    new_value = old_value + 1
+    virtual_servo.write(reg, new_value, subnode)
+
+    saved_value = virtual_servo.read(reg, subnode)
+
+    assert saved_value == new_value
 
 
 @pytest.mark.no_connection
