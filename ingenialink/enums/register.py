@@ -53,3 +53,12 @@ class REG_PHY(Enum):
     """Relative voltage (DC)."""
     RAD = 6
     """Radians."""
+
+
+class REG_ADDRESS_TYPE(Enum):
+    """Address Type."""
+    NVM = 0
+    NVM_NONE = 1
+    NVM_CFG = 2
+    NVM_LOCK = 3
+    NVM_HW = 4
