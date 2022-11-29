@@ -32,7 +32,7 @@ class VirtualDrive(Thread):
             if self.socket is not None:
                 try:
                     frame, add = self.socket.recvfrom(ETH_BUF_SIZE)
-                    recv_add, subnode, cmd, data = self._read_frame(frame)
+                    recv_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
                     if cmd == 2: # Write
                         ack_cmd = 3
                         response = MCB.build_mcb_frame(ack_cmd, subnode, recv_add, data)
@@ -51,25 +51,6 @@ class VirtualDrive(Thread):
             self.socket.close()
         self.__stop = True
 
-    def _read_frame(self, frame):
-        '''Read address, subnode and data from the MCB frame'''
-        header = frame[MCB.MCB_HEADER_L_SIZE:MCB.MCB_HEADER_SIZE]
-        recv_add = (int.from_bytes(header, 'little')) >> 4
-        subnode = (int.from_bytes(header, 'little')) >> 12
-        
-        header_l = frame[MCB.MCB_HEADER_L_SIZE]
-        cmd = (header_l & 0xE) >> 1
-        subnode = int.from_bytes(frame[:MCB.MCB_HEADER_L_SIZE], 'little') & 0xF
-        extended = header_l & 1
-        if extended:
-            data_start_byte = MCB.EXTENDED_DATA_START_BYTE
-            data_end_byte = MCB.EXTENDED_DATA_END_BYTE
-        else:
-            data_start_byte = MCB.DATA_START_BYTE
-            data_end_byte = MCB.DATA_END_BYTE
-        data = frame[data_start_byte:data_end_byte]   
-        
-        return recv_add, subnode, cmd, data
 
 
 @pytest.fixture()
