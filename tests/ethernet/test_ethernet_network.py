@@ -196,7 +196,6 @@ def test_virtual_drive_write_read(connect_to_slave, virtual_drive, read_config, 
 
 @pytest.mark.no_connection
 def test_load_firmware_file_not_found():
-    # target="192.168.2.22", ftp_user="", ftp_pwd=""
     virtual_net = EthernetNetwork()
     with pytest.raises(FileNotFoundError):
         virtual_net.load_firmware("no_file")
