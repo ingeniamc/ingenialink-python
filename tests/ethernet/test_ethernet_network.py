@@ -40,17 +40,18 @@ class VirtualDrive(Thread):
             if self.socket is not None:
                 try:
                     frame, add = self.socket.recvfrom(ETH_BUF_SIZE)
-                    reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
-                    if cmd == 2: # Write
-                        response = MCB.build_mcb_frame(self.ACK_CMD, subnode, reg_add, data)
-                        self.socket.sendto(response, add)
-                        self.registers[subnode][reg_add] = data
-                    elif cmd == 3: # Read
-                        value = self.registers[subnode][reg_add]
-                        response = MCB.build_mcb_frame(self.ACK_CMD, subnode, reg_add, value)
-                        self.socket.sendto(response, add)
                 except:
                     self.stop()
+                    break
+                reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
+                if cmd == 2: # Write
+                    response = MCB.build_mcb_frame(self.ACK_CMD, subnode, reg_add, data)
+                    self.socket.sendto(response, add)
+                    self.registers[subnode][reg_add] = data
+                elif cmd == 3: # Read
+                    value = self.registers[subnode][reg_add]
+                    response = MCB.build_mcb_frame(self.ACK_CMD, subnode, reg_add, value)
+                    self.socket.sendto(response, add)
             
             time.sleep(0.1)
 
@@ -182,15 +183,16 @@ def test_virtual_drive_write_read(connect_to_slave, virtual_drive, read_config, 
     
     virtual_response = virtual_servo.write(reg, value, subnode)
     response = servo.write(reg, value, subnode)
+    assert response == virtual_response
 
+    response = servo.read(reg, subnode)
+    virtual_response = virtual_servo.read(reg, subnode)
     assert response == virtual_response
 
     old_value = virtual_servo.read(reg, subnode)
     new_value = old_value + 1
     virtual_servo.write(reg, new_value, subnode)
-
     saved_value = virtual_servo.read(reg, subnode)
-
     assert saved_value == new_value
 
 
