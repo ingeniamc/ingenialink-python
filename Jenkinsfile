@@ -45,7 +45,8 @@ node(NODE_NAME)
         stage("Generate documentation")
         {
             bat """
-                py${PYTHON_VERSIONS[0]}\\Scripts\\python.exe -m sphinx -b html docs _docs
+                py${PYTHON_VERSIONS[3]}\\Scripts\\python.exe -m pip install -e .
+                py${PYTHON_VERSIONS[3]}\\Scripts\\python.exe -m sphinx -b html docs _docs
             """
         }
         stage("Archive whl package")
