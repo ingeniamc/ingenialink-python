@@ -1,6 +1,6 @@
 import os
 import pytest
-import xml.etree.ElementTree as ET
+
 
 from ingenialink.utils._utils import get_drive_identification
 from ingenialink.register import REG_ADDRESS_TYPE
