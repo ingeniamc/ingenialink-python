@@ -3,6 +3,7 @@ import io
 import os
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
+from enum import Enum
 
 import ingenialogger
 import numpy as np
@@ -16,11 +17,12 @@ from ingenialink.utils._utils import cstr, raise_err, pstr, to_ms, \
 from ingenialink.exceptions import ILError
 from ingenialink.constants import PASSWORD_STORE_ALL, PASSWORD_RESTORE_ALL,\
     PASSWORD_STORE_RESTORE_SUB_0, DEFAULT_PDS_TIMEOUT, DIST_FRAME_SIZE
-from ingenialink.servo import SERVO_MODE, SERVO_STATE, SERVO_UNITS_ACC, \
-    SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL
 from ingenialink.register_deprecated import dtype_size
+from ingenialink.enums.servo import SERVO_STATE, SERVO_UNITS_TORQUE, \
+    SERVO_UNITS_POS, SERVO_UNITS_ACC, SERVO_UNITS_VEL, SERVO_MODE
 
 logger = ingenialogger.get_logger(__name__)
+
 
 PRODUCT_ID_REGISTERS = {
     0: IPBRegister(
