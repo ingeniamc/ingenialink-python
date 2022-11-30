@@ -14,8 +14,18 @@ DISTURBANCE_CH_DATA_SIZE = 4
 DISTURBANCE_NUM_SAMPLES = 100
 
 
+def _get_reg_address(register, protocol):
+    attr_dict = {
+        "ethernet": "address",
+        "canopen": "idx"
+    }
+    return getattr(register, attr_dict[protocol])
+
+
+
 @pytest.fixture()
-def create_monitoring(connect_to_slave):
+def create_monitoring(connect_to_slave, pytestconfig):
+    protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
@@ -25,8 +35,9 @@ def create_monitoring(connect_to_slave):
     subnode = 1
     for idx, key in enumerate(registers_key):
         reg = servo._get_reg(key, subnode=1)
+        address = _get_reg_address(reg, protocol)
         servo.monitoring_set_mapped_register(
-            idx, reg.address, subnode,
+            idx, address, subnode,
             reg.dtype.value, MONITORING_CH_DATA_SIZE
         )
     divisor = 1
@@ -38,12 +49,15 @@ def create_monitoring(connect_to_slave):
 
 
 @pytest.fixture()
-def create_disturbance(connect_to_slave):
+def create_disturbance(connect_to_slave, pytestconfig):
+    protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
     data = list(range(DISTURBANCE_NUM_SAMPLES))
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
-    servo.disturbance_set_mapped_register(0, 0x0020, 1,
+    reg = servo._get_reg("CL_POS_SET_POINT_VALUE", subnode=1)
+    address = _get_reg_address(reg, protocol)
+    servo.disturbance_set_mapped_register(0, address, 1,
                                           REG_DTYPE.S32.value,
                                           DISTURBANCE_CH_DATA_SIZE)
     servo.disturbance_write_data(0, REG_DTYPE.S32, data)
@@ -127,6 +141,7 @@ def test_write(connect_to_slave):
 
 
 @pytest.mark.ethernet
+@pytest.mark.canopen
 def test_monitoring_enable_disable(connect_to_slave):
     servo, net = connect_to_slave
     servo.monitoring_enable()
@@ -136,6 +151,7 @@ def test_monitoring_enable_disable(connect_to_slave):
 
 
 @pytest.mark.ethernet
+@pytest.mark.canopen
 def test_monitoring_remove_data(create_monitoring):
     servo, net = create_monitoring
     servo.monitoring_enable()
@@ -146,7 +162,9 @@ def test_monitoring_remove_data(create_monitoring):
 
 
 @pytest.mark.ethernet
-def test_monitoring_map_register(connect_to_slave):
+@pytest.mark.canopen
+def test_monitoring_map_register(connect_to_slave, pytestconfig):
+    protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
     registers_key = [
         'CL_POS_SET_POINT_VALUE',
@@ -156,8 +174,9 @@ def test_monitoring_map_register(connect_to_slave):
     subnode = 1
     for idx, key in enumerate(registers_key):
         reg = servo._get_reg(key, subnode=1)
+        address = _get_reg_address(reg, protocol)
         servo.monitoring_set_mapped_register(
-            idx, reg.address, subnode,
+            idx, address, subnode,
             reg.dtype.value, data_size
         )
     assert servo.monitoring_number_mapped_registers == len(registers_key)
@@ -177,6 +196,7 @@ def test_monitoring_map_register(connect_to_slave):
 
 
 @pytest.mark.ethernet
+@pytest.mark.canopen
 def test_monitoring_data_size(create_monitoring):
     servo, net = create_monitoring
     servo.monitoring_enable()
@@ -190,6 +210,7 @@ def test_monitoring_data_size(create_monitoring):
 
 
 @pytest.mark.ethernet
+@pytest.mark.canopen
 def test_monitoring_read_data(create_monitoring):
     servo, net = create_monitoring
     servo.monitoring_enable()
@@ -206,6 +227,7 @@ def test_monitoring_read_data(create_monitoring):
 
 
 @pytest.mark.ethernet
+@pytest.mark.canopen
 def test_disturbance_enable_disable(connect_to_slave):
     servo, net = connect_to_slave
     servo.disturbance_enable()
@@ -215,6 +237,7 @@ def test_disturbance_enable_disable(connect_to_slave):
 
 
 @pytest.mark.ethernet
+@pytest.mark.canopen
 def test_disturbance_remove_data(create_disturbance):
     servo, net = create_disturbance
     servo.disturbance_enable()
@@ -225,7 +248,9 @@ def test_disturbance_remove_data(create_disturbance):
 
 
 @pytest.mark.ethernet
-def test_disturbance_map_register(connect_to_slave):
+@pytest.mark.canopen
+def test_disturbance_map_register(connect_to_slave, pytestconfig):
+    protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
     servo.disturbance_remove_all_mapped_registers()
     registers_key = [
@@ -236,8 +261,9 @@ def test_disturbance_map_register(connect_to_slave):
     subnode = 1
     for idx, key in enumerate(registers_key):
         reg = servo._get_reg(key, subnode=1)
+        address = _get_reg_address(reg, protocol)
         servo.disturbance_set_mapped_register(
-            idx, reg.address, subnode,
+            idx, address, subnode,
             reg.dtype.value, data_size
         )
     assert servo.disturbance_number_mapped_registers == len(registers_key)
@@ -257,6 +283,7 @@ def test_disturbance_map_register(connect_to_slave):
 
 
 @pytest.mark.ethernet
+@pytest.mark.canopen
 def test_disturbance_data_size(create_disturbance):
     servo, net = create_disturbance
     servo.disturbance_enable()
