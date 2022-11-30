@@ -1,28 +1,30 @@
 {
   "ethernet": {
-    "dictionary": "resources/dictionaries/eve-net-c_eth_1.8.1.xdf",
-    "ip": "192.168.2.22",
+    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_eth_2.0.1.xdf",
+    "ip": "192.168.2.11",
     "port": 1061,
-    "protocol": "UDP",
     "save_config_file": "ethernet-config.xcf",
-    "load_config_file": "resources/configurations/ethernet-config.xcf"
+    "load_config_file": "resources/configurations/ethernet-config.xcf",
+    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_2.0.1.lfu"
   },
   "ethercat": {
-    "dictionary": "resources/dictionaries/eve-xcr-e_eoe_1.8.1.xdf",
-    "slave": 1,
-    "ifname": "\\Device\\NPF_{192D1D2F-C684-467D-A637-EC07BD434A63}",
+    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-e_eoe_2.0.1.xdf",
+    "slave": 2,
+    "ifname": "\\Device\\NPF_{DEADBABE-CAFE-BEEF-0000-123456789ABCDEF}",
     "eoe_comm": true,
     "save_config_file": "ethercat-config.xcf",
-    "load_config_file": "resources/configurations/ethercat-config.xcf"
+    "load_config_file": "resources/configurations/ethercat-config.xcf",
+    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-e_2.0.1.lfu"
   },
   "canopen": {
-    "dictionary": "resources/dictionaries/eve-net-c_can_1.8.1.xdf",
-    "eds": "resources/dictionaries/eve-net-c_1.8.1.eds",
-    "node_id": 32,
-    "device": "ixxat",
+    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_can_2.0.1.xdf",
+    "eds": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_2.0.1.eds",
+    "node_id": 21,
+    "device": "pcan",
     "baudrate": 1000000,
     "channel": 0,
     "save_config_file": "canopen-config.xcf",
-    "load_config_file": "resources/configurations/canopen-config.xcf"
+    "load_config_file": "resources/configurations/canopen-config.xcf",
+    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_2.0.1.lfu"
   }
 }
