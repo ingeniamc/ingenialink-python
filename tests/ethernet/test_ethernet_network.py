@@ -49,9 +49,9 @@ class VirtualDrive(Thread):
                     response = MCB.build_mcb_frame(self.ACK_CMD, subnode, reg_add, data)
                     self.socket.sendto(response, add)
                     if access in ["rw", "w"]: # TODO: send error otherwise
-                        self.registers[subnode][reg_add] = data
-                elif cmd == 3: # Read
-                    value = self.registers[subnode][reg_add]
+                        self.registers[subnode][reg_add]["value"] = data
+                elif cmd == 1: # Read
+                    value = self.registers[subnode][reg_add]["value"]
                     response = MCB.build_mcb_frame(self.ACK_CMD, subnode, reg_add, value)
                     self.socket.sendto(response, add)
                     # TODO: send error if the register is WO
@@ -78,10 +78,15 @@ class VirtualDrive(Thread):
             if subnode not in self.registers:
                 self.registers[subnode] = {}
             address = int(element.attrib['address'], base=16)
+            if "storage" in element.attrib:
+                storage = element.attrib['storage']
+            else:
+                storage = None
             self.registers[subnode][address] = {
                 "access": element.attrib['access'],
                 "dtype": element.attrib['dtype'],
-                "id": element.attrib['id']
+                "id": element.attrib['id'],
+                "value": storage
             }
 
 @pytest.fixture()
@@ -169,7 +174,7 @@ def test_connect_to_virtual(virtual_drive, read_config):
     "reg, value, subnode", 
     [
         ("CL_AUX_FBK_SENSOR", 4, 1),
-        ("DRV_DIAG_ERROR_LAST_COM", 4, 0)
+        ("DIST_CFG_REG0_MAP", 4, 0)
     ]
 )
 def test_virtual_drive_write_read(connect_to_slave, virtual_drive, read_config, reg, value, subnode):
