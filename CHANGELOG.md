@@ -4,8 +4,11 @@
 ### Added
 
 ### Changed
+- Re-organize the tests by protocol and add a no-connection mark to separate test that do not need a servo connected.
 - Remove enums_count as an argument to create a Register.
 - Convert enums type from list[dict] to dict.
+### Deprecated 
+
 
 ## [6.4.0] - 2022-07-13
 ### Added
