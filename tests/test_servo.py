@@ -1,5 +1,6 @@
 import os
 import pytest
+import time
 
 from ingenialink.ethernet.register import REG_DTYPE
 from ingenialink.servo import SERVO_STATE
@@ -160,8 +161,19 @@ def test_monitoring_map_register(connect_to_slave):
             reg.dtype.value, data_size
         )
     assert servo.monitoring_number_mapped_registers == len(registers_key)
+
+    mon_cfg_regs = {
+        "MON_CFG_REG0_MAP": 0x10200504,
+        "MON_CFG_REG1_MAP": 0x10210804
+    }
+    for key, value in mon_cfg_regs.items():
+        assert servo.read(key, 0) == value
+
+    assert servo.read('MON_CFG_TOTAL_MAP', 0) == len(registers_key)
+
     servo.monitoring_remove_all_mapped_registers()
     assert servo.monitoring_number_mapped_registers == 0
+    assert servo.read('MON_CFG_TOTAL_MAP', 0) == 0
 
 
 @pytest.mark.ethernet
@@ -174,6 +186,22 @@ def test_monitoring_data_size(create_monitoring):
     assert servo.monitoring_actual_number_bytes() > 0
     assert servo.monitoring_data_size == \
            MONITORING_CH_DATA_SIZE * MONITORING_NUM_SAMPLES
+    servo.monitoring_remove_data()
+
+
+@pytest.mark.ethernet
+def test_monitoring_read_data(create_monitoring):
+    servo, net = create_monitoring
+    servo.monitoring_enable()
+    servo.write('MON_CMD_FORCE_TRIGGER', 1, subnode=0)
+    time.sleep(1)
+    servo.monitoring_read_data()
+    servo.monitoring_disable()
+    data = servo.monitoring_channel_data(0)
+    
+    assert type(data) is list
+    assert len(data) == pytest.approx(MONITORING_NUM_SAMPLES, 1)
+    assert type(data[0]) == int
     servo.monitoring_remove_data()
 
 
@@ -213,8 +241,19 @@ def test_disturbance_map_register(connect_to_slave):
             reg.dtype.value, data_size
         )
     assert servo.disturbance_number_mapped_registers == len(registers_key)
+
+    dist_cfg_regs = {
+        "DIST_CFG_REG0_MAP": 0x10200504,
+        "DIST_CFG_REG1_MAP": 0x10210804
+    }
+    for key, value in dist_cfg_regs.items():
+        assert servo.read(key, 0) == value
+
+    assert servo.read('DIST_CFG_MAP_REGS', 0) == len(registers_key)
+
     servo.disturbance_remove_all_mapped_registers()
     assert servo.disturbance_number_mapped_registers == 0
+    assert servo.read('DIST_CFG_MAP_REGS', 0) == 0
 
 
 @pytest.mark.ethernet

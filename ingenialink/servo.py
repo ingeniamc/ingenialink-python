@@ -720,9 +720,6 @@ class Servo:
         self.__monitoring_update_num_mapped_registers()
         self.__monitoring_num_mapped_registers = \
             self.monitoring_get_num_mapped_registers()
-        self.write(self.MONITORING_NUMBER_MAPPED_REGISTERS,
-                   data=self.monitoring_number_mapped_registers,
-                   subnode=subnode)
 
     def monitoring_get_num_mapped_registers(self):
         """Obtain the number of monitoring mapped registers.
