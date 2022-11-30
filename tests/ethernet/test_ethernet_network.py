@@ -44,14 +44,17 @@ class VirtualDrive(Thread):
                     self.stop()
                     break
                 reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
+                access = self.registers[subnode][reg_add]["access"]
                 if cmd == 2: # Write
                     response = MCB.build_mcb_frame(self.ACK_CMD, subnode, reg_add, data)
                     self.socket.sendto(response, add)
-                    self.registers[subnode][reg_add] = data
+                    if access in ["rw", "w"]: # TODO: send error otherwise
+                        self.registers[subnode][reg_add] = data
                 elif cmd == 3: # Read
                     value = self.registers[subnode][reg_add]
                     response = MCB.build_mcb_frame(self.ACK_CMD, subnode, reg_add, value)
                     self.socket.sendto(response, add)
+                    # TODO: send error if the register is WO
             
             time.sleep(0.1)
 
