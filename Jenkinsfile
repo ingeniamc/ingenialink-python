@@ -33,6 +33,13 @@ node(ECAT_NODE)
             exit /b 0
         '''
     }
+
+   stage('Run no-connection tests') {
+        bat '''
+            venv\\Scripts\\python.exe -m pytest tests
+            exit /b 0
+        '''
+    }
 }
 
 node(CAN_NODE)
