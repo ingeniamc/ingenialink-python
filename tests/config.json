@@ -1,13 +1,16 @@
 {
-  "ethernet": {
+  "ethernet": [
+  {
     "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_eth_2.0.1.xdf",
     "ip": "192.168.2.11",
     "port": 1061,
     "save_config_file": "ethernet-config.xcf",
     "load_config_file": "resources/configurations/ethernet-config.xcf",
     "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_2.0.1.lfu"
-  },
-  "ethercat": {
+  }
+  ],
+  "ethercat": [
+  {
     "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-e_eoe_2.0.1.xdf",
     "slave": 2,
     "ifname": "\\Device\\NPF_{DC30BAAA-CD3D-485E-9E8E-FB3953BAE5A2}",
@@ -16,8 +19,10 @@
     "save_config_file": "ethercat-config.xcf",
     "load_config_file": "resources/configurations/ethercat-config.xcf",
     "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-e_2.0.1.lfu"
-  },
-  "canopen": {
+  }
+  ],
+  "canopen": [
+  {
     "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_can_2.0.1.xdf",
     "eds": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_2.0.1.eds",
     "node_id": 21,
@@ -28,4 +33,5 @@
     "load_config_file": "resources/configurations/canopen-config.xcf",
     "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_2.0.1.lfu"
   }
+  ]
 }
