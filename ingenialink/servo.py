@@ -40,7 +40,7 @@ class ServoStatusListener(threading.Thread):
             for subnode in range(1, self.__servo.subnodes):
                 try:
                     status_word = self.__servo.read(
-                        self.__servo.STATUS_WORD_REGISTERS[subnode], subnode=subnode
+                        self.__servo.STATUS_WORD_REGISTERS, subnode=subnode
                     )
                     state = self.__servo.status_word_decode(status_word)
                     self.__servo._set_state(state, subnode=subnode)
@@ -66,27 +66,27 @@ class Servo:
         ILCreationError: If the servo cannot be created.
 
     """
-    STATUS_WORD_REGISTERS = None
-    RESTORE_COCO_ALL = None
-    RESTORE_MOCO_ALL_REGISTERS = None
-    STORE_COCO_ALL = None
-    STORE_MOCO_ALL_REGISTERS = None
-    CONTROL_WORD_REGISTERS = None
-    SERIAL_NUMBER_REGISTERS = None
-    SOFTWARE_VERSION_REGISTERS = None
-    PRODUCT_ID_REGISTERS = None
-    REVISION_NUMBER_REGISTERS = None
-    MONITORING_DIST_ENABLE = None
-    MONITORING_REMOVE_DATA = None
-    MONITORING_NUMBER_MAPPED_REGISTERS = None
-    MONITORING_BYTES_PER_BLOCK = None
-    MONITORING_ACTUAL_NUMBER_BYTES = None
+    STATUS_WORD_REGISTERS = "DRV_STATE_STATUS"
+    RESTORE_COCO_ALL = "DRV_RESTORE_COCO_ALL"
+    RESTORE_MOCO_ALL_REGISTERS = "DRV_RESTORE_MOCO_ALL"
+    STORE_COCO_ALL = "DRV_STORE_COCO_ALL"
+    STORE_MOCO_ALL_REGISTERS = "DRV_STORE_MOCO_ALL"
+    CONTROL_WORD_REGISTERS = "DRV_STATE_CONTROL"
+    SERIAL_NUMBER_REGISTERS = ["DRV_ID_SERIAL_NUMBER_COCO", "DRV_ID_SERIAL_NUMBER"]
+    SOFTWARE_VERSION_REGISTERS = ["DRV_APP_COCO_VERSION", "DRV_ID_SOFTWARE_VERSION"]
+    PRODUCT_ID_REGISTERS = ["DRV_ID_PRODUCT_CODE_COCO",  "DRV_ID_PRODUCT_CODE"]
+    REVISION_NUMBER_REGISTERS = ["DRV_ID_REVISION_NUMBER_COCO", "DRV_ID_REVISION_NUMBER"]
+    MONITORING_DIST_ENABLE = "MON_DIST_ENABLE"
+    MONITORING_REMOVE_DATA = "MON_REMOVE_DATA"
+    MONITORING_NUMBER_MAPPED_REGISTERS = "MON_CFG_TOTAL_MAP"
+    MONITORING_BYTES_PER_BLOCK = "MON_CFG_BYTES_PER_BLOCK"
+    MONITORING_ACTUAL_NUMBER_BYTES = "MON_CFG_BYTES_VALUE"
     MONITORING_DATA = None
-    MONITORING_DISTURBANCE_VERSION = None
-    DISTURBANCE_ENABLE = None
-    DISTURBANCE_REMOVE_DATA = None
-    DISTURBANCE_NUMBER_MAPPED_REGISTERS = None
-    DIST_NUMBER_SAMPLES = None
+    MONITORING_DISTURBANCE_VERSION = "MON_DIST_VERSION"
+    DISTURBANCE_ENABLE = "DIST_ENABLE"
+    DISTURBANCE_REMOVE_DATA = "DIST_REMOVE_DATA"
+    DISTURBANCE_NUMBER_MAPPED_REGISTERS = "DIST_CFG_MAP_REGS"
+    DIST_NUMBER_SAMPLES = "DIST_CFG_SAMPLES"
     DIST_DATA = None
 
     def __init__(self, target, servo_status_listener=False):
@@ -132,7 +132,7 @@ class Servo:
         """Start listening for servo status events (SERVO_STATE)."""
         if self.__listener_servo_status is not None:
             return
-        status_word = self.read(self.STATUS_WORD_REGISTERS[1])
+        status_word = self.read(self.STATUS_WORD_REGISTERS)
         state = self.status_word_decode(status_word)
         self._set_state(state, 1)
 
@@ -284,10 +284,10 @@ class Servo:
             # Restore subnode 0
             raise ILError('The current firmware version does not '
                           'have this feature implemented.')
-        elif subnode > 0 and subnode in self.RESTORE_MOCO_ALL_REGISTERS:
+        elif subnode > 0:
             # Restore axis
-            self.write(reg=self.RESTORE_COCO_ALL,
-                       data=self.RESTORE_MOCO_ALL_REGISTERS[subnode],
+            self.write(reg=self.RESTORE_MOCO_ALL_REGISTERS,
+                       data=PASSWORD_RESTORE_ALL,
                        subnode=subnode)
             logger.info(f'Restore subnode {subnode} successfully done.')
         else:
@@ -322,7 +322,7 @@ class Servo:
                 if r < 0:
                     for dict_subnode in range(1, self.dictionary.subnodes):
                         self.write(
-                            reg=self.STORE_MOCO_ALL_REGISTERS[dict_subnode],
+                            reg=self.STORE_MOCO_ALL_REGISTERS,
                             data=PASSWORD_STORE_ALL,
                             subnode=dict_subnode)
                         logger.info(f'Store axis {dict_subnode} successfully'
@@ -331,9 +331,9 @@ class Servo:
                 # Store subnode 0
                 raise ILError('The current firmware version does not '
                               'have this feature implemented.')
-            elif subnode > 0 and subnode in self.STORE_MOCO_ALL_REGISTERS:
+            elif subnode > 0:
                 # Store axis
-                self.write(reg=self.STORE_MOCO_ALL_REGISTERS[subnode],
+                self.write(reg=self.STORE_MOCO_ALL_REGISTERS,
                            data=PASSWORD_STORE_ALL,
                            subnode=subnode)
                 logger.info(f'Store axis {subnode} successfully done.')
@@ -356,7 +356,7 @@ class Servo:
         """
         r = 0
 
-        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+        status_word = self.read(self.STATUS_WORD_REGISTERS,
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
@@ -369,7 +369,7 @@ class Servo:
             self.fault_reset(subnode=subnode)
 
         while self.status[subnode] != SERVO_STATE.ENABLED:
-            status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+            status_word = self.read(self.STATUS_WORD_REGISTERS,
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
@@ -386,7 +386,7 @@ class Servo:
                 elif self.status[subnode] == SERVO_STATE.RDY:
                     cmd = constants.IL_MC_PDS_CMD_SOEO
 
-                self.write(self.CONTROL_WORD_REGISTERS[subnode], cmd,
+                self.write(self.CONTROL_WORD_REGISTERS, cmd,
                            subnode=subnode)
 
                 # Wait for state change
@@ -396,7 +396,7 @@ class Servo:
                     raise_err(r)
 
                 # Read the current status word
-                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                status_word = self.read(self.STATUS_WORD_REGISTERS,
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
@@ -416,7 +416,7 @@ class Servo:
         """
         r = 0
 
-        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+        status_word = self.read(self.STATUS_WORD_REGISTERS,
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
@@ -431,13 +431,13 @@ class Servo:
             ]:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
-                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                status_word = self.read(self.STATUS_WORD_REGISTERS,
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
             elif self.status[subnode] != SERVO_STATE.DISABLED:
                 # Check state and command action to reach disabled
-                self.write(self.CONTROL_WORD_REGISTERS[subnode],
+                self.write(self.CONTROL_WORD_REGISTERS,
                            constants.IL_MC_PDS_CMD_DV, subnode=subnode)
 
                 # Wait until status word changes
@@ -445,7 +445,7 @@ class Servo:
                                                  subnode=subnode)
                 if r < 0:
                     raise_err(r)
-                status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+                status_word = self.read(self.STATUS_WORD_REGISTERS,
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
@@ -464,7 +464,7 @@ class Servo:
 
         """
         r = 0
-        status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+        status_word = self.read(self.STATUS_WORD_REGISTERS,
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
         if state in [
@@ -472,14 +472,14 @@ class Servo:
             SERVO_STATE.FAULTR,
         ]:
             # Check if faulty, if so try to reset (0->1)
-            self.write(self.CONTROL_WORD_REGISTERS[subnode], 0,
+            self.write(self.CONTROL_WORD_REGISTERS, 0,
                        subnode=subnode)
-            self.write(self.CONTROL_WORD_REGISTERS[subnode],
+            self.write(self.CONTROL_WORD_REGISTERS,
                        constants.IL_MC_CW_FR, subnode=subnode)
             # Wait until status word changes
             r = self.status_word_wait_change(status_word, timeout,
                                              subnode=subnode)
-            status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+            status_word = self.read(self.STATUS_WORD_REGISTERS,
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
@@ -499,7 +499,7 @@ class Servo:
         """
         r = 0
         start_time = int(round(time.time() * 1000))
-        actual_status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
+        actual_status_word = self.read(self.STATUS_WORD_REGISTERS,
                                        subnode=subnode)
 
         while actual_status_word == status_word:
@@ -508,7 +508,7 @@ class Servo:
             if time_diff > timeout:
                 return OPERATION_TIME_OUT
             actual_status_word = self.read(
-                self.STATUS_WORD_REGISTERS[subnode],
+                self.STATUS_WORD_REGISTERS,
                 subnode=subnode)
         return r
 
@@ -591,9 +591,6 @@ class Servo:
         self.__monitoring_update_num_mapped_registers()
         self.__monitoring_num_mapped_registers = \
             self.monitoring_get_num_mapped_registers()
-        self.write(self.MONITORING_NUMBER_MAPPED_REGISTERS,
-                   data=self.monitoring_number_mapped_registers,
-                   subnode=subnode)
 
     def monitoring_get_num_mapped_registers(self):
         """Obtain the number of monitoring mapped registers.
@@ -602,7 +599,7 @@ class Servo:
             int: Actual number of mapped registers.
 
         """
-        return self.read('MON_CFG_TOTAL_MAP', 0)
+        return self.read(self.MONITORING_NUMBER_MAPPED_REGISTERS, 0)
 
     def monitoring_get_bytes_per_block(self):
         """Obtain Bytes x Block configured.
@@ -700,9 +697,6 @@ class Servo:
         self.__disturbance_update_num_mapped_registers()
         self.__disturbance_num_mapped_registers = \
             self.disturbance_get_num_mapped_registers()
-        self.write(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS,
-                   data=self.disturbance_number_mapped_registers,
-                   subnode=subnode)
 
     def disturbance_get_num_mapped_registers(self):
         """Obtain the number of disturbance mapped registers.
@@ -711,7 +705,7 @@ class Servo:
             int: Actual number of mapped registers.
 
         """
-        return self.read('DIST_CFG_MAP_REGS', 0)
+        return self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, 0)
 
     def disturbance_remove_all_mapped_registers(self):
         """Remove all disturbance mapped registers."""
@@ -758,7 +752,7 @@ class Servo:
         """
         _is_alive = True
         try:
-            self.read(self.STATUS_WORD_REGISTERS[1])
+            self.read(self.STATUS_WORD_REGISTERS)
         except ILError as e:
             _is_alive = False
             logger.error(e)
@@ -894,7 +888,7 @@ class Servo:
     def __monitoring_update_num_mapped_registers(self):
         """Update the number of mapped monitoring registers."""
         self.__monitoring_num_mapped_registers += 1
-        self.write('MON_CFG_TOTAL_MAP',
+        self.write(self.MONITORING_NUMBER_MAPPED_REGISTERS,
                    data=self.__monitoring_num_mapped_registers,
                    subnode=0)
 
@@ -932,7 +926,7 @@ class Servo:
     def __disturbance_update_num_mapped_registers(self):
         """Update the number of mapped disturbance registers."""
         self.__disturbance_num_mapped_registers += 1
-        self.write('DIST_CFG_MAP_REGS',
+        self.write(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS,
                    data=self.__disturbance_num_mapped_registers,
                    subnode=0)
 

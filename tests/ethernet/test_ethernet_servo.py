@@ -202,7 +202,7 @@ def test_status_word_wait_change(connect_to_slave):
     servo, net = connect_to_slave
     subnode = 1
     timeout = 0.5
-    status_word = servo.read(servo.STATUS_WORD_REGISTERS[subnode],
+    status_word = servo.read(servo.STATUS_WORD_REGISTERS,
                              subnode=subnode)
     r = servo.status_word_wait_change(status_word, timeout, subnode)
     with pytest.raises(ILTimeoutError):
