@@ -23,7 +23,7 @@ node(ECAT_NODE)
     stage('Install deps') {
         bat '''
             python -m venv venv
-            venv\\Scripts\\python.exe -m pip install -r requirements\\test-requirements.txt
+            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
         '''
     }
 
@@ -61,7 +61,7 @@ node(CAN_NODE)
     stage('Install deps') {
         bat '''
             python -m venv venv
-            venv\\Scripts\\python.exe -m pip install -r requirements\\test-requirements.txt
+            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
         '''
     }
 
