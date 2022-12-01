@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from abc import abstractmethod
 
-from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError, ILStateError
+from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError, ILStateError, ILAccessError
 from ingenialink.register import Register
 from ingenialink.utils._utils import get_drive_identification, cleanup_register, \
     raise_err, convert_bytes_to_dtype, convert_dtype_to_bytes
@@ -66,6 +66,9 @@ class Servo:
         ILCreationError: If the servo cannot be created.
 
     """
+    DICTIONARY_CLASS = None
+    MAX_WRITE_SIZE = None
+
     STATUS_WORD_REGISTERS = "DRV_STATE_STATUS"
     RESTORE_COCO_ALL = "DRV_RESTORE_COCO_ALL"
     RESTORE_MOCO_ALL_REGISTERS = "DRV_RESTORE_MOCO_ALL"
@@ -89,8 +92,12 @@ class Servo:
     DIST_NUMBER_SAMPLES = "DIST_CFG_SAMPLES"
     DIST_DATA = None
 
-    def __init__(self, target, servo_status_listener=False):
+    def __init__(self, target, dictionary_path=None, servo_status_listener=False):
         self.target = target
+        if dictionary_path is not None:
+            self._dictionary = self.DICTIONARY_CLASS(dictionary_path)
+        else:
+            self._dictionary = None
         self._info = None
         self.name = DEFAULT_DRIVE_NAME
         prod_name = '' if self.dictionary.part_number is None \
@@ -959,7 +966,6 @@ class Servo:
                   for i in range(0, len(data), max_size)]
         return data, chunks
 
-    @abstractmethod
     def write(self, reg, data, subnode=1):
         """Writes a data to a target register.
 
@@ -973,9 +979,13 @@ class Servo:
             ILIOError: Error reading the register.
 
         """
-        raise NotImplementedError
+        _reg = self._get_reg(reg, subnode)
 
-    @abstractmethod
+        if _reg.access == REG_ACCESS.RO:
+            raise ILAccessError('Register is Read-only')
+        value = convert_dtype_to_bytes(data, _reg.dtype)
+        self._write_raw(_reg, value)
+
     def read(self, reg, subnode=1):
         """Read a register value from servo.
 
@@ -985,10 +995,21 @@ class Servo:
 
         Returns:
             int, float or str: Value stored in the register.
-        """
-        raise NotImplementedError
 
-    @abstractmethod
+        Raises:
+            ILAccessError: Wrong access to the register.
+            ILIOError: Error writing the register.
+
+        """
+        _reg = self._get_reg(reg, subnode)
+        access = _reg.access
+        if access == REG_ACCESS.WO:
+            raise ILAccessError('Register is Write-only')
+
+        raw_read = self._read_raw(_reg)
+        value = convert_bytes_to_dtype(raw_read, _reg.dtype)
+        return value
+
     def replace_dictionary(self, dictionary):
         """Deletes and creates a new instance of the dictionary.
 
@@ -996,9 +1017,8 @@ class Servo:
             dictionary (str): Path to the dictionary.
 
         """
-        raise NotImplementedError
+        self._dictionary = self.DICTIONARY_CLASS(dictionary)
 
-    @abstractmethod
     def disturbance_write_data(self, channels, dtypes, data_arr):
         """Write disturbance data.
 
@@ -1008,11 +1028,48 @@ class Servo:
             data_arr (list or list of list): Data array.
 
         """
+        data, chunks = self._disturbance_create_data_chunks(channels,
+                                                            dtypes,
+                                                            data_arr,
+                                                            self.MAX_WRITE_SIZE)
+        for chunk in chunks:
+            self._write_raw(self.DIST_DATA, data=chunk)
+        self.disturbance_data = data
+        self.disturbance_data_size = len(data)
+
+    def _monitoring_read_data(self):
+        """Read monitoring data frame."""
+        return self._read_raw(self.MONITORING_DATA)
+
+    @abstractmethod
+    def _write_raw(self, reg, data):
+        """Writes a raw bytes data to a target register.
+
+        Args:
+            reg (Register): Target register to be written.
+            data (bytearray): Data to be written.
+            subnode (int): Target axis of the drive.
+
+        Raises:
+            ILIOError: Error writing the register.
+
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def _monitoring_read_data(self):
-        """Read monitoring data frame."""
+    def _read_raw(self, reg):
+        """Read raw bytes from servo.
+
+        Args:
+            reg (Register): Register.
+
+        Returns:
+            bytearray: Raw bytes reading from servo.
+
+        Raises:
+            ILIOError: Error reading the register.
+
+        """
         raise NotImplementedError
 
     @property
