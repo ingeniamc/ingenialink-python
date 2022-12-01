@@ -55,14 +55,13 @@ def load_can(drive_conf, mc):
 
 
 def load_ecat(drive_conf, mc):
-    if_name = mc.communication.get_ifname_from_interface_ip(drive_conf["ip"])
     mc.communication.load_firmware_ecat(
-        if_name,
+        drive_conf["ifname"],
         drive_conf["fw_file"],
         drive_conf["slave"],
         boot_in_app=drive_conf["boot_in_app"])
     logger.info("FW updated. ifname: %s, slave: %d",
-                if_name,
+                drive_conf["ifname"],
                 drive_conf["slave"])
 
 

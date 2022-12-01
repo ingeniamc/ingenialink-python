@@ -10,7 +10,6 @@
   "ethercat": {
     "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-e_eoe_2.0.1.xdf",
     "slave": 2,
-    "ip": "192.168.3.1",
     "ifname": "\\Device\\NPF_{DC30BAAA-CD3D-485E-9E8E-FB3953BAE5A2}",
     "eoe_comm": true,
     "boot_in_app": false,
