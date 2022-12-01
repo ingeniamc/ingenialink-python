@@ -12,6 +12,7 @@
     "slave": 2,
     "ifname": "\\Device\\NPF_{DEADBABE-CAFE-BEEF-0000-123456789ABCDEF}",
     "eoe_comm": true,
+    "boot_in_app": false,
     "save_config_file": "ethercat-config.xcf",
     "load_config_file": "resources/configurations/ethercat-config.xcf",
     "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-e_2.0.1.lfu"

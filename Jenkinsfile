@@ -16,7 +16,7 @@ node(ECAT_NODE)
         bat """
             python -m venv ingeniamotion
             ingeniamotion\\Scripts\\python.exe -m pip install ingeniamotion ping3
-            ingeniamotion\\Scripts\\python.exe tests\\load_FWs.py soem
+            ingeniamotion\\Scripts\\python.exe tests\\load_FWs.py ethercat
         """
     }
 

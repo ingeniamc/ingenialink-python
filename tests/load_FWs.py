@@ -21,7 +21,7 @@ dirname = os.path.dirname(__file__)
 def setup_command():
     parser = argparse.ArgumentParser(description='Run feedback test')
     parser.add_argument('comm', help='communication protocol',
-                        choices=['canopen', 'soem', 'eoe'])
+                        choices=['ethernet', 'ethercat', 'canopen'])
     return parser.parse_args()
 
 
@@ -115,9 +115,9 @@ def main(comm, config):
         try:
             if comm == "canopen":
                 load_can(servo_conf, mc)
-            if comm == "soem":
+            if comm == "ethercat":
                 load_ecat(servo_conf, mc)
-            if comm == "eoe":
+            if comm == "ethernet":
                 load_eth(servo_conf, mc)
         except (ILError, IMException) as e:
             logger.exception(e)
