@@ -24,6 +24,7 @@ node(ECAT_NODE)
         bat '''
             python -m venv venv
             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+            venv\\Scripts\\python.exe -m pip install -e .
         '''
     }
 
@@ -62,6 +63,7 @@ node(CAN_NODE)
         bat '''
             python -m venv venv
             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+            venv\\Scripts\\python.exe -m pip install -e .
         '''
     }
 
@@ -102,6 +104,7 @@ node(SW_NODE)
                 bat """
                     py -${version} -m venv py${version}
                     py${version}\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                    py${version}\\Scripts\\python.exe -m pip install -e .
                 """
             }
             if (!style_check)
