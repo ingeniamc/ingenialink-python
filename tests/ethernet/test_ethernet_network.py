@@ -76,7 +76,7 @@ def test_connect_to_virtual(virtual_drive, read_config):
         server.port
     )
     servo.write('CL_AUX_FBK_SENSOR', 4)
-    servo.write('DRV_DIAG_ERROR_LAST_COM', 4, 0)
+    servo.write('DIST_CFG_REG0_MAP', 4, 0)
 
 
 @pytest.mark.ethernet
