@@ -879,7 +879,7 @@ class Servo:
         bytes_per_block = self.monitoring_get_bytes_per_block()
         number_of_blocks = len(data_bytes) // bytes_per_block
         number_of_channels = self.monitoring_get_num_mapped_registers()
-        for channel in number_of_channels:
+        for channel in range(number_of_channels):
             self.__monitoring[channel]["processed_data"] = [] 
         for block in range(number_of_blocks):
             block_data = data_bytes[block * bytes_per_block:
