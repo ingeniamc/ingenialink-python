@@ -1,4 +1,5 @@
 import time
+import socket
 import pytest
 
 from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT, \
