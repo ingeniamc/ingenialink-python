@@ -5,18 +5,6 @@ import pytest
 from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT, \
     NET_PROT, NET_STATE, NET_DEV_EVT, NetStatusListener
 from ingenialink.exceptions import ILFirmwareLoadError
-from ..conftest import VirtualDrive
-
-test_ip = "localhost"
-test_port = 81
-
-
-@pytest.fixture()
-def virtual_drive():
-    server = VirtualDrive(test_ip, test_port)
-    server.start()
-    yield server
-    server.stop()
 
 
 @pytest.fixture()
@@ -83,9 +71,9 @@ def test_connect_to_virtual(virtual_drive, read_config):
     net = EthernetNetwork()
     protocol_contents = read_config['ethernet']
     servo = net.connect_to_slave(
-        test_ip,
+        server.ip,
         protocol_contents['dictionary'],
-        test_port
+        server.port
     )
     servo.write('CL_AUX_FBK_SENSOR', 4)
     servo.write('DRV_DIAG_ERROR_LAST_COM', 4, 0)
@@ -106,9 +94,9 @@ def test_virtual_drive_write_read(connect_to_slave, virtual_drive, read_config, 
     virtual_net = EthernetNetwork()
     protocol_contents = read_config['ethernet']
     virtual_servo = virtual_net.connect_to_slave(
-        test_ip,
+        server.ip,
         protocol_contents['dictionary'],
-        test_port
+        server.port
     )
     
     virtual_response = virtual_servo.write(reg, value, subnode)
@@ -138,7 +126,7 @@ def test_load_firmware_no_connection(read_config):
     protocol_contents = read_config['ethernet']
     virtual_net = EthernetNetwork()
     with pytest.raises(ILFirmwareLoadError):
-        virtual_net.load_firmware(protocol_contents["fw_file"], target=test_ip, ftp_user="", ftp_pwd="")
+        virtual_net.load_firmware(protocol_contents["fw_file"], target="localhost", ftp_user="", ftp_pwd="")
 
 
 @pytest.mark.skip
@@ -166,9 +154,9 @@ def test_net_status_listener_connection(virtual_drive, read_config):
     assert len(status_list) == 0
 
     servo = net.connect_to_slave(
-        test_ip,
+        server.ip,
         protocol_contents['dictionary'],
-        test_port
+        server.port
     )
 
     # Emulate a disconnection. TODO: disconnect from the virtual drive
@@ -202,9 +190,9 @@ def test_unsubscribe_from_status(virtual_drive, read_config):
     assert len(status_list) == 0
 
     servo = net.connect_to_slave(
-        test_ip,
+        server.ip,
         protocol_contents['dictionary'],
-        test_port
+        server.port
     )
 
     # Force disconnection. TODO: disconnect from the virtual drive
