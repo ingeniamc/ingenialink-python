@@ -291,7 +291,7 @@ class Servo:
                        subnode=subnode)
             logger.info(f'Restore subnode {subnode} successfully done.')
         else:
-            raise ILError('Invalid subnode.')
+            raise ILError('Invalid subnode {subnode}.')
         time.sleep(1.5)
 
     def store_parameters(self, subnode=None):
@@ -835,8 +835,8 @@ class Servo:
         reads the MOCO register
 
         Args:
-            register_coco (Register): COCO Register to be read.
-            register_moco (Register): MOCO Register to be read.
+            register_coco (str): COCO Register ID to be read.
+            register_moco (str): MOCO Register ID to be read.
 
         Returns:
             (int, str): Read value of the register.
