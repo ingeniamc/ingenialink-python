@@ -1,5 +1,6 @@
 import time
 import socket
+
 import pytest
 
 from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT, \
@@ -107,8 +108,7 @@ def test_virtual_drive_write_read(connect_to_slave, virtual_drive, read_config, 
     virtual_response = virtual_servo.read(reg, subnode)
     assert response == virtual_response
 
-    old_value = virtual_servo.read(reg, subnode)
-    new_value = old_value + 1
+    new_value = virtual_response + 1
     virtual_servo.write(reg, new_value, subnode)
     saved_value = virtual_servo.read(reg, subnode)
     assert saved_value == new_value
