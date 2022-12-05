@@ -245,13 +245,17 @@ class Servo:
         with open(config_file, "wb") as f:
             f.write(dom.toprettyxml(indent='\t').encode())
 
+    @staticmethod
     def _read_configuration_file(self, config_file):
         """Read a configuration file. Returns the device metadata and the registers list.
+        
         Args:
             config_file (str): Path to the dictionary.
+        
         Returns:
             device: 
             list: Register list.
+        
         Raises:
             FileNotFoundError: If the configuration file cannot be found.
         """
