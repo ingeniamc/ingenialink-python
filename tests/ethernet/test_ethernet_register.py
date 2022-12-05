@@ -1,7 +1,7 @@
 import pytest
 
 from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
+from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE, dtypes_ranges
 from ingenialink.utils._utils import exc
 
 
@@ -24,10 +24,11 @@ def test_getters_ethernet_register():
     test_cat_id = "MONITORING"
     test_scat_id = "SUB_CATEGORY_TEST"
     test_internal_use = "No description (invent here)"
+    test_address_type = REG_ADDRESS_TYPE.NVM
     register = EthernetRegister(test_addr, test_dtype, test_access, test_identification,
                                 test_units, test_cyclic, test_phy, test_subnode, test_storage,
                                 test_reg_range, test_labels, test_enums,
-                                test_cat_id, test_scat_id, test_internal_use)
+                                test_cat_id, test_scat_id, test_internal_use, test_address_type)
 
     assert register.identifier == test_identification
     assert register.units == test_units
@@ -40,6 +41,7 @@ def test_getters_ethernet_register():
     assert register.storage == test_storage
     assert register.range == test_reg_range
     assert register.labels == test_labels
+    assert register.address_type == test_address_type
 
     test_aux_enums = []
     for key, value in test_enums.items():
