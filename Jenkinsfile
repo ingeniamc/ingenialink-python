@@ -1,6 +1,8 @@
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
+def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
+def CAN_NODE_LOCK = "test_execution_lock_can"
 def PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9"]
 def style_check = false
 
@@ -73,82 +75,88 @@ node(SW_NODE)
     }
 }
 
-node(ECAT_NODE)
+lock(ECAT_NODE_LOCK)
 {
-    deleteDir()
+    node(ECAT_NODE)
+    {
+        deleteDir()
 
-    stage('Checkout') {
-        checkout scm
-    }
+        stage('Checkout') {
+            checkout scm
+        }
 
-    stage('Update FW to drives') {
-        bat """
-            python -m venv ingeniamotion
-            ingeniamotion\\Scripts\\python.exe -m pip install ingeniamotion ping3
-            ingeniamotion\\Scripts\\python.exe tests\\load_FWs.py ethercat
-        """
-    }
+        stage('Update FW to drives') {
+            bat """
+                python -m venv ingeniamotion
+                ingeniamotion\\Scripts\\python.exe -m pip install ingeniamotion ping3
+                ingeniamotion\\Scripts\\python.exe tests\\load_FWs.py ethercat
+            """
+        }
 
-    stage('Install deps') {
-        unstash 'wheels'
-        bat '''
-            python -m venv venv
-            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
-            venv\\Scripts\\python.exe -m pip install --find-links dist/ ingenialink
-        '''
-    }
+        stage('Install deps') {
+            unstash 'wheels'
+            bat '''
+                python -m venv venv
+                venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                venv\\Scripts\\python.exe -m pip install --find-links dist/ ingenialink
+            '''
+        }
 
-    stage('Run EtherCAT embedded tests') {
-        bat '''
-            venv\\Scripts\\python.exe -m pytest tests --protocol ethercat
-            exit /b 0
-        '''
-    }
+        stage('Run EtherCAT embedded tests') {
+            bat '''
+                venv\\Scripts\\python.exe -m pytest tests --protocol ethercat
+                exit /b 0
+            '''
+        }
 
-   stage('Run no-connection tests') {
-        bat '''
-            venv\\Scripts\\python.exe -m pytest tests
-            exit /b 0
-        '''
+       stage('Run no-connection tests') {
+            bat '''
+                venv\\Scripts\\python.exe -m pytest tests
+                exit /b 0
+            '''
+        }
     }
 }
 
-node(CAN_NODE)
+lock(CAN_NODE_LOCK)
 {
-    deleteDir()
+    node(CAN_NODE)
+    {
+        deleteDir()
 
-    stage('Checkout') {
-        checkout scm
-    }
+        stage('Checkout') {
+            checkout scm
+        }
 
-    stage('Update FW to drives') {
-        bat """
-            python -m venv ingeniamotion
-            ingeniamotion\\Scripts\\python.exe -m pip install ingeniamotion ping3
-            ingeniamotion\\Scripts\\python.exe tests\\load_FWs.py canopen
-        """
-    }
+        stage('Update FW to drives') {
+            bat """
+                python -m venv ingeniamotion
+                ingeniamotion\\Scripts\\python.exe -m pip install ingeniamotion ping3
+                ingeniamotion\\Scripts\\python.exe tests\\load_FWs.py canopen
+            """
+        }
 
-    stage('Install deps') {
-        unstash 'wheels'
-        bat '''
-            python -m venv venv
-            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
-            venv\\Scripts\\python.exe -m pip install --find-links dist/ ingenialink
-        '''
-    }
+        stage('Install deps') {
+            unstash 'wheels'
+            bat '''
+                python -m venv venv
+                venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                venv\\Scripts\\python.exe -m pip install --find-links dist/ ingenialink
+            '''
+        }
 
-    stage('Run CANopen tests') {
-        bat '''
-            venv\\Scripts\\python.exe -m pytest tests --protocol canopen
-            exit /b 0
-        '''
-    }
+        stage('Run CANopen tests') {
+            bat '''
+                venv\\Scripts\\python.exe -m pytest tests --protocol canopen
+                exit /b 0
+            '''
+        }
 
-    stage('Run Ethernet tests') {
-        bat '''
-            venv\\Scripts\\python.exe -m pytest tests --protocol ethernet
-            exit /b 0
-        '''
+        stage('Run Ethernet tests') {
+            bat '''
+                venv\\Scripts\\python.exe -m pytest tests --protocol ethernet
+                exit /b 0
+            '''
+        }
     }
 }
