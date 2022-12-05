@@ -53,11 +53,7 @@ def test_read_dictionary_registers():
     ethernet_dict = EthernetDictionary(dictionary_path)
 
     for subnode in expected_regs_per_subnode.keys():
-        num_registers = len(ethernet_dict.registers(subnode))
-        assert num_registers == len(expected_regs_per_subnode[subnode])
-        for register in ethernet_dict.registers(subnode):
-            assert register in expected_regs_per_subnode[subnode]
-
+        assert expected_regs_per_subnode[subnode] == [reg for reg in ethernet_dict.registers(subnode)]
 
 @pytest.mark.no_connection
 def test_read_dictionary_registers_multiaxis():
@@ -84,10 +80,7 @@ def test_read_dictionary_categories():
 
     ethernet_dict = EthernetDictionary(dictionary_path)
 
-    assert len(ethernet_dict.categories.category_ids) == len(expected_categories)
-    for cat in expected_categories:
-        assert cat in ethernet_dict.categories.category_ids
-
+    assert ethernet_dict.categories.category_ids == expected_categories
 
 @pytest.mark.no_connection
 def test_read_dictionary_errors():
@@ -101,10 +94,7 @@ def test_read_dictionary_errors():
 
     ethernet_dict = EthernetDictionary(dictionary_path)
 
-    assert len(ethernet_dict.errors.errors) == len(expected_errors)
-    for error in expected_errors:
-        assert error in ethernet_dict.errors.errors
-
+    assert [error for error in ethernet_dict.errors.errors] == expected_errors
 
 @pytest.mark.no_connection
 def test_read_xdf_register():
