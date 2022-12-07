@@ -1,9 +1,10 @@
 import time
 import socket
+
 import pytest
 
-from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT, \
-    NET_PROT, NET_STATE, NET_DEV_EVT, NetStatusListener
+from ingenialink.ethernet.network import EthernetNetwork, \
+    NET_PROT, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError
 
 
@@ -107,8 +108,7 @@ def test_virtual_drive_write_read(connect_to_slave, virtual_drive, read_config, 
     virtual_response = virtual_servo.read(reg, subnode)
     assert response == virtual_response
 
-    old_value = virtual_servo.read(reg, subnode)
-    new_value = old_value + 1
+    new_value = virtual_response + 1
     virtual_servo.write(reg, new_value, subnode)
     saved_value = virtual_servo.read(reg, subnode)
     assert saved_value == new_value
@@ -126,7 +126,7 @@ def test_load_firmware_no_connection(read_config):
     protocol_contents = read_config['ethernet']
     virtual_net = EthernetNetwork()
     with pytest.raises(ILFirmwareLoadError):
-        virtual_net.load_firmware(protocol_contents["fw_file"], target="localhost", ftp_user="", ftp_pwd="")
+        virtual_net.load_firmware(protocol_contents["fw_file"], target="127.0.0.1", ftp_user="", ftp_pwd="")
 
 
 @pytest.mark.skip
@@ -148,22 +148,15 @@ def test_net_status_listener_connection(virtual_drive, read_config):
     net = EthernetNetwork()
     protocol_contents = read_config['ethernet']
     status_list = []
-    net.subscribe_to_status(status_list.append)
-    status_listener = NetStatusListener(net)
+    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"])
 
-    assert len(status_list) == 0
-
-    servo = net.connect_to_slave(
-        server.ip,
-        protocol_contents['dictionary'],
-        server.port
-    )
-
+    status_list = []
+    net.subscribe_to_status(server.ip, status_list.append)
     # Emulate a disconnection. TODO: disconnect from the virtual drive
-    status_listener._NetStatusListener__state = NET_STATE.DISCONNECTED
-    status_listener.start()
+    net._set_servo_state(server.ip, NET_STATE.DISCONNECTED)
+    net.start_status_listener()
     time.sleep(2)
-    status_listener.stop()
+    net.stop_status_listener()
 
     assert len(status_list) == 1
     assert status_list[0] == NET_DEV_EVT.ADDED
@@ -181,24 +174,18 @@ def test_unsubscribe_from_status(virtual_drive, read_config):
     server = virtual_drive
     net = EthernetNetwork()
     protocol_contents = read_config['ethernet']
+
     status_list = []
-    net.subscribe_to_status(status_list.append)
-    net.unsubscribe_from_status(status_list.append)
+    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"])
 
-    status_listener = NetStatusListener(net)
+    status_list = []
+    net.subscribe_to_status(server.ip, status_list.append)
+    net.unsubscribe_from_status(server.ip, status_list.append)
 
-    assert len(status_list) == 0
-
-    servo = net.connect_to_slave(
-        server.ip,
-        protocol_contents['dictionary'],
-        server.port
-    )
-
-    # Force disconnection. TODO: disconnect from the virtual drive
-    status_listener._NetStatusListener__state = NET_STATE.DISCONNECTED
-    status_listener.start()
+    # Emulate a disconnection. TODO: disconnect from the virtual drive
+    net._set_servo_state(server.ip, NET_STATE.DISCONNECTED)
+    net.start_status_listener()
     time.sleep(2)
-    status_listener.stop()
+    net.stop_status_listener()
 
     assert len(status_list) == 0

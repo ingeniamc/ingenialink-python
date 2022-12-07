@@ -3,6 +3,7 @@ from binascii import crc_hqx
 
 from ingenialink.exceptions import ILWrongCRCError, ILNACKError,\
     ILWrongRegisterError
+from ingenialink.constants import MCB_CMD_ACK
 
 
 class MCB:
@@ -128,7 +129,7 @@ class MCB:
         """
         recv_add, _, cmd, data = cls.read_mcb_frame(frame)
 
-        if cmd != 3:
+        if cmd != MCB_CMD_ACK:
             err = frame[cls.DATA_START_BYTE:cls.DATA_END_BYTE].hex()
             raise ILNACKError(f'Communications error (NACK -> {err[::-1]})')
         if expected_address != recv_add:

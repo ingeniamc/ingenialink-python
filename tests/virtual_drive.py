@@ -3,7 +3,6 @@ import socket
 import time
 from enum import Enum
 from threading import Thread
-
 import xml.etree.ElementTree as ET
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
@@ -158,45 +157,44 @@ class VirtualDrive(Thread):
         self._load_configuration_file()
         self._add_custom_registers()
         self.__monitoring = VirtualMonitoring(self)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def run(self):
-        ''' Open socket and listen messages '''
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        """ Open socket and listen messages """
         server_address = (self.ip, self.port)
         self.socket.bind(server_address)
         self.socket.settimeout(2)
         while not self.__stop:
-            if self.socket is not None:
-                try:
-                    frame, add = self.socket.recvfrom(ETH_BUF_SIZE)
-                except:
-                    self.stop()
-                    break
-                reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
-                self.__log(add, frame, MSG_TYPE.RECEIVED)
-                access = self.registers[subnode][reg_add]["access"]
-                dtype = self.registers[subnode][reg_add]["dtype"]
-                if cmd == self.WRITE_CMD:
-                    sent_cmd = self.ACK_CMD
-                    response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data)
-                    if access in ["rw", "w"]: # TODO: send error otherwise
-                        value = convert_bytes_to_dtype(data, dtype)
-                        self.registers[subnode][reg_add]["value"] = value
-                        self.__decode_msg(reg_add, subnode, data)
-                elif cmd == self.READ_CMD:
-                    value = self.registers[subnode][reg_add]["value"]
-                    data = convert_dtype_to_bytes(value, dtype)
-                    sent_cmd = self.ACK_CMD
-                    if reg_add == self.id_to_address(0, "MON_DATA"):
-                        response = self._response_monitoring_data(data)
-                    else:
-                        response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data)
-                    # TODO: send error if the register is WO
+            try:
+                frame, add = self.socket.recvfrom(ETH_BUF_SIZE)
+            except:
+                self.stop()
+                break
+            reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
+            self.__log(add, frame, MSG_TYPE.RECEIVED)
+            access = self.registers[subnode][reg_add]["access"]
+            dtype = self.registers[subnode][reg_add]["dtype"]
+            if cmd == self.WRITE_CMD:
+                sent_cmd = self.ACK_CMD
+                response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data)
+                if access in ["rw", "w"]: # TODO: send error otherwise
+                    value = convert_bytes_to_dtype(data, dtype)
+                    self.registers[subnode][reg_add]["value"] = value
+                    self.__decode_msg(reg_add, subnode, data)
+            elif cmd == self.READ_CMD:
+                value = self.registers[subnode][reg_add]["value"]
+                data = convert_dtype_to_bytes(value, dtype)
+                sent_cmd = self.ACK_CMD
+                if reg_add == self.id_to_address(0, "MON_DATA"):
+                    response = self._response_monitoring_data(data)
                 else:
-                    continue
-                self.__send(response, add)
-                
-            time.sleep(0.1)
+                    response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data)
+                # TODO: send error if the register is WO
+            else:
+                continue
+            self.__send(response, add)
+            
+        time.sleep(0.1)
 
     def stop(self):
         ''' Stop socket '''
