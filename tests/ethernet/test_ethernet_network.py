@@ -4,7 +4,7 @@ import socket
 import pytest
 
 from ingenialink.ethernet.network import EthernetNetwork, \
-    NET_PROT, NET_STATE, NET_DEV_EVT, NetStatusListener
+    NET_PROT, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError
 
 
