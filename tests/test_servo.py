@@ -1,19 +1,19 @@
 import os
 import pytest
+import time
 import xml.etree.ElementTree as ET
 
 from ingenialink.utils._utils import get_drive_identification
 from ingenialink.register import REG_ADDRESS_TYPE
+from ingenialink.ethernet.register import REG_DTYPE
+from ingenialink.servo import SERVO_STATE
+from ingenialink.exceptions import ILStateError, ILTimeoutError
+from ingenialink.utils._utils import raise_err
 
 
 def _clean(filename):
     if os.path.isfile(filename):
         os.remove(filename)
-
-from ingenialink.ethernet.register import REG_DTYPE
-from ingenialink.servo import SERVO_STATE
-from ingenialink.exceptions import ILStateError, ILTimeoutError
-from ingenialink.utils._utils import raise_err
 
 
 MONITORING_CH_DATA_SIZE = 4

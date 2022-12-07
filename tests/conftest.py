@@ -2,7 +2,7 @@ import json
 import pytest
 
 from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
-from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT
+from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethercat.network import EthercatNetwork
 from tests.virtual_drive import VirtualDrive
 
