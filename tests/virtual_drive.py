@@ -8,8 +8,8 @@ import xml.etree.ElementTree as ET
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
-from ingenialink.dictionary import Dictionary
 from ingenialink.ethernet.servo import EthernetServo
+from ingenialink.ethernet.dictionary import EthernetDictionary
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
 
 
@@ -213,18 +213,17 @@ class VirtualDrive(Thread):
     WRITE_CMD = 2
     READ_CMD = 1
 
-    def __init__(self, ip, port, config_file="./tests/resources/virtual_drive.xcf"):
+    def __init__(self, ip, port, dictionary_path="./tests/resources/virtual_drive.xdf"):
         super(VirtualDrive, self).__init__()
         self.ip = ip
         self.port = port
-        self.config_file = config_file
+        self.dictionary_path = dictionary_path
         self.socket = None
         self.__stop = False
         self.device_info = None
-        self.registers = {}
         self.__logger = []
-        self.__reg_id_to_address = {}
-        self._load_configuration_file()
+        self.__reg_address_to_id = {}
+        self.__dictionary = EthernetDictionary(dictionary_path)
         self._add_custom_registers()
         self.__monitoring = VirtualMonitoring(self)
         self.__disturbance = VirtualDisturbance(self)
@@ -243,18 +242,17 @@ class VirtualDrive(Thread):
                 break
             reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
             self.__log(add, frame, MSG_TYPE.RECEIVED)
-            access = self.registers[subnode][reg_add]["access"]
-            dtype = self.registers[subnode][reg_add]["dtype"]
+            register = self.get_register(subnode, reg_add)
             if cmd == self.WRITE_CMD:
                 sent_cmd = self.ACK_CMD
                 response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data)
-                if access in [REG_ACCESS.RW, REG_ACCESS.WO]: # TODO: send error otherwise
-                    value = convert_bytes_to_dtype(data, dtype)
-                    self.registers[subnode][reg_add]["value"] = value
+                if register.access in [REG_ACCESS.RW, REG_ACCESS.WO]: # TODO: send error otherwise
+                    value = convert_bytes_to_dtype(data, register.dtype)
+                    self.set_value_by_id(subnode, register.identifier, value)
                     self.__decode_msg(reg_add, subnode, data)
             elif cmd == self.READ_CMD:
-                value = self.registers[subnode][reg_add]["value"]
-                data = convert_dtype_to_bytes(value, dtype)
+                value = self.get_value_by_id(subnode, register.identifier)
+                data = convert_dtype_to_bytes(value, register.dtype)
                 sent_cmd = self.ACK_CMD
                 if reg_add == self.id_to_address(0, "MON_DATA"):
                     response = self._response_monitoring_data(data)
@@ -274,52 +272,29 @@ class VirtualDrive(Thread):
         self.__stop = True
         self.__monitoring.disable()
 
-    def _load_configuration_file(self):
-        if not os.path.isfile(self.config_file):
-            raise FileNotFoundError(f'Could not find {self.config_file}.')
-        with open(self.config_file, 'r', encoding='utf-8') as xml_file:
-            tree = ET.parse(xml_file)
-        root = tree.getroot()
-        device = root.find('Body/Device')
-        registers = root.findall('./Body/Device/Registers/Register')
-        self.device_info = device
-        for element in registers:
-            subnode = int(element.attrib['subnode'])
-            if subnode not in self.registers:
-                self.registers[subnode] = {}
-                self.__reg_id_to_address[subnode] = {}
-            address = int(element.attrib['address'], base=16)
-            if "storage" in element.attrib:
-                storage = element.attrib['storage']
-                if element.attrib['dtype'] == "str":
-                    storage = storage
-                elif element.attrib['dtype'] == "float":
-                    storage = float(storage)
-                else:
-                    storage = int(storage)
-            else:
-                storage = None
-            self.registers[subnode][address] = {
-                "access": Dictionary.access_xdf_options[element.attrib['access']],
-                "dtype": Dictionary.dtype_xdf_options[element.attrib['dtype']],
-                "id": element.attrib['id'],
-                "value": storage
-            }
-            self.__reg_id_to_address[subnode][element.attrib['id']] = address
-
     def _add_custom_registers(self):
+        for subnode in range(self.__dictionary.subnodes):
+            self.__reg_address_to_id[subnode] = {}
+            for reg_id, reg in self.__dictionary.registers(subnode).items():
+                self.__reg_address_to_id[subnode][reg.address] = reg_id
+                self.__dictionary.registers(subnode)[reg_id].storage_valid = 1
+
         custom_regs = {
             "MON_DATA": EthernetServo.MONITORING_DATA,
             "DIST_DATA": EthernetServo.DIST_DATA 
         }
         for id, reg in custom_regs.items():
-            self.registers[reg.subnode][reg.address] = {
+            register = {
+                "address": reg.address,
                 "access": reg.access,
                 "dtype": REG_DTYPE.DOMAIN,
-                "id": id,
-                "value": None
+                "identifier": id,
+                "subnode": reg.subnode
             }
-            self.__reg_id_to_address[reg.subnode][id] = reg.address
+            self.__dictionary._add_register_list(register)
+            self.__dictionary.registers(reg.subnode)[id].storage_valid = 1
+
+            self.__reg_address_to_id[reg.subnode][reg.address] = id
                     
     def __send(self, response, address):
         self.socket.sendto(response, address)
@@ -331,7 +306,7 @@ class VirtualDrive(Thread):
         limit = min(len(data), MONITORING_BUFFER_SIZE)
         response = MCB.build_mcb_frame(sent_cmd, 0, reg_add, data[:limit])
         data_left = data[limit:]
-        self.registers[0][reg_add]["value"] = data_left 
+        self.set_value_by_id(0, "MON_DATA", data_left)
         self.__monitoring.available_bytes = len(data_left)
         return response
    
@@ -354,8 +329,9 @@ class VirtualDrive(Thread):
         self.__logger = []
 
     def __decode_msg(self, reg_add, subnode, data):
-        reg_id = self.registers[subnode][reg_add]["id"]
-        dtype = self.registers[subnode][reg_add]["dtype"]
+        register = self.get_register(subnode, reg_add)
+        reg_id = register.identifier
+        dtype = register.dtype
         value = convert_bytes_to_dtype(data, dtype)
         if reg_id == "MON_DIST_ENABLE" and subnode == 0 and value == 1:
             self.__monitoring.enable()
@@ -374,13 +350,23 @@ class VirtualDrive(Thread):
         if reg_id == "DIST_DATA" and subnode == 0:
             self.__disturbance.append_data(data)
 
+    def address_to_id(self, subnode, address):
+        return self.__reg_address_to_id[subnode][address]
+
     def id_to_address(self, subnode, id):
-        return self.__reg_id_to_address[subnode][id]
+        register = self.__dictionary.registers(subnode)[id]
+        return register.address
 
     def get_value_by_id(self, subnode, id):
-        address = self.id_to_address(subnode, id)
-        return self.registers[subnode][address]["value"]
+        return self.__dictionary.registers(subnode)[id]._storage
 
     def set_value_by_id(self, subnode, id, value):
-        address = self.id_to_address(subnode, id)
-        self.registers[subnode][address]["value"] = value
+        self.__dictionary.registers(subnode)[id].storage = value
+
+    def get_register(self, subnode, address=None, id=None):
+        if address is not None:
+            id = self.address_to_id(subnode, address)
+        else:
+            if id is None:
+                raise ValueError("Register address or id should be passed")
+        return self.__dictionary.registers(subnode)[id]
