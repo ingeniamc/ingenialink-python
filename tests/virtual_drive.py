@@ -10,7 +10,7 @@ from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.dictionary import Dictionary
 from ingenialink.ethernet.servo import EthernetServo
-from ingenialink.enums.register import REG_DTYPE
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
 
 
 class MSG_TYPE(Enum):
@@ -18,21 +18,27 @@ class MSG_TYPE(Enum):
     SENT = "SENT"
 
 
-class VirtualMonitoring():
+class VirtualMonDistBase():
     FREQUENCY = 20000
+    FREQ_DIVIDER_REG = None
+    BUFFER_SIZE_REG = None
+    NUMBER_MAP_REGS = None
+    MAP_REG_CFG = None
+    BYTES_PER_BLOCK_REG = None
+    AVAILABLE_BYTES_REG = None
+    DATA_REG = None
 
+    """ Base class to implement VirtualMonitoring and VirtualDisturbance"""
     def __init__(self, drive):
-        super(VirtualMonitoring, self).__init__()
         self.drive = drive
-        self.__enabled = False
-        self.__channels = {}
-        self.start_time = None
+        self.enabled = False
+        self.channels = {}
 
     def enable(self):
         self.bytes_per_block = 0
         for channel in range(self.number_mapped_registers):
             subnode, address, dtype, size = self.get_mapped_register(channel)
-            self.__channels[channel] = {
+            self.channels[channel] = {
                 "data": [],
                 "dtype": REG_DTYPE(dtype),
                 "address": address,
@@ -41,93 +47,50 @@ class VirtualMonitoring():
                 "signal": []
             }
             self.bytes_per_block += size
-
-        self.__create_signals()
-        self.__enabled = True
+        self.enabled = True
 
     def disable(self):
-        if self.__enabled is False or self.start_time is None:
-            return
-        sampling_rate = self.FREQUENCY / self.divider
-        elapsed_time = time.time() - self.start_time
-        elapsed_samples = int(elapsed_time * sampling_rate)
-        n_samples = min(elapsed_samples, self.buffer_size)
-        for channel in range(self.number_mapped_registers):
-            self.__channels[channel]["data"] = self.__channels[channel]["signal"][:n_samples]
-        self.__enabled = False
-        self.available_bytes = n_samples * self.bytes_per_block
-        self._store_data_bytes()
-        self.start_time = None
-
-    def trigger(self):
-        if self.__enabled:
-            self.start_time = time.time()
+        self.enabled = False
 
     def remove_data(self):
         for channel in range(self.number_mapped_registers):
-            self.__channels[channel]["data"] = []
-            self.drive.set_value_by_id(0, "MON_DATA", 0)
-
-    def __create_signals(self):
-        for channel in range(self.number_mapped_registers):
-            start_value = self.__channels[channel]["address"] + self.__channels[channel]["subnode"]
-            signal = [start_value + i for i in range(0, self.buffer_size*self.divider, self.divider)]
-            self.__channels[channel]["signal"] = signal
-
-    def _store_data_bytes(self):
-        bytes = bytearray()
-        n_samples = len(self.__channels[0]["data"])
-        for sample in range(n_samples):
-            for channel in range(self.number_mapped_registers):
-                value = self.__channels[channel]["data"][sample]
-                size = self.__channels[channel]["size"]
-                sample_bytes = convert_dtype_to_bytes(value, self.__channels[channel]["dtype"])
-                if len(sample_bytes) < size:
-                    sample_bytes += (b"0")*(size - len(sample_bytes))
-                bytes += sample_bytes
-        self.drive.set_value_by_id(0, "MON_DATA", bytes)
+            self.channels[channel]["data"] = []
+            self.drive.set_value_by_id(0, self.DATA_REG, 0)
 
     @property
     def divider(self):
         """ Frequency divider """
-        return self.drive.get_value_by_id(0, "MON_DIST_FREQ_DIV")
-
-    @property
-    def trigger_type(self):
-        """ Trigger type
-            0: Auto, 1: Force, 2: Rising or Failing        
-        """
-        return self.drive.get_value_by_id(0, "MON_CFG_SOC_TYPE")
+        return self.drive.get_value_by_id(0, self.FREQ_DIVIDER_REG)
 
     @property
     def buffer_size(self):
         """ Monitoring buffer size """
-        return self.drive.get_value_by_id(0, "MON_CFG_WINDOW_SAMP")
-
-    @property
-    def available_bytes(self):
-        """ Actual number of monitoring bytes """
-        return self.drive.get_value_by_id(0, "MON_CFG_BYTES_VALUE")
-
-    @available_bytes.setter
-    def available_bytes(self, n_bytes):
-        self.drive.set_value_by_id(0, "MON_CFG_BYTES_VALUE", n_bytes)
+        return self.drive.get_value_by_id(0, self.BUFFER_SIZE_REG)
 
     @property
     def bytes_per_block(self):
         """ Monitoring bytes per sample """
-        return self.drive.get_value_by_id(0, "MON_CFG_BYTES_PER_BLOCK")
+        return self.drive.get_value_by_id(0, self.BYTES_PER_BLOCK_REG)
 
     @bytes_per_block.setter
     def bytes_per_block(self, n_bytes):
-        self.drive.set_value_by_id(0, "MON_CFG_BYTES_PER_BLOCK", n_bytes)
+        self.drive.set_value_by_id(0, self.BYTES_PER_BLOCK_REG, n_bytes)
 
     @property
     def number_mapped_registers(self):
-        return self.drive.get_value_by_id(0, "MON_CFG_TOTAL_MAP")
+        return self.drive.get_value_by_id(0, self.NUMBER_MAP_REGS)
+
+    @property
+    def available_bytes(self):
+        """ Actual number of monitoring bytes """
+        return self.drive.get_value_by_id(0, self.AVAILABLE_BYTES_REG)
+
+    @available_bytes.setter
+    def available_bytes(self, n_bytes):
+        self.drive.set_value_by_id(0, self.AVAILABLE_BYTES_REG, n_bytes)
 
     def get_mapped_register(self, channel):
-        register_id = f'MON_CFG_REG{channel}_MAP'
+        register_id = self.MAP_REG_CFG.format(channel)
         data = self.drive.get_value_by_id(0, register_id)
         data_h = data >> 16
         data_l = data & 0x0000FFFF
@@ -136,6 +99,113 @@ class VirtualMonitoring():
         dtype = data_l >> 8
         size = data_l & 0x00FF
         return subnode, address, dtype, size
+    
+
+class VirtualMonitoring(VirtualMonDistBase):
+    FREQ_DIVIDER_REG = "MON_DIST_FREQ_DIV"
+    BUFFER_SIZE_REG = "MON_CFG_WINDOW_SAMP"
+    NUMBER_MAP_REGS = "MON_CFG_TOTAL_MAP"
+    MAP_REG_CFG = "MON_CFG_REG{}_MAP"
+    BYTES_PER_BLOCK_REG = "MON_CFG_BYTES_PER_BLOCK"
+    DATA_REG = "MON_DATA"
+    TRIGGER_TYPE_REG = "MON_CFG_SOC_TYPE"
+    AVAILABLE_BYTES_REG = "MON_CFG_BYTES_VALUE"
+
+    def __init__(self, drive):
+        self.start_time = None
+        super().__init__(drive)
+
+    def enable(self):
+        super().enable()
+        self.__create_signals()
+
+    def disable(self):
+        if self.enabled is False or self.start_time is None:
+            return
+        sampling_rate = self.FREQUENCY / self.divider
+        elapsed_time = time.time() - self.start_time
+        elapsed_samples = int(elapsed_time * sampling_rate)
+        n_samples = min(elapsed_samples, self.buffer_size)
+        for channel in range(self.number_mapped_registers):
+            self.channels[channel]["data"] = self.channels[channel]["signal"][:n_samples]
+        self.available_bytes = n_samples * self.bytes_per_block
+        self._store_data_bytes()
+        self.start_time = None
+        super().disable()
+
+    def trigger(self):
+        if self.enabled:
+            self.start_time = time.time()
+
+    def __create_signals(self):
+        for channel in range(self.number_mapped_registers):
+            start_value = self.channels[channel]["address"] + self.channels[channel]["subnode"]
+            signal = [start_value + i for i in range(0, self.buffer_size*self.divider, self.divider)]
+            self.channels[channel]["signal"] = signal
+
+    def _store_data_bytes(self):
+        bytes = bytearray()
+        n_samples = len(self.channels[0]["data"])
+        for sample in range(n_samples):
+            for channel in range(self.number_mapped_registers):
+                value = self.channels[channel]["data"][sample]
+                size = self.channels[channel]["size"]
+                sample_bytes = convert_dtype_to_bytes(value, self.channels[channel]["dtype"])
+                if len(sample_bytes) < size:
+                    sample_bytes += (b"0")*(size - len(sample_bytes))
+                bytes += sample_bytes
+        self.drive.set_value_by_id(0, "MON_DATA", bytes)
+
+    @property
+    def trigger_type(self):
+        """ Trigger type
+            0: Auto, 1: Force, 2: Rising or Failing        
+        """
+        return self.drive.get_value_by_id(0, self.TRIGGER_TYPE_REG)
+
+
+class VirtualDisturbance(VirtualMonDistBase):
+    FREQ_DIVIDER_REG = "DIST_FREQ_DIV"
+    BUFFER_SIZE_REG = "DIST_CFG_SAMPLES"
+    NUMBER_MAP_REGS = "DIST_CFG_MAP_REGS"
+    MAP_REG_CFG = "DIST_CFG_REG{}_MAP"
+    BYTES_PER_BLOCK_REG = "DIST_CFG_BYTES_PER_BLOCK"
+    AVAILABLE_BYTES_REG = "DIST_CFG_BYTES"
+    DATA_REG = "DIST_DATA"
+
+    def __init__(self, drive):
+        self.start_time = None
+        self.received_bytes = bytearray()
+        super().__init__(drive)
+
+    def enable(self):
+        super().enable()
+
+    def append_data(self,data):
+        self.received_bytes += data
+        self.available_bytes = len(self.received_bytes)
+        if self.available_bytes == self.buffer_size_bytes:
+            self.write_data()
+
+    def write_data(self):
+        n_samples = self.buffer_size
+        buffer = self.received_bytes
+        for sample in range(n_samples):
+            for channel in range(self.number_mapped_registers):
+                size = self.channels[channel]["size"]
+                dtype = self.channels[channel]["dtype"]
+                bytes = buffer[:size]
+                value = convert_bytes_to_dtype(bytes, dtype)
+                self.channels[channel]["data"].append(value)
+                buffer = buffer[size:]
+    
+    @property
+    def buffer_size_bytes(self):
+        buffer_size_bytes = 0
+        n_samples = self.buffer_size
+        for channel in range(self.number_mapped_registers):
+            buffer_size_bytes += self.channels[channel]["size"] * n_samples
+        return buffer_size_bytes
 
 
 class VirtualDrive(Thread):
@@ -157,6 +227,7 @@ class VirtualDrive(Thread):
         self._load_configuration_file()
         self._add_custom_registers()
         self.__monitoring = VirtualMonitoring(self)
+        self.__disturbance = VirtualDisturbance(self)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def run(self):
@@ -177,7 +248,7 @@ class VirtualDrive(Thread):
             if cmd == self.WRITE_CMD:
                 sent_cmd = self.ACK_CMD
                 response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data)
-                if access in ["rw", "w"]: # TODO: send error otherwise
+                if access in [REG_ACCESS.RW, REG_ACCESS.WO]: # TODO: send error otherwise
                     value = convert_bytes_to_dtype(data, dtype)
                     self.registers[subnode][reg_add]["value"] = value
                     self.__decode_msg(reg_add, subnode, data)
@@ -229,7 +300,7 @@ class VirtualDrive(Thread):
             else:
                 storage = None
             self.registers[subnode][address] = {
-                "access": element.attrib['access'],
+                "access": Dictionary.access_xdf_options[element.attrib['access']],
                 "dtype": Dictionary.dtype_xdf_options[element.attrib['dtype']],
                 "id": element.attrib['id'],
                 "value": storage
@@ -237,15 +308,18 @@ class VirtualDrive(Thread):
             self.__reg_id_to_address[subnode][element.attrib['id']] = address
 
     def _add_custom_registers(self):
-        reg = EthernetServo.MONITORING_DATA
-        id = "MON_DATA"
-        self.registers[reg.subnode][reg.address] = {
-            "access": reg.access,
-            "dtype": REG_DTYPE.DOMAIN,
-            "id": id,
-            "value": None
+        custom_regs = {
+            "MON_DATA": EthernetServo.MONITORING_DATA,
+            "DIST_DATA": EthernetServo.DIST_DATA 
         }
-        self.__reg_id_to_address[reg.subnode][id] = reg.address
+        for id, reg in custom_regs.items():
+            self.registers[reg.subnode][reg.address] = {
+                "access": reg.access,
+                "dtype": REG_DTYPE.DOMAIN,
+                "id": id,
+                "value": None
+            }
+            self.__reg_id_to_address[reg.subnode][id] = reg.address
                     
     def __send(self, response, address):
         self.socket.sendto(response, address)
@@ -282,15 +356,23 @@ class VirtualDrive(Thread):
     def __decode_msg(self, reg_add, subnode, data):
         reg_id = self.registers[subnode][reg_add]["id"]
         dtype = self.registers[subnode][reg_add]["dtype"]
-        data = convert_bytes_to_dtype(data, dtype)
-        if reg_id == "MON_DIST_ENABLE" and subnode == 0 and data == 1:
+        value = convert_bytes_to_dtype(data, dtype)
+        if reg_id == "MON_DIST_ENABLE" and subnode == 0 and value == 1:
             self.__monitoring.enable()
-        if reg_id == "MON_DIST_ENABLE" and subnode == 0 and data == 0:
+        if reg_id == "MON_DIST_ENABLE" and subnode == 0 and value == 0:
             self.__monitoring.disable()
-        if reg_id == "MON_CMD_FORCE_TRIGGER" and subnode == 0 and data == 1:
+        if reg_id == "MON_CMD_FORCE_TRIGGER" and subnode == 0 and value == 1:
             self.__monitoring.trigger()
-        if reg_id == "MON_REMOVE_DATA" and subnode == 0 and data == 1:
+        if reg_id == "MON_REMOVE_DATA" and subnode == 0 and value == 1:
             self.__monitoring.remove_data()
+        if reg_id == "DIST_ENABLE" and subnode == 0 and value == 1:
+            self.__disturbance.enable()
+        if reg_id == "DIST_ENABLE" and subnode == 0 and value == 0:
+            self.__disturbance.disable()
+        if reg_id == "DIST_REMOVE_DATA" and subnode == 0 and value == 1:
+            self.__disturbance.remove_data()
+        if reg_id == "DIST_DATA" and subnode == 0:
+            self.__disturbance.append_data(data)
 
     def id_to_address(self, subnode, id):
         return self.__reg_id_to_address[subnode][id]
