@@ -3,7 +3,6 @@ import socket
 import time
 from enum import Enum
 from threading import Thread
-import xml.etree.ElementTree as ET
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.utils.mcb import MCB
@@ -224,7 +223,7 @@ class VirtualDrive(Thread):
         self.__logger = []
         self.__reg_address_to_id = {}
         self.__dictionary = EthernetDictionary(dictionary_path)
-        self._add_custom_registers()
+        self._update_registers()
         self.__monitoring = VirtualMonitoring(self)
         self.__disturbance = VirtualDisturbance(self)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -272,7 +271,7 @@ class VirtualDrive(Thread):
         self.__stop = True
         self.__monitoring.disable()
 
-    def _add_custom_registers(self):
+    def _update_registers(self):
         for subnode in range(self.__dictionary.subnodes):
             self.__reg_address_to_id[subnode] = {}
             for reg_id, reg in self.__dictionary.registers(subnode).items():
