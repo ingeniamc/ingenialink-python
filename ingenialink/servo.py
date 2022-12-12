@@ -36,16 +36,14 @@ class ServoStatusListener(threading.Thread):
 
     def run(self):
         """Checks if the drive is alive by reading the status word register"""
-        current_state = {}
-        for subnode in range(1, self.__servo.subnodes): 
-            current_state[subnode] = self.__servo.get_state(subnode)
+        previous_states = self.__servo.status
         while not self.__stop:
             for subnode in range(1, self.__servo.subnodes):
                 try:
-                    state = self.__servo.get_state(subnode)
-                    if current_state[subnode] != state:
-                        current_state[subnode] = state
-                        self.__servo._notify_state(state, subnode)
+                    current_state = self.__servo.get_state(subnode)
+                    if previous_states[subnode] != current_state:
+                        previous_states[subnode] = current_state
+                        self.__servo._notify_state(current_state, subnode)
                 except ILIOError as e:
                     logger.error("Error getting drive status. "
                                  "Exception : %s", e)
@@ -373,11 +371,10 @@ class Servo:
             elif state == SERVO_STATE.RDY:
                 cmd = constants.IL_MC_PDS_CMD_SOEO
 
-            self.write(self.CONTROL_WORD_REGISTERS, cmd,
-                        subnode=subnode)
+            self.write(self.CONTROL_WORD_REGISTERS, cmd, subnode=subnode)
 
             # Wait for state change
-            self.state_wait_change(state, timeout, subnode=subnode)
+            r = self.state_wait_change(state, timeout, subnode=subnode)
 
             if r < 0:
                 raise_err(r)
@@ -676,10 +673,9 @@ class Servo:
             "size": size,
             "dtype": REG_DTYPE(dtype).name
         }
-        data = self._monitoring_disturbance_data_to_map_register(subnode,
-                                                                  address,
-                                                                  dtype,
-                                                                  size)
+        data = self._monitoring_disturbance_data_to_map_register(
+            subnode, address, dtype, size
+        )
         self.write(self.__disturbance_map_register(), data=data,
                    subnode=0)
         self.__disturbance_update_num_mapped_registers()
@@ -1101,7 +1097,7 @@ class Servo:
     @property
     def monitoring_number_mapped_registers(self):
         """Get the number of mapped monitoring registers."""
-        return  self.read(self.MONITORING_NUMBER_MAPPED_REGISTERS, subnode=0)
+        return self.read(self.MONITORING_NUMBER_MAPPED_REGISTERS, subnode=0)
 
     @property
     def monitoring_data_size(self):
@@ -1147,6 +1143,6 @@ class Servo:
     @property
     def disturbance_number_mapped_registers(self):
         """Get the number of mapped disturbance registers."""
-        return  self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, subnode=0)
+        return self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, subnode=0)
 
 
