@@ -81,13 +81,12 @@ class CanopenServo(Servo):
         except Exception as e:
             logger.error("Failed writing %s. Exception: %s",
                          str(reg.identifier), e)
-            error_raised = "Error writing {}".format(reg.identifier)
+            error_raised = f"Error writing {reg.identifier}"
             raise ILIOError(error_raised)
         finally:
             self._lock.release()
 
     def _read_raw(self, reg):
-        value = None
         try:
             self._lock.acquire()
             value = self.__node.sdo.upload(reg.idx, reg.subidx)

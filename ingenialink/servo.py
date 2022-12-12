@@ -59,6 +59,7 @@ class Servo:
 
     Args:
         target (str, int): Target ID of the servo.
+        dictionary_path (str): Path to the dictionary file.
         servo_status_listener (bool): Toggle the listener of the servo for
             its status, errors, faults, etc.
 
@@ -1043,7 +1044,7 @@ class Servo:
 
     @abstractmethod
     def _write_raw(self, reg, data):
-        """Writes a raw bytes data to a target register.
+        """Write raw bytes to a target register.
 
         Args:
             reg (Register): Target register to be written.
@@ -1058,7 +1059,7 @@ class Servo:
 
     @abstractmethod
     def _read_raw(self, reg):
-        """Read raw bytes from servo.
+        """Read raw bytes from a target register.
 
         Args:
             reg (Register): Register.
