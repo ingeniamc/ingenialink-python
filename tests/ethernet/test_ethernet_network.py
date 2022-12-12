@@ -5,6 +5,7 @@ import pytest
 
 from ingenialink.ethernet.network import EthernetNetwork, \
     NET_PROT, NET_STATE, NET_DEV_EVT
+from ingenialink.network import NET_TRANS_PROT
 from ingenialink.exceptions import ILFirmwareLoadError
 
 

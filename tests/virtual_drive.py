@@ -62,7 +62,7 @@ class VirtualDrive(Thread):
         time.sleep(0.1)
 
     def stop(self):
-        ''' Stop socket '''
+        """ Stop socket """
         if self.socket is not None:
             self.socket.close()
         self.__stop = True
