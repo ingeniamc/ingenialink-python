@@ -5,6 +5,7 @@ import pytest
 
 from ingenialink.ethernet.network import EthernetNetwork, \
     NET_PROT, NET_STATE, NET_DEV_EVT
+from ingenialink.network import NET_TRANS_PROT
 from ingenialink.exceptions import ILFirmwareLoadError
 
 
@@ -41,28 +42,28 @@ def test_scan_slaves(read_config):
 @pytest.mark.ethernet
 def test_ethernet_connection(connect_to_slave, read_config):
     servo, net = connect_to_slave
-    family = net.socket.family
+    family = servo.socket.family
     config_protocol = NET_TRANS_PROT[read_config['ethernet']['protocol']]
-    ip, port = net.socket.getpeername()
+    ip, port = servo.socket.getpeername()
     socket_protocol = {
         socket.SOCK_DGRAM: NET_TRANS_PROT.UDP,
         socket.SOCK_STREAM: NET_TRANS_PROT.TCP
     }
-    assert net.status == NET_STATE.CONNECTED
+    assert net._get_servo_state(read_config['ethernet']['ip']) == NET_STATE.CONNECTED
     assert net.protocol == NET_PROT.ETH
     assert family == socket.AF_INET
-    assert config_protocol == socket_protocol[net.socket.type]
+    assert config_protocol == socket_protocol[servo.socket.type]
     assert ip == read_config['ethernet']['ip']
     assert port == read_config['ethernet']['port']
 
 
 @pytest.mark.ethernet
-def test_ethernet_disconnection(connect):
+def test_ethernet_disconnection(connect, read_config):
     servo, net = connect
     net.disconnect_from_slave(servo)
-    assert net.status == NET_STATE.DISCONNECTED
+    assert net._get_servo_state(read_config['ethernet']['ip']) == NET_STATE.DISCONNECTED
     assert len(net.servos) == 0
-    assert net.socket._closed
+    assert servo.socket._closed
 
 
 @pytest.mark.no_connection
