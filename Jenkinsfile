@@ -164,7 +164,6 @@ pipeline {
                 stage('Run Ethernet tests') {
                     steps {
                         bat '''
-                            venv\\Scripts\\python.exe -m pytest tests --protocol ethernet
                             venv\\Scripts\\python.exe -m coverage run -m pytest tests --protocol ethernet --junitxml=pytest_ethernet_report.xml
                             move .coverage .coverage_ethernet
                             exit /b 0
