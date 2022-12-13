@@ -163,9 +163,9 @@ def test_virtual_disturbance(virtual_drive, read_config):
         dtypes.append(reg.dtype)
         data_arr.append([0, -1, 2, 3])
     
-    servo.disturbance_enable()
     channels = list(range(len(registers_key)))
     servo.disturbance_write_data(channels, dtypes, data_arr)
+    servo.disturbance_enable()
     
     for channel in range(len(registers_key)):
         assert server._VirtualDrive__disturbance.channels[channel]["data"] == data_arr[channel]

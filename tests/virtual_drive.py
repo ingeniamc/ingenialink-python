@@ -41,18 +41,6 @@ class VirtualMonDistBase():
 
     def enable(self):
         """Enable Monitoring/Disturbance."""
-        self.bytes_per_block = 0
-        for channel in range(self.number_mapped_registers):
-            subnode, address, dtype, size = self.get_mapped_register(channel)
-            self.channels[channel] = {
-                "data": [],
-                "dtype": REG_DTYPE(dtype),
-                "address": address,
-                "subnode": subnode,
-                "size": size,
-                "signal": []
-            }
-            self.bytes_per_block += size
         self.enabled = True
 
     def disable(self):
@@ -120,7 +108,22 @@ class VirtualMonDistBase():
         dtype = data_l >> 8
         size = data_l & 0x00FF
         return subnode, address, dtype, size
-    
+
+    def map_registers(self):
+        """Creates the channels attribute based on mapped registers."""
+        self.bytes_per_block = 0
+        for channel in range(self.number_mapped_registers):
+            subnode, address, dtype, size = self.get_mapped_register(channel)
+            self.channels[channel] = {
+                "data": [],
+                "dtype": REG_DTYPE(dtype),
+                "address": address,
+                "subnode": subnode,
+                "size": size,
+                "signal": []
+            }
+            self.bytes_per_block += size
+
 
 class VirtualMonitoring(VirtualMonDistBase):
     """Emulates monitoring at the VirtualDrive.
@@ -144,6 +147,7 @@ class VirtualMonitoring(VirtualMonDistBase):
         super().__init__(drive)
 
     def enable(self):
+        super().map_registers()
         super().enable()
         self.__create_signals()
 
@@ -218,6 +222,8 @@ class VirtualDisturbance(VirtualMonDistBase):
 
     def append_data(self, data):
         """Append received disturbance data until the buffer is full."""
+        if len(self.channels) == 0:
+            super().map_registers()
         self.received_bytes += data
         self.available_bytes = len(self.received_bytes)
         if self.available_bytes == self.buffer_size_bytes:
@@ -292,7 +298,7 @@ class VirtualDrive(Thread):
             register = self.get_register(subnode, reg_add)
             if cmd == self.WRITE_CMD:
                 sent_cmd = self.ACK_CMD
-                response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data)
+                response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data[:8])
                 if register.access in [REG_ACCESS.RW, REG_ACCESS.WO]: # TODO: send error otherwise
                     value = convert_bytes_to_dtype(data, register.dtype)
                     self.set_value_by_id(subnode, register.identifier, value)
