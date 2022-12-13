@@ -118,7 +118,7 @@ pipeline {
                 }
                 stage('Archive') {
                     steps {
-                        stash includes: 'pytest_no_connection_report.xml, pytest_ethercat_report.xml', name: 'coverage_reports'
+                        stash includes: '.coverage_no_connection, .coverage_ethercat', name: 'coverage_reports'
                     }
                 }
             }
