@@ -69,6 +69,9 @@ pipeline {
             }
         }
         stage('EtherCAT and no-connection tests') {
+            options {
+                lock(ECAT_NODE_LOCK)
+            }
             agent {
                 label ECAT_NODE
             }
@@ -115,6 +118,9 @@ pipeline {
             }
         }
         stage('CANopen and Ethernet tests') {
+            options {
+                lock(CAN_NODE_LOCK)
+            }
             agent {
                 label CAN_NODE
             }
