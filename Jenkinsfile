@@ -102,17 +102,26 @@ pipeline {
                 stage('Run EtherCAT tests') {
                     steps {
                         bat '''
-                            venv\\Scripts\\python.exe -m pytest tests --protocol ethercat
+                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --protocol ethercat --junitxml=pytest_ethercat_report.xml
+                            move .coverage .coverage_ethercat
                             exit /b 0
                         '''
+                        junit 'pytest_ethercat_report.xml'
                     }
                 }
                 stage('Run no-connection tests') {
                     steps {
                         bat '''
-                            venv\\Scripts\\python.exe -m pytest tests
+                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --junitxml=pytest_no_connection_report.xml
+                            move .coverage .coverage_no_connection
                             exit /b 0
                         '''
+                        junit 'pytest_no_connection_report.xml'
+                    }
+                }
+                stage('Archive') {
+                    steps {
+                        stash includes: '.coverage_no_connection, .coverage_ethercat', name: 'coverage_reports'
                     }
                 }
             }
@@ -151,17 +160,32 @@ pipeline {
                 stage('Run CANopen tests') {
                     steps {
                         bat '''
-                            venv\\Scripts\\python.exe -m pytest tests --protocol canopen
+                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --protocol canopen --junitxml=pytest_canopen_report.xml
+                            move .coverage .coverage_canopen
                             exit /b 0
                         '''
+                        junit 'pytest_canopen_report.xml'
                     }
                 }
                 stage('Run Ethernet tests') {
                     steps {
                         bat '''
-                            venv\\Scripts\\python.exe -m pytest tests --protocol ethernet
+                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --protocol ethernet --junitxml=pytest_ethernet_report.xml
+                            move .coverage .coverage_ethernet
                             exit /b 0
                         '''
+                        junit 'pytest_ethernet_report.xml'
+                    }
+                }
+                stage('Save test results') {
+                    steps {
+                        unstash 'coverage_reports'
+                        bat '''
+                            venv\\Scripts\\python.exe -m coverage combine .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
+                            venv\\Scripts\\python.exe -m coverage xml --include=ingenialink/*
+                        '''
+                        publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
+                        archiveArtifacts artifacts: '*.xml'
                     }
                 }
             }
