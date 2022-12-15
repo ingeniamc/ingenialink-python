@@ -23,6 +23,8 @@
     "baudrate": 1000000,
     "channel": 0,
     "save_config_file": "canopen-config.xcf",
-    "load_config_file": "resources/configurations/canopen-config.xcf"
+    "load_config_file": "resources/configurations/canopen-config.xcf",
+    "fw_file": "resources/firmware/eve-net-c_1.8.1.sfu",
+    "test_fw_file": "resources/firmware/eve-net-c_1.7.0.sfu"	
   }
 }
