@@ -172,6 +172,7 @@ def test_read_configuration_file(read_config):
     assert registers[0].get("dtype") == "s32"
     assert registers[0].get("subnode") == "0"
 
+
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
@@ -230,6 +231,7 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
     with pytest.raises(ValueError):
         servo.load_configuration(str(modified_path), subnode=0)
 
+
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
@@ -243,7 +245,6 @@ def test_store_parameters(connect_to_slave):
     assert value is not None
 
     # TODO: add a power cycle if possible to check the NVM
-
 
 
 @pytest.mark.canopen
