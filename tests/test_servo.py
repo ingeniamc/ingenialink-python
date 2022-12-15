@@ -1,6 +1,8 @@
 import os
 import pytest
 import time
+import shutil
+from pathlib import Path
 import xml.etree.ElementTree as ET
 
 from ingenialink.utils._utils import get_drive_identification
