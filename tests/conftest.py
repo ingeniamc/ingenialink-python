@@ -10,17 +10,21 @@ ALLOW_PROTOCOLS = ["ethernet", "ethercat", "canopen"]
 
 
 def pytest_addoption(parser):
-    parser.addoption("--protocol", action="store", default="ethernet",
-                     help=",".join(ALLOW_PROTOCOLS), choices=ALLOW_PROTOCOLS)
-    parser.addoption("--slave", type=int, default=0,
-                     help="Slave index in config.json")
+    parser.addoption(
+        "--protocol",
+        action="store",
+        default="ethernet",
+        help=",".join(ALLOW_PROTOCOLS),
+        choices=ALLOW_PROTOCOLS,
+    )
+    parser.addoption("--slave", type=int, default=0, help="Slave index in config.json")
 
 
 @pytest.fixture
 def read_config(request):
-    config = 'tests/config.json'
-    print('current config file:', config)
-    with open(config, "r", encoding='utf-8') as fp:
+    config = "tests/config.json"
+    print("current config file:", config)
+    with open(config, "r", encoding="utf-8") as fp:
         contents = json.load(fp)
     slave = request.config.getoption("--slave")
     for key in contents:
@@ -42,14 +46,17 @@ def pytest_collection_modifyitems(config, items):
 
 
 def connect_canopen(protocol_contents):
-    net = CanopenNetwork(device=CAN_DEVICE(protocol_contents['device']),
-                         channel=protocol_contents['channel'],
-                         baudrate=CAN_BAUDRATE(protocol_contents['baudrate']))
+    net = CanopenNetwork(
+        device=CAN_DEVICE(protocol_contents["device"]),
+        channel=protocol_contents["channel"],
+        baudrate=CAN_BAUDRATE(protocol_contents["baudrate"]),
+    )
 
     servo = net.connect_to_slave(
-        target=protocol_contents['node_id'],
-        dictionary=protocol_contents['dictionary'],
-        eds=protocol_contents['eds'])
+        target=protocol_contents["node_id"],
+        dictionary=protocol_contents["dictionary"],
+        eds=protocol_contents["eds"],
+    )
     return servo, net
 
 
@@ -57,19 +64,19 @@ def connect_ethernet(protocol_contents):
     net = EthernetNetwork()
 
     servo = net.connect_to_slave(
-        protocol_contents['ip'],
-        protocol_contents['dictionary'],
-        protocol_contents['port'],
-        NET_TRANS_PROT[protocol_contents['protocol']])
+        protocol_contents["ip"],
+        protocol_contents["dictionary"],
+        protocol_contents["port"],
+        NET_TRANS_PROT[protocol_contents["protocol"]],
+    )
     return servo, net
 
 
 def connect_ethercat(protocol_contents):
-    net = EthercatNetwork(protocol_contents['ifname'])
+    net = EthercatNetwork(protocol_contents["ifname"])
 
     servo = net.connect_to_slave(
-        target=protocol_contents['slave'],
-        dictionary=protocol_contents['dictionary']
+        target=protocol_contents["slave"], dictionary=protocol_contents["dictionary"]
     )
     return servo, net
 

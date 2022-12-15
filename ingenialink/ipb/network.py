@@ -7,11 +7,13 @@ from ingenialink.exceptions import ILError
 from ingenialink.utils._utils import pstr, raise_err, raise_null
 
 import ingenialogger
+
 logger = ingenialogger.get_logger(__name__)
 
 
 class NET_PROT(Enum):
     """Network Protocol."""
+
     EUSB = lib.IL_NET_PROT_EUSB
     MCB = lib.IL_NET_PROT_MCB
     ETH = lib.IL_NET_PROT_ETH
@@ -21,6 +23,7 @@ class NET_PROT(Enum):
 
 class NET_STATE(Enum):
     """Network State."""
+
     CONNECTED = lib.IL_NET_STATE_CONNECTED
     DISCONNECTED = lib.IL_NET_STATE_DISCONNECTED
     FAULTY = lib.IL_NET_STATE_FAULTY
@@ -28,8 +31,10 @@ class NET_STATE(Enum):
 
 class NET_DEV_EVT(Enum):
     """Device Event."""
+
     ADDED = lib.IL_NET_DEV_EVT_ADDED
     REMOVED = lib.IL_NET_DEV_EVT_REMOVED
+
 
 @ffi.def_extern()
 def _on_found_cb(ctx, servo_id):
@@ -43,6 +48,7 @@ def _on_evt_cb(ctx, evt, port):
     """On event callback shim."""
     self = ffi.from_handle(ctx)
     self._on_evt(NET_DEV_EVT(evt), pstr(port))
+
 
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
@@ -74,6 +80,7 @@ class NetStatusListener(Thread):
 
 class IPBNetwork(ABC):
     """IPB Network defines a general class for all IPB based communications."""
+
     def __init__(self):
         super(IPBNetwork, self).__init__()
         self.servos = []
@@ -126,7 +133,7 @@ class IPBNetwork(ABC):
 
         """
         if callback in self.__observers_net_state:
-            logger.info('Callback already subscribed.')
+            logger.info("Callback already subscribed.")
             return
         self.__observers_net_state.append(callback)
 
@@ -138,7 +145,7 @@ class IPBNetwork(ABC):
 
         """
         if callback not in self.__observers_net_state:
-            logger.info('Callback not subscribed.')
+            logger.info("Callback not subscribed.")
             return
         self.__observers_net_state.remove(callback)
 
@@ -159,7 +166,7 @@ class IPBNetwork(ABC):
         r = lib.il_net_set_status_check_stop(self._cffi_network, stop)
 
         if r < 0:
-            raise ILError('Could not start servo monitoring')
+            raise ILError("Could not start servo monitoring")
 
     def start_status_listener(self):
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
@@ -171,8 +178,10 @@ class IPBNetwork(ABC):
     def stop_status_listener(self):
         """Stop monitoring network events (CONNECTION/DISCONNECTION)."""
         self._set_status_check_stop(1)
-        if self.__listener_net_status is not None and \
-                self.__listener_net_status.is_alive():
+        if (
+            self.__listener_net_status is not None
+            and self.__listener_net_status.is_alive()
+        ):
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
         self.__listener_net_status = None
@@ -195,7 +204,7 @@ class IPBNetwork(ABC):
             int: Result code.
 
         """
-        return lib.il_net_set_recv_timeout(self._cffi_network, timeout*1000)
+        return lib.il_net_set_recv_timeout(self._cffi_network, timeout * 1000)
 
     @property
     def protocol(self):
@@ -218,9 +227,10 @@ class NetworkMonitor:
         ILCreationError: If the monitor cannot be created.
 
     """
+
     def __init__(self, prot):
         if not isinstance(prot, NET_PROT):
-            raise TypeError('Invalid protocol')
+            raise TypeError("Invalid protocol")
 
         mon = lib.il_net_dev_mon_create(prot.value)
         raise_null(mon)

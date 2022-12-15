@@ -2,7 +2,13 @@ from enum import Enum
 
 from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import *
-from ..register_deprecated import Register, REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
+from ..register_deprecated import (
+    Register,
+    REG_DTYPE,
+    REG_ACCESS,
+    REG_PHY,
+    dtypes_ranges,
+)
 
 import collections
 
@@ -16,10 +22,7 @@ def get_enums(enums, enums_count):
     """
     aux_enums = []
     for i in range(enums_count):
-        aux_dict = {
-            'label': pstr(enums[i].label),
-            'value': enums[i].value
-        }
+        aux_dict = {"label": pstr(enums[i].label), "value": enums[i].value}
         aux_enums.append(aux_dict)
     return aux_enums
 
@@ -124,10 +127,25 @@ def ipb_register_from_cffi(cffi_register):
     if cffi_register.labels != ffi.NULL:
         labels = LabelsDictionary._from_labels(cffi_register.labels)
 
-    return IPBRegister(identifier, units, cyclic, dtype, access,
-                       address, phy, subnode, storage, reg_range,
-                       labels, enums, enums_count, cat_id, scat_id,
-                       internal_use, cffi_register)
+    return IPBRegister(
+        identifier,
+        units,
+        cyclic,
+        dtype,
+        access,
+        address,
+        phy,
+        subnode,
+        storage,
+        reg_range,
+        labels,
+        enums,
+        enums_count,
+        cat_id,
+        scat_id,
+        internal_use,
+        cffi_register,
+    )
 
 
 class IPBRegister(Register):
@@ -155,26 +173,54 @@ class IPBRegister(Register):
 
     """
 
-    def __init__(self, identifier, units, cyclic, dtype, access, address,
-                 phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=None,
-                 labels=None, enums=None, cat_id=None, scat_id=None,
-                 internal_use=0, c_reg=None):
+    def __init__(
+        self,
+        identifier,
+        units,
+        cyclic,
+        dtype,
+        access,
+        address,
+        phy=REG_PHY.NONE,
+        subnode=1,
+        storage=None,
+        reg_range=None,
+        labels=None,
+        enums=None,
+        cat_id=None,
+        scat_id=None,
+        internal_use=0,
+        c_reg=None,
+    ):
         if labels is None:
             labels = {}
         if enums is None:
             enums = {}
         super(IPBRegister, self).__init__(
-            identifier, units, cyclic, dtype, access, phy, subnode, storage,
-            reg_range, labels, enums, cat_id, scat_id, internal_use)
+            identifier,
+            units,
+            cyclic,
+            dtype,
+            access,
+            phy,
+            subnode,
+            storage,
+            reg_range,
+            labels,
+            enums,
+            cat_id,
+            scat_id,
+            internal_use,
+        )
 
         if not isinstance(dtype, REG_DTYPE):
-            raise TypeError('Invalid data type')
+            raise TypeError("Invalid data type")
         if not isinstance(access, REG_ACCESS):
-            raise TypeError('Invalid access type')
+            raise TypeError("Invalid access type")
         if not isinstance(phy, REG_PHY):
-            raise TypeError('Invalid physical units type')
+            raise TypeError("Invalid physical units type")
         if not cat_id and scat_id:
-            raise ValueError('Sub-category requires a parent category')
+            raise ValueError("Sub-category requires a parent category")
 
         self._address = address
         self._labels = LabelsDictionary(labels)
@@ -194,34 +240,37 @@ class IPBRegister(Register):
         if self.cat_id:
             cat_info = self.cat_id
             if self.scat_id:
-                cat_info += ' + ' + self.scat_id
+                cat_info += " + " + self.scat_id
         else:
-            cat_info = 'Uncategorized'
+            cat_info = "Uncategorized"
 
         if self.storage and self.storage_valid:
             storage_info = self.storage
         else:
-            storage_info = 'No storage'
+            storage_info = "No storage"
 
-        return '<Register: {}, {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [], {},' \
-               'ST: {}, [{}], {}>'.format(
+        return (
+            "<Register: {}, {}, {}, {}, 0x{:08x}, {}{}, {}, {}, [], {},"
+            "ST: {}, [{}], {}>".format(
                 self.identifier,
                 self.units,
                 self.subnode,
                 self.cyclic,
                 self.address,
                 self.dtype,
-                ' ∊ ' + str(self.range) if self.range else '',
+                " ∊ " + str(self.range) if self.range else "",
                 self.access,
                 self.phy,
                 self.enums,
                 self.enums_count,
                 storage_info,
                 cat_info,
-                self.internal_use)
+                self.internal_use,
+            )
+        )
 
     def __create_c_reg(self):
-        _reg = ffi.new('il_reg_t *')
+        _reg = ffi.new("il_reg_t *")
 
         _reg.identifier = ffi.new("char[]", cstr(self.identifier))
         _reg.units = ffi.new("char[]", cstr(self.units))
@@ -244,7 +293,7 @@ class IPBRegister(Register):
             REG_DTYPE.S32: "s32",
             REG_DTYPE.U64: "u64",
             REG_DTYPE.S64: "s64",
-            REG_DTYPE.FLOAT: "flt"
+            REG_DTYPE.FLOAT: "flt",
         }
         if self.dtype in REG_DTYPE and self.dtype in dtype_attr:
             attr_name = dtype_attr[self.dtype]
@@ -331,7 +380,7 @@ class LabelsDictionary(collections.abc.MutableMapping):
         lib.il_dict_labels_langs_destroy(langs)
 
     def __getitem__(self, lang):
-        content_p = ffi.new('char **')
+        content_p = ffi.new("char **")
         r = lib.il_dict_labels_get(self._labels, cstr(lang), content_p)
         raise_err(r)
 

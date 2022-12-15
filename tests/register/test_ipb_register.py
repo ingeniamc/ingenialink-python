@@ -18,12 +18,12 @@ def test_ipb_register(connect_to_slave):
     registers_sub_1 = servo.dictionary.registers(1)
     assert registers_sub_1
 
-    register = registers_sub_1.get('DRV_OP_CMD')
+    register = registers_sub_1.get("DRV_OP_CMD")
     assert isinstance(register, IPBRegister)
 
-    assert register.identifier == 'DRV_OP_CMD'
-    assert register.units == '-'
-    assert register.cyclic == 'CYCLIC_RX'
+    assert register.identifier == "DRV_OP_CMD"
+    assert register.units == "-"
+    assert register.cyclic == "CYCLIC_RX"
     assert register.dtype == REG_DTYPE.U16
     assert register.access, REG_ACCESS.RW
     assert register.address == 0x0014
@@ -35,6 +35,6 @@ def test_ipb_register(connect_to_slave):
     assert register.labels is not None
     assert len(register.enums) == 13
     assert register.enums_count == 13
-    assert register.cat_id == 'TARGET'
+    assert register.cat_id == "TARGET"
     assert register.scat_id is None
     assert register.internal_use == 0

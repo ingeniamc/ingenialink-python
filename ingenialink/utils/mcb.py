@@ -1,8 +1,7 @@
 import struct
 from binascii import crc_hqx
 
-from ingenialink.exceptions import ILWrongCRCError, ILNACKError,\
-    ILWrongRegisterError
+from ingenialink.exceptions import ILWrongCRCError, ILNACKError, ILWrongRegisterError
 
 
 class MCB:
@@ -10,6 +9,7 @@ class MCB:
     latency and high determinism in motion control systems where control loops
     work at high update rates (tens of kHz).
     """
+
     EXTENDED_MESSAGE_SIZE = 8
     MCB_DEFAULT_NODE = 0xA
     MCB_HEADER_H_SIZE = 2
@@ -42,21 +42,31 @@ class MCB:
         Returns:
             bin: MCB command message.
         """
-        node_head = (node << 4) | (subnode & 0xf)
-        node_head = struct.pack('<H', node_head)
+        node_head = (node << 4) | (subnode & 0xF)
+        node_head = struct.pack("<H", node_head)
 
         if size > self.EXTENDED_MESSAGE_SIZE:
             cmd = cmd + 1
-            head = struct.pack('<H', cmd)
-            head_size = struct.pack('<H', size)
+            head = struct.pack("<H", cmd)
+            head_size = struct.pack("<H", size)
             head_size = head_size + bytes(
-                [0] * (self.EXTENDED_MESSAGE_SIZE - len(head_size)))
-            ret = node_head + head + head_size + struct.pack(
-                '<H', crc_hqx(node_head + head + head_size, 0)) + data
+                [0] * (self.EXTENDED_MESSAGE_SIZE - len(head_size))
+            )
+            ret = (
+                node_head
+                + head
+                + head_size
+                + struct.pack("<H", crc_hqx(node_head + head + head_size, 0))
+                + data
+            )
         else:
-            head = struct.pack('<H', cmd)
-            ret = node_head + head + data + struct.pack(
-                '<H', crc_hqx(node_head + head + data, 0))
+            head = struct.pack("<H", cmd)
+            ret = (
+                node_head
+                + head
+                + data
+                + struct.pack("<H", crc_hqx(node_head + head + data, 0))
+            )
 
         return ret
 
@@ -89,20 +99,21 @@ class MCB:
             bytes: MCB frame.
         """
         if data is None:
-            data = b'\x00' * cls.MCB_DATA_SIZE
+            data = b"\x00" * cls.MCB_DATA_SIZE
         data_size = len(data)
         extended = data_size > cls.MCB_DATA_SIZE
         header_h = (cls.MCB_DEFAULT_NODE << 4) | subnode
         header_l = (address << 4) | (cmd << 1) | extended
-        header = header_h.to_bytes(cls.MCB_HEADER_H_SIZE, 'little') + \
-                 header_l.to_bytes(cls.MCB_HEADER_L_SIZE, 'little')
+        header = header_h.to_bytes(cls.MCB_HEADER_H_SIZE, "little") + header_l.to_bytes(
+            cls.MCB_HEADER_L_SIZE, "little"
+        )
         if extended:
-            config_data = data_size.to_bytes(cls.MCB_DATA_SIZE, 'little')
+            config_data = data_size.to_bytes(cls.MCB_DATA_SIZE, "little")
         else:
-            config_data = data + b'\x00' * (cls.MCB_DATA_SIZE - data_size)
+            config_data = data + b"\x00" * (cls.MCB_DATA_SIZE - data_size)
         frame = header + config_data
         crc = crc_hqx(frame, 0)
-        frame += crc.to_bytes(cls.MCB_CRC_SIZE, 'little')
+        frame += crc.to_bytes(cls.MCB_CRC_SIZE, "little")
         if extended:
             frame += data
         return frame
@@ -126,24 +137,27 @@ class MCB:
         Returns:
             bytes: data contained in frame.
         """
-        recv_crc_bytes = frame[cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE
-                               :cls.MCB_FRAME_SIZE]
-        recv_crc = int.from_bytes(recv_crc_bytes, 'little')
-        calc_crc = crc_hqx(frame[:cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE], 0)
+        recv_crc_bytes = frame[
+            cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE : cls.MCB_FRAME_SIZE
+        ]
+        recv_crc = int.from_bytes(recv_crc_bytes, "little")
+        calc_crc = crc_hqx(frame[: cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE], 0)
         if recv_crc != calc_crc:
             raise ILWrongCRCError
         header_l = frame[cls.MCB_HEADER_L_SIZE]
         extended = header_l & 1
         ack_cmd = (header_l & 0xE) >> 1
         if ack_cmd != 3:
-            err = frame[cls.DATA_START_BYTE:cls.DATA_END_BYTE].hex()
-            raise ILNACKError(f'Communications error (NACK -> {err[::-1]})')
-        header = frame[cls.MCB_HEADER_L_SIZE:cls.MCB_HEADER_SIZE]
-        recv_add = (int.from_bytes(header, 'little')) >> 4
+            err = frame[cls.DATA_START_BYTE : cls.DATA_END_BYTE].hex()
+            raise ILNACKError(f"Communications error (NACK -> {err[::-1]})")
+        header = frame[cls.MCB_HEADER_L_SIZE : cls.MCB_HEADER_SIZE]
+        recv_add = (int.from_bytes(header, "little")) >> 4
         if expected_address != recv_add:
-            raise ILWrongRegisterError(f'Received address: {hex(recv_add)} does '
-                                       f'not match expected address: '
-                                       f'{hex(expected_address)}')
+            raise ILWrongRegisterError(
+                f"Received address: {hex(recv_add)} does "
+                f"not match expected address: "
+                f"{hex(expected_address)}"
+            )
         if extended:
             data_start_byte = cls.EXTENDED_DATA_START_BYTE
             data_end_byte = cls.EXTENDED_DATA_END_BYTE

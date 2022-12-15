@@ -15,6 +15,7 @@ class IPBPoller:
         ILCreationError: If the poller could not be created.
 
     """
+
     def __init__(self, servo, num_channels):
         self.__servo = servo
         self.__num_channels = num_channels
@@ -24,7 +25,7 @@ class IPBPoller:
         self._poller = ffi.gc(poller, lib.il_poller_destroy)
 
         self._n_ch = num_channels
-        self._acq = ffi.new('il_poller_acq_t **')
+        self._acq = ffi.new("il_poller_acq_t **")
 
     def start(self):
         """Start poller."""
@@ -86,14 +87,14 @@ class IPBPoller:
 
         """
         lib.il_poller_data_get(self._poller, self._acq)
-        acq = ffi.cast('il_poller_acq_t *', self._acq[0])
+        acq = ffi.cast("il_poller_acq_t *", self._acq[0])
 
-        t = list(acq.t[0:acq.cnt])
+        t = list(acq.t[0 : acq.cnt])
 
         d = []
         for ch in range(self._n_ch):
             if acq.d[ch] != ffi.NULL:
-                d.append(list(acq.d[ch][0:acq.cnt]))
+                d.append(list(acq.d[ch][0 : acq.cnt]))
             else:
                 d.append(None)
 

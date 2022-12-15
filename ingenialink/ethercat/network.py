@@ -10,34 +10,35 @@ from ingenialink.network import EEPROM_FILE_FORMAT
 
 import os
 import ingenialogger
+
 logger = ingenialogger.get_logger(__name__)
 
 
 FIRMWARE_UPDATE_ERROR = {
-    lib.UP_STATEMACHINE_ERROR: 'Slave could not enter the expected state',
-    lib.UP_NOT_IN_BOOT_ERROR: 'Slave is not in Boot Mode',
-    lib.UP_EEPROM_PDI_ERROR: 'EEPROM PDI Error',
-    lib.UP_EEPROM_FILE_ERROR: 'File was not read properly',
-    lib.UP_NOT_FOUND_ERROR: 'No slaves were found',
-    lib.UP_NO_SOCKET: 'No socket connection was found. Execute as Root',
-    lib.UP_FORCE_BOOT_ERROR: 'Could not force Boot mode',
-
-    lib.SOEM_EC_ERR_TYPE_SDO_ERROR: 'EtherCAT Error. SDO error',
-    lib.SOEM_EC_ERR_TYPE_EMERGENCY: 'EtherCAT Error. Emergency error',
-    lib.SOEM_EC_ERR_TYPE_PACKET_ERROR: 'EtherCAT Error. Packet error',
-    lib.SOEM_EC_ERR_TYPE_SDOINFO_ERROR: 'EtherCAT Error. SDO Info error',
-    lib.SOEM_EC_ERR_TYPE_FOE_ERROR: 'EtherCAT Error. FOE error',
-    lib.SOEM_EC_ERR_TYPE_FOE_BUF2SMALL: 'EtherCAT Error. Buffer too small error',
-    lib.SOEM_EC_ERR_TYPE_FOE_PACKETNUMBER: 'EtherCAT Error. FOE Packet number error',
-    lib.SOEM_EC_ERR_TYPE_SOE_ERROR: 'EtherCAT Error. SOE error',
-    lib.SOEM_EC_ERR_TYPE_MBX_ERROR: 'EtherCAT Error. MBX error',
-    lib.SOEM_EC_ERR_TYPE_FOE_FILE_NOTFOUND: 'EtherCAT Error. FOE File not found error',
-    lib.SOEM_EC_ERR_TYPE_EOE_INVALID_RX_DATA: 'EtherCAT Error. Invalid RX Data error'
+    lib.UP_STATEMACHINE_ERROR: "Slave could not enter the expected state",
+    lib.UP_NOT_IN_BOOT_ERROR: "Slave is not in Boot Mode",
+    lib.UP_EEPROM_PDI_ERROR: "EEPROM PDI Error",
+    lib.UP_EEPROM_FILE_ERROR: "File was not read properly",
+    lib.UP_NOT_FOUND_ERROR: "No slaves were found",
+    lib.UP_NO_SOCKET: "No socket connection was found. Execute as Root",
+    lib.UP_FORCE_BOOT_ERROR: "Could not force Boot mode",
+    lib.SOEM_EC_ERR_TYPE_SDO_ERROR: "EtherCAT Error. SDO error",
+    lib.SOEM_EC_ERR_TYPE_EMERGENCY: "EtherCAT Error. Emergency error",
+    lib.SOEM_EC_ERR_TYPE_PACKET_ERROR: "EtherCAT Error. Packet error",
+    lib.SOEM_EC_ERR_TYPE_SDOINFO_ERROR: "EtherCAT Error. SDO Info error",
+    lib.SOEM_EC_ERR_TYPE_FOE_ERROR: "EtherCAT Error. FOE error",
+    lib.SOEM_EC_ERR_TYPE_FOE_BUF2SMALL: "EtherCAT Error. Buffer too small error",
+    lib.SOEM_EC_ERR_TYPE_FOE_PACKETNUMBER: "EtherCAT Error. FOE Packet number error",
+    lib.SOEM_EC_ERR_TYPE_SOE_ERROR: "EtherCAT Error. SOE error",
+    lib.SOEM_EC_ERR_TYPE_MBX_ERROR: "EtherCAT Error. MBX error",
+    lib.SOEM_EC_ERR_TYPE_FOE_FILE_NOTFOUND: "EtherCAT Error. FOE File not found error",
+    lib.SOEM_EC_ERR_TYPE_EOE_INVALID_RX_DATA: "EtherCAT Error. Invalid RX Data error",
 }
 
 
 class EEPROM_TOOL_MODE(Enum):
     """EEPROM tool mode."""
+
     MODE_NONE = 0
     MODE_READBIN = 1
     MODE_READINTEL = 2
@@ -54,6 +55,7 @@ class EthercatNetwork(IPBNetwork):
         interface_name (str): Interface name to be targeted.
 
     """
+
     def __init__(self, interface_name):
         super(EthercatNetwork, self).__init__()
         self.interface_name = interface_name
@@ -87,21 +89,23 @@ class EthercatNetwork(IPBNetwork):
 
         """
         if not os.path.isfile(fw_file):
-            raise FileNotFoundError('Could not find {}.'.format(fw_file))
+            raise FileNotFoundError("Could not find {}.".format(fw_file))
 
         if boot_in_app is None:
             if not fw_file.endswith((FILE_EXT_SFU, FILE_EXT_LFU)):
-                raise ValueError(f'Firmware file should have extension '
-                                 f'{FILE_EXT_SFU} or {FILE_EXT_LFU}')
+                raise ValueError(
+                    f"Firmware file should have extension "
+                    f"{FILE_EXT_SFU} or {FILE_EXT_LFU}"
+                )
             boot_in_app = fw_file.endswith(FILE_EXT_SFU)
-        self._cffi_network = ffi.new('il_net_t **')
-        _interface_name = cstr(self.interface_name) \
-            if self.interface_name else ffi.NULL
+        self._cffi_network = ffi.new("il_net_t **")
+        _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
         _fw_file = cstr(fw_file) if fw_file else ffi.NULL
         r = lib.il_net_update_firmware(
-            self._cffi_network, _interface_name, target, _fw_file, boot_in_app)
+            self._cffi_network, _interface_name, target, _fw_file, boot_in_app
+        )
         if r < 0:
-            error_msg = 'Error updating firmware. Error code: {}'.format(r)
+            error_msg = "Error updating firmware. Error code: {}".format(r)
             if r in FIRMWARE_UPDATE_ERROR:
                 error_msg = FIRMWARE_UPDATE_ERROR[r]
             raise ILFirmwareLoadError(error_msg)
@@ -119,20 +123,21 @@ class EthercatNetwork(IPBNetwork):
 
         """
         if file_format not in EEPROM_FILE_FORMAT:
-            raise ILError('Invalid file format')
+            raise ILError("Invalid file format")
         if file_format == EEPROM_FILE_FORMAT.BINARY:
             mode = EEPROM_TOOL_MODE.MODE_READBIN.value
         else:
             mode = EEPROM_TOOL_MODE.MODE_READINTEL.value
 
-        self._cffi_network = ffi.new('il_net_t **')
+        self._cffi_network = ffi.new("il_net_t **")
         _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
         _eeprom_file = cstr(eeprom_file) if eeprom_file else ffi.NULL
 
         r = lib.il_net_eeprom_tool(
-            self._cffi_network, _interface_name, slave, mode, _eeprom_file)
+            self._cffi_network, _interface_name, slave, mode, _eeprom_file
+        )
         if r < 0:
-            raise ILError('Failed reading EEPROM file.')
+            raise ILError("Failed reading EEPROM file.")
 
     def _write_eeprom(self, eeprom_file, slave, file_format):
         """Loads an EEPROM file to use as configuration.
@@ -147,20 +152,21 @@ class EthercatNetwork(IPBNetwork):
 
         """
         if file_format not in EEPROM_FILE_FORMAT:
-            raise ILError('Invalid file format')
+            raise ILError("Invalid file format")
         if file_format == EEPROM_FILE_FORMAT.BINARY:
             mode = EEPROM_TOOL_MODE.MODE_WRITEBIN.value
         else:
             mode = EEPROM_TOOL_MODE.MODE_WRITEINTEL.value
 
-        self._cffi_network = ffi.new('il_net_t **')
+        self._cffi_network = ffi.new("il_net_t **")
         _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
         _eeprom_file = cstr(eeprom_file) if eeprom_file else ffi.NULL
 
         r = lib.il_net_eeprom_tool(
-            self._cffi_network, _interface_name, slave, mode, _eeprom_file)
+            self._cffi_network, _interface_name, slave, mode, _eeprom_file
+        )
         if r < 0:
-            raise ILError('Failed writing EEPROM file.')
+            raise ILError("Failed writing EEPROM file.")
 
     def _write_eeprom_alias(self, eeprom_file, slave):
         """Writes the configuration station alias.
@@ -173,15 +179,19 @@ class EthercatNetwork(IPBNetwork):
             ILError: In case the operation does not succeed.
 
         """
-        self._cffi_network = ffi.new('il_net_t **')
+        self._cffi_network = ffi.new("il_net_t **")
         _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
         _eeprom_file = cstr(eeprom_file) if eeprom_file else ffi.NULL
 
         r = lib.il_net_eeprom_tool(
-            self._cffi_network, _interface_name, slave,
-            EEPROM_TOOL_MODE.MODE_WRITEALIAS.value, _eeprom_file)
+            self._cffi_network,
+            _interface_name,
+            slave,
+            EEPROM_TOOL_MODE.MODE_WRITEALIAS.value,
+            _eeprom_file,
+        )
         if r < 0:
-            raise ILError('Failed writing EEPROM alias.')
+            raise ILError("Failed writing EEPROM alias.")
 
     def scan_slaves(self):
         """Scan all the slaves connected in the network.
@@ -190,17 +200,21 @@ class EthercatNetwork(IPBNetwork):
             list: List of number of slaves connected to the network.
 
         """
-        _interface_name = cstr(self.interface_name) \
-            if self.interface_name else ffi.NULL
+        _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
 
         number_slaves = lib.il_net_num_slaves_get(_interface_name)
         return [slave + 1 for slave in range(number_slaves)]
 
-    def connect_to_slave(self, target=1, dictionary="", use_eoe_comms=1,
-                         reconnection_retries=DEFAULT_MESSAGE_RETRIES,
-                         reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT,
-                         servo_status_listener=False,
-                         net_status_listener=False):
+    def connect_to_slave(
+        self,
+        target=1,
+        dictionary="",
+        use_eoe_comms=1,
+        reconnection_retries=DEFAULT_MESSAGE_RETRIES,
+        reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT,
+        servo_status_listener=False,
+        net_status_listener=False,
+    ):
         """Connect a slave through an EtherCAT connection.
 
         Args:
@@ -219,24 +233,29 @@ class EthercatNetwork(IPBNetwork):
             EthercatServo: Instance of the connected servo.
 
         """
-        _interface_name = cstr(self.interface_name) \
-            if self.interface_name else ffi.NULL
+        _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
         _dictionary = cstr(dictionary) if dictionary else ffi.NULL
 
-        _servo = ffi.new('il_servo_t **')
-        self._cffi_network = ffi.new('il_net_t **')
-        r = lib.il_servo_connect_ecat(3, _interface_name, self._cffi_network,
-                                      _servo, _dictionary, 1061,
-                                      target, use_eoe_comms)
+        _servo = ffi.new("il_servo_t **")
+        self._cffi_network = ffi.new("il_net_t **")
+        r = lib.il_servo_connect_ecat(
+            3,
+            _interface_name,
+            self._cffi_network,
+            _servo,
+            _dictionary,
+            1061,
+            target,
+            use_eoe_comms,
+        )
         if r <= 0:
             _servo = None
             self._cffi_network = None
-            raise ILError('Could not find any servos connected.')
+            raise ILError("Could not find any servos connected.")
 
-        net_ = ffi.cast('il_net_t *', self._cffi_network[0])
-        servo_ = ffi.cast('il_servo_t *', _servo[0])
-        servo = EthercatServo(servo_, net_, target, dictionary,
-                              servo_status_listener)
+        net_ = ffi.cast("il_net_t *", self._cffi_network[0])
+        servo_ = ffi.cast("il_servo_t *", _servo[0])
+        servo = EthercatServo(servo_, net_, target, dictionary, servo_status_listener)
         self._cffi_network = net_
         self.servos.append(servo)
 
@@ -264,8 +283,7 @@ class EthercatNetwork(IPBNetwork):
         lib.il_net_destroy(self._cffi_network)
         self._cffi_network = None
         if r < 0:
-            raise ILError('Error disconnecting the drive. '
-                          'Return code: {}'.format(r))
+            raise ILError("Error disconnecting the drive. " "Return code: {}".format(r))
 
     @property
     def protocol(self):

@@ -1,7 +1,13 @@
 import pytest
 
 from ingenialink.canopen.dictionary import CanopenDictionary
-from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
+from ingenialink.canopen.register import (
+    CanopenRegister,
+    REG_DTYPE,
+    REG_ACCESS,
+    REG_PHY,
+    REG_ADDRESS_TYPE,
+)
 
 
 @pytest.mark.smoke
@@ -18,16 +24,31 @@ def test_getters_canopen_register():
     test_storage = 1
     test_reg_range = (-20, 20)
     test_labels = "Monitoring trigger type"
-    test_enums = {'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'}
+    test_enums = {"0": "TRIGGER_EVENT_AUTO", "1": "TRIGGER_EVENT_FORCED"}
     test_enums_count = 2
     test_cat_id = "MONITORING"
     test_scat_id = "SUB_CATEGORY_TEST"
     test_internal_use = "No description (invent here)"
     test_address_type = REG_ADDRESS_TYPE.NVM
-    register = CanopenRegister(test_identification, test_units, test_cyclic, test_idx, test_subidx,
-                               test_dtype, test_access, test_phy, test_subnode, test_storage,
-                               test_reg_range, test_labels, test_enums,
-                               test_cat_id, test_scat_id, test_internal_use, test_address_type)
+    register = CanopenRegister(
+        test_identification,
+        test_units,
+        test_cyclic,
+        test_idx,
+        test_subidx,
+        test_dtype,
+        test_access,
+        test_phy,
+        test_subnode,
+        test_storage,
+        test_reg_range,
+        test_labels,
+        test_enums,
+        test_cat_id,
+        test_scat_id,
+        test_internal_use,
+        test_address_type,
+    )
 
     assert register.identifier == test_identification
     assert register.units == test_units
@@ -45,7 +66,7 @@ def test_getters_canopen_register():
 
     test_aux_enums = []
     for key, value in test_enums.items():
-        test_dictionary = {'label': value, 'value': int(key)}
+        test_dictionary = {"label": value, "value": int(key)}
         test_aux_enums.append(test_dictionary)
 
     assert register.enums == test_aux_enums
@@ -67,12 +88,12 @@ def test_canopen_connection_register(connect_to_slave):
     registers_sub_1 = servo.dictionary.registers(1)
     assert registers_sub_1 is not None
 
-    register = registers_sub_1.get('DRV_OP_CMD')
+    register = registers_sub_1.get("DRV_OP_CMD")
     assert isinstance(register, CanopenRegister)
 
-    assert register.identifier == 'DRV_OP_CMD'
-    assert register.units == '-'
-    assert register.cyclic == 'CYCLIC_RX'
+    assert register.identifier == "DRV_OP_CMD"
+    assert register.units == "-"
+    assert register.cyclic == "CYCLIC_RX"
     assert register.dtype == REG_DTYPE.U16
     assert register.access, REG_ACCESS.RW
     assert register.idx == 0x2014
@@ -85,8 +106,6 @@ def test_canopen_connection_register(connect_to_slave):
     assert register.labels is not None
     assert len(register.enums) == 13
     assert register.enums_count == 13
-    assert register.cat_id == 'TARGET'
+    assert register.cat_id == "TARGET"
     assert register.scat_id is None
     assert register.internal_use == 0
-
-
