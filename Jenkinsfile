@@ -122,6 +122,7 @@ pipeline {
                 stage('Archive') {
                     steps {
                         stash includes: '.coverage_no_connection, .coverage_ethercat', name: 'coverage_reports'
+                        archiveArtifacts artifacts: '*.xml'
                     }
                 }
             }
