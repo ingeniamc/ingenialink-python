@@ -48,6 +48,7 @@ def test_connect_to_slave_target_not_in_nodes(read_config):
             dictionary=protocol_contents['dictionary'],
             eds=protocol_contents['eds']
         )
+    net._teardown_connection()
 
 
 @pytest.mark.no_connection
