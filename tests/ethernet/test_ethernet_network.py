@@ -43,16 +43,11 @@ def test_scan_slaves(read_config):
 def test_ethernet_connection(connect_to_slave, read_config):
     servo, net = connect_to_slave
     family = servo.socket.family
-    config_protocol = NET_TRANS_PROT[read_config['ethernet']['protocol']]
     ip, port = servo.socket.getpeername()
-    socket_protocol = {
-        socket.SOCK_DGRAM: NET_TRANS_PROT.UDP,
-        socket.SOCK_STREAM: NET_TRANS_PROT.TCP
-    }
     assert net._get_servo_state(read_config['ethernet']['ip']) == NET_STATE.CONNECTED
     assert net.protocol == NET_PROT.ETH
     assert family == socket.AF_INET
-    assert config_protocol == socket_protocol[servo.socket.type]
+    assert servo.socket.type == socket.SOCK_DGRAM
     assert ip == read_config['ethernet']['ip']
     assert port == read_config['ethernet']['port']
 
