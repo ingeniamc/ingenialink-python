@@ -1,160 +1,25 @@
 import os
 import time
 import threading
-from enum import Enum
 import xml.etree.ElementTree as ET
+from xml.dom import minidom
 from abc import abstractmethod
 
-from ._ingenialink import lib
-from .constants import DEFAULT_DRIVE_NAME
-from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError
+from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError, ILStateError
 from ingenialink.register import Register
 from ingenialink.utils._utils import get_drive_identification, cleanup_register, \
     raise_err, convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.constants import PASSWORD_RESTORE_ALL, PASSWORD_STORE_ALL, \
-    DEFAULT_PDS_TIMEOUT, MONITORING_BUFFER_SIZE
+    DEFAULT_PDS_TIMEOUT, MONITORING_BUFFER_SIZE, DEFAULT_DRIVE_NAME
 from ingenialink.utils import constants
-from ingenialink.register import REG_DTYPE
+from ingenialink.enums.register import REG_DTYPE, REG_ADDRESS_TYPE, REG_ACCESS
+from ingenialink.enums.servo import SERVO_STATE
 
 import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
-
-class SERVO_STATE(Enum):
-    """Servo states."""
-    NRDY = lib.IL_SERVO_STATE_NRDY
-    """Not ready to switch on."""
-    DISABLED = lib.IL_SERVO_STATE_DISABLED
-    """Switch on disabled."""
-    RDY = lib.IL_SERVO_STATE_RDY
-    """Ready to be switched on."""
-    ON = lib.IL_SERVO_STATE_ON
-    """Power switched on."""
-    ENABLED = lib.IL_SERVO_STATE_ENABLED
-    """Enabled."""
-    QSTOP = lib.IL_SERVO_STATE_QSTOP
-    """Quick stop."""
-    FAULTR = lib.IL_SERVO_STATE_FAULTR
-    """Fault reactive."""
-    FAULT = lib.IL_SERVO_STATE_FAULT
-    """Fault."""
-
-
-class SERVO_FLAGS(Enum):
-    """Status Flags."""
-    TGT_REACHED = lib.IL_SERVO_FLAG_TGT_REACHED
-    """Target reached."""
-    ILIM_ACTIVE = lib.IL_SERVO_FLAG_ILIM_ACTIVE
-    """Internal limit active."""
-    HOMING_ATT = lib.IL_SERVO_FLAG_HOMING_ATT
-    """(Homing) attained."""
-    HOMING_ERR = lib.IL_SERVO_FLAG_HOMING_ERR
-    """(Homing) error."""
-    PV_VZERO = lib.IL_SERVO_FLAG_PV_VZERO
-    """(PV) Vocity speed is zero."""
-    PP_SPACK = lib.IL_SERVO_FLAG_PP_SPACK
-    """(PP) SP acknowledge."""
-    IP_ACTIVE = lib.IL_SERVO_FLAG_IP_ACTIVE
-    """(IP) active."""
-    CS_FOLLOWS = lib.IL_SERVO_FLAG_CS_FOLLOWS
-    """(CST/CSV/CSP) follow command value."""
-    FERR = lib.IL_SERVO_FLAG_FERR
-    """(CST/CSV/CSP/PV) following error."""
-    IANGLE_DET = lib.IL_SERVO_FLAG_IANGLE_DET
-    """Initial angle determination finished."""
-
-
-class SERVO_MODE(Enum):
-    """Operation Mode."""
-    OLV = lib.IL_SERVO_MODE_OLV
-    """Open loop (vector mode)."""
-    OLS = lib.IL_SERVO_MODE_OLS
-    """Open loop (scalar mode)."""
-    PP = lib.IL_SERVO_MODE_PP
-    """Profile position mode."""
-    VEL = lib.IL_SERVO_MODE_VEL
-    """Velocity mode."""
-    PV = lib.IL_SERVO_MODE_PV
-    """Profile velocity mode."""
-    PT = lib.IL_SERVO_MODE_PT
-    """Profile torque mode."""
-    HOMING = lib.IL_SERVO_MODE_HOMING
-    """Homing mode."""
-    IP = lib.IL_SERVO_MODE_IP
-    """Interpolated position mode."""
-    CSP = lib.IL_SERVO_MODE_CSP
-    """Cyclic sync position mode."""
-    CSV = lib.IL_SERVO_MODE_CSV
-    """Cyclic sync velocity mode."""
-    CST = lib.IL_SERVO_MODE_CST
-    """Cyclic sync torque mode."""
-
-
-class SERVO_UNITS_TORQUE(Enum):
-    """Torque Units."""
-    NATIVE = lib.IL_UNITS_TORQUE_NATIVE
-    """Native"""
-    MN = lib.IL_UNITS_TORQUE_MNM
-    """Millinewtons*meter."""
-    N = lib.IL_UNITS_TORQUE_NM
-    """Newtons*meter."""
-
-
-class SERVO_UNITS_POS(Enum):
-    """Position Units."""
-    NATIVE = lib.IL_UNITS_POS_NATIVE
-    """Native."""
-    REV = lib.IL_UNITS_POS_REV
-    """Revolutions."""
-    RAD = lib.IL_UNITS_POS_RAD
-    """Radians."""
-    DEG = lib.IL_UNITS_POS_DEG
-    """Degrees."""
-    UM = lib.IL_UNITS_POS_UM
-    """Micrometers."""
-    MM = lib.IL_UNITS_POS_MM
-    """Millimeters."""
-    M = lib.IL_UNITS_POS_M
-    """Meters."""
-
-
-class SERVO_UNITS_VEL(Enum):
-    """Velocity Units."""
-    NATIVE = lib.IL_UNITS_VEL_NATIVE
-    """Native."""
-    RPS = lib.IL_UNITS_VEL_RPS
-    """Revolutions per second."""
-    RPM = lib.IL_UNITS_VEL_RPM
-    """Revolutions per minute."""
-    RAD_S = lib.IL_UNITS_VEL_RAD_S
-    """Radians/second."""
-    DEG_S = lib.IL_UNITS_VEL_DEG_S
-    """Degrees/second."""
-    UM_S = lib.IL_UNITS_VEL_UM_S
-    """Micrometers/second."""
-    MM_S = lib.IL_UNITS_VEL_MM_S
-    """Millimeters/second."""
-    M_S = lib.IL_UNITS_VEL_M_S
-    """Meters/second."""
-
-
-class SERVO_UNITS_ACC(Enum):
-    """Acceleration Units."""
-    NATIVE = lib.IL_UNITS_ACC_NATIVE
-    """Native."""
-    REV_S2 = lib.IL_UNITS_ACC_REV_S2
-    """Revolutions/second^2."""
-    RAD_S2 = lib.IL_UNITS_ACC_RAD_S2
-    """Radians/second^2."""
-    DEG_S2 = lib.IL_UNITS_ACC_DEG_S2
-    """Degrees/second^2."""
-    UM_S2 = lib.IL_UNITS_ACC_UM_S2
-    """Micrometers/second^2."""
-    MM_S2 = lib.IL_UNITS_ACC_MM_S2
-    """Millimeters/second^2."""
-    M_S2 = lib.IL_UNITS_ACC_M_S2
-    """Meters/second^2."""
+OPERATION_TIME_OUT = -3
 
 
 class ServoStatusListener(threading.Thread):
@@ -241,9 +106,9 @@ class Servo:
         self.units_acc = None
         """SERVO_UNITS_ACC: Acceleration units."""
         self.__state = {
-            1: lib.IL_SERVO_STATE_NRDY,
-            2: lib.IL_SERVO_STATE_NRDY,
-            3: lib.IL_SERVO_STATE_NRDY
+            1: SERVO_STATE.NRDY,
+            2: SERVO_STATE.NRDY,
+            3: SERVO_STATE.NRDY
         }
         self._lock = threading.RLock()
         self.__observers_servo_state = []
@@ -352,40 +217,46 @@ class Servo:
             raise ILError('Invalid subnode')
         prod_code, rev_number = get_drive_identification(self, subnode)
 
-        with open(self.dictionary.path, 'r', encoding='utf-8') as xml_file:
-            tree = ET.parse(xml_file)
-        root = tree.getroot()
+        tree = ET.Element("IngeniaDictionary")
+        header = ET.SubElement(tree, "Header")
+        version = ET.SubElement(header, "Version")
+        version.text = "2"
+        default_language = ET.SubElement(header, "DefaultLanguage")
+        default_language.text = "en_US"
 
-        body = root.find('Body')
-        device = root.find('Body/Device')
-        categories = root.find('Body/Device/Categories')
-        errors = root.find('Body/Errors')
+        body = ET.SubElement(tree, "Body")
+        device = ET.SubElement(body, "Device")
+        registers = ET.SubElement(device, "Registers")
 
-        if 'ProductCode' in device.attrib and prod_code is not None:
-            device.attrib['ProductCode'] = str(prod_code)
-        if 'RevisionNumber' in device.attrib and rev_number is not None:
-            device.attrib['RevisionNumber'] = str(rev_number)
+        device.set("Interface", self.dictionary.interface)
+        device.set("PartNumber", self.dictionary.part_number)
+        device.set("ProductCode", str(prod_code))
+        device.set("RevisionNumber", str(rev_number))
+        device.set("firmwareVersion", self.dictionary.firmware_version)
 
-        registers_category = root.find('Body/Device/Registers')
-        if registers_category is None:
-            # Multiaxis dictionary
-            axes_category = root.find('Body/Device/Axes')
-            list_axis = root.findall('Body/Device/Axes/Axis')
-            self.__update_multiaxis_dict(device, axes_category, list_axis, subnode)
+        access_ops = {value: key for key, value in self.dictionary.access_xdf_options.items()}
+        dtype_ops = {value: key for key, value in self.dictionary.dtype_xdf_options.items()}
+
+        if subnode is None:
+            subnodes = range(self.dictionary.subnodes)
         else:
-            # Single axis dictionary
-            registers = root.findall('Body/Device/Registers/Register')
-            self.__update_single_axis_dict(registers_category, registers, subnode)
+            subnodes = [subnode]
 
-        device.remove(categories)
-        body.remove(errors)
+        for subnode in subnodes:
+            registers_dict = self.dictionary.registers(subnode=subnode)
+            for reg_id, register in registers_dict.items():
+                if (register.address_type == REG_ADDRESS_TYPE.NVM_NONE) or (register.access != REG_ACCESS.RW):
+                    continue
+                register_xml = ET.SubElement(registers, "Register")
+                register_xml.set("access", access_ops[register.access])
+                register_xml.set("dtype", dtype_ops[register.dtype])
+                register_xml.set("id", reg_id)
+                self.__update_register_dict(register_xml, subnode)
+                register_xml.set("subnode", str(subnode))
 
-        image = root.find('./DriveImage')
-        if image is not None:
-            root.remove(image)
-
-        tree.write(config_file)
-        xml_file.close()
+        dom = minidom.parseString(ET.tostring(tree, encoding='utf-8'))
+        with open(config_file, "wb") as f:
+            f.write(dom.toprettyxml(indent='\t').encode())
 
     def restore_parameters(self, subnode=None):
         """Restore all the current parameters of all the slave to default.
@@ -491,28 +362,28 @@ class Servo:
         self._set_state(state, subnode)
 
         # Try fault reset if faulty
-        if self.status[subnode].value in [
-            lib.IL_SERVO_STATE_FAULT,
-            lib.IL_SERVO_STATE_FAULTR,
+        if self.status[subnode] in [
+            SERVO_STATE.FAULT,
+            SERVO_STATE.FAULTR,
         ]:
             self.fault_reset(subnode=subnode)
 
-        while self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+        while self.status[subnode] != SERVO_STATE.ENABLED:
             status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
-            if self.status[subnode].value != lib.IL_SERVO_STATE_ENABLED:
+            if self.status[subnode] != SERVO_STATE.ENABLED:
                 # Check state and command action to reach enabled
                 cmd = constants.IL_MC_PDS_CMD_EO
-                if self.status[subnode].value == lib.IL_SERVO_STATE_FAULT:
-                    raise_err(lib.IL_ESTATE)
-                elif self.status[subnode].value == lib.IL_SERVO_STATE_NRDY:
+                if self.status[subnode] == SERVO_STATE.FAULT:
+                    raise ILStateError(None)
+                elif self.status[subnode] == SERVO_STATE.NRDY:
                     cmd = constants.IL_MC_PDS_CMD_DV
-                elif self.status[subnode].value == \
-                        lib.IL_SERVO_STATE_DISABLED:
+                elif self.status[subnode] == \
+                        SERVO_STATE.DISABLED:
                     cmd = constants.IL_MC_PDS_CMD_SD
-                elif self.status[subnode].value == lib.IL_SERVO_STATE_RDY:
+                elif self.status[subnode] == SERVO_STATE.RDY:
                     cmd = constants.IL_MC_PDS_CMD_SOEO
 
                 self.write(self.CONTROL_WORD_REGISTERS[subnode], cmd,
@@ -550,13 +421,13 @@ class Servo:
         state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
 
-        while self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
+        while self.status[subnode] != SERVO_STATE.DISABLED:
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
 
-            if self.status[subnode].value in [
-                lib.IL_SERVO_STATE_FAULT,
-                lib.IL_SERVO_STATE_FAULTR,
+            if self.status[subnode] in [
+                SERVO_STATE.FAULT,
+                SERVO_STATE.FAULTR,
             ]:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
@@ -564,7 +435,7 @@ class Servo:
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
-            elif self.status[subnode].value != lib.IL_SERVO_STATE_DISABLED:
+            elif self.status[subnode] != SERVO_STATE.DISABLED:
                 # Check state and command action to reach disabled
                 self.write(self.CONTROL_WORD_REGISTERS[subnode],
                            constants.IL_MC_PDS_CMD_DV, subnode=subnode)
@@ -596,9 +467,9 @@ class Servo:
         status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                 subnode=subnode)
         state = self.status_word_decode(status_word)
-        if state.value in [
-            lib.IL_SERVO_STATE_FAULT,
-            lib.IL_SERVO_STATE_FAULTR,
+        if state in [
+            SERVO_STATE.FAULT,
+            SERVO_STATE.FAULTR,
         ]:
             # Check if faulty, if so try to reset (0->1)
             self.write(self.CONTROL_WORD_REGISTERS[subnode], 0,
@@ -630,12 +501,12 @@ class Servo:
         start_time = int(round(time.time() * 1000))
         actual_status_word = self.read(self.STATUS_WORD_REGISTERS[subnode],
                                        subnode=subnode)
+
         while actual_status_word == status_word:
             current_time = int(round(time.time() * 1000))
             time_diff = (current_time - start_time)
             if time_diff > timeout:
-                r = lib.IL_ETIMEDOUT
-                return r
+                return OPERATION_TIME_OUT
             actual_status_word = self.read(
                 self.STATUS_WORD_REGISTERS[subnode],
                 subnode=subnode)
@@ -658,31 +529,31 @@ class Servo:
         """
         if (status_word & constants.IL_MC_PDS_STA_NRTSO_MSK) == \
                 constants.IL_MC_PDS_STA_NRTSO:
-            state = lib.IL_SERVO_STATE_NRDY
+            state = SERVO_STATE.NRDY
         elif (status_word & constants.IL_MC_PDS_STA_SOD_MSK) == \
                 constants.IL_MC_PDS_STA_SOD:
-            state = lib.IL_SERVO_STATE_DISABLED
+            state = SERVO_STATE.DISABLED
         elif (status_word & constants.IL_MC_PDS_STA_RTSO_MSK) == \
                 constants.IL_MC_PDS_STA_RTSO:
-            state = lib.IL_SERVO_STATE_RDY
+            state = SERVO_STATE.RDY
         elif (status_word & constants.IL_MC_PDS_STA_SO_MSK) == \
                 constants.IL_MC_PDS_STA_SO:
-            state = lib.IL_SERVO_STATE_ON
+            state = SERVO_STATE.ON
         elif (status_word & constants.IL_MC_PDS_STA_OE_MSK) == \
                 constants.IL_MC_PDS_STA_OE:
-            state = lib.IL_SERVO_STATE_ENABLED
+            state = SERVO_STATE.ENABLED
         elif (status_word & constants.IL_MC_PDS_STA_QSA_MSK) == \
                 constants.IL_MC_PDS_STA_QSA:
-            state = lib.IL_SERVO_STATE_QSTOP
+            state = SERVO_STATE.QSTOP
         elif (status_word & constants.IL_MC_PDS_STA_FRA_MSK) == \
                 constants.IL_MC_PDS_STA_FRA:
-            state = lib.IL_SERVO_STATE_FAULTR
+            state = SERVO_STATE.FAULTR
         elif (status_word & constants.IL_MC_PDS_STA_F_MSK) == \
                 constants.IL_MC_PDS_STA_F:
-            state = lib.IL_SERVO_STATE_FAULT
+            state = SERVO_STATE.FAULT
         else:
-            state = lib.IL_SERVO_STATE_NRDY
-        return SERVO_STATE(state)
+            state = SERVO_STATE.NRDY
+        return state
 
     def monitoring_enable(self):
         """Enable monitoring process."""
@@ -925,58 +796,6 @@ class Servo:
             return _dict.registers(subnode)[reg]
         else:
             raise TypeError('Invalid register')
-
-    def __update_single_axis_dict(self, registers_category,
-                                  registers, subnode):
-        """Looks for matches through all the registers' subnodes with the
-        given subnode and removes the ones that do not match. It also cleans
-        up the registers leaving only paramount information.
-
-        Args:
-            registers_category (Element): Registers element containing all registers.
-            registers (list): List of registers in the dictionary.
-            subnode (int): Subnode to keep in the dictionary.
-
-        Returns:
-
-        """
-        for register in registers:
-            element_subnode = int(register.attrib['subnode'])
-            if subnode in [None, element_subnode]:
-                if register.attrib.get('access') == 'rw':
-                    self.__update_register_dict(register, element_subnode)
-            else:
-                registers_category.remove(register)
-            cleanup_register(register)
-
-    def __update_multiaxis_dict(self, device, axes_category, list_axis, subnode):
-        """Looks for matches through the subnode of each axis and
-        removes all the axes that did not match the search. It also
-        cleans up all the registers leaving only paramount information.
-
-        Args:
-            device (Element): Device element containing all the dictionary info.
-            axes_category (Element): Axes element containing all the axis.
-            list_axis (list): List of all the axis in the dictionary.
-            subnode (int): Subnode to keep in the dictionary.
-
-        """
-        for axis in list_axis:
-            registers_category = axis.find('./Registers')
-            registers = registers_category.findall('./Register')
-            if subnode is not None and axis.attrib['subnode'] == str(subnode):
-                self.__update_single_axis_dict(registers_category, registers, subnode)
-                device.append(registers_category)
-                device.remove(axes_category)
-                break
-            for register in registers:
-                element_subnode = int(register.attrib['subnode'])
-                if (
-                        subnode in [None, element_subnode]
-                        and register.attrib.get('access') == 'rw'
-                ):
-                    self.__update_register_dict(register, element_subnode)
-                cleanup_register(register)
 
     def __update_register_dict(self, register, subnode):
         """Updates the register from a dictionary with the
