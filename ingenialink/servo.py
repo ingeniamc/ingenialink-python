@@ -246,7 +246,7 @@ class Servo:
             f.write(dom.toprettyxml(indent='\t').encode())
 
     @staticmethod
-    def _read_configuration_file(self, config_file):
+    def _read_configuration_file(config_file):
         """Read a configuration file. Returns the device metadata and the registers list.
         
         Args:
