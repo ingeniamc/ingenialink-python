@@ -38,6 +38,7 @@ class VirtualMonDistBase():
         self.drive = drive
         self.enabled = False
         self.channels = {}
+        self.number_mapped_registers = 0
 
     def enable(self):
         """Enable Monitoring/Disturbance."""
@@ -76,6 +77,10 @@ class VirtualMonDistBase():
     def number_mapped_registers(self):
         """int: Number of mapped registers."""
         return self.drive.get_value_by_id(0, self.NUMBER_MAP_REGS)
+
+    @number_mapped_registers.setter
+    def number_mapped_registers(self, value):
+        return self.drive.set_value_by_id(0, self.NUMBER_MAP_REGS, value)
 
     @property
     def available_bytes(self):
