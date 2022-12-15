@@ -28,6 +28,11 @@ pipeline {
                         """
                     }
                  }
+                stage('Check formatting') {
+                    bat """
+                        py${PYTHON_VERSIONS[-1]}\\Scripts\\python.exe -m black --check ingenialink tests
+                    """
+                }
                 stage('Build wheels') {
                     steps {
                         script {
