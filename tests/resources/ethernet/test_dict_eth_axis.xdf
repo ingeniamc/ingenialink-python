@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<IngeniaDictionary>
+  <Header>
+    <Version>2</Version>
+    <DefaultLanguage>en_US</DefaultLanguage>
+  </Header>
+  <Body>
+    <Device family="Summit" firmwareVersion="2.0.0" ProductCode="57745411" PartNumber="DM2-NET-C" RevisionNumber="196613" Interface="ETH" name="Generic">
+      <Categories>
+        <Category id="OTHERS">
+          <Labels>
+            <Label lang="en_US">Others</Label>
+          </Labels>
+        </Category>
+        <Category id="IDENTIFICATION">
+          <Labels>
+            <Label lang="en_US">Product Identification</Label>
+          </Labels>
+        </Category>
+      </Categories>
+      <Axes>
+        <Axis subnode="0">
+          <Registers>
+            <Register access="r" address_type="NVM_NONE" address="0x000F" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" units="-" subnode="0" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Last error</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0090" dtype="u32" id="DIST_CFG_REG0_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 0." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 0</Label>
+              </Labels>
+            </Register>
+          </Registers>
+        </Axis>
+        <Axis subnode="1">
+          <Registers>
+            <Register access="r" address_type="NVM_NONE" address="0x000F" dtype="s32" id="DRV_DIAG_ERROR_LAST" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Last error</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_CFG" address="0x0014" dtype="u16" id="DRV_OP_CMD" units="-" subnode="1" cyclic="CYCLIC_RX" desc="User requested mode of operation" cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Operation mode</Label>
+              </Labels>
+              <Enumerations>
+                <Enum value="0">Voltage</Enum>
+                <Enum value="1">Current amplifier</Enum>
+                <Enum value="2">Current</Enum>
+                <Enum value="34">Cyclic current</Enum>
+                <Enum value="3">Velocity</Enum>
+                <Enum value="35">Cyclic velocity</Enum>
+                <Enum value="19">Profile velocity</Enum>
+                <Enum value="4">Position</Enum>
+                <Enum value="36">Cyclic position</Enum>
+                <Enum value="20">Profile position</Enum>
+                <Enum value="68">Profile position S-curve</Enum>
+                <Enum value="180">PVT</Enum>
+                <Enum value="275">Homing</Enum>
+              </Enumerations>
+            </Register>
+          </Registers>
+        </Axis>
+        <Axis subnode="2">
+          <Registers>
+            <Register access="r" address_type="NVM_NONE" address="0x000F" dtype="s32" id="DRV_DIAG_ERROR_LAST" units="-" subnode="2" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
+              <Labels>
+                <Label lang="en_US">Last error</Label>
+              </Labels>
+            </Register>
+            <Register access="rw" address_type="NVM_NONE" address="0x0010" dtype="u16" id="DRV_STATE_CONTROL" units="-" subnode="2" cyclic="CYCLIC_RX" desc="Parameter to manage the drive state machine. It is compliant with DS402." cat_id="TARGET">
+              <Labels>
+                <Label lang="en_US">Control word</Label>
+              </Labels>
+            </Register>
+          </Registers>
+        </Axis>
+      </Axes>
+    </Device>
+    <Errors>
+      <Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">STO Active and Power stage is shutdown</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00002280" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">HW over current</Label>
+        </Labels>
+      </Error>
+    </Errors>
+  </Body>
+  <DriveImage encoding="xs:base64Binary"> 
+  </DriveImage>
+</IngeniaDictionary>
