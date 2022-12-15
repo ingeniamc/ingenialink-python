@@ -214,6 +214,7 @@ def test_monitoring_remove_data(create_monitoring):
 def test_monitoring_map_register(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
+    servo.monitoring_remove_all_mapped_registers()
     registers_key = [
         'CL_POS_SET_POINT_VALUE',
         'CL_VEL_SET_POINT_VALUE'
