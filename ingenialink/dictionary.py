@@ -36,9 +36,7 @@ class DictionaryCategories:
         """Load category IDs from dictionary."""
         for element in self._list_xdf_categories:
             self._cat_ids.append(element.attrib["id"])
-            self._categories[element.attrib["id"]] = {
-                "en_US": element.find(DICT_LABELS_LABEL).text
-            }
+            self._categories[element.attrib["id"]] = {"en_US": element.find(DICT_LABELS_LABEL).text}
 
     @property
     def category_ids(self):
@@ -212,9 +210,7 @@ class Dictionary(ABC):
             with open(self.path, "r", encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError:
-            raise FileNotFoundError(
-                f"There is not any xdf file in the path: {self.path}"
-            )
+            raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}")
         root = tree.getroot()
 
         device = root.find(self.DICT_ROOT_DEVICE)
@@ -299,17 +295,13 @@ class Dictionary(ABC):
             current_read_register[self.AttrRegDict.UNITS] = register.attrib["units"]
 
             # Cyclic
-            current_read_register[self.AttrRegDict.CYCLIC] = register.attrib.get(
-                "cyclic", "CONFIG"
-            )
+            current_read_register[self.AttrRegDict.CYCLIC] = register.attrib.get("cyclic", "CONFIG")
 
             # Data type
             dtype_aux = register.attrib["dtype"]
 
             if dtype_aux in self.dtype_xdf_options:
-                current_read_register[self.AttrRegDict.DTYPE] = self.dtype_xdf_options[
-                    dtype_aux
-                ]
+                current_read_register[self.AttrRegDict.DTYPE] = self.dtype_xdf_options[dtype_aux]
             else:
                 raise ValueError(
                     f"The data type {dtype_aux} does not exist for the register: "
@@ -320,9 +312,7 @@ class Dictionary(ABC):
             access_aux = register.attrib["access"]
 
             if access_aux in self.access_xdf_options:
-                current_read_register[
-                    self.AttrRegDict.ACCESS
-                ] = self.access_xdf_options[access_aux]
+                current_read_register[self.AttrRegDict.ACCESS] = self.access_xdf_options[access_aux]
             else:
                 raise ValueError(
                     f"The access type {access_aux} does not exist for the register: "
@@ -343,24 +333,16 @@ class Dictionary(ABC):
                 )
 
             # Subnode
-            current_read_register[self.AttrRegDict.SUBNODE] = int(
-                register.attrib.get("subnode", 1)
-            )
+            current_read_register[self.AttrRegDict.SUBNODE] = int(register.attrib.get("subnode", 1))
 
             # Storage
-            current_read_register[self.AttrRegDict.STORAGE] = register.attrib.get(
-                "storage"
-            )
+            current_read_register[self.AttrRegDict.STORAGE] = register.attrib.get("storage")
 
             # Category Id
-            current_read_register[self.AttrRegDict.CAT_ID] = register.attrib.get(
-                "cat_id"
-            )
+            current_read_register[self.AttrRegDict.CAT_ID] = register.attrib.get("cat_id")
 
             # Description
-            current_read_register[self.AttrRegDict.INT_USE] = register.attrib.get(
-                "internal_use", 0
-            )
+            current_read_register[self.AttrRegDict.INT_USE] = register.attrib.get("internal_use", 0)
 
             # Labels
             labels_elem = register.findall(DICT_LABELS_LABEL)

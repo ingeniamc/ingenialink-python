@@ -72,9 +72,7 @@ class Poller:
             raise_err(constants.IL_EALREADY)
 
         # Activate timer
-        self.__timer = PollerTimer(
-            self.__refresh_time, self._acquire_callback_poller_data
-        )
+        self.__timer = PollerTimer(self.__refresh_time, self._acquire_callback_poller_data)
         self.__timer.start()
         self.__time_start = datetime.now()
 

@@ -67,9 +67,7 @@ def load_ecat(drive_conf, mc):
         drive_conf["slave"],
         boot_in_app=drive_conf["boot_in_app"],
     )
-    logger.info(
-        "FW updated. ifname: %s, slave: %d", drive_conf["ifname"], drive_conf["slave"]
-    )
+    logger.info("FW updated. ifname: %s, slave: %d", drive_conf["ifname"], drive_conf["slave"])
 
 
 def ping_check(target_ip):
@@ -93,9 +91,7 @@ def ping_check(target_ip):
 
 def load_eth(drive_conf, mc):
     try:
-        mc.communication.connect_servo_ethernet(
-            drive_conf["ip"], drive_conf["dictionary"]
-        )
+        mc.communication.connect_servo_ethernet(drive_conf["ip"], drive_conf["dictionary"])
         logger.info("Drive connected. IP: %s", drive_conf["ip"])
         mc.communication.boot_mode_and_load_firmware_ethernet(drive_conf["fw_file"])
     except ILError:

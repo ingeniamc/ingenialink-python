@@ -110,23 +110,15 @@ class Register(ABC):
                 if self.storage:
                     self._storage = float(self.storage)
                 aux_range = (
-                    float(reg_range[0])
-                    if reg_range[0]
-                    else dtypes_ranges[self.dtype]["min"],
-                    float(reg_range[1])
-                    if reg_range[1]
-                    else dtypes_ranges[self.dtype]["max"],
+                    float(reg_range[0]) if reg_range[0] else dtypes_ranges[self.dtype]["min"],
+                    float(reg_range[1]) if reg_range[1] else dtypes_ranges[self.dtype]["max"],
                 )
             else:
                 if self.storage:
                     self._storage = int(self.storage)
                 aux_range = (
-                    int(reg_range[0])
-                    if reg_range[0]
-                    else dtypes_ranges[self.dtype]["min"],
-                    int(reg_range[1])
-                    if reg_range[1]
-                    else dtypes_ranges[self.dtype]["max"],
+                    int(reg_range[0]) if reg_range[0] else dtypes_ranges[self.dtype]["min"],
+                    int(reg_range[1]) if reg_range[1] else dtypes_ranges[self.dtype]["max"],
                 )
             self._range = aux_range
         else:

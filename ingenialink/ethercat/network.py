@@ -94,8 +94,7 @@ class EthercatNetwork(IPBNetwork):
         if boot_in_app is None:
             if not fw_file.endswith((FILE_EXT_SFU, FILE_EXT_LFU)):
                 raise ValueError(
-                    f"Firmware file should have extension "
-                    f"{FILE_EXT_SFU} or {FILE_EXT_LFU}"
+                    f"Firmware file should have extension " f"{FILE_EXT_SFU} or {FILE_EXT_LFU}"
                 )
             boot_in_app = fw_file.endswith(FILE_EXT_SFU)
         self._cffi_network = ffi.new("il_net_t **")
@@ -133,9 +132,7 @@ class EthercatNetwork(IPBNetwork):
         _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
         _eeprom_file = cstr(eeprom_file) if eeprom_file else ffi.NULL
 
-        r = lib.il_net_eeprom_tool(
-            self._cffi_network, _interface_name, slave, mode, _eeprom_file
-        )
+        r = lib.il_net_eeprom_tool(self._cffi_network, _interface_name, slave, mode, _eeprom_file)
         if r < 0:
             raise ILError("Failed reading EEPROM file.")
 
@@ -162,9 +159,7 @@ class EthercatNetwork(IPBNetwork):
         _interface_name = cstr(self.interface_name) if self.interface_name else ffi.NULL
         _eeprom_file = cstr(eeprom_file) if eeprom_file else ffi.NULL
 
-        r = lib.il_net_eeprom_tool(
-            self._cffi_network, _interface_name, slave, mode, _eeprom_file
-        )
+        r = lib.il_net_eeprom_tool(self._cffi_network, _interface_name, slave, mode, _eeprom_file)
         if r < 0:
             raise ILError("Failed writing EEPROM file.")
 

@@ -178,10 +178,7 @@ class IPBNetwork(ABC):
     def stop_status_listener(self):
         """Stop monitoring network events (CONNECTION/DISCONNECTION)."""
         self._set_status_check_stop(1)
-        if (
-            self.__listener_net_status is not None
-            and self.__listener_net_status.is_alive()
-        ):
+        if self.__listener_net_status is not None and self.__listener_net_status.is_alive():
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
         self.__listener_net_status = None

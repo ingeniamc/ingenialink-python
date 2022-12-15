@@ -16,9 +16,7 @@ from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
 )
 def test_registers_dictionary(test_file_xdf, expected_num_registers):
     # Count the number of registers in a EthernetDictionary instance
-    test_ethernet_dict = EthernetDictionary(
-        f"./tests/resources/ethernet/{test_file_xdf}"
-    )
+    test_ethernet_dict = EthernetDictionary(f"./tests/resources/ethernet/{test_file_xdf}")
     test_num_registers = 0
     for current_subnode in range(test_ethernet_dict.subnodes):
         test_num_registers += len(test_ethernet_dict.registers(current_subnode))
@@ -37,9 +35,7 @@ def test_registers_dictionary(test_file_xdf, expected_num_registers):
 )
 def test_categories_dictionary(test_file_xdf, expected_num_categories):
     # Count the number of categories in a EthernetDictionary instance
-    test_ethernet_dict = EthernetDictionary(
-        f"./tests/resources/ethernet/{test_file_xdf}"
-    )
+    test_ethernet_dict = EthernetDictionary(f"./tests/resources/ethernet/{test_file_xdf}")
     test_num_categories = len(test_ethernet_dict.categories.category_ids)
 
     assert test_num_categories == expected_num_categories
@@ -56,9 +52,7 @@ def test_categories_dictionary(test_file_xdf, expected_num_categories):
 )
 def test_errors_dictionary(test_file_xdf, expected_num_errors):
     # Count the number of errors in a EthernetDictionary instance
-    test_ethernet_dict = EthernetDictionary(
-        f"./tests/resources/ethernet/{test_file_xdf}"
-    )
+    test_ethernet_dict = EthernetDictionary(f"./tests/resources/ethernet/{test_file_xdf}")
     test_num_errors = len(test_ethernet_dict.errors.errors)
 
     assert test_num_errors == expected_num_errors
@@ -66,9 +60,7 @@ def test_errors_dictionary(test_file_xdf, expected_num_errors):
 
 @pytest.mark.smoke
 def test_instance_dictionary():
-    ethernet_dict = EthernetDictionary(
-        f"./tests/resources/ethernet/test_dict_eth_1.xdf"
-    )
+    ethernet_dict = EthernetDictionary(f"./tests/resources/ethernet/test_dict_eth_1.xdf")
 
     assert ethernet_dict.subnodes == SINGLE_AXIS_MINIMUM_SUBNODES
 

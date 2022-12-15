@@ -25,9 +25,7 @@ class EthernetDictionary(Dictionary):
         if current_read_register is None:
             return None
         try:
-            current_read_register[self.AttrRegEthDict.ADDR] = int(
-                register.attrib["address"], 16
-            )
+            current_read_register[self.AttrRegEthDict.ADDR] = int(register.attrib["address"], 16)
 
             return current_read_register
 

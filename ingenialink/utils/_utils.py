@@ -81,9 +81,7 @@ def wait_for_register_value(servo, subnode, register, expected_value):
     Returns:
         int: Return code of the operation.
     """
-    logger.debug(
-        "Waiting for register {} " "to return <{}>".format(register, expected_value)
-    )
+    logger.debug("Waiting for register {} " "to return <{}>".format(register, expected_value))
     num_tries = 0
     r = -2
     while num_tries < POLLING_MAX_TRIES:
@@ -350,9 +348,7 @@ def convert_bytes_to_dtype(data, dtype):
     """Convert data in bytes to corresponding dtype."""
     __signed_dtypes_bytes = {REG_DTYPE.S8: 1, REG_DTYPE.S16: 2, REG_DTYPE.S32: 4}
     if dtype in __signed_dtypes_bytes:
-        value = int.from_bytes(
-            data[: __signed_dtypes_bytes[dtype]], "little", signed=True
-        )
+        value = int.from_bytes(data[: __signed_dtypes_bytes[dtype]], "little", signed=True)
     elif dtype == REG_DTYPE.FLOAT:
         if len(data) > 4:
             data = data[:4]

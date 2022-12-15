@@ -388,9 +388,7 @@ class CanopenServo(Servo):
         access=REG_ACCESS.RW,
     )
 
-    def __init__(
-        self, target, node, dictionary_path=None, eds=None, servo_status_listener=False
-    ):
+    def __init__(self, target, node, dictionary_path=None, eds=None, servo_status_listener=False):
         self.eds = eds
         self.__node = node
         self.__emcy_consumer = EmcyConsumer()
@@ -535,9 +533,7 @@ class CanopenServo(Servo):
     def _monitoring_read_data(self):
         return self._read_raw(self.MONITORING_DATA, subnode=0)
 
-    def _monitoring_disturbance_data_to_map_register(
-        self, subnode, address, dtype, size
-    ):
+    def _monitoring_disturbance_data_to_map_register(self, subnode, address, dtype, size):
         """Arrange necessary data to map a monitoring/disturbance register.
 
         Args:
@@ -547,10 +543,7 @@ class CanopenServo(Servo):
             size (int): Size of data in bytes.
 
         """
-        data_h = (
-            self.__monitoring_disturbance_map_can_address(address, subnode)
-            | subnode << 12
-        )
+        data_h = self.__monitoring_disturbance_map_can_address(address, subnode) | subnode << 12
         data_l = dtype << 8 | size
         return (data_h << 16) | data_l
 

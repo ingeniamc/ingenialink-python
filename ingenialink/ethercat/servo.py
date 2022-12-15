@@ -312,9 +312,7 @@ class EthercatServo:
         self.__observers_emergency_state = {}
         if not hasattr(self, "_errors") or not self._errors:
             self._errors = self._get_all_errors(_dictionary_path)
-        prod_name = (
-            "" if self.dictionary.part_number is None else self.dictionary.part_number
-        )
+        prod_name = "" if self.dictionary.part_number is None else self.dictionary.part_number
         self.full_name = f"{prod_name} {self.name}"
         if servo_status_listener:
             self.start_status_listener()
@@ -731,9 +729,7 @@ class EthercatServo:
                     logger.info("Store axis {} successfully done.".format(dict_subnode))
         elif subnode == 0:
             # Store only subnode 0
-            self.write(
-                reg=STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=subnode
-            )
+            self.write(reg=STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=subnode)
             logger.info("Store subnode 0 successfully done.")
         elif subnode > 0 and subnode in STORE_MOCO_ALL_REGISTERS:
             # Store axis
@@ -769,9 +765,7 @@ class EthercatServo:
             logger.info("Restore all successfully done.")
         elif subnode == 0:
             # Restore only axis 0
-            self.write(
-                reg=RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0
-            )
+            self.write(reg=RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
             logger.info("Restore subnode 0 successfully done.")
         elif subnode > 0 and subnode in RESTORE_MOCO_ALL_REGISTERS:
             # Restore axis
@@ -920,9 +914,7 @@ class EthercatServo:
         if image is not None:
             xml_data.remove(image)
 
-        xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(
-            indent="  ", newl=""
-        )
+        xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(indent="  ", newl="")
 
         config_file = io.open(config_file, "w", encoding="utf8")
         config_file.write(xmlstr)
@@ -942,9 +934,7 @@ class EthercatServo:
             raise ILError("Invalid subnode")
         if subnode is None:
             subnode = -1
-        r = lib.il_servo_dict_storage_write(
-            self._cffi_servo, cstr(config_file), subnode
-        )
+        r = lib.il_servo_dict_storage_write(self._cffi_servo, cstr(config_file), subnode)
         if not hasattr(self, "_errors") or not self._errors:
             self._errors = self._get_all_errors(config_file)
         raise_err(r)
@@ -1002,9 +992,7 @@ class EthercatServo:
 
         cb_handle = ffi.new_handle(callback)
 
-        slot = lib.il_servo_state_subscribe(
-            self._cffi_servo, lib._on_state_change_cb, cb_handle
-        )
+        slot = lib.il_servo_state_subscribe(self._cffi_servo, lib._on_state_change_cb, cb_handle)
         if slot < 0:
             raise_err(slot)
 
@@ -1079,9 +1067,7 @@ class EthercatServo:
                 self.disturbance_channel_data(
                     channel,
                     dtypes[index],
-                    data_arr[index][
-                        i * samples_for_write : (i + 1) * samples_for_write
-                    ],
+                    data_arr[index][i * samples_for_write : (i + 1) * samples_for_write],
                 )
             self.disturbance_data_size = sample_size * samples_for_write
             self.write(DIST_DATA, sample_size * samples_for_write, False, 1, subnode=0)
@@ -1167,9 +1153,7 @@ class EthercatServo:
         """
         r = lib.il_net_remove_all_mapped_registers(self._cffi_network)
         if r < 0:
-            raise ILError(
-                f"Error removing monitoring mapped registers. " f"Error code: {r}"
-            )
+            raise ILError(f"Error removing monitoring mapped registers. " f"Error code: {r}")
 
     def monitoring_set_mapped_register(self, channel, address, subnode, dtype, size):
         """Set monitoring mapped register.
@@ -1190,9 +1174,7 @@ class EthercatServo:
             self._cffi_network, channel, address, subnode, dtype, size
         )
         if r < 0:
-            raise ILError(
-                f"Error mapping monitoring register {address}. " f"Error code: {r}"
-            )
+            raise ILError(f"Error mapping monitoring register {address}. " f"Error code: {r}")
 
     def monitoring_get_num_mapped_registers(self):
         """Obtain the number of monitoring mapped registers.
@@ -1330,9 +1312,7 @@ class EthercatServo:
         """
         r = lib.il_net_disturbance_remove_all_mapped_registers(self._cffi_network)
         if r < 0:
-            raise ILError(
-                f"Error removing disturbance mapped registers. " f"Error code: {r}"
-            )
+            raise ILError(f"Error removing disturbance mapped registers. " f"Error code: {r}")
 
     def disturbance_set_mapped_register(self, channel, address, subnode, dtype, size):
         """Set disturbance mapped register.
@@ -1351,9 +1331,7 @@ class EthercatServo:
             self._cffi_network, channel, address, subnode, dtype, size
         )
         if r < 0:
-            raise ILError(
-                f"Error mapping disturbance register {address}. " f"Error code: {r}"
-            )
+            raise ILError(f"Error mapping disturbance register {address}. " f"Error code: {r}")
 
     def __read_coco_moco_register(self, register_coco, register_moco):
         """Reads the COCO register and if it does not exist,
@@ -1618,9 +1596,7 @@ class EthercatServo:
 
             pos = pos[0]
 
-        r = lib.il_servo_position_set(
-            self._cffi_servo, pos, immediate, relative, sp_timeout
-        )
+        r = lib.il_servo_position_set(self._cffi_servo, pos, immediate, relative, sp_timeout)
         raise_err(r)
 
     @property

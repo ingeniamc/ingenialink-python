@@ -47,9 +47,7 @@ class IPBSubCategories:
 
         """
         labels_p = ffi.new("il_dict_labels_t **")
-        r = lib.il_dict_scat_get(
-            self._dict, cstr(self._cat_id), cstr(scat_id), labels_p
-        )
+        r = lib.il_dict_scat_get(self._dict, cstr(self._cat_id), cstr(scat_id), labels_p)
         raise_err(r)
 
         return LabelsDictionary._from_labels(labels_p[0])
@@ -130,9 +128,7 @@ class IPBCategories(Categories):
 
         """
         labels_p = ffi.new("il_dict_labels_t **")
-        r = lib.il_dict_cat_get(
-            self.__ipb_dictionary._cffi_dictionary, cstr(category_id), labels_p
-        )
+        r = lib.il_dict_cat_get(self.__ipb_dictionary._cffi_dictionary, cstr(category_id), labels_p)
         raise_err(r)
 
         return LabelsDictionary._from_labels(labels_p[0])

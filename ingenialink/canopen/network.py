@@ -303,13 +303,10 @@ class CanopenNetwork(Network):
                     "is properly connected."
                 )
             except OSError as e:
-                logger.error(
-                    "Transceiver drivers not properly installed. Exception: %s", e
-                )
+                logger.error("Transceiver drivers not properly installed. Exception: %s", e)
                 if hasattr(e, "winerror") and e.winerror == 126:
                     e.strerror = (
-                        "Driver module not found."
-                        " Drivers might not be properly installed."
+                        "Driver module not found." " Drivers might not be properly installed."
                     )
                 raise ILError(e)
             except Exception as e:
@@ -445,9 +442,7 @@ class CanopenNetwork(Network):
 
                     if file_extension != "" and file_extension == ".sfu":
                         fd, lfu_path = tempfile.mkstemp(suffix=".lfu")
-                        logger.debug(
-                            ">> FD: {}. \n>> " "LFU PATH: {}.".format(fd, lfu_path)
-                        )
+                        logger.debug(">> FD: {}. \n>> " "LFU PATH: {}.".format(fd, lfu_path))
 
                         try:
                             # Convert the sfu file to lfu
@@ -462,9 +457,7 @@ class CanopenNetwork(Network):
                             bin_node = ""
                             for line in coco_in:
                                 if (
-                                    re.match(
-                                        "74 67 [0-4][0-4] 00 00 00 00 00 00 00", line
-                                    )
+                                    re.match("74 67 [0-4][0-4] 00 00 00 00 00 00 00", line)
                                     is not None
                                 ):
                                     bin_node = line[6:8]
@@ -487,10 +480,7 @@ class CanopenNetwork(Network):
                                 mcb.add_cmd(node, subnode, cmd, data, outfile)
 
                                 new_progress = (
-                                    int(
-                                        (copy_process * (25 - progress))
-                                        / total_file_lines
-                                    )
+                                    int((copy_process * (25 - progress)) / total_file_lines)
                                     + progress
                                 )
                                 if new_progress != current_progress:
@@ -531,10 +521,7 @@ class CanopenNetwork(Network):
                             servo.write(FORCE_BOOT, password, subnode=0)
                         except Exception as e:
                             pass
-                    if (
-                        prog_stat_1 == PROG_CTRL_STATE_START
-                        or prog_stat_1 == PROG_CTRL_STATE_FLASH
-                    ):
+                    if prog_stat_1 == PROG_CTRL_STATE_START or prog_stat_1 == PROG_CTRL_STATE_FLASH:
                         # Write 0 to 0x1F51 to stop the app
                         try:
                             servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
@@ -558,18 +545,14 @@ class CanopenNetwork(Network):
                         except Exception as e:
                             pass
 
-                        r = wait_for_register_value(
-                            servo, 0, PROG_STAT_1, PROG_CTRL_STATE_CLEAR
-                        )
+                        r = wait_for_register_value(servo, 0, PROG_STAT_1, PROG_CTRL_STATE_CLEAR)
                     if r >= 0:
                         try:
                             servo.write(PROG_STAT_1, PROG_CTRL_STATE_FLASH, subnode=0)
                         except Exception as e:
                             pass
 
-                        r = wait_for_register_value(
-                            servo, 0, PROG_STAT_1, PROG_CTRL_STATE_FLASH
-                        )
+                        r = wait_for_register_value(servo, 0, PROG_STAT_1, PROG_CTRL_STATE_FLASH)
                         if r < 0:
                             error_detected_msg = "Error entering flashing mode"
                             logger.info(error_detected_msg)
@@ -608,10 +591,7 @@ class CanopenNetwork(Network):
                                     counter += 1
 
                                     new_progress = (
-                                        int(
-                                            (counter * (100 - progress))
-                                            / total_file_size
-                                        )
+                                        int((counter * (100 - progress)) / total_file_size)
                                         + progress
                                     )
                                     if new_progress != current_progress:
@@ -645,9 +625,7 @@ class CanopenNetwork(Network):
                             image.close()
                             logger.debug("Temp file deleted")
                         except Exception as e:
-                            logger.warning(
-                                "Could not remove temp file. " "Exception: {}".format(e)
-                            )
+                            logger.warning("Could not remove temp file. " "Exception: {}".format(e))
 
                     if error_detected_msg == "":
                         logger.info("Disable errors")
@@ -666,8 +644,7 @@ class CanopenNetwork(Network):
                         time_diff = time() - initial_time
                         bool_timeout = False
                         while (
-                            self.status != NET_STATE.CONNECTED
-                            and time_diff < RECONNECTION_TIMEOUT
+                            self.status != NET_STATE.CONNECTED and time_diff < RECONNECTION_TIMEOUT
                         ):
                             time_diff = time() - initial_time
                             sleep(0.5)
@@ -675,8 +652,7 @@ class CanopenNetwork(Network):
                             bool_timeout = True
 
                         logger.debug(
-                            f"Time waited for reconnection: "
-                            f"{time_diff} {bool_timeout}"
+                            f"Time waited for reconnection: " f"{time_diff} {bool_timeout}"
                         )
                         logger.debug(f"Net state after reconnection: " f"{self.status}")
 
@@ -692,9 +668,7 @@ class CanopenNetwork(Network):
 
                         if not bool_timeout:
                             logger.info("Bootloader finished successfully!")
-                            self.__set_fw_load_status_msg(
-                                "Bootloader " "finished successfully!"
-                            )
+                            self.__set_fw_load_status_msg("Bootloader " "finished successfully!")
                             # Wait for the drive to reset
                             initial_time = time()
                             timeout = 25
@@ -835,17 +809,12 @@ class CanopenNetwork(Network):
                 serial_number,
             )
             if r >= 0:
-                self._connection.lss.configure_bit_timing(
-                    CAN_BIT_TIMMING[new_target_baudrate]
-                )
+                self._connection.lss.configure_bit_timing(CAN_BIT_TIMMING[new_target_baudrate])
                 sleep(0.1)
 
                 self._lss_store_configuration()
             else:
-                raise ILError(
-                    "Error switching lss to selective state. "
-                    "Error code: {}".format(r)
-                )
+                raise ILError("Error switching lss to selective state. " "Error code: {}".format(r))
         finally:
             self._lss_reset_connection_nodes(target_node)
             logger.info("Baudrate changed to {}".format(new_target_baudrate))
@@ -895,10 +864,7 @@ class CanopenNetwork(Network):
                 self._lss_store_configuration()
 
             else:
-                raise ILError(
-                    "Error switching lss to selective state. "
-                    "Error code: {}".format(r)
-                )
+                raise ILError("Error switching lss to selective state. " "Error code: {}".format(r))
         finally:
             self._lss_reset_connection_nodes(target_node)
             logger.info("Node ID changed to {}".format(new_target_node))
@@ -908,9 +874,7 @@ class CanopenNetwork(Network):
         self._connection.lss.store_configuration()
         sleep(0.1)
         logger.info("Stored new configuration")
-        self._connection.lss.send_switch_state_global(
-            self._connection.lss.WAITING_STATE
-        )
+        self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
 
     def _lss_reset_connection_nodes(self, target_node):
         """Resets the connection and starts node guarding for the connection nodes.
@@ -929,9 +893,7 @@ class CanopenNetwork(Network):
             node = self._connection.add_node(servo.target, servo.eds)
 
         # Reset all nodes to default state
-        self._connection.lss.send_switch_state_global(
-            self._connection.lss.WAITING_STATE
-        )
+        self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
 
         self._connection.nodes[target_node].nmt.start_node_guarding(1)
 

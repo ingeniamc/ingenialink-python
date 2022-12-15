@@ -126,9 +126,7 @@ class EthernetNetwork(Network):
             # Load file through FTP.
             logger.info("Uploading firmware file...")
             ftp.set_pasv(False)
-            ftp_output = ftp.storbinary(
-                "STOR {}".format(os.path.basename(file.name)), file
-            )
+            ftp_output = ftp.storbinary("STOR {}".format(os.path.basename(file.name)), file)
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
                 raise_err("Unable to load the FW file through FTP")
@@ -268,10 +266,7 @@ class EthernetNetwork(Network):
 
     def stop_status_listener(self):
         """Stops the NetStatusListener from listening to the drive."""
-        if (
-            self.__listener_net_status is not None
-            and self.__listener_net_status.is_alive()
-        ):
+        if self.__listener_net_status is not None and self.__listener_net_status.is_alive():
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
         self.__listener_net_status = None

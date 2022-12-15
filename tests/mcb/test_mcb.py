@@ -58,9 +58,7 @@ def test_build_mcb_frame(cmd, subnode, address, data, reg_dtype, extended, resul
             0x6E5,
             "http://www.ingeniamc.com",
             REG_DTYPE.STR,
-            "a100576e18000000000000003e9568"
-            "7474703a2f2f7777772e696e67656e6"
-            "9616d632e636f6d",
+            "a100576e18000000000000003e9568" "7474703a2f2f7777772e696e67656e6" "9616d632e636f6d",
         )
     ],
 )
@@ -70,9 +68,7 @@ def test_read_mcb_frame(expected_address, data, reg_dtype, frame):
     assert data == convert_bytes_to_dtype(data_bytes, reg_dtype)
 
 
-@pytest.mark.parametrize(
-    "expected_address, frame", [(0x630, "a10006630000704200000000dd71")]
-)
+@pytest.mark.parametrize("expected_address, frame", [(0x630, "a10006630000704200000000dd71")])
 def test_read_mcb_frame_wrong_crc(expected_address, frame):
     # replace CRC code with zeros
     frame = f"{frame[-4:]}0000"
@@ -81,18 +77,14 @@ def test_read_mcb_frame_wrong_crc(expected_address, frame):
         MCB.read_mcb_data(expected_address, frame_byte_arr)
 
 
-@pytest.mark.parametrize(
-    "expected_address, frame", [(0x11, "a1001c0100000106000000009ad7")]
-)
+@pytest.mark.parametrize("expected_address, frame", [(0x11, "a1001c0100000106000000009ad7")])
 def test_read_mcb_frame_nack(expected_address, frame):
     frame_byte_arr = bytearray.fromhex(frame)
     with pytest.raises(ILNACKError):
         MCB.read_mcb_data(expected_address, frame_byte_arr)
 
 
-@pytest.mark.parametrize(
-    "expected_address, frame", [(0x630, "a10006630000704200000000dd71")]
-)
+@pytest.mark.parametrize("expected_address, frame", [(0x630, "a10006630000704200000000dd71")])
 def test_read_mcb_frame_wrong_address(expected_address, frame):
     # Change expected address
     expected_address += 1

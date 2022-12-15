@@ -80,9 +80,7 @@ def _build_deps():
             "-DWITH_PIC=ON",
         ]
     )
-    check_call(
-        [cmake, "--build", _XML2_BUILD, "--config", "Release", "--target", "install"]
-    )
+    check_call([cmake, "--build", _XML2_BUILD, "--config", "Release", "--target", "install"])
 
     check_call(
         [
@@ -98,9 +96,7 @@ def _build_deps():
             "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
         ]
     )
-    check_call(
-        [cmake, "--build", _SOEM_BUILD, "--config", "Release", "--target", "install"]
-    )
+    check_call([cmake, "--build", _SOEM_BUILD, "--config", "Release", "--target", "install"])
 
     print("[INFO] Ingenialink build")
     check_call(
@@ -118,9 +114,7 @@ def _build_deps():
             "-DWITH_PIC=ON",
         ]
     )
-    check_call(
-        [cmake, "--build", _IL_BUILD, "--config", "Release", "--target", "install"]
-    )
+    check_call([cmake, "--build", _IL_BUILD, "--config", "Release", "--target", "install"])
 
 
 def _gen_cffi_header():

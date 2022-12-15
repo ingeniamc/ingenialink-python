@@ -92,9 +92,7 @@ def test_monitoring_map_register(connect_to_slave):
     subnode = 1
     for idx, key in enumerate(registers_key):
         reg = servo._get_reg(key, subnode=1)
-        servo.monitoring_set_mapped_register(
-            idx, reg.address, subnode, reg.dtype.value, data_size
-        )
+        servo.monitoring_set_mapped_register(idx, reg.address, subnode, reg.dtype.value, data_size)
     assert servo.monitoring_number_mapped_registers == len(registers_key)
     servo.monitoring_remove_all_mapped_registers()
     assert servo.monitoring_number_mapped_registers == 0
@@ -107,9 +105,7 @@ def test_monitoring_data_size(create_monitoring):
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
     assert servo.monitoring_get_bytes_per_block() == MONITORING_CH_DATA_SIZE
     assert servo.monitoring_actual_number_bytes() > 0
-    assert (
-        servo.monitoring_data_size == MONITORING_CH_DATA_SIZE * MONITORING_NUM_SAMPLES
-    )
+    assert servo.monitoring_data_size == MONITORING_CH_DATA_SIZE * MONITORING_NUM_SAMPLES
     servo.monitoring_remove_data()
 
 
@@ -143,9 +139,7 @@ def test_disturbance_map_register(connect_to_slave):
     subnode = 1
     for idx, key in enumerate(registers_key):
         reg = servo._get_reg(key, subnode=1)
-        servo.disturbance_set_mapped_register(
-            idx, reg.address, subnode, reg.dtype.value, data_size
-        )
+        servo.disturbance_set_mapped_register(idx, reg.address, subnode, reg.dtype.value, data_size)
     assert servo.disturbance_number_mapped_registers == len(registers_key)
     servo.disturbance_remove_all_mapped_registers()
     assert servo.disturbance_number_mapped_registers == 0
@@ -155,10 +149,7 @@ def test_disturbance_map_register(connect_to_slave):
 def test_disturbance_data_size(create_disturbance):
     servo, net = create_disturbance
     servo.disturbance_enable()
-    assert (
-        servo.disturbance_data_size
-        == DISTURBANCE_CH_DATA_SIZE * DISTURBANCE_NUM_SAMPLES
-    )
+    assert servo.disturbance_data_size == DISTURBANCE_CH_DATA_SIZE * DISTURBANCE_NUM_SAMPLES
     servo.disturbance_remove_data()
 
 

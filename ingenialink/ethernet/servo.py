@@ -389,17 +389,13 @@ class EthernetServo(Servo):
     def store_tcp_ip_parameters(self):
         """Stores the TCP/IP values. Affects IP address,
         subnet mask and gateway"""
-        self.write(
-            reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0
-        )
+        self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Store TCP/IP successfully done.")
 
     def restore_tcp_ip_parameters(self):
         """Restores the TCP/IP values back to default. Affects
         IP address, subnet mask and gateway"""
-        self.write(
-            reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0
-        )
+        self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Restore TCP/IP successfully done.")
 
     def change_tcp_ip_parameters(self, ip_address, subnet_mask, gateway):
@@ -430,8 +426,7 @@ class EthernetServo(Servo):
 
         if gateway_ip not in net:
             raise ValueError(
-                f"Drive IP {ip_address} and Gateway IP {gateway} "
-                f"are not on the same network."
+                f"Drive IP {ip_address} and Gateway IP {gateway} " f"are not on the same network."
             )
 
         int_ip_address = convert_ip_to_int(ip_address)

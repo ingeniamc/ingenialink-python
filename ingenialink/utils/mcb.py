@@ -49,9 +49,7 @@ class MCB:
             cmd = cmd + 1
             head = struct.pack("<H", cmd)
             head_size = struct.pack("<H", size)
-            head_size = head_size + bytes(
-                [0] * (self.EXTENDED_MESSAGE_SIZE - len(head_size))
-            )
+            head_size = head_size + bytes([0] * (self.EXTENDED_MESSAGE_SIZE - len(head_size)))
             ret = (
                 node_head
                 + head
@@ -61,12 +59,7 @@ class MCB:
             )
         else:
             head = struct.pack("<H", cmd)
-            ret = (
-                node_head
-                + head
-                + data
-                + struct.pack("<H", crc_hqx(node_head + head + data, 0))
-            )
+            ret = node_head + head + data + struct.pack("<H", crc_hqx(node_head + head + data, 0))
 
         return ret
 
@@ -137,9 +130,7 @@ class MCB:
         Returns:
             bytes: data contained in frame.
         """
-        recv_crc_bytes = frame[
-            cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE : cls.MCB_FRAME_SIZE
-        ]
+        recv_crc_bytes = frame[cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE : cls.MCB_FRAME_SIZE]
         recv_crc = int.from_bytes(recv_crc_bytes, "little")
         calc_crc = crc_hqx(frame[: cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE], 0)
         if recv_crc != calc_crc:
