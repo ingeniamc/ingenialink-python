@@ -33,6 +33,7 @@ def test_connect_to_virtual(virtual_drive, read_config):
         ("DIST_CFG_REG0_MAP", 4, 0)
     ]
 )
+@pytest.mark.no_connection
 def test_virtual_drive_write_read(virtual_drive, read_config, reg, value, subnode):
     server = virtual_drive
 
