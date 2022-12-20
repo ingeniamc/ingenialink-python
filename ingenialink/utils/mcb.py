@@ -3,6 +3,7 @@ from binascii import crc_hqx
 
 from ingenialink.exceptions import ILWrongCRCError, ILNACKError,\
     ILWrongRegisterError
+from ingenialink.constants import MCB_CMD_ACK
 
 
 class MCB:
@@ -126,28 +127,54 @@ class MCB:
         Returns:
             bytes: data contained in frame.
         """
+        recv_add, _, cmd, data = cls.read_mcb_frame(frame)
+
+        if cmd != MCB_CMD_ACK:
+            err = frame[cls.DATA_START_BYTE:cls.DATA_END_BYTE].hex()
+            raise ILNACKError(f'Communications error (NACK -> {err[::-1]})')
+        if expected_address != recv_add:
+            raise ILWrongRegisterError(f'Received address: {hex(recv_add)} does '
+                                       f'not match expected address: '
+                                       f'{hex(expected_address)}')
+        return data
+
+    @classmethod
+    def read_mcb_frame(cls, frame):
+        """Read an MCB frame and return its address, subnode, data and command.
+
+        Args:
+            frame (bytes): MCB frame.
+
+        Returns:
+            int: register address
+            int: subnode 
+            bytes: data contained in frame.
+            int: command
+
+        Raises:
+            ILWrongCRCError: If the received CRC code does not match
+            the calculated CRC code.
+        """
         recv_crc_bytes = frame[cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE
                                :cls.MCB_FRAME_SIZE]
         recv_crc = int.from_bytes(recv_crc_bytes, 'little')
         calc_crc = crc_hqx(frame[:cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE], 0)
         if recv_crc != calc_crc:
             raise ILWrongCRCError
-        header_l = frame[cls.MCB_HEADER_L_SIZE]
-        extended = header_l & 1
-        ack_cmd = (header_l & 0xE) >> 1
-        if ack_cmd != 3:
-            err = frame[cls.DATA_START_BYTE:cls.DATA_END_BYTE].hex()
-            raise ILNACKError(f'Communications error (NACK -> {err[::-1]})')
         header = frame[cls.MCB_HEADER_L_SIZE:cls.MCB_HEADER_SIZE]
         recv_add = (int.from_bytes(header, 'little')) >> 4
-        if expected_address != recv_add:
-            raise ILWrongRegisterError(f'Received address: {hex(recv_add)} does '
-                                       f'not match expected address: '
-                                       f'{hex(expected_address)}')
+       
+        header_l = frame[cls.MCB_HEADER_L_SIZE]
+        extended = header_l & 1
+        cmd = (header_l & 0xE) >> 1
+        subnode = int.from_bytes(frame[:cls.MCB_HEADER_L_SIZE], 'little') & 0xF
+        
         if extended:
             data_start_byte = cls.EXTENDED_DATA_START_BYTE
             data_end_byte = cls.EXTENDED_DATA_END_BYTE
         else:
             data_start_byte = cls.DATA_START_BYTE
             data_end_byte = cls.DATA_END_BYTE
-        return frame[data_start_byte:data_end_byte]
+        data = frame[data_start_byte:data_end_byte]   
+        
+        return recv_add, subnode, cmd, data
