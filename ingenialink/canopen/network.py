@@ -630,7 +630,7 @@ class CanopenNetwork(Network):
                             logger.info('Waiting for the drive to be available.')
                             while (time() - initial_time) < timeout and not stop:
                                 try:
-                                    servo.read(servo.STATUS_WORD_REGISTERS[1])
+                                    servo.read(servo.STATUS_WORD_REGISTERS)
                                     stop = True
                                 except ILError:
                                     pass

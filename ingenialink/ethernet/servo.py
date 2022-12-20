@@ -28,169 +28,12 @@ class EthernetServo(Servo):
             its status, errors, faults, etc.
 
     """
-    COMMS_ETH_IP = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00A1, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    )
-    COMMS_ETH_NET_MASK = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00A2, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    )
-    COMMS_ETH_NET_GATEWAY = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00A3, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    )
-    STATUS_WORD_REGISTERS = {
-        1: EthernetRegister(
-            identifier='', units='', subnode=1, address=0x0011,
-            cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-        ),
-        2: EthernetRegister(
-            identifier='', units='', subnode=2, address=0x0011,
-            cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-        ),
-        3: EthernetRegister(
-            identifier='', units='', subnode=3, address=0x0011,
-            cyclic='CYCLIC_TX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-        )
-    }
-    RESTORE_COCO_ALL = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x06DC, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    )
-    RESTORE_MOCO_ALL_REGISTERS = {
-        1: EthernetRegister(
-            identifier='', units='', subnode=1, address=0x06DC,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-        ),
-        2: EthernetRegister(
-            identifier='', units='', subnode=2, address=0x06DC,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-        ),
-        3: EthernetRegister(
-            identifier='', units='', subnode=3, address=0x06DC,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-        )
-    }
-    STORE_COCO_ALL = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x06DB, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    )
-    STORE_MOCO_ALL_REGISTERS = {
-        1: EthernetRegister(
-            identifier='', units='', subnode=1, address=0x06DB,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-        ),
-        2: EthernetRegister(
-            identifier='', units='', subnode=2, address=0x06DB,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-        ),
-        3: EthernetRegister(
-            identifier='', units='', subnode=3, address=0x06DB,
-            cyclic='CONFIG', dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-        )
-    }
-    CONTROL_WORD_REGISTERS = {
-        1: EthernetRegister(
-            identifier='', units='', subnode=1, address=0x0010,
-            cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-        ),
-        2: EthernetRegister(
-            identifier='', units='', subnode=2, address=0x0010,
-            cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-        ),
-        3: EthernetRegister(
-            identifier='', units='', subnode=3, address=0x0010,
-            cyclic='CYCLIC_RX', dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-        )
-    }
-    SERIAL_NUMBER_REGISTERS = {
-        0: EthernetRegister(
-            identifier='DRV_ID_SERIAL_NUMBER', units='', subnode=0,
-            address=0x06E6, cyclic='CONFIG', dtype=REG_DTYPE.U32,
-            access=REG_ACCESS.RO
-        ),
-        1: EthernetRegister(
-            identifier='DRV_ID_SERIAL_NUMBER', units='', subnode=1,
-            address=0x06E6, cyclic='CONFIG', dtype=REG_DTYPE.U32,
-            access=REG_ACCESS.RO
-        )
-    }
-    SOFTWARE_VERSION_REGISTERS = {
-        0: EthernetRegister(
-            identifier='DRV_ID_SOFTWARE_VERSION', units='', subnode=0,
-            address=0x06E4, cyclic='CONFIG', dtype=REG_DTYPE.STR,
-            access=REG_ACCESS.RO
-        ),
-        1: EthernetRegister(
-            identifier='DRV_ID_SOFTWARE_VERSION', units='', subnode=1,
-            address=0x06E4, cyclic='CONFIG', dtype=REG_DTYPE.STR,
-            access=REG_ACCESS.RO
-        )
-    }
-    PRODUCT_ID_REGISTERS = {
-        0: EthernetRegister(
-            identifier='DRV_ID_PRODUCT_CODE', units='', subnode=0,
-            address=0x06E1, cyclic='CONFIG', dtype=REG_DTYPE.U32,
-            access=REG_ACCESS.RO
-        ),
-        1: EthernetRegister(
-            identifier='DRV_ID_PRODUCT_CODE', units='', subnode=1,
-            address=0x06E1, cyclic='CONFIG', dtype=REG_DTYPE.U32,
-            access=REG_ACCESS.RO
-        )
-    }
-    REVISION_NUMBER_REGISTERS = {
-        0: EthernetRegister(
-            identifier='DRV_ID_REVISION_NUMBER', units='', subnode=0,
-            address=0x06E2, cyclic='CONFIG', dtype=REG_DTYPE.U32,
-            access=REG_ACCESS.RO
-        ),
-        1: EthernetRegister(
-            identifier='DRV_ID_REVISION_NUMBER', units='', subnode=1,
-            address=0x06E2, cyclic='CONFIG', dtype=REG_DTYPE.U32,
-            access=REG_ACCESS.RO
-        )
-    }
-    MONITORING_DIST_ENABLE = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00C0, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-    )
-    MONITORING_REMOVE_DATA = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00EA, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
-    )
-    MONITORING_NUMBER_MAPPED_REGISTERS = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00E3, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-    )
-    MONITORING_BYTES_PER_BLOCK = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00E4, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-    )
-    MONITORING_ACTUAL_NUMBER_BYTES = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00B7, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-    )
+    COMMS_ETH_IP = "COMMS_ETH_IP"
+    COMMS_ETH_NET_MASK = "COMMS_ETH_NET_MASK"
+    COMMS_ETH_NET_GATEWAY = "COMMS_ETH_GW"
     MONITORING_DATA = EthernetRegister(
         identifier='', units='', subnode=0, address=0x00B2, cyclic='CONFIG',
         dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
-    )
-    DISTURBANCE_ENABLE = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00C7, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-    )
-    DISTURBANCE_REMOVE_DATA = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00EB, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
-    )
-    DISTURBANCE_NUMBER_MAPPED_REGISTERS = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00E8, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
-    )
-    DIST_NUMBER_SAMPLES = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
     )
     DIST_DATA = EthernetRegister(
         identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
@@ -258,9 +101,9 @@ class EthernetServo(Servo):
         int_subnet_mask = convert_ip_to_int(subnet_mask)
         int_gateway = convert_ip_to_int(gateway)
 
-        self.write(self.COMMS_ETH_IP, int_ip_address)
-        self.write(self.COMMS_ETH_NET_MASK, int_subnet_mask)
-        self.write(self.COMMS_ETH_NET_GATEWAY, int_gateway)
+        self.write(self.COMMS_ETH_IP, int_ip_address, subnode=0)
+        self.write(self.COMMS_ETH_NET_MASK, int_subnet_mask, subnode=0)
+        self.write(self.COMMS_ETH_NET_GATEWAY, int_gateway, subnode=0)
 
         try:
             self.store_tcp_ip_parameters()
