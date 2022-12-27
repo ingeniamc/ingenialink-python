@@ -1,40 +1,37 @@
 {
   "ethernet": [
   {
-    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_eth_2.0.1.xdf",
+    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_eth_2.4.0.xdf",
     "ip": "192.168.2.11",
     "port": 1061,
     "save_config_file": "ethernet-config.xcf",
-    "load_config_file": "resources/configurations/ethernet-config.xcf",
-    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_2.0.1.lfu"
+    "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml",
+    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_2.4.0.lfu"
   }
   ],
   "ethercat": [
   {
-    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-e_eoe_2.0.1.xdf",
+    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_eoe_2.4.0.xdf",
     "slave": 2,
     "ifname": "\\Device\\NPF_{DC30BAAA-CD3D-485E-9E8E-FB3953BAE5A2}",
     "eoe_comm": true,
     "boot_in_app": false,
     "save_config_file": "ethercat-config.xcf",
-    "load_config_file": "resources/configurations/ethercat-config.xcf",
-    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-e_2.0.1.lfu"
+    "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_cap_ecat/1.1.0/config.xml",
+    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_2.4.0.lfu"
   }
   ],
   "canopen": [
   {
-    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_can_2.0.1.xdf",
-    "eds": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_2.0.1.eds",
+    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_can_2.4.0.xdf",
+    "eds": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_2.4.0.eds",
     "node_id": 21,
     "device": "pcan",
     "baudrate": 1000000,
     "channel": 0,
     "save_config_file": "canopen-config.xcf",
-    "load_config_file": "resources/configurations/canopen-config.xcf",
-    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_2.0.1.lfu"
-    "load_config_file": "resources/configurations/canopen-config.xcf",
-    "fw_file": "resources/firmware/eve-net-c_1.8.1.sfu",
-    "test_fw_file": "resources/firmware/eve-net-c_1.7.0.sfu"
+    "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml",
+    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_2.4.0.lfu"
   }
   ]
 }
