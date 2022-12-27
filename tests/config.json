@@ -32,6 +32,9 @@
     "save_config_file": "canopen-config.xcf",
     "load_config_file": "resources/configurations/canopen-config.xcf",
     "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.0.1/cap-xcr-c_2.0.1.lfu"
+    "load_config_file": "resources/configurations/canopen-config.xcf",
+    "fw_file": "resources/firmware/eve-net-c_1.8.1.sfu",
+    "test_fw_file": "resources/firmware/eve-net-c_1.7.0.sfu"
   }
   ]
 }

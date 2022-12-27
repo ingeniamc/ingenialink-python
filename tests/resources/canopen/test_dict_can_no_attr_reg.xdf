@@ -17,31 +17,6 @@
             <Label lang="en_US">Product Identification</Label>
           </Labels>
         </Category>
-        <Category id="COMMUTATION">
-          <Labels>
-            <Label lang="en_US">Commutation</Label>
-          </Labels>
-        </Category>
-        <Category id="PROTECTIONS">
-          <Labels>
-            <Label lang="en_US">Protections</Label>
-          </Labels>
-        </Category>
-        <Category id="INTERNAL">
-          <Labels>
-            <Label lang="en_US">Internal</Label>
-          </Labels>
-        </Category>
-        <Category id="CONTROL">
-          <Labels>
-            <Label lang="en_US">Control loop</Label>
-          </Labels>
-        </Category>
-        <Category id="FEEDBACK">
-          <Labels>
-            <Label lang="en_US">Feedback</Label>
-          </Labels>
-        </Category>
       </Categories>
       <Axes>
         <Axis subnode="0">
@@ -99,36 +74,6 @@
       <Error id="0x00002280" affected_module="Power stage" error_type="cyclic">
         <Labels>
           <Label lang="en_US">HW over current</Label>
-        </Labels>
-      </Error>
-      <Error id="0x00002288" affected_module="Power stage" error_type="cyclic">
-        <Labels>
-          <Label lang="en_US">User I2T limit detected without current control</Label>
-        </Labels>
-      </Error>
-      <Error id="0x00003290" affected_module="Power stage" error_type="cyclic">
-        <Labels>
-          <Label lang="en_US">Input stage problem</Label>
-        </Labels>
-      </Error>
-      <Error id="0x00003210" affected_module="Power stage" error_type="cyclic">
-        <Labels>
-          <Label lang="en_US">HW Over-voltage detected</Label>
-        </Labels>
-      </Error>
-      <Error id="0x00003211" affected_module="Power stage" error_type="cyclic">
-        <Labels>
-          <Label lang="en_US">FW Over-voltage detected</Label>
-        </Labels>
-      </Error>
-      <Error id="0x00003221" affected_module="Power stage" error_type="cyclic">
-        <Labels>
-          <Label lang="en_US">FW Under-voltage detected</Label>
-        </Labels>
-      </Error>
-      <Error id="0x00004300" affected_module="Power stage" error_type="cyclic">
-        <Labels>
-          <Label lang="en_US">Over-Temperature detected (internal drive limit).</Label>
         </Labels>
       </Error>
     </Errors>

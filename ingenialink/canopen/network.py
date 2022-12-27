@@ -49,7 +49,8 @@ APPLICATION_LOADED_STATE = 402
 CAN_CHANNELS = {
     'kvaser': (0, 1),
     'pcan': ('PCAN_USBBUS1', 'PCAN_USBBUS2'),
-    'ixxat': (0, 1)
+    'ixxat': (0, 1),
+    'virtual': (0, 1)
 }
 
 
@@ -59,6 +60,7 @@ class CAN_DEVICE(Enum):
     KVASER = 'kvaser'
     PCAN = 'pcan'
     IXXAT = 'ixxat'
+    VIRTUAL = 'virtual'
 
 
 class CAN_BAUDRATE(Enum):
@@ -628,7 +630,7 @@ class CanopenNetwork(Network):
                             logger.info('Waiting for the drive to be available.')
                             while (time() - initial_time) < timeout and not stop:
                                 try:
-                                    servo.read(servo.STATUS_WORD_REGISTERS[1])
+                                    servo.read(servo.STATUS_WORD_REGISTERS)
                                     stop = True
                                 except ILError:
                                     pass

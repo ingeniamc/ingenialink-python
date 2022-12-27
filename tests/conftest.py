@@ -2,15 +2,15 @@ import json
 import pytest
 
 from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
-from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT
+from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethercat.network import EthercatNetwork
+from tests.virtual_drive import VirtualDrive
 
-
-ALLOW_PROTOCOLS = ["ethernet", "ethercat", "canopen"]
+ALLOW_PROTOCOLS = ["no_connection", "ethernet", "ethercat", "canopen"]
 
 
 def pytest_addoption(parser):
-    parser.addoption("--protocol", action="store", default="ethernet",
+    parser.addoption("--protocol", action="store", default="no_connection",
                      help=",".join(ALLOW_PROTOCOLS), choices=ALLOW_PROTOCOLS)
     parser.addoption("--slave", type=int, default=0,
                      help="Slave index in config.json")
@@ -59,8 +59,7 @@ def connect_ethernet(protocol_contents):
     servo = net.connect_to_slave(
         protocol_contents['ip'],
         protocol_contents['dictionary'],
-        protocol_contents['port'],
-        NET_TRANS_PROT[protocol_contents['protocol']])
+        protocol_contents['port'])
     return servo, net
 
 
@@ -89,3 +88,13 @@ def connect_to_slave(pytestconfig, read_config):
 
     yield servo, net
     net.disconnect_from_slave(servo)
+
+
+@pytest.fixture()
+def virtual_drive():
+    test_ip = "127.0.0.1"
+    test_port = 81
+    server = VirtualDrive(test_ip, test_port)
+    server.start()
+    yield server
+    server.stop()
