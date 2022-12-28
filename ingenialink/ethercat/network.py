@@ -10,6 +10,7 @@ from ingenialink.network import EEPROM_FILE_FORMAT
 
 import os
 import ingenialogger
+from pysoem import Master, INIT_STATE, BOOT_STATE
 logger = ingenialogger.get_logger(__name__)
 
 
@@ -61,13 +62,8 @@ class EthercatNetwork(IPBNetwork):
         self.servos = []
         """list: List of the connected servos in the network."""
 
-    def load_firmware(self, fw_file, target=1, boot_in_app=None):
-        """Loads a given firmware file to a target.
-
-        .. warning::
-            Choose the ``boot_in_app`` flag accordingly to your
-            servo specifications otherwise the servo could enter
-            a blocking state.
+    def load_firmware(self, fw_file, slave_id=1):
+        """Loads a given firmware file to a target slave.
 
         .. warning ::
             It is needed to disconnect the drive(:func:`disconnect_from_slave`)
@@ -75,36 +71,54 @@ class EthercatNetwork(IPBNetwork):
             become obsolete.
 
         Args:
-            target (int): Targeted node ID to be loaded.
             fw_file (str): Path to the firmware file.
-            boot_in_app (bool): If ``fw_file`` extension is .sfu -> True.
-                                Otherwise -> False.
+            slave_id (int): Slave ID to which load the firmware file.
 
         Raises:
-            ILFirmwareLoadError: The firmware load process fails
-                with an error message.
-            ValueError: If the firmware file has the wrong extension.
+            FileNotFoundError: If the firmware file cannot be found.
+            ILFirmwareLoadError: The firmware load process fails with an error message.
 
         """
         if not os.path.isfile(fw_file):
-            raise FileNotFoundError('Could not find {}.'.format(fw_file))
+            raise FileNotFoundError(f"Could not find {fw_file}.")
+        force_boot_password = 0x424F4F54
+        firm_password = 0x70636675
+        boot_in_app = fw_file.endswith('.sfu')
+        self._soem_master = Master()
+        self._soem_master.open(self.interface_name)
+        try:
+            if self._soem_master.config_init() > 0:
+                first_slave = self._soem_master.slaves[slave_id-1]
+                if not boot_in_app:
+                    first_slave.sdo_write(0x5EDE, 0x00, force_boot_password.to_bytes(4, 'little'), False)
+                    self._set_slave_state_to_boot()
+                self._set_slave_state_to_boot()
+                with open(fw_file, 'rb') as file:
+                    file_data = file.read()
+                    r = first_slave.foe_write(os.path.basename(fw_file), firm_password, file_data)
+                    self._write_slave_state(INIT_STATE)
+            else:
+                print('no slave available')
+        except Exception as ex:
+            raise ex
+        finally:
+            self._soem_master.close()
 
-        if boot_in_app is None:
-            if not fw_file.endswith((FILE_EXT_SFU, FILE_EXT_LFU)):
-                raise ValueError(f'Firmware file should have extension '
-                                 f'{FILE_EXT_SFU} or {FILE_EXT_LFU}')
-            boot_in_app = fw_file.endswith(FILE_EXT_SFU)
-        self._cffi_network = ffi.new('il_net_t **')
-        _interface_name = cstr(self.interface_name) \
-            if self.interface_name else ffi.NULL
-        _fw_file = cstr(fw_file) if fw_file else ffi.NULL
-        r = lib.il_net_update_firmware(
-            self._cffi_network, _interface_name, target, _fw_file, boot_in_app)
-        if r < 0:
-            error_msg = 'Error updating firmware. Error code: {}'.format(r)
-            if r in FIRMWARE_UPDATE_ERROR:
-                error_msg = FIRMWARE_UPDATE_ERROR[r]
-            raise ILFirmwareLoadError(error_msg)
+    def _set_slave_state_to_boot(self):
+        """Set all EtherCAT slaves to bootstrap state."""
+        self._write_slave_state(INIT_STATE)
+        self._write_slave_state(BOOT_STATE)
+
+    def _write_slave_state(self, state):
+        """
+        Set all EtherCAT slaves to a given state.
+
+        Args:
+            state (int): State in which to set the slaves.
+
+        """
+        self._soem_master.state = state
+        self._soem_master.write_state()
 
     def _read_eeprom(self, eeprom_file, slave, file_format):
         """Reads the EEPROM.
