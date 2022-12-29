@@ -9,11 +9,6 @@ from ingenialink.enums.servo import SERVO_STATE, SERVO_FLAGS, SERVO_MODE, \
     SERVO_UNITS_TORQUE, SERVO_UNITS_POS, SERVO_UNITS_VEL, SERVO_UNITS_ACC
 from ingenialink.servo import Servo
 
-from .ipb.poller import IPBPoller
-from .ipb.register import IPBRegister
-from .ipb.dictionary import IPBDictionary
-from .ipb.network import NetworkMonitor
-
 from .ethernet.network import EthernetNetwork
 from .ethernet.servo import EthernetServo
 
@@ -38,12 +33,11 @@ set_logger_level(3)
 __all__ = ['EEPROM_FILE_FORMAT', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE',
            'NET_TRANS_PROT', 'SERVO_STATE', 'SERVO_FLAGS', 'SERVO_MODE',
            'SERVO_UNITS_TORQUE', 'SERVO_UNITS_POS', 'SERVO_UNITS_VEL',
-           'SERVO_UNITS_ACC', 'NetworkMonitor', 'Network', 'Servo',
-           'IPBDictionary', 'IPBRegister', 'REG_DTYPE', 'REG_ACCESS',
-           'REG_PHY', 'IPBPoller', 'EthercatNetwork', 'EthernetServo',
-           'EthernetNetwork', 'CanopenNetwork', 'CAN_DEVICE',
-           'CAN_BAUDRATE', 'CanopenServo', 'CanopenRegister', 'Poller',
-           'CanopenDictionary', 'err_ipb_last']
+           'SERVO_UNITS_ACC', 'Network', 'Servo', 'REG_DTYPE',
+           'REG_ACCESS', 'REG_PHY', 'EthercatNetwork', 'EthernetServo',
+           'EthernetNetwork', 'CanopenNetwork', 'CAN_DEVICE', 'CAN_BAUDRATE',
+           'CanopenServo', 'CanopenRegister', 'Poller', 'CanopenDictionary',
+           'err_ipb_last']
 
 __version__ = '6.4.1'
 
