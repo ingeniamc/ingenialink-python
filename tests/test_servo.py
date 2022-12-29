@@ -10,7 +10,6 @@ from ingenialink.register import REG_ADDRESS_TYPE
 from ingenialink.ethernet.register import REG_DTYPE
 from ingenialink.servo import SERVO_STATE
 from ingenialink.exceptions import ILStateError, ILTimeoutError
-from ingenialink.utils._utils import raise_err
 
 
 def _clean(filename):
@@ -366,6 +365,5 @@ def test_status_word_wait_change(connect_to_slave):
     timeout = 0.5
     status_word = servo.read(servo.STATUS_WORD_REGISTERS,
                              subnode=subnode)
-    r = servo.status_word_wait_change(status_word, timeout, subnode)
     with pytest.raises(ILTimeoutError):
-        raise_err(r)
+        servo.status_word_wait_change(status_word, timeout, subnode)

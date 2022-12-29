@@ -1,5 +1,5 @@
-from ingenialink.utils._utils import raise_err
-from ingenialink.utils import constants
+from ingenialink.exceptions import ILAlreadyInitializedError, ILStateError,\
+    ILValueError
 
 from datetime import datetime
 from threading import Timer, RLock
@@ -66,8 +66,7 @@ class Poller:
         """Start the poller."""
 
         if self.__running:
-            logger.warning("Poller already running")
-            raise_err(constants.IL_EALREADY)
+            raise ILAlreadyInitializedError("Poller already running")
 
         # Activate timer
         self.__timer = PollerTimer(self.__refresh_time,
@@ -102,9 +101,7 @@ class Poller:
 
         """
         if self.__running:
-            logger.warning("Poller is running")
-            raise_err(constants.IL_ESTATE)
-
+            raise ILStateError("Poller is running")
         # Configure data and sizes with empty data
         self._reset_acq()
         self.__sz = sz
@@ -137,12 +134,10 @@ class Poller:
         """
 
         if self.__running:
-            logger.warning("Poller is running")
-            raise_err(constants.IL_ESTATE)
+            raise ILStateError("Poller is running")
 
         if channel > self.num_channels:
-            logger.error("Channel out of range")
-            raise_err(constants.IL_EINVAL)
+            raise ILValueError("Channel out of range")
 
         # Obtain register
         _reg = self.servo._get_reg(reg, subnode)
@@ -170,12 +165,10 @@ class Poller:
         """
 
         if self.__running:
-            logger.warning("Poller is running")
-            raise_err(constants.IL_ESTATE)
+            raise ILStateError("Poller is running")
 
         if channel > self.num_channels:
-            logger.error("Channel out of range")
-            raise_err(constants.IL_EINVAL)
+            raise ILValueError("Channel out of range")
 
         # Set channel required as disabled
         self.__mappings_enabled[channel] = False
@@ -191,8 +184,6 @@ class Poller:
         """
         for channel in range(self.num_channels):
             r = self.ch_disable(channel)
-            if r < 0:
-                raise_err(r)
         return 0
 
     def _reset_acq(self):

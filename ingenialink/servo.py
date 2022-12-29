@@ -5,10 +5,11 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from abc import abstractmethod
 
-from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError, ILError, ILStateError
+from ingenialink.exceptions import ILIOError, ILRegisterNotFoundError,\
+    ILError, ILStateError, ILTimeoutError
 from ingenialink.register import Register
-from ingenialink.utils._utils import get_drive_identification, cleanup_register, \
-    raise_err, convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.utils._utils import get_drive_identification, convert_bytes_to_dtype,\
+    convert_dtype_to_bytes
 from ingenialink.constants import PASSWORD_RESTORE_ALL, PASSWORD_STORE_ALL, \
     DEFAULT_PDS_TIMEOUT, MONITORING_BUFFER_SIZE, DEFAULT_DRIVE_NAME
 from ingenialink.utils import constants
@@ -392,15 +393,12 @@ class Servo:
                 # Wait for state change
                 r = self.status_word_wait_change(status_word, timeout,
                                                  subnode=subnode)
-                if r < 0:
-                    raise_err(r)
 
                 # Read the current status word
                 status_word = self.read(self.STATUS_WORD_REGISTERS,
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
-        raise_err(r)
 
     def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Disable PDS.
@@ -443,13 +441,10 @@ class Servo:
                 # Wait until status word changes
                 r = self.status_word_wait_change(status_word, timeout,
                                                  subnode=subnode)
-                if r < 0:
-                    raise_err(r)
                 status_word = self.read(self.STATUS_WORD_REGISTERS,
                                         subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
-        raise_err(r)
 
     def fault_reset(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Executes a fault reset on the drive.
@@ -483,7 +478,6 @@ class Servo:
                                     subnode=subnode)
             state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
-        raise_err(r)
 
     def status_word_wait_change(self, status_word, timeout, subnode=1):
         """Waits for a status word change.
@@ -506,7 +500,8 @@ class Servo:
             current_time = int(round(time.time() * 1000))
             time_diff = (current_time - start_time)
             if time_diff > timeout:
-                return OPERATION_TIME_OUT
+                raise ILTimeoutError("Timeout while waiting for status word"
+                                     " change")
             actual_status_word = self.read(
                 self.STATUS_WORD_REGISTERS,
                 subnode=subnode)
