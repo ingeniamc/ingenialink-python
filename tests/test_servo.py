@@ -63,7 +63,6 @@ def create_disturbance(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_save_configuration(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -120,7 +119,6 @@ def test_save_configuration(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_load_configuration(connect_to_slave, read_config, pytestconfig):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -135,7 +133,6 @@ def test_load_configuration(connect_to_slave, read_config, pytestconfig):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_load_configuration_file_not_found(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -150,7 +147,6 @@ def test_load_configuration_file_not_found(connect_to_slave):
 ])
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_load_configuration_invalid_subnode(read_config, pytestconfig, connect_to_slave, subnode):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -193,7 +189,6 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_store_parameters(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -205,7 +200,6 @@ def test_store_parameters(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_restore_parameters(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -217,7 +211,6 @@ def test_restore_parameters(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_read(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -227,7 +220,6 @@ def test_read(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_write(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -361,7 +353,6 @@ def test_fault_reset(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_is_alive(connect_to_slave):
     servo, net = connect_to_slave
     assert servo.is_alive()
