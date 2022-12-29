@@ -18,7 +18,6 @@ from .ethernet.network import EthernetNetwork
 from .ethernet.servo import EthernetServo
 
 from .ethercat.network import EthercatNetwork
-from .ethercat.servo import EthercatServo
 
 from .canopen.servo import CanopenServo
 from .canopen.network import CanopenNetwork, CAN_DEVICE, CAN_DEVICE, \
@@ -41,10 +40,9 @@ __all__ = ['EEPROM_FILE_FORMAT', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE',
            'SERVO_UNITS_TORQUE', 'SERVO_UNITS_POS', 'SERVO_UNITS_VEL',
            'SERVO_UNITS_ACC', 'NetworkMonitor', 'Network', 'Servo',
            'IPBDictionary', 'IPBRegister', 'REG_DTYPE', 'REG_ACCESS',
-           'REG_PHY', 'IPBPoller', 'EthercatNetwork',
-           'EthercatServo', 'EthernetServo', 'EthernetNetwork',
-           'CanopenNetwork', 'CAN_DEVICE', 'CAN_BAUDRATE',
-           'CanopenServo', 'CanopenRegister', 'Poller',
+           'REG_PHY', 'IPBPoller', 'EthercatNetwork', 'EthernetServo',
+           'EthernetNetwork', 'CanopenNetwork', 'CAN_DEVICE',
+           'CAN_BAUDRATE', 'CanopenServo', 'CanopenRegister', 'Poller',
            'CanopenDictionary', 'err_ipb_last']
 
 __version__ = '6.4.1'
