@@ -17,8 +17,6 @@ from .canopen.dictionary import CanopenDictionary
 
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY
 
-from ingenialink.utils.errors import err_ipb_last
-
 from ingenialink.poller import Poller
 
 __all__ = ['EEPROM_FILE_FORMAT', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE',
@@ -27,7 +25,6 @@ __all__ = ['EEPROM_FILE_FORMAT', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE',
            'SERVO_UNITS_ACC', 'Network', 'Servo', 'REG_DTYPE',
            'REG_ACCESS', 'REG_PHY', 'EthercatNetwork', 'EthernetServo',
            'EthernetNetwork', 'CanopenNetwork', 'CAN_DEVICE', 'CAN_BAUDRATE',
-           'CanopenServo', 'CanopenRegister', 'Poller', 'CanopenDictionary',
-           'err_ipb_last']
+           'CanopenServo', 'CanopenRegister', 'Poller', 'CanopenDictionary']
 
 __version__ = '6.4.1'
