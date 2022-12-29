@@ -1,8 +1,3 @@
-try:
-    from ._ingenialink import lib
-except ImportError as e:
-    raise ImportError("DLLs required not found: Please install WinPcap") from e
-
 from .network import NET_PROT, NET_STATE, NET_DEV_EVT, \
     NET_TRANS_PROT, Network, EEPROM_FILE_FORMAT
 from ingenialink.enums.servo import SERVO_STATE, SERVO_FLAGS, SERVO_MODE, \
@@ -24,11 +19,7 @@ from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY
 
 from ingenialink.utils.errors import err_ipb_last
 
-from ingenialink.utils._utils import pstr, set_logger_level
-
 from ingenialink.poller import Poller
-
-set_logger_level(3)
 
 __all__ = ['EEPROM_FILE_FORMAT', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE',
            'NET_TRANS_PROT', 'SERVO_STATE', 'SERVO_FLAGS', 'SERVO_MODE',
@@ -40,8 +31,3 @@ __all__ = ['EEPROM_FILE_FORMAT', 'NET_PROT', 'NET_DEV_EVT', 'NET_STATE',
            'err_ipb_last']
 
 __version__ = '6.4.1'
-
-try:
-    __ingenialink_C_version__ = pstr(lib.il_version())
-except Exception:
-    __ingenialink_C_version__ = '-'

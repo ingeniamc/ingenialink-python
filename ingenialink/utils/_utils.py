@@ -1,8 +1,6 @@
 import struct
 from enum import Enum
 
-from .._ingenialink import lib, ffi
-from ingenialink import exceptions as exc
 from ingenialink.enums.register import REG_DTYPE
 from time import sleep
 
@@ -38,21 +36,6 @@ def deprecated(custom_msg=None, new_func_name=None):
         return wrapped_method
 
     return wrap
-
-
-def cstr(v):
-    """Convert Python 3.x string to C compatible char *."""
-    return v.encode('utf8')
-
-
-def pstr(v):
-    """Convert C string to Python 3.x compatible str."""
-    convert = ""
-    try:
-        convert = ffi.string(v).decode('utf8')
-    except Exception as e:
-        print("Error converting C string to Python. Exception: {}".format(e))
-    return convert
 
 
 def to_ms(s):
@@ -239,27 +222,6 @@ class INT_SIZES(Enum):
     U16_MAX = 65535
     U32_MAX = 4294967295
     U64_MAX = 18446744073709551615
-
-
-def raise_null(obj):
-    """Raise exception if object is ffi.NULL.
-
-    Raises:
-        ILCreationError: If the object is NULL.
-    """
-    if obj == ffi.NULL:
-        msg = pstr(lib.ilerr_last())
-        raise exc.ILCreationError(msg)
-
-
-def set_logger_level(level):
-    """Set ingenialink C log level.
-
-    Args:
-        level (int): Log level to be set.
-
-    """
-    lib.set_log_level(level)
 
 
 def convert_bytes_to_dtype(data, dtype):

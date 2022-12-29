@@ -2,7 +2,7 @@ import sys
 import re
 
 from ._ingenialink import lib
-from .register_deprecated import REG_DTYPE
+from ingenialink.register import REG_DTYPE
 
 
 DIST_FRAME_SIZE_BYTES = 128
