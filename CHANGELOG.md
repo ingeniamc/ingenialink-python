@@ -7,7 +7,9 @@
 - Re-organize the tests by protocol and add a no-connection mark to separate test that do not need a servo connected.
 - Remove enums_count as an argument to create a Register.
 - Convert enums type from list[dict] to dict.
-### Deprecated 
+- Remove binding to the [ingenialink](https://github.com/ingeniamc/ingenialink) C library.
+
+### Deprecated
 
 
 ## [6.4.0] - 2022-07-13
