@@ -1,3 +1,4 @@
+import time
 from enum import Enum
 from ..exceptions import *
 from ..network import NET_PROT
@@ -10,6 +11,7 @@ from .._ingenialink import lib, ffi
 from ingenialink.utils._utils import cstr
 from ingenialink.ipb.network import IPBNetwork
 from ingenialink.network import EEPROM_FILE_FORMAT
+from ingenialink.enums.ethercat import EC_STATE
 
 import os
 import ingenialogger
@@ -136,6 +138,23 @@ class EthercatNetwork(IPBNetwork):
         """
         self._ecat_master.state = state
         self._ecat_master.write_state()
+        self._check_slave_state(state)
+
+    def _check_slave_state(self, state):
+        """
+        Check that slaves reaches requested state.
+
+        Args:
+            state (int): Requested state.
+
+        Raises:
+            ILStateError: If slave does not reach requested state.
+
+        """
+        self._ecat_master.read_state()
+        if self._ecat_master.state_check(state) != state:
+            raise ILStateError("Firmware could not be loaded. Slave could "
+                               f"not enter {EC_STATE(state).name} state.")
 
     def _read_eeprom(self, eeprom_file, slave, file_format):
         """Reads the EEPROM.
