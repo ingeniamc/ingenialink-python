@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 
 from ingenialink.utils._utils import get_drive_identification
 from ingenialink.register import REG_ADDRESS_TYPE
+from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.register import REG_DTYPE
 from ingenialink.servo import SERVO_STATE
 from ingenialink.exceptions import ILStateError, ILTimeoutError
@@ -76,7 +77,6 @@ def create_disturbance(connect_to_slave, pytestconfig):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_save_configuration(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -87,11 +87,8 @@ def test_save_configuration(connect_to_slave):
 
     assert os.path.isfile(filename)
 
-    with open(filename, 'r', encoding='utf-8') as xml_file:
-        tree = ET.parse(xml_file)
-    root = tree.getroot()
+    device, saved_registers = servo._read_configuration_file(filename)
 
-    device = root.find('Body/Device')
     prod_code, rev_number = get_drive_identification(servo)
     if 'ProductCode' in device.attrib and prod_code is not None:
         assert int(device.attrib.get('ProductCode')) == prod_code
@@ -103,9 +100,7 @@ def test_save_configuration(connect_to_slave):
     assert device.attrib.get("firmwareVersion") == servo.dictionary.firmware_version
     # TODO: check name and family? These are not stored at the dictionary
 
-    saved_registers = root.findall('./Body/Device/Registers/Register')
     assert len(saved_registers) > 0
-
     for saved_register in saved_registers:
         subnode = int(saved_register.attrib.get('subnode'))
 
@@ -131,9 +126,9 @@ def test_save_configuration(connect_to_slave):
 
     _clean(filename)
 
+
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_load_configuration(connect_to_slave, read_config, pytestconfig):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -145,6 +140,51 @@ def test_load_configuration(connect_to_slave, read_config, pytestconfig):
     assert os.path.isfile(filename)
 
     servo.load_configuration(filename)
+
+    _, loaded_registers = servo._read_configuration_file(filename)
+
+    for register in loaded_registers:
+        reg_id = register.attrib.get('id')
+        storage = register.attrib.get('storage')
+        access = register.attrib.get('access')
+        if storage is None or access != 'rw':
+            continue
+        subnode = int(register.attrib.get('subnode'))
+        dtype = register.attrib.get('dtype')
+
+        if reg_id in servo.dictionary.registers(subnode):
+            if servo.dictionary.registers(subnode)[reg_id].address_type == REG_ADDRESS_TYPE.NVM_NONE:
+                continue
+            value = servo.read(reg_id, subnode=subnode)
+            if dtype == 'str':
+                assert value == storage
+            elif dtype == 'float':
+                assert value == pytest.approx(float(storage), 0.0001)
+            else:
+                assert value == int(storage)
+
+
+@pytest.mark.no_connection
+def test_read_configuration_file(read_config):
+    test_file = "./tests/resources/test_config_file.xcf"
+    servo = CanopenServo("test", 0, dictionary_path=read_config["canopen"]["dictionary"])
+    device, registers = servo._read_configuration_file(test_file)
+
+    assert device.attrib.get("PartNumber") == "EVE-NET-C"
+    assert device.attrib.get("Interface") == "CAN"
+    assert device.attrib.get("firmwareVersion") == "2.3.0"
+    assert device.attrib.get('ProductCode') == "493840"
+    assert device.attrib.get('RevisionNumber') == "196634"
+    assert device.attrib.get('family') == "Summit"
+    assert device.attrib.get('name') == "Generic"
+
+    assert len(registers) == 4
+    assert registers[0].get("id") == "DRV_DIAG_ERROR_LAST_COM"
+    assert registers[0].get("access") == "r"
+    assert registers[0].get("address") == "0x580F00"
+    assert registers[0].get("dtype") == "s32"
+    assert registers[0].get("subnode") == "0"
+
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
@@ -204,6 +244,7 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
     with pytest.raises(ValueError):
         servo.load_configuration(str(modified_path), subnode=0)
 
+
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
@@ -215,6 +256,9 @@ def test_store_parameters(connect_to_slave):
 
     value = servo.read('DRV_STATE_STATUS')
     assert value is not None
+
+    # TODO: add a power cycle if possible to check the NVM
+
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
@@ -228,6 +272,9 @@ def test_restore_parameters(connect_to_slave):
     value = servo.read('DRV_STATE_STATUS')
     assert value is not None
 
+    # TODO: add a power cycle if possible to check the NVM
+
+
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
@@ -238,6 +285,7 @@ def test_read(connect_to_slave):
     value = servo.read('DRV_STATE_STATUS')
     assert value is not None
 
+
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
@@ -245,7 +293,16 @@ def test_write(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
 
-    servo.write('CL_AUX_FBK_SENSOR', 4)
+    reg = 'CL_AUX_FBK_SENSOR'
+    value = 4
+
+    saved_value = servo.read(reg)
+    value = value + 1 if saved_value == value else value
+    
+    servo.write(reg, value)
+    saved_value = servo.read(reg)
+
+    assert value == saved_value
 
 
 @pytest.mark.ethernet

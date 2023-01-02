@@ -170,23 +170,10 @@ class Servo:
             ValueError: If an invalid subnode is provided.
 
         """
-        if not os.path.isfile(config_file):
-            raise FileNotFoundError(f'Could not find {config_file}.')
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ValueError('Invalid subnode')
-        with open(config_file, 'r', encoding='utf-8') as xml_file:
-            tree = ET.parse(xml_file)
-        root = tree.getroot()
-
-        axis = tree.findall('*/Device/Axes/Axis')
-        if axis:
-            # Multiaxis
-            registers = root.findall(
-                './Body/Device/Axes/Axis/Registers/Register'
-            )
-        else:
-            # Single axis
-            registers = root.findall('./Body/Device/Registers/Register')
+        _, registers = self._read_configuration_file(config_file)
+        
         dest_subnodes = [int(element.attrib['subnode']) for element in registers]
         if subnode == 0 and subnode not in dest_subnodes:
             raise ValueError(f'Cannot load {config_file} '
@@ -265,6 +252,37 @@ class Servo:
         dom = minidom.parseString(ET.tostring(tree, encoding='utf-8'))
         with open(config_file, "wb") as f:
             f.write(dom.toprettyxml(indent='\t').encode())
+
+    @staticmethod
+    def _read_configuration_file(config_file):
+        """Read a configuration file. Returns the device metadata and the registers list.
+        
+        Args:
+            config_file (str): Path to the dictionary.
+        
+        Returns:
+            device: 
+            list: Register list.
+        
+        Raises:
+            FileNotFoundError: If the configuration file cannot be found.
+        """
+        if not os.path.isfile(config_file):
+            raise FileNotFoundError(f'Could not find {config_file}.')
+        with open(config_file, 'r', encoding='utf-8') as xml_file:
+            tree = ET.parse(xml_file)
+        root = tree.getroot()
+        device = root.find('Body/Device')
+        axis = tree.findall('*/Device/Axes/Axis')
+        if axis:
+            # Multiaxis
+            registers = root.findall(
+                './Body/Device/Axes/Axis/Registers/Register'
+            )
+        else:
+            # Single axis
+            registers = root.findall('./Body/Device/Registers/Register')
+        return device, registers
 
     def restore_parameters(self, subnode=None):
         """Restore all the current parameters of all the slave to default.
