@@ -28,6 +28,9 @@ class EthernetServo(Servo):
             its status, errors, faults, etc.
 
     """
+    DICTIONARY_CLASS = EthernetDictionary
+    MAX_WRITE_SIZE = ETH_MAX_WRITE_SIZE
+
     COMMS_ETH_IP = "COMMS_ETH_IP"
     COMMS_ETH_NET_MASK = "COMMS_ETH_NET_MASK"
     COMMS_ETH_NET_GATEWAY = "COMMS_ETH_GW"
@@ -44,11 +47,8 @@ class EthernetServo(Servo):
                  servo_status_listener=False):
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
-        if dictionary_path is not None:
-            self._dictionary = EthernetDictionary(dictionary_path)
-        else:
-            self._dictionary = None
         super(EthernetServo, self).__init__(self.ip_address,
+                                            dictionary_path,
                                             servo_status_listener)
 
     def store_tcp_ip_parameters(self):
@@ -110,30 +110,11 @@ class EthernetServo(Servo):
         except ILError:
             self.store_parameters()
 
-    def write(self, reg, data, subnode=1):
-        _reg = self._get_reg(reg, subnode)
-        data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
-        self._send_mcb_frame(MCB_CMD_WRITE, _reg.address,
-                             _reg.subnode, data_bytes)
+    def _write_raw(self, reg, data):
+        self._send_mcb_frame(MCB_CMD_WRITE, reg.address, reg.subnode, data)
 
-    def read(self, reg, subnode=1):
-        _reg = self._get_reg(reg, subnode)
-        data = self._send_mcb_frame(MCB_CMD_READ, _reg.address, _reg.subnode)
-        return convert_bytes_to_dtype(data, _reg.dtype)
-
-    def disturbance_write_data(self, channels, dtypes, data_arr):
-        data, chunks = self._disturbance_create_data_chunks(channels,
-                                                            dtypes,
-                                                            data_arr,
-                                                            ETH_MAX_WRITE_SIZE)
-        for chunk in chunks:
-            self._send_mcb_frame(MCB_CMD_WRITE, self.DIST_DATA.address,
-                                 self.DIST_DATA.subnode, chunk)
-        self.disturbance_data = data
-        self.disturbance_data_size = len(data)
-
-    def replace_dictionary(self, dictionary):
-        self._dictionary = EthernetDictionary(dictionary)
+    def _read_raw(self, reg):
+        return self._send_mcb_frame(MCB_CMD_READ, reg.address, reg.subnode)
 
     def _send_mcb_frame(self, cmd, reg, subnode, data=None):
         """Send an MCB frame to the drive.
@@ -165,8 +146,3 @@ class EthernetServo(Servo):
         finally:
             self._lock.release()
         return MCB.read_mcb_data(reg, response)
-
-    def _monitoring_read_data(self):
-        return self._send_mcb_frame(MCB_CMD_READ,
-                                    self.MONITORING_DATA.address,
-                                    self.MONITORING_DATA.subnode)
