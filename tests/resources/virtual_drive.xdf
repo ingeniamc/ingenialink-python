@@ -5,7 +5,7 @@
     <DefaultLanguage>en_US</DefaultLanguage>
   </Header>
   <Body>
-    <Device family="Summit" firmwareVersion="2.0.1" ProductCode="57745409" PartNumber="CAP-NET-C" RevisionNumber="196635" Interface="ETH" name="Generic">
+    <Device family="Summit" firmwareVersion="0.1.0" ProductCode="000000" PartNumber="VIRTUAL-DRIVE" RevisionNumber="000000" Interface="ETH" name="Generic">
       <Categories>
         <Category id="OTHERS">
           <Labels>
@@ -399,12 +399,12 @@
             <Label lang="en_US">Disturbance number mapped registers</Label>
           </Labels>
         </Register>
-        <Register access="r" address_type="NVM_NONE" address="0x00E9" dtype="u16" id="DIST_CFG_BYTES_PER_BLOCK" units="none" subnode="0" cyclic="CONFIG" desc="" cat_id="MONITORING">
+        <Register access="rw" address_type="NVM_NONE" address="0x00E9" dtype="u16" id="DIST_CFG_BYTES_PER_BLOCK" units="none" subnode="0" cyclic="CONFIG" desc="" cat_id="MONITORING">
           <Labels>
             <Label lang="en_US">Disturbance number of bytes per sample</Label>
           </Labels>
         </Register>
-        <Register access="w" address_type="NVM_NONE" address="0x00EA" dtype="u16" id="MON_REMOVE_DATA" units="-" subnode="0" cyclic="CONFIG" desc="Writing 1 value to this register removes the stored monitoring data, and clear the available flag from the monitoring status." cat_id="MONITORING">
+        <Register access="rw" address_type="NVM_NONE" address="0x00EA" dtype="u16" id="MON_REMOVE_DATA" units="-" subnode="0" cyclic="CONFIG" desc="Writing 1 value to this register removes the stored monitoring data, and clear the available flag from the monitoring status." cat_id="MONITORING">
           <Labels>
             <Label lang="en_US">Monitoring remove data</Label>
           </Labels>
@@ -732,12 +732,12 @@
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x004A" dtype="s32" id="FBK_BISS1_SSI1_POS_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Raw position obtained from serial absolute feedback frame" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Position</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Position</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x004B" dtype="u32" id="FBK_BISS1_SSI1_FULL_FRAME_VALUE" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Raw frame data of the configured absolute encoder" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Full frame</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Full frame</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0050" dtype="float" id="FBK_GEN_VALUE" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Output value of the internal generator feedback" cat_id="REPORTING">
@@ -747,12 +747,12 @@
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0051" dtype="s32" id="FBK_SSI2_POS_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Raw position obtained from Secondary BiSS-C / SSI slave 1 feedback frame" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Position</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Position</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0052" dtype="s32" id="FBK_BISS2_POS_VALUE" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Raw position obtained from serial absolute slave 1 feedback frame" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - Position</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - Position</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0053" dtype="float" id="CL_TOR_REF_VALUE" units="Nm" subnode="1" cyclic="CYCLIC_TX" desc="" cat_id="CONTROL">
@@ -762,12 +762,12 @@
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0054" dtype="u32" id="FBK_SSI2_FULL_FRAME_VALUE" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Full frame value obtained from Secondary BiSS-C / SSI slave 1 feedback" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Full frame</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Full frame</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0055" dtype="u32" id="FBK_BISS2_FULL_FRAME_VALUE" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Full frame value obtained from serial absolute slave 1 feedback" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - Full frame</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - Full frame</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x005D" dtype="float" id="DRV_PROT_THIRD_TEMP_VALUE" units="ºC" subnode="1" cyclic="CYCLIC_TX" desc="Temperature reading of the power stage" cat_id="REPORTING">
@@ -922,22 +922,22 @@
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0081" dtype="u16" id="IO_ANA1_COUNTS" units="ADC" subnode="1" cyclic="CYCLIC_TX" desc="Counts obtained from analog input 1. ADC resolution is 16 bits for differential signals" cat_id="INTERNAL">
           <Labels>
-            <Label lang="en_US">Analog 1 counts</Label>
+            <Label lang="en_US">Analog input 1 - Counts</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0082" dtype="float" id="IO_ANA1_VALUE" units="-" subnode="1" cyclic="CYCLIC_TX" desc="This register allow to read the value obtained from analog input 1, after being normalized and applying corresponding gain and offset.&#13;&#10;&#13;&#10;Analog value is internally computed as:&#13;&#10;- Value = (Adc(range 0 to 1) * Gain) + Offset" cat_id="IN_OUT">
           <Labels>
-            <Label lang="en_US">Analog 1 value</Label>
+            <Label lang="en_US">Analog input 1 - Value</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0083" dtype="u16" id="IO_ANA2_COUNTS" units="ADC" subnode="1" cyclic="CYCLIC_TX" desc="Counts obtained from analog input 2. ADC resolution is 16 bits for differential signals" cat_id="INTERNAL">
           <Labels>
-            <Label lang="en_US">Analog 2 counts</Label>
+            <Label lang="en_US">Analog input 2 - Counts</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0084" dtype="float" id="IO_ANA2_VALUE" units="-" subnode="1" cyclic="CYCLIC_TX" desc="This register allow to read the value obtained from analog input 2, after being normalized and applying corresponding gain and offset.&#13;&#10;&#13;&#10;Analog value is internally computed as:&#13;&#10;- Value = (Adc(range 0 to 1) * Gain) + Offset" cat_id="IN_OUT">
           <Labels>
-            <Label lang="en_US">Analog 2 value</Label>
+            <Label lang="en_US">Analog input 2 - Value</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0096" dtype="float" id="CL_POS_CMD_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Position command in position control loop." cat_id="CONTROL">
@@ -1151,6 +1151,7 @@
           <Labels>
             <Label lang="en_US">Reference angle offset</Label>
           </Labels>
+          <Range min="0.0" max="1.0"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0153" dtype="u16" id="COMMU_ANGLE_REF_SENSOR" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the reference angle sensor used for angle readings." cat_id="COMMUTATION">
           <Labels>
@@ -1191,7 +1192,7 @@
             <Label lang="en_US">Phasing accuracy</Label>
           </Labels>
         </Register>
-        <Register access="w" address_type="NVM_NONE" address="0x017B" dtype="u16" id="FBK_RESTART_ALL" units="-" subnode="1" cyclic="CONFIG" desc="Writing any value to this parameter will force a restart of all feedbacks" cat_id="FEEDBACK">
+        <Register access="rw" address_type="NVM_NONE" address="0x017B" dtype="u16" id="FBK_RESTART_ALL" units="-" subnode="1" cyclic="CONFIG" desc="Writing any value to this parameter will force a restart of all feedbacks" cat_id="FEEDBACK">
           <Labels>
             <Label lang="en_US">Restart all feedbacks</Label>
           </Labels>
@@ -1225,7 +1226,7 @@
             <Label lang="en_US">Interpolation data record integrity check</Label>
           </Labels>
         </Register>
-        <Register access="r" address_type="NVM_NONE" address="0x0185" dtype="u16" id="PROF_IP_STATUS" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Contains the status of the interpolation buffer (enabled, running, full or empty)" cat_id="REPORTING">
+        <Register access="rw" address_type="NVM_NONE" address="0x0185" dtype="u16" id="PROF_IP_STATUS" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Contains the status of the interpolation buffer (enabled, running, full or empty)" cat_id="REPORTING">
           <Labels>
             <Label lang="en_US">Interpolation data record status</Label>
           </Labels>
@@ -1233,6 +1234,16 @@
         <Register access="rw" address_type="NVM_CFG" address="0x01C8" dtype="u16" id="PROF_LATCH_MODE" units="-" subnode="1" cyclic="CONFIG" desc="Indicates how the input values of the profiler module are latched: automatically by a change on the set-point value or manually by the control word&#13;&#10;&#13;&#10;The bits are defined as follows:&#13;&#10;&#13;&#10;Bit 0 - Current interpolator latching option&#13;&#10;Bit 1 - Velocity interpolator latching option&#13;&#10;Bit 2 - Position interpolator latching option&#13;&#10;Bit 3 - Profile current latching option&#13;&#10;Bit 4 - Profile velocity latching option&#13;&#10;Bit 5 - Profile position latching option &#13;&#10;&#13;&#10;Value 0 means automatic latching and value 1 means manual latching." cat_id="PROFILER">
           <Labels>
             <Label lang="en_US">Profiler latching mode</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x01D6" dtype="float" id="PROF_VEL_THRESHOLD" units="rev/s" subnode="1" cyclic="CYCLIC_RX" desc="Threshold (in absolute value) below which, the velocity is considered to be zero." cat_id="THRESHOLDS">
+          <Labels>
+            <Label lang="en_US">Velocity threshold</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x01D7" dtype="u32" id="PROF_VEL_THRESHOLD_TIME" units="ms" subnode="1" cyclic="CYCLIC_RX" desc="Time that the velocity (in absolute value) has to remain below velocity threshold in order to detect zero velocity" cat_id="THRESHOLDS">
+          <Labels>
+            <Label lang="en_US">Velocity threshold time</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x01DC" dtype="float" id="CL_VEL_FOLLOWING_WINDOW" units="rev/s" subnode="1" cyclic="CYCLIC_RX" desc="Indicates the maximum allowed difference between demand and actual velocity before generating an error." cat_id="THRESHOLDS">
@@ -1393,22 +1404,22 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x02E8" dtype="float" id="IO_ANA1_GAIN" units="-" subnode="1" cyclic="CONFIG" desc="Gain applied to the unitary analog input 1 readings. Unitary means a value of 0 when 0 counts are read and 1 when full range counts are read." cat_id="IN_OUT">
           <Labels>
-            <Label lang="en_US">Analog 1 gain</Label>
+            <Label lang="en_US">Analog input 1 - Gain</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x02E9" dtype="float" id="IO_ANA1_OFFSET" units="-" subnode="1" cyclic="CONFIG" desc="Offset  applied to analog input 1 readings after gain amplification." cat_id="IN_OUT">
           <Labels>
-            <Label lang="en_US">Analog 1 offset</Label>
+            <Label lang="en_US">Analog input 1 - Offset</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x02EC" dtype="float" id="IO_ANA2_GAIN" units="-" subnode="1" cyclic="CONFIG" desc="Gain applied to the unitary analog input 2 readings. Unitary means a value of 0 when 0 counts are read and 1 when full range counts are read." cat_id="IN_OUT">
           <Labels>
-            <Label lang="en_US">Analog 2 gain</Label>
+            <Label lang="en_US">Analog input 2 - Gain</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x02ED" dtype="float" id="IO_ANA2_OFFSET" units="-" subnode="1" cyclic="CONFIG" desc="Offset  applied to analog input 2 readings after gain amplification." cat_id="IN_OUT">
           <Labels>
-            <Label lang="en_US">Analog 2 offset</Label>
+            <Label lang="en_US">Analog input 2 - Offset</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x035F" dtype="u32" id="FBK_ENA_MASK" units="-" subnode="1" cyclic="CONFIG" desc="Boolean mask indicating the enabled feedbacks" cat_id="REPORTING">
@@ -1464,7 +1475,7 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x036F" dtype="u16" id="FBK_BISS1_SSI1_PROTOCOL" units="-" subnode="1" cyclic="CONFIG" desc="Serial absolute feedback protocol to be used" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Protocol</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Protocol</Label>
           </Labels>
           <Enumerations>
             <Enum value="0">BiSS C</Enum>
@@ -1473,23 +1484,23 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0370" dtype="u16" id="FBK_BISS1_SSI1_FRAME_SIZE" units="none" subnode="1" cyclic="CONFIG" desc="Defines the size in bits of the frame to be read from the serial absolute interface" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Frame size</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Frame size</Label>
           </Labels>
           <Range min="10" max="64"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0371" dtype="u16" id="FBK_BISS1_SSI1_ERROR_TOLERANCE" units="-" subnode="1" cyclic="CONFIG" desc="Number of error detections on serial absolute feedback frame allowed before a fault generation." cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Error tolerance</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Error tolerance</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0372" dtype="u16" id="FBK_BISS1_SSI1_WAIT_CYCLES" units="-" subnode="1" cyclic="CONFIG" desc="Number of position / velocity loop waits until requesting a new serial absolute feedback frame." cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Wait cycles</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Wait cycles</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0373" dtype="u16" id="FBK_BISS1_SSI1_POS_POLARITY" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the polarity of rotation of the serial absolute feedback sensor" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Polarity</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Polarity</Label>
           </Labels>
           <Enumerations>
             <Enum value="0">Standard</Enum>
@@ -1498,7 +1509,7 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0374" dtype="u16" id="FBK_BISS1_SSI1_FRAME_TYPE" units="none" subnode="1" cyclic="CONFIG" desc="Selects the frame type of the Serial absolute feedback sensor" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Frame type</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Frame type</Label>
           </Labels>
           <Enumerations>
             <Enum value="0">Raw</Enum>
@@ -1510,41 +1521,41 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0375" dtype="u16" id="FBK_BISS1_SSI1_POS_BITS" units="-" subnode="1" cyclic="CONFIG" desc="Size in bits of position information block in serial absolute feedback frame" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Position bits</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Position bits</Label>
           </Labels>
           <Range min="10" max="32"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0376" dtype="u16" id="FBK_BISS1_SSI1_POS_ST_BITS" units="-" subnode="1" cyclic="CONFIG" desc="Defines the size in bits of the single-turn information inside the position block of the serial absolute feedback frame" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Single-turn bits</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Single-turn bits</Label>
           </Labels>
           <Range min="10" max="32"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0377" dtype="u16" id="FBK_BISS1_SSI1_POS_START_BIT" units="-" subnode="1" cyclic="CONFIG" desc="Defines how many bits the position information is displaced from the LSB in the serial absolute feedback frame." cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Position start bit</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Position start bit</Label>
           </Labels>
-          <Range min="0" max="31"/>
+          <Range min="0" max="63"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0378" dtype="u16" id="FBK_SSI2_FRAME_SIZE" units="-" subnode="1" cyclic="CONFIG" desc="Defines the size in bits of the frame to be read from the Secondary BiSS-C / SSI slave 1 interface" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Frame size</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Frame size</Label>
           </Labels>
           <Range min="10" max="64"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0379" dtype="u16" id="FBK_SSI2_ERROR_TOLERANCE" units="-" subnode="1" cyclic="CONFIG" desc="Number of error detections on Secondary BiSS-C / SSI slave 1 feedback frame allowed before a fault generation." cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Error tolerance</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Error tolerance</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x037A" dtype="u16" id="FBK_SSI2_WAIT_CYCLES" units="-" subnode="1" cyclic="CONFIG" desc="Number of position / velocity loop waits until requesting a new Secondary BiSS-C / SSI slave 1 feedback frame." cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Wait cycles</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Wait cycles</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x037B" dtype="u16" id="FBK_SSI2_POS_POLARITY" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the polarity of rotation of the Secondary BiSS-C / SSI slave 1 feedback sensor" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Polarity</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Polarity</Label>
           </Labels>
           <Enumerations>
             <Enum value="0">Standard</Enum>
@@ -1553,7 +1564,7 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x037C" dtype="u16" id="FBK_SSI2_FRAME_TYPE" units="-" subnode="1" cyclic="CONFIG" desc="Selects the frame type of the Secondary BiSS-C / SSI slave 1 feedback sensor" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Frame type</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Frame type</Label>
           </Labels>
           <Enumerations>
             <Enum value="0">Raw</Enum>
@@ -1565,21 +1576,21 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x037D" dtype="u16" id="FBK_SSI2_POS_BITS" units="-" subnode="1" cyclic="CONFIG" desc="Size in bits of position information block in Secondary BiSS-C / SSI slave 1 feedback frame" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Position bits</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Position bits</Label>
           </Labels>
           <Range min="10" max="32"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x037E" dtype="u16" id="FBK_SSI2_POS_ST_BITS" units="-" subnode="1" cyclic="CONFIG" desc="Defines the size in bits of the single-turn information inside the position block of the Secondary BiSS-C / SSI slave 1 feedback frame" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Single-turn bits</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Single-turn bits</Label>
           </Labels>
           <Range min="10" max="32"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x037F" dtype="u16" id="FBK_SSI2_POS_START_BIT" units="-" subnode="1" cyclic="CONFIG" desc="Defines how many bits the position information is displaced from the LSB in the Secondary BiSS-C / SSI slave 1 feedback frame." cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Position start bit</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Position start bit</Label>
           </Labels>
-          <Range min="0" max="64"/>
+          <Range min="0" max="63"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0380" dtype="u16" id="FBK_GEN_MODE" units="-" subnode="1" cyclic="CONFIG" desc="Waveform to be injected as input feedback value" cat_id="FEEDBACK">
           <Labels>
@@ -1621,7 +1632,7 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0386" dtype="u32" id="FBK_BISS1_SSI1_BAUD" units="kbits/s" subnode="1" cyclic="CONFIG" desc="Biss-C slave 1 / Primary SSI baudrate in kHz" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Baudrate</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Baudrate</Label>
           </Labels>
           <Enumerations>
             <Enum value="1000">1000</Enum>
@@ -1632,7 +1643,7 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0387" dtype="u32" id="FBK_SSI2_BAUD" units="kbits/s" subnode="1" cyclic="CONFIG" desc="Secondary BiSS-C / SSI slave 1 baudrate in kHz" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Baudrate</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Baudrate</Label>
           </Labels>
           <Enumerations>
             <Enum value="1000">1000</Enum>
@@ -1766,24 +1777,24 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0395" dtype="u16" id="FBK_BISS_CHAIN" units="-" subnode="1" cyclic="CONFIG" desc="Number of serial absolute feedbacks connected in daisy chain. There has to be at least one feedback connected" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C  feedbacks in chain</Label>
+            <Label lang="en_US">Primary feedbacks in chain</Label>
           </Labels>
           <Range min="1" max="2"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0400" dtype="u16" id="FBK_BISS2_FRAME_SIZE" units="-" subnode="1" cyclic="CONFIG" desc="Defines the size in bits of the frame to be read from the serial absolute slave 1 (only usable in daisy chain)" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - Frame size</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - Frame size</Label>
           </Labels>
           <Range min="10" max="64"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0401" dtype="u16" id="FBK_BISS2_ERROR_TOLERANCE" units="-" subnode="1" cyclic="CONFIG" desc="Number of error detections on serial absolute feedback frame allowed before a fault generation." cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - Error tolerance</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - Error tolerance</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0403" dtype="u16" id="FBK_BISS2_POS_POLARITY" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the polarity of rotation of the serial absolute feedback sensor" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - Polarity</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - Polarity</Label>
           </Labels>
           <Enumerations>
             <Enum value="0">Standard</Enum>
@@ -1792,7 +1803,7 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0404" dtype="u16" id="FBK_BISS2_FRAME_TYPE" units="-" subnode="1" cyclic="CONFIG" desc="Selects the frame type of the Serial absolute feedback sensor" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - Frame type</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - Frame type</Label>
           </Labels>
           <Enumerations>
             <Enum value="0">Raw</Enum>
@@ -1804,65 +1815,65 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0405" dtype="u16" id="FBK_BISS2_POS_BITS" units="-" subnode="1" cyclic="CONFIG" desc="Size in bits of position information block in serial absolute feedback frame" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - Position bits</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - Position bits</Label>
           </Labels>
           <Range min="10" max="32"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0406" dtype="u16" id="FBK_BISS2_POS_ST_BITS" units="-" subnode="1" cyclic="CONFIG" desc="Defines the size in bits of the single-turn information inside the position block of the serial absolute feedback frame" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - Single-turn bits</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - Single-turn bits</Label>
           </Labels>
           <Range min="10" max="32"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0407" dtype="u16" id="FBK_BISS2_POS_START_BIT" units="-" subnode="1" cyclic="CONFIG" desc="Defines how many bits the position information is displaced from the LSB in the serial absolute feedback frame." cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - Position start bit</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - Position start bit</Label>
           </Labels>
-          <Range min="0" max="31"/>
+          <Range min="0" max="63"/>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0408" dtype="u16" id="FBK_BISS1_SSI1_CRC_POLY" units="-" subnode="1" cyclic="CONFIG" desc="Biss-C slave 1 / Primary SSI CRC polynomial in binary format." cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - CRC polynomial</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - CRC polynomial</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x0409" dtype="u16" id="FBK_BISS1_SSI1_CRC_BITS" units="-" subnode="1" cyclic="CONFIG" desc="Biss-C slave 1 / Primary SSI CRC number of bits" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - CRC number of bits</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - CRC number of bits</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x040A" dtype="u16" id="FBK_BISS2_CRC_POLY" units="-" subnode="1" cyclic="CONFIG" desc="Biss-C slave 2 CRC polynomial in binary format." cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - CRC polynomial</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - CRC polynomial</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x040B" dtype="u16" id="FBK_BISS2_CRC_BITS" units="-" subnode="1" cyclic="CONFIG" desc="Biss-C slave 2 CRC number of bits" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - CRC number of bits</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - CRC number of bits</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x040C" dtype="u16" id="FBK_BISS1_SSI1_CRC_SEED" units="-" subnode="1" cyclic="CONFIG" desc="Biss-C slave 1 / Primary SSI CRC seed" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - CRC seed</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - CRC seed</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x040D" dtype="u16" id="FBK_BISS2_CRC_SEED" units="-" subnode="1" cyclic="CONFIG" desc="Biss-C slave 2 CRC seed" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - CRC seed</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - CRC seed</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0438" dtype="s32" id="FBK_BISS1_SSI1_OFFSET" units="cnt" subnode="1" cyclic="CONFIG" desc="Offset added to BiSS-C slave 1 / Primary SSI feedback" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 1 / Primary SSI - Position offset</Label>
+            <Label lang="en_US">Primary Absolute Slave 1 - Position offset</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0439" dtype="s32" id="FBK_BISS2_OFFSET" units="cnt" subnode="1" cyclic="CONFIG" desc="Offset added to BiSS-C slave 2 (daisy chain) feedback" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">BiSS-C slave 2 (daisy chain) - Position offset</Label>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - Position offset</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x043A" dtype="s32" id="FBK_SSI2_OFFSET" units="cnt" subnode="1" cyclic="CONFIG" desc="Position offset added to Secondary BiSS-C / SSI slave 1 feedback" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Position offset</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Position offset</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x043B" dtype="float" id="TORQUE_ESTIM_KT" units="Nm/A" subnode="1" cyclic="CONFIG" desc="" cat_id="FEEDBACK">
@@ -1872,7 +1883,7 @@
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x043C" dtype="u16" id="FBK_SSI2_PROTOCOL" units="-" subnode="1" cyclic="CONFIG" desc="Secondary BiSS-C / SSI slave 1 protocol to be used" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - Protocol</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - Protocol</Label>
           </Labels>
           <Enumerations>
             <Enum value="0">BiSS C</Enum>
@@ -1881,17 +1892,17 @@
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x043D" dtype="u16" id="FBK_SSI2_CRC_POLY" units="-" subnode="1" cyclic="CONFIG" desc="Secondary BiSS-C / SSI slave 1 CRC polynomial in binary format." cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - CRC polynomial</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - CRC polynomial</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x043E" dtype="u16" id="FBK_SSI2_CRC_SEED" units="-" subnode="1" cyclic="CONFIG" desc="Secondary BiSS-C / SSI slave 1 CRC seed" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - CRC seed</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - CRC seed</Label>
           </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x043F" dtype="u16" id="FBK_SSI2_CRC_BITS" units="-" subnode="1" cyclic="CONFIG" desc="Secondary BiSS-C / SSI slave 1 number of Crc bits" cat_id="FEEDBACK">
           <Labels>
-            <Label lang="en_US">Secondary BiSS-C / SSI slave 1 - CRC number of bits</Label>
+            <Label lang="en_US">Secondary Absolute Slave 1 - CRC number of bits</Label>
           </Labels>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0450" dtype="u16" id="HOM_MODE" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the homing mode used for 0 detection" cat_id="HOMING">
@@ -1966,59 +1977,6 @@
             <Label lang="en_US">Current loop rate</Label>
           </Labels>
         </Register>
-        <Register access="rw" address_type="NVM_CFG" address="0x0460" dtype="u16" id="HOM_LATCH_IDX_PULSE_SRC" units="-" subnode="1" cyclic="CONFIG" desc="Index pulse source to trigger latched readings from specified feedbacks" cat_id="FEEDBACK">
-          <Labels>
-            <Label lang="en_US">Latched readings - Index pulse source</Label>
-          </Labels>
-          <Enumerations>
-            <Enum value="0">Incremental encoder 1</Enum>
-            <Enum value="1">Incremental encoder 2</Enum>
-          </Enumerations>
-        </Register>
-        <Register access="rw" address_type="NVM_CFG" address="0x0461" dtype="u16" id="HOM_LATCH_CH1_SRC" units="-" subnode="1" cyclic="CONFIG" desc="Feedback linked to latched reading 1. Note that the feedback must be in use by the system to have correct readings." cat_id="FEEDBACK">
-          <Labels>
-            <Label lang="en_US">Latched reading 1 - Source</Label>
-          </Labels>
-          <Enumerations>
-            <Enum value="4">Incremental encoder 1</Enum>
-            <Enum value="8">Incremental encoder 2</Enum>
-            <Enum value="1">BiSS-C / SSI - slave 1</Enum>
-            <Enum value="7">BiSS-C slave 2</Enum>
-            <Enum value="6">Secondary SSI encoder</Enum>
-          </Enumerations>
-        </Register>
-        <Register access="rw" address_type="NVM_CFG" address="0x0462" dtype="u16" id="HOM_LATCH_CH2_SRC" units="-" subnode="1" cyclic="CONFIG" desc="Feedback linked to latched reading 2. Note that the feedback must be in use by the system to have correct readings." cat_id="FEEDBACK">
-          <Labels>
-            <Label lang="en_US">Latched reading 2 - Source</Label>
-          </Labels>
-          <Enumerations>
-            <Enum value="4">Incremental encoder 1</Enum>
-            <Enum value="8">Incremental encoder 2</Enum>
-            <Enum value="1">BiSS-C / SSI - slave 1</Enum>
-            <Enum value="7">BiSS-C slave 2</Enum>
-            <Enum value="6">Secondary SSI encoder</Enum>
-          </Enumerations>
-        </Register>
-        <Register access="r" address_type="NVM_NONE" address="0x0463" dtype="u32" id="HOM_LATCH_CH1_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Latched readings from &amp;quot;Latched reading 1 - Source&amp;quot;." cat_id="FEEDBACK">
-          <Labels>
-            <Label lang="en_US">Latched reading 1 - Value</Label>
-          </Labels>
-        </Register>
-        <Register access="r" address_type="NVM_NONE" address="0x0464" dtype="u32" id="HOM_LATCH_CH2_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Latched readings from &amp;quot;Latched reading 2 - Source&amp;quot;." cat_id="FEEDBACK">
-          <Labels>
-            <Label lang="en_US">Latched reading 2 - Value</Label>
-          </Labels>
-        </Register>
-        <Register access="rw" address_type="NVM_NONE" address="0x0465" dtype="u16" id="HOM_LATCH_CONTROL" units="-" subnode="1" cyclic="CYCLIC_RX" desc="Dedicated control word for latched readings using index pulse&#13;&#10;&#13;&#10;Bit 0 - Enable&#13;&#10;Bit 1 - Arm" cat_id="FEEDBACK">
-          <Labels>
-            <Label lang="en_US">Latched readings - Control</Label>
-          </Labels>
-        </Register>
-        <Register access="r" address_type="NVM_NONE" address="0x0466" dtype="u16" id="HOM_LATCH_STATUS" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Dedicated status word for latched readings using index pulse&#13;&#10;&#13;&#10;Bit 0 - Enabled&#13;&#10;Bit 1 - Armed&#13;&#10;Bit 2 - New latched values available" cat_id="FEEDBACK">
-          <Labels>
-            <Label lang="en_US">Latched readings - Status</Label>
-          </Labels>
-        </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x04FF" dtype="u16" id="FBK_CUR_RANGE_SELECTION" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the gain applied to current amplifier for readings." cat_id="LIMITS">
           <Labels>
             <Label lang="en_US">Current scaling gain factor</Label>
@@ -2050,12 +2008,6 @@
             <Label lang="en_US">Current quadrature loop min. out</Label>
           </Labels>
         </Register>
-        <Register access="rw" address_type="NVM_CFG" address="0x0504" dtype="float" id="CL_CUR_Q_KR" units="-" subnode="1" cyclic="CONFIG" desc="Set-point weight of quadrature current PI controller." cat_id="CONTROL">
-          <Labels>
-            <Label lang="en_US">Current quadrature loop Kr</Label>
-          </Labels>
-          <Range min="0.0" max="1.0"/>
-        </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0505" dtype="float" id="CL_CUR_D_KP" units="V/A" subnode="1" cyclic="CONFIG" desc="Proportional gain of the direct current PI controller" cat_id="CONTROL">
           <Labels>
             <Label lang="en_US">Current direct loop Kp</Label>
@@ -2075,12 +2027,6 @@
           <Labels>
             <Label lang="en_US">Current direct loop min. out</Label>
           </Labels>
-        </Register>
-        <Register access="rw" address_type="NVM_CFG" address="0x0509" dtype="float" id="CL_CUR_D_KR" units="-" subnode="1" cyclic="CONFIG" desc="Set-point weight of direct current PI controller." cat_id="CONTROL">
-          <Labels>
-            <Label lang="en_US">Current direct loop Kr</Label>
-          </Labels>
-          <Range min="0.0" max="1.0"/>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x050A" dtype="float" id="CL_VEL_PID_KP" units="Nm/(rev/s)" subnode="1" cyclic="CYCLIC_RX" desc="Proportional gain of the velocity PID controller" cat_id="CONTROL">
           <Labels>
@@ -3611,7 +3557,7 @@
       </Error>
       <Error id="0x00002302" affected_module="Brake" error_type="cyclic">
         <Labels>
-          <Label lang="en_US">Brake tracking error detected</Label>
+          <Label lang="en_US">Brake current tracking error</Label>
         </Labels>
       </Error>
       <Error id="0x0000228B" affected_module="Power stage" error_type="cyclic">
@@ -3682,6 +3628,31 @@
       <Error id="0x0000FF43" affected_module="Communication" error_type="cyclic">
         <Labels>
           <Label lang="en_US">Cyclic timeout Ethercat PDO lifeguard</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00007394" affected_module="Quick stop" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Emergency position set-point not configured.</Label>
+        </Labels>
+      </Error>
+      <Error id="0x0000F011" affected_module="COCO" error_type="configuration">
+        <Labels>
+          <Label lang="en_US">Cyclic mode mapping error</Label>
+        </Labels>
+      </Error>
+      <Error id="0x0000228C" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Current calibration error</Label>
+        </Labels>
+      </Error>
+      <Error id="0x0000737E" affected_module="Feedbacks" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Absolute encoder 1 disconnection or frame overlap</Label>
+        </Labels>
+      </Error>
+      <Error id="0x0000737F" affected_module="Feedbacks" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Absolute encoder 2 disconnection or frame overlap</Label>
         </Labels>
       </Error>
     </Errors>

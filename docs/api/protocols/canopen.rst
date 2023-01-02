@@ -9,4 +9,3 @@ CANopen API documentation
     canopen/servo
     canopen/dictionary
     canopen/register
-    canopen/poller

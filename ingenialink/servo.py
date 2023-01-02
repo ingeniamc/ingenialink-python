@@ -59,6 +59,7 @@ class Servo:
 
     Args:
         target (str, int): Target ID of the servo.
+        dictionary_path (str): Path to the dictionary file.
         servo_status_listener (bool): Toggle the listener of the servo for
             its status, errors, faults, etc.
 
@@ -154,23 +155,10 @@ class Servo:
             ValueError: If an invalid subnode is provided.
 
         """
-        if not os.path.isfile(config_file):
-            raise FileNotFoundError(f'Could not find {config_file}.')
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ValueError('Invalid subnode')
-        with open(config_file, 'r', encoding='utf-8') as xml_file:
-            tree = ET.parse(xml_file)
-        root = tree.getroot()
-
-        axis = tree.findall('*/Device/Axes/Axis')
-        if axis:
-            # Multiaxis
-            registers = root.findall(
-                './Body/Device/Axes/Axis/Registers/Register'
-            )
-        else:
-            # Single axis
-            registers = root.findall('./Body/Device/Registers/Register')
+        _, registers = self._read_configuration_file(config_file)
+        
         dest_subnodes = [int(element.attrib['subnode']) for element in registers]
         if subnode == 0 and subnode not in dest_subnodes:
             raise ValueError(f'Cannot load {config_file} '
@@ -250,6 +238,37 @@ class Servo:
         with open(config_file, "wb") as f:
             f.write(dom.toprettyxml(indent='\t').encode())
 
+    @staticmethod
+    def _read_configuration_file(config_file):
+        """Read a configuration file. Returns the device metadata and the registers list.
+        
+        Args:
+            config_file (str): Path to the dictionary.
+        
+        Returns:
+            device: 
+            list: Register list.
+        
+        Raises:
+            FileNotFoundError: If the configuration file cannot be found.
+        """
+        if not os.path.isfile(config_file):
+            raise FileNotFoundError(f'Could not find {config_file}.')
+        with open(config_file, 'r', encoding='utf-8') as xml_file:
+            tree = ET.parse(xml_file)
+        root = tree.getroot()
+        device = root.find('Body/Device')
+        axis = tree.findall('*/Device/Axes/Axis')
+        if axis:
+            # Multiaxis
+            registers = root.findall(
+                './Body/Device/Axes/Axis/Registers/Register'
+            )
+        else:
+            # Single axis
+            registers = root.findall('./Body/Device/Registers/Register')
+        return device, registers
+
     def restore_parameters(self, subnode=None):
         """Restore all the current parameters of all the slave to default.
 
@@ -283,7 +302,7 @@ class Servo:
                        subnode=subnode)
             logger.info(f'Restore subnode {subnode} successfully done.')
         else:
-            raise ILError('Invalid subnode.')
+            raise ILError('Invalid subnode {subnode}.')
         time.sleep(1.5)
 
     def store_parameters(self, subnode=None):
@@ -811,8 +830,8 @@ class Servo:
         reads the MOCO register
 
         Args:
-            register_coco (Register): COCO Register to be read.
-            register_moco (Register): MOCO Register to be read.
+            register_coco (str): COCO Register ID to be read.
+            register_moco (str): MOCO Register ID to be read.
 
         Returns:
             (int, str): Read value of the register.
@@ -1009,7 +1028,7 @@ class Servo:
 
     @abstractmethod
     def _write_raw(self, reg, data):
-        """Writes a raw bytes data to a target register.
+        """Write raw bytes to a target register.
 
         Args:
             reg (Register): Target register to be written.
@@ -1024,7 +1043,7 @@ class Servo:
 
     @abstractmethod
     def _read_raw(self, reg):
-        """Read raw bytes from servo.
+        """Read raw bytes from a target register.
 
         Args:
             reg (Register): Register.
