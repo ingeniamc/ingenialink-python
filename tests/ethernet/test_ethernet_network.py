@@ -62,55 +62,6 @@ def test_ethernet_disconnection(connect, read_config):
 
 
 @pytest.mark.no_connection
-def test_connect_to_virtual(virtual_drive, read_config):
-    server = virtual_drive
-    time.sleep(1)
-    net = EthernetNetwork()
-    protocol_contents = read_config['ethernet']
-    servo = net.connect_to_slave(
-        server.ip,
-        protocol_contents['dictionary'],
-        server.port
-    )
-    servo.write('CL_AUX_FBK_SENSOR', 4)
-    servo.write('DIST_CFG_REG0_MAP', 4, 0)
-
-
-@pytest.mark.ethernet
-@pytest.mark.parametrize(
-    "reg, value, subnode", 
-    [
-        ("CL_AUX_FBK_SENSOR", 4, 1),
-        ("DIST_CFG_REG0_MAP", 4, 0)
-    ]
-)
-def test_virtual_drive_write_read(connect_to_slave, virtual_drive, read_config, reg, value, subnode):
-    servo, net = connect_to_slave
-    server = virtual_drive
-
-    virtual_net = EthernetNetwork()
-    protocol_contents = read_config['ethernet']
-    virtual_servo = virtual_net.connect_to_slave(
-        server.ip,
-        protocol_contents['dictionary'],
-        server.port
-    )
-    
-    virtual_response = virtual_servo.write(reg, value, subnode)
-    response = servo.write(reg, value, subnode)
-    assert response == virtual_response
-
-    response = servo.read(reg, subnode)
-    virtual_response = virtual_servo.read(reg, subnode)
-    assert response == virtual_response
-
-    new_value = virtual_response + 1
-    virtual_servo.write(reg, new_value, subnode)
-    saved_value = virtual_servo.read(reg, subnode)
-    assert saved_value == new_value
-
-
-@pytest.mark.no_connection
 def test_load_firmware_file_not_found():
     virtual_net = EthernetNetwork()
     with pytest.raises(FileNotFoundError):
