@@ -45,7 +45,7 @@ if sys.platform == "win32":
     else:
         raise ImportError("Unsupported Python version")
 
-    if sys.maxsize > 2**32:
+    if sys.maxsize > 2 ** 32:
         _CMAKE_GENERATOR += " Win64"
 else:
     _CMAKE_GENERATOR = "Unix Makefiles"
