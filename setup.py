@@ -55,7 +55,7 @@ class BCleanAppCommand(Command):
 setuptools.setup(
     name='ingenialink',
     version=_version,
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=["test", "examples"]),
     description='IngeniaLink Communications Library',
     long_description=open('README.rst').read(),
     author='Ingenia Motion Control',
