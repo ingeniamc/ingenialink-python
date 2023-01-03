@@ -12,14 +12,20 @@ ALLOW_PROTOCOLS = ["no_connection", "ethernet", "ethercat", "canopen"]
 def pytest_addoption(parser):
     parser.addoption("--protocol", action="store", default="no_connection",
                      help=",".join(ALLOW_PROTOCOLS), choices=ALLOW_PROTOCOLS)
+    parser.addoption("--slave", type=int, default=0,
+                     help="Slave index in config.json")
 
 
 @pytest.fixture
-def read_config():
+def read_config(request):
     config = 'tests/config.json'
     print('current config file:', config)
     with open(config, "r", encoding='utf-8') as fp:
         contents = json.load(fp)
+    slave = request.config.getoption("--slave")
+    for key in contents:
+        if type(contents[key]) is list:
+            contents[key] = contents[key][slave]
     return contents
 
 
