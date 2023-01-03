@@ -1153,7 +1153,7 @@ class EthercatServo:
         """
         r = lib.il_net_remove_all_mapped_registers(self._cffi_network)
         if r < 0:
-            raise ILError(f"Error removing monitoring mapped registers. " f"Error code: {r}")
+            raise ILError(f"Error removing monitoring mapped registers. Error code: {r}")
 
     def monitoring_set_mapped_register(self, channel, address, subnode, dtype, size):
         """Set monitoring mapped register.
@@ -1174,7 +1174,7 @@ class EthercatServo:
             self._cffi_network, channel, address, subnode, dtype, size
         )
         if r < 0:
-            raise ILError(f"Error mapping monitoring register {address}. " f"Error code: {r}")
+            raise ILError(f"Error mapping monitoring register {address}. Error code: {r}")
 
     def monitoring_get_num_mapped_registers(self):
         """Obtain the number of monitoring mapped registers.
@@ -1195,7 +1195,7 @@ class EthercatServo:
         """
         r = lib.il_net_enable_monitoring(self._cffi_network)
         if r < 0:
-            raise ILError(f"Error enabling monitoring. " f"Error code: {r}")
+            raise ILError(f"Error enabling monitoring. Error code: {r}")
 
     def monitoring_disable(self):
         """Disable monitoring process.
@@ -1207,7 +1207,7 @@ class EthercatServo:
         """
         r = lib.il_net_disable_monitoring(self._cffi_network)
         if r < 0:
-            raise ILError(f"Error disabling monitoring. " f"Error code: {r}")
+            raise ILError(f"Error disabling monitoring. Error code: {r}")
 
     def disturbance_enable(self):
         """Enable disturbance process.
@@ -1219,7 +1219,7 @@ class EthercatServo:
         """
         r = lib.il_net_enable_disturbance(self._cffi_network)
         if r < 0:
-            raise ILError(f"Error enabling disturbance. " f"Error code: {r}")
+            raise ILError(f"Error enabling disturbance. Error code: {r}")
 
     def disturbance_disable(self):
         """Disable disturbance process.
@@ -1231,7 +1231,7 @@ class EthercatServo:
         """
         r = lib.il_net_disable_disturbance(self._cffi_network)
         if r < 0:
-            raise ILError(f"Error disabling disturbance. " f"Error code: {r}")
+            raise ILError(f"Error disabling disturbance. Error code: {r}")
 
     def monitoring_remove_data(self):
         """Remove monitoring data.
@@ -1243,7 +1243,7 @@ class EthercatServo:
         """
         r = lib.il_net_monitoring_remove_data(self._cffi_network)
         if r < 0:
-            raise ILError(f"Error removing monitoring data. " f"Error code: {r}")
+            raise ILError(f"Error removing monitoring data. Error code: {r}")
 
     def disturbance_remove_data(self):
         """Remove disturbance data.
@@ -1255,7 +1255,7 @@ class EthercatServo:
         """
         r = lib.il_net_disturbance_remove_data(self._cffi_network)
         if r < 0:
-            raise ILError(f"Error removing disturbance data. " f"Error code: {r}")
+            raise ILError(f"Error removing disturbance data. Error code: {r}")
 
     def monitoring_read_data(self):
         """Obtain processed monitoring data.
@@ -1267,7 +1267,7 @@ class EthercatServo:
         """
         r = lib.il_net_read_monitoring_data(self._cffi_network)
         if r < 0:
-            raise ILError(f"Error reading monitoring data. " f"Error code: {r}")
+            raise ILError(f"Error reading monitoring data. Error code: {r}")
 
     def monitoring_get_bytes_per_block(self):
         """Obtain Bytes x Block configured.
@@ -1312,7 +1312,7 @@ class EthercatServo:
         """
         r = lib.il_net_disturbance_remove_all_mapped_registers(self._cffi_network)
         if r < 0:
-            raise ILError(f"Error removing disturbance mapped registers. " f"Error code: {r}")
+            raise ILError(f"Error removing disturbance mapped registers. Error code: {r}")
 
     def disturbance_set_mapped_register(self, channel, address, subnode, dtype, size):
         """Set disturbance mapped register.
@@ -1331,7 +1331,7 @@ class EthercatServo:
             self._cffi_network, channel, address, subnode, dtype, size
         )
         if r < 0:
-            raise ILError(f"Error mapping disturbance register {address}. " f"Error code: {r}")
+            raise ILError(f"Error mapping disturbance register {address}. Error code: {r}")
 
     def __read_coco_moco_register(self, register_coco, register_moco):
         """Reads the COCO register and if it does not exist,

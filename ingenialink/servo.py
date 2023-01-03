@@ -61,7 +61,7 @@ class ServoStatusListener(threading.Thread):
                     state = self.__servo.status_word_decode(status_word)
                     self.__servo._set_state(state, subnode=subnode)
                 except ILIOError as e:
-                    logger.error("Error getting drive status. " "Exception : %s", e)
+                    logger.error("Error getting drive status. Exception : %s", e)
             time.sleep(1.5)
 
     def stop(self):
@@ -190,7 +190,7 @@ class Servo:
             registers = root.findall("./Body/Device/Registers/Register")
         dest_subnodes = [int(element.attrib["subnode"]) for element in registers]
         if subnode == 0 and subnode not in dest_subnodes:
-            raise ValueError(f"Cannot load {config_file} " f"to subnode {subnode}")
+            raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
         cast_data = {"float": float, "str": str}
         for element in registers:
             try:
@@ -208,7 +208,7 @@ class Servo:
                     )
             except ILError as e:
                 logger.error(
-                    "Exception during load_configuration, register " "%s: %s",
+                    "Exception during load_configuration, register %s: %s",
                     str(element.attrib["id"]),
                     e,
                 )
@@ -291,7 +291,7 @@ class Servo:
             logger.info("Restore all successfully done.")
         elif subnode == 0:
             # Restore subnode 0
-            raise ILError("The current firmware version does not " "have this feature implemented.")
+            raise ILError("The current firmware version does not have this feature implemented.")
         elif subnode > 0 and subnode in self.RESTORE_MOCO_ALL_REGISTERS:
             # Restore axis
             self.write(
@@ -324,7 +324,7 @@ class Servo:
                     self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_ALL, subnode=0)
                     logger.info("Store all successfully done.")
                 except ILError as e:
-                    logger.warning(f"Store all COCO failed. Reason: {e}. " f"Trying MOCO...")
+                    logger.warning(f"Store all COCO failed. Reason: {e}. Trying MOCO...")
                     r = -1
                 if r < 0:
                     for dict_subnode in range(1, self.dictionary.subnodes):
@@ -333,11 +333,11 @@ class Servo:
                             data=PASSWORD_STORE_ALL,
                             subnode=dict_subnode,
                         )
-                        logger.info(f"Store axis {dict_subnode} successfully" f" done.")
+                        logger.info(f"Store axis {dict_subnode} successfully done.")
             elif subnode == 0:
                 # Store subnode 0
                 raise ILError(
-                    "The current firmware version does not " "have this feature implemented."
+                    "The current firmware version does not have this feature implemented."
                 )
             elif subnode > 0 and subnode in self.STORE_MOCO_ALL_REGISTERS:
                 # Store axis
@@ -796,7 +796,7 @@ class Servo:
             reg.storage_valid = 1
         except BaseException as e:
             logger.error(
-                "Exception during save_configuration, " "register %s: %s",
+                "Exception during save_configuration, register %s: %s",
                 str(register.attrib["id"]),
                 e,
             )
@@ -831,12 +831,12 @@ class Servo:
             return self.read(register_coco, subnode=0)
         except ILError:
             logger.warning(
-                f"Error reading register " f"{register_coco.identifier} from COCO. " f"Trying MOCO"
+                f"Error reading register {register_coco.identifier} from COCO. Trying MOCO"
             )
         try:
             return self.read(register_moco, subnode=1)
         except ILError:
-            raise ILError(f"Error reading register " f"{register_moco.identifier} from MOCO.")
+            raise ILError(f"Error reading register {register_moco.identifier} from MOCO.")
 
     def __monitoring_map_register(self):
         """Get the first available Monitoring Mapped Register slot.
@@ -846,9 +846,9 @@ class Servo:
 
         """
         if self.monitoring_number_mapped_registers < 10:
-            register_id = f"MON_CFG_REG" f"{self.monitoring_number_mapped_registers}_MAP"
+            register_id = f"MON_CFG_REG{self.monitoring_number_mapped_registers}_MAP"
         else:
-            register_id = f"MON_CFG_REFG" f"{self.monitoring_number_mapped_registers}_MAP"
+            register_id = f"MON_CFG_REFG{self.monitoring_number_mapped_registers}_MAP"
         return register_id
 
     @staticmethod

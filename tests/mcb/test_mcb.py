@@ -58,7 +58,7 @@ def test_build_mcb_frame(cmd, subnode, address, data, reg_dtype, extended, resul
             0x6E5,
             "http://www.ingeniamc.com",
             REG_DTYPE.STR,
-            "a100576e18000000000000003e9568" "7474703a2f2f7777772e696e67656e6" "9616d632e636f6d",
+            "a100576e18000000000000003e95687474703a2f2f7777772e696e67656e69616d632e636f6d",
         )
     ],
 )

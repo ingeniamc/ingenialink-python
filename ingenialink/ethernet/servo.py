@@ -426,7 +426,7 @@ class EthernetServo(Servo):
 
         if gateway_ip not in net:
             raise ValueError(
-                f"Drive IP {ip_address} and Gateway IP {gateway} " f"are not on the same network."
+                f"Drive IP {ip_address} and Gateway IP {gateway} are not on the same network."
             )
 
         int_ip_address = convert_ip_to_int(ip_address)

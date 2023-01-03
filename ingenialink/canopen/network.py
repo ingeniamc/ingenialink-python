@@ -306,7 +306,7 @@ class CanopenNetwork(Network):
                 logger.error("Transceiver drivers not properly installed. Exception: %s", e)
                 if hasattr(e, "winerror") and e.winerror == 126:
                     e.strerror = (
-                        "Driver module not found." " Drivers might not be properly installed."
+                        "Driver module not found. Drivers might not be properly installed."
                     )
                 raise ILError(e)
             except Exception as e:
@@ -442,7 +442,7 @@ class CanopenNetwork(Network):
 
                     if file_extension != "" and file_extension == ".sfu":
                         fd, lfu_path = tempfile.mkstemp(suffix=".lfu")
-                        logger.debug(">> FD: {}. \n>> " "LFU PATH: {}.".format(fd, lfu_path))
+                        logger.debug(">> FD: {}. \n>> LFU PATH: {}.".format(fd, lfu_path))
 
                         try:
                             # Convert the sfu file to lfu
@@ -586,7 +586,7 @@ class CanopenNetwork(Network):
                                     if r < 0:
                                         error_downloading = True
                                         error_detected_msg = (
-                                            "An error occurred " "while downloading."
+                                            "An error occurred while downloading."
                                         )
                                     counter += 1
 
@@ -625,7 +625,7 @@ class CanopenNetwork(Network):
                             image.close()
                             logger.debug("Temp file deleted")
                         except Exception as e:
-                            logger.warning("Could not remove temp file. " "Exception: {}".format(e))
+                            logger.warning("Could not remove temp file. Exception: {}".format(e))
 
                     if error_detected_msg == "":
                         logger.info("Disable errors")
@@ -652,9 +652,9 @@ class CanopenNetwork(Network):
                             bool_timeout = True
 
                         logger.debug(
-                            f"Time waited for reconnection: " f"{time_diff} {bool_timeout}"
+                            f"Time waited for reconnection: {time_diff} {bool_timeout}"
                         )
-                        logger.debug(f"Net state after reconnection: " f"{self.status}")
+                        logger.debug(f"Net state after reconnection: {self.status}")
 
                         sleep(5)
 
@@ -668,7 +668,7 @@ class CanopenNetwork(Network):
 
                         if not bool_timeout:
                             logger.info("Bootloader finished successfully!")
-                            self.__set_fw_load_status_msg("Bootloader " "finished successfully!")
+                            self.__set_fw_load_status_msg("Bootloader finished successfully!")
                             # Wait for the drive to reset
                             initial_time = time()
                             timeout = 25
@@ -814,7 +814,7 @@ class CanopenNetwork(Network):
 
                 self._lss_store_configuration()
             else:
-                raise ILError("Error switching lss to selective state. " "Error code: {}".format(r))
+                raise ILError("Error switching lss to selective state. Error code: {}".format(r))
         finally:
             self._lss_reset_connection_nodes(target_node)
             logger.info("Baudrate changed to {}".format(new_target_baudrate))
@@ -864,7 +864,7 @@ class CanopenNetwork(Network):
                 self._lss_store_configuration()
 
             else:
-                raise ILError("Error switching lss to selective state. " "Error code: {}".format(r))
+                raise ILError("Error switching lss to selective state. Error code: {}".format(r))
         finally:
             self._lss_reset_connection_nodes(target_node)
             logger.info("Node ID changed to {}".format(new_target_node))

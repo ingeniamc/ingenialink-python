@@ -94,7 +94,7 @@ class EthercatNetwork(IPBNetwork):
         if boot_in_app is None:
             if not fw_file.endswith((FILE_EXT_SFU, FILE_EXT_LFU)):
                 raise ValueError(
-                    f"Firmware file should have extension " f"{FILE_EXT_SFU} or {FILE_EXT_LFU}"
+                    f"Firmware file should have extension {FILE_EXT_SFU} or {FILE_EXT_LFU}"
                 )
             boot_in_app = fw_file.endswith(FILE_EXT_SFU)
         self._cffi_network = ffi.new("il_net_t **")
@@ -278,7 +278,7 @@ class EthercatNetwork(IPBNetwork):
         lib.il_net_destroy(self._cffi_network)
         self._cffi_network = None
         if r < 0:
-            raise ILError("Error disconnecting the drive. " "Return code: {}".format(r))
+            raise ILError("Error disconnecting the drive. Return code: {}".format(r))
 
     @property
     def protocol(self):
