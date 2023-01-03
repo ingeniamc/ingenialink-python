@@ -305,9 +305,7 @@ class CanopenNetwork(Network):
             except OSError as e:
                 logger.error("Transceiver drivers not properly installed. Exception: %s", e)
                 if hasattr(e, "winerror") and e.winerror == 126:
-                    e.strerror = (
-                        "Driver module not found. Drivers might not be properly installed."
-                    )
+                    e.strerror = "Driver module not found. Drivers might not be properly installed."
                 raise ILError(e)
             except Exception as e:
                 logger.error("Failed trying to connect. Exception: %s", e)
@@ -585,9 +583,7 @@ class CanopenNetwork(Network):
 
                                     if r < 0:
                                         error_downloading = True
-                                        error_detected_msg = (
-                                            "An error occurred while downloading."
-                                        )
+                                        error_detected_msg = "An error occurred while downloading."
                                     counter += 1
 
                                     new_progress = (
@@ -651,9 +647,7 @@ class CanopenNetwork(Network):
                         if not time_diff < RECONNECTION_TIMEOUT:
                             bool_timeout = True
 
-                        logger.debug(
-                            f"Time waited for reconnection: {time_diff} {bool_timeout}"
-                        )
+                        logger.debug(f"Time waited for reconnection: {time_diff} {bool_timeout}")
                         logger.debug(f"Net state after reconnection: {self.status}")
 
                         sleep(5)
