@@ -1,7 +1,7 @@
-
 import pytest
 
 from ingenialink.dictionary_deprecated import Dictionary
+
 
 @pytest.mark.ethercat
 def test_dictionary(connect_to_slave):

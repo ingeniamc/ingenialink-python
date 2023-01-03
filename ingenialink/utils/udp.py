@@ -5,12 +5,14 @@ import binascii
 from ..exceptions import *
 
 import ingenialogger
+
 logger = ingenialogger.get_logger(__name__)
 
 
 class UDP:
     """UDP Contains all the basic operations for the lightweight data
     transport protocol based off the MCB protocol."""
+
     def __init__(self, port, ip):
         self.port = port
         self.ip = ip
@@ -23,12 +25,12 @@ class UDP:
         try:
             self.socket.close()
         except Exception as e:
-            logger.error('Socket already closed. Exception: %s', e)
+            logger.error("Socket already closed. Exception: %s", e)
 
     def close(self):
         """Closes the socket."""
         self.socket.close()
-        logger.info('Socket closed')
+        logger.info("Socket closed")
 
     def write(self, frame):
         """Sends a message through the established socket.
@@ -58,7 +60,7 @@ class UDP:
         ret_cmd = self.unmsg(rcv)
         if ret_cmd != 3:
             self.socket.close()
-            raise Exception('No ACK received (command received %d)' % ret_cmd)
+            raise Exception("No ACK received (command received %d)" % ret_cmd)
         return ret_cmd
 
     @staticmethod
@@ -76,14 +78,14 @@ class UDP:
             int: Command from the given message.
         """
         header = in_frame[2:4]
-        cmd = struct.unpack('<H', header)[0] >> 1
+        cmd = struct.unpack("<H", header)[0] >> 1
         cmd = cmd & 0x7
 
         # CRC is computed with header and data (removing Tx CRC)
         crc = binascii.crc_hqx(in_frame[0:12], 0)
-        crcread = struct.unpack('<H', in_frame[12:14])[0]
+        crcread = struct.unpack("<H", in_frame[12:14])[0]
         if crcread != crc:
-            raise ILUDPException('CRC error')
+            raise ILUDPException("CRC error")
 
         return cmd
 
@@ -100,20 +102,29 @@ class UDP:
         Returns:
             bytes: Message frame.
         """
-        node_head = (node << 4) | (subnode & 0xf)
-        node_head = struct.pack('<H', node_head)
+        node_head = (node << 4) | (subnode & 0xF)
+        node_head = struct.pack("<H", node_head)
 
         if size > 8:
             cmd = cmd + 1
-            head = struct.pack('<H', cmd)
-            head_size = struct.pack('<H', size)
+            head = struct.pack("<H", cmd)
+            head_size = struct.pack("<H", size)
             head_size = head_size + bytes([0] * (8 - len(head_size)))
-            return node_head + head + head_size + struct.pack(
-                '<H', binascii.crc_hqx(node_head + head + head_size, 0)) + data
+            return (
+                node_head
+                + head
+                + head_size
+                + struct.pack("<H", binascii.crc_hqx(node_head + head + head_size, 0))
+                + data
+            )
         else:
-            head = struct.pack('<H', cmd)
-            return node_head + head + data + struct.pack(
-                '<H', binascii.crc_hqx(node_head + head + data, 0))
+            head = struct.pack("<H", cmd)
+            return (
+                node_head
+                + head
+                + data
+                + struct.pack("<H", binascii.crc_hqx(node_head + head + data, 0))
+            )
 
     def raw_cmd(self, node, subnode, cmd, data):
         """Creates a frame message and sends it.

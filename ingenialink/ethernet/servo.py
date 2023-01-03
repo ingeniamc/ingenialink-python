@@ -4,13 +4,15 @@ import socket
 from ingenialink.exceptions import ILError, ILTimeoutError, ILIOError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
 from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.constants import MCB_CMD_READ, MCB_CMD_WRITE, ETH_MAX_WRITE_SIZE,\
-    ETH_BUF_SIZE
+from ingenialink.constants import MCB_CMD_READ, MCB_CMD_WRITE, ETH_MAX_WRITE_SIZE, ETH_BUF_SIZE
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
 from ingenialink.servo import Servo
 from ingenialink.utils.mcb import MCB
-from ingenialink.utils._utils import convert_bytes_to_dtype, \
-    convert_dtype_to_bytes, convert_ip_to_int
+from ingenialink.utils._utils import (
+    convert_bytes_to_dtype,
+    convert_dtype_to_bytes,
+    convert_ip_to_int,
+)
 from ingenialink.ethernet.dictionary import EthernetDictionary
 
 import ingenialogger
@@ -28,6 +30,7 @@ class EthernetServo(Servo):
             its status, errors, faults, etc.
 
     """
+
     DICTIONARY_CLASS = EthernetDictionary
     MAX_WRITE_SIZE = ETH_MAX_WRITE_SIZE
 
@@ -35,37 +38,40 @@ class EthernetServo(Servo):
     COMMS_ETH_NET_MASK = "COMMS_ETH_NET_MASK"
     COMMS_ETH_NET_GATEWAY = "COMMS_ETH_GW"
     MONITORING_DATA = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00B2, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        identifier="",
+        units="",
+        subnode=0,
+        address=0x00B2,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U16,
+        access=REG_ACCESS.RO,
     )
     DIST_DATA = EthernetRegister(
-        identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+        identifier="",
+        units="",
+        subnode=0,
+        address=0x00B4,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U16,
+        access=REG_ACCESS.WO,
     )
 
-    def __init__(self, socket, dictionary_path=None,
-                 servo_status_listener=False):
+    def __init__(self, socket, dictionary_path=None, servo_status_listener=False):
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
-        super(EthernetServo, self).__init__(self.ip_address,
-                                            dictionary_path,
-                                            servo_status_listener)
+        super(EthernetServo, self).__init__(self.ip_address, dictionary_path, servo_status_listener)
 
     def store_tcp_ip_parameters(self):
         """Stores the TCP/IP values. Affects IP address,
         subnet mask and gateway"""
-        self.write(reg=self.STORE_COCO_ALL,
-                   data=PASSWORD_STORE_RESTORE_TCP_IP,
-                   subnode=0)
-        logger.info('Store TCP/IP successfully done.')
+        self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
+        logger.info("Store TCP/IP successfully done.")
 
     def restore_tcp_ip_parameters(self):
         """Restores the TCP/IP values back to default. Affects
         IP address, subnet mask and gateway"""
-        self.write(reg=self.RESTORE_COCO_ALL,
-                   data=PASSWORD_STORE_RESTORE_TCP_IP,
-                   subnode=0)
-        logger.info('Restore TCP/IP successfully done.')
+        self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
+        logger.info("Restore TCP/IP successfully done.")
 
     def change_tcp_ip_parameters(self, ip_address, subnet_mask, gateway):
         """Stores the TCP/IP values. Affects IP address,
@@ -91,11 +97,12 @@ class EthernetServo(Servo):
         """
         drive_ip = ipaddress.ip_address(ip_address)
         gateway_ip = ipaddress.ip_address(gateway)
-        net = ipaddress.IPv4Network(f'{drive_ip}/{subnet_mask}', strict=False)
+        net = ipaddress.IPv4Network(f"{drive_ip}/{subnet_mask}", strict=False)
 
         if gateway_ip not in net:
-            raise ValueError(f'Drive IP {ip_address} and Gateway IP {gateway} '
-                             f'are not on the same network.')
+            raise ValueError(
+                f"Drive IP {ip_address} and Gateway IP {gateway} are not on the same network."
+            )
 
         int_ip_address = convert_ip_to_int(ip_address)
         int_subnet_mask = convert_ip_to_int(subnet_mask)
@@ -134,13 +141,13 @@ class EthernetServo(Servo):
             try:
                 self.socket.sendall(frame)
             except socket.error as e:
-                raise ILIOError('Error sending data.') from e
+                raise ILIOError("Error sending data.") from e
             try:
                 response = self.socket.recv(ETH_BUF_SIZE)
             except socket.timeout as e:
-                raise ILTimeoutError('Timeout while receiving data.') from e
+                raise ILTimeoutError("Timeout while receiving data.") from e
             except socket.error as e:
-                raise ILIOError('Error receiving data.') from e
+                raise ILIOError("Error receiving data.") from e
         except (ILIOError, ILTimeoutError) as e:
             raise e
         finally:

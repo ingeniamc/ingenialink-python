@@ -8,6 +8,7 @@ class Categories(ABC):
         dictionary (Dictionary): Ingenia dictionary instance.
 
     """
+
     def __init__(self, dictionary):
         self._dictionary = dictionary
 
@@ -27,6 +28,7 @@ class Dictionary(ABC):
         dictionary_path (str): Dictionary file path.
 
     """
+
     def __init__(self, dictionary_path):
         self.path = dictionary_path
         """str: Path of the dictionary."""

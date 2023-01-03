@@ -1,7 +1,13 @@
 import pytest
 
 from ingenialink.canopen.dictionary import CanopenDictionary
-from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
+from ingenialink.canopen.register import (
+    CanopenRegister,
+    REG_DTYPE,
+    REG_ACCESS,
+    REG_PHY,
+    REG_ADDRESS_TYPE,
+)
 
 
 @pytest.mark.no_connection
@@ -20,19 +26,26 @@ def test_getters_canopen_register():
         "storage": 1,
         "reg_range": (-20, 20),
         "labels": "Monitoring trigger type",
-        "enums": {'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'},
+        "enums": {"0": "TRIGGER_EVENT_AUTO", "1": "TRIGGER_EVENT_FORCED"},
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",
-        "address_type": REG_ADDRESS_TYPE.NVM
+        "address_type": REG_ADDRESS_TYPE.NVM,
     }
     aux_enums = []
     for key, value in reg_kwargs["enums"].items():
-        test_dictionary = {'label': value, 'value': int(key)}
+        test_dictionary = {"label": value, "value": int(key)}
         aux_enums.append(test_dictionary)
 
     register = CanopenRegister(
-        reg_identifier, reg_units, reg_cyclic, reg_idx, reg_subidx, reg_dtype, reg_access, **reg_kwargs
+        reg_identifier,
+        reg_units,
+        reg_cyclic,
+        reg_idx,
+        reg_subidx,
+        reg_dtype,
+        reg_access,
+        **reg_kwargs
     )
 
     assert register.identifier == reg_identifier
@@ -68,12 +81,12 @@ def test_canopen_connection_register(connect_to_slave):
     registers_sub_1 = servo.dictionary.registers(1)
     assert registers_sub_1 is not None
 
-    register = registers_sub_1.get('DRV_OP_CMD')
+    register = registers_sub_1.get("DRV_OP_CMD")
     assert isinstance(register, CanopenRegister)
 
-    assert register.identifier == 'DRV_OP_CMD'
-    assert register.units == '-'
-    assert register.cyclic == 'CYCLIC_RX'
+    assert register.identifier == "DRV_OP_CMD"
+    assert register.units == "-"
+    assert register.cyclic == "CYCLIC_RX"
     assert register.dtype == REG_DTYPE.U16
     assert register.access, REG_ACCESS.RW
     assert register.idx == 0x2014
@@ -86,8 +99,6 @@ def test_canopen_connection_register(connect_to_slave):
     assert register.labels is not None
     assert len(register.enums) == 13
     assert register.enums_count == 13
-    assert register.cat_id == 'TARGET'
+    assert register.cat_id == "TARGET"
     assert register.scat_id is None
     assert register.internal_use == 0
-
-
