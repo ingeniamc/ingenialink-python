@@ -10,6 +10,7 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
 
 import ingenialogger
+
 logger = ingenialogger.get_logger(__name__)
 
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
@@ -27,6 +28,7 @@ class CanopenServo(Servo):
             its status, errors, faults, etc.
 
     """
+
     DICTIONARY_CLASS = CanopenDictionary
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
 
@@ -34,16 +36,27 @@ class CanopenServo(Servo):
     RESTORE_COCO_ALL = "CIA301_COMMS_RESTORE_ALL"
     STORE_COCO_ALL = "CIA301_COMMS_STORE_ALL"
     MONITORING_DATA = CanopenRegister(
-        identifier='', units='', subnode=0, idx=0x58B2, subidx=0x00, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        identifier="",
+        units="",
+        subnode=0,
+        idx=0x58B2,
+        subidx=0x00,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U16,
+        access=REG_ACCESS.RO,
     )
     DIST_DATA = CanopenRegister(
-        identifier='', units='', subnode=0, idx=0x58B4, subidx=0x00, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+        identifier="",
+        units="",
+        subnode=0,
+        idx=0x58B4,
+        subidx=0x00,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U16,
+        access=REG_ACCESS.RW,
     )
 
-    def __init__(self, target, node, dictionary_path=None, eds=None,
-                 servo_status_listener=False):
+    def __init__(self, target, node, dictionary_path=None, eds=None, servo_status_listener=False):
         self.eds = eds
         self.__node = node
         self.__emcy_consumer = EmcyConsumer()
@@ -52,7 +65,7 @@ class CanopenServo(Servo):
     def read(self, reg, subnode=1):
         value = super().read(reg, subnode=subnode)
         if isinstance(value, str):
-            value = value.replace('\x00', '')
+            value = value.replace("\x00", "")
         return value
 
     def store_parameters(self, subnode=None, sdo_timeout=3):
@@ -75,12 +88,9 @@ class CanopenServo(Servo):
     def _write_raw(self, reg, data):
         try:
             self._lock.acquire()
-            self.__node.sdo.download(reg.idx,
-                                     reg.subidx,
-                                     data)
+            self.__node.sdo.download(reg.idx, reg.subidx, data)
         except Exception as e:
-            logger.error("Failed writing %s. Exception: %s",
-                         str(reg.identifier), e)
+            logger.error("Failed writing %s. Exception: %s", str(reg.identifier), e)
             error_raised = f"Error writing {reg.identifier}"
             raise ILIOError(error_raised)
         finally:
@@ -91,8 +101,7 @@ class CanopenServo(Servo):
             self._lock.acquire()
             value = self.__node.sdo.upload(reg.idx, reg.subidx)
         except Exception as e:
-            logger.error("Failed reading %s. Exception: %s",
-                         str(reg.identifier), e)
+            logger.error("Failed reading %s. Exception: %s", str(reg.identifier), e)
             error_raised = f"Error reading {reg.identifier}"
             raise ILIOError(error_raised)
         finally:
@@ -131,8 +140,7 @@ class CanopenServo(Servo):
         """Map CAN register address to IPB register address."""
         return address - (0x2000 + (0x800 * (subnode - 1)))
 
-    def _monitoring_disturbance_data_to_map_register(self, subnode, address,
-                                                      dtype, size):
+    def _monitoring_disturbance_data_to_map_register(self, subnode, address, dtype, size):
         """Arrange necessary data to map a monitoring/disturbance register.
 
         Args:
@@ -151,4 +159,3 @@ class CanopenServo(Servo):
     def node(self):
         """canopen.RemoteNode: Remote node of the servo."""
         return self.__node
-

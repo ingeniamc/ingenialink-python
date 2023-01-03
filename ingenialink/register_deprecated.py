@@ -18,8 +18,8 @@ dtypes_ranges = {
     REG_DTYPE.U32: {"max": 4294967295, "min": 0},
     REG_DTYPE.S32: {"max": 2147483647, "min": -2147483647 - 1},
     REG_DTYPE.U64: {"max": 18446744073709551615, "min": 0},
-    REG_DTYPE.S64: {"max": 9223372036854775807, "min":  9223372036854775807 - 1},
-    REG_DTYPE.FLOAT: {"max": 2147483647, "min": -2147483647 - 1}
+    REG_DTYPE.S64: {"max": 9223372036854775807, "min": 9223372036854775807 - 1},
+    REG_DTYPE.FLOAT: {"max": 2147483647, "min": -2147483647 - 1},
 }
 
 
@@ -33,7 +33,7 @@ def dtype_size(dtype):
         REG_DTYPE.S32: 4,
         REG_DTYPE.U64: 8,
         REG_DTYPE.S64: 8,
-        REG_DTYPE.FLOAT: 4
+        REG_DTYPE.FLOAT: 4,
     }
     return sizes[dtype]
 
@@ -49,7 +49,7 @@ def _get_reg_id(reg):
     elif isinstance(reg, Register):
         return reg._reg, ffi.NULL
 
-    raise TypeError('Unexpected register type')
+    raise TypeError("Unexpected register type")
 
 
 class Register(ABC):
@@ -75,23 +75,37 @@ class Register(ABC):
         TypeError: If any of the parameters has invalid type.
 
     """
-    def __init__(self, identifier, units, cyclic, dtype, access,
-                 phy=REG_PHY.NONE, subnode=1, storage=None, reg_range=None,
-                 labels=None, enums=None, cat_id=None, scat_id=None,
-                 internal_use=0):
+
+    def __init__(
+        self,
+        identifier,
+        units,
+        cyclic,
+        dtype,
+        access,
+        phy=REG_PHY.NONE,
+        subnode=1,
+        storage=None,
+        reg_range=None,
+        labels=None,
+        enums=None,
+        cat_id=None,
+        scat_id=None,
+        internal_use=0,
+    ):
         if labels is None:
             labels = {}
         if enums is None:
             enums = {}
 
         if not isinstance(dtype, REG_DTYPE):
-            raise TypeError('Invalid data type')
+            raise TypeError("Invalid data type")
 
         if not isinstance(access, REG_ACCESS):
-            raise TypeError('Invalid access type')
+            raise TypeError("Invalid access type")
 
         if not isinstance(phy, REG_PHY):
-            raise TypeError('Invalid physical units type')
+            raise TypeError("Invalid physical units type")
 
         self._identifier = identifier
         self._units = units

@@ -3,6 +3,7 @@ from enum import Enum
 
 class SERVO_STATE(Enum):
     """Servo states."""
+
     NRDY = 0
     """Not ready to switch on."""
     DISABLED = 1
@@ -23,6 +24,7 @@ class SERVO_STATE(Enum):
 
 class SERVO_FLAGS(Enum):
     """Status Flags."""
+
     TGT_REACHED = 0x01
     """Target reached."""
     ILIM_ACTIVE = 0x02
@@ -47,6 +49,7 @@ class SERVO_FLAGS(Enum):
 
 class SERVO_MODE(Enum):
     """Operation Mode."""
+
     OLV = 0
     """Open loop (vector mode)."""
     OLS = 1
@@ -73,6 +76,7 @@ class SERVO_MODE(Enum):
 
 class SERVO_UNITS_TORQUE(Enum):
     """Torque Units."""
+
     NATIVE = 0
     """Native"""
     MN = 1
@@ -83,6 +87,7 @@ class SERVO_UNITS_TORQUE(Enum):
 
 class SERVO_UNITS_POS(Enum):
     """Position Units."""
+
     NATIVE = 0
     """Native."""
     REV = 1
@@ -101,6 +106,7 @@ class SERVO_UNITS_POS(Enum):
 
 class SERVO_UNITS_VEL(Enum):
     """Velocity Units."""
+
     NATIVE = 0
     """Native."""
     RPS = 1
@@ -121,6 +127,7 @@ class SERVO_UNITS_VEL(Enum):
 
 class SERVO_UNITS_ACC(Enum):
     """Acceleration Units."""
+
     NATIVE = 0
     """Native."""
     REV_S2 = 1

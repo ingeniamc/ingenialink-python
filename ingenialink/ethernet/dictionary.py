@@ -15,7 +15,7 @@ class EthernetDictionary(Dictionary):
     """
 
     class AttrRegEthDict(Dictionary.AttrRegDict):
-        ADDR = 'address'
+        ADDR = "address"
 
     def __init__(self, dictionary_path):
         super().__init__(dictionary_path)
@@ -25,12 +25,14 @@ class EthernetDictionary(Dictionary):
         if current_read_register is None:
             return None
         try:
-            current_read_register[self.AttrRegEthDict.ADDR] = int(register.attrib['address'], 16)
+            current_read_register[self.AttrRegEthDict.ADDR] = int(register.attrib["address"], 16)
 
             return current_read_register
 
         except KeyError as ke:
-            logger.error(f"Register with ID {current_read_register[self.AttrRegDict.IDENTIFIER]} has not attribute {ke}")
+            logger.error(
+                f"Register with ID {current_read_register[self.AttrRegDict.IDENTIFIER]} has not attribute {ke}"
+            )
             return None
 
     def _add_register_list(self, register):

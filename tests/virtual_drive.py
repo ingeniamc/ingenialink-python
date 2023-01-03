@@ -17,11 +17,11 @@ class MSG_TYPE(Enum):
     SENT = "SENT"
 
 
-class VirtualMonDistBase():
+class VirtualMonDistBase:
     """Base class to implement VirtualMonitoring and VirtualDisturbance.
 
-        Args:
-            drive (EthernetServo): Servo instance.
+    Args:
+        drive (EthernetServo): Servo instance.
 
     """
 
@@ -125,7 +125,7 @@ class VirtualMonDistBase():
                 "address": address,
                 "subnode": subnode,
                 "size": size,
-                "signal": []
+                "signal": [],
             }
             self.bytes_per_block += size
 
@@ -133,8 +133,8 @@ class VirtualMonDistBase():
 class VirtualMonitoring(VirtualMonDistBase):
     """Emulates monitoring at the VirtualDrive.
 
-        Args:
-            drive (EthernetServo): Servo instance.
+    Args:
+        drive (EthernetServo): Servo instance.
 
     """
 
@@ -179,7 +179,9 @@ class VirtualMonitoring(VirtualMonDistBase):
         """Creates emulated monitoring signals."""
         for channel in range(self.number_mapped_registers):
             start_value = self.channels[channel]["address"] + self.channels[channel]["subnode"]
-            signal = [start_value + i for i in range(0, self.buffer_size*self.divider, self.divider)]
+            signal = [
+                start_value + i for i in range(0, self.buffer_size * self.divider, self.divider)
+            ]
             self.channels[channel]["signal"] = signal
 
     def _store_data_bytes(self):
@@ -192,7 +194,7 @@ class VirtualMonitoring(VirtualMonDistBase):
                 size = self.channels[channel]["size"]
                 sample_bytes = convert_dtype_to_bytes(value, self.channels[channel]["dtype"])
                 if len(sample_bytes) < size:
-                    sample_bytes += (b"0")*(size - len(sample_bytes))
+                    sample_bytes += (b"0") * (size - len(sample_bytes))
                 bytes += sample_bytes
         self.drive.set_value_by_id(0, "MON_DATA", bytes)
 
@@ -205,10 +207,11 @@ class VirtualMonitoring(VirtualMonDistBase):
 class VirtualDisturbance(VirtualMonDistBase):
     """Emulates disturbance at the VirtualDrive.
 
-        Args:
-            drive (EthernetServo): Servo instance.
+    Args:
+        drive (EthernetServo): Servo instance.
 
     """
+
     FREQ_DIVIDER_REG = "DIST_FREQ_DIV"
     BUFFER_SIZE_REG = "DIST_CFG_SAMPLES"
     NUMBER_MAP_REGS = "DIST_CFG_MAP_REGS"
@@ -246,7 +249,7 @@ class VirtualDisturbance(VirtualMonDistBase):
                 value = convert_bytes_to_dtype(bytes, dtype)
                 self.channels[channel]["data"].append(value)
                 buffer = buffer[size:]
-    
+
     @property
     def buffer_size_bytes(self):
         """int: Buffer size in bytes."""
@@ -260,10 +263,10 @@ class VirtualDisturbance(VirtualMonDistBase):
 class VirtualDrive(Thread):
     """Emulates a drive by creating a UDP server that sends and receives MCB messages.
 
-        Args:
-            ip (int): Server IP address.
-            port (int): Server port number.
-            dictionary_path (str): Path to the dictionary.
+    Args:
+        ip (int): Server IP address.
+        port (int): Server port number.
+        dictionary_path (str): Path to the dictionary.
 
     """
 
@@ -304,7 +307,7 @@ class VirtualDrive(Thread):
             if cmd == self.WRITE_CMD:
                 sent_cmd = self.ACK_CMD
                 response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data[:8])
-                if register.access in [REG_ACCESS.RW, REG_ACCESS.WO]: # TODO: send error otherwise
+                if register.access in [REG_ACCESS.RW, REG_ACCESS.WO]:  # TODO: send error otherwise
                     value = convert_bytes_to_dtype(data, register.dtype)
                     self.set_value_by_id(subnode, register.identifier, value)
                     self.__decode_msg(reg_add, subnode, data)
@@ -320,7 +323,7 @@ class VirtualDrive(Thread):
             else:
                 continue
             self.__send(response, add)
-            
+
         time.sleep(0.1)
 
     def stop(self):
@@ -340,7 +343,7 @@ class VirtualDrive(Thread):
 
         custom_regs = {
             "MON_DATA": EthernetServo.MONITORING_DATA,
-            "DIST_DATA": EthernetServo.DIST_DATA 
+            "DIST_DATA": EthernetServo.DIST_DATA,
         }
         for id, reg in custom_regs.items():
             register = {
@@ -348,17 +351,17 @@ class VirtualDrive(Thread):
                 "access": reg.access,
                 "dtype": REG_DTYPE.DOMAIN,
                 "identifier": id,
-                "subnode": reg.subnode
+                "subnode": reg.subnode,
             }
             self.__dictionary._add_register_list(register)
             self.__dictionary.registers(reg.subnode)[id].storage_valid = 1
 
             self.__reg_address_to_id[reg.subnode][reg.address] = id
-                    
+
     def __send(self, response, address):
         """Send a message and update log."""
         self.socket.sendto(response, address)
-        self.__log(address, response, MSG_TYPE.SENT)     
+        self.__log(address, response, MSG_TYPE.SENT)
 
     def _response_monitoring_data(self, data):
         """Creates a response for monitoring data."""
@@ -370,7 +373,6 @@ class VirtualDrive(Thread):
         self.set_value_by_id(0, "MON_DATA", data_left)
         self.__monitoring.available_bytes = len(data_left)
         return response
-   
 
     def __log(self, ip_port, message, msg_type):
         """Updates log."""
@@ -379,7 +381,7 @@ class VirtualDrive(Thread):
                 "timestamp": time.time(),
                 "ip_port": ip_port,
                 "type": msg_type.value,
-                "message": message
+                "message": message,
             }
         )
 

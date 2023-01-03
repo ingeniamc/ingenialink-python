@@ -12,114 +12,229 @@ from .._ingenialink import lib, ffi
 from ingenialink.ipb.register import IPBRegister, REG_DTYPE, REG_ACCESS
 from ingenialink.ipb.dictionary import IPBDictionary
 from ingenialink.constants import DEFAULT_DRIVE_NAME
-from ingenialink.utils._utils import cstr, raise_err, pstr, to_ms, \
-    cleanup_register, get_drive_identification
+from ingenialink.utils._utils import (
+    cstr,
+    raise_err,
+    pstr,
+    to_ms,
+    cleanup_register,
+    get_drive_identification,
+)
 from ingenialink.exceptions import ILError
-from ingenialink.constants import PASSWORD_STORE_ALL, PASSWORD_RESTORE_ALL,\
-    PASSWORD_STORE_RESTORE_SUB_0, DEFAULT_PDS_TIMEOUT, DIST_FRAME_SIZE
+from ingenialink.constants import (
+    PASSWORD_STORE_ALL,
+    PASSWORD_RESTORE_ALL,
+    PASSWORD_STORE_RESTORE_SUB_0,
+    DEFAULT_PDS_TIMEOUT,
+    DIST_FRAME_SIZE,
+)
 from ingenialink.register_deprecated import dtype_size
-from ingenialink.enums.servo import SERVO_STATE, SERVO_UNITS_TORQUE, \
-    SERVO_UNITS_POS, SERVO_UNITS_ACC, SERVO_UNITS_VEL, SERVO_MODE
+from ingenialink.enums.servo import (
+    SERVO_STATE,
+    SERVO_UNITS_TORQUE,
+    SERVO_UNITS_POS,
+    SERVO_UNITS_ACC,
+    SERVO_UNITS_VEL,
+    SERVO_MODE,
+)
 
 logger = ingenialogger.get_logger(__name__)
 
 
 PRODUCT_ID_REGISTERS = {
     0: IPBRegister(
-        identifier='', units='', subnode=0, address=0x06E1, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+        identifier="",
+        units="",
+        subnode=0,
+        address=0x06E1,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RO,
     ),
     1: IPBRegister(
-        identifier='', units='', subnode=1, address=0x06E1, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-    )
+        identifier="",
+        units="",
+        subnode=1,
+        address=0x06E1,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RO,
+    ),
 }
 
 SERIAL_NUMBER_REGISTERS = {
     0: IPBRegister(
-        identifier='', units='', subnode=0, address=0x06E6, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+        identifier="",
+        units="",
+        subnode=0,
+        address=0x06E6,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RO,
     ),
     1: IPBRegister(
-        identifier='', units='', subnode=1, address=0x06E6, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-    )
+        identifier="",
+        units="",
+        subnode=1,
+        address=0x06E6,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RO,
+    ),
 }
 
 SOFTWARE_VERSION_REGISTERS = {
     0: IPBRegister(
-        identifier='', units='', subnode=0, address=0x06E4, cyclic='CONFIG',
-        dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
+        identifier="",
+        units="",
+        subnode=0,
+        address=0x06E4,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.STR,
+        access=REG_ACCESS.RO,
     ),
     1: IPBRegister(
-        identifier='', units='', subnode=1, address=0x06E4, cyclic='CONFIG',
-        dtype=REG_DTYPE.STR, access=REG_ACCESS.RO
-    )
+        identifier="",
+        units="",
+        subnode=1,
+        address=0x06E4,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.STR,
+        access=REG_ACCESS.RO,
+    ),
 }
 
 REVISION_NUMBER_REGISTERS = {
     0: IPBRegister(
-        identifier='', units='', subnode=0, address=0x06E2, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+        identifier="",
+        units="",
+        subnode=0,
+        address=0x06E2,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RO,
     ),
     1: IPBRegister(
-        identifier='', units='', subnode=1, address=0x06E2, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
-    )
+        identifier="",
+        units="",
+        subnode=1,
+        address=0x06E2,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RO,
+    ),
 }
 
 DIST_NUMBER_SAMPLES = IPBRegister(
-    identifier='', units='', subnode=0, address=0x00C4, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    identifier="",
+    units="",
+    subnode=0,
+    address=0x00C4,
+    cyclic="CONFIG",
+    dtype=REG_DTYPE.U32,
+    access=REG_ACCESS.RW,
 )
 DIST_DATA = IPBRegister(
-    identifier='', units='', subnode=0, address=0x00B4, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.WO
+    identifier="",
+    units="",
+    subnode=0,
+    address=0x00B4,
+    cyclic="CONFIG",
+    dtype=REG_DTYPE.U16,
+    access=REG_ACCESS.WO,
 )
 
 STORE_COCO_ALL = IPBRegister(
-    identifier='', units='', subnode=0, address=0x06DB, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    identifier="",
+    units="",
+    subnode=0,
+    address=0x06DB,
+    cyclic="CONFIG",
+    dtype=REG_DTYPE.U32,
+    access=REG_ACCESS.RW,
 )
 
 RESTORE_COCO_ALL = IPBRegister(
-    identifier='', units='', subnode=0, address=0x06DC, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+    identifier="",
+    units="",
+    subnode=0,
+    address=0x06DC,
+    cyclic="CONFIG",
+    dtype=REG_DTYPE.U32,
+    access=REG_ACCESS.RW,
 )
 
 STATUS_WORD = IPBRegister(
-    identifier='', units='', subnode=1, address=0x0011, cyclic='CONFIG',
-    dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+    identifier="",
+    units="",
+    subnode=1,
+    address=0x0011,
+    cyclic="CONFIG",
+    dtype=REG_DTYPE.U16,
+    access=REG_ACCESS.RW,
 )
 
 STORE_MOCO_ALL_REGISTERS = {
     1: IPBRegister(
-        identifier='', units='', subnode=1, address=0x06DB, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        identifier="",
+        units="",
+        subnode=1,
+        address=0x06DB,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RW,
     ),
     2: IPBRegister(
-        identifier='', units='', subnode=2, address=0x06DB, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
+        identifier="",
+        units="",
+        subnode=2,
+        address=0x06DB,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RW,
     ),
     3: IPBRegister(
-        identifier='', units='', subnode=3, address=0x06DB, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW
-    )
+        identifier="",
+        units="",
+        subnode=3,
+        address=0x06DB,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RW,
+    ),
 }
 
 RESTORE_MOCO_ALL_REGISTERS = {
     1: IPBRegister(
-        identifier='', units='', subnode=1, address=0x06DC, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+        identifier="",
+        units="",
+        subnode=1,
+        address=0x06DC,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RW,
+        reg_range=None,
     ),
     2: IPBRegister(
-        identifier='', units='', subnode=2, address=0x06DC, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
+        identifier="",
+        units="",
+        subnode=2,
+        address=0x06DC,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RW,
+        reg_range=None,
     ),
     3: IPBRegister(
-        identifier='', units='', subnode=3, address=0x06DC, cyclic='CONFIG',
-        dtype=REG_DTYPE.U32, access=REG_ACCESS.RW, reg_range=None
-    )
+        identifier="",
+        units="",
+        subnode=3,
+        address=0x06DC,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U32,
+        access=REG_ACCESS.RW,
+        reg_range=None,
+    ),
 }
 
 
@@ -149,31 +264,37 @@ class EthercatServo:
             its status, errors, faults, etc.
 
     """
-    _raw_read = {REG_DTYPE.U8: ['uint8_t *', lib.il_servo_raw_read_u8],
-                 REG_DTYPE.S8: ['int8_t *', lib.il_servo_raw_read_s8],
-                 REG_DTYPE.U16: ['uint16_t *', lib.il_servo_raw_read_u16],
-                 REG_DTYPE.S16: ['int16_t *', lib.il_servo_raw_read_s16],
-                 REG_DTYPE.U32: ['uint32_t *', lib.il_servo_raw_read_u32],
-                 REG_DTYPE.S32: ['int32_t *', lib.il_servo_raw_read_s32],
-                 REG_DTYPE.U64: ['uint64_t *', lib.il_servo_raw_read_u64],
-                 REG_DTYPE.S64: ['int64_t *', lib.il_servo_raw_read_s64],
-                 REG_DTYPE.FLOAT: ['float *', lib.il_servo_raw_read_float],
-                 REG_DTYPE.STR: ['uint32_t *', lib.il_servo_raw_read_str]}
+
+    _raw_read = {
+        REG_DTYPE.U8: ["uint8_t *", lib.il_servo_raw_read_u8],
+        REG_DTYPE.S8: ["int8_t *", lib.il_servo_raw_read_s8],
+        REG_DTYPE.U16: ["uint16_t *", lib.il_servo_raw_read_u16],
+        REG_DTYPE.S16: ["int16_t *", lib.il_servo_raw_read_s16],
+        REG_DTYPE.U32: ["uint32_t *", lib.il_servo_raw_read_u32],
+        REG_DTYPE.S32: ["int32_t *", lib.il_servo_raw_read_s32],
+        REG_DTYPE.U64: ["uint64_t *", lib.il_servo_raw_read_u64],
+        REG_DTYPE.S64: ["int64_t *", lib.il_servo_raw_read_s64],
+        REG_DTYPE.FLOAT: ["float *", lib.il_servo_raw_read_float],
+        REG_DTYPE.STR: ["uint32_t *", lib.il_servo_raw_read_str],
+    }
     """dict: Data buffer and function mappings for raw read operation."""
 
-    _raw_write = {REG_DTYPE.U8: lib.il_servo_raw_write_u8,
-                  REG_DTYPE.S8: lib.il_servo_raw_write_s8,
-                  REG_DTYPE.U16: lib.il_servo_raw_write_u16,
-                  REG_DTYPE.S16: lib.il_servo_raw_write_s16,
-                  REG_DTYPE.U32: lib.il_servo_raw_write_u32,
-                  REG_DTYPE.S32: lib.il_servo_raw_write_s32,
-                  REG_DTYPE.U64: lib.il_servo_raw_write_u64,
-                  REG_DTYPE.S64: lib.il_servo_raw_write_s64,
-                  REG_DTYPE.FLOAT: lib.il_servo_raw_write_float}
+    _raw_write = {
+        REG_DTYPE.U8: lib.il_servo_raw_write_u8,
+        REG_DTYPE.S8: lib.il_servo_raw_write_s8,
+        REG_DTYPE.U16: lib.il_servo_raw_write_u16,
+        REG_DTYPE.S16: lib.il_servo_raw_write_s16,
+        REG_DTYPE.U32: lib.il_servo_raw_write_u32,
+        REG_DTYPE.S32: lib.il_servo_raw_write_s32,
+        REG_DTYPE.U64: lib.il_servo_raw_write_u64,
+        REG_DTYPE.S64: lib.il_servo_raw_write_s64,
+        REG_DTYPE.FLOAT: lib.il_servo_raw_write_float,
+    }
     """dict: Function mappings for raw write operation."""
 
-    def __init__(self, cffi_servo, cffi_net, target, dictionary_path=None,
-                 servo_status_listener=False):
+    def __init__(
+        self, cffi_servo, cffi_net, target, dictionary_path=None, servo_status_listener=False
+    ):
         self._cffi_servo = ffi.gc(cffi_servo, lib.il_servo_fake_destroy)
         self._cffi_network = cffi_net
         self.target = target
@@ -184,11 +305,10 @@ class EthercatServo:
         self.__observers_servo_state = {}
         self.__handlers_servo_state = {}
         self.__observers_emergency_state = {}
-        if not hasattr(self, '_errors') or not self._errors:
+        if not hasattr(self, "_errors") or not self._errors:
             self._errors = self._get_all_errors(_dictionary_path)
-        prod_name = '' if self.dictionary.part_number is None \
-            else self.dictionary.part_number
-        self.full_name = f'{prod_name} {self.name}'
+        prod_name = "" if self.dictionary.part_number is None else self.dictionary.part_number
+        self.full_name = f"{prod_name} {self.name}"
         if servo_status_listener:
             self.start_status_listener()
         else:
@@ -210,12 +330,12 @@ class EthercatServo:
             tree = ET.parse(dictionary)
             for error in tree.iter("Error"):
                 label = error.find(".//Label")
-                id = int(error.attrib['id'], 0)
+                id = int(error.attrib["id"], 0)
                 errors[id] = [
-                    error.attrib['id'],
-                    error.attrib['affected_module'],
-                    error.attrib['error_type'].capitalize(),
-                    label.text
+                    error.attrib["id"],
+                    error.attrib["affected_module"],
+                    error.attrib["error_type"].capitalize(),
+                    label.text,
                 ]
         return errors
 
@@ -240,12 +360,12 @@ class EthercatServo:
         elif isinstance(reg, str):
             _dict = self.dictionary
             if not _dict:
-                raise ValueError('No dictionary loaded')
+                raise ValueError("No dictionary loaded")
             if reg not in _dict.registers(subnode):
-                raise_err(lib.IL_REGNOTFOUND, 'Register not found ({})'.format(reg))
+                raise_err(lib.IL_REGNOTFOUND, "Register not found ({})".format(reg))
             return _dict.registers(subnode)[reg]
         else:
-            raise TypeError('Invalid register')
+            raise TypeError("Invalid register")
 
     def raw_read(self, reg, subnode=1):
         """Raw read from servo.
@@ -288,7 +408,7 @@ class EthercatServo:
 
         value = self.extended_buffer if _reg.dtype == REG_DTYPE.STR else v[0]
         if isinstance(value, str):
-            value = value.replace('\x00', '')
+            value = value.replace("\x00", "")
         return value
 
     def raw_write(self, reg, data, confirm=True, extended=0, subnode=1):
@@ -351,7 +471,7 @@ class EthercatServo:
             TypeError: If the register type is not valid.
 
         """
-        v = ffi.new('double *')
+        v = ffi.new("double *")
         r = lib.il_net_SDO_read(self._cffi_network, slave, idx, subidx, dtype, v)
         raise_err(r)
 
@@ -397,7 +517,7 @@ class EthercatServo:
 
         """
         enum_dtype = REG_DTYPE(dtype)
-        size = dtype_size(enum_dtype)*length
+        size = dtype_size(enum_dtype) * length
         var_type = {
             REG_DTYPE.U8: "uint8_t",
             REG_DTYPE.S8: "int8_t",
@@ -407,7 +527,7 @@ class EthercatServo:
             REG_DTYPE.S32: "int32_t",
             REG_DTYPE.U64: "uint64_t",
             REG_DTYPE.S64: "int64_t",
-            REG_DTYPE.FLOAT: "float"
+            REG_DTYPE.FLOAT: "float",
         }
         v = ffi.new("{}[{}]".format(var_type[enum_dtype], length))
         r = lib.il_net_SDO_read_array(self._cffi_network, slave, idx, subidx, size, v)
@@ -427,8 +547,7 @@ class EthercatServo:
 
         """
         v = ffi.new("char[" + str(size) + "]")
-        r = lib.il_net_SDO_read_complete_access(
-            self._cffi_network, slave, idx, size, v)
+        r = lib.il_net_SDO_read_complete_access(self._cffi_network, slave, idx, size, v)
         raise_err(r)
 
         return b"".join(v)
@@ -482,8 +601,8 @@ class EthercatServo:
             tuple: Servo state and state flags.
 
         """
-        state = ffi.new('il_servo_state_t *')
-        flags = ffi.new('int *')
+        state = ffi.new("il_servo_state_t *")
+        flags = ffi.new("int *")
 
         lib.il_servo_state_get(self._cffi_servo, state, flags, subnode)
 
@@ -534,7 +653,7 @@ class EthercatServo:
         r = lib.il_servo_fault_reset(self._cffi_servo, subnode, timeout)
         raise_err(r)
 
-    def switch_on(self, timeout=2.):
+    def switch_on(self, timeout=2.0):
         """Switch on PDS.
 
         This function switches on the PDS but it does not enable the motor.
@@ -590,34 +709,31 @@ class EthercatServo:
             # Store all
             r = 0
             try:
-                self.write(reg=STORE_COCO_ALL,
-                           data=PASSWORD_STORE_ALL,
-                           subnode=0)
-                logger.info('Store all successfully done.')
+                self.write(reg=STORE_COCO_ALL, data=PASSWORD_STORE_ALL, subnode=0)
+                logger.info("Store all successfully done.")
             except Exception:
-                logger.warning('Store all COCO failed. Trying MOCO...')
+                logger.warning("Store all COCO failed. Trying MOCO...")
                 r = -1
             if r < 0:
                 for dict_subnode in range(1, self.dictionary.subnodes):
-                    self.write(reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
-                               data=PASSWORD_STORE_ALL,
-                               subnode=dict_subnode)
-                    logger.info('Store axis {} successfully done.'.format(
-                        dict_subnode))
+                    self.write(
+                        reg=STORE_MOCO_ALL_REGISTERS[dict_subnode],
+                        data=PASSWORD_STORE_ALL,
+                        subnode=dict_subnode,
+                    )
+                    logger.info("Store axis {} successfully done.".format(dict_subnode))
         elif subnode == 0:
             # Store only subnode 0
-            self.write(reg=STORE_COCO_ALL,
-                       data=PASSWORD_STORE_RESTORE_SUB_0,
-                       subnode=subnode)
-            logger.info('Store subnode 0 successfully done.')
+            self.write(reg=STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=subnode)
+            logger.info("Store subnode 0 successfully done.")
         elif subnode > 0 and subnode in STORE_MOCO_ALL_REGISTERS:
             # Store axis
-            self.write(reg=STORE_MOCO_ALL_REGISTERS[subnode],
-                       data=PASSWORD_STORE_ALL,
-                       subnode=subnode)
-            logger.info('Store axis {} successfully done.'.format(subnode))
+            self.write(
+                reg=STORE_MOCO_ALL_REGISTERS[subnode], data=PASSWORD_STORE_ALL, subnode=subnode
+            )
+            logger.info("Store axis {} successfully done.".format(subnode))
         else:
-            raise ILError('Invalid subnode.')
+            raise ILError("Invalid subnode.")
         time.sleep(1.5)
 
     def restore_parameters(self, subnode=None):
@@ -638,24 +754,20 @@ class EthercatServo:
         """
         if subnode is None:
             # Restore All
-            self.write(reg=RESTORE_COCO_ALL,
-                       data=PASSWORD_RESTORE_ALL,
-                       subnode=0)
-            logger.info('Restore all successfully done.')
+            self.write(reg=RESTORE_COCO_ALL, data=PASSWORD_RESTORE_ALL, subnode=0)
+            logger.info("Restore all successfully done.")
         elif subnode == 0:
             # Restore only axis 0
-            self.write(reg=RESTORE_COCO_ALL,
-                       data=PASSWORD_STORE_RESTORE_SUB_0,
-                       subnode=0)
-            logger.info('Restore subnode 0 successfully done.')
+            self.write(reg=RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
+            logger.info("Restore subnode 0 successfully done.")
         elif subnode > 0 and subnode in RESTORE_MOCO_ALL_REGISTERS:
             # Restore axis
-            self.write(reg=RESTORE_MOCO_ALL_REGISTERS[subnode],
-                       data=PASSWORD_RESTORE_ALL,
-                       subnode=subnode)
-            logger.info('Restore subnode {} successfully done.'.format(subnode))
+            self.write(
+                reg=RESTORE_MOCO_ALL_REGISTERS[subnode], data=PASSWORD_RESTORE_ALL, subnode=subnode
+            )
+            logger.info("Restore subnode {} successfully done.".format(subnode))
         else:
-            raise ILError('Invalid subnode.')
+            raise ILError("Invalid subnode.")
         time.sleep(1.5)
 
     def is_alive(self):
@@ -690,7 +802,7 @@ class EthercatServo:
 
         """
         r = lib.il_servo_dict_load(self._cffi_servo, cstr(dictionary))
-        if not hasattr(self, '_errors') or not self._errors:
+        if not hasattr(self, "_errors") or not self._errors:
             self._errors = self._get_all_errors(dictionary)
         raise_err(r)
         self.__dictionary = IPBDictionary(dictionary, self._cffi_servo)
@@ -710,8 +822,12 @@ class EthercatServo:
 
         """
         for register in registers:
-            if subnode is not None and register.attrib['subnode'] != str(
-                    subnode) and subnode >= 0 and register in registers_category:
+            if (
+                subnode is not None
+                and register.attrib["subnode"] != str(subnode)
+                and subnode >= 0
+                and register in registers_category
+            ):
                 registers_category.remove(register)
             cleanup_register(register)
 
@@ -729,9 +845,9 @@ class EthercatServo:
 
         """
         for axis in list_axis:
-            registers_category = axis.find('./Registers')
-            registers = registers_category.findall('./Register')
-            if subnode is not None and axis.attrib['subnode'] == str(subnode):
+            registers_category = axis.find("./Registers")
+            registers = registers_category.findall("./Register")
+            if subnode is not None and axis.attrib["subnode"] == str(subnode):
                 for register in registers:
                     cleanup_register(register)
                 device.append(registers_category)
@@ -750,7 +866,7 @@ class EthercatServo:
 
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
-            raise ILError('Invalid subnode')
+            raise ILError("Invalid subnode")
         prod_code, rev_number = get_drive_identification(self, subnode)
 
         r = lib.il_servo_dict_storage_read(self._cffi_servo)
@@ -761,38 +877,37 @@ class EthercatServo:
         tree = ET.parse(config_file)
         xml_data = tree.getroot()
 
-        body = xml_data.find('Body')
-        device = xml_data.find('Body/Device')
-        categories = xml_data.find('Body/Device/Categories')
-        errors = xml_data.find('Body/Errors')
+        body = xml_data.find("Body")
+        device = xml_data.find("Body/Device")
+        categories = xml_data.find("Body/Device/Categories")
+        errors = xml_data.find("Body/Errors")
 
-        if 'ProductCode' in device.attrib and prod_code is not None:
-            device.attrib['ProductCode'] = str(prod_code)
-        if 'RevisionNumber' in device.attrib and rev_number is not None:
-            device.attrib['RevisionNumber'] = str(rev_number)
+        if "ProductCode" in device.attrib and prod_code is not None:
+            device.attrib["ProductCode"] = str(prod_code)
+        if "RevisionNumber" in device.attrib and rev_number is not None:
+            device.attrib["RevisionNumber"] = str(rev_number)
 
-        registers_category = xml_data.find('Body/Device/Registers')
+        registers_category = xml_data.find("Body/Device/Registers")
         if registers_category is None:
             # Multiaxis dictionary
-            axes_category = xml_data.find('Body/Device/Axes')
-            list_axis = xml_data.findall('Body/Device/Axes/Axis')
+            axes_category = xml_data.find("Body/Device/Axes")
+            list_axis = xml_data.findall("Body/Device/Axes/Axis")
             self.__update_multiaxis_dict(device, axes_category, list_axis, subnode)
         else:
             # Single axis dictionary
-            registers = xml_data.findall('Body/Device/Registers/Register')
+            registers = xml_data.findall("Body/Device/Registers/Register")
             self.__update_single_axis_dict(registers_category, registers, subnode)
 
         device.remove(categories)
         body.remove(errors)
 
-        image = xml_data.find('./DriveImage')
+        image = xml_data.find("./DriveImage")
         if image is not None:
             xml_data.remove(image)
 
-        xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(
-            indent="  ", newl='')
+        xmlstr = minidom.parseString(ET.tostring(xml_data)).toprettyxml(indent="  ", newl="")
 
-        config_file = io.open(config_file, "w", encoding='utf8')
+        config_file = io.open(config_file, "w", encoding="utf8")
         config_file.write(xmlstr)
         config_file.close()
 
@@ -805,14 +920,13 @@ class EthercatServo:
 
         """
         if not os.path.isfile(config_file):
-            raise FileNotFoundError('Could not find {}.'.format(config_file))
+            raise FileNotFoundError("Could not find {}.".format(config_file))
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
-            raise ValueError('Invalid subnode')
+            raise ValueError("Invalid subnode")
         if subnode is None:
             subnode = -1
-        r = lib.il_servo_dict_storage_write(self._cffi_servo, cstr(config_file),
-                                            subnode)
-        if not hasattr(self, '_errors') or not self._errors:
+        r = lib.il_servo_dict_storage_write(self._cffi_servo, cstr(config_file), subnode)
+        if not hasattr(self, "_errors") or not self._errors:
             self._errors = self._get_all_errors(config_file)
         raise_err(r)
 
@@ -837,8 +951,7 @@ class EthercatServo:
         """
         cb_handle = ffi.new_handle(cb)
 
-        slot = lib.il_servo_emcy_subscribe(
-            self._cffi_servo, lib._on_emcy_cb, cb_handle)
+        slot = lib.il_servo_emcy_subscribe(self._cffi_servo, lib._on_emcy_cb, cb_handle)
         if slot < 0:
             raise_err(slot)
 
@@ -865,13 +978,12 @@ class EthercatServo:
 
         """
         if callback in self.__observers_servo_state.values():
-            logger.info('Callback already subscribed.')
+            logger.info("Callback already subscribed.")
             return
 
         cb_handle = ffi.new_handle(callback)
 
-        slot = lib.il_servo_state_subscribe(
-            self._cffi_servo, lib._on_state_change_cb, cb_handle)
+        slot = lib.il_servo_state_subscribe(self._cffi_servo, lib._on_state_change_cb, cb_handle)
         if slot < 0:
             raise_err(slot)
 
@@ -886,7 +998,7 @@ class EthercatServo:
 
         """
         if callback not in self.__observers_servo_state.values():
-            logger.info('Callback not subscribed.')
+            logger.info("Callback not subscribed.")
             return
         for slot, cb in self.__observers_servo_state.items():
             if cb == callback:
@@ -908,7 +1020,7 @@ class EthercatServo:
         r = lib.il_servo_state_subs_stop(self._cffi_servo, stop)
 
         if r < 0:
-            raise ILError('Failed toggling servo state subscriptions.')
+            raise ILError("Failed toggling servo state subscriptions.")
 
     def start_status_listener(self):
         """Start listening for servo status events (SERVO_STATE)."""
@@ -946,14 +1058,16 @@ class EthercatServo:
                 self.disturbance_channel_data(
                     channel,
                     dtypes[index],
-                    data_arr[index][i * samples_for_write:(i + 1) * samples_for_write])
+                    data_arr[index][i * samples_for_write : (i + 1) * samples_for_write],
+                )
             self.disturbance_data_size = sample_size * samples_for_write
             self.write(DIST_DATA, sample_size * samples_for_write, False, 1, subnode=0)
         for index, channel in enumerate(channels):
             self.disturbance_channel_data(
                 channel,
                 dtypes[index],
-                data_arr[index][number_writes * samples_for_write:num_samples])
+                data_arr[index][number_writes * samples_for_write : num_samples],
+            )
         self.disturbance_data_size = rest_samples * sample_size
         self.write(DIST_DATA, rest_samples * sample_size, False, 1, subnode=0)
 
@@ -1030,11 +1144,9 @@ class EthercatServo:
         """
         r = lib.il_net_remove_all_mapped_registers(self._cffi_network)
         if r < 0:
-            raise ILError(f'Error removing monitoring mapped registers. '
-                          f'Error code: {r}')
+            raise ILError(f"Error removing monitoring mapped registers. Error code: {r}")
 
-    def monitoring_set_mapped_register(self, channel, address, subnode,
-                                       dtype, size):
+    def monitoring_set_mapped_register(self, channel, address, subnode, dtype, size):
         """Set monitoring mapped register.
 
         Args:
@@ -1049,12 +1161,11 @@ class EthercatServo:
             the monitoring register.
 
         """
-        r = lib.il_net_set_mapped_register(self._cffi_network, channel,
-                                           address, subnode, dtype,
-                                           size)
+        r = lib.il_net_set_mapped_register(
+            self._cffi_network, channel, address, subnode, dtype, size
+        )
         if r < 0:
-            raise ILError(f'Error mapping monitoring register {address}. '
-                          f'Error code: {r}')
+            raise ILError(f"Error mapping monitoring register {address}. Error code: {r}")
 
     def monitoring_get_num_mapped_registers(self):
         """Obtain the number of monitoring mapped registers.
@@ -1075,8 +1186,7 @@ class EthercatServo:
         """
         r = lib.il_net_enable_monitoring(self._cffi_network)
         if r < 0:
-            raise ILError(f'Error enabling monitoring. '
-                          f'Error code: {r}')
+            raise ILError(f"Error enabling monitoring. Error code: {r}")
 
     def monitoring_disable(self):
         """Disable monitoring process.
@@ -1088,8 +1198,7 @@ class EthercatServo:
         """
         r = lib.il_net_disable_monitoring(self._cffi_network)
         if r < 0:
-            raise ILError(f'Error disabling monitoring. '
-                          f'Error code: {r}')
+            raise ILError(f"Error disabling monitoring. Error code: {r}")
 
     def disturbance_enable(self):
         """Enable disturbance process.
@@ -1101,8 +1210,7 @@ class EthercatServo:
         """
         r = lib.il_net_enable_disturbance(self._cffi_network)
         if r < 0:
-            raise ILError(f'Error enabling disturbance. '
-                          f'Error code: {r}')
+            raise ILError(f"Error enabling disturbance. Error code: {r}")
 
     def disturbance_disable(self):
         """Disable disturbance process.
@@ -1114,8 +1222,7 @@ class EthercatServo:
         """
         r = lib.il_net_disable_disturbance(self._cffi_network)
         if r < 0:
-            raise ILError(f'Error disabling disturbance. '
-                          f'Error code: {r}')
+            raise ILError(f"Error disabling disturbance. Error code: {r}")
 
     def monitoring_remove_data(self):
         """Remove monitoring data.
@@ -1127,8 +1234,7 @@ class EthercatServo:
         """
         r = lib.il_net_monitoring_remove_data(self._cffi_network)
         if r < 0:
-            raise ILError(f'Error removing monitoring data. '
-                          f'Error code: {r}')
+            raise ILError(f"Error removing monitoring data. Error code: {r}")
 
     def disturbance_remove_data(self):
         """Remove disturbance data.
@@ -1140,8 +1246,7 @@ class EthercatServo:
         """
         r = lib.il_net_disturbance_remove_data(self._cffi_network)
         if r < 0:
-            raise ILError(f'Error removing disturbance data. '
-                          f'Error code: {r}')
+            raise ILError(f"Error removing disturbance data. Error code: {r}")
 
     def monitoring_read_data(self):
         """Obtain processed monitoring data.
@@ -1153,8 +1258,7 @@ class EthercatServo:
         """
         r = lib.il_net_read_monitoring_data(self._cffi_network)
         if r < 0:
-            raise ILError(f'Error reading monitoring data. '
-                          f'Error code: {r}')
+            raise ILError(f"Error reading monitoring data. Error code: {r}")
 
     def monitoring_get_bytes_per_block(self):
         """Obtain Bytes x Block configured.
@@ -1199,8 +1303,7 @@ class EthercatServo:
         """
         r = lib.il_net_disturbance_remove_all_mapped_registers(self._cffi_network)
         if r < 0:
-            raise ILError(f'Error removing disturbance mapped registers. '
-                          f'Error code: {r}')
+            raise ILError(f"Error removing disturbance mapped registers. Error code: {r}")
 
     def disturbance_set_mapped_register(self, channel, address, subnode, dtype, size):
         """Set disturbance mapped register.
@@ -1215,11 +1318,11 @@ class EthercatServo:
             the disturbance register.
 
         """
-        r = lib.il_net_disturbance_set_mapped_register(self._cffi_network, channel,
-                                                       address, subnode, dtype, size)
+        r = lib.il_net_disturbance_set_mapped_register(
+            self._cffi_network, channel, address, subnode, dtype, size
+        )
         if r < 0:
-            raise ILError(f'Error mapping disturbance register {address}. '
-                          f'Error code: {r}')
+            raise ILError(f"Error mapping disturbance register {address}. Error code: {r}")
 
     def __read_coco_moco_register(self, register_coco, register_moco):
         """Reads the COCO register and if it does not exist,
@@ -1252,21 +1355,24 @@ class EthercatServo:
     def info(self):
         """dict: Servo information."""
         serial_number = self.__read_coco_moco_register(
-            SERIAL_NUMBER_REGISTERS[0], SERIAL_NUMBER_REGISTERS[1])
+            SERIAL_NUMBER_REGISTERS[0], SERIAL_NUMBER_REGISTERS[1]
+        )
         product_code = self.__read_coco_moco_register(
-            PRODUCT_ID_REGISTERS[0], PRODUCT_ID_REGISTERS[1])
+            PRODUCT_ID_REGISTERS[0], PRODUCT_ID_REGISTERS[1]
+        )
         revision_number = self.__read_coco_moco_register(
-            REVISION_NUMBER_REGISTERS[0], REVISION_NUMBER_REGISTERS[1])
+            REVISION_NUMBER_REGISTERS[0], REVISION_NUMBER_REGISTERS[1]
+        )
         sw_version = None
-        hw_variant = 'A'
+        hw_variant = "A"
 
         return {
-            'name': self.name,
-            'serial_number': serial_number,
-            'firmware_version': sw_version,
-            'product_code': product_code,
-            'revision_number': revision_number,
-            'hw_variant': hw_variant
+            "name": self.name,
+            "serial_number": serial_number,
+            "firmware_version": sw_version,
+            "product_code": product_code,
+            "revision_number": revision_number,
+            "hw_variant": hw_variant,
         }
 
     @property
@@ -1313,7 +1419,7 @@ class EthercatServo:
             SERVO_MODE: Current operation mode.
 
         """
-        mode = ffi.new('il_servo_mode_t *')
+        mode = ffi.new("il_servo_mode_t *")
 
         r = lib.il_servo_mode_get(self._cffi_servo, mode)
         raise_err(r)
@@ -1359,7 +1465,7 @@ class EthercatServo:
             float: Open loop voltage (% relative to DC-bus, -1...1).
 
         """
-        voltage = ffi.new('double *')
+        voltage = ffi.new("double *")
         r = lib.il_servo_ol_voltage_get(self._cffi_servo, voltage)
         raise_err(r)
 
@@ -1384,7 +1490,7 @@ class EthercatServo:
             float: Open loop frequency (mHz).
 
         """
-        frequency = ffi.new('double *')
+        frequency = ffi.new("double *")
         r = lib.il_servo_ol_frequency_get(self._cffi_servo, frequency)
         raise_err(r)
 
@@ -1409,7 +1515,7 @@ class EthercatServo:
             float: Actual torque.
 
         """
-        torque = ffi.new('double *')
+        torque = ffi.new("double *")
         r = lib.il_servo_torque_get(self._cffi_servo, torque)
         raise_err(r)
 
@@ -1434,7 +1540,7 @@ class EthercatServo:
             float: Actual position.
 
         """
-        position = ffi.new('double *')
+        position = ffi.new("double *")
         r = lib.il_servo_position_get(self._cffi_servo, position)
         raise_err(r)
 
@@ -1468,21 +1574,20 @@ class EthercatServo:
 
         if isinstance(pos, (tuple, list)):
             if len(pos) != 2 or not isinstance(pos[1], dict):
-                raise TypeError('Unexpected position')
+                raise TypeError("Unexpected position")
 
-            if 'immediate' in pos[1]:
-                immediate = int(pos[1]['immediate'])
+            if "immediate" in pos[1]:
+                immediate = int(pos[1]["immediate"])
 
-            if 'relative' in pos[1]:
-                relative = int(pos[1]['relative'])
+            if "relative" in pos[1]:
+                relative = int(pos[1]["relative"])
 
-            if 'sp_timeout' in pos[1]:
-                sp_timeout = to_ms(pos[1]['sp_timeout'])
+            if "sp_timeout" in pos[1]:
+                sp_timeout = to_ms(pos[1]["sp_timeout"])
 
             pos = pos[0]
 
-        r = lib.il_servo_position_set(self._cffi_servo, pos, immediate, relative,
-                                      sp_timeout)
+        r = lib.il_servo_position_set(self._cffi_servo, pos, immediate, relative, sp_timeout)
         raise_err(r)
 
     @property
@@ -1493,7 +1598,7 @@ class EthercatServo:
             int: Position resolution (c/rev/s, c/ppitch/s).
 
         """
-        res = ffi.new('uint32_t *')
+        res = ffi.new("uint32_t *")
         r = lib.il_servo_position_res_get(self._cffi_servo, res)
         raise_err(r)
 
@@ -1507,7 +1612,7 @@ class EthercatServo:
             float: Actual velocity.
 
         """
-        velocity = ffi.new('double *')
+        velocity = ffi.new("double *")
         r = lib.il_servo_velocity_get(self._cffi_servo, velocity)
         raise_err(r)
 
@@ -1532,7 +1637,7 @@ class EthercatServo:
             int: Velocity resolution (c/rev, c/ppitch).
 
         """
-        res = ffi.new('uint32_t *')
+        res = ffi.new("uint32_t *")
         r = lib.il_servo_velocity_res_get(self._cffi_servo, res)
         raise_err(r)
 
@@ -1550,8 +1655,10 @@ class EthercatServo:
             array: Current monitoring data.
 
         """
-        logger.warning('Function ingenialink.ipb.servo.monitoring_data is'
-                       ' deprecated. Please use "monitoring_channel_data" instead.')
+        logger.warning(
+            "Function ingenialink.ipb.servo.monitoring_data is"
+            ' deprecated. Please use "monitoring_channel_data" instead.'
+        )
         monitoring_data = lib.il_net_monitornig_data_get(self._cffi_network)
         size = int(self.monitoring_data_size / 2)
         ret_arr = []
@@ -1593,10 +1700,9 @@ class EthercatServo:
 
         """
         disturbance_arr = value
-        disturbance_arr = \
-            np.pad(disturbance_arr,
-                   (0, int(self.disturbance_data_size / 2) - len(value)),
-                   'constant')
+        disturbance_arr = np.pad(
+            disturbance_arr, (0, int(self.disturbance_data_size / 2) - len(value)), "constant"
+        )
         lib.il_net_disturbance_data_set(self._cffi_network, disturbance_arr.tolist())
 
     @property
