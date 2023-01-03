@@ -32,4 +32,4 @@ Please update the documentation.
 
 ### Code formatting
 
-- [] Use black package to format the code: `black -l 100 ingenialink tests`. It is recommended to configure the code editor to automatically format the code using black with a max length line of 100.
+- [ ] Use black package to format the code: `black -l 100 ingenialink tests`. It is recommended to configure the code editor to automatically format the code using black with a max length line of 100.
