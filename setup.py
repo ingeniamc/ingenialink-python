@@ -6,7 +6,7 @@ from distutils.cmd import Command
 import shutil
 import os
 
-_version = re.search(r'__version__\s+=\s+\'(.*)\'',
+_version = re.search(r'__version__\s+=\s+\"(.*)\"',
                      open('ingenialink/__init__.py').read()).group(1)
 
 

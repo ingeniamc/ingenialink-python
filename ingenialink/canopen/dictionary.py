@@ -15,8 +15,8 @@ class CanopenDictionary(Dictionary):
     """
 
     class AttrRegCanDict(Dictionary.AttrRegDict):
-        IDX = 'idx'
-        SUBIDX = 'subidx'
+        IDX = "idx"
+        SUBIDX = "subidx"
 
     def __init__(self, dictionary_path):
         super().__init__(dictionary_path)
@@ -26,14 +26,16 @@ class CanopenDictionary(Dictionary):
         if current_read_register is None:
             return None
         try:
-            aux_var = int(register.attrib['address'], 16)
+            aux_var = int(register.attrib["address"], 16)
             current_read_register[self.AttrRegCanDict.IDX] = aux_var >> 8
             current_read_register[self.AttrRegCanDict.SUBIDX] = aux_var & 0xFF
 
             return current_read_register
 
         except KeyError as ke:
-            logger.error(f"Register with ID {current_read_register[self.AttrRegCanDict.IDENTIFIER]} has not attribute {ke}")
+            logger.error(
+                f"Register with ID {current_read_register[self.AttrRegCanDict.IDENTIFIER]} has not attribute {ke}"
+            )
             return None
 
     def _add_register_list(self, register):
