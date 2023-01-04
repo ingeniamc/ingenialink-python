@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import re
-from setuptools import setup
+import setuptools
 from distutils.cmd import Command
 import shutil
 import os
@@ -52,11 +52,10 @@ class BCleanAppCommand(Command):
             os.remove("ingenialink/wpcap.dll")
 
 
-setup(
+setuptools.setup(
     name='ingenialink',
     version=_version,
-    packages=['ingenialink', 'ingenialink.canopen', 'ingenialink.ethercat',
-            'ingenialink.ethernet', 'ingenialink.ipb', 'ingenialink.utils'],
+    packages=setuptools.find_packages(exclude=["test", "examples"]),
     description='IngeniaLink Communications Library',
     long_description=open('README.rst').read(),
     author='Ingenia Motion Control',
@@ -91,7 +90,8 @@ setup(
       'numpy<=1.19.5',
       'canopen==1.2.1',
       'python-can==3.3.4',
-      'ingenialogger>=0.2.1'
+      'ingenialogger>=0.2.1',
+      'ping3==4.0.3'
     ],
     include_package_data=True
 )
