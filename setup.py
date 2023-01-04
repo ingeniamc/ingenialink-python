@@ -87,7 +87,7 @@ setuptools.setup(
     cffi_modules=['ingenialink/ingenialink_build.py:ffibuilder'],
     install_requires=[
       'cffi==1.14.6',
-      'numpy<=1.19.5',
+      'numpy<1.22.1',
       'canopen==1.2.1',
       'python-can==3.3.4',
       'ingenialogger>=0.2.1',
