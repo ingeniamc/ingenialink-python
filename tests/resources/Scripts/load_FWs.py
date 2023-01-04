@@ -6,7 +6,7 @@ import argparse
 import ingenialogger
 from ping3 import ping
 
-sys.path.append("./")
+sys.path.append("../../")
 
 from ingeniamotion import MotionController
 from ingeniamotion.exceptions import IMException
@@ -120,6 +120,6 @@ def main(comm, config):
 
 if __name__ == "__main__":
     args = setup_command()
-    with open(os.path.join(dirname, "config.json")) as file:
+    with open(os.path.join(dirname, "..\..\config.json")) as file:
         config_json = json.load(file)
     main(args.comm, config_json)
