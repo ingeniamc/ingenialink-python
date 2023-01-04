@@ -1,19 +1,25 @@
 import ftplib
+import time
+from collections import defaultdict
 
 from .servo import EthernetServo
-from ingenialink.constants import *
-from .._ingenialink import lib, ffi
 from ingenialink.utils.udp import UDP
-from ingenialink.utils._utils import *
-from ..network import NET_PROT, NET_TRANS_PROT
-from ingenialink.ipb.network import IPBNetwork
+from ingenialink.utils._utils import raise_err
+from ..network import NET_PROT
+from ingenialink.network import Network, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError
+from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 
 from ftplib import FTP
 from time import sleep
 
 import os
+import socket
 import ingenialogger
+from threading import Thread
+
+from ping3 import ping
+
 logger = ingenialogger.get_logger(__name__)
 
 FTP_SESSION_OK_CODE = "220"
@@ -23,11 +29,56 @@ FTP_CLOSE_OK_CODE = "221"
 
 CMD_CHANGE_CPU = 0x67E4
 
+MAX_NUM_UNSUCCESSFUL_PINGS = 3
 
-class EthernetNetwork(IPBNetwork):
+
+class NetStatusListener(Thread):
+    """Network status listener thread to check if the drive is alive.
+
+    Args:
+        network (EthernetNetwork): Network instance of the Ethernet communication.
+
+    """
+
+    def __init__(self, network):
+        super(NetStatusListener, self).__init__()
+        self.__network = network
+        self.__stop = False
+        self.__max_unsuccessful_pings = MAX_NUM_UNSUCCESSFUL_PINGS
+
+    def run(self):
+        while not self.__stop:
+            for servo in self.__network.servos:
+                unsuccessful_pings = 0
+                servo_ip = servo.ip_address
+                servo_state = self.__network._get_servo_state(servo_ip)
+                while unsuccessful_pings < self.__max_unsuccessful_pings:
+                    response = ping(servo_ip, timeout=1)
+                    if not isinstance(response, float):
+                        unsuccessful_pings += 1
+                    else:
+                        break
+                ping_response = unsuccessful_pings != self.__max_unsuccessful_pings
+                if servo_state == NET_STATE.CONNECTED and not ping_response:
+                    self.__network._notify_status(servo_ip, NET_DEV_EVT.REMOVED)
+                    self.__network._set_servo_state(servo_ip, NET_STATE.DISCONNECTED)
+                if servo_state == NET_STATE.DISCONNECTED and ping_response:
+                    self.__network._notify_status(servo_ip, NET_DEV_EVT.ADDED)
+                    self.__network._set_servo_state(servo_ip, NET_STATE.CONNECTED)
+            time.sleep(0.25)
+
+    def stop(self):
+        self.__stop = True
+
+
+class EthernetNetwork(Network):
     """Network for all Ethernet communications."""
+
     def __init__(self):
         super(EthernetNetwork, self).__init__()
+        self.__servos_state = {}
+        self.__listener_net_status = None
+        self.__observers_net_state = defaultdict(list)
 
     @staticmethod
     def load_firmware(fw_file, target="192.168.2.22", ftp_user="", ftp_pwd=""):
@@ -49,10 +100,10 @@ class EthernetNetwork(IPBNetwork):
 
         """
         if not os.path.isfile(fw_file):
-            raise FileNotFoundError('Could not find {}.'.format(fw_file))
+            raise FileNotFoundError(f"Could not find {fw_file}.")
 
         try:
-            file = open(fw_file, 'rb')
+            file = open(fw_file, "rb")
             ftp_output = None
             ftp = FTP()
 
@@ -73,8 +124,7 @@ class EthernetNetwork(IPBNetwork):
             # Load file through FTP.
             logger.info("Uploading firmware file...")
             ftp.set_pasv(False)
-            ftp_output = ftp.storbinary(
-                "STOR {}".format(os.path.basename(file.name)), file)
+            ftp_output = ftp.storbinary(f"STOR {os.path.basename(file.name)}", file)
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
                 raise_err("Unable to load the FW file through FTP")
@@ -88,7 +138,7 @@ class EthernetNetwork(IPBNetwork):
 
         except Exception as e:
             logger.error(e)
-            raise ILFirmwareLoadError('Error during bootloader process.')
+            raise ILFirmwareLoadError("Error during bootloader process.")
 
     @staticmethod
     def load_firmware_moco(node, subnode, ip, port, moco_file):
@@ -112,7 +162,7 @@ class EthernetNetwork(IPBNetwork):
         upd = UDP(port, ip)
 
         if not moco_file or not os.path.isfile(moco_file):
-            raise ILFirmwareLoadError('File not found')
+            raise ILFirmwareLoadError("File not found")
         moco_in = open(moco_file, "r")
 
         logger.info("Loading firmware...")
@@ -122,7 +172,7 @@ class EthernetNetwork(IPBNetwork):
 
                 # Get command and address
                 cmd = int(words[1] + words[0], 16)
-                data = b''
+                data = b""
                 data_start_byte = 2
                 while data_start_byte in range(data_start_byte, len(words)):
                     # Load UDP data
@@ -138,30 +188,30 @@ class EthernetNetwork(IPBNetwork):
             logger.info("Bootload process succeeded")
         except ftplib.error_temp as e:
             logger.error(e)
-            raise ILFirmwareLoadError('Firewall might be blocking the access.')
+            raise ILFirmwareLoadError("Firewall might be blocking the access.")
         except Exception as e:
             logger.error(e)
-            raise ILFirmwareLoadError('Error during bootloader process.')
+            raise ILFirmwareLoadError("Error during bootloader process.")
 
     def scan_slaves(self):
         raise NotImplementedError
 
-    def connect_to_slave(self, target, dictionary=None, port=1061,
-                         communication_protocol=NET_TRANS_PROT.UDP,
-                         reconnection_retries=DEFAULT_MESSAGE_RETRIES,
-                         reconnection_timeout=DEFAULT_MESSAGE_TIMEOUT,
-                         servo_status_listener=False,
-                         net_status_listener=False):
+    def connect_to_slave(
+        self,
+        target,
+        dictionary=None,
+        port=1061,
+        connection_timeout=DEFAULT_ETH_CONNECTION_TIMEOUT,
+        servo_status_listener=False,
+        net_status_listener=False,
+    ):
         """Connects to a slave through the given network settings.
 
         Args:
             target (str): IP of the target slave.
             dictionary (str): Path to the target dictionary file.
             port (int): Port to connect to the slave.
-            communication_protocol (NET_TRANS_PROT): Communication protocol, UPD or TCP.
-            reconnection_retries (int): Number of reconnection retried before declaring
-                a connected or disconnected stated.
-            reconnection_timeout (int): Time in ms of the reconnection timeout.
+            connection_timeout (float): Time in seconds of the connection timeout.
             servo_status_listener (bool): Toggle the listener of the servo for
                 its status, errors, faults, etc.
             net_status_listener (bool): Toggle the listener of the network
@@ -171,24 +221,11 @@ class EthernetNetwork(IPBNetwork):
             EthernetServo: Instance of the servo connected.
 
         """
-        net__ = ffi.new('il_net_t **')
-        servo__ = ffi.new('il_servo_t **')
-        _dictionary = cstr(dictionary) if dictionary else ffi.NULL
-        _target = cstr(target) if target else ffi.NULL
-
-        r = lib.il_servo_lucky_eth(NET_PROT.ETH.value, net__, servo__,
-                                   _dictionary, _target,
-                                   port, communication_protocol.value)
-
-        raise_err(r)
-
-        net_ = ffi.cast('il_net_t *', net__[0])
-        servo_ = ffi.cast('il_servo_t *', servo__[0])
-
-        self._create_cffi_network(net_)
-        servo = EthernetServo(servo_, self._cffi_network, target,
-                              port, communication_protocol, dictionary,
-                              servo_status_listener)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(connection_timeout)
+        sock.connect((target, port))
+        self._set_servo_state(target, NET_STATE.CONNECTED)
+        servo = EthernetServo(sock, dictionary, servo_status_listener)
 
         self.servos.append(servo)
 
@@ -196,9 +233,6 @@ class EthernetNetwork(IPBNetwork):
             self.start_status_listener()
         else:
             self.stop_status_listener()
-
-        self.set_reconnection_retries(reconnection_retries)
-        self.set_recv_timeout(reconnection_timeout)
 
         return servo
 
@@ -209,13 +243,69 @@ class EthernetNetwork(IPBNetwork):
             servo (EthernetServo): Instance of the servo connected.
 
         """
-        # TODO: This stops all connections no only the target servo.
         self.servos.remove(servo)
+        servo.stop_status_listener()
+        self.close_socket(servo.socket)
+        self._set_servo_state(servo.ip_address, NET_STATE.DISCONNECTED)
         if len(self.servos) == 0:
             self.stop_status_listener()
-            lib.il_net_mon_stop(self._cffi_network)
-            self.close_socket()
-        self._cffi_network = None
+
+    @staticmethod
+    def close_socket(sock):
+        """Closes the established network socket."""
+        sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
+
+    def start_status_listener(self):
+        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+        if self.__listener_net_status is None:
+            listener = NetStatusListener(self)
+            listener.start()
+            self.__listener_net_status = listener
+
+    def stop_status_listener(self):
+        """Stops the NetStatusListener from listening to the drive."""
+        if self.__listener_net_status is not None:
+            self.__listener_net_status.stop()
+            self.__listener_net_status.join()
+        self.__listener_net_status = None
+
+    def _notify_status(self, ip, status):
+        """Notify subscribers of a network state change."""
+        for callback in self.__observers_net_state[ip]:
+            callback(status)
+
+    def subscribe_to_status(self, ip, callback):
+        """Subscribe to network state changes.
+
+        Args:
+            ip (str): IP of the drive to subscribe.
+            callback (function): Callback function.
+
+        """
+        if callback in self.__observers_net_state[ip]:
+            logger.info("Callback already subscribed.")
+            return
+        self.__observers_net_state[ip].append(callback)
+
+    def unsubscribe_from_status(self, ip, callback):
+        """Unsubscribe from network state changes.
+
+        Args:
+            ip (str): IP of the drive to unsubscribe.
+            callback (function): Callback function.
+
+        """
+        if callback not in self.__observers_net_state[ip]:
+            logger.info("Callback not subscribed.")
+            return
+        self.__observers_net_state[ip].remove(callback)
+
+    def _get_servo_state(self, ip):
+        return self.__servos_state[ip]
+
+    def _set_servo_state(self, ip, state):
+        self.__servos_state[ip] = state
 
     @property
     def protocol(self):

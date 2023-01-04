@@ -1,12 +1,53 @@
 from time import sleep
 from threading import Thread
 from abc import ABC, abstractmethod
+from enum import Enum
 from .._ingenialink import lib, ffi
-from ingenialink.network import Network, NET_DEV_EVT, NET_STATE
 from ingenialink.exceptions import ILError
+from ingenialink.utils._utils import pstr, raise_err, raise_null
 
 import ingenialogger
+
 logger = ingenialogger.get_logger(__name__)
+
+
+class NET_PROT(Enum):
+    """Network Protocol."""
+
+    EUSB = lib.IL_NET_PROT_EUSB
+    MCB = lib.IL_NET_PROT_MCB
+    ETH = lib.IL_NET_PROT_ETH
+    ECAT = lib.IL_NET_PROT_ECAT
+    CAN = 5
+
+
+class NET_STATE(Enum):
+    """Network State."""
+
+    CONNECTED = lib.IL_NET_STATE_CONNECTED
+    DISCONNECTED = lib.IL_NET_STATE_DISCONNECTED
+    FAULTY = lib.IL_NET_STATE_FAULTY
+
+
+class NET_DEV_EVT(Enum):
+    """Device Event."""
+
+    ADDED = lib.IL_NET_DEV_EVT_ADDED
+    REMOVED = lib.IL_NET_DEV_EVT_REMOVED
+
+
+@ffi.def_extern()
+def _on_found_cb(ctx, servo_id):
+    """On found callback shim."""
+    self = ffi.from_handle(ctx)
+    self._on_found(int(servo_id))
+
+
+@ffi.def_extern()
+def _on_evt_cb(ctx, evt, port):
+    """On event callback shim."""
+    self = ffi.from_handle(ctx)
+    self._on_evt(NET_DEV_EVT(evt), pstr(port))
 
 
 class NetStatusListener(Thread):
@@ -37,10 +78,12 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class IPBNetwork(Network, ABC):
+class IPBNetwork(ABC):
     """IPB Network defines a general class for all IPB based communications."""
+
     def __init__(self):
         super(IPBNetwork, self).__init__()
+        self.servos = []
         self._cffi_network = None
         """CFFI instance of the network."""
 
@@ -90,7 +133,7 @@ class IPBNetwork(Network, ABC):
 
         """
         if callback in self.__observers_net_state:
-            logger.info('Callback already subscribed.')
+            logger.info("Callback already subscribed.")
             return
         self.__observers_net_state.append(callback)
 
@@ -102,7 +145,7 @@ class IPBNetwork(Network, ABC):
 
         """
         if callback not in self.__observers_net_state:
-            logger.info('Callback not subscribed.')
+            logger.info("Callback not subscribed.")
             return
         self.__observers_net_state.remove(callback)
 
@@ -123,7 +166,7 @@ class IPBNetwork(Network, ABC):
         r = lib.il_net_set_status_check_stop(self._cffi_network, stop)
 
         if r < 0:
-            raise ILError('Could not start servo monitoring')
+            raise ILError("Could not start servo monitoring")
 
     def start_status_listener(self):
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
@@ -135,8 +178,7 @@ class IPBNetwork(Network, ABC):
     def stop_status_listener(self):
         """Stop monitoring network events (CONNECTION/DISCONNECTION)."""
         self._set_status_check_stop(1)
-        if self.__listener_net_status is not None and \
-                self.__listener_net_status.is_alive():
+        if self.__listener_net_status is not None and self.__listener_net_status.is_alive():
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
         self.__listener_net_status = None
@@ -159,7 +201,7 @@ class IPBNetwork(Network, ABC):
             int: Result code.
 
         """
-        return lib.il_net_set_recv_timeout(self._cffi_network, timeout*1000)
+        return lib.il_net_set_recv_timeout(self._cffi_network, timeout * 1000)
 
     @property
     def protocol(self):
@@ -169,3 +211,42 @@ class IPBNetwork(Network, ABC):
     def status(self):
         """NET_STATE: Obtain network status"""
         return lib.il_net_status_get(self._cffi_network)
+
+
+class NetworkMonitor:
+    """Network Monitor.
+
+    Args:
+        prot (NET_PROT): Protocol.
+
+    Raises:
+        TypeError: If the protocol type is invalid.
+        ILCreationError: If the monitor cannot be created.
+
+    """
+
+    def __init__(self, prot):
+        if not isinstance(prot, NET_PROT):
+            raise TypeError("Invalid protocol")
+
+        mon = lib.il_net_dev_mon_create(prot.value)
+        raise_null(mon)
+
+        self._mon = ffi.gc(mon, lib.il_net_dev_mon_destroy)
+
+    def start(self, on_evt):
+        """Start the monitor.
+
+        Args:
+            on_evt (callback): Callback function.
+
+        """
+        self._on_evt = on_evt
+        self._handle = ffi.new_handle(self)
+
+        r = lib.il_net_dev_mon_start(self._mon, lib._on_evt_cb, self._handle)
+        raise_err(r)
+
+    def stop(self):
+        """Stop the monitor."""
+        lib.il_net_dev_mon_stop(self._mon)

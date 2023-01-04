@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<IngeniaDictionary>
+  <Header>
+    <Version>2</Version>
+    <DefaultLanguage>en_US</DefaultLanguage>
+  </Header>
+  <Body>
+    <Device family="Summit" firmwareVersion="2.0.0" ProductCode="57745411" PartNumber="DM2-NET-C" RevisionNumber="196613" Interface="CAN" name="Generic">
+      <Categories>
+        <Category id="OTHERS">
+          <Labels>
+            <Label lang="en_US">Others</Label>
+          </Labels>
+        </Category>
+        <Category id="IDENTIFICATION">
+          <Labels>
+            <Label lang="en_US">Product Identification</Label>
+          </Labels>
+        </Category>
+      </Categories>
+      <Axes>
+        <Axis subnode="0">
+          <Registers>
+            <!--No access attribute-->
+            <Register address_type="NVM_NONE" address="0x589000" id="DIST_CFG_REG0_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 0." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 0</Label>
+              </Labels>
+            </Register>
+            <!--No address attribute-->
+            <Register address_type="NVM_NONE" access="rw" dtype="u32" id="DIST_CFG_REG1_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 1." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 1</Label>
+              </Labels>
+            </Register>
+            <!--No dtype attribute-->
+            <Register address_type="NVM_NONE" access="rw" address="0x589200" id="DIST_CFG_REG2_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 2." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 2</Label>
+              </Labels>
+            </Register>
+            <!--No id attribute-->
+            <Register address_type="NVM_NONE" access="rw" address="0x589300" dtype="u32" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 3." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 3</Label>
+              </Labels>
+            </Register>
+            <!--No units attribute-->
+            <Register address_type="NVM_NONE" access="rw" address="0x589400" dtype="u32" id="DIST_CFG_REG4_MAP" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 4." cat_id="MONITORING">
+              <Labels>
+                <Label lang="en_US">Disturbance mapped register 4</Label>
+              </Labels>
+            </Register>
+          </Registers>
+        </Axis>
+        <Axis subnode="1">
+          <Registers>
+            <!--No address_type neither id attributes-->
+            <Register access="r" address="0x271000" dtype="float" units="ºC" subnode="1" cyclic="CONFIG" desc="Indicates the maximum supported temperature of the drive" cat_id="PROTECTIONS">
+              <Labels>
+                <Label lang="en_US">Over-temperature level</Label>
+              </Labels>
+            </Register>
+          </Registers>
+        </Axis>
+      </Axes>
+    </Device>
+    <Errors>
+      <Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">STO Active and Power stage is shutdown</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00002280" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">HW over current</Label>
+        </Labels>
+      </Error>
+    </Errors>
+  </Body>
+  <DriveImage encoding="xs:base64Binary"> 
+  </DriveImage>
+</IngeniaDictionary>

@@ -1,6 +1,9 @@
-from ingenialink.dictionary import Dictionary
+import pytest
+
+from ingenialink.dictionary_deprecated import Dictionary
 
 
+@pytest.mark.ethercat
 def test_dictionary(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None

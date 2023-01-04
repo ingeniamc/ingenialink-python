@@ -4,7 +4,7 @@ from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import cstr, pstr, raise_null, raise_err
 
 from ingenialink.ipb.register import LabelsDictionary, ipb_register_from_cffi
-from ..dictionary import Dictionary, Categories
+from ..dictionary_deprecated import Dictionary, Categories
 from ..constants import SINGLE_AXIS_MINIMUM_SUBNODES
 
 import xml.etree.ElementTree as ET
@@ -46,9 +46,8 @@ class IPBSubCategories:
             dict: Labels dictionary.
 
         """
-        labels_p = ffi.new('il_dict_labels_t **')
-        r = lib.il_dict_scat_get(self._dict, cstr(self._cat_id), cstr(scat_id),
-                                 labels_p)
+        labels_p = ffi.new("il_dict_labels_t **")
+        r = lib.il_dict_scat_get(self._dict, cstr(self._cat_id), cstr(scat_id), labels_p)
         raise_err(r)
 
         return LabelsDictionary._from_labels(labels_p[0])
@@ -71,25 +70,26 @@ class IPBErrors:
         dict_ (str): Path to the Ingenia dictionary.
 
     """
+
     def __init__(self, dict_):
         self._dict = dict_
-        self._errors = {}   # { cat_id : label }
+        self._errors = {}  # { cat_id : label }
 
         self.load_errors()
 
     def load_errors(self):
         """Load errors from dictionary."""
-        with open(self._dict, 'r', encoding='utf-8') as xml_file:
+        with open(self._dict, "r", encoding="utf-8") as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
-        for element in root.findall('./Body/Errors/Error'):
-            label = element.find('./Labels/Label')
-            self._errors[int(element.attrib['id'], 16)] = [
-                element.attrib['id'],
-                element.attrib['affected_module'],
-                element.attrib['error_type'].capitalize(),
-                label.text
+        for element in root.findall("./Body/Errors/Error"):
+            label = element.find("./Labels/Label")
+            self._errors[int(element.attrib["id"], 16)] = [
+                element.attrib["id"],
+                element.attrib["affected_module"],
+                element.attrib["error_type"].capitalize(),
+                label.text,
             ]
 
 
@@ -127,9 +127,8 @@ class IPBCategories(Categories):
             dict: Labels dictionary.
 
         """
-        labels_p = ffi.new('il_dict_labels_t **')
-        r = lib.il_dict_cat_get(self.__ipb_dictionary._cffi_dictionary,
-                                cstr(category_id), labels_p)
+        labels_p = ffi.new("il_dict_labels_t **")
+        r = lib.il_dict_cat_get(self.__ipb_dictionary._cffi_dictionary, cstr(category_id), labels_p)
         raise_err(r)
 
         return LabelsDictionary._from_labels(labels_p[0])
@@ -183,7 +182,7 @@ class IPBRegistersDictionary(collections.abc.Mapping):
         lib.il_dict_reg_ids_destroy(ids)
 
     def __getitem__(self, _id):
-        reg_p = ffi.new('il_reg_t **')
+        reg_p = ffi.new("il_reg_t **")
         r = lib.il_dict_reg_get(self._dict, cstr(_id), reg_p, self._subnode)
         if r < 0:
             raise KeyError(_id)
@@ -208,6 +207,7 @@ class IPBDictionary(Dictionary):
         ILCreationError: If the dictionary could not be created.
 
     """
+
     def __init__(self, dictionary_path, cffi_servo):
         super(IPBDictionary, self).__init__(dictionary_path)
         self._cffi_dictionary = lib.il_servo_dict_get(cffi_servo)
@@ -228,17 +228,17 @@ class IPBDictionary(Dictionary):
         tree = ET.parse(self.path)
         root = tree.getroot()
 
-        device = root.find('./Body/Device')
+        device = root.find("./Body/Device")
 
-        self.firmware_version = device.attrib.get('firmwareVersion')
-        product_code = device.attrib.get('ProductCode')
+        self.firmware_version = device.attrib.get("firmwareVersion")
+        product_code = device.attrib.get("ProductCode")
         if product_code is not None and product_code.isdecimal():
             self.product_code = int(product_code)
-        self.part_number = device.attrib.get('PartNumber')
-        revision_number = device.attrib.get('RevisionNumber')
+        self.part_number = device.attrib.get("PartNumber")
+        revision_number = device.attrib.get("RevisionNumber")
         if revision_number is not None and revision_number.isdecimal():
             self.revision_number = int(revision_number)
-        self.interface = device.attrib.get('Interface')
+        self.interface = device.attrib.get("Interface")
 
     def save(self, filename):
         """Save dictionary.
@@ -251,12 +251,12 @@ class IPBDictionary(Dictionary):
         raise_err(r)
 
     def __get_subnode(self):
-        with open(self.path, 'r', encoding='utf-8') as xml_file:
+        with open(self.path, "r", encoding="utf-8") as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
 
-        if root.findall('./Body/Device/Axes/'):
-            self.subnodes = len(root.findall('./Body/Device/Axes/Axis'))
+        if root.findall("./Body/Device/Axes/"):
+            self.subnodes = len(root.findall("./Body/Device/Axes/Axis"))
 
     def registers(self, subnode):
         """Obtain all the registers of a subnode.

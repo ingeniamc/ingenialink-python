@@ -1,30 +1,31 @@
 from .._ingenialink import ffi, lib
 from ingenialink.utils._utils import raise_null, raise_err, to_ms
-from ingenialink.register import _get_reg_id
-from ingenialink.ipb.servo import IPBServo
-from ingenialink.poller import Poller
+from ingenialink.register_deprecated import _get_reg_id
+from ingenialink.ethercat.servo import EthercatServo
 
 
-class IPBPoller(Poller):
+class IPBPoller:
     """IPB poller.
 
     Args:
-        servo (IPBServo): Servo.
+        servo (EthercatServo): Servo.
         num_channels (int): Number of channels.
 
     Raises:
         ILCreationError: If the poller could not be created.
 
     """
+
     def __init__(self, servo, num_channels):
-        super(IPBPoller, self).__init__(servo, num_channels)
+        self.__servo = servo
+        self.__num_channels = num_channels
         poller = lib.il_poller_create(servo._cffi_servo, num_channels)
         raise_null(poller)
 
         self._poller = ffi.gc(poller, lib.il_poller_destroy)
 
         self._n_ch = num_channels
-        self._acq = ffi.new('il_poller_acq_t **')
+        self._acq = ffi.new("il_poller_acq_t **")
 
     def start(self):
         """Start poller."""
@@ -86,15 +87,33 @@ class IPBPoller(Poller):
 
         """
         lib.il_poller_data_get(self._poller, self._acq)
-        acq = ffi.cast('il_poller_acq_t *', self._acq[0])
+        acq = ffi.cast("il_poller_acq_t *", self._acq[0])
 
-        t = list(acq.t[0:acq.cnt])
+        t = list(acq.t[0 : acq.cnt])
 
         d = []
         for ch in range(self._n_ch):
             if acq.d[ch] != ffi.NULL:
-                d.append(list(acq.d[ch][0:acq.cnt]))
+                d.append(list(acq.d[ch][0 : acq.cnt]))
             else:
                 d.append(None)
 
         return t, d, bool(acq.lost)
+
+    @property
+    def servo(self):
+        """Servo: Servo instance to be used."""
+        return self.__servo
+
+    @servo.setter
+    def servo(self, value):
+        self.__servo = value
+
+    @property
+    def num_channels(self):
+        """int: Number of channels in the poller."""
+        return self.__num_channels
+
+    @num_channels.setter
+    def num_channels(self, value):
+        self.__num_channels = value
