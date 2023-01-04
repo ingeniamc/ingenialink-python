@@ -1,12 +1,9 @@
-import sys
 import os
 import time
 import json
 import argparse
 import ingenialogger
 from ping3 import ping
-
-sys.path.append("../../")
 
 from ingeniamotion import MotionController
 from ingeniamotion.exceptions import IMException
