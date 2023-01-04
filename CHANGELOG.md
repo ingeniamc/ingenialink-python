@@ -1,6 +1,6 @@
 # Changelog
 
-## [6.5.0] - 2023-01-03
+## [6.5.0] - 2023-01-04
 ### Added
 - Tests are separated by communication protocol.
 - Pull request template.
