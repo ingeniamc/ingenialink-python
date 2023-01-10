@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Fixed
+- Don't add PartNumber to the configuration file if it does not exist in the dictionary
+
 ## [6.5.0] - 2023-01-04
 ### Added
 - Tests are separated by communication protocol.
