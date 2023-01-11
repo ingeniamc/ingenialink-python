@@ -89,7 +89,10 @@ def test_save_configuration(connect_to_slave):
     if "RevisionNumber" in device.attrib and rev_number is not None:
         assert int(device.attrib.get("RevisionNumber")) == rev_number
 
-    assert device.attrib.get("PartNumber") == servo.dictionary.part_number
+    if servo.dictionary.part_number is None:
+        assert "PartNumber" not in device.attrib
+    else:
+        assert device.attrib["PartNumber"] == servo.dictionary.part_number
     assert device.attrib.get("Interface") == servo.dictionary.interface
     assert device.attrib.get("firmwareVersion") == servo.dictionary.firmware_version
     # TODO: check name and family? These are not stored at the dictionary
