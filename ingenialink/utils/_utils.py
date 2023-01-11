@@ -15,6 +15,17 @@ logger = ingenialogger.get_logger(__name__)
 
 POLLING_MAX_TRIES = 5  # Seconds
 
+__dtype_value = {
+    REG_DTYPE.U8: (1, False),
+    REG_DTYPE.S8: (1, True),
+    REG_DTYPE.U16: (2, False),
+    REG_DTYPE.S16: (2, True),
+    REG_DTYPE.U32: (4, False),
+    REG_DTYPE.S32: (4, True),
+    REG_DTYPE.U64: (8, False),
+    REG_DTYPE.S64: (8, True),
+}
+
 
 def deprecated(custom_msg=None, new_func_name=None):
     """This is a decorator which can be used to mark functions as deprecated.
@@ -346,18 +357,16 @@ def set_logger_level(level):
 
 def convert_bytes_to_dtype(data, dtype):
     """Convert data in bytes to corresponding dtype."""
-    __signed_dtypes_bytes = {REG_DTYPE.S8: 1, REG_DTYPE.S16: 2, REG_DTYPE.S32: 4}
-    __unsigned_dtypes_bytes = {REG_DTYPE.U8: 1, REG_DTYPE.U16: 2, REG_DTYPE.U32: 4}
-    if dtype in __signed_dtypes_bytes:
-        value = int.from_bytes(data[: __signed_dtypes_bytes[dtype]], "little", signed=True)
-    elif dtype == REG_DTYPE.FLOAT:
-        if len(data) > 4:
-            data = data[:4]
+    if dtype in __dtype_value:
+        bytes_length, signed = __dtype_value[dtype]
+        data = data[:bytes_length]
+
+    if dtype == REG_DTYPE.FLOAT:
         [value] = struct.unpack("f", data)
     elif dtype == REG_DTYPE.STR:
         value = data.decode("utf-8").rstrip("\0")
     else:
-        value = int.from_bytes(data[: __unsigned_dtypes_bytes[dtype]], "little")
+        value = int.from_bytes(data, "little", signed=signed)
     return value
 
 
@@ -373,16 +382,6 @@ def convert_dtype_to_bytes(data, dtype):
         return struct.pack("f", float(data))
     if dtype == REG_DTYPE.STR:
         return data.encode("utf_8")
-    __dtype_value = {
-        REG_DTYPE.U8: (1, False),
-        REG_DTYPE.S8: (1, True),
-        REG_DTYPE.U16: (2, False),
-        REG_DTYPE.S16: (2, True),
-        REG_DTYPE.U32: (4, False),
-        REG_DTYPE.S32: (4, True),
-        REG_DTYPE.U64: (8, False),
-        REG_DTYPE.S64: (8, True),
-    }
     bytes_length, signed = __dtype_value[dtype]
     data = data.to_bytes(bytes_length, byteorder="little", signed=signed)
     return data
