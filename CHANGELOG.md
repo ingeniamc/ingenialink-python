@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Fixed
+- Truncate received data in ethernet by the expected data length.
+
 ## [6.5.0] - 2023-01-04
 ### Added
 - Tests are separated by communication protocol.
