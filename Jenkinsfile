@@ -94,7 +94,7 @@ pipeline {
                         bat '''
                             python -m venv ingeniamotion
                             ingeniamotion\\Scripts\\python.exe -m pip install ingeniamotion ping3
-                            ingeniamotion\\Scripts\\python.exe tests\\load_FWs.py ethercat
+                            ingeniamotion\\Scripts\\python.exe tests\\resources\\Scripts\\load_FWs.py ethercat
                         '''
                     }
                 }
@@ -153,7 +153,7 @@ pipeline {
                         bat '''
                             python -m venv ingeniamotion
                             ingeniamotion\\Scripts\\python.exe -m pip install ingeniamotion ping3
-                            ingeniamotion\\Scripts\\python.exe tests\\load_FWs.py canopen
+                            ingeniamotion\\Scripts\\python.exe tests\\resources\\Scripts\\load_FWs.py canopen
                         '''
                     }
                 }
