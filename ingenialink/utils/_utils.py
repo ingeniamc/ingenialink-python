@@ -24,6 +24,7 @@ __dtype_value = {
     REG_DTYPE.S32: (4, True),
     REG_DTYPE.U64: (8, False),
     REG_DTYPE.S64: (8, True),
+    REG_DTYPE.FLOAT: (4, None),
 }
 
 
