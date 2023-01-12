@@ -635,7 +635,7 @@ class CanopenNetwork(Network):
                         initial_time = time()
                         time_diff = time() - initial_time
                         bool_timeout = False
-                        stop_status_listener_after_reconect = True
+                        stop_status_listener_after_reconnect = True
                         for listener in self.__listeners_net_status:
                             if listener.node.id == servo.node.id:
                                 stop_status_listener_after_reconnect = False
