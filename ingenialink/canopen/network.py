@@ -635,6 +635,11 @@ class CanopenNetwork(Network):
                         initial_time = time()
                         time_diff = time() - initial_time
                         bool_timeout = False
+                        stop_status_listener_after_reconect = True
+                        for listener in self.__listeners_net_status:
+                            if listener.node.id == servo.node.id:
+                                stop_status_listener_after_reconnect = False
+                        self.start_status_listener(servo)
                         while (
                             self.status != NET_STATE.CONNECTED and time_diff < RECONNECTION_TIMEOUT
                         ):
@@ -642,6 +647,9 @@ class CanopenNetwork(Network):
                             sleep(0.5)
                         if not time_diff < RECONNECTION_TIMEOUT:
                             bool_timeout = True
+
+                        if stop_status_listener_after_reconnect:
+                            self.stop_status_listener(servo)
 
                         logger.debug(f"Time waited for reconnection: {time_diff} {bool_timeout}")
                         logger.debug(f"Net state after reconnection: {self.status}")
