@@ -2,7 +2,8 @@
 
 ## [Unreleased]
 ### Fixed
-- Don't add PartNumber to the configuration file if it does not exist in the dictionary
+- Truncate received data in ethernet by the expected data length.
+- Don't add PartNumber to the configuration file if it does not exist in the dictionary.
 
 ## [6.5.0] - 2023-01-04
 ### Added
