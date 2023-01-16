@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Changed
+- Update the load_FWs script to only use ingenialink.
+
 ## [6.5.0] - 2023-01-04
 ### Added
 - Tests are separated by communication protocol.
