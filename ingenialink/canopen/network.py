@@ -636,9 +636,8 @@ class CanopenNetwork(Network):
                         time_diff = time() - initial_time
                         bool_timeout = False
                         stop_status_listener_after_reconnect = True
-                        for listener in self.__listeners_net_status:
-                            if listener.node.id == servo.node.id:
-                                stop_status_listener_after_reconnect = False
+                        if self.is_listener_started(servo):
+                            stop_status_listener_after_reconnect = False
                         self.start_status_listener(servo)
                         logger.debug("Starting status listener...")
                         while (
@@ -913,12 +912,17 @@ class CanopenNetwork(Network):
         for callback in self.__observers_net_state:
             callback(status)
 
-    def start_status_listener(self, servo):
-        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+    def is_listener_started(self, servo):
         for listener in self.__listeners_net_status:
             if listener.node.id == servo.node.id:
-                logger.info(f"Listener on node {servo.node.id} is already started.")
-                return
+                return True
+        return False
+
+    def start_status_listener(self, servo):
+        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+        if self.is_listener_started(servo):
+            logger.info(f"Listener on node {servo.node.id} is already started.")
+            return
         listener = NetStatusListener(self, servo.node)
         listener.start()
         self.__listeners_net_status.append(listener)
