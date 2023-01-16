@@ -36,20 +36,49 @@ def connect_can(drive_conf):
 
 
 def load_can(drive_conf):
-    net, servo = connect_can(drive_conf)
-    logger.info(
-        "Drive connected. %s, node: %d, baudrate: %d, channel: %d",
-        drive_conf["device"],
-        drive_conf["node_id"],
-        drive_conf["baudrate"],
-        drive_conf["channel"],
-    )
-    status_callback = partial(logger.info, "Load firmware status: %s")
-    progress_callback = partial(logger.info, "Load firmware progress: %s")
-    try:
-        net.load_firmware(servo.target, drive_conf["fw_file"], status_callback, progress_callback)
-    except ILFirmwareLoadError as e:
-        raise e
+    # Number of reattempts for trying the CAN bootloader
+    BL_NUM_OF_REATTEMPTS = 4
+
+    # Timings, in seconds
+    SLEEP_TIME_AFTER_ATTEMP = 5.0
+    SLEEP_TIME_AFTER_BL = 5.0
+    TIMEOUT_NEW_FW_DETECT = 30.0
+    SLEEP_TIME_NEW_FW_DETECT = 5.0
+
+    for attempt in range(BL_NUM_OF_REATTEMPTS):
+        logger.info(f"CAN boot attempt {attempt + 1} of {BL_NUM_OF_REATTEMPTS}")
+        try:
+            net, servo = connect_can(drive_conf)
+            logger.info(
+                "Drive connected. %s, node: %d, baudrate: %d, channel: %d",
+                drive_conf["device"],
+                drive_conf["node_id"],
+                drive_conf["baudrate"],
+                drive_conf["channel"],
+            )
+        except Exception as e:
+            logger.info(f"Couldn't connect to the drive: {e}")
+            continue
+
+        status_callback = partial(logger.info, "Load firmware status: %s")
+        progress_callback = partial(logger.info, "Load firmware progress: %s")
+        try:
+            net.load_firmware(
+                servo.target, drive_conf["fw_file"], status_callback, progress_callback
+            )
+            # Reaching this means that FW was correctly flashed
+            break
+
+        except ILFirmwareLoadError as e:
+            logger.error(f"CAN boot error: {e}")
+            time.sleep(SLEEP_TIME_AFTER_ATTEMP)
+
+        finally:
+            try:
+                net.disconnect_from_slave(servo)
+            except Exception as e:
+                logger.error(f"Error when disconnection from drive: {e}")
+
     logger.info(
         "FW updated. %s, node: %d, baudrate: %d, channel: %d",
         drive_conf["device"],
@@ -57,7 +86,26 @@ def load_can(drive_conf):
         drive_conf["baudrate"],
         drive_conf["channel"],
     )
-    net.disconnect_from_slave(servo)
+
+    logger.info(f"Waiting {SLEEP_TIME_AFTER_BL} seconds for trying to connect")
+    time.sleep(SLEEP_TIME_AFTER_BL)
+
+    # Check whether the new FW is present
+    detected = False
+    ini_time = time.perf_counter()
+    while (time.perf_counter() - ini_time) <= TIMEOUT_NEW_FW_DETECT and not detected:
+        try:
+            net, servo = connect_can(drive_conf)
+            # Reaching this point means we are connected
+            detected = True
+            logger.info("New FW detected after: {:.1f} s".format(time.perf_counter() - ini_time))
+            net.disconnect_from_slave(servo)
+        except Exception as e:
+            # When cannot connect
+            time.sleep(SLEEP_TIME_NEW_FW_DETECT)
+
+    if not detected:
+        raise Exception("New FW not detected")
 
 
 def load_ecat(drive_conf):
