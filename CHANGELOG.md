@@ -3,6 +3,7 @@
 ## [Unreleased]
 ### Changed
 - Update the load_FWs script to only use ingenialink.
+- Improve the load_FWs script when using canopen protocol.
 
 ## [6.5.0] - 2023-01-04
 ### Added
