@@ -96,15 +96,17 @@ def boot_mode(net, servo):
     try:
         servo.write("DRV_BOOT_COCO_FORCE", PASSWORD_FORCE_BOOT_COCO, subnode=0)
         ftp_ready = ping_check(servo.ip_address, timeout=5)
-    except ILError:
+    except ILError as e:
         logger.debug("Could not enter in boot mode.")
-        raise ILError("Could not enter in boot mode.")
+        raise e
+    finally:
+        logger.debug("Disconnecting from drive.")
+        net.disconnect_from_slave(servo)
     if not ftp_ready:
         logger.debug("FTP is not ready.")
         raise ILError("FTP is not ready.")
     else:
         logger.debug("FTP is ready.")
-    net.disconnect_from_slave(servo)
 
 
 def load_eth(drive_conf):
