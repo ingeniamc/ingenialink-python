@@ -635,9 +635,7 @@ class CanopenNetwork(Network):
                         initial_time = time()
                         time_diff = time() - initial_time
                         bool_timeout = False
-                        stop_status_listener_after_reconnect = True
-                        if self.is_listener_started(servo):
-                            stop_status_listener_after_reconnect = False
+                        stop_status_listener_after_reconnect = not self.is_listener_started(servo)
                         self.start_status_listener(servo)
                         logger.debug("Starting status listener...")
                         while (
