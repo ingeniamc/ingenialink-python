@@ -4,6 +4,12 @@
 ### Changed
 - Update the load_FWs script to only use ingenialink.
 
+## [6.5.1] - 2023-01-17
+### Fixed
+- Truncate received data in ethernet by the expected data length.
+- Don't add PartNumber to the configuration file if it does not exist in the dictionary.
+- CAN load firmware error if net_status_listener is disabled.
+
 ## [6.5.0] - 2023-01-04
 ### Added
 - Tests are separated by communication protocol.
