@@ -77,7 +77,7 @@ __all__ = [
     "err_ipb_last",
 ]
 
-__version__ = "6.5.0"
+__version__ = "6.5.1"
 
 try:
     __ingenialink_C_version__ = pstr(lib.il_version())
