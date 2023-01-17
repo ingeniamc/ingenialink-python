@@ -14,7 +14,7 @@ This is a Python binding for the ingenialink_ C library. The binding is built as
 a native Python extension thanks to cffi_ and then exposed through an
 object-oriented API.
 
-.. image:: https://ingeniamc.com/wp-content/uploads/2021/04/ingenia-servo-drives.jpg
+.. image:: docs/_static/images/main_image.png
      :target: http://www.ingeniamc.com
      :alt: Ingenia Servodrives
 

@@ -223,7 +223,8 @@ class Servo:
         registers = ET.SubElement(device, "Registers")
 
         device.set("Interface", self.dictionary.interface)
-        device.set("PartNumber", self.dictionary.part_number)
+        if self.dictionary.part_number is not None:
+            device.set("PartNumber", self.dictionary.part_number)
         device.set("ProductCode", str(prod_code))
         device.set("RevisionNumber", str(rev_number))
         device.set("firmwareVersion", self.dictionary.firmware_version)
