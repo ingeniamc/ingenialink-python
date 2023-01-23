@@ -12,7 +12,7 @@ ingenialink-python
 
 ingenialink-python is a Python library for simple motion control tasks and communication with Ingenia drives.
 
-.. image:: https://ingeniamc.com/wp-content/uploads/2021/04/ingenia-servo-drives.jpg
+.. image:: docs/_static/images/main_image.png
      :target: http://www.ingeniamc.com
      :alt: Ingenia Servodrives
 

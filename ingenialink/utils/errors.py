@@ -3,6 +3,7 @@ from enum import IntEnum
 
 class CONFIGURATION_ERRORS(IntEnum):
     """Configuration errors."""
+
     INCORRECT_ACCESS_TYPE = 0x06010000
     OBJECT_NOT_EXIST = 0x06020000
     OBJECT_NOT_CYCLIC_MAPPABLE = 0x06040041

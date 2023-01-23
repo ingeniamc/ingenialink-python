@@ -10,6 +10,7 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
 
 import ingenialogger
+
 logger = ingenialogger.get_logger(__name__)
 
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
@@ -27,44 +28,45 @@ class CanopenServo(Servo):
             its status, errors, faults, etc.
 
     """
+
+    DICTIONARY_CLASS = CanopenDictionary
+    MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
+
     STATUS_WORD_REGISTERS = "CIA402_DRV_STATE_STATUS"
     RESTORE_COCO_ALL = "CIA301_COMMS_RESTORE_ALL"
     STORE_COCO_ALL = "CIA301_COMMS_STORE_ALL"
     MONITORING_DATA = CanopenRegister(
-        identifier='', units='', subnode=0, idx=0x58B2, subidx=0x00, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RO
+        identifier="",
+        units="",
+        subnode=0,
+        idx=0x58B2,
+        subidx=0x00,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U16,
+        access=REG_ACCESS.RO,
     )
     DIST_DATA = CanopenRegister(
-        identifier='', units='', subnode=0, idx=0x58B4, subidx=0x00, cyclic='CONFIG',
-        dtype=REG_DTYPE.U16, access=REG_ACCESS.RW
+        identifier="",
+        units="",
+        subnode=0,
+        idx=0x58B4,
+        subidx=0x00,
+        cyclic="CONFIG",
+        dtype=REG_DTYPE.U16,
+        access=REG_ACCESS.RW,
     )
 
-    def __init__(self, target, node, dictionary_path=None, eds=None,
-                 servo_status_listener=False):
+    def __init__(self, target, node, dictionary_path=None, eds=None, servo_status_listener=False):
         self.eds = eds
         self.__node = node
         self.__emcy_consumer = EmcyConsumer()
-        if dictionary_path is not None:
-            self._dictionary = CanopenDictionary(dictionary_path)
-        else:
-            self._dictionary = None
-        super(CanopenServo, self).__init__(target, servo_status_listener)
+        super(CanopenServo, self).__init__(target, dictionary_path, servo_status_listener)
 
     def read(self, reg, subnode=1):
-        _reg = self._get_reg(reg, subnode)
-        raw_read = self._read_raw(reg, subnode)
-        value = convert_bytes_to_dtype(raw_read, _reg.dtype)
+        value = super().read(reg, subnode=subnode)
         if isinstance(value, str):
-            value = value.replace('\x00', '')
+            value = value.replace("\x00", "")
         return value
-
-    def write(self, reg, data, subnode=1):
-        _reg = self._get_reg(reg, subnode)
-        value = convert_dtype_to_bytes(data, _reg.dtype)
-        self._write_raw(reg, value, subnode)
-
-    def replace_dictionary(self, dictionary):
-        self._dictionary = CanopenDictionary(dictionary)
 
     def store_parameters(self, subnode=None, sdo_timeout=3):
         """Store all the current parameters of the target subnode.
@@ -83,63 +85,24 @@ class CanopenServo(Servo):
         super().store_parameters(subnode)
         self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
-    def _write_raw(self, reg, data, subnode=1):
-        """Writes a data to a target register.
-
-        Args:
-            reg (CanopenRegister, str): Target register to be written.
-            data (int, str, float): Data to be written.
-            subnode (int): Target axis of the drive.
-
-        Raises:
-            ILAccessError: Wrong access to the register.
-            ILIOError: Error reading the register.
-
-        """
-        _reg = self._get_reg(reg, subnode)
-
-        if _reg.access == REG_ACCESS.RO:
-            raise ILAccessError('Register is Read-only')
+    def _write_raw(self, reg, data):
         try:
             self._lock.acquire()
-            self.__node.sdo.download(_reg.idx,
-                                     _reg.subidx,
-                                     data)
+            self.__node.sdo.download(reg.idx, reg.subidx, data)
         except Exception as e:
-            logger.error("Failed writing %s. Exception: %s",
-                         str(_reg.identifier), e)
-            error_raised = "Error writing {}".format(_reg.identifier)
+            logger.error("Failed writing %s. Exception: %s", str(reg.identifier), e)
+            error_raised = f"Error writing {reg.identifier}"
             raise ILIOError(error_raised)
         finally:
             self._lock.release()
 
-    def _read_raw(self, reg, subnode=1):
-        """Read raw bytes from servo.
-
-        Args:
-            reg (str, Register): Register.
-
-        Returns:
-            bytearray: Raw bytes reading from servo.
-
-        Raises:
-            ILAccessError: Wrong access to the register.
-            ILIOError: Error reading the register.
-
-        """
-        _reg = self._get_reg(reg, subnode)
-
-        access = _reg.access
-        if access == REG_ACCESS.WO:
-            raise ILAccessError('Register is Write-only')
-        value = None
+    def _read_raw(self, reg):
         try:
             self._lock.acquire()
-            value = self.__node.sdo.upload(_reg.idx, _reg.subidx)
+            value = self.__node.sdo.upload(reg.idx, reg.subidx)
         except Exception as e:
-            logger.error("Failed reading %s. Exception: %s",
-                         str(_reg.identifier), e)
-            error_raised = f"Error reading {_reg.identifier}"
+            logger.error("Failed reading %s. Exception: %s", str(reg.identifier), e)
+            error_raised = f"Error reading {reg.identifier}"
             raise ILIOError(error_raised)
         finally:
             self._lock.release()
@@ -168,16 +131,6 @@ class CanopenServo(Servo):
         """
         del self.__emcy_consumer.callbacks[slot]
 
-    def disturbance_write_data(self, channels, dtypes, data_arr):
-        data, chunks = self._disturbance_create_data_chunks(channels,
-                                                            dtypes,
-                                                            data_arr,
-                                                            CAN_MAX_WRITE_SIZE)
-        for chunk in chunks:
-            self._write_raw(self.DIST_DATA, data=chunk, subnode=0)
-        self.disturbance_data = data
-        self.disturbance_data_size = len(data)
-
     def _change_sdo_timeout(self, value):
         """Changes the SDO timeout of the node."""
         self.__node.sdo.RESPONSE_TIMEOUT = value
@@ -187,11 +140,7 @@ class CanopenServo(Servo):
         """Map CAN register address to IPB register address."""
         return address - (0x2000 + (0x800 * (subnode - 1)))
 
-    def _monitoring_read_data(self):
-        return self._read_raw(self.MONITORING_DATA, subnode=0)
-
-    def _monitoring_disturbance_data_to_map_register(self, subnode, address,
-                                                      dtype, size):
+    def _monitoring_disturbance_data_to_map_register(self, subnode, address, dtype, size):
         """Arrange necessary data to map a monitoring/disturbance register.
 
         Args:
@@ -201,13 +150,12 @@ class CanopenServo(Servo):
             size (int): Size of data in bytes.
 
         """
-        data_h = self.__monitoring_disturbance_map_can_address(
-                     address, subnode) | subnode << 12
-        data_l = dtype << 8 | size
-        return (data_h << 16) | data_l
+        ipb_address = self.__monitoring_disturbance_map_can_address(address, subnode)
+        return super()._monitoring_disturbance_data_to_map_register(
+            subnode, ipb_address, dtype, size
+        )
 
     @property
     def node(self):
         """canopen.RemoteNode: Remote node of the servo."""
         return self.__node
-

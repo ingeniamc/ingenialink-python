@@ -11,18 +11,18 @@ path_resources = "./tests/resources/canopen/"
 def test_read_dictionary():
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
     expected_device_attr = {
-        "path" : dictionary_path,
-        "version" : "2",
-        "firmware_version" : "2.0.1",
-        "product_code" : 57745409,
-        "part_number" : "CAP-NET-C",
-        "revision_number" : 196635,
-        "interface" : "CAN",
-        "subnodes" : 2
+        "path": dictionary_path,
+        "version": "2",
+        "firmware_version": "2.0.1",
+        "product_code": 57745409,
+        "part_number": "CAP-NET-C",
+        "revision_number": 196635,
+        "interface": "CAN",
+        "subnodes": 2,
     }
 
     canopen_dict = CanopenDictionary(dictionary_path)
-    
+
     for attr, value in expected_device_attr.items():
         assert getattr(canopen_dict, attr) == value
 
@@ -30,10 +30,10 @@ def test_read_dictionary():
 @pytest.mark.no_connection
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
-    
+
     with pytest.raises(FileNotFoundError):
         CanopenDictionary(dictionary_path)
-    
+
 
 @pytest.mark.no_connection
 def test_read_dictionary_registers():
@@ -46,15 +46,16 @@ def test_read_dictionary_registers():
             "COMMS_ETH_IP",
             "COMMS_ETH_NET_MASK",
         ],
-        1 : [
-            "COMMU_ANGLE_SENSOR"
-        ]
+        1: ["COMMU_ANGLE_SENSOR"],
     }
 
     canopen_dict = CanopenDictionary(dictionary_path)
 
     for subnode in expected_regs_per_subnode.keys():
-        assert expected_regs_per_subnode[subnode] == [reg for reg in canopen_dict.registers(subnode)]
+        assert expected_regs_per_subnode[subnode] == [
+            reg for reg in canopen_dict.registers(subnode)
+        ]
+
 
 @pytest.mark.no_connection
 def test_read_dictionary_registers_multiaxis():
@@ -86,13 +87,14 @@ def test_read_dictionary_categories():
         "COMMUNICATIONS",
         "COMMUTATION",
         "REPORTING",
-        "MONITORING"
+        "MONITORING",
     ]
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
 
     canopen_dict = CanopenDictionary(dictionary_path)
 
     assert canopen_dict.categories.category_ids == expected_categories
+
 
 @pytest.mark.no_connection
 def test_read_dictionary_errors():
@@ -108,6 +110,7 @@ def test_read_dictionary_errors():
 
     assert [error for error in canopen_dict.errors.errors] == expected_errors
 
+
 @pytest.mark.no_connection
 def test_read_xdf_register():
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
@@ -117,6 +120,6 @@ def test_read_xdf_register():
     subnode = 0
 
     canopen_dict = CanopenDictionary(dictionary_path)
-    
+
     assert canopen_dict.registers(subnode)[reg_id].idx == idx
     assert canopen_dict.registers(subnode)[reg_id].subidx == subidx

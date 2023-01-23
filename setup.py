@@ -3,7 +3,7 @@
 import re
 import setuptools
 
-_version = re.search(r'__version__\s+=\s+\'(.*)\'',
+_version = re.search(r'__version__\s+=\s+\"(.*)\"',
                      open('ingenialink/__init__.py').read()).group(1)
 
 
@@ -14,7 +14,7 @@ def get_docs_url():
 setuptools.setup(
     name='ingenialink',
     version=_version,
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=["test", "examples"]),
     description='IngeniaLink Communications Library',
     long_description=open('README.rst').read(),
     author='Ingenia Motion Control',

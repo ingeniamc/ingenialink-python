@@ -17,7 +17,7 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               'sphinx.ext.coverage', 'sphinx.ext.viewcode',
               'sphinx.ext.napoleon', 'm2r2']
 
-_version = re.search(r'__version__\s+=\s+\'(.*)\'',
+_version = re.search(r'__version__\s+=\s+\"(.*)\"',
                      open('../ingenialink/__init__.py').read()).group(1)
 
 project = 'ingenialink'

@@ -18,14 +18,14 @@ def test_getters_register():
         "storage": 1,
         "reg_range": (-20, 20),
         "labels": "Monitoring trigger type",
-        "enums": {'0': 'TRIGGER_EVENT_AUTO', '1': 'TRIGGER_EVENT_FORCED'},
+        "enums": {"0": "TRIGGER_EVENT_AUTO", "1": "TRIGGER_EVENT_FORCED"},
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",
     }
     aux_enums = []
     for key, value in reg_kwargs["enums"].items():
-        test_dictionary = {'label': value, 'value': int(key)}
+        test_dictionary = {"label": value, "value": int(key)}
         aux_enums.append(test_dictionary)
 
     register = Register(reg_dtype, reg_access, **reg_kwargs)
@@ -140,4 +140,3 @@ def test_register_range():
     dtype = REG_DTYPE.U8
     register = Register(dtype, access)
     assert register.range == (dtypes_ranges[dtype]["min"], dtypes_ranges[dtype]["max"])
-

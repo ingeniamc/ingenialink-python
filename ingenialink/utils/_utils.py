@@ -10,7 +10,19 @@ import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
-POLLING_MAX_TRIES = 5       # Seconds
+POLLING_MAX_TRIES = 5  # Seconds
+
+__dtype_value = {
+    REG_DTYPE.U8: (1, False),
+    REG_DTYPE.S8: (1, True),
+    REG_DTYPE.U16: (2, False),
+    REG_DTYPE.S16: (2, True),
+    REG_DTYPE.U32: (4, False),
+    REG_DTYPE.S32: (4, True),
+    REG_DTYPE.U64: (8, False),
+    REG_DTYPE.S64: (8, True),
+    REG_DTYPE.FLOAT: (4, None),
+}
 
 
 def deprecated(custom_msg=None, new_func_name=None):
@@ -20,17 +32,18 @@ def deprecated(custom_msg=None, new_func_name=None):
     a DeprecationWarning but since by default this warning is hidden, we use this
     decorator to manually activate DeprecationWarning and turning it off after
     the warn has been done."""
+
     def wrap(func):
         @functools.wraps(func)
         def wrapped_method(*args, **kwargs):
-            warnings.simplefilter('always', DeprecationWarning)  # Turn off filter
+            warnings.simplefilter("always", DeprecationWarning)  # Turn off filter
             msg = 'Call to deprecated function "{}".'.format(func.__name__)
             if new_func_name:
                 msg += ' Please, use "{}" function instead.'.format(new_func_name)
             if custom_msg:
                 msg = custom_msg
             warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
-            warnings.simplefilter('ignore', DeprecationWarning)  # Reset filter
+            warnings.simplefilter("ignore", DeprecationWarning)  # Reset filter
             return func(*args, **kwargs)
 
         return wrapped_method
@@ -62,8 +75,7 @@ def wait_for_register_value(servo, subnode, register, expected_value):
     Returns:
         int: Return code of the operation.
     """
-    logger.debug('Waiting for register {} '
-                 'to return <{}>'.format(register, expected_value))
+    logger.debug("Waiting for register {} to return <{}>".format(register, expected_value))
     num_tries = 0
     r = -2
     while num_tries < POLLING_MAX_TRIES:
@@ -77,12 +89,12 @@ def wait_for_register_value(servo, subnode, register, expected_value):
 
         if r >= 0:
             if value == expected_value:
-                logger.debug('Success. Read value {}.'.format(value))
+                logger.debug("Success. Read value {}.".format(value))
                 break
             else:
                 r = -2
         num_tries += 1
-        logger.debug('Trying again {}. r: {}. value {}.'.format(num_tries, r, value))
+        logger.debug("Trying again {}. r: {}. value {}.".format(num_tries, r, value))
         sleep(1)
 
     return r
@@ -135,21 +147,21 @@ def cleanup_register(register):
     Args:
         register (Register): Register to be cleaned.
     """
-    labels = register.find('./Labels')
-    range = register.find('./Range')
-    enums = register.find('./Enumerations')
+    labels = register.find("./Labels")
+    range = register.find("./Range")
+    enums = register.find("./Enumerations")
 
     remove_xml_subelement(register, labels)
     remove_xml_subelement(register, enums)
     remove_xml_subelement(register, range)
 
-    pop_element(register.attrib, 'desc')
-    pop_element(register.attrib, 'cat_id')
-    pop_element(register.attrib, 'cyclic')
-    pop_element(register.attrib, 'units')
-    pop_element(register.attrib, 'address_type')
+    pop_element(register.attrib, "desc")
+    pop_element(register.attrib, "cat_id")
+    pop_element(register.attrib, "cyclic")
+    pop_element(register.attrib, "units")
+    pop_element(register.attrib, "address_type")
 
-    register.text = ''
+    register.text = ""
 
 
 def get_drive_identification(servo, subnode=None):
@@ -166,11 +178,11 @@ def get_drive_identification(servo, subnode=None):
     re_number = None
     try:
         if subnode is None or subnode == 0:
-            prod_code = servo.read('DRV_ID_PRODUCT_CODE_COCO', 0)
-            re_number = servo.read('DRV_ID_REVISION_NUMBER_COCO', 0)
+            prod_code = servo.read("DRV_ID_PRODUCT_CODE_COCO", 0)
+            re_number = servo.read("DRV_ID_REVISION_NUMBER_COCO", 0)
         else:
-            prod_code = servo.read('DRV_ID_PRODUCT_CODE', subnode=subnode)
-            re_number = servo.read('DRV_ID_REVISION_NUMBER', subnode)
+            prod_code = servo.read("DRV_ID_PRODUCT_CODE", subnode=subnode)
+            re_number = servo.read("DRV_ID_REVISION_NUMBER", subnode)
     except Exception as e:
         pass
 
@@ -184,7 +196,7 @@ def convert_ip_to_int(ip):
         ip (str): IP to be converted.
 
     """
-    split_ip = ip.split('.')
+    split_ip = ip.split(".")
     drive_ip1 = int(split_ip[0]) << 24
     drive_ip2 = int(split_ip[1]) << 16
     drive_ip3 = int(split_ip[2]) << 8
@@ -203,11 +215,12 @@ def convert_int_to_ip(int_ip):
     drive_ip2 = (int_ip >> 16) & 0x000000FF
     drive_ip3 = (int_ip >> 8) & 0x000000FF
     drive_ip4 = int_ip & 0x000000FF
-    return '{}.{}.{}.{}'.format(drive_ip1, drive_ip2, drive_ip3, drive_ip4)
+    return "{}.{}.{}.{}".format(drive_ip1, drive_ip2, drive_ip3, drive_ip4)
 
 
 class INT_SIZES(Enum):
     """Integer sizes."""
+
     S8_MIN = -128
     S16_MIN = -32767 - 1
     S32_MIN = -2147483647 - 1
@@ -226,30 +239,16 @@ class INT_SIZES(Enum):
 
 def convert_bytes_to_dtype(data, dtype):
     """Convert data in bytes to corresponding dtype."""
-    __signed_dtypes_bytes = {
-        REG_DTYPE.S8: 1,
-        REG_DTYPE.S16: 2,
-        REG_DTYPE.S32: 4
-    }
-    if dtype in __signed_dtypes_bytes:
-        value = int.from_bytes(
-            data[:__signed_dtypes_bytes[dtype]],
-            "little",
-            signed=True
-        )
-    elif dtype == REG_DTYPE.FLOAT:
-        if len(data) > 4:
-            data = data[:4]
-        [value] = struct.unpack('f',
-                                data
-                                )
+    if dtype in __dtype_value:
+        bytes_length, signed = __dtype_value[dtype]
+        data = data[:bytes_length]
+
+    if dtype == REG_DTYPE.FLOAT:
+        [value] = struct.unpack("f", data)
     elif dtype == REG_DTYPE.STR:
-        value = data.decode("utf-8").rstrip('\0')
+        value = data.decode("utf-8").rstrip("\0")
     else:
-        value = int.from_bytes(
-            data,
-            "little"
-        )
+        value = int.from_bytes(data, "little", signed=signed)
     return value
 
 
@@ -262,21 +261,9 @@ def convert_dtype_to_bytes(data, dtype):
     if dtype == REG_DTYPE.DOMAIN:
         return data
     if dtype == REG_DTYPE.FLOAT:
-        return struct.pack('f', float(data))
+        return struct.pack("f", float(data))
     if dtype == REG_DTYPE.STR:
-        return data.encode('utf_8')
-    __dtype_value = {
-        REG_DTYPE.U8: (1, False),
-        REG_DTYPE.S8: (1, True),
-        REG_DTYPE.U16: (2, False),
-        REG_DTYPE.S16: (2, True),
-        REG_DTYPE.U32: (4, False),
-        REG_DTYPE.S32: (4, True),
-        REG_DTYPE.U64: (8, False),
-        REG_DTYPE.S64: (8, True)
-    }
+        return data.encode("utf_8")
     bytes_length, signed = __dtype_value[dtype]
-    data = data.to_bytes(bytes_length,
-                         byteorder='little',
-                         signed=signed)
+    data = data.to_bytes(bytes_length, byteorder="little", signed=signed)
     return data
