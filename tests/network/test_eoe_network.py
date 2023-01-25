@@ -4,7 +4,9 @@ import ipaddress
 
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.ethernet.network import NET_PROT, NET_STATE
-from ingenialink.eoe.network import EoENetwork
+from ingenialink.eoe.network import EoENetwork, EoECommand
+from ingenialink.utils._utils import convert_dtype_to_bytes
+from ingenialink.register import REG_DTYPE
 
 
 @pytest.fixture()
@@ -46,4 +48,25 @@ def test_eoe_disconnection(connect):
     assert net.status == NET_STATE.DISCONNECTED
     assert len(net.servos) == 0
     assert net._eoe_socket._closed
+
+
+@pytest.mark.parametrize("cmd, subnode, data, dtype", [
+    (EoECommand.START.value, 0, 10, REG_DTYPE.U16),
+    (EoECommand.SCAN.value, 1, 25.5, REG_DTYPE.FLOAT),
+    (EoECommand.CONFIG.value, 2, None, None)
+])
+@pytest.mark.eoe
+def test_eoe_command_msg(cmd, subnode, data, dtype):
+    if data is not None:
+        data = convert_dtype_to_bytes(data, dtype)
+    msg = EoENetwork._build_eoe_command_msg(cmd, subnode, data)
+    if data is None:
+        data = bytes()
+    cmd_field = msg[:1]
+    subnode_field = msg[1:4]
+    data_field = msg[4:]
+    assert len(msg) == 54
+    assert cmd_field == cmd.encode('utf-8')
+    assert subnode_field == f'{subnode:02d}\0'.encode('utf-8')
+    assert data_field == data + b'\x00' * (50 - len(data))
 
