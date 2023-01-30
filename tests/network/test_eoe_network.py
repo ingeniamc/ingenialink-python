@@ -7,6 +7,8 @@ from ingenialink.ethernet.network import NET_PROT, NET_STATE
 from ingenialink.eoe.network import EoENetwork, EoECommand
 from ingenialink.utils._utils import convert_dtype_to_bytes
 from ingenialink.register import REG_DTYPE
+from ingenialink.constants import EOE_MSG_CMD_SIZE, EOE_MSG_NODE_SIZE, \
+    EOE_MSG_DATA_SIZE, EOE_MSG_FRAME_SIZE
 
 
 @pytest.fixture()
@@ -57,16 +59,14 @@ def test_eoe_disconnection(connect):
 ])
 @pytest.mark.eoe
 def test_eoe_command_msg(cmd, subnode, data, dtype):
-    if data is not None:
-        data = convert_dtype_to_bytes(data, dtype)
-    msg = EoENetwork._build_eoe_command_msg(cmd, subnode, data)
-    if data is None:
-        data = bytes()
-    cmd_field = msg[:1]
-    subnode_field = msg[1:4]
-    data_field = msg[4:]
-    assert len(msg) == 54
+    data_bytes = bytes() if data is None else convert_dtype_to_bytes(data, dtype)
+    data_filling = b'\x00' * (EOE_MSG_DATA_SIZE - len(data_bytes))
+    msg = EoENetwork._build_eoe_command_msg(cmd, subnode, data_bytes)
+    cmd_field = msg[:EOE_MSG_CMD_SIZE]
+    subnode_field = msg[EOE_MSG_CMD_SIZE:EOE_MSG_NODE_SIZE + 1]
+    data_field = msg[-EOE_MSG_DATA_SIZE:]
+    assert len(msg) == EOE_MSG_FRAME_SIZE
     assert cmd_field == cmd.encode('utf-8')
-    assert subnode_field == f'{subnode:02d}\0'.encode('utf-8')
-    assert data_field == data + b'\x00' * (50 - len(data))
+    assert subnode_field == f'{subnode:0{EOE_MSG_NODE_SIZE}d}'.encode('utf-8')
+    assert data_field == data_bytes + data_filling
 

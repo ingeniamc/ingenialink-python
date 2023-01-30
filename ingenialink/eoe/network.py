@@ -5,6 +5,7 @@ from enum import Enum
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILTimeoutError, ILIOError, ILError
+from ingenialink.constants import EOE_MSG_DATA_SIZE, EOE_MSG_NODE_SIZE
 
 
 class EoECommand(Enum):
@@ -108,8 +109,13 @@ class EoENetwork(EthernetNetwork):
             bytes: The message to send.
 
         """
-        data = b'\x00' * 50 if data is None else data + b'\x00' * (50 - len(data))
-        return cmd.encode('utf-8') + f'{node:02d}\0'.encode('utf-8') + data
+        if data is None:
+            data = bytes()
+        cmd_field = cmd.encode('utf-8')
+        node_field = f'{node:0{EOE_MSG_NODE_SIZE}d}'.encode('utf-8')
+        null_terminator = b'\x00'
+        data_field = data + b'\x00' * (EOE_MSG_DATA_SIZE - len(data))
+        return cmd_field + node_field + null_terminator + data_field
 
     def _send_command(self, msg):
         """
