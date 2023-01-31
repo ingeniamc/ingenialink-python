@@ -35,18 +35,34 @@ class EoENetwork(EthernetNetwork):
 
     def connect_to_slave(
         self,
-        target,
+        slave_id,
+        ip_address,
         dictionary=None,
         port=1061,
         connection_timeout=DEFAULT_ETH_CONNECTION_TIMEOUT,
         servo_status_listener=False,
         net_status_listener=False,
     ):
-        self._configure_slave(target)
-        if not self._eoe_service_started:
-            self._start_eoe_service()
+        """Connects to a slave through the given network settings.
+
+        Args:
+            slave_id (int): EtherCAT slave ID.
+            ip_address (str): IP address to be assigned to the slave.
+            dictionary (str): Path to the target dictionary file.
+            port (int): Port to connect to the slave.
+            connection_timeout (float): Time in seconds of the connection timeout.
+            servo_status_listener (bool): Toggle the listener of the servo for
+                its status, errors, faults, etc.
+            net_status_listener (bool): Toggle the listener of the network
+                status, connection and disconnection.
+
+        Returns:
+            EthernetServo: Instance of the servo connected.
+
+        """
+        self._configure_slave(slave_id, ip_address)
         return super().connect_to_slave(
-            target,
+            ip_address,
             dictionary,
             port,
             connection_timeout,
@@ -100,7 +116,7 @@ class EoENetwork(EthernetNetwork):
 
         """
         data = b"\x00" * 50 if data is None else data + b"\x00" * (50 - len(data))
-        return cmd.encode("utf-8") + node.to_bytes(2, "big") + data
+        return cmd.encode("utf-8") + f"{node:02d}\0".encode("utf-8") + data
 
     def _send_command(self, msg):
         """
@@ -152,27 +168,27 @@ class EoENetwork(EthernetNetwork):
                 "Failed to initialize the EoE service. " "Please verify it's running."
             ) from e
 
-    def _configure_slave(self, ip_address):
+    def _configure_slave(self, slave_id, ip_address):
         """
         Configure an EtherCAT slave with a given IP.
 
         Args:
+            slave_id (int): EtherCAT slave ID.
             ip_address (str): IP address to be set to the slave.
 
         Raises:
             ILError: If the EoE service fails to configure a slave.
 
         """
-        node = len(self.servos) + 1
         ip_int = int(ipaddress.IPv4Address(ip_address))
         ip_bytes = bytes(str(ip_int), "utf-8")
-        msg = self._build_eoe_command_msg(EoECommand.CONFIG.value, node, ip_bytes)
+        msg = self._build_eoe_command_msg(EoECommand.CONFIG.value, slave_id, ip_bytes)
         try:
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
-            raise ILError(f"Failed to configure slave {node} with IP " f"{ip_address}.") from e
+            raise ILError(f"Failed to configure slave {slave_id} with IP " f"{ip_address}.") from e
 
-    def _start_eoe_service(self):
+    def start_eoe_service(self):
         """Starts the EoE service
 
         Raises:
