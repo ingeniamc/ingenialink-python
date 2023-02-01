@@ -3,6 +3,7 @@ from enum import Enum
 
 class REG_DTYPE(Enum):
     """Data Type."""
+
     U8 = 0
     """Unsigned 8-bit integer."""
     S8 = 1
@@ -29,6 +30,7 @@ class REG_DTYPE(Enum):
 
 class REG_ACCESS(Enum):
     """Access Type."""
+
     RW = 0
     """Read/Write."""
     RO = 1
@@ -39,6 +41,7 @@ class REG_ACCESS(Enum):
 
 class REG_PHY(Enum):
     """Physical Units."""
+
     NONE = 0
     """None."""
     TORQUE = 1
@@ -53,3 +56,13 @@ class REG_PHY(Enum):
     """Relative voltage (DC)."""
     RAD = 6
     """Radians."""
+
+
+class REG_ADDRESS_TYPE(Enum):
+    """Address Type."""
+
+    NVM = 0
+    NVM_NONE = 1
+    NVM_CFG = 2
+    NVM_LOCK = 3
+    NVM_HW = 4

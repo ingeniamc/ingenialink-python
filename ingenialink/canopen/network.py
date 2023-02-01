@@ -18,26 +18,50 @@ import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
 PROG_STAT_1 = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x1F51, subidx=0x01, cyclic='CONFIG',
-    dtype=REG_DTYPE.U8, access=REG_ACCESS.RW
+    identifier="",
+    units="",
+    subnode=0,
+    idx=0x1F51,
+    subidx=0x01,
+    cyclic="CONFIG",
+    dtype=REG_DTYPE.U8,
+    access=REG_ACCESS.RW,
 )
 PROG_DL_1 = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x1F50, subidx=0x01, cyclic='CONFIG',
-    dtype=REG_DTYPE.DOMAIN, access=REG_ACCESS.RW
+    identifier="",
+    units="",
+    subnode=0,
+    idx=0x1F50,
+    subidx=0x01,
+    cyclic="CONFIG",
+    dtype=REG_DTYPE.DOMAIN,
+    access=REG_ACCESS.RW,
 )
 FORCE_BOOT = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x5EDE, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.WO
+    identifier="",
+    units="",
+    subnode=0,
+    idx=0x5EDE,
+    subidx=0x00,
+    cyclic="CONFIG",
+    dtype=REG_DTYPE.U32,
+    access=REG_ACCESS.WO,
 )
 
 CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
-    identifier='', units='', subnode=0, idx=0x1000, subidx=0x00, cyclic='CONFIG',
-    dtype=REG_DTYPE.U32, access=REG_ACCESS.RO
+    identifier="",
+    units="",
+    subnode=0,
+    idx=0x1000,
+    subidx=0x00,
+    cyclic="CONFIG",
+    dtype=REG_DTYPE.U32,
+    access=REG_ACCESS.RO,
 )
 
-BOOTLOADER_MSG_SIZE = 256           # Size in Bytes
-RECONNECTION_TIMEOUT = 180          # Seconds
-POLLING_MAX_TRIES = 5               # Seconds
+BOOTLOADER_MSG_SIZE = 256  # Size in Bytes
+RECONNECTION_TIMEOUT = 180  # Seconds
+POLLING_MAX_TRIES = 5  # Seconds
 
 PROG_CTRL_STATE_STOP = 0x00
 PROG_CTRL_STATE_START = 0x01
@@ -47,18 +71,20 @@ PROG_CTRL_STATE_FLASH = 0x80
 APPLICATION_LOADED_STATE = 402
 
 CAN_CHANNELS = {
-    'kvaser': (0, 1),
-    'pcan': ('PCAN_USBBUS1', 'PCAN_USBBUS2'),
-    'ixxat': (0, 1)
+    "kvaser": (0, 1),
+    "pcan": ("PCAN_USBBUS1", "PCAN_USBBUS2"),
+    "ixxat": (0, 1),
+    "virtual": (0, 1),
 }
 
 
 class CAN_DEVICE(Enum):
     """CAN Device."""
 
-    KVASER = 'kvaser'
-    PCAN = 'pcan'
-    IXXAT = 'ixxat'
+    KVASER = "kvaser"
+    PCAN = "pcan"
+    IXXAT = "ixxat"
+    VIRTUAL = "virtual"
 
 
 class CAN_BAUDRATE(Enum):
@@ -84,7 +110,7 @@ CAN_BIT_TIMMING = {
     CAN_BAUDRATE.Baudrate_250K: 3,
     CAN_BAUDRATE.Baudrate_125K: 4,
     CAN_BAUDRATE.Baudrate_100K: 5,
-    CAN_BAUDRATE.Baudrate_50K: 6
+    CAN_BAUDRATE.Baudrate_50K: 6,
 }
 
 
@@ -150,7 +176,7 @@ class CanopenNetwork(Network):
         self.__observers_fw_load_progress = []
         self.__observers_fw_load_errors_enabled = []
 
-        self.__fw_load_status_msg = ''
+        self.__fw_load_status_msg = ""
         self.__fw_load_progress = 0
         self.__fw_load_errors_enabled = True
 
@@ -177,9 +203,9 @@ class CanopenNetwork(Network):
             logger.error("Error searching for nodes. Exception: {}".format(e))
             logger.info("Resetting bus")
             if (
-                    self._connection is not None
-                    and self._connection.bus is not None
-                    and hasattr(self._connection.bus, 'reset')
+                self._connection is not None
+                and self._connection.bus is not None
+                and hasattr(self._connection.bus, "reset")
             ):
                 self._connection.bus.reset()
         sleep(0.05)
@@ -191,8 +217,14 @@ class CanopenNetwork(Network):
 
         return nodes
 
-    def connect_to_slave(self, target, dictionary=None, eds=None,
-                         servo_status_listener=False, net_status_listener=False):
+    def connect_to_slave(
+        self,
+        target,
+        dictionary=None,
+        eds=None,
+        servo_status_listener=False,
+        net_status_listener=False,
+    ):
         """Connects to a drive through a given target node ID.
 
         Args:
@@ -216,8 +248,9 @@ class CanopenNetwork(Network):
 
                 node.nmt.start_node_guarding(1)
 
-                servo = CanopenServo(target, node, dictionary, eds,
-                                     servo_status_listener=servo_status_listener)
+                servo = CanopenServo(
+                    target, node, dictionary, eds, servo_status_listener=servo_status_listener
+                )
 
                 if net_status_listener:
                     self.start_status_listener(servo)
@@ -225,15 +258,15 @@ class CanopenNetwork(Network):
                 self.servos.append(servo)
                 return servo
             except Exception as e:
-                logger.error("Failed connecting to node %i. Exception: %s",
-                             target, e)
+                logger.error("Failed connecting to node %i. Exception: %s", target, e)
                 raise ILError(
-                    'Failed connecting to node {}. '
-                    'Please check the connection settings and verify '
-                    'the transceiver is properly connected.'.format(target))
+                    "Failed connecting to node {}. "
+                    "Please check the connection settings and verify "
+                    "the transceiver is properly connected.".format(target)
+                )
         else:
-            logger.error('Node id not found')
-            raise ILError('Node id {} not found in the network.'.format(target))
+            logger.error("Node id not found")
+            raise ILError("Node id {} not found in the network.".format(target))
 
     def disconnect_from_slave(self, servo):
         """Disconnects the slave from the network.
@@ -250,38 +283,38 @@ class CanopenNetwork(Network):
 
     def _setup_connection(self):
         """Creates a network interface object establishing an empty connection
-         with all the network attributes already specified."""
+        with all the network attributes already specified."""
         if self._connection is None:
             self._connection = canopen.Network()
 
             try:
-                self._connection.connect(bustype=self.__device,
-                                         channel=self.__channel,
-                                         bitrate=self.__baudrate)
+                self._connection.connect(
+                    bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate
+                )
             except CanError as e:
-                logger.error('Transceiver not found in network. Exception: %s', e)
-                raise ILError('Error connecting to the transceiver. '
-                              'Please verify the transceiver '
-                              'is properly connected.')
+                logger.error("Transceiver not found in network. Exception: %s", e)
+                raise ILError(
+                    "Error connecting to the transceiver. "
+                    "Please verify the transceiver "
+                    "is properly connected."
+                )
             except OSError as e:
-                logger.error('Transceiver drivers not properly installed. Exception: %s',
-                             e)
-                if hasattr(e, 'winerror') and e.winerror == 126:
-                    e.strerror = 'Driver module not found.' \
-                                 ' Drivers might not be properly installed.'
+                logger.error("Transceiver drivers not properly installed. Exception: %s", e)
+                if hasattr(e, "winerror") and e.winerror == 126:
+                    e.strerror = "Driver module not found. Drivers might not be properly installed."
                 raise ILError(e)
             except Exception as e:
-                logger.error('Failed trying to connect. Exception: %s', e)
-                raise ILError('Failed trying to connect. {}'.format(e))
+                logger.error("Failed trying to connect. Exception: %s", e)
+                raise ILError("Failed trying to connect. {}".format(e))
         else:
-            logger.info('Connection already established')
+            logger.info("Connection already established")
 
     def _teardown_connection(self):
         """Tears down the already established connection
         and deletes the network interface"""
         self._connection.disconnect()
         self._connection = None
-        logger.info('Tear down connection.')
+        logger.info("Tear down connection.")
 
     def _reset_connection(self):
         """Resets the established CANopen network."""
@@ -300,17 +333,23 @@ class CanopenNetwork(Network):
             logger.error("Could not stop guarding. Exception: %", e)
 
         try:
-            self._connection.connect(bustype=self.__device,
-                                     channel=self.__channel,
-                                     bitrate=self.__baudrate)
+            self._connection.connect(
+                bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate
+            )
             for servo in self.servos:
                 node = self._connection.add_node(servo.target, servo.eds)
                 node.nmt.start_node_guarding(1)
         except BaseException as e:
             logger.error("Connection failed. Exception: %s", e)
 
-    def load_firmware(self, target, fw_file, callback_status_msg=None,
-                      callback_progress=None, callback_errors_enabled=None):
+    def load_firmware(
+        self,
+        target,
+        fw_file,
+        callback_status_msg=None,
+        callback_progress=None,
+        callback_errors_enabled=None,
+    ):
         """Loads a given firmware file to a target.
 
         .. warning ::
@@ -334,13 +373,13 @@ class CanopenNetwork(Network):
         """
         servo = None
         lfu_path = None
-        error_detected_msg = ''
+        error_detected_msg = ""
         servo_connected = False
         error_connecting = False
         progress = 0
 
         if not os.path.isfile(fw_file):
-            raise FileNotFoundError('Could not find {}.'.format(fw_file))
+            raise FileNotFoundError("Could not find {}.".format(fw_file))
 
         # Subscribe to firmware loader process
         if callback_status_msg is not None:
@@ -350,7 +389,7 @@ class CanopenNetwork(Network):
         if callback_errors_enabled is not None:
             self.__observers_fw_load_errors_enabled.append(callback_errors_enabled)
 
-        self.__set_fw_load_status_msg('')
+        self.__set_fw_load_status_msg("")
         self.__set_fw_load_progress(progress)
         self.__set_fw_load_errors_enabled(True)
 
@@ -364,8 +403,8 @@ class CanopenNetwork(Network):
 
         try:
             if not servo_connected:
-                self.__set_fw_load_status_msg('Connecting to drive')
-                logger.info('Connecting to drive')
+                self.__set_fw_load_status_msg("Connecting to drive")
+                logger.info("Connecting to drive")
                 progress = 5
                 self.__set_fw_load_progress(progress)
                 try:
@@ -373,13 +412,13 @@ class CanopenNetwork(Network):
                     progress = 7
                     self.__set_fw_load_progress(progress)
                 except Exception as e:
-                    logger.error('Error connecting to drive through CAN: %s', e)
+                    logger.error("Error connecting to drive through CAN: %s", e)
                     error_connecting = True
 
             if servo is not None and not error_connecting:
                 # Check if bootloader is supported
-                logger.info('Checking compatibility')
-                self.__set_fw_load_status_msg('Checking compatibility')
+                logger.info("Checking compatibility")
+                self.__set_fw_load_status_msg("Checking compatibility")
                 prog_stat_1 = None
                 try:
                     prog_stat_1 = servo.read(PROG_STAT_1, subnode=0)
@@ -395,34 +434,35 @@ class CanopenNetwork(Network):
                     # Check if file is .lfu
                     file_name, file_extension = os.path.splitext(fw_file)
 
-                    if file_extension != '' and file_extension == '.sfu':
+                    if file_extension != "" and file_extension == ".sfu":
                         fd, lfu_path = tempfile.mkstemp(suffix=".lfu")
-                        logger.debug('>> FD: {}. \n>> '
-                                     'LFU PATH: {}.'.format(fd, lfu_path))
+                        logger.debug(">> FD: {}. \n>> LFU PATH: {}.".format(fd, lfu_path))
 
                         try:
                             # Convert the sfu file to lfu
-                            logger.info('Converting sfu to lfu...')
-                            self.__set_fw_load_status_msg('Optimizing file')
-                            logger.info('Optimizing file')
+                            logger.info("Converting sfu to lfu...")
+                            self.__set_fw_load_status_msg("Optimizing file")
+                            logger.info("Optimizing file")
                             total_file_lines = count_file_lines(fw_file)
-                            outfile = open(lfu_path, 'wb')
+                            outfile = open(lfu_path, "wb")
                             coco_in = open(fw_file, "r")
                             mcb = MCB()
                             copy_process = 0
-                            bin_node = ''
+                            bin_node = ""
                             for line in coco_in:
-                                if re.match("74 67 [0-4][0-4] 00 00 00 00 00 00 00",
-                                            line) is not None:
+                                if (
+                                    re.match("74 67 [0-4][0-4] 00 00 00 00 00 00 00", line)
+                                    is not None
+                                ):
                                     bin_node = line[6:8]
 
-                                newline = '{} {}'.format(bin_node, line)
+                                newline = "{} {}".format(bin_node, line)
                                 words = newline.split()
 
                                 # Get command and address
                                 subnode = int(words[0], 16)
                                 cmd = int(words[2] + words[1], 16)
-                                data = b''
+                                data = b""
                                 num = 3
                                 while num in range(3, len(words)):
                                     # load data MCB
@@ -433,8 +473,10 @@ class CanopenNetwork(Network):
                                 node = 10
                                 mcb.add_cmd(node, subnode, cmd, data, outfile)
 
-                                new_progress = int((copy_process * (25 - progress)) /
-                                                   total_file_lines) + progress
+                                new_progress = (
+                                    int((copy_process * (25 - progress)) / total_file_lines)
+                                    + progress
+                                )
                                 if new_progress != current_progress:
                                     current_progress = new_progress
                                     self.__set_fw_load_progress(current_progress)
@@ -444,9 +486,9 @@ class CanopenNetwork(Network):
 
                             outfile.close()
                             coco_in.close()
-                            logger.info('Converted to lfu')
+                            logger.info("Converted to lfu")
                         except Exception as e:
-                            logger.error('Exception converting to lfu. {}'.format(e))
+                            logger.error("Exception converting to lfu. {}".format(e))
 
                     else:
                         lfu_path = fw_file
@@ -462,8 +504,8 @@ class CanopenNetwork(Network):
 
                     if device_type == APPLICATION_LOADED_STATE:
                         # Drive profile
-                        self.__set_fw_load_status_msg('Entering Bootmode')
-                        logger.info('Entering Bootmode')
+                        self.__set_fw_load_status_msg("Entering Bootmode")
+                        logger.info("Entering Bootmode")
                         # Enter in NMT pre-operational state.
                         self._connection.nmt.send_command(PROG_CTRL_STATE_FLASH)
                         # The drive will unlock the clear program command
@@ -473,16 +515,15 @@ class CanopenNetwork(Network):
                             servo.write(FORCE_BOOT, password, subnode=0)
                         except Exception as e:
                             pass
-                    if prog_stat_1 == PROG_CTRL_STATE_START \
-                            or prog_stat_1 == PROG_CTRL_STATE_FLASH:
+                    if prog_stat_1 == PROG_CTRL_STATE_START or prog_stat_1 == PROG_CTRL_STATE_FLASH:
                         # Write 0 to 0x1F51 to stop the app
                         try:
                             servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
                         except Exception as e:
                             pass
-                    self.__set_fw_load_status_msg('Setting up drive')
-                    logger.info('Connected')
-                    logger.info('Clearing program...')
+                    self.__set_fw_load_status_msg("Setting up drive")
+                    logger.info("Connected")
+                    logger.info("Clearing program...")
 
                     prog_stat_1 = None
                     try:
@@ -498,33 +539,31 @@ class CanopenNetwork(Network):
                         except Exception as e:
                             pass
 
-                        r = wait_for_register_value(servo, 0,
-                                                    PROG_STAT_1, PROG_CTRL_STATE_CLEAR)
+                        r = wait_for_register_value(servo, 0, PROG_STAT_1, PROG_CTRL_STATE_CLEAR)
                     if r >= 0:
                         try:
                             servo.write(PROG_STAT_1, PROG_CTRL_STATE_FLASH, subnode=0)
                         except Exception as e:
                             pass
 
-                        r = wait_for_register_value(servo, 0,
-                                                    PROG_STAT_1, PROG_CTRL_STATE_FLASH)
+                        r = wait_for_register_value(servo, 0, PROG_STAT_1, PROG_CTRL_STATE_FLASH)
                         if r < 0:
-                            error_detected_msg = 'Error entering flashing mode'
+                            error_detected_msg = "Error entering flashing mode"
                             logger.info(error_detected_msg)
                     else:
-                        error_detected_msg = 'Error entering boot mode'
+                        error_detected_msg = "Error entering boot mode"
                         logger.error(error_detected_msg)
 
-                    if error_detected_msg == '':
-                        logger.info('Downloading program...')
+                    if error_detected_msg == "":
+                        logger.info("Downloading program...")
                         image = open(lfu_path, "rb")
                         counter = 0
                         # Read image content in BOOTLOADER_MSG_SIZE
                         try:
                             error_downloading = False
                             servo._change_sdo_timeout(10)
-                            self.__set_fw_load_status_msg('Downloading firmware')
-                            logger.info('Downloading firmware')
+                            self.__set_fw_load_status_msg("Downloading firmware")
+                            logger.info("Downloading firmware")
                             byte = image.read(1)
                             bytes_data = bytearray()
                             counter_blocks = 1
@@ -540,12 +579,13 @@ class CanopenNetwork(Network):
 
                                     if r < 0:
                                         error_downloading = True
-                                        error_detected_msg = 'An error occurred ' \
-                                                             'while downloading.'
+                                        error_detected_msg = "An error occurred while downloading."
                                     counter += 1
 
-                                    new_progress = int((counter * (100 - progress)) /
-                                                       total_file_size) + progress
+                                    new_progress = (
+                                        int((counter * (100 - progress)) / total_file_size)
+                                        + progress
+                                    )
                                     if new_progress != current_progress:
                                         current_progress = new_progress
                                         self.__set_fw_load_progress(current_progress)
@@ -557,7 +597,7 @@ class CanopenNetwork(Network):
                                 counter_blocks += 1
 
                             if not error_downloading:
-                                self.__set_fw_load_status_msg('Flashing firmware')
+                                self.__set_fw_load_status_msg("Flashing firmware")
                                 logger.info("Download Finished!")
                                 logger.info("Flashing firmware")
 
@@ -568,18 +608,19 @@ class CanopenNetwork(Network):
 
                                 servo._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
                         except Exception as e:
-                            error_detected_msg = 'An error occurred while downloading.'
-                            logger.error('Failed to download fw, reset might be needed. '
-                                         'Exception {}.'.format(e))
+                            error_detected_msg = "An error occurred while downloading."
+                            logger.error(
+                                "Failed to download fw, reset might be needed. "
+                                "Exception {}.".format(e)
+                            )
                         try:
                             image.close()
-                            logger.debug('Temp file deleted')
+                            logger.debug("Temp file deleted")
                         except Exception as e:
-                            logger.warning('Could not remove temp file. '
-                                           'Exception: {}'.format(e))
+                            logger.warning("Could not remove temp file. Exception: {}".format(e))
 
-                    if error_detected_msg == '':
-                        logger.info('Disable errors')
+                    if error_detected_msg == "":
+                        logger.info("Disable errors")
                         self.__set_fw_load_errors_enabled(False)
 
                         logger.info("Flashing...")
@@ -589,26 +630,32 @@ class CanopenNetwork(Network):
                         except Exception as e:
                             pass
 
-                        logger.info('Waiting for the drive to respond...')
+                        logger.info("Waiting for the drive to respond...")
                         sleep(5)
                         initial_time = time()
                         time_diff = time() - initial_time
                         bool_timeout = False
-                        while self.status != NET_STATE.CONNECTED \
-                                and time_diff < RECONNECTION_TIMEOUT:
+                        stop_status_listener_after_reconnect = not self.is_listener_started(servo)
+                        self.start_status_listener(servo)
+                        logger.debug("Starting status listener...")
+                        while (
+                            self.status != NET_STATE.CONNECTED and time_diff < RECONNECTION_TIMEOUT
+                        ):
                             time_diff = time() - initial_time
                             sleep(0.5)
                         if not time_diff < RECONNECTION_TIMEOUT:
                             bool_timeout = True
 
-                        logger.debug(f'Time waited for reconnection: '
-                                     f'{time_diff} {bool_timeout}')
-                        logger.debug(f'Net state after reconnection: '
-                                     f'{self.status}')
+                        if stop_status_listener_after_reconnect:
+                            self.stop_status_listener(servo)
+                            logger.debug("Stopping status listener...")
+
+                        logger.debug(f"Time waited for reconnection: {time_diff} {bool_timeout}")
+                        logger.debug(f"Net state after reconnection: {self.status}")
 
                         sleep(5)
 
-                        self.__set_fw_load_status_msg('Starting program')
+                        self.__set_fw_load_status_msg("Starting program")
                         logger.info("Starting program")
 
                         try:
@@ -617,56 +664,57 @@ class CanopenNetwork(Network):
                             pass
 
                         if not bool_timeout:
-                            logger.info('Bootloader finished successfully!')
-                            self.__set_fw_load_status_msg('Bootloader '
-                                                          'finished successfully!')
+                            logger.info("Bootloader finished successfully!")
+                            self.__set_fw_load_status_msg("Bootloader finished successfully!")
                             # Wait for the drive to reset
                             initial_time = time()
                             timeout = 25
                             stop = False
 
-                            logger.info('Waiting for the drive to be available.')
+                            logger.info("Waiting for the drive to be available.")
                             while (time() - initial_time) < timeout and not stop:
                                 try:
-                                    servo.read(servo.STATUS_WORD_REGISTERS[1])
+                                    servo.read(servo.STATUS_WORD_REGISTERS)
                                     stop = True
                                 except ILError:
                                     pass
                         else:
-                            error_detected_msg = 'Could not recover drive'
+                            error_detected_msg = "Could not recover drive"
                             logger.error(error_detected_msg)
                 else:
                     # Bootloader not supported
-                    error_detected_msg = 'Firmware and bootloader versions are ' \
-                                         'not compatible. Use FTP Bootloader instead.'
+                    error_detected_msg = (
+                        "Firmware and bootloader versions are "
+                        "not compatible. Use FTP Bootloader instead."
+                    )
             else:
-                error_detected_msg = 'Failed to connect to the drive'
+                error_detected_msg = "Failed to connect to the drive"
                 logger.error("Error detected could not specify the drive.")
                 if self._connection is not None and not servo_connected:
                     self._teardown_connection()
-                    logger.error('CANopen connection disconnected')
+                    logger.error("CANopen connection disconnected")
         except Exception as e:
-            logger.error('Failed to load firmware. Exception: {}'.format(e))
-            error_detected_msg = 'Failed to load firmware'
+            logger.error("Failed to load firmware. Exception: {}".format(e))
+            error_detected_msg = "Failed to load firmware"
             if servo is not None and not servo_connected:
                 self.disconnect_from_slave(servo)
             elif self._connection is not None and not servo_connected:
                 self._teardown_connection()
-                logger.error('CANopen connection disconnected')
+                logger.error("CANopen connection disconnected")
         try:
             if servo is not None and not servo_connected:
                 self.disconnect_from_slave(servo)
             elif self._connection is not None and not servo_connected:
                 self._teardown_connection()
-                logger.error('CANopen connection disconnected')
+                logger.error("CANopen connection disconnected")
         except Exception as e:
-            logger.error('Could not disconnect the drive. Exception {}.'.format(e))
+            logger.error("Could not disconnect the drive. Exception {}.".format(e))
 
         try:
             if lfu_path != fw_file:
                 os.remove(lfu_path)
         except Exception as e:
-            logger.warning('Could not remove {}. Exception: {}'.format(lfu_path, e))
+            logger.warning("Could not remove {}. Exception: {}".format(lfu_path, e))
 
         self.__set_fw_load_errors_enabled(True)
 
@@ -678,7 +726,7 @@ class CanopenNetwork(Network):
         if callback_errors_enabled is not None:
             self.__observers_fw_load_errors_enabled.remove(callback_errors_enabled)
 
-        if error_detected_msg != '':
+        if error_detected_msg != "":
             raise ILFirmwareLoadError(error_detected_msg)
 
     def __set_fw_load_status_msg(self, new_value):
@@ -717,8 +765,9 @@ class CanopenNetwork(Network):
         for callback in self.__observers_fw_load_errors_enabled:
             callback(new_value)
 
-    def change_baudrate(self, target_node, new_target_baudrate, vendor_id,
-                        product_code, rev_number, serial_number):
+    def change_baudrate(
+        self, target_node, new_target_baudrate, vendor_id, product_code, rev_number, serial_number
+    ):
         """Changes the node ID of a given target node ID.
 
         .. note::
@@ -740,7 +789,7 @@ class CanopenNetwork(Network):
 
         """
         if self._connection is None:
-            raise ILObjectNotExist('CAN connection was not established.')
+            raise ILObjectNotExist("CAN connection was not established.")
 
         try:
             logger.debug("Switching LSS into CONFIGURATION state...")
@@ -751,21 +800,19 @@ class CanopenNetwork(Network):
                 serial_number,
             )
             if r >= 0:
-                self._connection.lss.configure_bit_timing(
-                    CAN_BIT_TIMMING[new_target_baudrate]
-                )
+                self._connection.lss.configure_bit_timing(CAN_BIT_TIMMING[new_target_baudrate])
                 sleep(0.1)
 
                 self._lss_store_configuration()
             else:
-                raise ILError('Error switching lss to selective state. '
-                              'Error code: {}'.format(r))
+                raise ILError("Error switching lss to selective state. Error code: {}".format(r))
         finally:
             self._lss_reset_connection_nodes(target_node)
-            logger.info('Baudrate changed to {}'.format(new_target_baudrate))
+            logger.info("Baudrate changed to {}".format(new_target_baudrate))
 
-    def change_node_id(self, target_node, new_target_node, vendor_id,
-                       product_code, rev_number, serial_number):
+    def change_node_id(
+        self, target_node, new_target_node, vendor_id, product_code, rev_number, serial_number
+    ):
         """Changes the node ID of a given target node ID.
 
         .. note::
@@ -785,7 +832,7 @@ class CanopenNetwork(Network):
 
         """
         if self._connection is None:
-            raise ILObjectNotExist('CAN connection was not established.')
+            raise ILObjectNotExist("CAN connection was not established.")
 
         try:
             logger.debug("Switching LSS into CONFIGURATION state...")
@@ -802,20 +849,17 @@ class CanopenNetwork(Network):
                 self._lss_store_configuration()
 
             else:
-                raise ILError('Error switching lss to selective state. '
-                              'Error code: {}'.format(r))
+                raise ILError("Error switching lss to selective state. Error code: {}".format(r))
         finally:
             self._lss_reset_connection_nodes(target_node)
-            logger.info('Node ID changed to {}'.format(new_target_node))
+            logger.info("Node ID changed to {}".format(new_target_node))
 
     def _lss_store_configuration(self):
         """Stores the current configuration of the LSS"""
         self._connection.lss.store_configuration()
         sleep(0.1)
-        logger.info('Stored new configuration')
-        self._connection.lss.send_switch_state_global(
-            self._connection.lss.WAITING_STATE
-        )
+        logger.info("Stored new configuration")
+        self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
 
     def _lss_reset_connection_nodes(self, target_node):
         """Resets the connection and starts node guarding for the connection nodes.
@@ -830,13 +874,11 @@ class CanopenNetwork(Network):
         sleep(0.5)
 
         for servo in self.servos:
-            logger.info('Node connected: %i', servo.target)
+            logger.info("Node connected: %i", servo.target)
             node = self._connection.add_node(servo.target, servo.eds)
 
         # Reset all nodes to default state
-        self._connection.lss.send_switch_state_global(
-            self._connection.lss.WAITING_STATE
-        )
+        self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
 
         self._connection.nodes[target_node].nmt.start_node_guarding(1)
 
@@ -848,7 +890,7 @@ class CanopenNetwork(Network):
 
         """
         if callback in self.__observers_net_state:
-            logger.info('Callback already subscribed.')
+            logger.info("Callback already subscribed.")
             return
         self.__observers_net_state.append(callback)
 
@@ -860,7 +902,7 @@ class CanopenNetwork(Network):
 
         """
         if callback not in self.__observers_net_state:
-            logger.info('Callback not subscribed.')
+            logger.info("Callback not subscribed.")
             return
         self.__observers_net_state.remove(callback)
 
@@ -868,17 +910,18 @@ class CanopenNetwork(Network):
         for callback in self.__observers_net_state:
             callback(status)
 
-    def start_status_listener(self, servo):
-        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+    def is_listener_started(self, servo):
         for listener in self.__listeners_net_status:
             if listener.node.id == servo.node.id:
-                logger.info(
-                    f'Listener on node {servo.node.id} is already started.'
-                )
-                return
-        listener = NetStatusListener(
-            self, servo.node
-        )
+                return True
+        return False
+
+    def start_status_listener(self, servo):
+        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+        if self.is_listener_started(servo):
+            logger.info(f"Listener on node {servo.node.id} is already started.")
+            return
+        listener = NetStatusListener(self, servo.node)
         listener.start()
         self.__listeners_net_status.append(listener)
 
@@ -889,7 +932,7 @@ class CanopenNetwork(Network):
                 if node_id == servo.node.id:
                     node_obj.nmt.stop_node_guarding()
         except Exception as e:
-            logger.error('Could not stop node guarding. Exception: %s', str(e))
+            logger.error("Could not stop node guarding. Exception: %s", str(e))
         servo_listener = None
         for listener in self.__listeners_net_status:
             if listener.node.id == servo.node.id and listener.is_alive:

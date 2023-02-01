@@ -3,7 +3,7 @@ import ingenialogger
 
 from abc import ABC, abstractmethod
 from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
-from ingenialink.register import REG_DTYPE, REG_ACCESS
+from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
 from ingenialink import exceptions as exc
 
 logger = ingenialogger.get_logger(__name__)
@@ -35,10 +35,8 @@ class DictionaryCategories:
     def load_cat_ids(self):
         """Load category IDs from dictionary."""
         for element in self._list_xdf_categories:
-            self._cat_ids.append(element.attrib['id'])
-            self._categories[element.attrib['id']] = {
-                'en_US': element.find(DICT_LABELS_LABEL).text
-            }
+            self._cat_ids.append(element.attrib["id"])
+            self._categories[element.attrib["id"]] = {"en_US": element.find(DICT_LABELS_LABEL).text}
 
     @property
     def category_ids(self):
@@ -75,11 +73,11 @@ class DictionaryErrors:
         """Load errors from dictionary."""
         for element in self._list_xdf_errors:
             label = element.find(DICT_LABELS_LABEL)
-            self._errors[int(element.attrib['id'], 16)] = [
-                element.attrib['id'],
-                element.attrib['affected_module'],
-                element.attrib['error_type'].capitalize(),
-                label.text
+            self._errors[int(element.attrib["id"], 16)] = [
+                element.attrib["id"],
+                element.attrib["affected_module"],
+                element.attrib["error_type"].capitalize(),
+                label.text,
             ]
 
     @property
@@ -131,20 +129,21 @@ class Dictionary(ABC):
     DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
 
     class AttrRegDict:
-        IDENTIFIER = 'identifier'
-        UNITS = 'units'
-        CYCLIC = 'cyclic'
-        DTYPE = 'dtype'
-        ACCESS = 'access'
-        SUBNODE = 'subnode'
-        STORAGE = 'storage'
-        REG_RANGE = 'reg_range'
-        LABELS = 'labels'
-        ENUMS = 'enums'
-        CAT_ID = 'cat_id'
-        INT_USE = 'internal_use'
+        IDENTIFIER = "identifier"
+        UNITS = "units"
+        CYCLIC = "cyclic"
+        DTYPE = "dtype"
+        ACCESS = "access"
+        SUBNODE = "subnode"
+        STORAGE = "storage"
+        REG_RANGE = "reg_range"
+        LABELS = "labels"
+        ENUMS = "enums"
+        CAT_ID = "cat_id"
+        INT_USE = "internal_use"
+        ADDRESS_TYPE = "address_type"
 
-    __dtype_xdf_options = {
+    dtype_xdf_options = {
         "float": REG_DTYPE.FLOAT,
         "s8": REG_DTYPE.S8,
         "u8": REG_DTYPE.U8,
@@ -154,19 +153,23 @@ class Dictionary(ABC):
         "u32": REG_DTYPE.U32,
         "s64": REG_DTYPE.S64,
         "u64": REG_DTYPE.U64,
-        "str": REG_DTYPE.STR
+        "str": REG_DTYPE.STR,
     }
 
-    access_xdf_options = {
-        "r": REG_ACCESS.RO,
-        "w": REG_ACCESS.WO,
-        "rw": REG_ACCESS.RW
+    access_xdf_options = {"r": REG_ACCESS.RO, "w": REG_ACCESS.WO, "rw": REG_ACCESS.RW}
+
+    address_type_xdf_options = {
+        "NVM": REG_ADDRESS_TYPE.NVM,
+        "NVM_NONE": REG_ADDRESS_TYPE.NVM_NONE,
+        "NVM_CFG": REG_ADDRESS_TYPE.NVM_CFG,
+        "NVM_LOCK": REG_ADDRESS_TYPE.NVM_LOCK,
+        "NVM_HW": REG_ADDRESS_TYPE.NVM_HW,
     }
 
     def __init__(self, dictionary_path):
         self.path = dictionary_path
         """str: Path of the dictionary."""
-        self.version = '1'
+        self.version = "1"
         """str: Version of the dictionary."""
         self.firmware_version = None
         """str: Firmware version declared in the dictionary."""
@@ -204,7 +207,7 @@ class Dictionary(ABC):
     def read_dictionary(self):
         """Reads the dictionary file and initializes all its components."""
         try:
-            with open(self.path, 'r', encoding='utf-8') as xdf_file:
+            with open(self.path, "r", encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError:
             raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}")
@@ -232,15 +235,15 @@ class Dictionary(ABC):
         if version_node is not None:
             self.version = version_node.text
 
-        self.firmware_version = device.attrib.get('firmwareVersion')
-        product_code = device.attrib.get('ProductCode')
+        self.firmware_version = device.attrib.get("firmwareVersion")
+        product_code = device.attrib.get("ProductCode")
         if product_code is not None and product_code.isdecimal():
             self.product_code = int(product_code)
-        self.part_number = device.attrib.get('PartNumber')
-        revision_number = device.attrib.get('RevisionNumber')
+        self.part_number = device.attrib.get("PartNumber")
+        revision_number = device.attrib.get("RevisionNumber")
         if revision_number is not None and revision_number.isdecimal():
             self.revision_number = int(revision_number)
-        self.interface = device.attrib.get('Interface')
+        self.interface = device.attrib.get("Interface")
 
         if root.findall(self.DICT_ROOT_AXES):
             # For each axis
@@ -268,13 +271,20 @@ class Dictionary(ABC):
             dict: The current register which it has been reading
             None: When at least a mandatory attribute is not in a xdf file
 
+        Raises:
+            KeyError: If the register doesn't have an identifier.
+            ValueError: If the register data type is invalid.
+            ValueError: If the register access type is invalid.
+            ValueError: If the register address type is invalid.
+            KeyError: If some attribute is missing.
+
         """
         try:
             # Dictionary where the current register attributes will be saved
             current_read_register = dict()
 
             # Identifier
-            current_read_register[self.AttrRegDict.IDENTIFIER] = register.attrib['id']
+            current_read_register[self.AttrRegDict.IDENTIFIER] = register.attrib["id"]
 
         except KeyError as ke:
             logger.error(f"The register doesn't have an identifier. Error caught: {ke}")
@@ -282,61 +292,84 @@ class Dictionary(ABC):
 
         try:
             # Units
-            current_read_register[self.AttrRegDict.UNITS] = register.attrib['units']
+            current_read_register[self.AttrRegDict.UNITS] = register.attrib["units"]
 
             # Cyclic
-            current_read_register[self.AttrRegDict.CYCLIC] = register.attrib.get('cyclic', 'CONFIG')
+            current_read_register[self.AttrRegDict.CYCLIC] = register.attrib.get("cyclic", "CONFIG")
 
             # Data type
-            dtype_aux = register.attrib['dtype']
+            dtype_aux = register.attrib["dtype"]
 
-            if dtype_aux in self.__dtype_xdf_options:
-                current_read_register[self.AttrRegDict.DTYPE] = self.__dtype_xdf_options[dtype_aux]
+            if dtype_aux in self.dtype_xdf_options:
+                current_read_register[self.AttrRegDict.DTYPE] = self.dtype_xdf_options[dtype_aux]
             else:
-                raise exc.ILValueError(f'The data type {dtype_aux} does not exist for the register: '
-                                       f'{current_read_register["identifier"]}')
+                raise ValueError(
+                    f"The data type {dtype_aux} does not exist for the register: "
+                    f'{current_read_register["identifier"]}'
+                )
 
             # Access type
-            access_aux = register.attrib['access']
+            access_aux = register.attrib["access"]
 
             if access_aux in self.access_xdf_options:
                 current_read_register[self.AttrRegDict.ACCESS] = self.access_xdf_options[access_aux]
             else:
-                raise exc.ILAccessError(f'The access type {access_aux} does not exist for the register: '
-                                        f'{current_read_register[self.AttrRegDict.IDENTIFIER]}')
+                raise ValueError(
+                    f"The access type {access_aux} does not exist for the register: "
+                    f"{current_read_register[self.AttrRegDict.IDENTIFIER]}"
+                )
+
+            # Address type
+            address_type_aux = register.attrib["address_type"]
+
+            if address_type_aux in self.address_type_xdf_options:
+                current_read_register[
+                    self.AttrRegDict.ADDRESS_TYPE
+                ] = self.address_type_xdf_options[address_type_aux]
+            else:
+                raise ValueError(
+                    f"The address type {address_type_aux} does not exist for the register: "
+                    f"{current_read_register[self.AttrRegDict.IDENTIFIER]}"
+                )
 
             # Subnode
-            current_read_register[self.AttrRegDict.SUBNODE] = int(register.attrib.get('subnode', 1))
+            current_read_register[self.AttrRegDict.SUBNODE] = int(register.attrib.get("subnode", 1))
 
             # Storage
-            current_read_register[self.AttrRegDict.STORAGE] = register.attrib.get('storage')
+            current_read_register[self.AttrRegDict.STORAGE] = register.attrib.get("storage")
 
             # Category Id
-            current_read_register[self.AttrRegDict.CAT_ID] = register.attrib.get('cat_id')
+            current_read_register[self.AttrRegDict.CAT_ID] = register.attrib.get("cat_id")
 
             # Description
             current_read_register[self.AttrRegDict.INT_USE] = register.attrib.get("internal_use", 0)
 
             # Labels
             labels_elem = register.findall(DICT_LABELS_LABEL)
-            current_read_register[self.AttrRegDict.LABELS] = {label.attrib['lang']: label.text for label in labels_elem}
+            current_read_register[self.AttrRegDict.LABELS] = {
+                label.attrib["lang"]: label.text for label in labels_elem
+            }
 
             # Range
             range_elem = register.find(self.DICT_RANGE)
             current_read_register[self.AttrRegDict.REG_RANGE] = (None, None)
             if range_elem is not None:
-                range_min = range_elem.attrib['min']
-                range_max = range_elem.attrib['max']
+                range_min = range_elem.attrib["min"]
+                range_max = range_elem.attrib["max"]
                 current_read_register[self.AttrRegDict.REG_RANGE] = (range_min, range_max)
 
             # Enumerations
             enums_elem = register.findall(self.DICT_ENUMERATIONS_ENUMERATION)
-            current_read_register[self.AttrRegDict.ENUMS] = [{enum.attrib['value']: enum.text} for enum in enums_elem]
+            current_read_register[self.AttrRegDict.ENUMS] = {
+                enum.attrib["value"]: enum.text for enum in enums_elem
+            }
 
             return current_read_register
 
         except KeyError as ke:
-            logger.error(f"Register with ID {current_read_register[self.AttrRegDict.IDENTIFIER]} has not attribute {ke}")
+            logger.error(
+                f"Register with ID {current_read_register[self.AttrRegDict.IDENTIFIER]} has not attribute {ke}"
+            )
             return None
 
     @abstractmethod

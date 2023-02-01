@@ -7,6 +7,5 @@ Ethernet API documentation
 
     ethernet/network
     ethernet/servo
-    ipb/dictionary
-    ipb/register
-    ipb/poller
+    ethernet/dictionary
+    ethernet/register

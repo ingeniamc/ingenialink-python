@@ -1,10 +1,11 @@
-from ingenialink.utils._utils import raise_err
-from ingenialink.canopen import constants
+from ingenialink.exceptions import ILAlreadyInitializedError, ILStateError,\
+    ILValueError
 
 from datetime import datetime
 from threading import Timer, RLock
 
 import ingenialogger
+
 logger = ingenialogger.get_logger(__name__)
 
 
@@ -16,6 +17,7 @@ class PollerTimer:
         cb (function): Callback.
 
     """
+
     def __init__(self, time, cb):
         self.cb = cb
         self.time = time
@@ -66,12 +68,10 @@ class Poller:
         """Start the poller."""
 
         if self.__running:
-            logger.warning("Poller already running")
-            raise_err(constants.IL_EALREADY)
+            raise ILAlreadyInitializedError("Poller already running")
 
         # Activate timer
-        self.__timer = PollerTimer(self.__refresh_time,
-                                   self._acquire_callback_poller_data)
+        self.__timer = PollerTimer(self.__refresh_time, self._acquire_callback_poller_data)
         self.__timer.start()
         self.__time_start = datetime.now()
 
@@ -102,18 +102,16 @@ class Poller:
 
         """
         if self.__running:
-            logger.warning("Poller is running")
-            raise_err(constants.IL_ESTATE)
-
+            raise ILStateError("Poller is running")
         # Configure data and sizes with empty data
         self._reset_acq()
         self.__sz = sz
         self.__refresh_time = t_s
-        self.__acq['t'] = [0] * sz
+        self.__acq["t"] = [0] * sz
         for channel in range(0, self.num_channels):
             data_channel = [0] * sz
-            self.__acq['d'].append(data_channel)
-            self.__mappings.append('')
+            self.__acq["d"].append(data_channel)
+            self.__mappings.append("")
             self.__mappings_enabled.append(False)
 
         return 0
@@ -137,12 +135,10 @@ class Poller:
         """
 
         if self.__running:
-            logger.warning("Poller is running")
-            raise_err(constants.IL_ESTATE)
+            raise ILStateError("Poller is running")
 
         if channel > self.num_channels:
-            logger.error("Channel out of range")
-            raise_err(constants.IL_EINVAL)
+            raise ILValueError("Channel out of range")
 
         # Obtain register
         _reg = self.servo._get_reg(reg, subnode)
@@ -170,12 +166,10 @@ class Poller:
         """
 
         if self.__running:
-            logger.warning("Poller is running")
-            raise_err(constants.IL_ESTATE)
+            raise ILStateError("Poller is running")
 
         if channel > self.num_channels:
-            logger.error("Channel out of range")
-            raise_err(constants.IL_EINVAL)
+            raise ILValueError("Channel out of range")
 
         # Set channel required as disabled
         self.__mappings_enabled[channel] = False
@@ -191,16 +185,11 @@ class Poller:
         """
         for channel in range(self.num_channels):
             r = self.ch_disable(channel)
-            if r < 0:
-                raise_err(r)
         return 0
 
     def _reset_acq(self):
         """Resets the acquired channels."""
-        self.__acq = {
-            "t": [],
-            "d": []
-        }
+        self.__acq = {"t": [], "d": []}
 
     def _acquire_callback_poller_data(self):
         """Acquire callback for poller data."""
@@ -215,19 +204,20 @@ class Poller:
         if self.__samples_count >= self.__sz:
             self.__samples_lost = True
         else:
-            self.__acq['t'][self.__samples_count] = t
+            self.__acq["t"][self.__samples_count] = t
 
             # Acquire enabled channels, comprehension list indexes obtained
             enabled_channel_indexes = [
-                channel_idx for channel_idx, is_enabled in
-                enumerate(self.__mappings_enabled) if is_enabled
+                channel_idx
+                for channel_idx, is_enabled in enumerate(self.__mappings_enabled)
+                if is_enabled
             ]
 
             for channel in enabled_channel_indexes:
-                for register_identifier, subnode in \
-                        self.__mappings[channel].items():
-                    self.__acq['d'][channel][self.__samples_count] = \
-                        self.servo.read(register_identifier, subnode)
+                for register_identifier, subnode in self.__mappings[channel].items():
+                    self.__acq["d"][channel][self.__samples_count] = self.servo.read(
+                        register_identifier, subnode
+                    )
 
             # Increment samples count
             self.__samples_count += 1
@@ -237,21 +227,20 @@ class Poller:
     @property
     def data(self):
         """tuple (list, list, bool): Time vector, array of data vectors and a
-            flag indicating if data was lost."""
-        t = list(self.__acq['t'][0:self.__samples_count])
+        flag indicating if data was lost."""
+        t = list(self.__acq["t"][0 : self.__samples_count])
         d = []
 
         # Acquire enabled channels, comprehension list indexes obtained
         enabled_channel_indexes = [
-            channel_idx for channel_idx, is_enabled in
-            enumerate(self.__mappings_enabled) if is_enabled
+            channel_idx
+            for channel_idx, is_enabled in enumerate(self.__mappings_enabled)
+            if is_enabled
         ]
 
         for channel in range(self.num_channels):
             if self.__mappings_enabled[channel]:
-                d.append(
-                    list(self.__acq['d'][channel][0:self.__samples_count])
-                )
+                d.append(list(self.__acq["d"][channel][0 : self.__samples_count]))
             else:
                 d.append(list(None))
 
