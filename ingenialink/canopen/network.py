@@ -635,6 +635,9 @@ class CanopenNetwork(Network):
                         initial_time = time()
                         time_diff = time() - initial_time
                         bool_timeout = False
+                        stop_status_listener_after_reconnect = not self.is_listener_started(servo)
+                        self.start_status_listener(servo)
+                        logger.debug("Starting status listener...")
                         while (
                             self.status != NET_STATE.CONNECTED and time_diff < RECONNECTION_TIMEOUT
                         ):
@@ -642,6 +645,10 @@ class CanopenNetwork(Network):
                             sleep(0.5)
                         if not time_diff < RECONNECTION_TIMEOUT:
                             bool_timeout = True
+
+                        if stop_status_listener_after_reconnect:
+                            self.stop_status_listener(servo)
+                            logger.debug("Stopping status listener...")
 
                         logger.debug(f"Time waited for reconnection: {time_diff} {bool_timeout}")
                         logger.debug(f"Net state after reconnection: {self.status}")
@@ -903,12 +910,17 @@ class CanopenNetwork(Network):
         for callback in self.__observers_net_state:
             callback(status)
 
-    def start_status_listener(self, servo):
-        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+    def is_listener_started(self, servo):
         for listener in self.__listeners_net_status:
             if listener.node.id == servo.node.id:
-                logger.info(f"Listener on node {servo.node.id} is already started.")
-                return
+                return True
+        return False
+
+    def start_status_listener(self, servo):
+        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+        if self.is_listener_started(servo):
+            logger.info(f"Listener on node {servo.node.id} is already started.")
+            return
         listener = NetStatusListener(self, servo.node)
         listener.start()
         self.__listeners_net_status.append(listener)

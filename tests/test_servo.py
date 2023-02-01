@@ -11,7 +11,6 @@ from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.register import REG_DTYPE
 from ingenialink.servo import SERVO_STATE
 from ingenialink.exceptions import ILStateError, ILTimeoutError
-from ingenialink.utils._utils import raise_err
 
 
 MONITORING_CH_DATA_SIZE = 4
@@ -89,7 +88,10 @@ def test_save_configuration(connect_to_slave):
     if "RevisionNumber" in device.attrib and rev_number is not None:
         assert int(device.attrib.get("RevisionNumber")) == rev_number
 
-    assert device.attrib.get("PartNumber") == servo.dictionary.part_number
+    if servo.dictionary.part_number is None:
+        assert "PartNumber" not in device.attrib
+    else:
+        assert device.attrib["PartNumber"] == servo.dictionary.part_number
     assert device.attrib.get("Interface") == servo.dictionary.interface
     assert device.attrib.get("firmwareVersion") == servo.dictionary.firmware_version
     # TODO: check name and family? These are not stored at the dictionary
@@ -185,7 +187,6 @@ def test_read_configuration_file(read_config):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_load_configuration_file_not_found(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -198,7 +199,6 @@ def test_load_configuration_file_not_found(connect_to_slave):
 @pytest.mark.parametrize("subnode", [-1, "1"])
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_load_configuration_invalid_subnode(read_config, pytestconfig, connect_to_slave, subnode):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -240,7 +240,6 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_store_parameters(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -255,7 +254,6 @@ def test_store_parameters(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_restore_parameters(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -270,7 +268,6 @@ def test_restore_parameters(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_read(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -281,7 +278,6 @@ def test_read(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_write(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -457,7 +453,6 @@ def test_fault_reset(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-@pytest.mark.ethercat
 def test_is_alive(connect_to_slave):
     servo, net = connect_to_slave
     assert servo.is_alive()
@@ -471,5 +466,7 @@ def test_status_word_wait_change(connect_to_slave):
     timeout = 0.5
     status_word = servo.read(servo.STATUS_WORD_REGISTERS, subnode=subnode)
     r = servo.status_word_wait_change(status_word, timeout, subnode)
+    status_word = servo.read(servo.STATUS_WORD_REGISTERS,
+                             subnode=subnode)
     with pytest.raises(ILTimeoutError):
-        raise_err(r)
+        servo.status_word_wait_change(status_word, timeout, subnode)

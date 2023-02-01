@@ -1,8 +1,4 @@
-import sys
-import re
-
-from ._ingenialink import lib
-from .register_deprecated import REG_DTYPE
+from ingenialink.register import REG_DTYPE
 
 
 DIST_FRAME_SIZE_BYTES = 128
@@ -20,6 +16,15 @@ DEFAULT_DRIVE_NAME = "Drive"
 MCB_CMD_READ = 1
 MCB_CMD_WRITE = 2
 MCB_CMD_ACK = 3
+
+EOE_MSG_CMD_SIZE = 1
+EOE_MSG_NODE_SIZE = 2
+EOE_MSG_TERMINATOR_SIZE = 1
+EOE_MSG_DATA_SIZE = 50
+EOE_MSG_FRAME_SIZE = EOE_MSG_CMD_SIZE + EOE_MSG_NODE_SIZE + EOE_MSG_TERMINATOR_SIZE\
+                     + EOE_MSG_DATA_SIZE + EOE_MSG_TERMINATOR_SIZE
+
+NULL_TERMINATOR = b"\x00"
 
 PASSWORD_STORE_ALL = 0x65766173
 PASSWORD_RESTORE_ALL = 0x64616F6C
@@ -52,19 +57,3 @@ data_type_size = {
 CAN_MAX_WRITE_SIZE = 512
 ETH_MAX_WRITE_SIZE = 512
 ETH_BUF_SIZE = 1024
-
-
-def _load():
-    """Load IngeniaLink constants to this module."""
-    module = sys.modules[__name__]
-    const_pattern = re.compile("ILK_(.*)")
-
-    # add all constants to the module dictionary
-    for k in lib.__dict__:
-        m = const_pattern.match(k)
-        if m:
-            name = m.groups()[0]
-            module.__dict__[name] = lib.__dict__[k]
-
-
-_load()

@@ -11,14 +11,7 @@
   ],
   "ethercat": [
   {
-    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_eoe_2.4.0.xdf",
-    "slave": 2,
     "ifname": "\\Device\\NPF_{DC30BAAA-CD3D-485E-9E8E-FB3953BAE5A2}",
-    "eoe_comm": true,
-    "boot_in_app": false,
-    "save_config_file": "ethercat-config.xcf",
-    "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_cap_ecat/1.1.0/config.xml",
-    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_2.4.0.lfu"
   }
   ],
   "canopen": [
@@ -32,6 +25,17 @@
     "save_config_file": "canopen-config.xcf",
     "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml",
     "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_2.4.0.lfu"
+  }
+  ],
+  "eoe": [
+  {
+    "ifname": "\\Device\\NPF_{192D1D2F-C684-467D-A637-EC07BD434A63}",
+    "slave": 1,
+    "ip": "192.168.3.22",
+    "port": 1061,
+    "dictionary": "resources/dictionaries/eve-xcr-e_eoe_1.8.1.xdf",
+    "save_config_file": "eoe-config.xcf",
+    "load_config_file": "resources/configurations/eoe-config.xcf"
   }
   ]
 }
