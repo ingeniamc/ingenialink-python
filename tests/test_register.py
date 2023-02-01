@@ -2,7 +2,7 @@ import pytest
 
 from ingenialink.register import Register
 from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
-from ingenialink.utils._utils import exc
+from ingenialink.exceptions import ILValueError, ILAccessError
 
 
 @pytest.mark.no_connection
@@ -52,17 +52,17 @@ def test_getters_register():
 def test_register_type_errors():
     dtype = "False type"
     access = REG_ACCESS.RW
-    with pytest.raises(exc.ILValueError):
+    with pytest.raises(ILValueError):
         Register(dtype, access)
 
     dtype = REG_DTYPE.FLOAT
     access = "False access"
-    with pytest.raises(exc.ILAccessError):
+    with pytest.raises(ILAccessError):
         Register(dtype, access)
 
     dtype = REG_DTYPE.FLOAT
     access = REG_ACCESS.RW
-    with pytest.raises(exc.ILValueError):
+    with pytest.raises(ILValueError):
         Register(dtype, access, phy="False Phy")
 
 
