@@ -61,6 +61,8 @@ class EoENetwork(EthernetNetwork):
 
         """
         self._configure_slave(slave_id, ip_address)
+        if not self._eoe_service_started:
+            self._start_eoe_service()
         return super().connect_to_slave(
             ip_address,
             dictionary,
@@ -188,7 +190,7 @@ class EoENetwork(EthernetNetwork):
         except (ILIOError, ILTimeoutError) as e:
             raise ILError(f"Failed to configure slave {slave_id} with IP " f"{ip_address}.") from e
 
-    def start_eoe_service(self):
+    def _start_eoe_service(self):
         """Starts the EoE service
 
         Raises:
@@ -201,17 +203,3 @@ class EoENetwork(EthernetNetwork):
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
             raise ILError("Failed to start the EoE service.") from e
-
-    def _stop_eoe_service(self):
-        """Stops the EoE service
-
-        Raises:
-            ILError: If the EoE service fails to stop.
-
-        """
-        self._eoe_service_started = False
-        msg = self._build_eoe_command_msg(EoECommand.STOP.value)
-        try:
-            self._send_command(msg)
-        except (ILIOError, ILTimeoutError) as e:
-            raise ILError("Failed to stop the EoE service.") from e
