@@ -1,5 +1,4 @@
-from ingenialink.exceptions import ILAlreadyInitializedError, ILStateError,\
-    ILValueError
+from ingenialink.exceptions import ILAlreadyInitializedError, ILStateError, ILValueError
 
 from datetime import datetime
 from threading import Timer, RLock

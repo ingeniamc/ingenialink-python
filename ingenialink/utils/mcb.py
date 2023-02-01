@@ -139,7 +139,7 @@ class MCB:
         if expected_address != recv_add:
             raise ILWrongRegisterError(
                 f"Received address: {hex(recv_add)} does "
-                f"not match expected address: "
+                "not match expected address: "
                 f"{hex(expected_address)}"
             )
         return data

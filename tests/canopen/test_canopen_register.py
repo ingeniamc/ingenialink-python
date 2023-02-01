@@ -45,7 +45,7 @@ def test_getters_canopen_register():
         reg_subidx,
         reg_dtype,
         reg_access,
-        **reg_kwargs
+        **reg_kwargs,
     )
 
     assert register.identifier == reg_identifier

@@ -34,7 +34,8 @@ class CanopenDictionary(Dictionary):
 
         except KeyError as ke:
             logger.error(
-                f"Register with ID {current_read_register[self.AttrRegCanDict.IDENTIFIER]} has not attribute {ke}"
+                f"Register with ID {current_read_register[self.AttrRegCanDict.IDENTIFIER]} has not"
+                f" attribute {ke}"
             )
             return None
 

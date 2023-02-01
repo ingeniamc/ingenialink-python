@@ -403,8 +403,7 @@ class Servo:
             r = self.state_wait_change(state, timeout, subnode=subnode)
 
             # Read the current status word
-            status_word = self.read(self.STATUS_WORD_REGISTERS,
-                                    subnode=subnode)
+            status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
             state = self.status_word_decode(status_word)
             self._set_state(state, subnode)
 
@@ -436,10 +435,8 @@ class Servo:
                 self.write(self.CONTROL_WORD_REGISTERS, constants.IL_MC_PDS_CMD_DV, subnode=subnode)
 
                 # Wait until status word changes
-                r = self.status_word_wait_change(status_word, timeout,
-                                                 subnode=subnode)
-                status_word = self.read(self.STATUS_WORD_REGISTERS,
-                                        subnode=subnode)
+                r = self.status_word_wait_change(status_word, timeout, subnode=subnode)
+                status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
                 state = self.status_word_decode(status_word)
                 self._set_state(state, subnode)
 
@@ -467,8 +464,7 @@ class Servo:
             # Wait until status word changes
             r = self.state_wait_change(state, timeout, subnode=subnode)
 
-            status_word = self.read(self.STATUS_WORD_REGISTERS,
-                                    subnode=subnode)
+            status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
             state = self.status_word_decode(status_word)
         self._set_state(state, subnode)
 
