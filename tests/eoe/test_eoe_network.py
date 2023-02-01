@@ -14,6 +14,7 @@ from ingenialink.constants import (
     EOE_MSG_FRAME_SIZE,
     EOE_MSG_TERMINATOR_SIZE,
 )
+from ingenialink.constants import NULL_TERMINATOR
 
 
 @pytest.fixture()
@@ -73,8 +74,7 @@ def test_eoe_command_msg(cmd, subnode, data, dtype):
     cmd_field = msg[:EOE_MSG_CMD_SIZE]
     subnode_field = msg[EOE_MSG_CMD_SIZE : EOE_MSG_NODE_SIZE + EOE_MSG_TERMINATOR_SIZE + 1]
     data_field = msg[-(EOE_MSG_DATA_SIZE + EOE_MSG_TERMINATOR_SIZE) :]
-    null_terminator = b"\x00"
     assert len(msg) == EOE_MSG_FRAME_SIZE
     assert cmd_field == cmd.encode("utf-8")
-    assert subnode_field == f"{subnode:0{EOE_MSG_NODE_SIZE}d}".encode("utf-8") + null_terminator
-    assert data_field == data_bytes + data_filling + null_terminator
+    assert subnode_field == f"{subnode:0{EOE_MSG_NODE_SIZE}d}".encode("utf-8") + NULL_TERMINATOR
+    assert data_field == data_bytes + data_filling + NULL_TERMINATOR
