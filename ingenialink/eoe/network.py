@@ -91,7 +91,7 @@ class EoENetwork(EthernetNetwork):
             ILError: If the EoE service fails to perform a scan.
 
         """
-        data = self.ifname + "\0"
+        data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.SCAN.value, data=data.encode("utf-8"))
         r = self._send_command(msg)
         if r < 0:
@@ -124,7 +124,7 @@ class EoENetwork(EthernetNetwork):
         node_field = f"{node:0{EOE_MSG_NODE_SIZE}d}".encode("utf-8")
         null_terminator = b"\x00"
         data_field = data + b"\x00" * (EOE_MSG_DATA_SIZE - len(data))
-        return cmd_field + node_field + null_terminator + data_field
+        return cmd_field + node_field + null_terminator + data_field + null_terminator
 
     def _send_command(self, msg):
         """
@@ -167,7 +167,7 @@ class EoENetwork(EthernetNetwork):
 
         """
         self._connect_to_eoe_service()
-        data = self.ifname + "\0"
+        data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.INIT.value, data=data.encode("utf-8"))
         try:
             self._send_command(msg)

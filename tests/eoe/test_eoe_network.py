@@ -8,7 +8,7 @@ from ingenialink.eoe.network import EoENetwork, EoECommand
 from ingenialink.utils._utils import convert_dtype_to_bytes
 from ingenialink.register import REG_DTYPE
 from ingenialink.constants import EOE_MSG_CMD_SIZE, EOE_MSG_NODE_SIZE, \
-    EOE_MSG_DATA_SIZE, EOE_MSG_FRAME_SIZE
+    EOE_MSG_DATA_SIZE, EOE_MSG_FRAME_SIZE, EOE_MSG_TERMINATOR_SIZE
 
 
 @pytest.fixture()
@@ -63,10 +63,13 @@ def test_eoe_command_msg(cmd, subnode, data, dtype):
     data_filling = b'\x00' * (EOE_MSG_DATA_SIZE - len(data_bytes))
     msg = EoENetwork._build_eoe_command_msg(cmd, subnode, data_bytes)
     cmd_field = msg[:EOE_MSG_CMD_SIZE]
-    subnode_field = msg[EOE_MSG_CMD_SIZE:EOE_MSG_NODE_SIZE + 1]
-    data_field = msg[-EOE_MSG_DATA_SIZE:]
+    subnode_field = msg[EOE_MSG_CMD_SIZE:
+                        EOE_MSG_NODE_SIZE + EOE_MSG_TERMINATOR_SIZE + 1]
+    data_field = msg[-(EOE_MSG_DATA_SIZE + EOE_MSG_TERMINATOR_SIZE):]
+    null_terminator = b"\x00"
     assert len(msg) == EOE_MSG_FRAME_SIZE
     assert cmd_field == cmd.encode('utf-8')
-    assert subnode_field == f'{subnode:0{EOE_MSG_NODE_SIZE}d}'.encode('utf-8')
-    assert data_field == data_bytes + data_filling
+    assert subnode_field == f'{subnode:0{EOE_MSG_NODE_SIZE}d}'.encode('utf-8')\
+           + null_terminator
+    assert data_field == data_bytes + data_filling + null_terminator
 
