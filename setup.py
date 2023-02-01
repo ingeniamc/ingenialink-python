@@ -2,54 +2,13 @@
 
 import re
 import setuptools
-from distutils.cmd import Command
-import shutil
-import os
 
 _version = re.search(r'__version__\s+=\s+\"(.*)\"',
                      open('ingenialink/__init__.py').read()).group(1)
 
 
 def get_docs_url():
-    return "https://distext.ingeniamc.com/doc/ingenialink-python/{}".format(_version)
-
-
-class BDistAppCommand(Command):
-    """Custom command to build the application."""
-
-    description = 'Build the application'
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        print("Copying dlls...")
-        shutil.copy('resources/Packet.dll', 'ingenialink/')
-        shutil.copy('resources/wpcap.dll', 'ingenialink/')
-
-
-class BCleanAppCommand(Command):
-    """Custom command to clean the application."""
-
-    description = 'Clean the application'
-    user_options = []
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        print("Cleaning files...")
-        if os.path.exists("ingenialink/Packet.dll"):
-            os.remove("ingenialink/Packet.dll")
-        if os.path.exists("ingenialink/wpcap.dll"):
-            os.remove("ingenialink/wpcap.dll")
+    return f"https://distext.ingeniamc.com/doc/ingenialink-python/{_version}"
 
 
 setuptools.setup(
@@ -66,32 +25,33 @@ setuptools.setup(
       'Source': 'https://github.com/ingeniamc/ingenialink-python'
     },
     classifiers=[
-      'Development Status :: 4 - Beta',
-      'Intended Audience :: Developers',
-      'Operating System :: POSIX :: Linux',
-      'Operating System :: MacOS',
-      'Operating System :: Microsoft :: Windows',
-      'Programming Language :: C',
-      'Programming Language :: Python :: 3.6',
-      'Programming Language :: Python :: 3.7',
-      'Programming Language :: Python :: 3.8',
-      'Programming Language :: Python :: 3.9',
-      'Topic :: Communications',
-      'Topic :: Software Development :: Libraries'
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Developers',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python :: 3',
+        'Topic :: Communications',
+        'Topic :: Software Development :: Libraries'
     ],
-    cmdclass={
-    'bdist_app': BDistAppCommand,
-    'bclean_app': BCleanAppCommand
-    },
-    setup_requires=['cffi==1.14.6'],
-    cffi_modules=['ingenialink/ingenialink_build.py:ffibuilder'],
     install_requires=[
-      'cffi==1.14.6',
-      'numpy<=1.19.5',
-      'canopen==1.2.1',
-      'python-can==3.3.4',
-      'ingenialogger>=0.2.1',
-      'ping3==4.0.3'
+        'canopen==1.2.1',
+        'python-can==3.3.4',
+        'numpy==1.17.2',
+        'ingenialogger>=0.2.1',
+        'ping3==4.0.3'
     ],
-    include_package_data=True
+    extras_require={
+        "dev": [
+            "sphinx==3.5.4",
+            "sphinx-rtd-theme==1.0.0",
+            "sphinxcontrib-bibtex==2.4.1",
+            "nbsphinx==0.8.6",
+            "pytest==6.2.4",
+            "pytest-cov==2.12.1",
+            "pytest-mock==3.6.1",
+            "jinja2==3.0.3",
+            "pycodestyle==2.6.0",
+            "wheel==0.37.1",
+            "m2r2==0.3.2"
+        ],
+    },
 )

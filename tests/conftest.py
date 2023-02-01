@@ -3,7 +3,6 @@ import pytest
 
 from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
 from ingenialink.ethernet.network import EthernetNetwork
-from ingenialink.ethercat.network import EthercatNetwork
 from tests.virtual_drive import VirtualDrive
 
 ALLOW_PROTOCOLS = ["no_connection", "ethernet", "ethercat", "canopen"]
@@ -69,15 +68,6 @@ def connect_ethernet(protocol_contents):
     return servo, net
 
 
-def connect_ethercat(protocol_contents):
-    net = EthercatNetwork(protocol_contents["ifname"])
-
-    servo = net.connect_to_slave(
-        target=protocol_contents["slave"], dictionary=protocol_contents["dictionary"]
-    )
-    return servo, net
-
-
 @pytest.fixture
 def connect_to_slave(pytestconfig, read_config):
     servo = None
@@ -86,8 +76,6 @@ def connect_to_slave(pytestconfig, read_config):
     protocol_contents = read_config[protocol]
     if protocol == "ethernet":
         servo, net = connect_ethernet(protocol_contents)
-    elif protocol == "ethercat":
-        servo, net = connect_ethercat(protocol_contents)
     elif protocol == "canopen":
         servo, net = connect_canopen(protocol_contents)
 

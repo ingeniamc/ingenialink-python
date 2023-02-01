@@ -1,8 +1,4 @@
-import sys
-import re
-
-from ._ingenialink import lib
-from .register_deprecated import REG_DTYPE
+from ingenialink.register import REG_DTYPE
 
 
 DIST_FRAME_SIZE_BYTES = 128
@@ -48,19 +44,3 @@ data_type_size = {
 CAN_MAX_WRITE_SIZE = 512
 ETH_MAX_WRITE_SIZE = 512
 ETH_BUF_SIZE = 1024
-
-
-def _load():
-    """Load IngeniaLink constants to this module."""
-    module = sys.modules[__name__]
-    const_pattern = re.compile("ILK_(.*)")
-
-    # add all constants to the module dictionary
-    for k in lib.__dict__:
-        m = const_pattern.match(k)
-        if m:
-            name = m.groups()[0]
-            module.__dict__[name] = lib.__dict__[k]
-
-
-_load()

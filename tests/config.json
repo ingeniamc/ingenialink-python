@@ -11,14 +11,7 @@
   ],
   "ethercat": [
   {
-    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_eoe_2.4.0.xdf",
-    "slave": 2,
     "ifname": "\\Device\\NPF_{DC30BAAA-CD3D-485E-9E8E-FB3953BAE5A2}",
-    "eoe_comm": true,
-    "boot_in_app": false,
-    "save_config_file": "ethercat-config.xcf",
-    "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_cap_ecat/1.1.0/config.xml",
-    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_2.4.0.lfu"
   }
   ],
   "canopen": [
