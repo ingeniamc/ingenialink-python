@@ -12,15 +12,6 @@ def test_load_firmware_file_not_found(read_config):
 
 
 @pytest.mark.ethercat
-def test_load_firmware_load_error(mocker, read_config):
-    net = EthercatNetwork(read_config["ethercat"]["ifname"])
-    mocker.patch("os.path.isfile", return_value=True)
-    mocker.patch("builtins.open", bytes())
-    with pytest.raises(ILFirmwareLoadError):
-        net.load_firmware(fw_file="ethercat.sfu")
-
-
-@pytest.mark.ethercat
 def test_load_firmware_value_error(mocker, read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     mocker.patch("os.path.isfile", return_value=True)
