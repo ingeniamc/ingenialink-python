@@ -70,12 +70,12 @@ def connect_ethernet(protocol_contents):
 
 
 def connect_eoe(protocol_contents):
-    net = EoENetwork(protocol_contents['ifname'])
+    net = EoENetwork(protocol_contents["ifname"])
 
     servo = net.connect_to_slave(
-        slave_id=protocol_contents['slave'],
-        ip_address=protocol_contents['ip'],
-        dictionary=protocol_contents['dictionary']
+        slave_id=protocol_contents["slave"],
+        ip_address=protocol_contents["ip"],
+        dictionary=protocol_contents["dictionary"],
     )
     return servo, net
 
@@ -90,7 +90,7 @@ def connect_to_slave(pytestconfig, read_config):
         servo, net = connect_ethernet(protocol_contents)
     elif protocol == "canopen":
         servo, net = connect_canopen(protocol_contents)
-    elif protocol == 'eoe':
+    elif protocol == "eoe":
         servo, net = connect_eoe(protocol_contents)
 
     yield servo, net

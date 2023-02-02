@@ -79,7 +79,6 @@ def wait_for_register_value(servo, subnode, register, expected_value):
     num_tries = 0
     r = -2
     while num_tries < POLLING_MAX_TRIES:
-
         value = None
         try:
             value = servo.read(register, subnode=subnode)

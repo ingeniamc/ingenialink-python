@@ -194,7 +194,7 @@ class VirtualMonitoring(VirtualMonDistBase):
                 size = self.channels[channel]["size"]
                 sample_bytes = convert_dtype_to_bytes(value, self.channels[channel]["dtype"])
                 if len(sample_bytes) < size:
-                    sample_bytes += (b"0") * (size - len(sample_bytes))
+                    sample_bytes += b"0" * (size - len(sample_bytes))
                 bytes += sample_bytes
         self.drive.set_value_by_id(0, "MON_DATA", bytes)
 

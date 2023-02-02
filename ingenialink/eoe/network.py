@@ -172,7 +172,7 @@ class EoENetwork(EthernetNetwork):
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
             raise ILError(
-                "Failed to initialize the EoE service. " "Please verify it's running."
+                "Failed to initialize the EoE service. Please verify it's running."
             ) from e
 
     def _configure_slave(self, slave_id, ip_address):
@@ -193,7 +193,7 @@ class EoENetwork(EthernetNetwork):
         try:
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
-            raise ILError(f"Failed to configure slave {slave_id} with IP " f"{ip_address}.") from e
+            raise ILError(f"Failed to configure slave {slave_id} with IP {ip_address}.") from e
 
     def _start_eoe_service(self):
         """Starts the EoE service
