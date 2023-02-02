@@ -48,7 +48,7 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            venv\\Scripts\\python.exe -m black -l 100 --check ingenialink tests
+                            venv\\Scripts\\python.exe -m black --check ingenialink tests
                         """
                     }
                 }
