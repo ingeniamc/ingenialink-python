@@ -4,6 +4,9 @@
 ### Changed
 - Remove binding to the [ingenialink](https://github.com/ingeniamc/ingenialink) C library.
 
+###Fixed
+- NACK error code formatting.
+
 ## [6.5.1] - 2023-01-17
 ### Fixed
 - Truncate received data in ethernet by the expected data length.
