@@ -53,11 +53,11 @@ class MCB:
             head_size = struct.pack("<H", size)
             head_size = head_size + bytes([0] * (self.EXTENDED_MESSAGE_SIZE - len(head_size)))
             ret = (
-                    node_head
-                    + head
-                    + head_size
-                    + struct.pack("<H", crc_hqx(node_head + head + head_size, 0))
-                    + data
+                node_head
+                + head
+                + head_size
+                + struct.pack("<H", crc_hqx(node_head + head + head_size, 0))
+                + data
             )
         else:
             head = struct.pack("<H", cmd)
@@ -135,8 +135,8 @@ class MCB:
         recv_add, _, cmd, data = cls.read_mcb_frame(frame)
 
         if cmd != MCB_CMD_ACK:
-            err = frame[cls.DATA_START_BYTE: cls.DATA_END_BYTE]
-            err_code_little = int.from_bytes(err, byteorder='little')
+            err = frame[cls.DATA_START_BYTE : cls.DATA_END_BYTE]
+            err_code_little = int.from_bytes(err, byteorder="little")
             err_code_big = err_code_little.to_bytes(cls.ERR_CODE_SIZE, byteorder="big")
             raise ILNACKError(f"Communications error (NACK -> 0x{err_code_big.hex().upper()})")
         if expected_address != recv_add:
@@ -164,12 +164,12 @@ class MCB:
             ILWrongCRCError: If the received CRC code does not match
             the calculated CRC code.
         """
-        recv_crc_bytes = frame[cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE: cls.MCB_FRAME_SIZE]
+        recv_crc_bytes = frame[cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE : cls.MCB_FRAME_SIZE]
         recv_crc = int.from_bytes(recv_crc_bytes, "little")
         calc_crc = crc_hqx(frame[: cls.MCB_FRAME_SIZE - cls.MCB_CRC_SIZE], 0)
         if recv_crc != calc_crc:
             raise ILWrongCRCError
-        header = frame[cls.MCB_HEADER_L_SIZE: cls.MCB_HEADER_SIZE]
+        header = frame[cls.MCB_HEADER_L_SIZE : cls.MCB_HEADER_SIZE]
         recv_add = (int.from_bytes(header, "little")) >> 4
 
         header_l = frame[cls.MCB_HEADER_L_SIZE]
