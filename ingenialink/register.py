@@ -15,7 +15,7 @@ dtypes_ranges = {
     REG_DTYPE.S32: {"max": 2147483647, "min": -2147483647 - 1},
     REG_DTYPE.U64: {"max": 18446744073709551615, "min": 0},
     REG_DTYPE.S64: {"max": 9223372036854775807, "min": 9223372036854775807 - 1},
-    REG_DTYPE.FLOAT: {"max": 3.4E38, "min": -3.4E38},
+    REG_DTYPE.FLOAT: {"max": 3.4e38, "min": -3.4e38},
 }
 
 
