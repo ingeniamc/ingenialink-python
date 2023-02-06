@@ -86,20 +86,18 @@ pipeline {
                         checkout scm
                     }
                 }
-                stage('Update drives FW') {
-                    steps {
-                        bat '''
-                            python -m venv ingeniamotion
-                            ingeniamotion\\Scripts\\python.exe -m pip install ingeniamotion ping3
-                            ingeniamotion\\Scripts\\python.exe tests\\resources\\Scripts\\load_FWs.py ethercat
-                        '''
-                    }
-                }
                 stage('Install deps') {
                     steps {
                         bat '''
                             python -m venv venv
                             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                        '''
+                    }
+                }
+                stage('Update drives FW') {
+                    steps {
+                        bat '''
+                             venv\\Scripts\\python.exe -m tests.resources.Scripts.load_FWs ethercat
                         '''
                     }
                 }
@@ -144,20 +142,18 @@ pipeline {
                         checkout scm
                     }
                 }
-                stage('Update drives FW') {
-                    steps {
-                        bat '''
-                            python -m venv ingeniamotion
-                            ingeniamotion\\Scripts\\python.exe -m pip install ingeniamotion ping3
-                            ingeniamotion\\Scripts\\python.exe tests\\resources\\Scripts\\load_FWs.py canopen
-                        '''
-                    }
-                }
                 stage('Install deps') {
                     steps {
                         bat '''
                             python -m venv venv
                             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                        '''
+                    }
+                }
+                stage('Update drives FW') {
+                    steps {
+                        bat '''
+                             venv\\Scripts\\python.exe -m tests.resources.Scripts.load_FWs canopen
                         '''
                     }
                 }
