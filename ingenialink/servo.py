@@ -11,6 +11,7 @@ from ingenialink.exceptions import (
     ILError,
     ILStateError,
     ILAccessError,
+    ILTimeoutError,
 )
 from ingenialink.register import Register
 from ingenialink.utils._utils import (
@@ -373,8 +374,6 @@ class Servo:
              ILError: Failed to enable PDS.
 
         """
-        r = 0
-
         # Try fault reset if faulty
         if self.get_state(subnode) in [
             SERVO_STATE.FAULT,
@@ -400,12 +399,7 @@ class Servo:
             self.write(self.CONTROL_WORD_REGISTERS, cmd, subnode=subnode)
 
             # Wait for state change
-            r = self.state_wait_change(state, timeout, subnode=subnode)
-
-            # Read the current status word
-            status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
-            state = self.status_word_decode(status_word)
-            self._set_state(state, subnode)
+            self.state_wait_change(state, timeout, subnode=subnode)
 
     def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Disable PDS.
@@ -419,8 +413,6 @@ class Servo:
             ILError: Failed to disable PDS.
 
         """
-        r = 0
-
         while self.get_state(subnode) != SERVO_STATE.DISABLED:
             state = self.get_state(subnode)
 
@@ -434,11 +426,8 @@ class Servo:
                 # Check state and command action to reach disabled
                 self.write(self.CONTROL_WORD_REGISTERS, constants.IL_MC_PDS_CMD_DV, subnode=subnode)
 
-                # Wait until status word changes
-                r = self.status_word_wait_change(status_word, timeout, subnode=subnode)
-                status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
-                state = self.status_word_decode(status_word)
-                self._set_state(state, subnode)
+                # Wait until state changes
+                self.state_wait_change(state, timeout, subnode=subnode)
 
     def fault_reset(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Executes a fault reset on the drive.
@@ -452,7 +441,6 @@ class Servo:
             ILError: Failed to fault reset.
 
         """
-        r = 0
         state = self.get_state(subnode=subnode)
         if state in [
             SERVO_STATE.FAULT,
@@ -462,11 +450,7 @@ class Servo:
             self.write(self.CONTROL_WORD_REGISTERS, 0, subnode=subnode)
             self.write(self.CONTROL_WORD_REGISTERS, constants.IL_MC_CW_FR, subnode=subnode)
             # Wait until status word changes
-            r = self.state_wait_change(state, timeout, subnode=subnode)
-
-            status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
-            state = self.status_word_decode(status_word)
-        self._set_state(state, subnode)
+            self.state_wait_change(state, timeout, subnode=subnode)
 
     def status_word_wait_change(self, status_word, timeout, subnode=1):
         """Waits for a status word change.
@@ -476,11 +460,10 @@ class Servo:
             timeout (int): Maximum value to wait for the change.
             subnode (int): Subnode of the drive.
 
-        Returns:
-            int: Error code.
+        Raises:
+            ILTimeoutError: If status word does not change in the given time.
 
         """
-        r = 0
         start_time = int(round(time.time() * 1000))
         actual_status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
 
@@ -488,9 +471,8 @@ class Servo:
             current_time = int(round(time.time() * 1000))
             time_diff = current_time - start_time
             if time_diff > timeout:
-                return OPERATION_TIME_OUT
+                raise ILTimeoutError
             actual_status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
-        return r
 
     def state_wait_change(self, state, timeout, subnode=1):
         """Waits for a state change.
@@ -500,11 +482,10 @@ class Servo:
             timeout (int): Maximum value to wait for the change.
             subnode (int): Subnode of the drive.
 
-        Returns:
-            int: Error code.
+        Raises:
+            ILTimeoutError: If state does not change in the given time.
 
         """
-        r = 0
         start_time = int(round(time.time() * 1000))
         actual_state = self.get_state(subnode)
 
@@ -512,9 +493,8 @@ class Servo:
             current_time = int(round(time.time() * 1000))
             time_diff = current_time - start_time
             if time_diff > timeout:
-                return OPERATION_TIME_OUT
+                raise ILTimeoutError
             actual_state = self.get_state(subnode)
-        return r
 
     def get_state(self, subnode=1):
         """SERVO_STATE: Current drive state."""
