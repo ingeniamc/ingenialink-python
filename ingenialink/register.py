@@ -65,7 +65,6 @@ class Register(ABC):
         internal_use=0,
         address_type=None,
     ):
-
         if labels is None:
             labels = {}
         if enums is None:

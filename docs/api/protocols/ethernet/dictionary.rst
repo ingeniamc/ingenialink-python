@@ -2,7 +2,7 @@
 Dictionary
 ==========
 
-.. automodule:: ingenialink.ipb.dictionary
+.. automodule:: ingenialink.ethernet.dictionary
     :members:
     :inherited-members:
     :member-order: groupwise

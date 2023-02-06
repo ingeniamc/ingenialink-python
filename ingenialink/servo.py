@@ -15,8 +15,6 @@ from ingenialink.exceptions import (
 from ingenialink.register import Register
 from ingenialink.utils._utils import (
     get_drive_identification,
-    cleanup_register,
-    raise_err,
     convert_bytes_to_dtype,
     convert_dtype_to_bytes,
 )
@@ -404,10 +402,10 @@ class Servo:
             # Wait for state change
             r = self.state_wait_change(state, timeout, subnode=subnode)
 
-            if r < 0:
-                raise_err(r)
-
-        raise_err(r)
+            # Read the current status word
+            status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
+            state = self.status_word_decode(status_word)
+            self._set_state(state, subnode)
 
     def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Disable PDS.
@@ -436,12 +434,11 @@ class Servo:
                 # Check state and command action to reach disabled
                 self.write(self.CONTROL_WORD_REGISTERS, constants.IL_MC_PDS_CMD_DV, subnode=subnode)
 
-                # Wait until state changes
-                r = self.state_wait_change(state, timeout, subnode=subnode)
-                if r < 0:
-                    raise_err(r)
-
-        raise_err(r)
+                # Wait until status word changes
+                r = self.status_word_wait_change(status_word, timeout, subnode=subnode)
+                status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
+                state = self.status_word_decode(status_word)
+                self._set_state(state, subnode)
 
     def fault_reset(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
         """Executes a fault reset on the drive.
@@ -466,7 +463,10 @@ class Servo:
             self.write(self.CONTROL_WORD_REGISTERS, constants.IL_MC_CW_FR, subnode=subnode)
             # Wait until status word changes
             r = self.state_wait_change(state, timeout, subnode=subnode)
-        raise_err(r)
+
+            status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
+            state = self.status_word_decode(status_word)
+        self._set_state(state, subnode)
 
     def status_word_wait_change(self, status_word, timeout, subnode=1):
         """Waits for a status word change.

@@ -52,7 +52,6 @@ class CanopenRegister(Register):
         internal_use=0,
         address_type=None,
     ):
-
         super().__init__(
             dtype,
             access,

@@ -3,8 +3,6 @@ def ECAT_NODE = "ecat-test"
 def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
-def PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9"]
-def style_check = false
 
 
 pipeline {
@@ -14,7 +12,7 @@ pipeline {
             agent {
                 docker {
                     label SW_NODE
-                    image 'ingeniacontainers.azurecr.io/ingenialink-builder'
+                    image 'ingeniacontainers.azurecr.io/win-python-builder:1.0'
                 }
             }
             stages {
@@ -28,28 +26,29 @@ pipeline {
                         """
                     }
                  }
+                stage('Install deps') {
+                    steps {
+                        bat '''
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            python -m venv venv
+                            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                            venv\\Scripts\\python.exe -m pip install -e .
+                        '''
+                    }
+                }
                 stage('Build wheels') {
                     steps {
-                        script {
-                            PYTHON_VERSIONS.each { version ->
-                                stage("Build Python ${version} wheel") {
-                                    bat """
-                                        cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                                        py -${version} -m venv py${version}
-                                        py${version}\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
-                                        py${version}\\Scripts\\python.exe -m pip install -e .
-                                        py${version}\\Scripts\\python.exe setup.py build sdist bdist_wheel
-                                    """
-                                }
-                            }
-                        }
+                        bat '''
+                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                             venv\\Scripts\\python.exe setup.py build sdist bdist_wheel
+                        '''
                     }
                 }
                 stage('Check formatting') {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            py${PYTHON_VERSIONS[-1]}\\Scripts\\python.exe -m black -l 100 --check ingenialink tests
+                            venv\\Scripts\\python.exe -m black --check ingenialink tests
                         """
                     }
                 }
@@ -57,7 +56,7 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            py${PYTHON_VERSIONS[-1]}\\Scripts\\python.exe -m sphinx -b html docs _docs
+                            venv\\Scripts\\python.exe -m sphinx -b html docs _docs
                         """
                     }
                 }
@@ -68,10 +67,8 @@ pipeline {
                             "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
                             XCOPY dist ${env.WORKSPACE}\\dist /i
                             XCOPY docs.zip ${env.WORKSPACE}
-                            XCOPY ingenialink\\*.pyd ${env.WORKSPACE}\\ingenialink
                         """
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
-                        stash includes: 'ingenialink\\*.pyd', name: 'pyds'
                     }
                 }
             }
@@ -91,7 +88,6 @@ pipeline {
                 }
                 stage('Install deps') {
                     steps {
-                        unstash 'pyds'
                         bat '''
                             python -m venv venv
                             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
@@ -148,7 +144,6 @@ pipeline {
                 }
                 stage('Install deps') {
                     steps {
-                        unstash 'pyds'
                         bat '''
                             python -m venv venv
                             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt

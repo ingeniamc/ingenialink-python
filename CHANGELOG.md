@@ -4,6 +4,7 @@
 ### Changed
 - Update the load_FWs script to only use ingenialink.
 - Improve the load_FWs script when using canopen protocol.
+- Remove binding to the [ingenialink](https://github.com/ingeniamc/ingenialink) C library.
 
 ## [6.5.1] - 2023-01-17
 ### Fixed
