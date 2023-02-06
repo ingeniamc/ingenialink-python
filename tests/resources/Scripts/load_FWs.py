@@ -98,14 +98,17 @@ def load_can(drive_conf):
             net, servo = connect_can(drive_conf)
             # Reaching this point means we are connected
             detected = True
-            logger.info("New FW detected after: {:.1f} s".format(time.perf_counter() - ini_time))
+            fw_version = servo.info["firmware_version"]
+            logger.info(
+                f"New FW detected ({fw_version}) after: {time.perf_counter() - ini_time:.1f} s"
+            )
             net.disconnect_from_slave(servo)
         except Exception as e:
             # When cannot connect
             time.sleep(SLEEP_TIME_NEW_FW_DETECT)
 
     if not detected:
-        raise Exception("New FW not detected")
+        raise Exception("Could not connect to the drive. FW loading might have failed.")
 
 
 def load_ecat(drive_conf):
