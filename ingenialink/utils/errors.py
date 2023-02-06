@@ -1,10 +1,4 @@
-from .._ingenialink import ffi, lib
 from enum import IntEnum
-
-
-def err_ipb_last():
-    """Get IPB last last occurred error."""
-    return int(ffi.cast("int", lib.ilerr_ipb_last()))
 
 
 class CONFIGURATION_ERRORS(IntEnum):

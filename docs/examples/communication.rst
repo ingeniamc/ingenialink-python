@@ -6,11 +6,6 @@ Slave connection through CANopen Example
 
 .. literalinclude:: ../../examples/canopen/can_connection.py
 
-Slave connection through EtherCAT Example
------------------------------------------
-
-.. literalinclude:: ../../examples/ethercat/ecat_connection.py
-
 Slave connection through Ethernet Example
 -----------------------------------------
 
