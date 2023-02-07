@@ -151,7 +151,7 @@ class EoENetwork(EthernetNetwork):
             raise ILTimeoutError("Timeout while receiving response.") from e
         except socket.error as e:
             raise ILIOError("Error receiving response.") from e
-        return int.from_bytes(response, "big")
+        return int.from_bytes(response, byteorder="big", signed=True)
 
     def _connect_to_eoe_service(self):
         """Connect to the EoE service."""
@@ -163,17 +163,22 @@ class EoENetwork(EthernetNetwork):
 
         Raises:
             ILError: If the EoE service fails to initialize.
+            ILError: If there is no slave connected to the network interface.
 
         """
         self._connect_to_eoe_service()
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.INIT.value, data=data.encode("utf-8"))
         try:
-            self._send_command(msg)
+            r = self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
             raise ILError(
                 "Failed to initialize the EoE service. Please verify it's running."
             ) from e
+        if r < 0:
+            raise ILError(
+                f"No slaves connected to interface {self.ifname}"
+            )
 
     def _configure_slave(self, slave_id, ip_address):
         """
