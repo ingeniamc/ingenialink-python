@@ -162,8 +162,8 @@ class EoENetwork(EthernetNetwork):
         the packet forwarder.
 
         Raises:
-            ILError: If the EoE service fails to initialize.
-            ILError: If there is no slave connected to the network interface.
+            ILError: If the EoE service is not running.
+            ILError: If the EoE service cannot be started on the network interface.
 
         """
         self._connect_to_eoe_service()
@@ -177,7 +177,7 @@ class EoENetwork(EthernetNetwork):
             ) from e
         if r < 0:
             raise ILError(
-                f"No slaves connected to interface {self.ifname}"
+                f"Failed to initialize the EoE service using interface {self.ifname}."
             )
 
     def _configure_slave(self, slave_id, ip_address):
