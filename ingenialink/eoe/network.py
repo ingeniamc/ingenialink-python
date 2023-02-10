@@ -61,8 +61,8 @@ class EoENetwork(EthernetNetwork):
             EthernetServo: Instance of the servo connected.
 
         """
-        self._configure_slave(slave_id, ip_address)
         self._initialize_eoe_service()
+        self._configure_slave(slave_id, ip_address)
         self._start_eoe_service()
         return super().connect_to_slave(
             ip_address,
