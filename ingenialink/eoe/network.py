@@ -222,9 +222,9 @@ class EoENetwork(EthernetNetwork):
            ILError: If the EoE service fails to stop.
 
         """
-        self._eoe_service_started = True
+        self._eoe_service_started = False
         msg = self._build_eoe_command_msg(EoECommand.STOP.value)
         try:
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
-            raise ILError("Failed to start the EoE service.") from e
+            raise ILError("Failed to stop the EoE service.") from e
