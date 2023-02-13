@@ -31,7 +31,7 @@ class EoENetwork(EthernetNetwork):
         self.ifname = ifname
         self._eoe_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._eoe_socket.settimeout(connection_timeout)
-        self._initialize_eoe_service()
+        self._connect_to_eoe_service()
         self._eoe_service_started = False
 
     def connect_to_slave(
@@ -61,9 +61,9 @@ class EoENetwork(EthernetNetwork):
             EthernetServo: Instance of the servo connected.
 
         """
+        self._initialize_eoe_service()
         self._configure_slave(slave_id, ip_address)
-        if not self._eoe_service_started:
-            self._start_eoe_service()
+        self._start_eoe_service()
         return super().connect_to_slave(
             ip_address,
             dictionary,
@@ -75,8 +75,8 @@ class EoENetwork(EthernetNetwork):
 
     def disconnect_from_slave(self, servo):
         super().disconnect_from_slave(servo)
-        # TODO: stop the EoE service once it's implemented
         if len(self.servos) == 0:
+            self._stop_eoe_service()
             self._eoe_socket.shutdown(socket.SHUT_RDWR)
             self._eoe_socket.close()
 
@@ -95,7 +95,9 @@ class EoENetwork(EthernetNetwork):
         msg = self._build_eoe_command_msg(EoECommand.SCAN.value, data=data.encode("utf-8"))
         r = self._send_command(msg)
         if r < 0:
-            raise ILError("Failed to scan slaves")
+            raise ILError(
+                f"Failed to initialize the EoE service using interface {self.ifname}."
+            )
         return r
 
     @staticmethod
@@ -166,7 +168,6 @@ class EoENetwork(EthernetNetwork):
             ILError: If the EoE service cannot be started on the network interface.
 
         """
-        self._connect_to_eoe_service()
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.INIT.value, data=data.encode("utf-8"))
         try:
@@ -213,3 +214,17 @@ class EoENetwork(EthernetNetwork):
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
             raise ILError("Failed to start the EoE service.") from e
+
+    def _stop_eoe_service(self):
+        """Stops the EoE service
+
+        Raises:
+           ILError: If the EoE service fails to stop.
+
+        """
+        self._eoe_service_started = False
+        msg = self._build_eoe_command_msg(EoECommand.STOP.value)
+        try:
+            self._send_command(msg)
+        except (ILIOError, ILTimeoutError) as e:
+            raise ILError("Failed to stop the EoE service.") from e
