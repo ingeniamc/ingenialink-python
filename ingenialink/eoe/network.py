@@ -93,7 +93,13 @@ class EoENetwork(EthernetNetwork):
         """
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.SCAN.value, data=data.encode("utf-8"))
-        r = self._send_command(msg)
+        try:
+            r = self._send_command(msg)
+        except (ILIOError, ILTimeoutError) as e:
+            raise ILError(
+                "Failed to perform a network scan. Please verify the "
+                "EoE service is running."
+            ) from e
         if r < 0:
             raise ILError(
                 f"Failed to initialize the EoE service using interface {self.ifname}."
