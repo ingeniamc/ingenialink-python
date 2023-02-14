@@ -97,13 +97,10 @@ class EoENetwork(EthernetNetwork):
             r = self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
             raise ILError(
-                "Failed to perform a network scan. Please verify the "
-                "EoE service is running."
+                "Failed to perform a network scan. Please verify the EoE service is running."
             ) from e
         if r < 0:
-            raise ILError(
-                f"Failed to initialize the EoE service using interface {self.ifname}."
-            )
+            raise ILError(f"Failed to initialize the EoE service using interface {self.ifname}.")
         return list(range(1, r + 1))
 
     @staticmethod
@@ -183,9 +180,7 @@ class EoENetwork(EthernetNetwork):
                 "Failed to initialize the EoE service. Please verify it's running."
             ) from e
         if r < 0:
-            raise ILError(
-                f"Failed to initialize the EoE service using interface {self.ifname}."
-            )
+            raise ILError(f"Failed to initialize the EoE service using interface {self.ifname}.")
 
     def _configure_slave(self, slave_id, ip_address):
         """
