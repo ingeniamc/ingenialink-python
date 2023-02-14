@@ -85,7 +85,7 @@ class EoENetwork(EthernetNetwork):
         Scan slaves connected to a given network adapter.
 
         Returns:
-            int: Number of detected slaves.
+            list: List containing the ids of the connected slaves.
 
         Raises:
             ILError: If the EoE service fails to perform a scan.
@@ -93,12 +93,15 @@ class EoENetwork(EthernetNetwork):
         """
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.SCAN.value, data=data.encode("utf-8"))
-        r = self._send_command(msg)
-        if r < 0:
+        try:
+            r = self._send_command(msg)
+        except (ILIOError, ILTimeoutError) as e:
             raise ILError(
-                f"Failed to initialize the EoE service using interface {self.ifname}."
-            )
-        return r
+                "Failed to perform a network scan. Please verify the EoE service is running."
+            ) from e
+        if r < 0:
+            raise ILError(f"Failed to initialize the EoE service using interface {self.ifname}.")
+        return list(range(1, r + 1))
 
     @staticmethod
     def _build_eoe_command_msg(cmd, node=1, data=None):
@@ -177,9 +180,7 @@ class EoENetwork(EthernetNetwork):
                 "Failed to initialize the EoE service. Please verify it's running."
             ) from e
         if r < 0:
-            raise ILError(
-                f"Failed to initialize the EoE service using interface {self.ifname}."
-            )
+            raise ILError(f"Failed to initialize the EoE service using interface {self.ifname}.")
 
     def _configure_slave(self, slave_id, ip_address):
         """
