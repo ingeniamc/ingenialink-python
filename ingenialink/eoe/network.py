@@ -85,7 +85,7 @@ class EoENetwork(EthernetNetwork):
         Scan slaves connected to a given network adapter.
 
         Returns:
-            int: Number of detected slaves.
+            list: List containing the ids of the connected slaves.
 
         Raises:
             ILError: If the EoE service fails to perform a scan.
@@ -98,7 +98,7 @@ class EoENetwork(EthernetNetwork):
             raise ILError(
                 f"Failed to initialize the EoE service using interface {self.ifname}."
             )
-        return r
+        return list(range(1, r + 1))
 
     @staticmethod
     def _build_eoe_command_msg(cmd, node=1, data=None):
