@@ -1,6 +1,8 @@
 import os
+import time
 
 from pysoem import Master, INIT_STATE, BOOT_STATE
+import ingenialogger
 
 from ingenialink.network import NET_PROT
 from ingenialink.constants import (
@@ -10,9 +12,12 @@ from ingenialink.constants import (
     FORCE_COCO_BOOT_IDX,
     FORCE_COCO_BOOT_SUBIDX,
     FOE_WRITE_PASSWORD,
+    FOE_WRITE_TIMEOUT,
 )
 from ingenialink.enums.ethercat import EC_STATE
-from ingenialink.exceptions import ILFirmwareLoadError, ILStateError
+from ingenialink.exceptions import ILFirmwareLoadError
+
+logger = ingenialogger.get_logger(__name__)
 
 
 class EthercatNetwork:
@@ -60,10 +65,7 @@ class EthercatNetwork:
                     f"Firmware file should have extension {FILE_EXT_SFU} or {FILE_EXT_LFU}."
                 )
             boot_in_app = fw_file.endswith(FILE_EXT_SFU)
-        self._ecat_master = Master()
-        self._ecat_master.open(self.interface_name)
-        if self._ecat_master.config_init() < 0:
-            raise ILFirmwareLoadError("Firmware could not be loaded. No slave detected.")
+        self._init_ecat_master()
         slave = self._ecat_master.slaves[slave_id - 1]
         if not boot_in_app:
             slave.sdo_write(
@@ -74,11 +76,16 @@ class EthercatNetwork:
             )
             # COMOCO drives need to be forced two times into bootstrap state
             self._set_slave_state_to_boot()
+            # Wait for drive to reset
+            time.sleep(5)
+            self._reset_ecat_master()
+            slave = self._ecat_master.slaves[slave_id - 1]
         self._set_slave_state_to_boot()
         with open(fw_file, "rb") as file:
             file_data = file.read()
             file_name = os.path.basename(fw_file)
-            r = slave.foe_write(file_name, FOE_WRITE_PASSWORD, file_data)
+            r = slave.foe_write(file_name, FOE_WRITE_PASSWORD,
+                                file_data, FOE_WRITE_TIMEOUT)
         self._write_slave_state(INIT_STATE)
         self._ecat_master.close()
         if r < 0:
@@ -110,15 +117,32 @@ class EthercatNetwork:
         Args:
             state (int): Requested state.
 
-        Raises:
-            ILStateError: If slave does not reach requested state.
-
         """
         self._ecat_master.read_state()
-        if self._ecat_master.state_check(state) != state:
-            raise ILStateError(
-                f"Firmware could not be loaded. Slave could not enter {EC_STATE(state).name} state."
-            )
+        if self._ecat_master.state_check(state, timeout=50_000) != state:
+            logger.error(f"Slave could not reach requested state: {EC_STATE(state).name}.")
+
+    def _init_ecat_master(self):
+        """
+        Initialize EtherCAT master.
+
+        Raises:
+            ILFirmwareLoadError: If no slaves are detected.
+
+        """
+        self._ecat_master = Master()
+        self._ecat_master.open(self.interface_name)
+        if self._ecat_master.config_init() < 0:
+            raise ILFirmwareLoadError("Firmware could not be loaded. No slave detected.")
+
+    def _close_ecat_master(self):
+        """Close EtherCAT master"""
+        self._ecat_master.close()
+
+    def _reset_ecat_master(self):
+        """Reset EtherCAT master"""
+        self._close_ecat_master()
+        self._init_ecat_master()
 
     @property
     def protocol(self):
