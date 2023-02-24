@@ -3,6 +3,8 @@ import pytest
 from ingenialink.register import Register
 from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
 from ingenialink.exceptions import ILValueError, ILAccessError
+from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.canopen.register import CanopenRegister
 
 
 @pytest.mark.no_connection
@@ -140,3 +142,35 @@ def test_register_range():
     dtype = REG_DTYPE.U8
     register = Register(dtype, access)
     assert register.range == (dtypes_ranges[dtype]["min"], dtypes_ranges[dtype]["max"])
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize(
+    "subnode, address, mapped_address_eth, mapped_address_can",
+    [
+        (1, 0x0010, 0x0010, 0x0010),
+        (2, 0x0020, 0x0820, 0x0020),
+        (3, 0x0030, 0x1030, 0x0030),
+    ],
+)
+def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_address_can):
+    ethernet_param_dict = {
+        "subnode": subnode,
+        "address": address,
+        "dtype": REG_DTYPE.U16,
+        "access": REG_ACCESS.RW,
+    }
+    canopen_param_dict = {
+        "subnode": subnode,
+        "idx": address,
+        "subidx": 0x00,
+        "dtype": REG_DTYPE.U16,
+        "access": REG_ACCESS.RW,
+        "identifier": "",
+        "units": "",
+        "cyclic": "CONFIG",
+    }
+    register = EthernetRegister(**ethernet_param_dict)
+    assert mapped_address_eth == register.mapped_address
+    register = CanopenRegister(**canopen_param_dict)
+    assert mapped_address_can == register.mapped_address
