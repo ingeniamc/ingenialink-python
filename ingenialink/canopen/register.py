@@ -82,3 +82,8 @@ class CanopenRegister(Register):
     def subidx(self):
         """int: Register subindex."""
         return self.__subidx
+
+    @property
+    def mapped_address(self):
+        """int: Register mapped address used for monitoring/disturbance."""
+        return self.idx
