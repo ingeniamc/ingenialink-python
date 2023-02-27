@@ -27,6 +27,7 @@ class EthercatNetwork:
         interface_name (str): Interface name to be targeted.
 
     """
+    STATE_CHECK_TIMEOUT = 50_000
 
     def __init__(self, interface_name):
         self.interface_name = interface_name
@@ -119,7 +120,7 @@ class EthercatNetwork:
 
         """
         self._ecat_master.read_state()
-        if self._ecat_master.state_check(state, timeout=50_000) != state:
+        if self._ecat_master.state_check(state, timeout=self.STATE_CHECK_TIMEOUT) != state:
             logger.error(f"Slave could not reach requested state: {EC_STATE(state).name}.")
 
     def _init_ecat_master(self):
