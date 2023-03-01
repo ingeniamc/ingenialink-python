@@ -26,6 +26,8 @@ class EoENetwork(EthernetNetwork):
 
     """
 
+    ECAT_SERVICE_NETWORK = ipaddress.ip_network("192.168.3.0/24")
+
     def __init__(self, ifname, connection_timeout=DEFAULT_ETH_CONNECTION_TIMEOUT):
         super().__init__()
         self.ifname = ifname
@@ -61,6 +63,8 @@ class EoENetwork(EthernetNetwork):
             EthernetServo: Instance of the servo connected.
 
         """
+        if ipaddress.ip_address(ip_address) not in self.ECAT_SERVICE_NETWORK:
+            raise ValueError("ip_address must be a subnetwork of 192.168.3.0/24")
         self._initialize_eoe_service()
         self._configure_slave(slave_id, ip_address)
         self._start_eoe_service()
