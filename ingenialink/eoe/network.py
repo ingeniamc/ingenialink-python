@@ -59,6 +59,11 @@ class EoENetwork(EthernetNetwork):
             net_status_listener (bool): Toggle the listener of the network
                 status, connection and disconnection.
 
+        Raises:
+            ValueError: ip_address must be a subnetwork of 192.168.3.0/24
+            ILError: If the EoE service is not running.
+            ILError: If the EoE service cannot be started on the network interface.
+
         Returns:
             EthernetServo: Instance of the servo connected.
 
