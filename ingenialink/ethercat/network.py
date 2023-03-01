@@ -27,6 +27,7 @@ class EthercatNetwork:
         interface_name (str): Interface name to be targeted.
 
     """
+
     STATE_CHECK_TIMEOUT = 50_000
 
     def __init__(self, interface_name):
@@ -85,8 +86,7 @@ class EthercatNetwork:
         with open(fw_file, "rb") as file:
             file_data = file.read()
             file_name = os.path.basename(fw_file)
-            r = slave.foe_write(file_name, FOE_WRITE_PASSWORD,
-                                file_data, FOE_WRITE_TIMEOUT)
+            r = slave.foe_write(file_name, FOE_WRITE_PASSWORD, file_data, FOE_WRITE_TIMEOUT)
         self._write_slave_state(INIT_STATE)
         self._ecat_master.close()
         if r < 0:
