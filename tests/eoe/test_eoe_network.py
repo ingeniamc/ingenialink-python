@@ -50,6 +50,18 @@ def test_eoe_connection(connect_to_slave, read_config):
 
 
 @pytest.mark.eoe
+def test_eoe_connection_wrong_ip_address(read_config):
+    protocol_contents = read_config["eoe"]
+    net = EoENetwork(protocol_contents["ifname"])
+    with pytest.raises(ValueError):
+        net.connect_to_slave(
+            slave_id=protocol_contents["slave"],
+            ip_address="192.168.2.22",
+            dictionary=protocol_contents["dictionary"],
+        )
+
+
+@pytest.mark.eoe
 def test_eoe_disconnection(connect):
     servo, net = connect
     net.disconnect_from_slave(servo)
