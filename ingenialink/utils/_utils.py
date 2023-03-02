@@ -238,6 +238,7 @@ class INT_SIZES(Enum):
 
 def convert_bytes_to_dtype(data, dtype):
     """Convert data in bytes to corresponding dtype."""
+    signed = None
     if dtype in __dtype_value:
         bytes_length, signed = __dtype_value[dtype]
         data = data[:bytes_length]
