@@ -3,6 +3,7 @@ import socket
 import time
 from enum import Enum
 from threading import Thread
+import random
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.utils.mcb import MCB
@@ -10,6 +11,7 @@ from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_by
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.ethernet.dictionary import EthernetDictionary
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
+from ingenialink.utils import constants
 
 
 class MSG_TYPE(Enum):
@@ -285,6 +287,7 @@ class VirtualDrive(Thread):
         self.__logger = []
         self.__reg_address_to_id = {}
         self.__dictionary = EthernetDictionary(dictionary_path)
+        self._init_registers()
         self._update_registers()
         self.__monitoring = VirtualMonitoring(self)
         self.__disturbance = VirtualDisturbance(self)
@@ -299,8 +302,7 @@ class VirtualDrive(Thread):
             try:
                 frame, add = self.socket.recvfrom(ETH_BUF_SIZE)
             except:
-                self.stop()
-                break
+                continue
             reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
             self.__log(add, frame, MSG_TYPE.RECEIVED)
             register = self.get_register(subnode, reg_add)
@@ -332,6 +334,17 @@ class VirtualDrive(Thread):
             self.socket.close()
         self.__stop = True
         self.__monitoring.disable()
+
+    def _init_registers(self):
+        """Initialize some relevant registers."""
+        self.set_value_by_id(0, "DRV_ID_PRODUCT_CODE_COCO", 123456)
+        self.set_value_by_id(1, "DRV_ID_PRODUCT_CODE", 123456)
+        self.set_value_by_id(0, "DRV_ID_REVISION_NUMBER_COCO", 654321)
+        self.set_value_by_id(1, "DRV_ID_REVISION_NUMBER", 654321)
+        self.set_value_by_id(0, "DRV_APP_COCO_VERSION", "0.1.0")
+        self.set_value_by_id(1, "DRV_ID_SOFTWARE_VERSION", "0.1.0")
+        self.set_value_by_id(1, "DRV_ID_SOFTWARE_VERSION", "0.1.0")
+        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_RTSO)
 
     def _update_registers(self):
         """Force storage_valid at each register and add registers that are not in the dictionary."""
@@ -428,6 +441,16 @@ class VirtualDrive(Thread):
 
     def get_value_by_id(self, subnode, id):
         """Returns a register value by its ID."""
+        register = self.__dictionary.registers(subnode)[id]
+        if not register._storage:
+            range_value = register.range
+            if not register.range[0]:
+                range_value = (1, 10)
+            value = random.uniform(*range_value)
+            if register.dtype != REG_DTYPE.FLOAT:
+                value = int(value)
+                if register.dtype == REG_DTYPE.STR:
+                    value = ""
         return self.__dictionary.registers(subnode)[id]._storage
 
     def set_value_by_id(self, subnode, id, value):
