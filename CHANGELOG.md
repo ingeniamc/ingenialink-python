@@ -5,6 +5,7 @@
 - Update the load_FWs script to only use ingenialink.
 - Improve the load_FWs script when using canopen protocol.
 - Remove binding to the [ingenialink](https://github.com/ingeniamc/ingenialink) C library.
+- Move virtual drive from tests to ingenialink.
 
 ###Fixed
 - NACK error code formatting.
