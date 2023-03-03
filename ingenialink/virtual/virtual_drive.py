@@ -1,4 +1,3 @@
-import os
 import socket
 import time
 from enum import Enum
@@ -23,7 +22,7 @@ class VirtualMonDistBase:
     """Base class to implement VirtualMonitoring and VirtualDisturbance.
 
     Args:
-        drive (EthernetServo): Servo instance.
+        drive (VirtualDrive): Virtual drive instance.
 
     """
 
@@ -97,7 +96,7 @@ class VirtualMonDistBase:
         """Decodes the register with the information of a mapped register.
 
         Args:
-            channel (int): Channel of the register to be decoded
+            channel (int): Channel of the register to be decoded.
 
         Returns:
             int: Register subnode
@@ -136,7 +135,7 @@ class VirtualMonitoring(VirtualMonDistBase):
     """Emulates monitoring at the VirtualDrive.
 
     Args:
-        drive (EthernetServo): Servo instance.
+        drive (Virtual Drive): Virtual drive instance.
 
     """
 
@@ -202,7 +201,7 @@ class VirtualMonitoring(VirtualMonDistBase):
 
     @property
     def trigger_type(self):
-        """int: Trigger type Auto(0), Force (1) or Rising or Failing (2)"""
+        """int: Trigger type Auto(0), Force (1) or Rising or Failing (2)."""
         return self.drive.get_value_by_id(0, self.TRIGGER_TYPE_REG)
 
 
@@ -210,7 +209,7 @@ class VirtualDisturbance(VirtualMonDistBase):
     """Emulates disturbance at the VirtualDrive.
 
     Args:
-        drive (EthernetServo): Servo instance.
+        drive (VirtualDrive): Virtual drive instance.
 
     """
 
@@ -373,6 +372,7 @@ class VirtualDrive(Thread):
 
     def __send(self, response, address):
         """Send a message and update log."""
+        time.sleep(0.01)  # Emulate latency of 10 ms
         self.socket.sendto(response, address)
         self.__log(address, response, MSG_TYPE.SENT)
 
