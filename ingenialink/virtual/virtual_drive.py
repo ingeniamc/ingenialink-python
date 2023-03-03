@@ -503,6 +503,7 @@ class VirtualDrive(Thread):
                 value = int(value)
                 if register.dtype == REG_DTYPE.STR:
                     value = ""
+            self.set_value_by_id(subnode, id, value)
         return self.__dictionary.registers(subnode)[id]._storage
 
     def set_value_by_id(self, subnode, id, value):
