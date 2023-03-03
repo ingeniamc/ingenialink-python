@@ -230,7 +230,11 @@ class VirtualDisturbance(VirtualMonDistBase):
         super().enable()
 
     def append_data(self, data):
-        """Append received disturbance data until the buffer is full."""
+        """Append received disturbance data until the buffer is full.
+
+        Args:
+            data (bytearray): Received data.
+        """
         if len(self.channels) == 0:
             super().map_registers()
         self.received_bytes += data
@@ -265,7 +269,7 @@ class VirtualDrive(Thread):
     """Emulates a drive by creating a UDP server that sends and receives MCB messages.
 
     Args:
-        ip (int): Server IP address.
+        ip (str): Server IP address.
         port (int): Server port number.
         dictionary_path (str): Path to the dictionary.
 
@@ -293,7 +297,7 @@ class VirtualDrive(Thread):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def run(self):
-        """Open socket and listen messages."""
+        """Open socket, listen and decode messages."""
         server_address = (self.ip, self.port)
         self.socket.bind(server_address)
         self.socket.settimeout(2)
@@ -371,13 +375,25 @@ class VirtualDrive(Thread):
             self.__reg_address_to_id[reg.subnode][reg.address] = id
 
     def __send(self, response, address):
-        """Send a message and update log."""
+        """Send a message and update log.
+
+        Args:
+            response (bytes): Message to be sent.
+            address (tuple): IP address and port.
+        """
         time.sleep(0.01)  # Emulate latency of 10 ms
         self.socket.sendto(response, address)
         self.__log(address, response, MSG_TYPE.SENT)
 
     def _response_monitoring_data(self, data):
-        """Creates a response for monitoring data."""
+        """Creates a response for monitoring data.
+
+        Args:
+            data (bytes): Data to be sent.
+
+        Returns:
+            bytes: MCB frame.
+        """
         sent_cmd = self.ACK_CMD
         reg_add = self.id_to_address(0, "MON_DATA")
         limit = min(len(data), MONITORING_BUFFER_SIZE)
@@ -388,7 +404,13 @@ class VirtualDrive(Thread):
         return response
 
     def __log(self, ip_port, message, msg_type):
-        """Updates log."""
+        """Updates log.
+
+        Args:
+            ip_port (tuple): IP address and port.
+            message (bytes): Received or sent message.
+            msg_type (MSG_TYPE): Sent or Received.
+        """
         self.__logger.append(
             {
                 "timestamp": time.time(),
@@ -408,7 +430,13 @@ class VirtualDrive(Thread):
         self.__logger = []
 
     def __decode_msg(self, reg_add, subnode, data):
-        """Decodes received messages and run specific methods if needed."""
+        """Decodes received messages and run specific methods if needed.
+
+        Args:
+            reg_add (int): Register address.
+            subnode (int): Subnode.
+            data (bytes): Received data.
+        """
         register = self.get_register(subnode, reg_add)
         reg_id = register.identifier
         dtype = register.dtype
@@ -431,16 +459,40 @@ class VirtualDrive(Thread):
             self.__disturbance.append_data(data)
 
     def address_to_id(self, subnode, address):
-        """Converts a register address into its ID."""
+        """Converts a register address into its ID.
+
+        Args:
+            subnode (int): Subnode.
+            address (int): Register address.
+
+        Returns:
+            str: Register ID.
+        """
         return self.__reg_address_to_id[subnode][address]
 
     def id_to_address(self, subnode, id):
-        """Converts a register address into an ID."""
+        """Converts a register address into an ID.
+
+        Args:
+            subnode (int): Subnode.
+            id (str): Register ID.
+
+        Returns:
+            int: Register adress.
+        """
         register = self.__dictionary.registers(subnode)[id]
         return register.address
 
     def get_value_by_id(self, subnode, id):
-        """Returns a register value by its ID."""
+        """Returns a register value by its ID.
+
+        Args:
+            subnode (int): Subnode.
+            id (str): Register ID.
+
+        Returns:
+            (float, int, str): Register value.
+        """
         register = self.__dictionary.registers(subnode)[id]
         if not register._storage:
             range_value = register.range
@@ -454,11 +506,29 @@ class VirtualDrive(Thread):
         return self.__dictionary.registers(subnode)[id]._storage
 
     def set_value_by_id(self, subnode, id, value):
-        """Set a register value by its ID."""
+        """Set a register value by its ID.
+
+        Args:
+            subnode (int): Subnode.
+            id (str): Register ID.
+            value (int, float, str): Value to be set.
+        """
         self.__dictionary.registers(subnode)[id].storage = value
 
     def get_register(self, subnode, address=None, id=None):
-        """Returns a register by its address or ID."""
+        """Returns a register by its address or ID.
+
+        Args:
+            subnode (int): Subnode.
+            address (int): Register address. Default to None.
+            id (str): Register ID. Default to None.
+
+        Returns:
+            EthernetRegister: Register instance.
+
+        Raises:
+            ValueError: If both address and id are None.
+        """
         if address is not None:
             id = self.address_to_id(subnode, address)
         else:
