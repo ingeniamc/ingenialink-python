@@ -4,8 +4,7 @@ import socket
 import pytest
 
 from ingenialink.ethernet.network import EthernetNetwork, NET_PROT, NET_STATE, NET_DEV_EVT
-from ingenialink.network import NET_TRANS_PROT
-from ingenialink.exceptions import ILFirmwareLoadError
+from ingenialink.exceptions import ILFirmwareLoadError, ILError
 
 
 @pytest.fixture()
@@ -25,6 +24,17 @@ def test_connect_to_slave(connect_to_slave):
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
     assert fw_version is not None and fw_version != ""
+
+
+@pytest.mark.ethernet
+def test_can_not_connect_to_salve(read_config):
+    net = EthernetNetwork()
+    wrong_ip = "34.56.125.234"
+    protocol_contents = read_config["ethernet"]
+    with pytest.raises(ILError):
+        net.connect_to_slave(
+            wrong_ip, protocol_contents["dictionary"], protocol_contents["port"]
+        )
 
 
 @pytest.mark.ethernet
