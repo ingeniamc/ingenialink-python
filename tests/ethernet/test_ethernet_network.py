@@ -32,9 +32,7 @@ def test_can_not_connect_to_salve(read_config):
     wrong_ip = "34.56.125.234"
     protocol_contents = read_config["ethernet"]
     with pytest.raises(ILError):
-        net.connect_to_slave(
-            wrong_ip, protocol_contents["dictionary"], protocol_contents["port"]
-        )
+        net.connect_to_slave(wrong_ip, protocol_contents["dictionary"], protocol_contents["port"])
 
 
 @pytest.mark.ethernet
