@@ -428,7 +428,10 @@ class VirtualDrive(Thread):
 
     def get_value_by_id(self, subnode, id):
         """Returns a register value by its ID."""
-        return self.__dictionary.registers(subnode)[id]._storage
+        value = self.__dictionary.registers(subnode)[id]._storage
+        if id == EthernetServo.STATUS_WORD_REGISTERS and value is None:
+            return 64
+        return value
 
     def set_value_by_id(self, subnode, id, value):
         """Set a register value by its ID."""

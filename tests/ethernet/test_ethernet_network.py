@@ -103,7 +103,7 @@ def test_net_status_listener_connection(virtual_drive, read_config):
     net = EthernetNetwork()
     protocol_contents = read_config["ethernet"]
     status_list = []
-    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"])
+    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"], port=server.port)
 
     status_list = []
     net.subscribe_to_status(server.ip, status_list.append)
@@ -131,7 +131,7 @@ def test_unsubscribe_from_status(virtual_drive, read_config):
     protocol_contents = read_config["ethernet"]
 
     status_list = []
-    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"])
+    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"], port=server.port)
 
     status_list = []
     net.subscribe_to_status(server.ip, status_list.append)
