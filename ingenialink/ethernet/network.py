@@ -6,7 +6,7 @@ from .servo import EthernetServo
 from ingenialink.utils.udp import UDP
 from ..network import NET_PROT
 from ingenialink.network import Network, NET_STATE, NET_DEV_EVT
-from ingenialink.exceptions import ILFirmwareLoadError, ILError, ILIOError
+from ingenialink.exceptions import ILFirmwareLoadError, ILError
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 
 from ftplib import FTP
