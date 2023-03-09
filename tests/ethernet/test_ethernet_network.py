@@ -4,8 +4,7 @@ import socket
 import pytest
 
 from ingenialink.ethernet.network import EthernetNetwork, NET_PROT, NET_STATE, NET_DEV_EVT
-from ingenialink.network import NET_TRANS_PROT
-from ingenialink.exceptions import ILFirmwareLoadError
+from ingenialink.exceptions import ILFirmwareLoadError, ILError
 
 
 @pytest.fixture()
@@ -25,6 +24,15 @@ def test_connect_to_slave(connect_to_slave):
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
     assert fw_version is not None and fw_version != ""
+
+
+@pytest.mark.ethernet
+def test_can_not_connect_to_salve(read_config):
+    net = EthernetNetwork()
+    wrong_ip = "34.56.125.234"
+    protocol_contents = read_config["ethernet"]
+    with pytest.raises(ILError):
+        net.connect_to_slave(wrong_ip, protocol_contents["dictionary"], protocol_contents["port"])
 
 
 @pytest.mark.ethernet
@@ -95,7 +103,7 @@ def test_net_status_listener_connection(virtual_drive, read_config):
     net = EthernetNetwork()
     protocol_contents = read_config["ethernet"]
     status_list = []
-    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"])
+    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"], port=server.port)
 
     status_list = []
     net.subscribe_to_status(server.ip, status_list.append)
@@ -123,7 +131,7 @@ def test_unsubscribe_from_status(virtual_drive, read_config):
     protocol_contents = read_config["ethernet"]
 
     status_list = []
-    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"])
+    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"], port=server.port)
 
     status_list = []
     net.subscribe_to_status(server.ip, status_list.append)
