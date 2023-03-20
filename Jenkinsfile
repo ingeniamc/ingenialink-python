@@ -1,16 +1,34 @@
+@Library('cicd-lib@0.3') _
+
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
 def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-def DIST_FOE_APP_PATH = "\\\\azr-srv-ingfs1\\distECAT-tools\\release_candidate"
+def DIST_FOE_APP_PATH = "ECAT-tools/release_candidate"
 def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
 def FOE_APP_NAME = "FOEUpdateFirmware.exe"
 
 pipeline {
     agent none
     stages {
+        stage('Get FOE application') {
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/publisher:1.4"
+                }
+            }
+            stages {
+                stage('Get FOE application') {
+                    steps {
+                        copyFromDist(".", "$DIST_FOE_APP_PATH/0.2.0.2")
+                        stash includes: "$FOE_APP_NAME", name: 'foe_app'
+                    }
+                }
+            }
+        }
         stage('Build wheels and documentation') {
             agent {
                 docker {
@@ -28,7 +46,15 @@ pipeline {
                             git checkout ${env.GIT_COMMIT}
                         """
                     }
-                 }
+                }
+                stage('Get FOE application') {
+                    steps {
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\win_64x\\
+                        """
+                    }
+                }
                 stage('Install deps') {
                     steps {
                         bat '''
@@ -37,16 +63,6 @@ pipeline {
                             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
                             venv\\Scripts\\python.exe -m pip install -e .
                         '''
-                    }
-                }
-                stage('Copy FOE application') {
-                    steps {
-                        bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            venv\\Scripts\\python.exe -c "from ingenialink.bin import FOE; print(FOE.__version__)" > temp_foe_version.txt
-                            set /p FOE_VERSION=< temp_foe_version.txt
-                            XCOPY $DIST_FOE_APP_PATH\\%FOE_VERSION%\\$FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\$FOE_APP_NAME
-                        """
                     }
                 }
                 stage('Build wheels') {
