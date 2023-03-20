@@ -25,9 +25,13 @@ out.txt
 # os
 .DS_Store
 
-# Pipenv
+# Pipenv and venv
 Pipfile.lock
 pyproject.toml
+venv
 
 # Documentation
 _docs
+
+# FOE Applicaction
+**/FOEUpdateFirmware.exe

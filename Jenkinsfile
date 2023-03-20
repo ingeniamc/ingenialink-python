@@ -4,6 +4,9 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
+def DIST_FOE_APP_PATH = "\\\\azr-srv-ingfs1\\distECAT-tools\\release_candidate"
+def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
+def FOE_APP_NAME = "FOEUpdateFirmware.exe"
 
 pipeline {
     agent none
@@ -34,6 +37,15 @@ pipeline {
                             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
                             venv\\Scripts\\python.exe -m pip install -e .
                         '''
+                    }
+                }
+                stage('Copy FOE application') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            FOE_VERSION = python -c "from ingenialink.bin import FOE; print(FOE.__version__)"
+                            XCOPY $DIST_FOE_APP_PATH\\%FOE_VERSION%\\$FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\$FOE_APP_NAME
+                        """
                     }
                 }
                 stage('Build wheels') {
