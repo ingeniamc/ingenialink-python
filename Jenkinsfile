@@ -43,7 +43,8 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            FOE_VERSION = python -c "from ingenialink.bin import FOE; print(FOE.__version__)"
+                            venv\\Scripts\\python.exe -c "from ingenialink.bin import FOE; print(FOE.__version__)" > temp_foe_version.txt
+                            set /p FOE_VERSION=< temp_foe_version.txt
                             XCOPY $DIST_FOE_APP_PATH\\%FOE_VERSION%\\$FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\$FOE_APP_NAME
                         """
                     }
