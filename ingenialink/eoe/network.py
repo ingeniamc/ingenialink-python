@@ -2,18 +2,23 @@ import ipaddress
 import socket
 from enum import Enum
 
+import ingenialogger
+
+from ingenialink import constants
 from ingenialink.ethernet.network import EthernetNetwork
-from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILTimeoutError, ILIOError, ILError
-from ingenialink.constants import EOE_MSG_DATA_SIZE, EOE_MSG_NODE_SIZE, NULL_TERMINATOR
+
+logger = ingenialogger.get_logger(__name__)
 
 
 class EoECommand(Enum):
-    INIT = "0"
-    SCAN = "1"
-    CONFIG = "2"
-    START = "3"
-    STOP = "4"
+    INIT = 0
+    DEINIT = 1
+    SCAN = 2
+    CONFIG = 3
+    ERASE_CONFIG = 4
+    EOE_START = 5
+    EOE_STOP = 6
 
 
 class EoENetwork(EthernetNetwork):
@@ -28,13 +33,15 @@ class EoENetwork(EthernetNetwork):
 
     ECAT_SERVICE_NETWORK = ipaddress.ip_network("192.168.3.0/24")
 
-    def __init__(self, ifname, connection_timeout=DEFAULT_ETH_CONNECTION_TIMEOUT):
+    def __init__(self, ifname, connection_timeout=constants.DEFAULT_ETH_CONNECTION_TIMEOUT):
         super().__init__()
         self.ifname = ifname
         self._eoe_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._eoe_socket.settimeout(connection_timeout)
         self._connect_to_eoe_service()
         self._eoe_service_started = False
+        self._eoe_service_init = False
+        self._configured_slaves = {}
 
     def connect_to_slave(
         self,
@@ -42,7 +49,7 @@ class EoENetwork(EthernetNetwork):
         ip_address,
         dictionary=None,
         port=1061,
-        connection_timeout=DEFAULT_ETH_CONNECTION_TIMEOUT,
+        connection_timeout=constants.DEFAULT_ETH_CONNECTION_TIMEOUT,
         servo_status_listener=False,
         net_status_listener=False,
     ):
@@ -70,9 +77,17 @@ class EoENetwork(EthernetNetwork):
         """
         if ipaddress.ip_address(ip_address) not in self.ECAT_SERVICE_NETWORK:
             raise ValueError("ip_address must be a subnetwork of 192.168.3.0/24")
-        self._initialize_eoe_service()
-        self._configure_slave(slave_id, ip_address)
-        self._start_eoe_service()
+        if not self._eoe_service_init:
+            self._initialize_eoe_service()
+        if self._eoe_service_started:
+            self._stop_eoe_service()
+            self._erase_config_eoe_service()
+        self.__reconfigure_drives()
+        try:
+            self._configure_slave(slave_id, ip_address)
+        finally:
+            self._start_eoe_service()
+        self._configured_slaves[ip_address] = slave_id
         return super().connect_to_slave(
             ip_address,
             dictionary,
@@ -82,16 +97,26 @@ class EoENetwork(EthernetNetwork):
             net_status_listener,
         )
 
+    def __reconfigure_drives(self):
+        for ip_addr, slave_id in self._configured_slaves:
+            try:
+                self._configure_slave(slave_id, ip_addr)
+            except ILError as e:
+                logger.error(e)
+
     def disconnect_from_slave(self, servo):
+        del self._configured_slaves[servo.ip_address]
         super().disconnect_from_slave(servo)
         if len(self.servos) == 0:
             self._stop_eoe_service()
+            self._erase_config_eoe_service()
+            self._deinitialize_eoe_service()
             self._eoe_socket.shutdown(socket.SHUT_RDWR)
             self._eoe_socket.close()
 
     def scan_slaves(self):
         """
-        Scan slaves connected to a given network adapter.
+        Scan slaves connected to a given network adapter. If some slaves were connected, the connections will be lost
 
         Returns:
             list: List containing the ids of the connected slaves.
@@ -100,6 +125,24 @@ class EoENetwork(EthernetNetwork):
             ILError: If the EoE service fails to perform a scan.
 
         """
+        deinit_later = False
+        was_eoe_started = False
+        if self._eoe_service_started:
+            was_eoe_started = True
+            self._stop_eoe_service()
+            self._erase_config_eoe_service()
+        if not self._eoe_service_init:
+            deinit_later = True
+            self._initialize_eoe_service()
+        result = self._scan_eoe_service()
+        if was_eoe_started:
+            self.__reconfigure_drives()
+            self._start_eoe_service()
+        if deinit_later:
+            self._deinitialize_eoe_service()
+        return result
+
+    def _scan_eoe_service(self):
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.SCAN.value, data=data.encode("utf-8"))
         try:
@@ -113,19 +156,18 @@ class EoENetwork(EthernetNetwork):
         return list(range(1, r + 1))
 
     @staticmethod
-    def _build_eoe_command_msg(cmd, node=1, data=None):
+    def _build_eoe_command_msg(cmd, data=None):
         """
         Build a message with the following format.
 
-        +----------+----------+----------+
-        |    cmd   |   node    |   data  |
-        +==========+==========+==========+
-        |  1 Byte  |  2 Bytes | 50 Bytes |
-        +----------+----------+----------+
+        +----------+----------+
+        |    cmd   |   datac  |
+        +==========+==========+
+        |  2 Byte  | 53 Bytes |
+        +----------+----------+
 
         Args:
-            cmd (str): Indicates which operation to perform.
-            node (int):  Indicates the EtherCAT node ID the command corresponds to.
+            cmd (int): Indicates which operation to perform.
             data (bytes): Contains the necessary data to perform the desired command.
 
         Returns:
@@ -134,10 +176,9 @@ class EoENetwork(EthernetNetwork):
         """
         if data is None:
             data = bytes()
-        cmd_field = cmd.encode("utf-8")
-        node_field = f"{node:0{EOE_MSG_NODE_SIZE}d}".encode("utf-8")
-        data_field = data + NULL_TERMINATOR * (EOE_MSG_DATA_SIZE - len(data))
-        return cmd_field + node_field + NULL_TERMINATOR + data_field + NULL_TERMINATOR
+        cmd_field = cmd.to_bytes(constants.EOE_MSG_CMD_SIZE, "little")
+        data_field = data + constants.NULL_TERMINATOR * (constants.EOE_MSG_DATA_SIZE - len(data))
+        return cmd_field + data_field
 
     def _send_command(self, msg):
         """
@@ -172,14 +213,14 @@ class EoENetwork(EthernetNetwork):
         self._eoe_socket.connect(("127.0.0.1", 8888))
 
     def _initialize_eoe_service(self):
-        """Initialize the virtual network interface and
-        the packet forwarder.
+        """Initialize the virtual network interface and the packet forwarder.
 
         Raises:
             ILError: If the EoE service is not running.
             ILError: If the EoE service cannot be started on the network interface.
 
         """
+        self._eoe_service_init = True
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.INIT.value, data=data.encode("utf-8"))
         try:
@@ -191,7 +232,23 @@ class EoENetwork(EthernetNetwork):
         if r < 0:
             raise ILError(f"Failed to initialize the EoE service using interface {self.ifname}.")
 
-    def _configure_slave(self, slave_id, ip_address):
+    def _deinitialize_eoe_service(self):
+        """Deinitialize the virtual network interface and the packet forwarder.
+
+        Raises:
+            ILError: If the EoE service is not running.
+            ILError: If the EoE service cannot be stopped on the network interface.
+
+        """
+        self._eoe_service_init = False
+        data = self.ifname
+        msg = self._build_eoe_command_msg(EoECommand.DEINIT.value, data=data.encode("utf-8"))
+        try:
+            self._send_command(msg)
+        except (ILIOError, ILTimeoutError) as e:
+            raise ILError("Failed to deinitialize the EoE service.") from e
+
+    def _configure_slave(self, slave_id, ip_address, net_mask="255.255.255.0"):
         """
         Configure an EtherCAT slave with a given IP.
 
@@ -203,9 +260,13 @@ class EoENetwork(EthernetNetwork):
             ILError: If the EoE service fails to configure a slave.
 
         """
+        slave_bytes = slave_id.to_bytes(constants.EOE_MSG_NODE_SIZE, "little")
         ip_int = int(ipaddress.IPv4Address(ip_address))
         ip_bytes = bytes(str(ip_int), "utf-8")
-        msg = self._build_eoe_command_msg(EoECommand.CONFIG.value, slave_id, ip_bytes)
+        net_mask_int = int(ipaddress.IPv4Address(net_mask))
+        net_mask_bytes = bytes(str(net_mask_int), "utf-8")
+        data = slave_bytes + ip_bytes + net_mask_bytes
+        msg = self._build_eoe_command_msg(EoECommand.CONFIG.value, data)
         try:
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
@@ -219,7 +280,7 @@ class EoENetwork(EthernetNetwork):
 
         """
         self._eoe_service_started = True
-        msg = self._build_eoe_command_msg(EoECommand.START.value)
+        msg = self._build_eoe_command_msg(EoECommand.EOE_START.value)
         try:
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
@@ -233,7 +294,20 @@ class EoENetwork(EthernetNetwork):
 
         """
         self._eoe_service_started = False
-        msg = self._build_eoe_command_msg(EoECommand.STOP.value)
+        msg = self._build_eoe_command_msg(EoECommand.EOE_STOP.value)
+        try:
+            self._send_command(msg)
+        except (ILIOError, ILTimeoutError) as e:
+            raise ILError("Failed to stop the EoE service.") from e
+
+    def _erase_config_eoe_service(self):
+        """Stops the EoE service
+
+        Raises:
+           ILError: If the EoE service fails to stop.
+
+        """
+        msg = self._build_eoe_command_msg(EoECommand.ERASE_CONFIG.value)
         try:
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
