@@ -9,6 +9,7 @@ def CAN_NODE_LOCK = "test_execution_lock_can"
 def DIST_FOE_APP_PATH = "ECAT-tools/release_candidate"
 def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
 def FOE_APP_NAME = "FOEUpdateFirmware.exe"
+def FOE_APP_VERSION = ""
 
 pipeline {
     agent none
@@ -23,7 +24,10 @@ pipeline {
             stages {
                 stage('Get FOE application') {
                     steps {
-                        copyFromDist(".", "$DIST_FOE_APP_PATH/0.2.0.2")
+                        script {
+                            FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FOE; print(FOE.__version__)"', returnStdout: true).trim()
+                        }
+                        copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
                         stash includes: "$FOE_APP_NAME", name: 'foe_app'
                     }
                 }
