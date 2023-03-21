@@ -119,6 +119,14 @@ pipeline {
                         checkout scm
                     }
                 }
+                stage('Get FOE application') {
+                    steps {
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                        """
+                    }
+                }
                 stage('Install deps') {
                     steps {
                         bat '''
@@ -173,6 +181,14 @@ pipeline {
                 stage('Checkout') {
                     steps {
                         checkout scm
+                    }
+                }
+                stage('Get FOE application') {
+                    steps {
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                        """
                     }
                 }
                 stage('Install deps') {
