@@ -52,8 +52,8 @@ class EthercatNetwork:
         Raises:
             FileNotFoundError: If the firmware file cannot be found.
             ILFirmwareLoadError: If no slave is detected.
-            ILFirmwareLoadError: If the FOE write operation is not
-            successful.
+            ILFirmwareLoadError: If the FOE write operation is not successful.
+            NotImplementedError: If FOE is not implemented for the current OS and architecture
 
         """
         if not os.path.isfile(fw_file):
