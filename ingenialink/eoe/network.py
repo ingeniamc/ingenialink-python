@@ -206,7 +206,7 @@ class EoENetwork(EthernetNetwork):
             raise ILTimeoutError("Timeout while receiving response.") from e
         except socket.error as e:
             raise ILIOError("Error receiving response.") from e
-        return int.from_bytes(response, byteorder="big", signed=True)
+        return int.from_bytes(response, byteorder="little", signed=True)
 
     def _connect_to_eoe_service(self):
         """Connect to the EoE service."""
@@ -262,9 +262,9 @@ class EoENetwork(EthernetNetwork):
         """
         slave_bytes = slave_id.to_bytes(constants.EOE_MSG_NODE_SIZE, "little")
         ip_int = int(ipaddress.IPv4Address(ip_address))
-        ip_bytes = bytes(str(ip_int), "utf-8")
+        ip_bytes = ip_int.to_bytes(constants.EOE_MSG_IP_SIZE, "little")
         net_mask_int = int(ipaddress.IPv4Address(net_mask))
-        net_mask_bytes = bytes(str(net_mask_int), "utf-8")
+        net_mask_bytes = net_mask_int.to_bytes(constants.EOE_MSG_IP_SIZE, "little")
         data = slave_bytes + ip_bytes + net_mask_bytes
         msg = self._build_eoe_command_msg(EoECommand.CONFIG.value, data)
         try:
