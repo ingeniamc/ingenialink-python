@@ -1,5 +1,6 @@
 import ipaddress
 import socket
+import struct
 from enum import Enum
 
 import ingenialogger
@@ -19,6 +20,7 @@ class EoECommand(Enum):
     ERASE_CONFIG = 4
     EOE_START = 5
     EOE_STOP = 6
+    GET_STATUS = 7
 
 
 class EoENetwork(EthernetNetwork):
@@ -39,8 +41,14 @@ class EoENetwork(EthernetNetwork):
         self._eoe_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._eoe_socket.settimeout(connection_timeout)
         self._connect_to_eoe_service()
-        self._eoe_service_started = False
+        status = self._get_status_eoe_service()
+        if status & 0b10:
+            self._stop_eoe_service()
+            self._erase_config_eoe_service()
+        if status & 0b1:
+            self._deinitialize_eoe_service()
         self._eoe_service_init = False
+        self._eoe_service_started = False
         self._configured_slaves = {}
 
     def connect_to_slave(
@@ -98,7 +106,7 @@ class EoENetwork(EthernetNetwork):
         )
 
     def __reconfigure_drives(self):
-        for ip_addr, slave_id in self._configured_slaves:
+        for ip_addr, slave_id in self._configured_slaves.items():
             try:
                 self._configure_slave(slave_id, ip_addr)
             except ILError as e:
@@ -312,3 +320,18 @@ class EoENetwork(EthernetNetwork):
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
             raise ILError("Failed to stop the EoE service.") from e
+
+    def _get_status_eoe_service(self):
+        """Stops the EoE service
+
+        Raises:
+           ILError: If the EoE service fails to stop.
+
+        """
+        msg = self._build_eoe_command_msg(EoECommand.GET_STATUS.value)
+        try:
+            r = self._send_command(msg)
+        except (ILIOError, ILTimeoutError) as e:
+            raise ILError("Failed to get service status.") from e
+        return r
+
