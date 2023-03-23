@@ -33,6 +33,9 @@ class EoENetwork(EthernetNetwork):
 
     """
 
+    STATUS_EOE_BIT = 0b10
+    STATUS_INIT_BIT = 0b1
+
     ECAT_SERVICE_NETWORK = ipaddress.ip_network("192.168.3.0/24")
 
     def __init__(self, ifname, connection_timeout=constants.DEFAULT_ETH_CONNECTION_TIMEOUT):
@@ -42,10 +45,10 @@ class EoENetwork(EthernetNetwork):
         self._eoe_socket.settimeout(connection_timeout)
         self._connect_to_eoe_service()
         status = self._get_status_eoe_service()
-        if status & 0b10:
+        if status & self.STATUS_EOE_BIT:
             self._stop_eoe_service()
             self._erase_config_eoe_service()
-        if status & 0b1:
+        if status & self.STATUS_INIT_BIT:
             self._deinitialize_eoe_service()
         self._eoe_service_init = False
         self._eoe_service_started = False

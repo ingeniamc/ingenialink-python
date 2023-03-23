@@ -37,11 +37,11 @@ def test_eoe_connection(connect_to_slave, read_config):
     servo, net = connect_to_slave
     net_socket = net._eoe_socket
     ip, port = net_socket.getpeername()
-    configured_ip = servo.read("COMMS_ETH_IP", subnode=0)
-    assert net.scan_slaves() > 0
-    assert drive_ip == str(ipaddress.ip_address(configured_ip))
+    assert servo.is_alive()
+    assert len(net.scan_slaves()) > 0
     assert isinstance(servo, EthernetServo)
-    assert net.status == NET_STATE.CONNECTED
+    assert net._eoe_service_init
+    assert net._eoe_service_started
     assert net.protocol == NET_PROT.ETH
     assert net_socket.family == socket.AF_INET
     assert net_socket.type == socket.SOCK_DGRAM
@@ -65,28 +65,28 @@ def test_eoe_connection_wrong_ip_address(read_config):
 def test_eoe_disconnection(connect):
     servo, net = connect
     net.disconnect_from_slave(servo)
-    assert net.status == NET_STATE.DISCONNECTED
+    assert not net._eoe_service_init
+    assert not net._eoe_service_started
     assert len(net.servos) == 0
     assert net._eoe_socket._closed
 
 
 @pytest.mark.parametrize(
-    "cmd, subnode, data, dtype",
+    "cmd, data",
     [
-        (EoECommand.START.value, 0, 10, REG_DTYPE.U16),
-        (EoECommand.SCAN.value, 1, 25.5, REG_DTYPE.FLOAT),
-        (EoECommand.CONFIG.value, 2, None, None),
+        (EoECommand.EOE_START.value, None),
+        (EoECommand.SCAN.value, None),
+        (EoECommand.INIT.value, b"example_ifname"),
+        (EoECommand.CONFIG.value, b'\x01\x00\x16\x03\xa8\xc0\x00\xff\xff\xff')
     ],
 )
 @pytest.mark.eoe
-def test_eoe_command_msg(cmd, subnode, data, dtype):
-    data_bytes = bytes() if data is None else convert_dtype_to_bytes(data, dtype)
-    data_filling = b"\x00" * (EOE_MSG_DATA_SIZE - len(data_bytes))
-    msg = EoENetwork._build_eoe_command_msg(cmd, subnode, data_bytes)
+def test_eoe_command_msg(cmd, data):
+    data_bytes = bytes() if data is None else data
+    data_filling = NULL_TERMINATOR * (EOE_MSG_DATA_SIZE - len(data_bytes))
+    msg = EoENetwork._build_eoe_command_msg(cmd, data_bytes)
     cmd_field = msg[:EOE_MSG_CMD_SIZE]
-    subnode_field = msg[EOE_MSG_CMD_SIZE : EOE_MSG_NODE_SIZE + EOE_MSG_TERMINATOR_SIZE + 1]
-    data_field = msg[-(EOE_MSG_DATA_SIZE + EOE_MSG_TERMINATOR_SIZE) :]
+    data_field = msg[-EOE_MSG_DATA_SIZE:]
     assert len(msg) == EOE_MSG_FRAME_SIZE
-    assert cmd_field == cmd.encode("utf-8")
-    assert subnode_field == f"{subnode:0{EOE_MSG_NODE_SIZE}d}".encode("utf-8") + NULL_TERMINATOR
-    assert data_field == data_bytes + data_filling + NULL_TERMINATOR
+    assert int.from_bytes(cmd_field, "little") == cmd
+    assert data_field == data_bytes + data_filling
