@@ -6,6 +6,7 @@ from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.ethernet.network import NET_PROT
 from ingenialink.eoe.network import EoENetwork, EoECommand
 
+
 @pytest.fixture()
 def connect(read_config):
     protocol_contents = read_config["eoe"]
@@ -74,8 +75,8 @@ def test_eoe_command_msg(cmd, data):
     data_bytes = bytes() if data is None else data
     data_filling = EoENetwork.NULL_TERMINATOR * (EoENetwork.EOE_MSG_DATA_SIZE - len(data_bytes))
     msg = EoENetwork._build_eoe_command_msg(cmd.value, data_bytes)
-    cmd_field = msg[:EoENetwork.EOE_MSG_CMD_SIZE]
-    data_field = msg[-EoENetwork.EOE_MSG_DATA_SIZE:]
+    cmd_field = msg[: EoENetwork.EOE_MSG_CMD_SIZE]
+    data_field = msg[-EoENetwork.EOE_MSG_DATA_SIZE :]
     assert len(msg) == EoENetwork.EOE_MSG_FRAME_SIZE
     assert int.from_bytes(cmd_field, "little") == cmd.value
     assert data_field == data_bytes + data_filling

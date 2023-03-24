@@ -115,9 +115,7 @@ class EoENetwork(EthernetNetwork):
         )
 
     def __reconfigure_drives(self):
-        """Reconfigure all the slaves saved in the network
-
-        """
+        """Reconfigure all the slaves saved in the network"""
         for ip_addr, slave_id in self._configured_slaves.items():
             try:
                 self._configure_slave(slave_id, ip_addr)
