@@ -1,13 +1,38 @@
+@Library('cicd-lib@0.3') _
+
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
 def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
+def DIST_FOE_APP_PATH = "ECAT-tools/release_candidate"
+def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
+def FOE_APP_NAME = "FOEUpdateFirmware.exe"
+def FOE_APP_VERSION = ""
 
 pipeline {
     agent none
     stages {
+        stage('Get FOE application') {
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/publisher:1.4"
+                }
+            }
+            stages {
+                stage('Get FOE application') {
+                    steps {
+                        script {
+                            FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FOE; print(FOE.__version__)"', returnStdout: true).trim()
+                        }
+                        copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
+                        stash includes: "$FOE_APP_NAME", name: 'foe_app'
+                    }
+                }
+            }
+        }
         stage('Build wheels and documentation') {
             agent {
                 docker {
@@ -25,7 +50,15 @@ pipeline {
                             git checkout ${env.GIT_COMMIT}
                         """
                     }
-                 }
+                }
+                stage('Get FOE application') {
+                    steps {
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\win_64x\\
+                        """
+                    }
+                }
                 stage('Install deps') {
                     steps {
                         bat '''
@@ -86,6 +119,14 @@ pipeline {
                         checkout scm
                     }
                 }
+                stage('Get FOE application') {
+                    steps {
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                        """
+                    }
+                }
                 stage('Install deps') {
                     steps {
                         bat '''
@@ -140,6 +181,14 @@ pipeline {
                 stage('Checkout') {
                     steps {
                         checkout scm
+                    }
+                }
+                stage('Get FOE application') {
+                    steps {
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                        """
                     }
                 }
                 stage('Install deps') {
