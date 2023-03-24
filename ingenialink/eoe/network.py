@@ -337,4 +337,3 @@ class EoENetwork(EthernetNetwork):
         except (ILIOError, ILTimeoutError) as e:
             raise ILError("Failed to get service status.") from e
         return r
-

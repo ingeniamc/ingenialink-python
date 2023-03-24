@@ -77,7 +77,7 @@ def test_eoe_disconnection(connect):
         (EoECommand.EOE_START.value, None),
         (EoECommand.SCAN.value, None),
         (EoECommand.INIT.value, b"example_ifname"),
-        (EoECommand.CONFIG.value, b'\x01\x00\x16\x03\xa8\xc0\x00\xff\xff\xff')
+        (EoECommand.CONFIG.value, b"\x01\x00\x16\x03\xa8\xc0\x00\xff\xff\xff"),
     ],
 )
 @pytest.mark.eoe
