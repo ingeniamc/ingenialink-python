@@ -3,19 +3,8 @@ import socket
 import ipaddress
 
 from ingenialink.ethernet.servo import EthernetServo
-from ingenialink.ethernet.network import NET_PROT, NET_STATE
+from ingenialink.ethernet.network import NET_PROT
 from ingenialink.eoe.network import EoENetwork, EoECommand
-from ingenialink.utils._utils import convert_dtype_to_bytes
-from ingenialink.register import REG_DTYPE
-from ingenialink.constants import (
-    EOE_MSG_CMD_SIZE,
-    EOE_MSG_NODE_SIZE,
-    EOE_MSG_DATA_SIZE,
-    EOE_MSG_FRAME_SIZE,
-    EOE_MSG_TERMINATOR_SIZE,
-)
-from ingenialink.constants import NULL_TERMINATOR
-
 
 @pytest.fixture()
 def connect(read_config):
@@ -74,19 +63,19 @@ def test_eoe_disconnection(connect):
 @pytest.mark.parametrize(
     "cmd, data",
     [
-        (EoECommand.EOE_START.value, None),
-        (EoECommand.SCAN.value, None),
-        (EoECommand.INIT.value, b"example_ifname"),
-        (EoECommand.CONFIG.value, b"\x01\x00\x16\x03\xa8\xc0\x00\xff\xff\xff"),
+        (EoECommand.EOE_START, None),
+        (EoECommand.SCAN, None),
+        (EoECommand.INIT, b"example_ifname"),
+        (EoECommand.CONFIG, b"\x01\x00\x16\x03\xa8\xc0\x00\xff\xff\xff"),
     ],
 )
 @pytest.mark.eoe
 def test_eoe_command_msg(cmd, data):
     data_bytes = bytes() if data is None else data
-    data_filling = NULL_TERMINATOR * (EOE_MSG_DATA_SIZE - len(data_bytes))
-    msg = EoENetwork._build_eoe_command_msg(cmd, data_bytes)
-    cmd_field = msg[:EOE_MSG_CMD_SIZE]
-    data_field = msg[-EOE_MSG_DATA_SIZE:]
-    assert len(msg) == EOE_MSG_FRAME_SIZE
-    assert int.from_bytes(cmd_field, "little") == cmd
+    data_filling = EoENetwork.NULL_TERMINATOR * (EoENetwork.EOE_MSG_DATA_SIZE - len(data_bytes))
+    msg = EoENetwork._build_eoe_command_msg(cmd.value, data_bytes)
+    cmd_field = msg[:EoENetwork.EOE_MSG_CMD_SIZE]
+    data_field = msg[-EoENetwork.EOE_MSG_DATA_SIZE:]
+    assert len(msg) == EoENetwork.EOE_MSG_FRAME_SIZE
+    assert int.from_bytes(cmd_field, "little") == cmd.value
     assert data_field == data_bytes + data_filling

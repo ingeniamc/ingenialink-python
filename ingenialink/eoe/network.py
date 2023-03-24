@@ -1,6 +1,5 @@
 import ipaddress
 import socket
-import struct
 from enum import Enum
 
 import ingenialogger
@@ -32,6 +31,13 @@ class EoENetwork(EthernetNetwork):
         to the EoE service.
 
     """
+
+    EOE_MSG_CMD_SIZE = 2
+    EOE_MSG_NODE_SIZE = 2
+    EOE_MSG_IP_SIZE = 4
+    EOE_MSG_DATA_SIZE = 53
+    EOE_MSG_FRAME_SIZE = EOE_MSG_CMD_SIZE + EOE_MSG_DATA_SIZE
+    NULL_TERMINATOR = b"\x00"
 
     STATUS_EOE_BIT = 0b10
     STATUS_INIT_BIT = 0b1
@@ -109,6 +115,9 @@ class EoENetwork(EthernetNetwork):
         )
 
     def __reconfigure_drives(self):
+        """Reconfigure all the slaves saved in the network
+
+        """
         for ip_addr, slave_id in self._configured_slaves.items():
             try:
                 self._configure_slave(slave_id, ip_addr)
@@ -126,8 +135,7 @@ class EoENetwork(EthernetNetwork):
             self._eoe_socket.close()
 
     def scan_slaves(self):
-        """
-        Scan slaves connected to a given network adapter. If some slaves were connected, the connections will be lost
+        """Scan slaves connected to the network adapter.
 
         Returns:
             list: List containing the ids of the connected slaves.
@@ -154,16 +162,22 @@ class EoENetwork(EthernetNetwork):
         return result
 
     def _scan_eoe_service(self):
-        data = self.ifname
-        msg = self._build_eoe_command_msg(EoECommand.SCAN.value, data=data.encode("utf-8"))
+        """Make the scan request to the EoE service
+
+        Returns:
+            list: List containing the ids of the connected slaves.
+
+        Raises:
+            ILError: If the EoE service fails to perform a scan.
+
+        """
+        msg = self._build_eoe_command_msg(EoECommand.SCAN.value)
         try:
             r = self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
             raise ILError(
                 "Failed to perform a network scan. Please verify the EoE service is running."
             ) from e
-        if r < 0:
-            raise ILError(f"Failed to initialize the EoE service using interface {self.ifname}.")
         return list(range(1, r + 1))
 
     @staticmethod
@@ -172,7 +186,7 @@ class EoENetwork(EthernetNetwork):
         Build a message with the following format.
 
         +----------+----------+
-        |    cmd   |   datac  |
+        |   cmd    |   data   |
         +==========+==========+
         |  2 Byte  | 53 Bytes |
         +----------+----------+
@@ -187,8 +201,8 @@ class EoENetwork(EthernetNetwork):
         """
         if data is None:
             data = bytes()
-        cmd_field = cmd.to_bytes(constants.EOE_MSG_CMD_SIZE, "little")
-        data_field = data + constants.NULL_TERMINATOR * (constants.EOE_MSG_DATA_SIZE - len(data))
+        cmd_field = cmd.to_bytes(EoENetwork.EOE_MSG_CMD_SIZE, "little")
+        data_field = data + EoENetwork.NULL_TERMINATOR * (EoENetwork.EOE_MSG_DATA_SIZE - len(data))
         return cmd_field + data_field
 
     def _send_command(self, msg):
@@ -271,11 +285,11 @@ class EoENetwork(EthernetNetwork):
             ILError: If the EoE service fails to configure a slave.
 
         """
-        slave_bytes = slave_id.to_bytes(constants.EOE_MSG_NODE_SIZE, "little")
+        slave_bytes = slave_id.to_bytes(self.EOE_MSG_NODE_SIZE, "little")
         ip_int = int(ipaddress.IPv4Address(ip_address))
-        ip_bytes = ip_int.to_bytes(constants.EOE_MSG_IP_SIZE, "little")
+        ip_bytes = ip_int.to_bytes(self.EOE_MSG_IP_SIZE, "little")
         net_mask_int = int(ipaddress.IPv4Address(net_mask))
-        net_mask_bytes = net_mask_int.to_bytes(constants.EOE_MSG_IP_SIZE, "little")
+        net_mask_bytes = net_mask_int.to_bytes(self.EOE_MSG_IP_SIZE, "little")
         data = slave_bytes + ip_bytes + net_mask_bytes
         msg = self._build_eoe_command_msg(EoECommand.CONFIG.value, data)
         try:
@@ -325,10 +339,19 @@ class EoENetwork(EthernetNetwork):
             raise ILError("Failed to stop the EoE service.") from e
 
     def _get_status_eoe_service(self):
-        """Stops the EoE service
+        """Get the EoE service status.
+
+        +-----------+------+------+
+        |ECAT status| init | eoe  |
+        +===========+======+======+
+        |   1Byte   | 1bit | 1bit |
+        +-----------+------+------+
+
+        Returns:
+            int: get status response
 
         Raises:
-           ILError: If the EoE service fails to stop.
+           ILError: If get status request fails.
 
         """
         msg = self._build_eoe_command_msg(EoECommand.GET_STATUS.value)
@@ -337,3 +360,9 @@ class EoENetwork(EthernetNetwork):
         except (ILIOError, ILTimeoutError) as e:
             raise ILError("Failed to get service status.") from e
         return r
+
+    def load_firmware_moco(self):
+        raise NotImplementedError
+
+    def load_firmware(self):
+        raise NotImplementedError
