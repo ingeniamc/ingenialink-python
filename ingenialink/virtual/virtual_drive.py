@@ -135,7 +135,7 @@ class VirtualMonitoring(VirtualMonDistBase):
     """Emulates monitoring at the VirtualDrive.
 
     Args:
-        drive (Virtual Drive): Virtual drive instance.
+        drive (VirtualDrive): Virtual drive instance.
 
     """
 
