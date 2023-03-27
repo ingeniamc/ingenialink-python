@@ -143,18 +143,10 @@ class EoENetwork(EthernetNetwork):
 
         """
         deinit_later = False
-        was_eoe_started = False
-        if self._eoe_service_started:
-            was_eoe_started = True
-            self._stop_eoe_service()
-            self._erase_config_eoe_service()
         if not self._eoe_service_init:
             deinit_later = True
             self._initialize_eoe_service()
         result = self._scan_eoe_service()
-        if was_eoe_started:
-            self.__reconfigure_drives()
-            self._start_eoe_service()
         if deinit_later:
             self._deinitialize_eoe_service()
         return result
