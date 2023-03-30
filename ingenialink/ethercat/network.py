@@ -25,7 +25,7 @@ class EthercatNetwork:
 
     """
 
-    FOE_APPLICATION = {"win32": {"64bit": "FOE/win_64x/FOEUpdateFirmware.exe"}}
+    FOE_APPLICATION = {"win32": {"64bit": "FoE/win_64x/FOEUpdateFirmware.exe"}}
     FOE_ERRORS = {
         1: "Can’t read the input file.",
         2: "ECAT slave can’t reach the BOOT mode.",

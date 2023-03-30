@@ -6,7 +6,7 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-def DIST_FOE_APP_PATH = "ECAT-tools/release_candidate"
+def DIST_FOE_APP_PATH = "ECAT-tools"
 def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
 def FOE_APP_NAME = "FOEUpdateFirmware.exe"
 def FOE_APP_VERSION = ""
@@ -14,7 +14,7 @@ def FOE_APP_VERSION = ""
 pipeline {
     agent none
     stages {
-        stage('Get FOE application') {
+        stage('Get FoE application') {
             agent {
                 docker {
                     label "worker"
@@ -22,10 +22,10 @@ pipeline {
                 }
             }
             stages {
-                stage('Get FOE application') {
+                stage('Get FoE application') {
                     steps {
                         script {
-                            FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FOE; print(FOE.__version__)"', returnStdout: true).trim()
+                            FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FoE; print(FoE.__version__)"', returnStdout: true).trim()
                         }
                         copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
                         stash includes: "$FOE_APP_NAME", name: 'foe_app'
@@ -51,7 +51,7 @@ pipeline {
                         """
                     }
                 }
-                stage('Get FOE application') {
+                stage('Get FoE application') {
                     steps {
                         unstash 'foe_app'
                         bat """
