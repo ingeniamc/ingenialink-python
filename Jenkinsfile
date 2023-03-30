@@ -6,7 +6,7 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-def DIST_FOE_APP_PATH = "ECAT-tools"
+def DIST_FOE_APP_PATH = "ECAT-tools/hotfix"
 def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
 def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_VERSION = ""
