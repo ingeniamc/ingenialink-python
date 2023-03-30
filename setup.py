@@ -16,7 +16,7 @@ setuptools.setup(
     version=_version,
     packages=setuptools.find_packages(exclude=["test", "examples"]),
     include_package_data=True,
-    package_data={"ingenialink": ["bin/FOE/*/*"]},
+    package_data={"ingenialink": ["bin/FoE/*/*"]},
     description='IngeniaLink Communications Library',
     long_description=open('README.rst').read(),
     author='Ingenia Motion Control',

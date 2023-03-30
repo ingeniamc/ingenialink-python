@@ -7,7 +7,7 @@
 - Implement stop EoE service feature
 - Create mapped register property
 - Create project toml file
-- Use FOE application to load FW in windows
+- Use FoE application to load FW in windows
 
 ### Changed
 - Update the load_FWs script to only use ingenialink.

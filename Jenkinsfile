@@ -8,7 +8,7 @@ def CAN_NODE_LOCK = "test_execution_lock_can"
 
 def DIST_FOE_APP_PATH = "ECAT-tools"
 def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
-def FOE_APP_NAME = "FOEUpdateFirmware.exe"
+def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_VERSION = ""
 
 pipeline {
@@ -119,7 +119,7 @@ pipeline {
                         checkout scm
                     }
                 }
-                stage('Get FOE application') {
+                stage('Get FoE application') {
                     steps {
                         unstash 'foe_app'
                         bat """
@@ -183,7 +183,7 @@ pipeline {
                         checkout scm
                     }
                 }
-                stage('Get FOE application') {
+                stage('Get FoE application') {
                     steps {
                         unstash 'foe_app'
                         bat """
