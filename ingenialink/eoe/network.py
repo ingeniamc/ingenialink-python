@@ -129,8 +129,10 @@ class EoENetwork(EthernetNetwork):
             self._stop_eoe_service()
             self._erase_config_eoe_service()
             self._deinitialize_eoe_service()
-            self._eoe_socket.shutdown(socket.SHUT_RDWR)
-            self._eoe_socket.close()
+
+    def __del__(self):
+        self._eoe_socket.shutdown(socket.SHUT_RDWR)
+        self._eoe_socket.close()
 
     def scan_slaves(self):
         """Scan slaves connected to the network adapter.

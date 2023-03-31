@@ -58,7 +58,6 @@ def test_eoe_disconnection(connect):
     assert not net._eoe_service_init
     assert not net._eoe_service_started
     assert len(net.servos) == 0
-    assert net._eoe_socket._closed
 
 
 @pytest.mark.parametrize(
