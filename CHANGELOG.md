@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.0.0] - 2023-03-31
 ### Add
 - Interface a Network class with SOEM service
 - Add multi-slaves support to EoE service
