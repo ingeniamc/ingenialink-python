@@ -4,10 +4,9 @@ from collections import defaultdict
 
 from .servo import EthernetServo
 from ingenialink.utils.udp import UDP
-from ingenialink.utils._utils import raise_err
 from ..network import NET_PROT
 from ingenialink.network import Network, NET_STATE, NET_DEV_EVT
-from ingenialink.exceptions import ILFirmwareLoadError
+from ingenialink.exceptions import ILFirmwareLoadError, ILError
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 
 from ftplib import FTP
@@ -112,14 +111,14 @@ class EthernetNetwork(Network):
             ftp_output = ftp.connect(target)
             logger.info(ftp_output)
             if FTP_SESSION_OK_CODE not in ftp_output:
-                raise_err("Unable to open FTP session")
+                raise ILError("Unable to open FTP session")
 
             # Login into FTP session.
             logger.info("Logging into FTP session...")
             ftp_output = ftp.login(ftp_user, ftp_pwd)
             logger.info(ftp_output)
             if FTP_LOGIN_OK_CODE not in ftp_output:
-                raise_err("Unable to login the FTP session")
+                raise ILError("Unable to login the FTP session")
 
             # Load file through FTP.
             logger.info("Uploading firmware file...")
@@ -127,7 +126,7 @@ class EthernetNetwork(Network):
             ftp_output = ftp.storbinary(f"STOR {os.path.basename(file.name)}", file)
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
-                raise_err("Unable to load the FW file through FTP")
+                raise ILError("Unable to load the FW file through FTP")
 
             # Close FTP session.
             logger.info("Closing FTP session...")
@@ -224,10 +223,14 @@ class EthernetNetwork(Network):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(connection_timeout)
         sock.connect((target, port))
-        self._set_servo_state(target, NET_STATE.CONNECTED)
         servo = EthernetServo(sock, dictionary, servo_status_listener)
-
+        try:
+            servo.get_state()
+        except ILError as e:
+            servo.stop_status_listener()
+            raise ILError(f"Drive not found in IP {target}.") from e
         self.servos.append(servo)
+        self._set_servo_state(target, NET_STATE.CONNECTED)
 
         if net_status_listener:
             self.start_status_listener()

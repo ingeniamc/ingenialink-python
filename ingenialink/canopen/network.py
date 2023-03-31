@@ -533,7 +533,6 @@ class CanopenNetwork(Network):
                         r = -1
 
                     if r >= 0 and prog_stat_1 == PROG_CTRL_STATE_STOP:
-
                         try:
                             servo.write(PROG_STAT_1, PROG_CTRL_STATE_CLEAR, subnode=0)
                         except Exception as e:

@@ -4,41 +4,41 @@ from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.exceptions import ILFirmwareLoadError
 
 
-@pytest.mark.ethercat
-def test_connect_to_slave(connect_to_slave):
-    servo, net = connect_to_slave
-    assert servo is not None and net is not None
-    assert len(net.servos) == 1
-    fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
-    assert fw_version is not None and fw_version != ""
-
-
-@pytest.mark.ethercat
-def test_scan_slaves(read_config):
-    net = EthercatNetwork(read_config["ethercat"]["ifname"])
-
-    slaves = net.scan_slaves()
-    assert len(slaves) > 0
-
-
-@pytest.mark.ethercat
-def test_load_firmware_file_not_found(read_config):
+@pytest.mark.no_connection
+def test_load_firmware_file_not_found_error(read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     with pytest.raises(FileNotFoundError):
         net.load_firmware(fw_file="ethercat.sfu")
 
 
-@pytest.mark.ethercat
-def test_load_firmware_load_error(mocker, read_config):
+@pytest.mark.no_connection
+def test_load_firmware_no_slave_detected_error(mocker, read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     mocker.patch("os.path.isfile", return_value=True)
-    with pytest.raises(ILFirmwareLoadError):
-        net.load_firmware(fw_file="ethercat.sfu")
+    with pytest.raises(
+        ILFirmwareLoadError,
+        match="The firmware file could not be loaded correctly. No ECAT slave detected",
+    ):
+        net.load_firmware(fw_file="dummy_file.lfu", slave_id=23)
 
 
-@pytest.mark.ethercat
-def test_load_firmware_value_error(mocker, read_config):
+@pytest.mark.no_connection
+def test_load_firmware_value_error(mocker):
+    net = EthercatNetwork("not existing ifname")
+    mocker.patch("os.path.isfile", return_value=True)
+    with pytest.raises(
+        ILFirmwareLoadError,
+        match=(
+            "The firmware file could not be loaded correctly. Can’t initialize the network adapter"
+        ),
+    ):
+        net.load_firmware(fw_file="dummy_file.lfu")
+
+
+@pytest.mark.no_connection
+def test_load_firmware_not_implemented_error(mocker, read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     mocker.patch("os.path.isfile", return_value=True)
-    with pytest.raises(ValueError):
-        net.load_firmware(fw_file="ethercat.xyz")
+    mocker.patch("sys.platform", return_value="linux")
+    with pytest.raises(NotImplementedError):
+        net.load_firmware(fw_file="dummy_file.lfu")

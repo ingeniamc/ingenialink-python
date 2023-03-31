@@ -194,7 +194,7 @@ class VirtualMonitoring(VirtualMonDistBase):
                 size = self.channels[channel]["size"]
                 sample_bytes = convert_dtype_to_bytes(value, self.channels[channel]["dtype"])
                 if len(sample_bytes) < size:
-                    sample_bytes += (b"0") * (size - len(sample_bytes))
+                    sample_bytes += b"0" * (size - len(sample_bytes))
                 bytes += sample_bytes
         self.drive.set_value_by_id(0, "MON_DATA", bytes)
 
@@ -428,7 +428,10 @@ class VirtualDrive(Thread):
 
     def get_value_by_id(self, subnode, id):
         """Returns a register value by its ID."""
-        return self.__dictionary.registers(subnode)[id]._storage
+        value = self.__dictionary.registers(subnode)[id]._storage
+        if id == EthernetServo.STATUS_WORD_REGISTERS and value is None:
+            return 64
+        return value
 
     def set_value_by_id(self, subnode, id, value):
         """Set a register value by its ID."""

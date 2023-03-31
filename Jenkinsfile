@@ -1,20 +1,43 @@
+@Library('cicd-lib@0.3') _
+
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
 def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
-def PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9"]
-def style_check = false
 
+def DIST_FOE_APP_PATH = "ECAT-tools"
+def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
+def FOE_APP_NAME = "FoEUpdateFirmware.exe"
+def FOE_APP_VERSION = ""
 
 pipeline {
     agent none
     stages {
+        stage('Get FoE application') {
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/publisher:1.4"
+                }
+            }
+            stages {
+                stage('Get FoE application') {
+                    steps {
+                        script {
+                            FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FoE; print(FoE.__version__)"', returnStdout: true).trim()
+                        }
+                        copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
+                        stash includes: "$FOE_APP_NAME", name: 'foe_app'
+                    }
+                }
+            }
+        }
         stage('Build wheels and documentation') {
             agent {
                 docker {
                     label SW_NODE
-                    image 'ingeniacontainers.azurecr.io/ingenialink-builder'
+                    image 'ingeniacontainers.azurecr.io/win-python-builder:1.0'
                 }
             }
             stages {
@@ -27,29 +50,38 @@ pipeline {
                             git checkout ${env.GIT_COMMIT}
                         """
                     }
-                 }
+                }
+                stage('Get FoE application') {
+                    steps {
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\win_64x\\
+                        """
+                    }
+                }
+                stage('Install deps') {
+                    steps {
+                        bat '''
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            python -m venv venv
+                            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                            venv\\Scripts\\python.exe -m pip install -e .
+                        '''
+                    }
+                }
                 stage('Build wheels') {
                     steps {
-                        script {
-                            PYTHON_VERSIONS.each { version ->
-                                stage("Build Python ${version} wheel") {
-                                    bat """
-                                        cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                                        py -${version} -m venv py${version}
-                                        py${version}\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
-                                        py${version}\\Scripts\\python.exe -m pip install -e .
-                                        py${version}\\Scripts\\python.exe setup.py build sdist bdist_wheel
-                                    """
-                                }
-                            }
-                        }
+                        bat '''
+                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                             venv\\Scripts\\python.exe setup.py build sdist bdist_wheel
+                        '''
                     }
                 }
                 stage('Check formatting') {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            py${PYTHON_VERSIONS[-1]}\\Scripts\\python.exe -m black -l 100 --check ingenialink tests
+                            venv\\Scripts\\python.exe -m black --check ingenialink tests
                         """
                     }
                 }
@@ -57,7 +89,7 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            py${PYTHON_VERSIONS[-1]}\\Scripts\\python.exe -m sphinx -b html docs _docs
+                            venv\\Scripts\\python.exe -m sphinx -b html docs _docs
                         """
                     }
                 }
@@ -68,10 +100,8 @@ pipeline {
                             "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
                             XCOPY dist ${env.WORKSPACE}\\dist /i
                             XCOPY docs.zip ${env.WORKSPACE}
-                            XCOPY ingenialink\\*.pyd ${env.WORKSPACE}\\ingenialink
                         """
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
-                        stash includes: 'ingenialink\\*.pyd', name: 'pyds'
                     }
                 }
             }
@@ -89,21 +119,26 @@ pipeline {
                         checkout scm
                     }
                 }
-                stage('Update drives FW') {
+                stage('Get FoE application') {
                     steps {
-                        bat '''
-                            python -m venv ingeniamotion
-                            ingeniamotion\\Scripts\\python.exe -m pip install ingeniamotion ping3
-                            ingeniamotion\\Scripts\\python.exe tests\\resources\\Scripts\\load_FWs.py ethercat
-                        '''
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                        """
                     }
                 }
                 stage('Install deps') {
                     steps {
-                        unstash 'pyds'
                         bat '''
                             python -m venv venv
                             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                        '''
+                    }
+                }
+                stage('Update drives FW') {
+                    steps {
+                        bat '''
+                             venv\\Scripts\\python.exe -m tests.resources.Scripts.load_FWs ethercat
                         '''
                     }
                 }
@@ -148,21 +183,26 @@ pipeline {
                         checkout scm
                     }
                 }
-                stage('Update drives FW') {
+                stage('Get FoE application') {
                     steps {
-                        bat '''
-                            python -m venv ingeniamotion
-                            ingeniamotion\\Scripts\\python.exe -m pip install ingeniamotion ping3
-                            ingeniamotion\\Scripts\\python.exe tests\\resources\\Scripts\\load_FWs.py canopen
-                        '''
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                        """
                     }
                 }
                 stage('Install deps') {
                     steps {
-                        unstash 'pyds'
                         bat '''
                             python -m venv venv
                             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                        '''
+                    }
+                }
+                stage('Update drives FW') {
+                    steps {
+                        bat '''
+                             venv\\Scripts\\python.exe -m tests.resources.Scripts.load_FWs canopen
                         '''
                     }
                 }

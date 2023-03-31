@@ -23,6 +23,7 @@ class MCB:
     EXTENDED_DATA_END_BYTE = None
     DATA_START_BYTE = MCB_HEADER_SIZE
     DATA_END_BYTE = MCB_FRAME_SIZE - MCB_CRC_SIZE
+    ERR_CODE_SIZE = 4
 
     def __init__(self):
         pass
@@ -134,12 +135,13 @@ class MCB:
         recv_add, _, cmd, data = cls.read_mcb_frame(frame)
 
         if cmd != MCB_CMD_ACK:
-            err = frame[cls.DATA_START_BYTE : cls.DATA_END_BYTE].hex()
-            raise ILNACKError(f"Communications error (NACK -> {err[::-1]})")
+            err_code_little = int.from_bytes(data, byteorder="little")
+            err_code_big = err_code_little.to_bytes(cls.ERR_CODE_SIZE, byteorder="big")
+            raise ILNACKError(f"Communications error (NACK -> 0x{err_code_big.hex().upper()})")
         if expected_address != recv_add:
             raise ILWrongRegisterError(
                 f"Received address: {hex(recv_add)} does "
-                f"not match expected address: "
+                "not match expected address: "
                 f"{hex(expected_address)}"
             )
         return data

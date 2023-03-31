@@ -31,6 +31,8 @@ class EthernetRegister(Register):
 
     """
 
+    MAP_ADDRESS_OFFSET = 0x800
+
     def __init__(
         self,
         address,
@@ -50,7 +52,6 @@ class EthernetRegister(Register):
         internal_use=0,
         address_type=None,
     ):
-
         super().__init__(
             dtype,
             access,
@@ -75,3 +76,9 @@ class EthernetRegister(Register):
     def address(self):
         """int: Register address."""
         return self.__address
+
+    @property
+    def mapped_address(self):
+        """int: Register mapped address used for monitoring/disturbance."""
+        address_offset = self.MAP_ADDRESS_OFFSET * (self.subnode - 1)
+        return self.address + address_offset
