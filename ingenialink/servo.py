@@ -52,15 +52,15 @@ class ServoStatusListener(threading.Thread):
 
     def run(self):
         """Checks if the drive is alive by reading the status word register"""
-        previous_states = self.__servo.status
+        previous_states = {}
         while not self.__stop:
             for subnode in range(1, self.__servo.subnodes):
                 try:
                     current_state = self.__servo.get_state(subnode)
-                    if previous_states[subnode] != current_state:
+                    if not previous_states or previous_states[subnode] != current_state:
                         previous_states[subnode] = current_state
                         self.__servo._notify_state(current_state, subnode)
-                except ILIOError as e:
+                except (ILIOError, ILTimeoutError) as e:
                     logger.error("Error getting drive status. Exception : %s", e)
             time.sleep(1.5)
 
@@ -914,7 +914,7 @@ class Servo:
 
         Raises:
             ILAccessError: Wrong access to the register.
-            ILIOError: Error reading the register.
+            ILIOError: Error writing the register.
 
         """
         _reg = self._get_reg(reg, subnode)
@@ -936,7 +936,7 @@ class Servo:
 
         Raises:
             ILAccessError: Wrong access to the register.
-            ILIOError: Error writing the register.
+            ILIOError: Error reading the register.
 
         """
         _reg = self._get_reg(reg, subnode)

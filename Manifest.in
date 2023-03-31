@@ -1,3 +1,1 @@
-
-include ingenialink/Packet.dll
-include ingenialink/wpcap.dll
+recursive-include ingenialink/bin *

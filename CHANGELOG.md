@@ -1,13 +1,26 @@
 # Changelog
 
-## [Unreleased]
+## [7.0.0] - 2023-03-31
+### Add
+- Interface a Network class with SOEM service
+- Add multi-slaves support to EoE service
+- Implement stop EoE service feature
+- Create mapped register property
+- Create project toml file
+- Use FoE application to load FW in windows
+
 ### Changed
 - Update the load_FWs script to only use ingenialink.
 - Improve the load_FWs script when using canopen protocol.
+
+### Removed
+- Remove numpy from requirements
 - Remove binding to the [ingenialink](https://github.com/ingeniamc/ingenialink) C library.
 
-###Fixed
+### Fixed
 - NACK error code formatting.
+- Fix pytest tests launch
+- Wrong float range
 
 ## [6.5.1] - 2023-01-17
 ### Fixed

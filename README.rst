@@ -24,6 +24,12 @@ Requirements
 
 .. _WinPcap: https://www.winpcap.org/install/
 
+Development
+^^^^^^^^^^^
+
+In case that library will be use from source code the FoE application will be missing.
+It must be added to ``ingenialink/bin/FoE/win_64x`` in order to use FOE feature.
+
 Installation
 ------------
 
