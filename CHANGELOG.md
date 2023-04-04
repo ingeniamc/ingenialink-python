@@ -1,5 +1,10 @@
 # Changelog
 
+## [7.0.1] - 2023-04-04
+### Fixed
+- Recover old Monitoring/Disturbance compatibility
+- Fix ServoStatusListener for multiaxis
+
 ## [7.0.0] - 2023-03-31
 ### Add
 - Interface a Network class with SOEM service
