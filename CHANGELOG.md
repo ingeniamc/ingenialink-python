@@ -3,6 +3,7 @@
 ## [Unreleased]
 ### Fixed
 - Recover old Monitoring/Disturbance compatibility
+- Fix ServoStatusListener for multiaxis
 
 ## [7.0.0] - 2023-03-31
 ### Add
