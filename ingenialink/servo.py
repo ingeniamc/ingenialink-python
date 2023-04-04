@@ -108,6 +108,11 @@ class Servo:
     DISTURBANCE_NUMBER_MAPPED_REGISTERS = "DIST_CFG_MAP_REGS"
     DIST_NUMBER_SAMPLES = "DIST_CFG_SAMPLES"
     DIST_DATA = None
+    MONITORING_ACTUAL_NUMBER_SAMPLES = "MON_CFG_CYCLES_VALUE"
+    DISTURBANCE_REMOVE_REGISTERS_OLD = "DIST_CMD_RM_REGS"
+    MONITORING_REMOVE_REGISTERS_OLD = "MON_CMD_RM_REG"
+    DISTURBANCE_ADD_REGISTERS_OLD = "DIST_CMD_ADD_REG"
+    MONITORING_ADD_REGISTERS_OLD = "MON_OP_ADD_REG"
 
     def __init__(self, target, dictionary_path=None, servo_status_listener=False):
         self.target = target
@@ -558,8 +563,11 @@ class Servo:
         """
         self.__monitoring[channel] = {"size": size, "dtype": REG_DTYPE(dtype), "processed_data": []}
         data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
-        self.write(self.__monitoring_map_register(), data=data, subnode=0)
-        self.__monitoring_update_num_mapped_registers()
+        try:
+            self.write(self.__monitoring_map_register(), data=data, subnode=0)
+            self.__monitoring_update_num_mapped_registers()
+        except ILAccessError:
+            self.write(self.MONITORING_ADD_REGISTERS_OLD, data=address, subnode=0)
 
     def monitoring_get_num_mapped_registers(self):
         """Obtain the number of monitoring mapped registers.
@@ -581,12 +589,20 @@ class Servo:
 
     def monitoring_remove_all_mapped_registers(self):
         """Remove all monitoring mapped registers."""
-        self.write(self.MONITORING_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
+        try:
+            self.write(self.MONITORING_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
+        except ILAccessError:
+            self.write(self.MONITORING_REMOVE_REGISTERS_OLD, data=1, subnode=0)
         self.__monitoring = {}
 
     def monitoring_actual_number_bytes(self):
         """Get the number of monitoring bytes left to be read."""
-        return self.read(self.MONITORING_ACTUAL_NUMBER_BYTES, subnode=0)
+        try:
+            return self.read(self.MONITORING_ACTUAL_NUMBER_BYTES, subnode=0)
+        except ILRegisterNotFoundError:
+            num_samples = self.read(self.MONITORING_ACTUAL_NUMBER_SAMPLES, subnode=0)
+            sample_size = sum(self.__monitoring[reg]["size"] for reg in self.__monitoring)
+            return num_samples * sample_size
 
     def monitoring_read_data(self):
         """Obtain processed monitoring data.
@@ -651,8 +667,11 @@ class Servo:
         """
         self.__disturbance[channel] = {"size": size, "dtype": REG_DTYPE(dtype).name}
         data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
-        self.write(self.__disturbance_map_register(), data=data, subnode=0)
-        self.__disturbance_update_num_mapped_registers()
+        try:
+            self.write(self.__disturbance_map_register(), data=data, subnode=0)
+            self.__disturbance_update_num_mapped_registers()
+        except ILRegisterNotFoundError:
+            self.write(self.DISTURBANCE_ADD_REGISTERS_OLD, data=address, subnode=0)
 
     def disturbance_get_num_mapped_registers(self):
         """Obtain the number of disturbance mapped registers.
@@ -665,7 +684,10 @@ class Servo:
 
     def disturbance_remove_all_mapped_registers(self):
         """Remove all disturbance mapped registers."""
-        self.write(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
+        try:
+            self.write(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
+        except ILAccessError:
+            self.write(self.DISTURBANCE_REMOVE_REGISTERS_OLD, data=1, subnode=0)
         self.__disturbance = {"data": bytearray()}
 
     def subscribe_to_status(self, callback):
