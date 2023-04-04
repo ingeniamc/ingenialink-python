@@ -57,7 +57,7 @@ class ServoStatusListener(threading.Thread):
             for subnode in range(1, self.__servo.subnodes):
                 try:
                     current_state = self.__servo.get_state(subnode)
-                    if not previous_states or previous_states[subnode] != current_state:
+                    if subnode not in previous_states or previous_states[subnode] != current_state:
                         previous_states[subnode] = current_state
                         self.__servo._notify_state(current_state, subnode)
                 except (ILIOError, ILTimeoutError) as e:
