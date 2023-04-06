@@ -348,6 +348,8 @@ class VirtualDrive(Thread):
         self.set_value_by_id(1, "DRV_ID_SOFTWARE_VERSION", "0.1.0")
         self.set_value_by_id(1, "DRV_ID_SOFTWARE_VERSION", "0.1.0")
         self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_RTSO)
+        self.set_value_by_id(1, "DRV_POS_VEL_RATE", 20000)
+        self.set_value_by_id(0, "DIST_MAX_SIZE", 8192)
 
     def _update_registers(self):
         """Force storage_valid at each register and add registers that are not in the dictionary."""
