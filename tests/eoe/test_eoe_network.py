@@ -3,18 +3,8 @@ import socket
 import ipaddress
 
 from ingenialink.ethernet.servo import EthernetServo
-from ingenialink.ethernet.network import NET_PROT, NET_STATE
+from ingenialink.ethernet.network import NET_PROT
 from ingenialink.eoe.network import EoENetwork, EoECommand
-from ingenialink.utils._utils import convert_dtype_to_bytes
-from ingenialink.register import REG_DTYPE
-from ingenialink.constants import (
-    EOE_MSG_CMD_SIZE,
-    EOE_MSG_NODE_SIZE,
-    EOE_MSG_DATA_SIZE,
-    EOE_MSG_FRAME_SIZE,
-    EOE_MSG_TERMINATOR_SIZE,
-)
-from ingenialink.constants import NULL_TERMINATOR
 
 
 @pytest.fixture()
@@ -37,11 +27,11 @@ def test_eoe_connection(connect_to_slave, read_config):
     servo, net = connect_to_slave
     net_socket = net._eoe_socket
     ip, port = net_socket.getpeername()
-    configured_ip = servo.read("COMMS_ETH_IP", subnode=0)
-    assert net.scan_slaves() > 0
-    assert drive_ip == str(ipaddress.ip_address(configured_ip))
+    assert servo.is_alive()
+    assert len(net.scan_slaves()) > 0
     assert isinstance(servo, EthernetServo)
-    assert net.status == NET_STATE.CONNECTED
+    assert net._eoe_service_init
+    assert net._eoe_service_started
     assert net.protocol == NET_PROT.ETH
     assert net_socket.family == socket.AF_INET
     assert net_socket.type == socket.SOCK_DGRAM
@@ -50,31 +40,42 @@ def test_eoe_connection(connect_to_slave, read_config):
 
 
 @pytest.mark.eoe
+def test_eoe_connection_wrong_ip_address(read_config):
+    protocol_contents = read_config["eoe"]
+    net = EoENetwork(protocol_contents["ifname"])
+    with pytest.raises(ValueError):
+        net.connect_to_slave(
+            slave_id=protocol_contents["slave"],
+            ip_address="192.168.2.22",
+            dictionary=protocol_contents["dictionary"],
+        )
+
+
+@pytest.mark.eoe
 def test_eoe_disconnection(connect):
     servo, net = connect
     net.disconnect_from_slave(servo)
-    assert net.status == NET_STATE.DISCONNECTED
+    assert not net._eoe_service_init
+    assert not net._eoe_service_started
     assert len(net.servos) == 0
-    assert net._eoe_socket._closed
 
 
 @pytest.mark.parametrize(
-    "cmd, subnode, data, dtype",
+    "cmd, data",
     [
-        (EoECommand.START.value, 0, 10, REG_DTYPE.U16),
-        (EoECommand.SCAN.value, 1, 25.5, REG_DTYPE.FLOAT),
-        (EoECommand.CONFIG.value, 2, None, None),
+        (EoECommand.EOE_START, None),
+        (EoECommand.SCAN, None),
+        (EoECommand.INIT, b"example_ifname"),
+        (EoECommand.CONFIG, b"\x01\x00\x16\x03\xa8\xc0\x00\xff\xff\xff"),
     ],
 )
 @pytest.mark.eoe
-def test_eoe_command_msg(cmd, subnode, data, dtype):
-    data_bytes = bytes() if data is None else convert_dtype_to_bytes(data, dtype)
-    data_filling = b"\x00" * (EOE_MSG_DATA_SIZE - len(data_bytes))
-    msg = EoENetwork._build_eoe_command_msg(cmd, subnode, data_bytes)
-    cmd_field = msg[:EOE_MSG_CMD_SIZE]
-    subnode_field = msg[EOE_MSG_CMD_SIZE : EOE_MSG_NODE_SIZE + EOE_MSG_TERMINATOR_SIZE + 1]
-    data_field = msg[-(EOE_MSG_DATA_SIZE + EOE_MSG_TERMINATOR_SIZE) :]
-    assert len(msg) == EOE_MSG_FRAME_SIZE
-    assert cmd_field == cmd.encode("utf-8")
-    assert subnode_field == f"{subnode:0{EOE_MSG_NODE_SIZE}d}".encode("utf-8") + NULL_TERMINATOR
-    assert data_field == data_bytes + data_filling + NULL_TERMINATOR
+def test_eoe_command_msg(cmd, data):
+    data_bytes = bytes() if data is None else data
+    data_filling = EoENetwork.NULL_TERMINATOR * (EoENetwork.EOE_MSG_DATA_SIZE - len(data_bytes))
+    msg = EoENetwork._build_eoe_command_msg(cmd.value, data_bytes)
+    cmd_field = msg[: EoENetwork.EOE_MSG_CMD_SIZE]
+    data_field = msg[-EoENetwork.EOE_MSG_DATA_SIZE :]
+    assert len(msg) == EoENetwork.EOE_MSG_FRAME_SIZE
+    assert int.from_bytes(cmd_field, "little") == cmd.value
+    assert data_field == data_bytes + data_filling

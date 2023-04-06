@@ -223,10 +223,14 @@ class EthernetNetwork(Network):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(connection_timeout)
         sock.connect((target, port))
-        self._set_servo_state(target, NET_STATE.CONNECTED)
         servo = EthernetServo(sock, dictionary, servo_status_listener)
-
+        try:
+            servo.get_state()
+        except ILError as e:
+            servo.stop_status_listener()
+            raise ILError(f"Drive not found in IP {target}.") from e
         self.servos.append(servo)
+        self._set_servo_state(target, NET_STATE.CONNECTED)
 
         if net_status_listener:
             self.start_status_listener()

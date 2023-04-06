@@ -1,14 +1,32 @@
 # Changelog
 
-## [Unreleased]
+## [7.0.1] - 2023-04-04
+### Fixed
+- Recover old Monitoring/Disturbance compatibility
+- Fix ServoStatusListener for multiaxis
+
+## [7.0.0] - 2023-03-31
+### Add
+- Interface a Network class with SOEM service
+- Add multi-slaves support to EoE service
+- Implement stop EoE service feature
+- Create mapped register property
+- Create project toml file
+- Use FoE application to load FW in windows
+
 ### Changed
 - Update the load_FWs script to only use ingenialink.
 - Improve the load_FWs script when using canopen protocol.
+
+### Removed
+- Remove numpy from requirements
 - Remove binding to the [ingenialink](https://github.com/ingeniamc/ingenialink) C library.
 - Move virtual drive from tests to ingenialink.
 
-###Fixed
+### Fixed
 - NACK error code formatting.
+- Fix pytest tests launch
+- Wrong float range
 
 ## [6.5.1] - 2023-01-17
 ### Fixed
