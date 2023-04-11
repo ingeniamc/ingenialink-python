@@ -496,7 +496,7 @@ class VirtualDrive(Thread):
             (float, int, str): Register value.
         """
         register = self.__dictionary.registers(subnode)[id]
-        if not register._storage:
+        if register._storage is None:
             range_value = register.range
             if not register.range[0]:
                 range_value = (1, 10)
