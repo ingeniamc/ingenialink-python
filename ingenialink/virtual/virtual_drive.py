@@ -1,8 +1,8 @@
-import os
 import socket
 import time
 from enum import Enum
 from threading import Thread
+import random
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.utils.mcb import MCB
@@ -10,6 +10,7 @@ from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_by
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.ethernet.dictionary import EthernetDictionary
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
+from ingenialink.utils import constants
 
 
 class MSG_TYPE(Enum):
@@ -21,7 +22,7 @@ class VirtualMonDistBase:
     """Base class to implement VirtualMonitoring and VirtualDisturbance.
 
     Args:
-        drive (EthernetServo): Servo instance.
+        drive (VirtualDrive): Virtual drive instance.
 
     """
 
@@ -95,7 +96,7 @@ class VirtualMonDistBase:
         """Decodes the register with the information of a mapped register.
 
         Args:
-            channel (int): Channel of the register to be decoded
+            channel (int): Channel of the register to be decoded.
 
         Returns:
             int: Register subnode
@@ -134,7 +135,7 @@ class VirtualMonitoring(VirtualMonDistBase):
     """Emulates monitoring at the VirtualDrive.
 
     Args:
-        drive (EthernetServo): Servo instance.
+        drive (VirtualDrive): Virtual drive instance.
 
     """
 
@@ -200,7 +201,7 @@ class VirtualMonitoring(VirtualMonDistBase):
 
     @property
     def trigger_type(self):
-        """int: Trigger type Auto(0), Force (1) or Rising or Failing (2)"""
+        """int: Trigger type Auto(0), Force (1) or Rising or Failing (2)."""
         return self.drive.get_value_by_id(0, self.TRIGGER_TYPE_REG)
 
 
@@ -208,7 +209,7 @@ class VirtualDisturbance(VirtualMonDistBase):
     """Emulates disturbance at the VirtualDrive.
 
     Args:
-        drive (EthernetServo): Servo instance.
+        drive (VirtualDrive): Virtual drive instance.
 
     """
 
@@ -229,7 +230,11 @@ class VirtualDisturbance(VirtualMonDistBase):
         super().enable()
 
     def append_data(self, data):
-        """Append received disturbance data until the buffer is full."""
+        """Append received disturbance data until the buffer is full.
+
+        Args:
+            data (bytearray): Received data.
+        """
         if len(self.channels) == 0:
             super().map_registers()
         self.received_bytes += data
@@ -264,7 +269,7 @@ class VirtualDrive(Thread):
     """Emulates a drive by creating a UDP server that sends and receives MCB messages.
 
     Args:
-        ip (int): Server IP address.
+        ip (str): Server IP address.
         port (int): Server port number.
         dictionary_path (str): Path to the dictionary.
 
@@ -285,13 +290,14 @@ class VirtualDrive(Thread):
         self.__logger = []
         self.__reg_address_to_id = {}
         self.__dictionary = EthernetDictionary(dictionary_path)
+        self._init_registers()
         self._update_registers()
         self.__monitoring = VirtualMonitoring(self)
         self.__disturbance = VirtualDisturbance(self)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def run(self):
-        """Open socket and listen messages."""
+        """Open socket, listen and decode messages."""
         server_address = (self.ip, self.port)
         self.socket.bind(server_address)
         self.socket.settimeout(2)
@@ -299,8 +305,7 @@ class VirtualDrive(Thread):
             try:
                 frame, add = self.socket.recvfrom(ETH_BUF_SIZE)
             except:
-                self.stop()
-                break
+                continue
             reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
             self.__log(add, frame, MSG_TYPE.RECEIVED)
             register = self.get_register(subnode, reg_add)
@@ -333,6 +338,19 @@ class VirtualDrive(Thread):
         self.__stop = True
         self.__monitoring.disable()
 
+    def _init_registers(self):
+        """Initialize some relevant registers."""
+        self.set_value_by_id(0, "DRV_ID_PRODUCT_CODE_COCO", 123456)
+        self.set_value_by_id(1, "DRV_ID_PRODUCT_CODE", 123456)
+        self.set_value_by_id(0, "DRV_ID_REVISION_NUMBER_COCO", 654321)
+        self.set_value_by_id(1, "DRV_ID_REVISION_NUMBER", 654321)
+        self.set_value_by_id(0, "DRV_APP_COCO_VERSION", "0.1.0")
+        self.set_value_by_id(1, "DRV_ID_SOFTWARE_VERSION", "0.1.0")
+        self.set_value_by_id(1, "DRV_ID_SOFTWARE_VERSION", "0.1.0")
+        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_RTSO)
+        self.set_value_by_id(1, "DRV_POS_VEL_RATE", 20000)
+        self.set_value_by_id(0, "DIST_MAX_SIZE", 8192)
+
     def _update_registers(self):
         """Force storage_valid at each register and add registers that are not in the dictionary."""
         for subnode in range(self.__dictionary.subnodes):
@@ -359,12 +377,25 @@ class VirtualDrive(Thread):
             self.__reg_address_to_id[reg.subnode][reg.address] = id
 
     def __send(self, response, address):
-        """Send a message and update log."""
+        """Send a message and update log.
+
+        Args:
+            response (bytes): Message to be sent.
+            address (tuple): IP address and port.
+        """
+        time.sleep(0.01)  # Emulate latency of 10 ms
         self.socket.sendto(response, address)
         self.__log(address, response, MSG_TYPE.SENT)
 
     def _response_monitoring_data(self, data):
-        """Creates a response for monitoring data."""
+        """Creates a response for monitoring data.
+
+        Args:
+            data (bytes): Data to be sent.
+
+        Returns:
+            bytes: MCB frame.
+        """
         sent_cmd = self.ACK_CMD
         reg_add = self.id_to_address(0, "MON_DATA")
         limit = min(len(data), MONITORING_BUFFER_SIZE)
@@ -375,7 +406,13 @@ class VirtualDrive(Thread):
         return response
 
     def __log(self, ip_port, message, msg_type):
-        """Updates log."""
+        """Updates log.
+
+        Args:
+            ip_port (tuple): IP address and port.
+            message (bytes): Received or sent message.
+            msg_type (MSG_TYPE): Sent or Received.
+        """
         self.__logger.append(
             {
                 "timestamp": time.time(),
@@ -395,7 +432,13 @@ class VirtualDrive(Thread):
         self.__logger = []
 
     def __decode_msg(self, reg_add, subnode, data):
-        """Decodes received messages and run specific methods if needed."""
+        """Decodes received messages and run specific methods if needed.
+
+        Args:
+            reg_add (int): Register address.
+            subnode (int): Subnode.
+            data (bytes): Received data.
+        """
         register = self.get_register(subnode, reg_add)
         reg_id = register.identifier
         dtype = register.dtype
@@ -418,27 +461,77 @@ class VirtualDrive(Thread):
             self.__disturbance.append_data(data)
 
     def address_to_id(self, subnode, address):
-        """Converts a register address into its ID."""
+        """Converts a register address into its ID.
+
+        Args:
+            subnode (int): Subnode.
+            address (int): Register address.
+
+        Returns:
+            str: Register ID.
+        """
         return self.__reg_address_to_id[subnode][address]
 
     def id_to_address(self, subnode, id):
-        """Converts a register address into an ID."""
+        """Converts a register address into an ID.
+
+        Args:
+            subnode (int): Subnode.
+            id (str): Register ID.
+
+        Returns:
+            int: Register adress.
+        """
         register = self.__dictionary.registers(subnode)[id]
         return register.address
 
     def get_value_by_id(self, subnode, id):
-        """Returns a register value by its ID."""
-        value = self.__dictionary.registers(subnode)[id]._storage
-        if id == EthernetServo.STATUS_WORD_REGISTERS and value is None:
-            return 64
-        return value
+        """Returns a register value by its ID.
+
+        Args:
+            subnode (int): Subnode.
+            id (str): Register ID.
+
+        Returns:
+            (float, int, str): Register value.
+        """
+        register = self.__dictionary.registers(subnode)[id]
+        if register._storage is None:
+            range_value = register.range
+            if not register.range[0]:
+                range_value = (1, 10)
+            value = random.uniform(*range_value)
+            if register.dtype != REG_DTYPE.FLOAT:
+                value = int(value)
+                if register.dtype == REG_DTYPE.STR:
+                    value = ""
+            self.set_value_by_id(subnode, id, value)
+        return self.__dictionary.registers(subnode)[id]._storage
 
     def set_value_by_id(self, subnode, id, value):
-        """Set a register value by its ID."""
+        """Set a register value by its ID.
+
+        Args:
+            subnode (int): Subnode.
+            id (str): Register ID.
+            value (int, float, str): Value to be set.
+        """
         self.__dictionary.registers(subnode)[id].storage = value
 
     def get_register(self, subnode, address=None, id=None):
-        """Returns a register by its address or ID."""
+        """Returns a register by its address or ID.
+
+        Args:
+            subnode (int): Subnode.
+            address (int): Register address. Default to None.
+            id (str): Register ID. Default to None.
+
+        Returns:
+            EthernetRegister: Register instance.
+
+        Raises:
+            ValueError: If both address and id are None.
+        """
         if address is not None:
             id = self.address_to_id(subnode, address)
         else:

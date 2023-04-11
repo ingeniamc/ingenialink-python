@@ -21,6 +21,7 @@
 ### Removed
 - Remove numpy from requirements
 - Remove binding to the [ingenialink](https://github.com/ingeniamc/ingenialink) C library.
+- Move virtual drive from tests to ingenialink.
 
 ### Fixed
 - NACK error code formatting.
