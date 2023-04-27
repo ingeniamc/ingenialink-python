@@ -53,7 +53,7 @@ class NetStatusListener(Thread):
                 servo_ip = servo.ip_address
                 servo_state = self.__network._get_servo_state(servo_ip)
                 while unsuccessful_pings < self.__max_unsuccessful_pings:
-                    response = servo.is_alive() # TODO: Use ping after CAP-924 is fixed 
+                    response = servo.is_alive()  # TODO: Use ping after CAP-924 is fixed
                     if response == False:
                         unsuccessful_pings += 1
                     else:
