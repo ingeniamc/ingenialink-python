@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+### Changed
+- Use inspect instead of pkg_resources to find the path to the FoE application.
+
+
 ## [7.0.1] - 2023-04-04
 ### Fixed
 - Recover old Monitoring/Disturbance compatibility
