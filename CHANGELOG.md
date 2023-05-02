@@ -1,7 +1,8 @@
 # Changelog
 
-## [Unreleased]
+## [Unreleased] 
 ### Changed
+- Read a register instead of doing a ping in the Ethernet's NetStatusListener
 - Use inspect instead of pkg_resources to find the path to the FoE application.
 
 
