@@ -2,11 +2,7 @@ import os
 import sys
 import platform
 import subprocess
-
-try:
-    import importlib.resources as pkg_resources
-except ImportError:
-    import importlib_resources as pkg_resources
+import inspect
 
 import ingenialogger
 
@@ -67,10 +63,12 @@ class EthercatNetwork:
                 "Load FW by ECAT is not implemented for this OS and architecture:"
                 f" {sys_name} {arch}"
             )
-        exec_path = os.path.join(str(pkg_resources.files(bin_module)), app_path)
+        exec_path = os.path.join(os.path.dirname(inspect.getfile(bin_module)), app_path)
         logger.debug(f"Call FoE application for {sys_name}-{arch}")
         try:
-            subprocess.run([exec_path, self.interface_name, f"{slave_id}", fw_file], check=True)
+            subprocess.run(
+                [exec_path, self.interface_name, f"{slave_id}", fw_file], check=True, shell=True
+            )
         except subprocess.CalledProcessError as e:
             foe_return_error = self.FOE_ERRORS.get(e.returncode, self.UNKNOWN_FOE_ERROR)
             raise ILFirmwareLoadError(
