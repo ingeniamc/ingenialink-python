@@ -67,7 +67,10 @@ class EthercatNetwork:
         logger.debug(f"Call FoE application for {sys_name}-{arch}")
         try:
             subprocess.run(
-                [exec_path, self.interface_name, f"{slave_id}", fw_file], check=True, shell=True
+                [exec_path, self.interface_name, f"{slave_id}", fw_file],
+                check=True,
+                shell=True,
+                encoding="utf-8",
             )
         except subprocess.CalledProcessError as e:
             foe_return_error = self.FOE_ERRORS.get(e.returncode, self.UNKNOWN_FOE_ERROR)
