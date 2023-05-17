@@ -135,7 +135,7 @@ class MCB:
         recv_add, _, cmd, data = cls.read_mcb_frame(frame)
 
         if cmd != MCB_CMD_ACK:
-            err_code_little = int.from_bytes(data, byteorder="little")
+            err_code_little = int.from_bytes(data[: cls.ERR_CODE_SIZE], byteorder="little")
             err_code_big = err_code_little.to_bytes(cls.ERR_CODE_SIZE, byteorder="big")
             raise ILNACKError(f"Communications error (NACK -> 0x{err_code_big.hex().upper()})")
         if expected_address != recv_add:
