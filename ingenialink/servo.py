@@ -60,7 +60,7 @@ class ServoStatusListener(threading.Thread):
                     if subnode not in previous_states or previous_states[subnode] != current_state:
                         previous_states[subnode] = current_state
                         self.__servo._notify_state(current_state, subnode)
-                except (ILIOError, ILTimeoutError) as e:
+                except ILError as e:
                     logger.error("Error getting drive status. Exception : %s", e)
             time.sleep(1.5)
 
