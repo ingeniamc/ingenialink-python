@@ -1,11 +1,14 @@
 # Changelog
 
-## [Unreleased] 
+## [7.0.2] - 2023-05-22
 ### Changed
 - Read a register instead of doing a ping in the Ethernet's NetStatusListener
 - Use inspect instead of pkg_resources to find the path to the FoE application.
 - Call FoE application with utf-8 encoding.
 
+### Fixed
+- Capture all the ingenialink exceptions in servo status listener
+- Truncate NACK error code to a int32
 
 ## [7.0.1] - 2023-04-04
 ### Fixed
