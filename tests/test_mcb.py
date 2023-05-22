@@ -65,7 +65,10 @@ def test_read_mcb_frame_wrong_crc(expected_address, frame):
 
 
 @pytest.mark.no_connection
-@pytest.mark.parametrize("expected_address, frame", [(0x11, "a1001c0100000106000000009ad7")])
+@pytest.mark.parametrize(
+    "expected_address, frame",
+    [(0x11, "a1001c0100000106000000009ad7"), (0x11, "a1001c01772f2f3a00004650608b")],
+)
 def test_read_mcb_frame_nack(expected_address, frame):
     frame_byte_arr = bytearray.fromhex(frame)
     with pytest.raises(ILNACKError):
