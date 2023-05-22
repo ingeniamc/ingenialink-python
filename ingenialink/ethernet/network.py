@@ -39,9 +39,10 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network):
+    def __init__(self, network, refresh_time=0.25):
         super(NetStatusListener, self).__init__()
         self.__network = network
+        self.__refresh_time = refresh_time
         self.__stop = False
         self.__max_unsuccessful_pings = MAX_NUM_UNSUCCESSFUL_PINGS
 
@@ -52,8 +53,8 @@ class NetStatusListener(Thread):
                 servo_ip = servo.ip_address
                 servo_state = self.__network._get_servo_state(servo_ip)
                 while unsuccessful_pings < self.__max_unsuccessful_pings:
-                    response = ping(servo_ip, timeout=1)
-                    if not isinstance(response, float):
+                    response = servo.is_alive()  # TODO: Use ping after CAP-924 is fixed
+                    if response == False:
                         unsuccessful_pings += 1
                     else:
                         break
@@ -64,7 +65,7 @@ class NetStatusListener(Thread):
                 if servo_state == NET_STATE.DISCONNECTED and ping_response:
                     self.__network._notify_status(servo_ip, NET_DEV_EVT.ADDED)
                     self.__network._set_servo_state(servo_ip, NET_STATE.CONNECTED)
-            time.sleep(0.25)
+            time.sleep(self.__refresh_time)
 
     def stop(self):
         self.__stop = True
