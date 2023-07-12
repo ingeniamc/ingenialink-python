@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Add
+- Virtual drive.
+
+### Fixed
+- Catch EoE service deinit error when disconnecting the drive.
+
+
 ## [7.0.2] - 2023-05-22
 ### Changed
 - Read a register instead of doing a ping in the Ethernet's NetStatusListener

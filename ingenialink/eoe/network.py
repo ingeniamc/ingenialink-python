@@ -128,7 +128,10 @@ class EoENetwork(EthernetNetwork):
         if len(self.servos) == 0:
             self._stop_eoe_service()
             self._erase_config_eoe_service()
-            self._deinitialize_eoe_service()
+            try:
+                self._deinitialize_eoe_service()
+            except ILError as e:
+                logger.error(e)
 
     def __del__(self):
         self._eoe_socket.shutdown(socket.SHUT_RDWR)
@@ -257,11 +260,11 @@ class EoENetwork(EthernetNetwork):
             ILError: If the EoE service cannot be stopped on the network interface.
 
         """
-        self._eoe_service_init = False
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.DEINIT.value, data=data.encode("utf-8"))
         try:
             self._send_command(msg)
+            self._eoe_service_init = False
         except (ILIOError, ILTimeoutError) as e:
             raise ILError("Failed to deinitialize the EoE service.") from e
 
