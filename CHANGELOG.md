@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Add
+- Virtual drive.
+
 ### Fixed
 - Catch EoE service deinit error when disconnecting the drive.
 

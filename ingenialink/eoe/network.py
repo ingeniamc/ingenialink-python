@@ -260,11 +260,11 @@ class EoENetwork(EthernetNetwork):
             ILError: If the EoE service cannot be stopped on the network interface.
 
         """
-        self._eoe_service_init = False
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.DEINIT.value, data=data.encode("utf-8"))
         try:
             self._send_command(msg)
+            self._eoe_service_init = False
         except (ILIOError, ILTimeoutError) as e:
             raise ILError("Failed to deinitialize the EoE service.") from e
 
