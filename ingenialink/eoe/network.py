@@ -128,7 +128,10 @@ class EoENetwork(EthernetNetwork):
         if len(self.servos) == 0:
             self._stop_eoe_service()
             self._erase_config_eoe_service()
-            self._deinitialize_eoe_service()
+            try:
+                self._deinitialize_eoe_service()
+            except ILError as e:
+                logger.error(e)
 
     def __del__(self):
         self._eoe_socket.shutdown(socket.SHUT_RDWR)
