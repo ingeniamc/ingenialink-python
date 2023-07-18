@@ -1,6 +1,8 @@
 import struct
 from enum import Enum
+from typing import Union
 
+from ingenialink.exceptions import ILValueError
 from ingenialink.enums.register import REG_DTYPE
 from time import sleep
 
@@ -236,8 +238,16 @@ class INT_SIZES(Enum):
     U64_MAX = 18446744073709551615
 
 
-def convert_bytes_to_dtype(data, dtype):
-    """Convert data in bytes to corresponding dtype."""
+def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, str]:
+    """Convert data in bytes to corresponding dtype.
+
+    Args:
+        data: data to convert
+        dtype: output dtype
+
+    Raises:
+        ILValueError: If data can't be decoded in utf-8
+    """
     signed = None
     if dtype in __dtype_value:
         bytes_length, signed = __dtype_value[dtype]
@@ -246,7 +256,10 @@ def convert_bytes_to_dtype(data, dtype):
     if dtype == REG_DTYPE.FLOAT:
         [value] = struct.unpack("f", data)
     elif dtype == REG_DTYPE.STR:
-        value = data.decode("utf-8").rstrip("\0")
+        try:
+            value = data.decode("utf-8").rstrip("\0")
+        except UnicodeDecodeError as e:
+            raise ILValueError(f"Can't decode {e.object} to utf-8 string") from e
     else:
         value = int.from_bytes(data, "little", signed=signed)
     return value
