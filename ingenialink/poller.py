@@ -1,7 +1,7 @@
 from ingenialink.exceptions import ILAlreadyInitializedError, ILStateError, ILValueError
 
 from datetime import datetime
-from threading import Timer, RLock
+from threading import Timer, Lock
 
 import ingenialogger
 
@@ -60,7 +60,7 @@ class Poller:
         self.__running = False
         self.__mappings = []
         self.__mappings_enabled = []
-        self.__lock = RLock()
+        self.__lock = Lock()
         self._reset_acq()
 
     def start(self):
