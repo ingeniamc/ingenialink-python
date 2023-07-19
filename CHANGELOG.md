@@ -5,6 +5,9 @@
 ### Add
 - Virtual drive.
 
+### Changed
+- convert_bytes_to_dtype raises an ILValueError string bytes are wrong
+
 ### Fixed
 - Catch EoE service deinit error when disconnecting the drive.
 - Log exceptions in read_coco_moco_register function correctly.
