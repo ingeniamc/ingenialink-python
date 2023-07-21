@@ -7,6 +7,7 @@
 
 ### Changed
 - convert_bytes_to_dtype raises an ILValueError string bytes are wrong
+- Wait EoE starts before connect drive
 
 ### Fixed
 - Catch EoE service deinit error when disconnecting the drive.
