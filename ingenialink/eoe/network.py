@@ -1,5 +1,6 @@
 import ipaddress
 import socket
+import time
 from enum import Enum
 
 import ingenialogger
@@ -41,6 +42,7 @@ class EoENetwork(EthernetNetwork):
 
     STATUS_EOE_BIT = 0b10
     STATUS_INIT_BIT = 0b1
+    WAIT_EOE_TIMEOUT = 1
 
     ECAT_SERVICE_NETWORK = ipaddress.ip_network("192.168.3.0/24")
 
@@ -104,6 +106,7 @@ class EoENetwork(EthernetNetwork):
             self._configure_slave(slave_id, ip_address)
         finally:
             self._start_eoe_service()
+        self.__wait_eoe_starts()
         self._configured_slaves[ip_address] = slave_id
         return super().connect_to_slave(
             ip_address,
@@ -113,6 +116,16 @@ class EoENetwork(EthernetNetwork):
             servo_status_listener,
             net_status_listener,
         )
+
+    def __wait_eoe_starts(self):
+        """Wait until the EoE service starts the EoE or the timeout was reached"""
+        status = self._get_status_eoe_service()
+        time_start = time.time()
+        while not status & self.STATUS_EOE_BIT and self.WAIT_EOE_TIMEOUT > time.time() - time_start:
+            time.sleep(0.1)
+            status = self._get_status_eoe_service()
+        if not status & self.STATUS_EOE_BIT:
+            logger.warning("Service did not starts the EoE")
 
     def __reconfigure_drives(self):
         """Reconfigure all the slaves saved in the network"""
