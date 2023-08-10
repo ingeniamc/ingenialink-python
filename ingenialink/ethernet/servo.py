@@ -1,5 +1,6 @@
 import ipaddress
 import socket
+import threading
 
 from ingenialink.exceptions import ILError, ILTimeoutError, ILIOError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
@@ -19,6 +20,7 @@ import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
+lock_ethernet_servo = threading.Lock()
 
 class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
@@ -136,7 +138,7 @@ class EthernetServo(Servo):
             bytes: The response frame.
         """
         frame = MCB.build_mcb_frame(cmd, subnode, reg, data)
-        self._lock.acquire()
+        lock_ethernet_servo.acquire()
         try:
             try:
                 self.socket.sendall(frame)
@@ -151,5 +153,5 @@ class EthernetServo(Servo):
         except (ILIOError, ILTimeoutError) as e:
             raise e
         finally:
-            self._lock.release()
+            lock_ethernet_servo.release()
         return MCB.read_mcb_data(reg, response)

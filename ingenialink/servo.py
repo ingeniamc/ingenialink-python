@@ -133,7 +133,6 @@ class Servo:
         """SERVO_UNITS_VEL: Velocity units."""
         self.units_acc = None
         """SERVO_UNITS_ACC: Acceleration units."""
-        self._lock = threading.Lock()
         self.__observers_servo_state = []
         self.__listener_servo_status = None
         self.__monitoring = {}

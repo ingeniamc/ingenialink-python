@@ -1,3 +1,5 @@
+import threading
+
 import canopen
 from canopen.emcy import EmcyConsumer
 
@@ -15,6 +17,8 @@ logger = ingenialogger.get_logger(__name__)
 
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
+
+lock_canopen_servo = threading.Lock()
 
 class CanopenServo(Servo):
     """CANopen Servo instance.
@@ -87,25 +91,25 @@ class CanopenServo(Servo):
 
     def _write_raw(self, reg, data):
         try:
-            self._lock.acquire()
+            lock_canopen_servo.acquire()
             self.__node.sdo.download(reg.idx, reg.subidx, data)
         except Exception as e:
             logger.error("Failed writing %s. Exception: %s", str(reg.identifier), e)
             error_raised = f"Error writing {reg.identifier}"
             raise ILIOError(error_raised)
         finally:
-            self._lock.release()
+            lock_canopen_servo.release()
 
     def _read_raw(self, reg):
         try:
-            self._lock.acquire()
+            lock_canopen_servo.acquire()
             value = self.__node.sdo.upload(reg.idx, reg.subidx)
         except Exception as e:
             logger.error("Failed reading %s. Exception: %s", str(reg.identifier), e)
             error_raised = f"Error reading {reg.identifier}"
             raise ILIOError(error_raised)
         finally:
-            self._lock.release()
+            lock_canopen_servo.release()
         return value
 
     def emcy_subscribe(self, cb):
