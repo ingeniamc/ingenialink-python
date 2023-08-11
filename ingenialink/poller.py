@@ -38,6 +38,7 @@ class PollerTimer:
         if self.thread.is_alive():
             self.thread.join()
 
+lock_poller = Lock()
 
 class Poller:
     """Register poller for CANOpen/Ethernet communications.
@@ -60,7 +61,6 @@ class Poller:
         self.__running = False
         self.__mappings = []
         self.__mappings_enabled = []
-        self.__lock = Lock()
         self._reset_acq()
 
     def start(self):
@@ -198,7 +198,7 @@ class Poller:
         # Obtain current time
         t = delta.total_seconds()
 
-        self.__lock.acquire()
+        lock_poller.acquire()
         # Acquire all configured channels
         if self.__samples_count >= self.__sz:
             self.__samples_lost = True
@@ -221,7 +221,7 @@ class Poller:
             # Increment samples count
             self.__samples_count += 1
 
-        self.__lock.release()
+        lock_poller.release()
 
     @property
     def data(self):
@@ -243,10 +243,10 @@ class Poller:
             else:
                 d.append(list(None))
 
-        self.__lock.acquire()
+        lock_poller.acquire()
         self.__samples_count = 0
         self.__samples_lost = False
-        self.__lock.release()
+        lock_poller.release()
 
         return t, d, self.__samples_lost
 
