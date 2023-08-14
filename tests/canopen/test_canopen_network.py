@@ -47,7 +47,7 @@ def test_connect_to_slave_target_not_in_nodes(read_config):
 
     with pytest.raises(ILError):
         net.connect_to_slave(
-            target=1234, dictionary=protocol_contents["dictionary"], eds=protocol_contents["eds"]
+            target=1234, dictionary=protocol_contents["dictionary"]
         )
     net._teardown_connection()
 
@@ -58,7 +58,7 @@ def test_connect_to_slave_none_nodes(virtual_network, read_config):
     protocol_contents = read_config["canopen"]
     with pytest.raises(ILError):
         net.connect_to_slave(
-            target=1, dictionary=protocol_contents["dictionary"], eds=protocol_contents["eds"]
+            target=1, dictionary=protocol_contents["dictionary"]
         )
 
 
@@ -91,7 +91,6 @@ def test_disconnect_from_slave(read_config):
     servo = net.connect_to_slave(
         target=protocol_contents["node_id"],
         dictionary=protocol_contents["dictionary"],
-        eds=protocol_contents["eds"],
     )
 
     assert len(net.servos) == 1
