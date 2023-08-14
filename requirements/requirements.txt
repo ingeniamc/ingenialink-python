@@ -1,6 +1,5 @@
-cffi==1.14.6
 canopen==1.2.1
 python-can==3.3.4
-numpy==1.17.2
 ingenialogger>=0.2.1
 ping3==4.0.3
+pysoem==1.0.7

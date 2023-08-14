@@ -1,67 +1,242 @@
-def NODE_NAME = "sw"
-def BRANCH_NAME_RELEASE = "release"
-def BRANCH_NAME_MASTER = "master"
-def PYTHON_VERSIONS = ["3.6", "3.7", "3.8", "3.9"]
-def style_check = false
+@Library('cicd-lib@0.3') _
 
-node(NODE_NAME)
-{
-    deleteDir()
-    if (env.BRANCH_NAME == BRANCH_NAME_MASTER || env.BRANCH_NAME.contains(BRANCH_NAME_RELEASE))
-    {
-        stage("Checkout")
-        {
-            checkout scm
-        }
-        for (version in PYTHON_VERSIONS)
-        {   
-            stage("Python ${version}")
-            {
-                stage("Install environment ${version}")
-                {
-                    bat """
-                        py -${version} -m venv py${version}
-                        py${version}\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
-                    """
+def SW_NODE = "windows-slave"
+def ECAT_NODE = "ecat-test"
+def ECAT_NODE_LOCK = "test_execution_lock_ecat"
+def CAN_NODE = "canopen-test"
+def CAN_NODE_LOCK = "test_execution_lock_can"
+
+def DIST_FOE_APP_PATH = "ECAT-tools"
+def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
+def FOE_APP_NAME = "FoEUpdateFirmware.exe"
+def FOE_APP_VERSION = ""
+
+pipeline {
+    agent none
+    stages {
+        stage('Get FoE application') {
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/publisher:1.4"
                 }
-                if (!style_check) 
-                {
-                    stage("PEP8 style check")
-                    {
-                        bat """
-                            py${version}\\Scripts\\python.exe -m pycodestyle --first ingenialink/ --config=setup.cfg
-                        """
+            }
+            stages {
+                stage('Get FoE application') {
+                    steps {
+                        script {
+                            FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FoE; print(FoE.__version__)"', returnStdout: true).trim()
+                        }
+                        copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
+                        stash includes: "$FOE_APP_NAME", name: 'foe_app'
                     }
-                    style_check = true
-                }
-                stage("Build libraries ${version}")
-                {
-                    bat """
-                        py${version}\\Scripts\\python.exe setup.py build sdist bdist_wheel
-                    """
                 }
             }
         }
-        stage("Generate documentation")
-        {
-            bat """
-                py${PYTHON_VERSIONS[0]}\\Scripts\\python.exe -m sphinx -b html docs _docs
-            """
+        stage('Build wheels and documentation') {
+            agent {
+                docker {
+                    label SW_NODE
+                    image 'ingeniacontainers.azurecr.io/win-python-builder:1.0'
+                }
+            }
+            stages {
+                stage('Clone repository') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator
+                            git clone https://github.com/ingeniamc/ingenialink-python.git
+                            cd ingenialink-python
+                            git checkout ${env.GIT_COMMIT}
+                        """
+                    }
+                }
+                stage('Get FoE application') {
+                    steps {
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\win_64x\\
+                        """
+                    }
+                }
+                stage('Install deps') {
+                    steps {
+                        bat '''
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            python -m venv venv
+                            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                            venv\\Scripts\\python.exe -m pip install -e .
+                        '''
+                    }
+                }
+                stage('Build wheels') {
+                    steps {
+                        bat '''
+                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                             venv\\Scripts\\python.exe setup.py build sdist bdist_wheel
+                        '''
+                    }
+                }
+                stage('Check formatting') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            venv\\Scripts\\python.exe -m black --check ingenialink tests
+                        """
+                    }
+                }
+                stage('Generate documentation') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            venv\\Scripts\\python.exe -m sphinx -b html docs _docs
+                        """
+                    }
+                }
+                stage('Archive') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
+                            XCOPY dist ${env.WORKSPACE}\\dist /i
+                            XCOPY docs.zip ${env.WORKSPACE}
+                        """
+                        archiveArtifacts artifacts: "dist\\*, docs.zip"
+                    }
+                }
+            }
         }
-        stage("Archive whl package")
-        {
-            bat """
-                "C:/Program Files/7-Zip/7z.exe" a -r docs.zip -w _docs -mem=AES256
-            """
-            archiveArtifacts artifacts: "dist/*, docs.zip"
+        stage('EtherCAT and no-connection tests') {
+            options {
+                lock(ECAT_NODE_LOCK)
+            }
+            agent {
+                label ECAT_NODE
+            }
+            stages {
+                stage('Checkout') {
+                    steps {
+                        checkout scm
+                    }
+                }
+                stage('Get FoE application') {
+                    steps {
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                        """
+                    }
+                }
+                stage('Install deps') {
+                    steps {
+                        bat '''
+                            python -m venv venv
+                            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                        '''
+                    }
+                }
+                stage('Update drives FW') {
+                    steps {
+                        bat '''
+                             venv\\Scripts\\python.exe -m tests.resources.Scripts.load_FWs ethercat
+                        '''
+                    }
+                }
+                stage('Run EtherCAT tests') {
+                    steps {
+                        bat '''
+                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --protocol ethercat --junitxml=pytest_ethercat_report.xml
+                            move .coverage .coverage_ethercat
+                            exit /b 0
+                        '''
+                        junit 'pytest_ethercat_report.xml'
+                    }
+                }
+                stage('Run no-connection tests') {
+                    steps {
+                        bat '''
+                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --junitxml=pytest_no_connection_report.xml
+                            move .coverage .coverage_no_connection
+                            exit /b 0
+                        '''
+                        junit 'pytest_no_connection_report.xml'
+                    }
+                }
+                stage('Archive') {
+                    steps {
+                        stash includes: '.coverage_no_connection, .coverage_ethercat', name: 'coverage_reports'
+                        archiveArtifacts artifacts: '*.xml'
+                    }
+                }
+            }
         }
-        stage("Remove previous environments")
-        {
-            for (version in PYTHON_VERSIONS)
-            {
-                bat """
-                    rmdir /Q /S "py${version}"
-                """
+        stage('CANopen and Ethernet tests') {
+            options {
+                lock(CAN_NODE_LOCK)
+            }
+            agent {
+                label CAN_NODE
+            }
+            stages {
+                stage('Checkout') {
+                    steps {
+                        checkout scm
+                    }
+                }
+                stage('Get FoE application') {
+                    steps {
+                        unstash 'foe_app'
+                        bat """
+                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                        """
+                    }
+                }
+                stage('Install deps') {
+                    steps {
+                        bat '''
+                            python -m venv venv
+                            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
+                        '''
+                    }
+                }
+                stage('Update drives FW') {
+                    steps {
+                        bat '''
+                             venv\\Scripts\\python.exe -m tests.resources.Scripts.load_FWs canopen
+                        '''
+                    }
+                }
+                stage('Run CANopen tests') {
+                    steps {
+                        bat '''
+                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --protocol canopen --junitxml=pytest_canopen_report.xml
+                            move .coverage .coverage_canopen
+                            exit /b 0
+                        '''
+                        junit 'pytest_canopen_report.xml'
+                    }
+                }
+                stage('Run Ethernet tests') {
+                    steps {
+                        bat '''
+                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --protocol ethernet --junitxml=pytest_ethernet_report.xml
+                            move .coverage .coverage_ethernet
+                            exit /b 0
+                        '''
+                        junit 'pytest_ethernet_report.xml'
+                    }
+                }
+                stage('Save test results') {
+                    steps {
+                        unstash 'coverage_reports'
+                        bat '''
+                            venv\\Scripts\\python.exe -m coverage combine .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
+                            venv\\Scripts\\python.exe -m coverage xml --include=ingenialink/*
+                        '''
+                        publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
+                        archiveArtifacts artifacts: '*.xml'
+                    }
+                }
             }
         }
     }

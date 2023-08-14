@@ -1,8 +1,8 @@
 import sys
 import math
 
-import ingenialink as il
 from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
+from ingenialink.register import REG_DTYPE
 
 
 def disturbance_example():
@@ -35,18 +35,18 @@ def disturbance_example():
 
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
-    servo.disturbance_set_mapped_register(0, 0x2021, 1, il.register.REG_DTYPE.FLOAT.value, 4)
-    servo.disturbance_set_mapped_register(1, 0x2020, 1, il.register.REG_DTYPE.S32.value, 4)
-    servo.disturbance_set_mapped_register(2, 0x201A, 1, il.register.REG_DTYPE.FLOAT.value, 4)
-    servo.disturbance_set_mapped_register(3, 0x201B, 1, il.register.REG_DTYPE.FLOAT.value, 4)
-    servo.disturbance_set_mapped_register(4, 0x2024, 1, il.register.REG_DTYPE.U16.value, 2)
+    servo.disturbance_set_mapped_register(0, 0x2021, 1, REG_DTYPE.FLOAT.value, 4)
+    servo.disturbance_set_mapped_register(1, 0x2020, 1, REG_DTYPE.S32.value, 4)
+    servo.disturbance_set_mapped_register(2, 0x201A, 1, REG_DTYPE.FLOAT.value, 4)
+    servo.disturbance_set_mapped_register(3, 0x201B, 1, REG_DTYPE.FLOAT.value, 4)
+    servo.disturbance_set_mapped_register(4, 0x2024, 1, REG_DTYPE.U16.value, 2)
 
     servo.disturbance_write_data([0,1,2,3,4],
-                                 [il.register.REG_DTYPE.FLOAT,
-                                  il.register.REG_DTYPE.S32,
-                                  il.register.REG_DTYPE.FLOAT,
-                                  il.register.REG_DTYPE.FLOAT,
-                                  il.register.REG_DTYPE.U16],
+                                 [REG_DTYPE.FLOAT,
+                                  REG_DTYPE.S32,
+                                  REG_DTYPE.FLOAT,
+                                  REG_DTYPE.FLOAT,
+                                  REG_DTYPE.U16],
                                  [data_vel, data_pos, data_curr_q, data_curr_d, data_positioning_opt])
     servo.disturbance_enable()
     servo.disturbance_disable()
