@@ -31,7 +31,7 @@ def connect_can(drive_conf):
         drive_conf["channel"],
         CAN_BAUDRATE(drive_conf["baudrate"]),
     )
-    servo = net.connect_to_slave(drive_conf["node_id"], drive_conf["dictionary"], drive_conf["eds"])
+    servo = net.connect_to_slave(drive_conf["node_id"], drive_conf["dictionary"])
     return net, servo
 
 

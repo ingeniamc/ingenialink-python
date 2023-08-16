@@ -55,7 +55,6 @@ def connect_canopen(protocol_contents):
     servo = net.connect_to_slave(
         target=protocol_contents["node_id"],
         dictionary=protocol_contents["dictionary"],
-        eds=protocol_contents["eds"],
     )
     return servo, net
 

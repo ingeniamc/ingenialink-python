@@ -8,6 +8,7 @@
 ### Changed
 - convert_bytes_to_dtype raises an ILValueError string bytes are wrong
 - Wait EoE starts before connect drive
+- Remove EDS file path param from CANopen connection. It is no longer necessary.
 
 ### Fixed
 - Catch EoE service deinit error when disconnecting the drive.

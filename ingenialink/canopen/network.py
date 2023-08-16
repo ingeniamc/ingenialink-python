@@ -221,7 +221,6 @@ class CanopenNetwork(Network):
         self,
         target,
         dictionary=None,
-        eds=None,
         servo_status_listener=False,
         net_status_listener=False,
     ):
@@ -230,7 +229,6 @@ class CanopenNetwork(Network):
         Args:
             target (int): Targeted node ID to be connected.
             dictionary (str): Path to the dictionary file.
-            eds (str): Path to the EDS file.
             servo_status_listener (bool): Toggle the listener of the servo for
                 its status, errors, faults, etc.
             net_status_listener (bool): Toggle the listener of the network
@@ -244,12 +242,12 @@ class CanopenNetwork(Network):
         self._setup_connection()
         if target in nodes:
             try:
-                node = self._connection.add_node(target, eds)
+                node = self._connection.add_node(target)
 
                 node.nmt.start_node_guarding(1)
 
                 servo = CanopenServo(
-                    target, node, dictionary, eds, servo_status_listener=servo_status_listener
+                    target, node, dictionary, servo_status_listener=servo_status_listener
                 )
 
                 if net_status_listener:
@@ -337,7 +335,7 @@ class CanopenNetwork(Network):
                 bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate
             )
             for servo in self.servos:
-                node = self._connection.add_node(servo.target, servo.eds)
+                node = self._connection.add_node(servo.target)
                 node.nmt.start_node_guarding(1)
         except BaseException as e:
             logger.error("Connection failed. Exception: %s", e)
@@ -874,7 +872,7 @@ class CanopenNetwork(Network):
 
         for servo in self.servos:
             logger.info("Node connected: %i", servo.target)
-            node = self._connection.add_node(servo.target, servo.eds)
+            node = self._connection.add_node(servo.target)
 
         # Reset all nodes to default state
         self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)

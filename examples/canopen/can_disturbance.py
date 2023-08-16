@@ -31,8 +31,7 @@ def disturbance_example():
     nodes = net.scan_slaves()
     servo = net.connect_to_slave(
         target=nodes[0],
-        dictionary='../../resources/dictionaries/eve-net-c_can_1.8.1.xdf',
-        eds='../../resources/dictionaries/eve-net-c_1.8.1.eds')
+        dictionary='../../resources/dictionaries/eve-net-c_can_1.8.1.xdf')
 
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()

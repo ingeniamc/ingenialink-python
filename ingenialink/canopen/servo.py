@@ -23,7 +23,6 @@ class CanopenServo(Servo):
         target (int): Node ID to be connected.
         node (canopen.RemoteNode): Remote Node of the drive.
         dictionary_path (str): Path to the dictionary.
-        eds (str): Path to the eds file.
         servo_status_listener (bool): Toggle the listener of the servo for
             its status, errors, faults, etc.
 
@@ -56,8 +55,7 @@ class CanopenServo(Servo):
         access=REG_ACCESS.RW,
     )
 
-    def __init__(self, target, node, dictionary_path=None, eds=None, servo_status_listener=False):
-        self.eds = eds
+    def __init__(self, target, node, dictionary_path=None, servo_status_listener=False):
         self.__node = node
         self.__emcy_consumer = EmcyConsumer()
         super(CanopenServo, self).__init__(target, dictionary_path, servo_status_listener)
