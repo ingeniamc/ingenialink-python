@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.0.3] - 2023-09-05
 
 ### Add
 - Virtual drive.
