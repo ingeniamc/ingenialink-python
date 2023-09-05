@@ -1,5 +1,6 @@
 import ipaddress
 import socket
+import time
 from enum import Enum
 
 import ingenialogger
@@ -41,6 +42,7 @@ class EoENetwork(EthernetNetwork):
 
     STATUS_EOE_BIT = 0b10
     STATUS_INIT_BIT = 0b1
+    WAIT_EOE_TIMEOUT = 1
 
     ECAT_SERVICE_NETWORK = ipaddress.ip_network("192.168.3.0/24")
 
@@ -104,6 +106,7 @@ class EoENetwork(EthernetNetwork):
             self._configure_slave(slave_id, ip_address)
         finally:
             self._start_eoe_service()
+        self.__wait_eoe_starts()
         self._configured_slaves[ip_address] = slave_id
         return super().connect_to_slave(
             ip_address,
@@ -113,6 +116,16 @@ class EoENetwork(EthernetNetwork):
             servo_status_listener,
             net_status_listener,
         )
+
+    def __wait_eoe_starts(self):
+        """Wait until the EoE service starts the EoE or the timeout was reached"""
+        status = self._get_status_eoe_service()
+        time_start = time.time()
+        while not status & self.STATUS_EOE_BIT and self.WAIT_EOE_TIMEOUT > time.time() - time_start:
+            time.sleep(0.1)
+            status = self._get_status_eoe_service()
+        if not status & self.STATUS_EOE_BIT:
+            logger.warning("Service did not starts the EoE")
 
     def __reconfigure_drives(self):
         """Reconfigure all the slaves saved in the network"""
@@ -128,7 +141,10 @@ class EoENetwork(EthernetNetwork):
         if len(self.servos) == 0:
             self._stop_eoe_service()
             self._erase_config_eoe_service()
-            self._deinitialize_eoe_service()
+            try:
+                self._deinitialize_eoe_service()
+            except ILError as e:
+                logger.error(e)
 
     def __del__(self):
         self._eoe_socket.shutdown(socket.SHUT_RDWR)
@@ -257,11 +273,11 @@ class EoENetwork(EthernetNetwork):
             ILError: If the EoE service cannot be stopped on the network interface.
 
         """
-        self._eoe_service_init = False
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.DEINIT.value, data=data.encode("utf-8"))
         try:
             self._send_command(msg)
+            self._eoe_service_init = False
         except (ILIOError, ILTimeoutError) as e:
             raise ILError("Failed to deinitialize the EoE service.") from e
 

@@ -133,7 +133,7 @@ class Servo:
         """SERVO_UNITS_VEL: Velocity units."""
         self.units_acc = None
         """SERVO_UNITS_ACC: Acceleration units."""
-        self._lock = threading.RLock()
+        self._lock = threading.Lock()
         self.__observers_servo_state = []
         self.__listener_servo_status = None
         self.__monitoring = {}
@@ -817,13 +817,11 @@ class Servo:
         try:
             return self.read(register_coco, subnode=0)
         except ILError:
-            logger.warning(
-                f"Error reading register {register_coco.identifier} from COCO. Trying MOCO"
-            )
+            logger.warning(f"Error reading register {register_coco} from COCO. Trying MOCO")
         try:
             return self.read(register_moco, subnode=1)
         except ILError:
-            raise ILError(f"Error reading register {register_moco.identifier} from MOCO.")
+            raise ILError(f"Error reading register {register_moco} from MOCO.")
 
     def __monitoring_map_register(self):
         """Get the first available Monitoring Mapped Register slot.

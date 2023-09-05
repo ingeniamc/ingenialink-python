@@ -10,8 +10,7 @@ def connect_slave():
 
     servo = net.connect_to_slave(
         target=32,
-        dictionary='../../resources/dictionaries/eve-net-c_can_1.8.1.xdf',
-        eds='../../resources/dictionaries/eve-net-c_1.8.1.eds')
+        dictionary='../../resources/dictionaries/eve-net-c_can_1.8.1.xdf')
     
     return servo, net
 

@@ -15,8 +15,7 @@ def connection_example():
     if len(nodes) > 0:
         servo = net.connect_to_slave(
             target=nodes[0],
-            dictionary='../../resources/dictionaries/eve-net-c_can_1.8.1.xdf',
-            eds='../../resources/dictionaries/eve-net-c_1.8.1.eds')
+            dictionary='../../resources/dictionaries/eve-net-c_can_1.8.1.xdf')
 
         fw_version = servo.read('DRV_ID_SOFTWARE_VERSION')
         print(fw_version)

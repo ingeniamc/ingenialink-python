@@ -1,5 +1,20 @@
 # Changelog
 
+## [7.0.3] - 2023-09-05
+
+### Add
+- Virtual drive.
+
+### Changed
+- convert_bytes_to_dtype raises an ILValueError string bytes are wrong
+- Wait EoE starts before connect drive
+- Remove EDS file path param from CANopen connection. It is no longer necessary.
+
+### Fixed
+- Catch EoE service deinit error when disconnecting the drive.
+- Log exceptions in read_coco_moco_register function correctly.
+
+
 ## [7.0.2] - 2023-05-22
 ### Changed
 - Read a register instead of doing a ping in the Ethernet's NetStatusListener
@@ -31,6 +46,7 @@
 ### Removed
 - Remove numpy from requirements
 - Remove binding to the [ingenialink](https://github.com/ingeniamc/ingenialink) C library.
+- Move virtual drive from tests to ingenialink.
 
 ### Fixed
 - NACK error code formatting.
