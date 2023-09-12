@@ -490,8 +490,7 @@ class CanopenNetwork(Network):
             callback_status_msg("Starting program")
         logger.info("Waiting for the drive to be available.")
         initial_time = time()
-        time_diff = time() - initial_time
-        while time_diff < RECONNECTION_TIMEOUT:
+        while (time() - initial_time) < RECONNECTION_TIMEOUT:
             with contextlib.suppress(ILError):
                 servo.read(servo.STATUS_WORD_REGISTERS)
                 return
