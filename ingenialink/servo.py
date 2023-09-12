@@ -159,6 +159,15 @@ class Servo:
             self.__listener_servo_status.join()
         self.__listener_servo_status = None
 
+    def is_listener_started(self) -> bool:
+        """Check if servo listener is started
+
+        Returns:
+            True if listener is started, else False
+
+        """
+        return self.__listener_servo_status is not None
+
     def load_configuration(self, config_file, subnode=None):
         """Write current dictionary storage to the servo drive.
 

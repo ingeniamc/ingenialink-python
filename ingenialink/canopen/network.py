@@ -374,6 +374,47 @@ class CanopenNetwork(Network):
             ILFirmwareLoadError: The firmware load process fails with an error message.
 
         """
+        servo = self.__load_fw_checks(target, fw_file, callback_status_msg)
+        start_network_listener_after_reconnect = self.is_listener_started(servo)
+        start_servo_listener_after_reconnect = servo.is_listener_started()
+        self.stop_status_listener(servo)
+        servo.stop_status_listener()
+        initial_status = servo.read(PROG_STAT_1, subnode=0)
+        _, file_extension = os.path.splitext(fw_file)
+        if file_extension == ".sfu":
+            fw_file = self.__optimize_firmware_file(fw_file, callback_status_msg)
+        self.__force_boot(servo, callback_status_msg)
+        self.__program_control_to_flash(initial_status, servo, callback_status_msg)
+        self.__send_fw_file(fw_file, servo, callback_status_msg, callback_progress)
+        self.__program_control_from_flash_to_start(servo, callback_status_msg)
+        self.__wait_for_app_restart(servo, callback_status_msg)
+        logger.info("Bootloader finished successfully!")
+        if callback_status_msg:
+            callback_status_msg("Bootloader finished successfully!")
+        if start_network_listener_after_reconnect:
+            self.start_status_listener(servo)
+        if start_servo_listener_after_reconnect:
+            servo.start_status_listener()
+
+    def __load_fw_checks(
+        self, target: int, fw_file: str, callback_status_msg: Optional[Callable[[str], None]] = None
+    ) -> CanopenServo:
+        """Checks prior to firmware upload and return the target CanopenServo instance
+
+        Args:
+            target: Targeted node ID to be loaded.
+            fw_file: Path to the firmware file.
+            callback_status_msg: Subscribed callback function for the status message
+
+        Returns:
+            Target servo
+
+        Raises:
+            FileNotFoundError: Firmware file does not exist.
+            ILFirmwareLoadError: The drive is not connected.
+            ILFirmwareLoadError: Firmware and bootloader versions are not compatible.
+
+        """
         if not os.path.isfile(fw_file):
             raise FileNotFoundError(f"Could not find {fw_file}.")
 
@@ -388,23 +429,12 @@ class CanopenNetwork(Network):
         if callback_status_msg:
             callback_status_msg("Checking compatibility")
         try:
-            initial_status = servo.read(PROG_STAT_1, subnode=0)
+            servo.read(PROG_STAT_1, subnode=0)
         except ILError as e:
             raise ILFirmwareLoadError(
                 "Firmware and bootloader versions are not compatible. Use FTP Bootloader instead."
             ) from e
-
-        _, file_extension = os.path.splitext(fw_file)
-        if file_extension == ".sfu":
-            fw_file = self.__optimize_firmware_file(fw_file, callback_status_msg)
-        self.__force_boot(servo, callback_status_msg)
-        self.__program_control_to_flash(initial_status, servo, callback_status_msg)
-        self.__send_fw_file(fw_file, servo, callback_status_msg, callback_progress)
-        self.__program_control_from_flash_to_start(servo, callback_status_msg)
-        self.__wait_for_app_restart(servo, callback_status_msg)
-        logger.info("Bootloader finished successfully!")
-        if callback_status_msg:
-            callback_status_msg("Bootloader finished successfully!")
+        return servo
 
     def __force_boot(
         self, servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]]
@@ -413,6 +443,7 @@ class CanopenNetwork(Network):
 
         Args:
             servo: target drive
+            callback_status_msg: Subscribed callback function for the status message
 
         """
         device_type = servo.read(CIA301_DRV_ID_DEVICE_TYPE, subnode=0)
@@ -439,6 +470,7 @@ class CanopenNetwork(Network):
         Args:
             initial_status: program control initial status
             servo: target drive
+            callback_status_msg: Subscribed callback function for the status message
 
         Raises:
             ILFirmwareLoadError: Program control status does not change
@@ -464,6 +496,7 @@ class CanopenNetwork(Network):
 
         Args:
             servo: target drive
+            callback_status_msg: Subscribed callback function for the status message
 
         """
         if callback_status_msg:
@@ -481,6 +514,7 @@ class CanopenNetwork(Network):
 
         Args:
             servo: target drive
+            callback_status_msg: Subscribed callback function for the status message
 
         Raises:
             ILFirmwareLoadError: App can't start after 180 seconds
@@ -503,6 +537,7 @@ class CanopenNetwork(Network):
 
         Args:
             sfu_file: target SFU file
+            callback_status_msg: Subscribed callback function for the status message
 
         Returns:
             LFU file path
@@ -558,6 +593,8 @@ class CanopenNetwork(Network):
         Args:
             fw_file: target firmware file
             servo: target drive
+            callback_status_msg: Subscribed callback function for the status message
+            callback_progress: Subscribed callback function for the live progress.
 
         """
         total_file_size = os.path.getsize(fw_file) / BOOTLOADER_MSG_SIZE
