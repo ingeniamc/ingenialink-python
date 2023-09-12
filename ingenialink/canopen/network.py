@@ -468,8 +468,8 @@ class CanopenNetwork(Network):
         """
         if callback_status_msg:
             callback_status_msg("Flashing firmware")
-        servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
         with contextlib.suppress(ILError):
+            servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
             servo.write(PROG_STAT_1, PROG_CTRL_STATE_START, subnode=0)
         logger.info("Flashing firmware...")
 
@@ -516,7 +516,7 @@ class CanopenNetwork(Network):
         if callback_status_msg:
             callback_status_msg("Optimizing file")
         lfu_file_d, lfu_path = tempfile.mkstemp(suffix=".lfu")
-        with open(sfu_file, "wb") as lfu_file:
+        with open(lfu_path, "wb") as lfu_file:
             with open(sfu_file, "r") as coco_in:
                 bin_node = ""
                 current_progress = 0
