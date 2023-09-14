@@ -90,7 +90,7 @@ class CanopenServo(Servo):
         except Exception as e:
             logger.error("Failed writing %s. Exception: %s", str(reg.identifier), e)
             error_raised = f"Error writing {reg.identifier}"
-            raise ILIOError(error_raised)
+            raise ILIOError(error_raised) from e
         finally:
             self._lock.release()
 

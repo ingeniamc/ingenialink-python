@@ -1,12 +1,11 @@
 import contextlib
 from enum import Enum
-from time import sleep, time
+from time import sleep
 from threading import Thread
-from typing import Optional, Callable
+from typing import Optional, Callable, Union
 
 from .register import CanopenRegister
 from ingenialink.utils.mcb import MCB
-from ingenialink.utils._utils import count_file_lines, wait_for_register_value
 from ..exceptions import ILFirmwareLoadError, ILObjectNotExist, ILError
 from can import CanError
 from ..network import NET_PROT, NET_STATE, NET_DEV_EVT, Network
@@ -385,9 +384,13 @@ class CanopenNetwork(Network):
             fw_file = self.__optimize_firmware_file(fw_file, callback_status_msg)
         self.__force_boot(servo, callback_status_msg)
         self.__program_control_to_flash(initial_status, servo, callback_status_msg)
-        self.__send_fw_file(fw_file, servo, callback_status_msg, callback_progress)
-        self.__program_control_from_flash_to_start(servo, callback_status_msg)
-        self.__wait_for_app_restart(servo, callback_status_msg)
+        try:
+            self.__send_fw_file(fw_file, servo, callback_status_msg, callback_progress)
+            self.__program_control_to_stop(servo, callback_status_msg)
+            self.__program_control_to_start(servo, callback_status_msg)
+        finally:
+            if file_extension == ".sfu":
+                os.remove(fw_file)
         logger.info("Bootloader finished successfully!")
         if callback_status_msg:
             callback_status_msg("Bootloader finished successfully!")
@@ -459,8 +462,8 @@ class CanopenNetwork(Network):
             password = 0x70636675
             servo.write(FORCE_BOOT, password, subnode=0)
 
-    @staticmethod
     def __program_control_to_flash(
+        self,
         initial_status: int,
         servo: CanopenServo,
         callback_status_msg: Optional[Callable[[str], None]],
@@ -478,58 +481,102 @@ class CanopenNetwork(Network):
         """
         if callback_status_msg:
             callback_status_msg("Setting up drive")
-        target_status_list = (
-            [PROG_CTRL_STATE_STOP] if initial_status != PROG_CTRL_STATE_STOP else []
-        )
-        target_status_list += [PROG_CTRL_STATE_CLEAR, PROG_CTRL_STATE_FLASH]
+        target_status_list = [
+            PROG_CTRL_STATE_START,
+            PROG_CTRL_STATE_STOP,
+            PROG_CTRL_STATE_CLEAR,
+            PROG_CTRL_STATE_FLASH,
+        ]
+        status_index = target_status_list.index(initial_status) + 1
         logger.info("Clearing program...")
-        for target_status in target_status_list:
+        for target_status_index in range(status_index, len(target_status_list)):
+            target_status = target_status_list[target_status_index]
             servo.write(PROG_STAT_1, target_status, subnode=0)
-            if not wait_for_register_value(servo, 0, PROG_STAT_1, target_status):
+            if not self.__wait_for_register_value(servo, 0, PROG_STAT_1, target_status):
                 raise ILFirmwareLoadError(f"Error setting program control to 0x{target_status:X}")
 
     @staticmethod
-    def __program_control_from_flash_to_start(
-        servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]]
-    ):
-        """Change program control status from flash to start.
+    def __wait_for_register_value(
+        servo: CanopenServo,
+        subnode: int,
+        register: CanopenRegister,
+        expected_value: Union[int, float, str],
+    ) -> bool:
+        """Waits for the register to reach a value.
 
         Args:
-            servo: target drive
-            callback_status_msg: Subscribed callback function for the status message
+            servo: Instance of the servo to be used.
+            subnode: Target subnode.
+            register: Register to be read.
+            expected_value: Expected value for the given register.
 
+        Returns:
+            True if values is reached, else False
         """
-        if callback_status_msg:
-            callback_status_msg("Flashing firmware")
-        with contextlib.suppress(ILError):
-            servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
-            servo.write(PROG_STAT_1, PROG_CTRL_STATE_START, subnode=0)
-        logger.info("Flashing firmware...")
+        logger.debug(f"Waiting for register {register} to return <{expected_value}>")
+        num_tries = 0
+        value = None
+        while num_tries < POLLING_MAX_TRIES:
+            with contextlib.suppress(ILError):
+                value = servo.read(register, subnode=subnode)
+            if value == expected_value:
+                logger.debug(f"Success. Read value {value}. Num tries {num_tries}")
+                return True
+            num_tries += 1
+            logger.debug(f"Trying again {num_tries}. value {value}.")
+            sleep(1)
+        return False
 
     @staticmethod
-    def __wait_for_app_restart(
+    def __program_control_to_stop(
         servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]]
-    ):
-        """Wait drive
+    ) -> None:
+        """Change program control status to stop.
 
         Args:
             servo: target drive
             callback_status_msg: Subscribed callback function for the status message
 
         Raises:
-            ILFirmwareLoadError: App can't start after 180 seconds
+            ILFirmwareLoadError: Drive does not respond
+
+        """
+        if callback_status_msg:
+            callback_status_msg("Flashing firmware")
+        logger.info("Flashing firmware")
+        with contextlib.suppress(ILError):
+            servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
+        servo.node.nmt.start_node_guarding(5)
+        try:
+            servo.node.nmt.wait_for_heartbeat(timeout=RECONNECTION_TIMEOUT)
+        except canopen.nmt.NmtError as e:
+            raise ILFirmwareLoadError("Could not recover drive") from e
+        finally:
+            servo.node.nmt.stop_node_guarding()
+
+    @staticmethod
+    def __program_control_to_start(
+        servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]]
+    ) -> None:
+        """Change program control status to start.
+
+        Args:
+            servo: target drive
+            callback_status_msg: Subscribed callback function for the status message
+
+        Raises:
+            ILFirmwareLoadError: Drive does not respond
 
         """
         if callback_status_msg:
             callback_status_msg("Starting program")
-        logger.info("Waiting for the drive to be available.")
-        initial_time = time()
-        while (time() - initial_time) < RECONNECTION_TIMEOUT:
-            with contextlib.suppress(ILError):
-                servo.read(servo.STATUS_WORD_REGISTERS)
-                return
-            sleep(0.5)
-        raise ILFirmwareLoadError("Could not recover drive")
+        logger.info("Starting program")
+        with contextlib.suppress(ILError):
+            servo.write(PROG_STAT_1, PROG_CTRL_STATE_START, subnode=0)
+        try:
+            servo.node.nmt.wait_for_bootup(timeout=RECONNECTION_TIMEOUT)
+        except canopen.nmt.NmtError as e:
+            raise ILFirmwareLoadError("Could not recover drive") from e
 
     @staticmethod
     def __optimize_firmware_file(sfu_file, callback_status_msg: Optional[Callable[[str], None]]):
@@ -541,15 +588,18 @@ class CanopenNetwork(Network):
 
         Returns:
             LFU file path
+
         """
         mcb = MCB()
-        total_file_lines = count_file_lines(sfu_file)
+        with open(sfu_file, "r") as temp_file:
+            total_file_lines = sum(1 for _ in temp_file)
         # Convert the sfu file to lfu
         logger.info("Converting sfu to lfu...")
         logger.info("Optimizing file")
         if callback_status_msg:
             callback_status_msg("Optimizing file")
-        lfu_file_d, lfu_path = tempfile.mkstemp(suffix=".lfu")
+        lfu_file_d, lfu_path = tempfile.mkstemp(suffix=".lfu", text=True)
+        os.close(lfu_file_d)
         with open(lfu_path, "wb") as lfu_file:
             with open(sfu_file, "r") as coco_in:
                 bin_node = ""
@@ -596,24 +646,32 @@ class CanopenNetwork(Network):
             callback_status_msg: Subscribed callback function for the status message
             callback_progress: Subscribed callback function for the live progress.
 
+        Raises:
+            ILFirmwareLoadError: Drive does not respond
+
         """
         total_file_size = os.path.getsize(fw_file) / BOOTLOADER_MSG_SIZE
-        image = open(fw_file, "rb")
         servo._change_sdo_timeout(CANOPEN_SEND_FW_SDO_RESPONSE_TIMEOUT)
         logger.info("Downloading firmware")
         if callback_status_msg:
             callback_status_msg("Downloading firmware")
         counter = 0
         progress = 0
-        while byte := image.read(BOOTLOADER_MSG_SIZE):
-            servo.write(PROG_DL_1, byte, subnode=0)
-            counter += 1
-            new_progress = int(counter * 100 / total_file_size)
-            if progress != new_progress:
-                progress = new_progress
-                logger.info(f"Download firmware in progress: {progress}%")
-                if callback_progress:
-                    callback_progress(progress)
+        with open(fw_file, "rb") as image:
+            while byte := image.read(BOOTLOADER_MSG_SIZE):
+                try:
+                    servo.write(PROG_DL_1, byte, subnode=0)
+                except ILError as e:
+                    raise ILFirmwareLoadError(
+                        "An error occurred while downloading. Check firmware file is correct."
+                    ) from e
+                counter += 1
+                new_progress = int(counter * 100 / total_file_size)
+                if progress != new_progress:
+                    progress = new_progress
+                    logger.info(f"Download firmware in progress: {progress}%")
+                    if callback_progress:
+                        callback_progress(progress)
         logger.info("Download Finished!")
         servo._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
