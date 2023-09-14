@@ -658,7 +658,8 @@ class CanopenNetwork(Network):
         counter = 0
         progress = 0
         with open(fw_file, "rb") as image:
-            while byte := image.read(BOOTLOADER_MSG_SIZE):
+            byte = image.read(BOOTLOADER_MSG_SIZE)
+            while byte:
                 try:
                     servo.write(PROG_DL_1, byte, subnode=0)
                 except ILError as e:
@@ -672,6 +673,7 @@ class CanopenNetwork(Network):
                     logger.info(f"Download firmware in progress: {progress}%")
                     if callback_progress:
                         callback_progress(progress)
+                byte = image.read(BOOTLOADER_MSG_SIZE)
         logger.info("Download Finished!")
         servo._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
