@@ -116,13 +116,15 @@ class Servo:
 
     def __init__(self, target, dictionary_path=None, servo_status_listener=False):
         self.target = target
+        prod_name = ""
         if dictionary_path is not None:
             self._dictionary = self.DICTIONARY_CLASS(dictionary_path)
+            if self.dictionary.part_number is not None:
+                prod_name = self.dictionary.part_number
         else:
             self._dictionary = None
         self._info = None
         self.name = DEFAULT_DRIVE_NAME
-        prod_name = "" if self.dictionary.part_number is None else self.dictionary.part_number
         self.full_name = f"{prod_name} {self.name} ({self.target})"
         """str: Obtains the servo full name."""
         self.units_torque = None
