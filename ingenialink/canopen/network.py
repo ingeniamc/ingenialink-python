@@ -61,6 +61,7 @@ CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
     access=REG_ACCESS.RO,
 )
 
+CANOPEN_BOTT_NODE_GUARDING_PERIOD = 5
 CANOPEN_SEND_FW_SDO_RESPONSE_TIMEOUT = 10  # Seconds
 BOOTLOADER_MSG_SIZE = 256  # Size in Bytes
 RECONNECTION_TIMEOUT = 180  # Seconds
@@ -489,8 +490,7 @@ class CanopenNetwork(Network):
         ]
         status_index = target_status_list.index(initial_status) + 1
         logger.info("Clearing program...")
-        for target_status_index in range(status_index, len(target_status_list)):
-            target_status = target_status_list[target_status_index]
+        for target_status in target_status_list[status_index:]:
             servo.write(PROG_STAT_1, target_status, subnode=0)
             if not self.__wait_for_register_value(servo, 0, PROG_STAT_1, target_status):
                 raise ILFirmwareLoadError(f"Error setting program control to 0x{target_status:X}")
@@ -546,7 +546,7 @@ class CanopenNetwork(Network):
         logger.info("Flashing firmware")
         with contextlib.suppress(ILError):
             servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
-        servo.node.nmt.start_node_guarding(5)
+        servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
         try:
             servo.node.nmt.wait_for_heartbeat(timeout=RECONNECTION_TIMEOUT)
         except canopen.nmt.NmtError as e:
@@ -637,7 +637,7 @@ class CanopenNetwork(Network):
         servo: CanopenServo,
         callback_status_msg: Optional[Callable[[str], None]],
         callback_progress: Optional[Callable[[int], None]],
-    ):
+    ) -> None:
         """Send firmware file to drive with SDOs
 
         Args:
