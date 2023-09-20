@@ -2,7 +2,7 @@ import struct
 from enum import Enum
 from typing import Union
 
-from ingenialink.exceptions import ILValueError
+from ingenialink.exceptions import ILValueError, ILError
 from ingenialink.enums.register import REG_DTYPE
 from time import sleep
 
@@ -63,60 +63,6 @@ def to_ms(s):
         int: Value in milliseconds.
     """
     return int(s * 1e3)
-
-
-def wait_for_register_value(servo, subnode, register, expected_value):
-    """Waits for the register to reach a value.
-
-    Args:
-        servo (Servo): Instance of the servo to be used.
-        subnode (int): Target subnode.
-        register (Register): Register to be read.
-        expected_value (int, float, str): Expected value for the given register.
-
-    Returns:
-        int: Return code of the operation.
-    """
-    logger.debug("Waiting for register {} to return <{}>".format(register, expected_value))
-    num_tries = 0
-    r = -2
-    while num_tries < POLLING_MAX_TRIES:
-        value = None
-        try:
-            value = servo.read(register, subnode=subnode)
-            r = 0
-        except Exception as e:
-            r = -1
-
-        if r >= 0:
-            if value == expected_value:
-                logger.debug("Success. Read value {}.".format(value))
-                break
-            else:
-                r = -2
-        num_tries += 1
-        logger.debug("Trying again {}. r: {}. value {}.".format(num_tries, r, value))
-        sleep(1)
-
-    return r
-
-
-def count_file_lines(file_path):
-    """Count how many lines the given file has.
-
-    Args:
-        file_path (str): Path to the target file.
-
-    Returns:
-        int: Number of lines in the file.
-
-    """
-    file = open(file_path, "r")
-    total_lines = 0
-    for _ in file:
-        total_lines += 1
-    file.close()
-    return total_lines
 
 
 def remove_xml_subelement(element, subelement):

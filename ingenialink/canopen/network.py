@@ -1,9 +1,11 @@
+import contextlib
 from enum import Enum
-from time import sleep, time
+from time import sleep
 from threading import Thread
+from typing import Optional, Callable, Union
+
 from .register import CanopenRegister
 from ingenialink.utils.mcb import MCB
-from ingenialink.utils._utils import count_file_lines, wait_for_register_value
 from ..exceptions import ILFirmwareLoadError, ILObjectNotExist, ILError
 from can import CanError
 from ..network import NET_PROT, NET_STATE, NET_DEV_EVT, Network
@@ -18,7 +20,7 @@ import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
 PROG_STAT_1 = CanopenRegister(
-    identifier="",
+    identifier="CIA302_BL_PROGRAM_CONTROL_1",
     units="",
     subnode=0,
     idx=0x1F51,
@@ -28,7 +30,7 @@ PROG_STAT_1 = CanopenRegister(
     access=REG_ACCESS.RW,
 )
 PROG_DL_1 = CanopenRegister(
-    identifier="",
+    identifier="CIA302_BL_PROGRAM_DATA",
     units="",
     subnode=0,
     idx=0x1F50,
@@ -38,7 +40,7 @@ PROG_DL_1 = CanopenRegister(
     access=REG_ACCESS.RW,
 )
 FORCE_BOOT = CanopenRegister(
-    identifier="",
+    identifier="DRV_BOOT_COCO_FORCE",
     units="",
     subnode=0,
     idx=0x5EDE,
@@ -59,6 +61,8 @@ CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
     access=REG_ACCESS.RO,
 )
 
+CANOPEN_BOTT_NODE_GUARDING_PERIOD = 5
+CANOPEN_SEND_FW_SDO_RESPONSE_TIMEOUT = 10  # Seconds
 BOOTLOADER_MSG_SIZE = 256  # Size in Bytes
 RECONNECTION_TIMEOUT = 180  # Seconds
 POLLING_MAX_TRIES = 5  # Seconds
@@ -342,12 +346,12 @@ class CanopenNetwork(Network):
 
     def load_firmware(
         self,
-        target,
-        fw_file,
-        callback_status_msg=None,
-        callback_progress=None,
-        callback_errors_enabled=None,
-    ):
+        target: int,
+        fw_file: str,
+        callback_status_msg: Optional[Callable[[str], None]] = None,
+        callback_progress: Optional[Callable[[int], None]] = None,
+        callback_errors_enabled: Optional[callable] = None,
+    ) -> None:
         """Loads a given firmware file to a target.
 
         .. warning ::
@@ -356,375 +360,322 @@ class CanopenNetwork(Network):
             become obsolete.
 
         Args:
-            target (int): Targeted node ID to be loaded.
-            fw_file (str): Path to the firmware file.
-            callback_status_msg (object): Subscribed callback function for the status
+            target: Targeted node ID to be loaded.
+            fw_file: Path to the firmware file.
+            callback_status_msg: Subscribed callback function for the status
                 message when loading a firmware.
-            callback_progress (object): Subscribed callback function for the live
+            callback_progress: Subscribed callback function for the live
                 progress when loading a firmware.
-            callback_errors_enabled (object): Subscribed callback function for
+            callback_errors_enabled: Subscribed callback function for
                 knowing when to toggle the error detection when loading firmware.
 
         Raises:
+            FileNotFoundError: Firmware file does not exist.
             ILFirmwareLoadError: The firmware load process fails with an error message.
 
         """
-        servo = None
-        lfu_path = None
-        error_detected_msg = ""
-        servo_connected = False
-        error_connecting = False
-        progress = 0
+        servo = self.__load_fw_checks(target, fw_file, callback_status_msg)
+        start_network_listener_after_reconnect = self.is_listener_started(servo)
+        start_servo_listener_after_reconnect = servo.is_listener_started()
+        self.stop_status_listener(servo)
+        servo.stop_status_listener()
+        initial_status = servo.read(PROG_STAT_1, subnode=0)
+        _, file_extension = os.path.splitext(fw_file)
+        if file_extension == ".sfu":
+            fw_file = self.__optimize_firmware_file(fw_file, callback_status_msg)
+        self.__force_boot(servo, callback_status_msg)
+        self.__program_control_to_flash(initial_status, servo, callback_status_msg)
+        try:
+            self.__send_fw_file(fw_file, servo, callback_status_msg, callback_progress)
+            self.__program_control_to_stop(servo, callback_status_msg)
+            self.__program_control_to_start(servo, callback_status_msg)
+        finally:
+            if file_extension == ".sfu":
+                os.remove(fw_file)
+        logger.info("Bootloader finished successfully!")
+        if callback_status_msg:
+            callback_status_msg("Bootloader finished successfully!")
+        if start_network_listener_after_reconnect:
+            self.start_status_listener(servo)
+        if start_servo_listener_after_reconnect:
+            servo.start_status_listener()
 
+    def __load_fw_checks(
+        self, target: int, fw_file: str, callback_status_msg: Optional[Callable[[str], None]] = None
+    ) -> CanopenServo:
+        """Checks prior to firmware upload and return the target CanopenServo instance
+
+        Args:
+            target: Targeted node ID to be loaded.
+            fw_file: Path to the firmware file.
+            callback_status_msg: Subscribed callback function for the status message
+
+        Returns:
+            Target servo
+
+        Raises:
+            FileNotFoundError: Firmware file does not exist.
+            ILFirmwareLoadError: The drive is not connected.
+            ILFirmwareLoadError: Firmware and bootloader versions are not compatible.
+
+        """
         if not os.path.isfile(fw_file):
-            raise FileNotFoundError("Could not find {}.".format(fw_file))
+            raise FileNotFoundError(f"Could not find {fw_file}.")
 
-        # Subscribe to firmware loader process
-        if callback_status_msg is not None:
-            self.__observers_fw_load_status_msg.append(callback_status_msg)
-        if callback_progress is not None:
-            self.__observers_fw_load_progress.append(callback_progress)
-        if callback_errors_enabled is not None:
-            self.__observers_fw_load_errors_enabled.append(callback_errors_enabled)
+        servo = None
+        for connected_servo in self.servos:
+            if connected_servo.target == target:
+                servo = connected_servo
+        if not servo:
+            raise ILFirmwareLoadError(f"Node {target} is not connected.")
 
-        self.__set_fw_load_status_msg("")
-        self.__set_fw_load_progress(progress)
-        self.__set_fw_load_errors_enabled(True)
-
-        # Check if target is already connected
-        for servo in self.servos:
-            if servo.target == target:
-                servo_connected = True
-                break
-            else:
-                servo = None
-
+        logger.info("Checking compatibility")
+        if callback_status_msg:
+            callback_status_msg("Checking compatibility")
         try:
-            if not servo_connected:
-                self.__set_fw_load_status_msg("Connecting to drive")
-                logger.info("Connecting to drive")
-                progress = 5
-                self.__set_fw_load_progress(progress)
+            servo.read(PROG_STAT_1, subnode=0)
+        except ILError as e:
+            raise ILFirmwareLoadError(
+                "Firmware and bootloader versions are not compatible. Use FTP Bootloader instead."
+            ) from e
+        return servo
+
+    def __force_boot(
+        self, servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]]
+    ) -> None:
+        """Force boot, if drive is already in boot, do nothing
+
+        Args:
+            servo: target drive
+            callback_status_msg: Subscribed callback function for the status message
+
+        """
+        device_type = servo.read(CIA301_DRV_ID_DEVICE_TYPE, subnode=0)
+        device_type = device_type & 0xFFFF
+        if device_type == APPLICATION_LOADED_STATE:
+            if callback_status_msg:
+                callback_status_msg("Entering Bootmode")
+            logger.info("Entering Bootmode")
+            # Drive profile
+            # Enter in NMT pre-operational state.
+            self._connection.nmt.send_command(PROG_CTRL_STATE_FLASH)
+            # The drive will unlock the clear program command
+            password = 0x70636675
+            servo.write(FORCE_BOOT, password, subnode=0)
+
+    def __program_control_to_flash(
+        self,
+        initial_status: int,
+        servo: CanopenServo,
+        callback_status_msg: Optional[Callable[[str], None]],
+    ) -> None:
+        """Change program control status to flash.
+
+        Args:
+            initial_status: program control initial status
+            servo: target drive
+            callback_status_msg: Subscribed callback function for the status message
+
+        Raises:
+            ILFirmwareLoadError: Program control status does not change
+
+        """
+        if callback_status_msg:
+            callback_status_msg("Setting up drive")
+        target_status_list = [
+            PROG_CTRL_STATE_START,
+            PROG_CTRL_STATE_STOP,
+            PROG_CTRL_STATE_CLEAR,
+            PROG_CTRL_STATE_FLASH,
+        ]
+        status_index = target_status_list.index(initial_status) + 1
+        logger.info("Clearing program...")
+        for target_status in target_status_list[status_index:]:
+            servo.write(PROG_STAT_1, target_status, subnode=0)
+            if not self.__wait_for_register_value(servo, 0, PROG_STAT_1, target_status):
+                raise ILFirmwareLoadError(f"Error setting program control to 0x{target_status:X}")
+
+    @staticmethod
+    def __wait_for_register_value(
+        servo: CanopenServo,
+        subnode: int,
+        register: CanopenRegister,
+        expected_value: Union[int, float, str],
+    ) -> bool:
+        """Waits for the register to reach a value.
+
+        Args:
+            servo: Instance of the servo to be used.
+            subnode: Target subnode.
+            register: Register to be read.
+            expected_value: Expected value for the given register.
+
+        Returns:
+            True if values is reached, else False
+        """
+        logger.debug(f"Waiting for register {register} to return <{expected_value}>")
+        num_tries = 0
+        value = None
+        while num_tries < POLLING_MAX_TRIES:
+            with contextlib.suppress(ILError):
+                value = servo.read(register, subnode=subnode)
+            if value == expected_value:
+                logger.debug(f"Success. Read value {value}. Num tries {num_tries}")
+                return True
+            num_tries += 1
+            logger.debug(f"Trying again {num_tries}. value {value}.")
+            sleep(1)
+        return False
+
+    @staticmethod
+    def __program_control_to_stop(
+        servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]]
+    ) -> None:
+        """Change program control status to stop.
+
+        Args:
+            servo: target drive
+            callback_status_msg: Subscribed callback function for the status message
+
+        Raises:
+            ILFirmwareLoadError: Drive does not respond
+
+        """
+        if callback_status_msg:
+            callback_status_msg("Flashing firmware")
+        logger.info("Flashing firmware")
+        with contextlib.suppress(ILError):
+            servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
+        servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
+        try:
+            servo.node.nmt.wait_for_heartbeat(timeout=RECONNECTION_TIMEOUT)
+        except canopen.nmt.NmtError as e:
+            raise ILFirmwareLoadError("Could not recover drive") from e
+        finally:
+            servo.node.nmt.stop_node_guarding()
+
+    @staticmethod
+    def __program_control_to_start(
+        servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]]
+    ) -> None:
+        """Change program control status to start.
+
+        Args:
+            servo: target drive
+            callback_status_msg: Subscribed callback function for the status message
+
+        Raises:
+            ILFirmwareLoadError: Drive does not respond
+
+        """
+        if callback_status_msg:
+            callback_status_msg("Starting program")
+        logger.info("Starting program")
+        with contextlib.suppress(ILError):
+            servo.write(PROG_STAT_1, PROG_CTRL_STATE_START, subnode=0)
+        try:
+            servo.node.nmt.wait_for_bootup(timeout=RECONNECTION_TIMEOUT)
+        except canopen.nmt.NmtError as e:
+            raise ILFirmwareLoadError("Could not recover drive") from e
+
+    @staticmethod
+    def __optimize_firmware_file(sfu_file, callback_status_msg: Optional[Callable[[str], None]]):
+        """Convert SFU file to LFU to optimize the firmware loading.
+
+        Args:
+            sfu_file: target SFU file
+            callback_status_msg: Subscribed callback function for the status message
+
+        Returns:
+            LFU file path
+
+        """
+        mcb = MCB()
+        with open(sfu_file, "r") as temp_file:
+            total_file_lines = sum(1 for _ in temp_file)
+        # Convert the sfu file to lfu
+        logger.info("Converting sfu to lfu...")
+        logger.info("Optimizing file")
+        if callback_status_msg:
+            callback_status_msg("Optimizing file")
+        lfu_file_d, lfu_path = tempfile.mkstemp(suffix=".lfu", text=True)
+        os.close(lfu_file_d)
+        with open(lfu_path, "wb") as lfu_file:
+            with open(sfu_file, "r") as coco_in:
+                bin_node = ""
+                current_progress = 0
+                node = 10
+                for copy_process, line in enumerate(coco_in):
+                    if re.match(r"74 67 [0-4][0-4] 00 00 00 00 00 00 00", line) is not None:
+                        bin_node = line[6:8]
+
+                    newline = f"{bin_node} {line}"
+                    words = newline.split()
+
+                    # Get command and address
+                    subnode = int(words[0], 16)
+                    cmd = int(words[2] + words[1], 16)
+                    data = b""
+                    num = 3
+                    while num in range(3, len(words)):
+                        # load data MCB
+                        data += bytes([int(words[num], 16)])
+                        num += 1
+
+                    # send message
+                    mcb.add_cmd(node, subnode, cmd, data, lfu_file)
+                    new_progress = int(copy_process * 100 / total_file_lines)
+                    if new_progress != current_progress:
+                        current_progress = new_progress
+                        logger.info(f"Optimizing firmware file in progress: {current_progress}%")
+        logger.info("Converted to lfu")
+        return lfu_path
+
+    @staticmethod
+    def __send_fw_file(
+        fw_file: str,
+        servo: CanopenServo,
+        callback_status_msg: Optional[Callable[[str], None]],
+        callback_progress: Optional[Callable[[int], None]],
+    ) -> None:
+        """Send firmware file to drive with SDOs
+
+        Args:
+            fw_file: target firmware file
+            servo: target drive
+            callback_status_msg: Subscribed callback function for the status message
+            callback_progress: Subscribed callback function for the live progress.
+
+        Raises:
+            ILFirmwareLoadError: Drive does not respond
+
+        """
+        total_file_size = os.path.getsize(fw_file) / BOOTLOADER_MSG_SIZE
+        servo._change_sdo_timeout(CANOPEN_SEND_FW_SDO_RESPONSE_TIMEOUT)
+        logger.info("Downloading firmware")
+        if callback_status_msg:
+            callback_status_msg("Downloading firmware")
+        counter = 0
+        progress = 0
+        with open(fw_file, "rb") as image:
+            byte = image.read(BOOTLOADER_MSG_SIZE)
+            while byte:
                 try:
-                    servo = self.connect_to_slave(target, servo_status_listener=False)
-                    progress = 7
-                    self.__set_fw_load_progress(progress)
-                except Exception as e:
-                    logger.error("Error connecting to drive through CAN: %s", e)
-                    error_connecting = True
-
-            if servo is not None and not error_connecting:
-                # Check if bootloader is supported
-                logger.info("Checking compatibility")
-                self.__set_fw_load_status_msg("Checking compatibility")
-                prog_stat_1 = None
-                try:
-                    prog_stat_1 = servo.read(PROG_STAT_1, subnode=0)
-                    is_bootloader_supported = True
-                except Exception as e:
-                    is_bootloader_supported = False
-
-                progress = 10
-                current_progress = progress
-                self.__set_fw_load_progress(progress)
-
-                if is_bootloader_supported:
-                    # Check if file is .lfu
-                    file_name, file_extension = os.path.splitext(fw_file)
-
-                    if file_extension != "" and file_extension == ".sfu":
-                        fd, lfu_path = tempfile.mkstemp(suffix=".lfu")
-                        logger.debug(">> FD: {}. \n>> LFU PATH: {}.".format(fd, lfu_path))
-
-                        try:
-                            # Convert the sfu file to lfu
-                            logger.info("Converting sfu to lfu...")
-                            self.__set_fw_load_status_msg("Optimizing file")
-                            logger.info("Optimizing file")
-                            total_file_lines = count_file_lines(fw_file)
-                            outfile = open(lfu_path, "wb")
-                            coco_in = open(fw_file, "r")
-                            mcb = MCB()
-                            copy_process = 0
-                            bin_node = ""
-                            for line in coco_in:
-                                if (
-                                    re.match("74 67 [0-4][0-4] 00 00 00 00 00 00 00", line)
-                                    is not None
-                                ):
-                                    bin_node = line[6:8]
-
-                                newline = "{} {}".format(bin_node, line)
-                                words = newline.split()
-
-                                # Get command and address
-                                subnode = int(words[0], 16)
-                                cmd = int(words[2] + words[1], 16)
-                                data = b""
-                                num = 3
-                                while num in range(3, len(words)):
-                                    # load data MCB
-                                    data = data + bytes([int(words[num], 16)])
-                                    num = num + 1
-
-                                # send message
-                                node = 10
-                                mcb.add_cmd(node, subnode, cmd, data, outfile)
-
-                                new_progress = (
-                                    int((copy_process * (25 - progress)) / total_file_lines)
-                                    + progress
-                                )
-                                if new_progress != current_progress:
-                                    current_progress = new_progress
-                                    self.__set_fw_load_progress(current_progress)
-                                copy_process += 1
-
-                            progress = current_progress
-
-                            outfile.close()
-                            coco_in.close()
-                            logger.info("Converted to lfu")
-                        except Exception as e:
-                            logger.error("Exception converting to lfu. {}".format(e))
-
-                    else:
-                        lfu_path = fw_file
-
-                    total_file_size = os.path.getsize(lfu_path) / BOOTLOADER_MSG_SIZE
-
-                    # Check if Boot mode or App loaded
-                    try:
-                        device_type = servo.read(CIA301_DRV_ID_DEVICE_TYPE, subnode=0)
-                        device_type = device_type & 0xFFFF
-                    except Exception as e:
-                        device_type = 0
-
-                    if device_type == APPLICATION_LOADED_STATE:
-                        # Drive profile
-                        self.__set_fw_load_status_msg("Entering Bootmode")
-                        logger.info("Entering Bootmode")
-                        # Enter in NMT pre-operational state.
-                        self._connection.nmt.send_command(PROG_CTRL_STATE_FLASH)
-                        # The drive will unlock the clear program command
-                        password = 0x70636675
-
-                        try:
-                            servo.write(FORCE_BOOT, password, subnode=0)
-                        except Exception as e:
-                            pass
-                    if prog_stat_1 == PROG_CTRL_STATE_START or prog_stat_1 == PROG_CTRL_STATE_FLASH:
-                        # Write 0 to 0x1F51 to stop the app
-                        try:
-                            servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
-                        except Exception as e:
-                            pass
-                    self.__set_fw_load_status_msg("Setting up drive")
-                    logger.info("Connected")
-                    logger.info("Clearing program...")
-
-                    prog_stat_1 = None
-                    try:
-                        prog_stat_1 = servo.read(PROG_STAT_1, subnode=0)
-                        r = 0
-                    except Exception as e:
-                        r = -1
-
-                    if r >= 0 and prog_stat_1 == PROG_CTRL_STATE_STOP:
-                        try:
-                            servo.write(PROG_STAT_1, PROG_CTRL_STATE_CLEAR, subnode=0)
-                        except Exception as e:
-                            pass
-
-                        r = wait_for_register_value(servo, 0, PROG_STAT_1, PROG_CTRL_STATE_CLEAR)
-                    if r >= 0:
-                        try:
-                            servo.write(PROG_STAT_1, PROG_CTRL_STATE_FLASH, subnode=0)
-                        except Exception as e:
-                            pass
-
-                        r = wait_for_register_value(servo, 0, PROG_STAT_1, PROG_CTRL_STATE_FLASH)
-                        if r < 0:
-                            error_detected_msg = "Error entering flashing mode"
-                            logger.info(error_detected_msg)
-                    else:
-                        error_detected_msg = "Error entering boot mode"
-                        logger.error(error_detected_msg)
-
-                    if error_detected_msg == "":
-                        logger.info("Downloading program...")
-                        image = open(lfu_path, "rb")
-                        counter = 0
-                        # Read image content in BOOTLOADER_MSG_SIZE
-                        try:
-                            error_downloading = False
-                            servo._change_sdo_timeout(10)
-                            self.__set_fw_load_status_msg("Downloading firmware")
-                            logger.info("Downloading firmware")
-                            byte = image.read(1)
-                            bytes_data = bytearray()
-                            counter_blocks = 1
-                            while not error_downloading:
-                                bytes_data.extend(byte)
-                                if counter_blocks == BOOTLOADER_MSG_SIZE:
-                                    counter_blocks = 0
-                                    try:
-                                        servo.write(PROG_DL_1, bytes_data, subnode=0)
-                                        r = 0
-                                    except Exception as e:
-                                        r = -1
-
-                                    if r < 0:
-                                        error_downloading = True
-                                        error_detected_msg = "An error occurred while downloading."
-                                    counter += 1
-
-                                    new_progress = (
-                                        int((counter * (100 - progress)) / total_file_size)
-                                        + progress
-                                    )
-                                    if new_progress != current_progress:
-                                        current_progress = new_progress
-                                        self.__set_fw_load_progress(current_progress)
-
-                                    bytes_data = bytearray()
-                                byte = image.read(1)
-                                if not byte:
-                                    break
-                                counter_blocks += 1
-
-                            if not error_downloading:
-                                self.__set_fw_load_status_msg("Flashing firmware")
-                                logger.info("Download Finished!")
-                                logger.info("Flashing firmware")
-
-                                try:
-                                    servo.write(PROG_DL_1, bytes_data, subnode=0)
-                                except Exception as e:
-                                    pass
-
-                                servo._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
-                        except Exception as e:
-                            error_detected_msg = "An error occurred while downloading."
-                            logger.error(
-                                "Failed to download fw, reset might be needed. "
-                                "Exception {}.".format(e)
-                            )
-                        try:
-                            image.close()
-                            logger.debug("Temp file deleted")
-                        except Exception as e:
-                            logger.warning("Could not remove temp file. Exception: {}".format(e))
-
-                    if error_detected_msg == "":
-                        logger.info("Disable errors")
-                        self.__set_fw_load_errors_enabled(False)
-
-                        logger.info("Flashing...")
-
-                        try:
-                            servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
-                        except Exception as e:
-                            pass
-
-                        logger.info("Waiting for the drive to respond...")
-                        sleep(5)
-                        initial_time = time()
-                        time_diff = time() - initial_time
-                        bool_timeout = False
-                        stop_status_listener_after_reconnect = not self.is_listener_started(servo)
-                        self.start_status_listener(servo)
-                        logger.debug("Starting status listener...")
-                        while (
-                            self.status != NET_STATE.CONNECTED and time_diff < RECONNECTION_TIMEOUT
-                        ):
-                            time_diff = time() - initial_time
-                            sleep(0.5)
-                        if not time_diff < RECONNECTION_TIMEOUT:
-                            bool_timeout = True
-
-                        if stop_status_listener_after_reconnect:
-                            self.stop_status_listener(servo)
-                            logger.debug("Stopping status listener...")
-
-                        logger.debug(f"Time waited for reconnection: {time_diff} {bool_timeout}")
-                        logger.debug(f"Net state after reconnection: {self.status}")
-
-                        sleep(5)
-
-                        self.__set_fw_load_status_msg("Starting program")
-                        logger.info("Starting program")
-
-                        try:
-                            servo.write(PROG_STAT_1, PROG_CTRL_STATE_START, subnode=0)
-                        except Exception as e:
-                            pass
-
-                        if not bool_timeout:
-                            logger.info("Bootloader finished successfully!")
-                            self.__set_fw_load_status_msg("Bootloader finished successfully!")
-                            # Wait for the drive to reset
-                            initial_time = time()
-                            timeout = 25
-                            stop = False
-
-                            logger.info("Waiting for the drive to be available.")
-                            while (time() - initial_time) < timeout and not stop:
-                                try:
-                                    servo.read(servo.STATUS_WORD_REGISTERS)
-                                    stop = True
-                                except ILError:
-                                    pass
-                        else:
-                            error_detected_msg = "Could not recover drive"
-                            logger.error(error_detected_msg)
-                else:
-                    # Bootloader not supported
-                    error_detected_msg = (
-                        "Firmware and bootloader versions are "
-                        "not compatible. Use FTP Bootloader instead."
-                    )
-            else:
-                error_detected_msg = "Failed to connect to the drive"
-                logger.error("Error detected could not specify the drive.")
-                if self._connection is not None and not servo_connected:
-                    self._teardown_connection()
-                    logger.error("CANopen connection disconnected")
-        except Exception as e:
-            logger.error("Failed to load firmware. Exception: {}".format(e))
-            error_detected_msg = "Failed to load firmware"
-            if servo is not None and not servo_connected:
-                self.disconnect_from_slave(servo)
-            elif self._connection is not None and not servo_connected:
-                self._teardown_connection()
-                logger.error("CANopen connection disconnected")
-        try:
-            if servo is not None and not servo_connected:
-                self.disconnect_from_slave(servo)
-            elif self._connection is not None and not servo_connected:
-                self._teardown_connection()
-                logger.error("CANopen connection disconnected")
-        except Exception as e:
-            logger.error("Could not disconnect the drive. Exception {}.".format(e))
-
-        try:
-            if lfu_path != fw_file:
-                os.remove(lfu_path)
-        except Exception as e:
-            logger.warning("Could not remove {}. Exception: {}".format(lfu_path, e))
-
-        self.__set_fw_load_errors_enabled(True)
-
-        # Unsubscribe to firmware loader process
-        if callback_status_msg is not None:
-            self.__observers_fw_load_status_msg.remove(callback_status_msg)
-        if callback_progress is not None:
-            self.__observers_fw_load_progress.remove(callback_progress)
-        if callback_errors_enabled is not None:
-            self.__observers_fw_load_errors_enabled.remove(callback_errors_enabled)
-
-        if error_detected_msg != "":
-            raise ILFirmwareLoadError(error_detected_msg)
+                    servo.write(PROG_DL_1, byte, subnode=0)
+                except ILError as e:
+                    raise ILFirmwareLoadError(
+                        "An error occurred while downloading. Check firmware file is correct."
+                    ) from e
+                counter += 1
+                new_progress = int(counter * 100 / total_file_size)
+                if progress != new_progress:
+                    progress = new_progress
+                    logger.info(f"Download firmware in progress: {progress}%")
+                    if callback_progress:
+                        callback_progress(progress)
+                byte = image.read(BOOTLOADER_MSG_SIZE)
+        logger.info("Download Finished!")
+        servo._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
     def __set_fw_load_status_msg(self, new_value):
         """Updates the fw_load_status_msg value and triggers
