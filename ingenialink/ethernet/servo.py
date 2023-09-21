@@ -143,20 +143,18 @@ class EthernetServo(Servo):
             except socket.error as e:
                 raise ILIOError("Error sending data.") from e
             try:
-                return self.__receive_mcb_frame(reg, self.socket)
+                return self.__receive_mcb_frame(reg)
             except ILWrongRegisterError as e:
                 logger.error(e)
-                return self.__receive_mcb_frame(reg, self.socket)
+                return self.__receive_mcb_frame(reg)
         finally:
             self._lock.release()
 
-    @staticmethod
-    def __receive_mcb_frame(reg: int, conn_socket: socket.socket) -> bytes:
+    def __receive_mcb_frame(self, reg: int) -> bytes:
         """Receive frame from socket and return MCB data
 
         Args:
             reg: expected address
-            conn_socket: connection socket
 
         Returns:
             MCB message data in bytes
@@ -167,7 +165,7 @@ class EthernetServo(Servo):
 
         """
         try:
-            response = conn_socket.recv(ETH_BUF_SIZE)
+            response = self.socket.recv(ETH_BUF_SIZE)
         except socket.timeout as e:
             raise ILTimeoutError("Timeout while receiving data.") from e
         except socket.error as e:
