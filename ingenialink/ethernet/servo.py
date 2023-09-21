@@ -1,7 +1,7 @@
 import ipaddress
 import socket
 
-from ingenialink.exceptions import ILError, ILTimeoutError, ILIOError
+from ingenialink.exceptions import ILError, ILTimeoutError, ILIOError, ILWrongRegisterError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.constants import MCB_CMD_READ, MCB_CMD_WRITE, ETH_MAX_WRITE_SIZE, ETH_BUF_SIZE
@@ -143,13 +143,33 @@ class EthernetServo(Servo):
             except socket.error as e:
                 raise ILIOError("Error sending data.") from e
             try:
-                response = self.socket.recv(ETH_BUF_SIZE)
-            except socket.timeout as e:
-                raise ILTimeoutError("Timeout while receiving data.") from e
-            except socket.error as e:
-                raise ILIOError("Error receiving data.") from e
-        except (ILIOError, ILTimeoutError) as e:
-            raise e
+                return self.__receive_mcb_frame(reg, self.socket)
+            except ILWrongRegisterError as e:
+                logger.error(e)
+                return self.__receive_mcb_frame(reg, self.socket)
         finally:
             self._lock.release()
+
+    @staticmethod
+    def __receive_mcb_frame(reg: int, conn_socket: socket.socket) -> bytes:
+        """Receive frame from socket and return MCB data
+
+        Args:
+            reg: expected address
+            conn_socket: connection socket
+
+        Returns:
+            MCB message data in bytes
+
+        Raises:
+            ILTimeoutError: socket timeout
+            ILIOError: socket error
+
+        """
+        try:
+            response = conn_socket.recv(ETH_BUF_SIZE)
+        except socket.timeout as e:
+            raise ILTimeoutError("Timeout while receiving data.") from e
+        except socket.error as e:
+            raise ILIOError("Error receiving data.") from e
         return MCB.read_mcb_data(reg, response)
