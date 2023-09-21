@@ -1,5 +1,9 @@
 # Changelog
 
+## [7.0.4]
+### Fixed
+- Reread when ethernet read a wrong address
+
 ## [7.0.3] - 2023-09-05
 
 ### Add
