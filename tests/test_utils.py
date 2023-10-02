@@ -12,6 +12,7 @@ from ingenialink.utils._utils import convert_bytes_to_dtype
         (b"\x00\x00\x0a\x42", 34.5, REG_DTYPE.FLOAT),
         (b"\xFF", 255, REG_DTYPE.U16),
         (b"\x74\x68\x61\x74\x27\x73\x20\x61\x20\x74\x65\x73\x74", "that's a test", REG_DTYPE.STR),
+        (b"\x74\x68\x61\x74\x27\x73\x20\x67\x6f\x6f\x64\x00\xca\xca", "that's good", REG_DTYPE.STR),
     ],
 )
 def test_convert_bytes_to_dtype(v_input, v_output, dtype):
