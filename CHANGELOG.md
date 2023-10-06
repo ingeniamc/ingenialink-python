@@ -13,6 +13,7 @@
 ### Fixed
 - Catch EoE service deinit error when disconnecting the drive.
 - Log exceptions in read_coco_moco_register function correctly.
+- Set product name correctly if no dictionary is provided.
 
 
 ## [7.0.2] - 2023-05-22
