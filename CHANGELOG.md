@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Fix CANopen load_firmware function.
+- Set product name correctly if no dictionary is provided.
+
 ## [7.0.3] - 2023-09-05
 
 ### Add
