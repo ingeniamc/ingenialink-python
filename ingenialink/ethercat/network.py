@@ -5,15 +5,16 @@ import subprocess
 import inspect
 
 import ingenialogger
+import pysoem
 
-from ingenialink.network import NET_PROT
+from ingenialink.network import Network, NET_PROT
 from ingenialink.exceptions import ILFirmwareLoadError
 from ingenialink import bin as bin_module
 
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthercatNetwork:
+class EthercatNetwork(Network):
     """Network for all EtherCAT communications.
 
     Args:
@@ -31,12 +32,42 @@ class EthercatNetwork:
     }
     UNKNOWN_FOE_ERROR = "Unknown error"
 
-    def __init__(self, interface_name):
+    def __init__(self, interface_name: str):
+        super(EthercatNetwork, self).__init__()
         self.interface_name = interface_name
         """str: Interface name used in the network settings."""
         self.servos = []
         """list: List of the connected servos in the network."""
-        self._ecat_master = None
+        self._ecat_master = pysoem.Master()
+        self._ecat_master.open(self.interface_name)
+
+    def scan_slaves(self) -> list[int]:
+        """Scans for nodes in the network.
+
+        Returns:
+            Lis containing all the detected node IDs.
+
+        """
+        nodes = self._ecat_master.config_init()
+        return list(range(1, nodes + 1))
+
+    def connect_to_slave(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def disconnect_from_slave(self, servo):
+        raise NotImplementedError
+
+    def subscribe_to_status(self, callback):
+        raise NotImplementedError
+
+    def unsubscribe_from_status(self, callback):
+        raise NotImplementedError
+
+    def start_status_listener(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def stop_status_listener(self, *args, **kwargs):
+        raise NotImplementedError
 
     def load_firmware(self, fw_file, slave_id=1):
         """Loads a given firmware file to a target slave.
