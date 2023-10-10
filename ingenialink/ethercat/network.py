@@ -3,13 +3,15 @@ import sys
 import platform
 import subprocess
 import inspect
+from typing import Optional
 
 import ingenialogger
 import pysoem
 
 from ingenialink.network import Network, NET_PROT
-from ingenialink.exceptions import ILFirmwareLoadError
+from ingenialink.exceptions import ILFirmwareLoadError, ILError
 from ingenialink import bin as bin_module
+from ingenialink.ethercat.servo import EthercatServo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -51,8 +53,41 @@ class EthercatNetwork(Network):
         nodes = self._ecat_master.config_init()
         return list(range(1, nodes + 1))
 
-    def connect_to_slave(self, *args, **kwargs):
-        raise NotImplementedError
+    def connect_to_slave(
+        self,
+        slave_id: int,
+        dictionary: Optional[str] = None,
+        servo_status_listener: bool = False,
+        net_status_listener: bool = False,
+    ):
+        """Connects to a drive through a given slave number.
+
+        Args:
+            slave_id: Targeted slave to be connected.
+            dictionary: Path to the dictionary file.
+            servo_status_listener: Toggle the listener of the servo for
+                its status, errors, faults, etc.
+            net_status_listener: Toggle the listener of the network
+                status, connection and disconnection.
+
+        Raises:
+            ILError: If the slave ID is not valid.
+            ILError: If no slaves are found.
+
+        """
+        if not isinstance(slave_id, int) or slave_id < 0:
+            raise ILError("Invalid slave ID value")
+        slaves = self.scan_slaves()
+        if len(slaves) == 0:
+            raise ILError("Could not find any slaves in the network.")
+        if slave_id not in slaves:
+            raise (ILError(f"Slave {slave} was not found."))
+        slave = self._ecat_master.slaves[slave_id]
+        servo = EthercatServo(slave, dictionary, servo_status_listener)
+        self.servos.append(servo)
+        if net_status_listener:
+            self.start_status_listener(servo)
+        return servo
 
     def disconnect_from_slave(self, servo):
         raise NotImplementedError
