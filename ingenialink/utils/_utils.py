@@ -203,7 +203,7 @@ def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, s
         [value] = struct.unpack("f", data)
     elif dtype == REG_DTYPE.STR:
         try:
-            value = data.decode("utf-8").rstrip("\0")
+            value = data.split(b"\x00")[0].decode("utf-8")
         except UnicodeDecodeError as e:
             raise ILValueError(f"Can't decode {e.object} to utf-8 string") from e
     else:
