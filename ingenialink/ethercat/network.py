@@ -40,11 +40,9 @@ class EthercatNetwork(Network):
         self, interface_name: str, connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT
     ):
         super(EthercatNetwork, self).__init__()
-        self.interface_name = interface_name
-        """str: Interface name used in the network settings."""
-        self.servos = []
-        """list: List of the connected servos in the network."""
-        self._ecat_master = pysoem.Master()
+        self.interface_name: str = interface_name
+        self.servos: list = []
+        self._ecat_master: pysoem.CdefMaster = pysoem.Master()
         self._ecat_master.open(self.interface_name)
         self._ecat_master.sdo_read_timeout = int(1_000_000 * connection_timeout)
         self._ecat_master.sdo_write_timeout = int(1_000_000 * connection_timeout)
@@ -53,7 +51,7 @@ class EthercatNetwork(Network):
         """Scans for nodes in the network.
 
         Returns:
-            Lis containing all the detected node IDs.
+            List containing all the detected node IDs.
 
         """
         nodes = self._ecat_master.config_init()
@@ -65,7 +63,7 @@ class EthercatNetwork(Network):
         dictionary: Optional[str] = None,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
-    ):
+    ) -> EthercatServo:
         """Connects to a drive through a given slave number.
 
         Args:
@@ -95,8 +93,16 @@ class EthercatNetwork(Network):
             self.start_status_listener(servo)
         return servo
 
-    def disconnect_from_slave(self, servo):
-        raise NotImplementedError
+    def disconnect_from_slave(self, servo: EthercatServo) -> None:
+        """Disconnects the slave from the network.
+
+        Args:
+            servo: Instance of the servo connected.
+
+        """
+        self.servos.remove(servo)
+        if not self.servos:
+            self._ecat_master.close()
 
     def subscribe_to_status(self, callback):
         raise NotImplementedError
