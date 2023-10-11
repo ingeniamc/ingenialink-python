@@ -16,6 +16,7 @@ class EthercatServo(Servo):
 
     Args:
         slave: Slave to be connected.
+        slave_id: Slave ID.
         dictionary_path: Path to the dictionary.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
@@ -27,10 +28,12 @@ class EthercatServo(Servo):
     def __init__(
         self,
         slave: CdefSlave,
+        slave_id: int,
         dictionary_path: Optional[str] = None,
         servo_status_listener: bool = False,
     ):
         self.__slave = slave
+        self.slave_id = slave_id
         super(EthercatServo, self).__init__(slave.name, dictionary_path, servo_status_listener)
 
     def _read_raw(self, reg: CanopenRegister) -> bytes:
