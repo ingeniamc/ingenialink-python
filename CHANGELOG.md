@@ -1,5 +1,11 @@
 # Changelog
 
+## [7.0.4] - 2023-10-11
+
+### Fixed
+- Reread when ethernet read a wrong address
+- Read strings until NULL character
+
 ## [7.0.3] - 2023-09-05
 
 ### Add
