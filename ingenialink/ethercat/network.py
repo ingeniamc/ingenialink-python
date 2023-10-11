@@ -12,6 +12,7 @@ from ingenialink.network import Network, NET_PROT
 from ingenialink.exceptions import ILFirmwareLoadError, ILError
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
+from ingenialink.constants import DEFAULT_ECAT_CONNECTION_TIMEOUT
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -20,7 +21,8 @@ class EthercatNetwork(Network):
     """Network for all EtherCAT communications.
 
     Args:
-        interface_name (str): Interface name to be targeted.
+        interface_name: Interface name to be targeted.
+        connection_timeout: Time in seconds of the connection timeout.
 
     """
 
@@ -34,7 +36,9 @@ class EthercatNetwork(Network):
     }
     UNKNOWN_FOE_ERROR = "Unknown error"
 
-    def __init__(self, interface_name: str):
+    def __init__(
+        self, interface_name: str, connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT
+    ):
         super(EthercatNetwork, self).__init__()
         self.interface_name = interface_name
         """str: Interface name used in the network settings."""
@@ -42,6 +46,8 @@ class EthercatNetwork(Network):
         """list: List of the connected servos in the network."""
         self._ecat_master = pysoem.Master()
         self._ecat_master.open(self.interface_name)
+        self._ecat_master.sdo_read_timeout = int(1_000_000 * connection_timeout)
+        self._ecat_master.sdo_write_timeout = int(1_000_000 * connection_timeout)
 
     def scan_slaves(self) -> list[int]:
         """Scans for nodes in the network.
