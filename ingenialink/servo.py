@@ -632,6 +632,8 @@ class Servo:
             tmp_data = self._monitoring_read_data()[:limit]
             monitoring_data.append(tmp_data)
             num_available_bytes = self.monitoring_actual_number_bytes()
+            if len(monitoring_data) == MONITORING_BUFFER_SIZE:
+                break
         self.__monitoring_process_data(monitoring_data)
 
     def monitoring_channel_data(self, channel, dtype=None):

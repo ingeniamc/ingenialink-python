@@ -2,6 +2,7 @@ import sys
 import numpy as np
 from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
 from ingenialink.constants import data_type_size
+from ingenialink.ethercat.network import EthercatNetwork
 
 
 def monitoring_example():
@@ -9,20 +10,24 @@ def monitoring_example():
         "DRV_PROT_TEMP_VALUE",
     ]
 
-    net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
-                         channel=0,
-                         baudrate=CAN_BAUDRATE.Baudrate_1M)
-    nodes = net.scan_slaves()
-    servo = net.connect_to_slave(
-        target=nodes[0],
-        dictionary='../../resources/dictionaries/eve-net-c_can_1.8.1.xdf')
+    #net = CanopenNetwork(device=CAN_DEVICE.PCAN,
+    #                     channel=0,
+    #                     baudrate=CAN_BAUDRATE.Baudrate_1M)
+    #nodes = net.scan_slaves()
+    #servo = net.connect_to_slave(
+    #    target=nodes[0],
+    #    dictionary="C://Users//martin.acosta//Documents//issues//INGK-672//evs-net-c_can_2.4.1")
+    net = EthercatNetwork(r'\Device\NPF_{43144EC3-59EF-408B-8D9B-4867F1324D62}')
+    slave_id = net.scan_slaves()
+    slave_id = slave_id[0]
+    servo = net.connect_to_slave(slave_id, "C://Users//martin.acosta//Documents//issues//INGK-672//evs-net-c_can_2.4.1.xdf")
     # Monitoring
     # Remove all mapped registers
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
 
     # Calculate the monitoring frequency
-    ccp_value = 12.5
+    ccp_value = 12
     servo.write('MON_DIST_FREQ_DIV', ccp_value, subnode=0)
     position_velocity_loop_rate = servo.read(
         'DRV_POS_VEL_RATE'
@@ -102,9 +107,8 @@ def monitoring_example():
             print('Exception monitoring: {}'.format(e))
             break
     print("Finished")
-
+    print(len(monitor_data), np.unique(monitor_data))
     net.disconnect_from_slave(servo)
-    return monitor_data
 
 
 if __name__ == '__main__':
