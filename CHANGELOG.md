@@ -5,6 +5,7 @@
 ### Fixed
 - Fix CANopen load_firmware function.
 - Set product name correctly if no dictionary is provided.
+- CanopenRegister and EthernetRegister have the same signature.
 
 ## [7.0.4] - 2023-10-11
 
