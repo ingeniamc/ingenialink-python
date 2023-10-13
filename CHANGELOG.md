@@ -5,6 +5,7 @@
 ### Fixed
 - Fix CANopen load_firmware function.
 - Set product name correctly if no dictionary is provided.
+- Docstrings from Register constructor and its subclasses are updated.
 
 ## [7.0.4] - 2023-10-11
 
