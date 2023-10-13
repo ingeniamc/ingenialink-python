@@ -5,7 +5,7 @@ import subprocess
 import inspect
 import time
 from collections import defaultdict
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 from threading import Thread
 
 import ingenialogger
@@ -146,7 +146,9 @@ class EthercatNetwork(Network):  # type: ignore
             self.stop_status_listener()
             self._ecat_master.close()
 
-    def subscribe_to_status(self, slave_id: int, callback: Any) -> None:
+    def subscribe_to_status(
+        self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None]
+    ) -> None:
         """Subscribe to network state changes.
 
         Args:
@@ -159,7 +161,9 @@ class EthercatNetwork(Network):  # type: ignore
             return
         self.__observers_net_state[slave_id].append(callback)
 
-    def unsubscribe_from_status(self, slave_id: int, callback: Any) -> None:
+    def unsubscribe_from_status(
+        self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None]
+    ) -> None:
         """Unsubscribe from network state changes.
 
         Args:
