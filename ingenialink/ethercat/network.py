@@ -5,7 +5,7 @@ import subprocess
 import inspect
 import time
 from collections import defaultdict
-from typing import Optional, Callable
+from typing import Optional, Any
 from threading import Thread
 
 import ingenialogger
@@ -28,14 +28,14 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "EthercatNetwork", refresh_time=0.25):
+    def __init__(self, network: "EthercatNetwork", refresh_time: float = 0.25):
         super(NetStatusListener, self).__init__()
         self.__network = network
         self.__refresh_time = refresh_time
         self.__stop = False
         self._ecat_master = self.__network._ecat_master
 
-    def run(self):
+    def run(self) -> None:
         while not self.__stop:
             self._ecat_master.read_state()
             for servo in self.__network.servos:
@@ -50,11 +50,11 @@ class NetStatusListener(Thread):
                     self.__network._set_servo_state(slave_id, NET_STATE.CONNECTED)
                 time.sleep(self.__refresh_time)
 
-    def stop(self):
+    def stop(self) -> None:
         self.__stop = True
 
 
-class EthercatNetwork(Network):
+class EthercatNetwork(Network):  # type: ignore
     """Network for all EtherCAT communications.
 
     Args:
@@ -78,10 +78,10 @@ class EthercatNetwork(Network):
     ):
         super(EthercatNetwork, self).__init__()
         self.interface_name: str = interface_name
-        self.servos: list = []
+        self.servos: list[EthercatServo] = []
         self.__servos_state: dict[int, NET_STATE] = {}
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: dict[int, list] = defaultdict(list)
+        self.__observers_net_state: dict[int, list[Any]] = defaultdict(list)
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
         self._ecat_master.open(self.interface_name)
         self._ecat_master.sdo_read_timeout = int(1_000_000 * connection_timeout)
@@ -125,7 +125,7 @@ class EthercatNetwork(Network):
         if len(slaves) == 0:
             raise ILError("Could not find any slaves in the network.")
         if slave_id not in slaves:
-            raise (ILError(f"Slave {slave} was not found."))
+            raise (ILError(f"Slave {slave_id} was not found."))
         slave = self._ecat_master.slaves[slave_id]
         servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
         self.servos.append(servo)
@@ -146,7 +146,7 @@ class EthercatNetwork(Network):
             self.stop_status_listener()
             self._ecat_master.close()
 
-    def subscribe_to_status(self, slave_id: int, callback: Callable) -> None:
+    def subscribe_to_status(self, slave_id: int, callback: Any) -> None:
         """Subscribe to network state changes.
 
         Args:
@@ -159,7 +159,7 @@ class EthercatNetwork(Network):
             return
         self.__observers_net_state[slave_id].append(callback)
 
-    def unsubscribe_from_status(self, slave_id: int, callback: Callable) -> None:
+    def unsubscribe_from_status(self, slave_id: int, callback: Any) -> None:
         """Unsubscribe from network state changes.
 
         Args:
@@ -186,12 +186,12 @@ class EthercatNetwork(Network):
             self.__listener_net_status.join()
         self.__listener_net_status = None
 
-    def load_firmware(self, fw_file, slave_id=1):
+    def load_firmware(self, fw_file: str, slave_id: int = 1) -> None:
         """Loads a given firmware file to a target slave.
 
         Args:
-            fw_file (str): Path to the firmware file.
-            slave_id (int): Slave ID to which load the firmware file.
+            fw_file: Path to the firmware file.
+            slave_id: Slave ID to which load the firmware file.
 
         Raises:
             FileNotFoundError: If the firmware file cannot be found.
@@ -228,7 +228,7 @@ class EthercatNetwork(Network):
         logger.info("Firmware updated successfully")
 
     @property
-    def protocol(self):
+    def protocol(self) -> NET_PROT:
         """NET_PROT: Obtain network protocol."""
         return NET_PROT.ECAT
 

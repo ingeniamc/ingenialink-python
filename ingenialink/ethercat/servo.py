@@ -11,7 +11,7 @@ from ingenialink.canopen.register import CanopenRegister
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthercatServo(Servo):
+class EthercatServo(Servo):  # type: ignore
     """Ethercat Servo instance.
 
     Args:
@@ -36,10 +36,10 @@ class EthercatServo(Servo):
         self.slave_id = slave_id
         super(EthercatServo, self).__init__(slave.name, dictionary_path, servo_status_listener)
 
-    def _read_raw(self, reg: CanopenRegister) -> bytes:
+    def _read_raw(self, reg: CanopenRegister) -> bytearray:
         self._lock.acquire()
         try:
-            value = self.__slave.sdo_read(reg.idx, reg.subidx)
+            value: bytearray = self.__slave.sdo_read(reg.idx, reg.subidx)
         except Exception as e:
             raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
         finally:
@@ -56,6 +56,6 @@ class EthercatServo(Servo):
             self._lock.release()
 
     @property
-    def slave(self):
+    def slave(self) -> CdefSlave:
         """Ethercat slave"""
         return self.__slave
