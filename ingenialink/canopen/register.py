@@ -6,13 +6,13 @@ class CanopenRegister(Register):
     """CANopen Register.
 
     Args:
-        identifier (str): Identifier.
-        units (str): Units.
-        cyclic (str): Cyclic typed register.
         idx (int): Index of the register.
         subidx (int): Subindex of the register.
         dtype (REG_DTYPE): Data type.
         access (REG_ACCESS): Access type.
+        identifier (str): Identifier.
+        units (str): Units.
+        cyclic (str): Cyclic typed register.
         phy (REG_PHY, optional): Physical units.
         subnode (int): Subnode.
         storage (any, optional): Storage.
@@ -33,13 +33,13 @@ class CanopenRegister(Register):
 
     def __init__(
         self,
-        identifier,
-        units,
-        cyclic,
         idx,
         subidx,
         dtype,
         access,
+        identifier=None,
+        units=None,
+        cyclic="CONFIG",
         phy=REG_PHY.NONE,
         subnode=1,
         storage=None,

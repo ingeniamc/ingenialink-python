@@ -13,14 +13,14 @@ from ingenialink.canopen.register import (
 @pytest.mark.no_connection
 @pytest.mark.smoke
 def test_getters_canopen_register():
-    reg_identifier = "MON_CFG_SOC_TYPE"
-    reg_units = "none"
-    reg_cyclic = "CONFIG"
     reg_idx = 0x58F0
     reg_subidx = 0x00
     reg_dtype = REG_DTYPE.U32
     reg_access = REG_ACCESS.RW
     reg_kwargs = {
+        "identifier": "MON_CFG_SOC_TYPE",
+        "units": "none",
+        "cyclic": "CONFIG",
         "phy": REG_PHY.NONE,
         "subnode": 0,
         "storage": 1,
@@ -38,9 +38,6 @@ def test_getters_canopen_register():
         aux_enums.append(test_dictionary)
 
     register = CanopenRegister(
-        reg_identifier,
-        reg_units,
-        reg_cyclic,
         reg_idx,
         reg_subidx,
         reg_dtype,
@@ -48,13 +45,13 @@ def test_getters_canopen_register():
         **reg_kwargs,
     )
 
-    assert register.identifier == reg_identifier
-    assert register.units == reg_units
-    assert register.cyclic == reg_cyclic
     assert register.idx == reg_idx
     assert register.subidx == reg_subidx
     assert register.dtype == reg_dtype
     assert register.access == reg_access
+    assert register.identifier == reg_kwargs["identifier"]
+    assert register.units == reg_kwargs["units"]
+    assert register.cyclic == reg_kwargs["cyclic"]
     assert register.phy == reg_kwargs["phy"]
     assert register.subnode == reg_kwargs["subnode"]
     assert register.storage == reg_kwargs["storage"]
