@@ -115,12 +115,12 @@ class EthercatNetwork(Network):  # type: ignore
                 status, connection and disconnection.
 
         Raises:
-            ILError: If the slave ID is not valid.
+            ValueError: If the slave ID is not valid.
             ILError: If no slaves are found.
 
         """
         if not isinstance(slave_id, int) or slave_id < 0:
-            raise ILError("Invalid slave ID value")
+            raise ValueError("Invalid slave ID value")
         slaves = self.scan_slaves()
         if len(slaves) == 0:
             raise ILError("Could not find any slaves in the network.")
