@@ -31,7 +31,7 @@ class EthercatServo(Servo):  # type: ignore
     RESTORE_COCO_ALL = "CIA301_COMMS_RESTORE_ALL"
     STORE_COCO_ALL = "CIA301_COMMS_STORE_ALL"
     MONITORING_DATA = CanopenRegister(
-        identifier="",
+        identifier="MONITORING_DATA",
         units="",
         subnode=0,
         idx=0x58B2,
@@ -62,10 +62,14 @@ class EthercatServo(Servo):  # type: ignore
         self.slave_id = slave_id
         super(EthercatServo, self).__init__(slave.name, dictionary_path, servo_status_listener)
 
-    def _read_raw(self, reg: CanopenRegister) -> bytes:
+    def _read_raw(
+        self, reg: CanopenRegister, buffer_size: int = 0, complete_access: bool = False
+    ) -> bytes:
         self._lock.acquire()
         try:
-            value: bytearray = self.__slave.sdo_read(reg.idx, reg.subidx)
+            value: bytearray = self.__slave.sdo_read(
+                reg.idx, reg.subidx, buffer_size, complete_access
+            )
         except Exception as e:
             raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
         finally:
@@ -80,6 +84,10 @@ class EthercatServo(Servo):  # type: ignore
             raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
         finally:
             self._lock.release()
+
+    def _monitoring_read_data(self) -> bytes:
+        """Read monitoring data frame."""
+        return self._read_raw(self.MONITORING_DATA, buffer_size=1024, complete_access=True)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
