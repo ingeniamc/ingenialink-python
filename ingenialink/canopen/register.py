@@ -1,3 +1,5 @@
+from typing import Optional, Any, Union, Tuple, Dict, List
+
 from ingenialink.register import Register
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
 
@@ -34,23 +36,25 @@ class CanopenRegister(Register):
 
     def __init__(
         self,
-        identifier,
-        units,
-        cyclic,
-        idx,
-        subidx,
-        dtype,
-        access,
-        phy=REG_PHY.NONE,
-        subnode=1,
-        storage=None,
-        reg_range=(None, None),
-        labels=None,
-        enums=None,
-        cat_id=None,
-        scat_id=None,
-        internal_use=0,
-        address_type=None,
+        identifier: Optional[str],
+        units: Optional[str],
+        cyclic: str,
+        idx: int,
+        subidx: int,
+        dtype: REG_DTYPE,
+        access: REG_ACCESS,
+        phy: REG_PHY = REG_PHY.NONE,
+        subnode: int = 1,
+        storage: Any = None,
+        reg_range: Union[
+            Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]
+        ] = (None, None),
+        labels: Optional[Dict[str, str]] = None,
+        enums: Optional[List[Dict[str, Union[str, int]]]] = None,
+        cat_id: Optional[str] = None,
+        scat_id: Optional[str] = None,
+        internal_use: int = 0,
+        address_type: Optional[REG_ADDRESS_TYPE] = None,
     ):
         super().__init__(
             dtype,
@@ -74,16 +78,16 @@ class CanopenRegister(Register):
         self.__subidx = subidx
 
     @property
-    def idx(self):
+    def idx(self) -> int:
         """int: Register index."""
         return self.__idx
 
     @property
-    def subidx(self):
+    def subidx(self) -> int:
         """int: Register subindex."""
         return self.__subidx
 
     @property
-    def mapped_address(self):
+    def mapped_address(self) -> int:
         """int: Register mapped address used for monitoring/disturbance."""
         return self.idx

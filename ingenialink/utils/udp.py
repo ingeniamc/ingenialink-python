@@ -13,7 +13,7 @@ class UDP:
     """UDP Contains all the basic operations for the lightweight data
     transport protocol based off the MCB protocol."""
 
-    def __init__(self, port, ip):
+    def __init__(self, port: int, ip: str) -> None:
         self.port = port
         self.ip = ip
         self.rcv_buffer_size = 512
@@ -21,18 +21,18 @@ class UDP:
         self.socket.settimeout(8)
         self.socket.connect((ip, port))
 
-    def __del__(self):
+    def __del__(self) -> None:
         try:
             self.socket.close()
         except Exception as e:
             logger.error("Socket already closed. Exception: %s", e)
 
-    def close(self):
+    def close(self) -> None:
         """Closes the socket."""
         self.socket.close()
         logger.info("Socket closed")
 
-    def write(self, frame):
+    def write(self, frame: bytes) -> None:
         """Sends a message through the established socket.
 
         Args:
@@ -41,16 +41,16 @@ class UDP:
         self.socket.sendto(frame, (self.ip, self.port))
         self.check_ack()
 
-    def read(self):
+    def read(self) -> bytes:
         """Reads a message from the socket.
 
         Returns:
             bytes: Data read from the buffer.
         """
-        data, address = self.socket.recvfrom(self.rcv_buffer_size)
+        data, _ = self.socket.recvfrom(self.rcv_buffer_size)
         return data
 
-    def check_ack(self):
+    def check_ack(self) -> int:
         """Checks if the received message has a valid ACK.
 
         Returns:
@@ -64,7 +64,7 @@ class UDP:
         return ret_cmd
 
     @staticmethod
-    def unmsg(in_frame):
+    def unmsg(in_frame: bytes) -> int:
         """Decodes the a given frame.
 
         Base uart frame (subnode [4 bits], node [12 bits],
@@ -87,10 +87,10 @@ class UDP:
         if crcread != crc:
             raise ILUDPException("CRC error")
 
-        return cmd
+        return int(cmd)
 
     @staticmethod
-    def raw_msg(node, subnode, cmd, data, size):
+    def raw_msg(node: int, subnode: int, cmd: int, data: bytes, size: int) -> bytes:
         """Creates a raw message with the proper format.
 
         Args:
@@ -103,7 +103,7 @@ class UDP:
             bytes: Message frame.
         """
         node_head = (node << 4) | (subnode & 0xF)
-        node_head = struct.pack("<H", node_head)
+        node_head_bytes = struct.pack("<H", node_head)
 
         if size > 8:
             cmd = cmd + 1
@@ -111,22 +111,22 @@ class UDP:
             head_size = struct.pack("<H", size)
             head_size = head_size + bytes([0] * (8 - len(head_size)))
             return (
-                node_head
+                node_head_bytes
                 + head
                 + head_size
-                + struct.pack("<H", binascii.crc_hqx(node_head + head + head_size, 0))
+                + struct.pack("<H", binascii.crc_hqx(node_head_bytes + head + head_size, 0))
                 + data
             )
         else:
             head = struct.pack("<H", cmd)
             return (
-                node_head
+                node_head_bytes
                 + head
                 + data
-                + struct.pack("<H", binascii.crc_hqx(node_head + head + data, 0))
+                + struct.pack("<H", binascii.crc_hqx(node_head_bytes + head + data, 0))
             )
 
-    def raw_cmd(self, node, subnode, cmd, data):
+    def raw_cmd(self, node: int, subnode: int, cmd: int, data: bytes) -> None:
         """Creates a frame message and sends it.
 
         Args:

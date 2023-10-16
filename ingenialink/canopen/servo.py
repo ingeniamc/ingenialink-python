@@ -1,3 +1,6 @@
+from typing import Optional, Union, Callable, Any
+
+import ingenialogger
 import canopen
 from canopen.emcy import EmcyConsumer
 
@@ -8,8 +11,8 @@ from ingenialink.servo import Servo
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
+from ingenialink.register import Register
 
-import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -55,18 +58,24 @@ class CanopenServo(Servo):
         access=REG_ACCESS.RW,
     )
 
-    def __init__(self, target, node, dictionary_path=None, servo_status_listener=False):
+    def __init__(
+        self,
+        target: int,
+        node: canopen.RemoteNode,
+        dictionary_path: str,
+        servo_status_listener: bool = False,
+    ) -> None:
         self.__node = node
         self.__emcy_consumer = EmcyConsumer()
         super(CanopenServo, self).__init__(target, dictionary_path, servo_status_listener)
 
-    def read(self, reg, subnode=1):
+    def read(self, reg: Union[str, Register], subnode: int = 1) -> Union[int, float, str]:
         value = super().read(reg, subnode=subnode)
         if isinstance(value, str):
             value = value.replace("\x00", "")
         return value
 
-    def store_parameters(self, subnode=None, sdo_timeout=3):
+    def store_parameters(self, subnode: Optional[int] = None, sdo_timeout: int = 3) -> None:
         """Store all the current parameters of the target subnode.
 
         Args:
@@ -83,7 +92,7 @@ class CanopenServo(Servo):
         super().store_parameters(subnode)
         self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
-    def _write_raw(self, reg, data):
+    def _write_raw(self, reg: CanopenRegister, data: bytes) -> None:  # type: ignore [override]
         try:
             self._lock.acquire()
             self.__node.sdo.download(reg.idx, reg.subidx, data)
@@ -94,7 +103,7 @@ class CanopenServo(Servo):
         finally:
             self._lock.release()
 
-    def _read_raw(self, reg):
+    def _read_raw(self, reg: CanopenRegister) -> bytes:  # type: ignore [override]
         try:
             self._lock.acquire()
             value = self.__node.sdo.upload(reg.idx, reg.subidx)
@@ -104,9 +113,11 @@ class CanopenServo(Servo):
             raise ILIOError(error_raised)
         finally:
             self._lock.release()
+        if not isinstance(value, bytes):
+            return bytes()
         return value
 
-    def emcy_subscribe(self, cb):
+    def emcy_subscribe(self, cb: Callable[..., Any]) -> int:
         """Subscribe to emergency messages.
 
         Args:
@@ -120,7 +131,7 @@ class CanopenServo(Servo):
 
         return len(self.__emcy_consumer.callbacks) - 1
 
-    def emcy_unsubscribe(self, slot):
+    def emcy_unsubscribe(self, slot: int) -> None:
         """Unsubscribe from emergency messages.
 
         Args:
@@ -129,16 +140,18 @@ class CanopenServo(Servo):
         """
         del self.__emcy_consumer.callbacks[slot]
 
-    def _change_sdo_timeout(self, value):
+    def _change_sdo_timeout(self, value: float) -> None:
         """Changes the SDO timeout of the node."""
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
     @staticmethod
-    def __monitoring_disturbance_map_can_address(address, subnode):
+    def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
         """Map CAN register address to IPB register address."""
         return address - (0x2000 + (0x800 * (subnode - 1)))
 
-    def _monitoring_disturbance_data_to_map_register(self, subnode, address, dtype, size):
+    def _monitoring_disturbance_data_to_map_register(
+        self, subnode: int, address: int, dtype: int, size: int
+    ) -> int:
         """Arrange necessary data to map a monitoring/disturbance register.
 
         Args:
@@ -154,6 +167,6 @@ class CanopenServo(Servo):
         )
 
     @property
-    def node(self):
+    def node(self) -> canopen.RemoteNode:
         """canopen.RemoteNode: Remote node of the servo."""
         return self.__node

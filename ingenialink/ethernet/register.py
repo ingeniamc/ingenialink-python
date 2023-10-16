@@ -1,3 +1,5 @@
+from typing import Optional, Union, Tuple, Any, Dict, List
+
 from ingenialink.register import Register
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
 
@@ -35,22 +37,24 @@ class EthernetRegister(Register):
 
     def __init__(
         self,
-        address,
-        dtype,
-        access,
-        identifier=None,
-        units=None,
-        cyclic="CONFIG",
-        phy=REG_PHY.NONE,
-        subnode=1,
-        storage=None,
-        reg_range=(None, None),
-        labels=None,
-        enums=None,
-        cat_id=None,
-        scat_id=None,
-        internal_use=0,
-        address_type=None,
+        address: int,
+        dtype: REG_DTYPE,
+        access: REG_ACCESS,
+        identifier: Optional[str] = None,
+        units: Optional[str] = None,
+        cyclic: str = "CONFIG",
+        phy: REG_PHY = REG_PHY.NONE,
+        subnode: int = 1,
+        storage: Any = None,
+        reg_range: Union[
+            Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]
+        ] = (None, None),
+        labels: Optional[Dict[str, str]] = None,
+        enums: Optional[List[Dict[str, Union[str, int]]]] = None,
+        cat_id: Optional[str] = None,
+        scat_id: Optional[str] = None,
+        internal_use: int = 0,
+        address_type: Optional[REG_ADDRESS_TYPE] = None,
     ):
         super().__init__(
             dtype,
@@ -73,12 +77,12 @@ class EthernetRegister(Register):
         self.__address = address
 
     @property
-    def address(self):
+    def address(self) -> int:
         """int: Register address."""
         return self.__address
 
     @property
-    def mapped_address(self):
+    def mapped_address(self) -> int:
         """int: Register mapped address used for monitoring/disturbance."""
         address_offset = self.MAP_ADDRESS_OFFSET * (self.subnode - 1)
         return self.address + address_offset

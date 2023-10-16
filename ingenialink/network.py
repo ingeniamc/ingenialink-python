@@ -1,5 +1,6 @@
 from enum import Enum
 from abc import ABC, abstractmethod
+from typing import List, Any, Callable
 
 import ingenialogger
 
@@ -48,42 +49,42 @@ class NET_TRANS_PROT(Enum):
 class Network(ABC):
     """Declaration of a general Network object."""
 
-    def __init__(self):
-        self.servos = []
+    def __init__(self) -> None:
+        self.servos: List[Any] = []
         """list: List of the connected servos in the network."""
 
     @abstractmethod
-    def scan_slaves(self):
+    def scan_slaves(self) -> List[int]:
         raise NotImplementedError
 
     @abstractmethod
-    def connect_to_slave(self, *args, **kwargs):
+    def connect_to_slave(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def disconnect_from_slave(self, servo):
+    def disconnect_from_slave(self, servo: str) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def load_firmware(self, *args, **kwargs):
+    def load_firmware(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def subscribe_to_status(self, callback):
+    def subscribe_to_status(self, callback: Callable[[NET_DEV_EVT], Any]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def unsubscribe_from_status(self, callback):
+    def unsubscribe_from_status(self, callback: Callable[[NET_DEV_EVT], Any]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def start_status_listener(self, *args, **kwargs):
+    def start_status_listener(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def stop_status_listener(self, *args, **kwargs):
+    def stop_status_listener(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError
 
     @property
-    def protocol(self):
+    def protocol(self) -> NET_PROT:
         raise NotImplementedError

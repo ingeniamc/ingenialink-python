@@ -1,20 +1,24 @@
 import struct
 from enum import Enum
-from typing import Union
+from typing import Union, Callable, Any, Dict, Optional, Tuple, TYPE_CHECKING
 
-from ingenialink.exceptions import ILValueError, ILError
+from ingenialink.exceptions import ILValueError
 from ingenialink.enums.register import REG_DTYPE
-from time import sleep
+
+if TYPE_CHECKING:
+    from ingenialink.servo import Servo
 
 import warnings
 import functools
 import ingenialogger
+import xml.etree.ElementTree as ET
+
 
 logger = ingenialogger.get_logger(__name__)
 
 POLLING_MAX_TRIES = 5  # Seconds
 
-__dtype_value = {
+__dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
     REG_DTYPE.U8: (1, False),
     REG_DTYPE.S8: (1, True),
     REG_DTYPE.U16: (2, False),
@@ -23,11 +27,13 @@ __dtype_value = {
     REG_DTYPE.S32: (4, True),
     REG_DTYPE.U64: (8, False),
     REG_DTYPE.S64: (8, True),
-    REG_DTYPE.FLOAT: (4, None),
+    REG_DTYPE.FLOAT: (4, True),
 }
 
 
-def deprecated(custom_msg=None, new_func_name=None):
+def deprecated(
+    custom_msg: Optional[str] = None, new_func_name: Optional[str] = None
+) -> Callable[..., Any]:
     """This is a decorator which can be used to mark functions as deprecated.
     It will result in a warning being emitted when the function is used. We use
     this decorator instead of any deprecation library because all libraries raise
@@ -35,9 +41,9 @@ def deprecated(custom_msg=None, new_func_name=None):
     decorator to manually activate DeprecationWarning and turning it off after
     the warn has been done."""
 
-    def wrap(func):
+    def wrap(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
-        def wrapped_method(*args, **kwargs):
+        def wrapped_method(*args: Any, **kwargs: Any) -> Any:
             warnings.simplefilter("always", DeprecationWarning)  # Turn off filter
             msg = 'Call to deprecated function "{}".'.format(func.__name__)
             if new_func_name:
@@ -53,7 +59,7 @@ def deprecated(custom_msg=None, new_func_name=None):
     return wrap
 
 
-def to_ms(s):
+def to_ms(s: Union[int, float]) -> int:
     """Convert from seconds to milliseconds.
 
     Args:
@@ -65,7 +71,7 @@ def to_ms(s):
     return int(s * 1e3)
 
 
-def remove_xml_subelement(element, subelement):
+def remove_xml_subelement(element: ET.Element, subelement: ET.Element) -> None:
     """Removes a subelement from the given element the element contains the subelement
 
     Args:
@@ -76,18 +82,18 @@ def remove_xml_subelement(element, subelement):
         element.remove(subelement)
 
 
-def pop_element(dictionary, element):
+def pop_element(dictionary: Dict[str, Any], element: str) -> None:
     """Pops an element from a dictionary only if it is contained in it
 
     Args:
-        dictionary (dict): Dictionary containing all the elment.s
-        element (str): Element to be poped from the dictionary.
+        dictionary (dict): Dictionary containing all the elements
+        element (str): Element to be popped from the dictionary.
     """
     if element in dictionary:
         dictionary.pop(element)
 
 
-def cleanup_register(register):
+def cleanup_register(register: ET.Element) -> None:
     """Cleans a ElementTree register to remove all
     unnecessary fields for a configuration file
 
@@ -98,9 +104,12 @@ def cleanup_register(register):
     range = register.find("./Range")
     enums = register.find("./Enumerations")
 
-    remove_xml_subelement(register, labels)
-    remove_xml_subelement(register, enums)
-    remove_xml_subelement(register, range)
+    if labels:
+        remove_xml_subelement(register, labels)
+    if enums:
+        remove_xml_subelement(register, enums)
+    if range:
+        remove_xml_subelement(register, range)
 
     pop_element(register.attrib, "desc")
     pop_element(register.attrib, "cat_id")
@@ -111,7 +120,9 @@ def cleanup_register(register):
     register.text = ""
 
 
-def get_drive_identification(servo, subnode=None):
+def get_drive_identification(
+    servo: "Servo", subnode: Optional[int] = None
+) -> Tuple[Optional[int], Optional[int]]:
     """Gets the identification information of a given subnode.
 
     Args:
@@ -125,18 +136,18 @@ def get_drive_identification(servo, subnode=None):
     re_number = None
     try:
         if subnode is None or subnode == 0:
-            prod_code = servo.read("DRV_ID_PRODUCT_CODE_COCO", 0)
-            re_number = servo.read("DRV_ID_REVISION_NUMBER_COCO", 0)
+            prod_code = int(servo.read("DRV_ID_PRODUCT_CODE_COCO", 0))
+            re_number = int(servo.read("DRV_ID_REVISION_NUMBER_COCO", 0))
         else:
-            prod_code = servo.read("DRV_ID_PRODUCT_CODE", subnode=subnode)
-            re_number = servo.read("DRV_ID_REVISION_NUMBER", subnode)
+            prod_code = int(servo.read("DRV_ID_PRODUCT_CODE", subnode=subnode))
+            re_number = int(servo.read("DRV_ID_REVISION_NUMBER", subnode))
     except Exception as e:
         pass
 
     return prod_code, re_number
 
 
-def convert_ip_to_int(ip):
+def convert_ip_to_int(ip: str) -> int:
     """Converts a string type IP to its integer value.
 
     Args:
@@ -151,7 +162,7 @@ def convert_ip_to_int(ip):
     return drive_ip1 + drive_ip2 + drive_ip3 + drive_ip4
 
 
-def convert_int_to_ip(int_ip):
+def convert_int_to_ip(int_ip: int) -> str:
     """Converts an integer type IP to its string form.
 
     Args:
@@ -194,35 +205,47 @@ def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, s
     Raises:
         ILValueError: If data can't be decoded in utf-8
     """
-    signed = None
+    signed = False
     if dtype in __dtype_value:
         bytes_length, signed = __dtype_value[dtype]
         data = data[:bytes_length]
 
     if dtype == REG_DTYPE.FLOAT:
         [value] = struct.unpack("f", data)
+        if not isinstance(value, float):
+            raise ILValueError(f"Data could not be converted to float. Obtained: {value}")
     elif dtype == REG_DTYPE.STR:
         try:
             value = data.split(b"\x00")[0].decode("utf-8")
         except UnicodeDecodeError as e:
-            raise ILValueError(f"Can't decode {e.object} to utf-8 string") from e
+            raise ILValueError(f"Can't decode {e.object!r} to utf-8 string") from e
     else:
         value = int.from_bytes(data, "little", signed=signed)
+    if not isinstance(value, (int, float, str)):
+        raise ILValueError(f"Bad data type: {type(value)}")
     return value
 
 
-def convert_dtype_to_bytes(data, dtype):
+def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: REG_DTYPE) -> bytes:
     """Convert data in dtype to bytes.
     Args:
         data: Data to convert.
         dtype (REG_DTYPE): Data type.
     """
     if dtype == REG_DTYPE.DOMAIN:
+        if not isinstance(data, bytes):
+            raise ValueError(f"Expected data of type bytes, but got {type(data)}")
         return data
     if dtype == REG_DTYPE.FLOAT:
+        if not isinstance(data, float):
+            raise ValueError(f"Expected data of type float, but got {type(data)}")
         return struct.pack("f", float(data))
     if dtype == REG_DTYPE.STR:
+        if not isinstance(data, str):
+            raise ValueError(f"Expected data of type string, but  got {type(data)}")
         return data.encode("utf_8")
+    if not isinstance(data, int):
+        raise ValueError(f"Expected data of type int, but {type(data)}")
     bytes_length, signed = __dtype_value[dtype]
-    data = data.to_bytes(bytes_length, byteorder="little", signed=signed)
-    return data
+    data_bytes = data.to_bytes(bytes_length, byteorder="little", signed=signed)
+    return data_bytes

@@ -26,16 +26,12 @@ def test_getters_canopen_register():
         "storage": 1,
         "reg_range": (-20, 20),
         "labels": "Monitoring trigger type",
-        "enums": {"0": "TRIGGER_EVENT_AUTO", "1": "TRIGGER_EVENT_FORCED"},
+        "enums": [{"TRIGGER_EVENT_AUTO": 0}, {"TRIGGER_EVENT_FORCED", 1}],
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",
         "address_type": REG_ADDRESS_TYPE.NVM,
     }
-    aux_enums = []
-    for key, value in reg_kwargs["enums"].items():
-        test_dictionary = {"label": value, "value": int(key)}
-        aux_enums.append(test_dictionary)
 
     register = CanopenRegister(
         reg_identifier,
@@ -64,7 +60,7 @@ def test_getters_canopen_register():
     assert register.scat_id == reg_kwargs["scat_id"]
     assert register.internal_use == reg_kwargs["internal_use"]
     assert register.address_type == reg_kwargs["address_type"]
-    assert register.enums == aux_enums
+    assert register.enums == reg_kwargs["enums"]
     assert register.enums_count == 2
     assert register.storage_valid == True
 

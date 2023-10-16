@@ -3,12 +3,13 @@ import sys
 import platform
 import subprocess
 import inspect
-
-import ingenialogger
+from typing import List
 
 from ingenialink.network import NET_PROT
 from ingenialink.exceptions import ILFirmwareLoadError
 from ingenialink import bin as bin_module
+
+import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -31,14 +32,14 @@ class EthercatNetwork:
     }
     UNKNOWN_FOE_ERROR = "Unknown error"
 
-    def __init__(self, interface_name):
+    def __init__(self, interface_name: str) -> None:
         self.interface_name = interface_name
         """str: Interface name used in the network settings."""
-        self.servos = []
+        self.servos: List[int] = []
         """list: List of the connected servos in the network."""
         self._ecat_master = None
 
-    def load_firmware(self, fw_file, slave_id=1):
+    def load_firmware(self, fw_file: str, slave_id: int = 1) -> None:
         """Loads a given firmware file to a target slave.
 
         Args:
@@ -80,6 +81,6 @@ class EthercatNetwork:
         logger.info("Firmware updated successfully")
 
     @property
-    def protocol(self):
+    def protocol(self) -> NET_PROT:
         """NET_PROT: Obtain network protocol."""
         return NET_PROT.ECAT

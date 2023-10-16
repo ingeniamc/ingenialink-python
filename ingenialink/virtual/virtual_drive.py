@@ -3,12 +3,14 @@ import time
 from enum import Enum
 from threading import Thread
 import random
+from typing import Tuple, List, Dict, Union, Optional
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.ethernet.dictionary import EthernetDictionary
+from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
 from ingenialink.utils import constants
 
@@ -27,72 +29,98 @@ class VirtualMonDistBase:
     """
 
     FREQUENCY = 20000
-    FREQ_DIVIDER_REG = None
-    BUFFER_SIZE_REG = None
-    NUMBER_MAP_REGS = None
-    MAP_REG_CFG = None
-    BYTES_PER_BLOCK_REG = None
-    AVAILABLE_BYTES_REG = None
-    DATA_REG = None
+    FREQ_DIVIDER_REG = ""
+    BUFFER_SIZE_REG = ""
+    NUMBER_MAP_REGS = ""
+    MAP_REG_CFG = ""
+    BYTES_PER_BLOCK_REG = ""
+    AVAILABLE_BYTES_REG = ""
+    DATA_REG = ""
 
-    def __init__(self, drive):
+    def __init__(self, drive: "VirtualDrive") -> None:
         self.drive = drive
         self.enabled = False
-        self.channels = {}
         self.number_mapped_registers = 0
+        self.channels_data: Dict[int, List[Union[int, float]]] = {}
+        self.channels_dtype: Dict[int, REG_DTYPE] = {}
+        self.channels_address: Dict[int, int] = {}
+        self.channels_subnode: Dict[int, int] = {}
+        self.channels_size: Dict[int, int] = {}
+        self.channels_signal: Dict[int, List[Union[int, float]]] = {}
 
-    def enable(self):
+    def enable(self) -> None:
         """Enable Monitoring/Disturbance."""
         self.enabled = True
 
-    def disable(self):
+    def disable(self) -> None:
         """Disable Monitoring/Disturbance."""
         self.enabled = False
 
-    def remove_data(self):
+    def remove_data(self) -> None:
         """Remove Monitoring/Disturbance data."""
         for channel in range(self.number_mapped_registers):
-            self.channels[channel]["data"] = []
+            empty_list: List[float] = []
+            self.channels_data[channel] = empty_list
             self.drive.set_value_by_id(0, self.DATA_REG, 0)
 
     @property
-    def divider(self):
+    def divider(self) -> int:
         """int: Frequency divider."""
-        return self.drive.get_value_by_id(0, self.FREQ_DIVIDER_REG)
+        value = self.drive.get_value_by_id(0, self.FREQ_DIVIDER_REG)
+        if isinstance(value, int):
+            return value
+        else:
+            return 0
 
     @property
-    def buffer_size(self):
+    def buffer_size(self) -> int:
         """int: Monitoring buffer size."""
-        return self.drive.get_value_by_id(0, self.BUFFER_SIZE_REG)
+        value = self.drive.get_value_by_id(0, self.BUFFER_SIZE_REG)
+        if isinstance(value, int):
+            return value
+        else:
+            return 0
 
     @property
-    def bytes_per_block(self):
+    def bytes_per_block(self) -> int:
         """int: Monitoring bytes per sample."""
-        return self.drive.get_value_by_id(0, self.BYTES_PER_BLOCK_REG)
+        value = self.drive.get_value_by_id(0, self.BYTES_PER_BLOCK_REG)
+        if isinstance(value, int):
+            return value
+        else:
+            return 0
 
     @bytes_per_block.setter
-    def bytes_per_block(self, n_bytes):
+    def bytes_per_block(self, n_bytes: int) -> None:
         self.drive.set_value_by_id(0, self.BYTES_PER_BLOCK_REG, n_bytes)
 
     @property
-    def number_mapped_registers(self):
+    def number_mapped_registers(self) -> int:
         """int: Number of mapped registers."""
-        return self.drive.get_value_by_id(0, self.NUMBER_MAP_REGS)
+        value = self.drive.get_value_by_id(0, self.NUMBER_MAP_REGS)
+        if isinstance(value, int):
+            return value
+        else:
+            return 0
 
     @number_mapped_registers.setter
-    def number_mapped_registers(self, value):
-        return self.drive.set_value_by_id(0, self.NUMBER_MAP_REGS, value)
+    def number_mapped_registers(self, value: int) -> None:
+        self.drive.set_value_by_id(0, self.NUMBER_MAP_REGS, value)
 
     @property
-    def available_bytes(self):
+    def available_bytes(self) -> int:
         """int: Actual number of monitoring bytes."""
-        return self.drive.get_value_by_id(0, self.AVAILABLE_BYTES_REG)
+        value = self.drive.get_value_by_id(0, self.AVAILABLE_BYTES_REG)
+        if isinstance(value, int):
+            return value
+        else:
+            return 0
 
     @available_bytes.setter
-    def available_bytes(self, n_bytes):
+    def available_bytes(self, n_bytes: int) -> None:
         self.drive.set_value_by_id(0, self.AVAILABLE_BYTES_REG, n_bytes)
 
-    def get_mapped_register(self, channel):
+    def get_mapped_register(self, channel: int) -> Tuple[int, int, int, int]:
         """Decodes the register with the information of a mapped register.
 
         Args:
@@ -107,6 +135,8 @@ class VirtualMonDistBase:
         """
         register_id = self.MAP_REG_CFG.format(channel)
         data = self.drive.get_value_by_id(0, register_id)
+        if not isinstance(data, int):
+            raise ValueError("Wrong register type")
         data_h = data >> 16
         data_l = data & 0x0000FFFF
         subnode = data_h >> 12
@@ -115,19 +145,18 @@ class VirtualMonDistBase:
         size = data_l & 0x00FF
         return subnode, address, dtype, size
 
-    def map_registers(self):
+    def map_registers(self) -> None:
         """Creates the channels attribute based on mapped registers."""
         self.bytes_per_block = 0
+        empty_list: List[float] = []
         for channel in range(self.number_mapped_registers):
             subnode, address, dtype, size = self.get_mapped_register(channel)
-            self.channels[channel] = {
-                "data": [],
-                "dtype": REG_DTYPE(dtype),
-                "address": address,
-                "subnode": subnode,
-                "size": size,
-                "signal": [],
-            }
+            self.channels_data[channel] = empty_list.copy()
+            self.channels_dtype[channel] = REG_DTYPE(dtype)
+            self.channels_address[channel] = address
+            self.channels_subnode[channel] = subnode
+            self.channels_size[channel] = size
+            self.channels_signal[channel] = empty_list.copy()
             self.bytes_per_block += size
 
 
@@ -148,61 +177,71 @@ class VirtualMonitoring(VirtualMonDistBase):
     TRIGGER_TYPE_REG = "MON_CFG_SOC_TYPE"
     AVAILABLE_BYTES_REG = "MON_CFG_BYTES_VALUE"
 
-    def __init__(self, drive):
-        self.start_time = None
+    def __init__(self, drive: "VirtualDrive") -> None:
+        self.start_time = 0.0
         super().__init__(drive)
 
-    def enable(self):
+    def enable(self) -> None:
         super().map_registers()
         super().enable()
         self.__create_signals()
 
-    def disable(self):
-        if self.enabled is False or self.start_time is None:
+    def disable(self) -> None:
+        if self.enabled is False or self.start_time == 0.0:
             return
         sampling_rate = self.FREQUENCY / self.divider
         elapsed_time = time.time() - self.start_time
         elapsed_samples = int(elapsed_time * sampling_rate)
         n_samples = min(elapsed_samples, self.buffer_size)
         for channel in range(self.number_mapped_registers):
-            self.channels[channel]["data"] = self.channels[channel]["signal"][:n_samples]
+            self.channels_data[channel] = self.channels_signal[channel][:n_samples]
         self.available_bytes = n_samples * self.bytes_per_block
         self._store_data_bytes()
-        self.start_time = None
+        self.start_time = 0.0
         super().disable()
 
-    def trigger(self):
+    def trigger(self) -> None:
         """Triggers monitoring."""
         if self.enabled:
             self.start_time = time.time()
 
-    def __create_signals(self):
+    def __create_signals(self) -> None:
         """Creates emulated monitoring signals."""
         for channel in range(self.number_mapped_registers):
-            start_value = self.channels[channel]["address"] + self.channels[channel]["subnode"]
-            signal = [
-                start_value + i for i in range(0, self.buffer_size * self.divider, self.divider)
-            ]
-            self.channels[channel]["signal"] = signal
+            start_value = self.channels_address[channel] + self.channels_subnode[channel]
+            if self.channels_dtype[channel] == REG_DTYPE.FLOAT:
+                signal = [
+                    float(start_value + i)
+                    for i in range(0, self.buffer_size * self.divider, self.divider)
+                ]
+            else:
+                signal = [
+                    start_value + i for i in range(0, self.buffer_size * self.divider, self.divider)
+                ]
+            self.channels_signal[channel] = signal
 
-    def _store_data_bytes(self):
-        """Convert signals into a bytearray and store it at MON_DATA register."""
-        bytes = bytearray()
-        n_samples = len(self.channels[0]["data"])
+    def _store_data_bytes(self) -> None:
+        """Convert signals into a bytes and store it at MON_DATA register."""
+        byte_array = bytes()
+        n_samples = len(self.channels_data[0])
         for sample in range(n_samples):
             for channel in range(self.number_mapped_registers):
-                value = self.channels[channel]["data"][sample]
-                size = self.channels[channel]["size"]
-                sample_bytes = convert_dtype_to_bytes(value, self.channels[channel]["dtype"])
+                value = self.channels_data[channel][sample]
+                size = self.channels_size[channel]
+                sample_bytes = convert_dtype_to_bytes(value, self.channels_dtype[channel])
                 if len(sample_bytes) < size:
                     sample_bytes += b"0" * (size - len(sample_bytes))
-                bytes += sample_bytes
-        self.drive.set_value_by_id(0, "MON_DATA", bytes)
+                byte_array += sample_bytes
+        self.drive.set_value_by_id(0, "MON_DATA", byte_array)
 
     @property
-    def trigger_type(self):
+    def trigger_type(self) -> int:
         """int: Trigger type Auto(0), Force (1) or Rising or Failing (2)."""
-        return self.drive.get_value_by_id(0, self.TRIGGER_TYPE_REG)
+        value = self.drive.get_value_by_id(0, self.TRIGGER_TYPE_REG)
+        if isinstance(value, int):
+            return value
+        else:
+            return 0
 
 
 class VirtualDisturbance(VirtualMonDistBase):
@@ -221,47 +260,48 @@ class VirtualDisturbance(VirtualMonDistBase):
     AVAILABLE_BYTES_REG = "DIST_CFG_BYTES"
     DATA_REG = "DIST_DATA"
 
-    def __init__(self, drive):
-        self.start_time = None
-        self.received_bytes = bytearray()
+    def __init__(self, drive: "VirtualDrive") -> None:
+        self.start_time = 0.0
+        self.received_bytes = bytes()
         super().__init__(drive)
 
-    def enable(self):
+    def enable(self) -> None:
         super().enable()
 
-    def append_data(self, data):
+    def append_data(self, data: bytes) -> None:
         """Append received disturbance data until the buffer is full.
 
         Args:
-            data (bytearray): Received data.
+            data (bytes): Received data.
         """
-        if len(self.channels) == 0:
+        if len(self.channels_data) == 0:
             super().map_registers()
         self.received_bytes += data
         self.available_bytes = len(self.received_bytes)
         if self.available_bytes == self.buffer_size_bytes:
             self.write_data()
 
-    def write_data(self):
+    def write_data(self) -> None:
         """Convert received data and store it at the channels attribute."""
         n_samples = self.buffer_size
         buffer = self.received_bytes
         for sample in range(n_samples):
             for channel in range(self.number_mapped_registers):
-                size = self.channels[channel]["size"]
-                dtype = self.channels[channel]["dtype"]
+                size = self.channels_size[channel]
+                dtype = self.channels_dtype[channel]
                 bytes = buffer[:size]
                 value = convert_bytes_to_dtype(bytes, dtype)
-                self.channels[channel]["data"].append(value)
+                if isinstance(value, (int, float)):
+                    self.channels_data[channel].append(value)
                 buffer = buffer[size:]
 
     @property
-    def buffer_size_bytes(self):
+    def buffer_size_bytes(self) -> int:
         """int: Buffer size in bytes."""
         buffer_size_bytes = 0
         n_samples = self.buffer_size
         for channel in range(self.number_mapped_registers):
-            buffer_size_bytes += self.channels[channel]["size"] * n_samples
+            buffer_size_bytes += self.channels_size[channel] * n_samples
         return buffer_size_bytes
 
 
@@ -279,16 +319,17 @@ class VirtualDrive(Thread):
     WRITE_CMD = 2
     READ_CMD = 1
 
-    def __init__(self, ip, port, dictionary_path="./tests/resources/virtual_drive.xdf"):
+    def __init__(
+        self, ip: str, port: int, dictionary_path: str = "./tests/resources/virtual_drive.xdf"
+    ) -> None:
         super(VirtualDrive, self).__init__()
         self.ip = ip
         self.port = port
         self.dictionary_path = dictionary_path
-        self.socket = None
         self.__stop = False
         self.device_info = None
-        self.__logger = []
-        self.__reg_address_to_id = {}
+        self.__logger: List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]] = []
+        self.__reg_address_to_id: Dict[int, Dict[int, str]] = {}
         self.__dictionary = EthernetDictionary(dictionary_path)
         self._init_registers()
         self._update_registers()
@@ -296,11 +337,12 @@ class VirtualDrive(Thread):
         self.__disturbance = VirtualDisturbance(self)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    def run(self):
+    def run(self) -> None:
         """Open socket, listen and decode messages."""
         server_address = (self.ip, self.port)
         self.socket.bind(server_address)
         self.socket.settimeout(2)
+        value: Union[int, float, bytes, str]
         while not self.__stop:
             try:
                 frame, add = self.socket.recvfrom(ETH_BUF_SIZE)
@@ -314,10 +356,10 @@ class VirtualDrive(Thread):
                 response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data[:8])
                 if register.access in [REG_ACCESS.RW, REG_ACCESS.WO]:  # TODO: send error otherwise
                     value = convert_bytes_to_dtype(data, register.dtype)
-                    self.set_value_by_id(subnode, register.identifier, value)
+                    self.set_value_by_id(subnode, str(register.identifier), value)
                     self.__decode_msg(reg_add, subnode, data)
             elif cmd == self.READ_CMD:
-                value = self.get_value_by_id(subnode, register.identifier)
+                value = self.get_value_by_id(subnode, str(register.identifier))
                 data = convert_dtype_to_bytes(value, register.dtype)
                 sent_cmd = self.ACK_CMD
                 if reg_add == self.id_to_address(0, "MON_DATA"):
@@ -331,14 +373,14 @@ class VirtualDrive(Thread):
 
         time.sleep(0.1)
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop socket."""
         if self.socket is not None:
             self.socket.close()
         self.__stop = True
         self.__monitoring.disable()
 
-    def _init_registers(self):
+    def _init_registers(self) -> None:
         """Initialize some relevant registers."""
         self.set_value_by_id(0, "DRV_ID_PRODUCT_CODE_COCO", 123456)
         self.set_value_by_id(1, "DRV_ID_PRODUCT_CODE", 123456)
@@ -351,32 +393,28 @@ class VirtualDrive(Thread):
         self.set_value_by_id(1, "DRV_POS_VEL_RATE", 20000)
         self.set_value_by_id(0, "DIST_MAX_SIZE", 8192)
 
-    def _update_registers(self):
+    def _update_registers(self) -> None:
         """Force storage_valid at each register and add registers that are not in the dictionary."""
         for subnode in range(self.__dictionary.subnodes):
             self.__reg_address_to_id[subnode] = {}
             for reg_id, reg in self.__dictionary.registers(subnode).items():
                 self.__reg_address_to_id[subnode][reg.address] = reg_id
-                self.__dictionary.registers(subnode)[reg_id].storage_valid = 1
+                self.__dictionary.registers(subnode)[reg_id].storage_valid = True
 
         custom_regs = {
             "MON_DATA": EthernetServo.MONITORING_DATA,
             "DIST_DATA": EthernetServo.DIST_DATA,
         }
         for id, reg in custom_regs.items():
-            register = {
-                "address": reg.address,
-                "access": reg.access,
-                "dtype": REG_DTYPE.DOMAIN,
-                "identifier": id,
-                "subnode": reg.subnode,
-            }
+            register = EthernetRegister(
+                reg.address, REG_DTYPE.DOMAIN, reg.access, identifier=id, subnode=reg.subnode
+            )
             self.__dictionary._add_register_list(register)
-            self.__dictionary.registers(reg.subnode)[id].storage_valid = 1
+            self.__dictionary.registers(reg.subnode)[id].storage_valid = True
 
             self.__reg_address_to_id[reg.subnode][reg.address] = id
 
-    def __send(self, response, address):
+    def __send(self, response: bytes, address: Tuple[str, int]) -> None:
         """Send a message and update log.
 
         Args:
@@ -387,7 +425,7 @@ class VirtualDrive(Thread):
         self.socket.sendto(response, address)
         self.__log(address, response, MSG_TYPE.SENT)
 
-    def _response_monitoring_data(self, data):
+    def _response_monitoring_data(self, data: bytes) -> bytes:
         """Creates a response for monitoring data.
 
         Args:
@@ -405,7 +443,7 @@ class VirtualDrive(Thread):
         self.__monitoring.available_bytes = len(data_left)
         return response
 
-    def __log(self, ip_port, message, msg_type):
+    def __log(self, ip_port: Tuple[str, int], message: bytes, msg_type: MSG_TYPE) -> None:
         """Updates log.
 
         Args:
@@ -423,15 +461,15 @@ class VirtualDrive(Thread):
         )
 
     @property
-    def log(self):
+    def log(self) -> List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]]:
         """dict: Dictionary containing log information."""
         return self.__logger
 
-    def clean_log(self):
+    def clean_log(self) -> None:
         """Cleans log."""
         self.__logger = []
 
-    def __decode_msg(self, reg_add, subnode, data):
+    def __decode_msg(self, reg_add: int, subnode: int, data: bytes) -> None:
         """Decodes received messages and run specific methods if needed.
 
         Args:
@@ -460,7 +498,7 @@ class VirtualDrive(Thread):
         if reg_id == "DIST_DATA" and subnode == 0:
             self.__disturbance.append_data(data)
 
-    def address_to_id(self, subnode, address):
+    def address_to_id(self, subnode: int, address: int) -> str:
         """Converts a register address into its ID.
 
         Args:
@@ -472,7 +510,7 @@ class VirtualDrive(Thread):
         """
         return self.__reg_address_to_id[subnode][address]
 
-    def id_to_address(self, subnode, id):
+    def id_to_address(self, subnode: int, id: str) -> int:
         """Converts a register address into an ID.
 
         Args:
@@ -480,12 +518,12 @@ class VirtualDrive(Thread):
             id (str): Register ID.
 
         Returns:
-            int: Register adress.
+            int: Register address.
         """
         register = self.__dictionary.registers(subnode)[id]
         return register.address
 
-    def get_value_by_id(self, subnode, id):
+    def get_value_by_id(self, subnode: int, id: str) -> Union[int, float, str, bytes]:
         """Returns a register value by its ID.
 
         Args:
@@ -496,6 +534,7 @@ class VirtualDrive(Thread):
             (float, int, str): Register value.
         """
         register = self.__dictionary.registers(subnode)[id]
+        value: Union[int, float, str]
         if register._storage is None:
             range_value = register.range
             if not register.range[0]:
@@ -506,9 +545,13 @@ class VirtualDrive(Thread):
                 if register.dtype == REG_DTYPE.STR:
                     value = ""
             self.set_value_by_id(subnode, id, value)
-        return self.__dictionary.registers(subnode)[id]._storage
+        storage_value = self.__dictionary.registers(subnode)[id]._storage
+        if isinstance(storage_value, (int, float, str, bytes)):
+            return storage_value
+        else:
+            return 0
 
-    def set_value_by_id(self, subnode, id, value):
+    def set_value_by_id(self, subnode: int, id: str, value: Union[float, int, str, bytes]) -> None:
         """Set a register value by its ID.
 
         Args:
@@ -518,7 +561,9 @@ class VirtualDrive(Thread):
         """
         self.__dictionary.registers(subnode)[id].storage = value
 
-    def get_register(self, subnode, address=None, id=None):
+    def get_register(
+        self, subnode: int, address: Optional[int] = None, id: Optional[str] = None
+    ) -> EthernetRegister:
         """Returns a register by its address or ID.
 
         Args:

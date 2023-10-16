@@ -2,7 +2,7 @@ import contextlib
 from enum import Enum
 from time import sleep
 from threading import Thread
-from typing import Optional, Callable, Union
+from typing import Optional, Callable, Union, List, Any, Dict, Tuple
 
 from .register import CanopenRegister
 from ingenialink.utils.mcb import MCB
@@ -14,6 +14,7 @@ from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIM
 import re
 import os
 import canopen
+from canopen import Network as NetworkLib
 import tempfile
 import ingenialogger
 
@@ -74,7 +75,7 @@ PROG_CTRL_STATE_FLASH = 0x80
 
 APPLICATION_LOADED_STATE = 402
 
-CAN_CHANNELS = {
+CAN_CHANNELS: Dict[str, Union[Tuple[int, int], Tuple[str, str]]] = {
     "kvaser": (0, 1),
     "pcan": ("PCAN_USBBUS1", "PCAN_USBBUS2"),
     "ixxat": (0, 1),
@@ -127,7 +128,7 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network, node):
+    def __init__(self, network: "CanopenNetwork", node: canopen.RemoteNode) -> None:
         super(NetStatusListener, self).__init__()
         self.__network = network
         self.node = node
@@ -135,7 +136,7 @@ class NetStatusListener(Thread):
         self.__state = NET_STATE.CONNECTED
         self.__stop = False
 
-    def run(self):
+    def run(self) -> None:
         while not self.__stop:
             if self.__timestamp == self.node.nmt.timestamp:
                 if self.__state != NET_STATE.DISCONNECTED:
@@ -152,7 +153,7 @@ class NetStatusListener(Thread):
                 self.__timestamp = self.node.nmt.timestamp
             sleep(1.5)
 
-    def stop(self):
+    def stop(self) -> None:
         self.__stop = True
 
 
@@ -166,25 +167,31 @@ class CanopenNetwork(Network):
 
     """
 
-    def __init__(self, device, channel=0, baudrate=CAN_BAUDRATE.Baudrate_1M):
+    def __init__(
+        self,
+        device: CAN_DEVICE,
+        channel: int = 0,
+        baudrate: CAN_BAUDRATE = CAN_BAUDRATE.Baudrate_1M,
+    ):
         super(CanopenNetwork, self).__init__()
+        self.servos: List[CanopenServo] = []
         self.__device = device.value
-        self.__channel = CAN_CHANNELS[self.__device][channel]
+        self.__channel: Union[int, str] = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
-        self._connection = None
-        self.__listeners_net_status = []
+        self._connection: Optional[NetworkLib] = None
+        self.__listeners_net_status: List[NetStatusListener] = []
         self.__net_state = NET_STATE.DISCONNECTED
 
-        self.__observers_net_state = []
-        self.__observers_fw_load_status_msg = []
-        self.__observers_fw_load_progress = []
-        self.__observers_fw_load_errors_enabled = []
+        self.__observers_net_state: List[Callable[[NET_DEV_EVT], Any]] = []
+        self.__observers_fw_load_status_msg: List[Callable[[str], Any]] = []
+        self.__observers_fw_load_progress: List[Callable[[int], Any]] = []
+        self.__observers_fw_load_errors_enabled: List[Callable[[bool], Any]] = []
 
         self.__fw_load_status_msg = ""
         self.__fw_load_progress = 0
         self.__fw_load_errors_enabled = True
 
-    def scan_slaves(self):
+    def scan_slaves(self) -> List[int]:
         """Scans for nodes in the network.
 
         Returns:
@@ -199,6 +206,9 @@ class CanopenNetwork(Network):
             except ILError:
                 self._teardown_connection()
                 return []
+
+        if self._connection is None:
+            return []
 
         self._connection.scanner.reset()
         try:
@@ -219,15 +229,15 @@ class CanopenNetwork(Network):
         if is_connection_created:
             self._teardown_connection()
 
-        return nodes
+        return nodes  # type: ignore [no-any-return]
 
-    def connect_to_slave(
+    def connect_to_slave(  # type: ignore [override]
         self,
-        target,
-        dictionary=None,
-        servo_status_listener=False,
-        net_status_listener=False,
-    ):
+        target: int,
+        dictionary: str,
+        servo_status_listener: bool = False,
+        net_status_listener: bool = False,
+    ) -> CanopenServo:
         """Connects to a drive through a given target node ID.
 
         Args:
@@ -239,6 +249,8 @@ class CanopenNetwork(Network):
                 status, connection and disconnection.
 
         """
+        if self._connection is None:
+            raise ILError("Connection has not been established")
         nodes = self.scan_slaves()
         if len(nodes) < 1:
             raise ILError("Could not find any nodes in the network")
@@ -270,7 +282,7 @@ class CanopenNetwork(Network):
             logger.error("Node id not found")
             raise ILError("Node id {} not found in the network.".format(target))
 
-    def disconnect_from_slave(self, servo):
+    def disconnect_from_slave(self, servo: CanopenServo) -> None:  # type: ignore [override]
         """Disconnects the slave from the network.
 
         Args:
@@ -283,7 +295,7 @@ class CanopenNetwork(Network):
         if not self.servos:
             self._teardown_connection()
 
-    def _setup_connection(self):
+    def _setup_connection(self) -> None:
         """Creates a network interface object establishing an empty connection
         with all the network attributes already specified."""
         if self._connection is None:
@@ -311,15 +323,19 @@ class CanopenNetwork(Network):
         else:
             logger.info("Connection already established")
 
-    def _teardown_connection(self):
+    def _teardown_connection(self) -> None:
         """Tears down the already established connection
         and deletes the network interface"""
+        if self._connection is None:
+            return
         self._connection.disconnect()
         self._connection = None
         logger.info("Tear down connection.")
 
-    def _reset_connection(self):
+    def _reset_connection(self) -> None:
         """Resets the established CANopen network."""
+        if self._connection is None:
+            return
         try:
             self._connection.disconnect()
         except BaseException as e:
@@ -344,13 +360,13 @@ class CanopenNetwork(Network):
         except BaseException as e:
             logger.error("Connection failed. Exception: %s", e)
 
-    def load_firmware(
+    def load_firmware(  # type: ignore [override]
         self,
         target: int,
         fw_file: str,
         callback_status_msg: Optional[Callable[[str], None]] = None,
         callback_progress: Optional[Callable[[int], None]] = None,
-        callback_errors_enabled: Optional[callable] = None,
+        callback_errors_enabled: Optional[Callable[[bool], None]] = None,
     ) -> None:
         """Loads a given firmware file to a target.
 
@@ -384,7 +400,7 @@ class CanopenNetwork(Network):
         if file_extension == ".sfu":
             fw_file = self.__optimize_firmware_file(fw_file, callback_status_msg)
         self.__force_boot(servo, callback_status_msg)
-        self.__program_control_to_flash(initial_status, servo, callback_status_msg)
+        self.__program_control_to_flash(int(initial_status), servo, callback_status_msg)
         try:
             self.__send_fw_file(fw_file, servo, callback_status_msg, callback_progress)
             self.__program_control_to_stop(servo, callback_status_msg)
@@ -450,7 +466,9 @@ class CanopenNetwork(Network):
             callback_status_msg: Subscribed callback function for the status message
 
         """
-        device_type = servo.read(CIA301_DRV_ID_DEVICE_TYPE, subnode=0)
+        if self._connection is None:
+            return
+        device_type = int(servo.read(CIA301_DRV_ID_DEVICE_TYPE, subnode=0))
         device_type = device_type & 0xFFFF
         if device_type == APPLICATION_LOADED_STATE:
             if callback_status_msg:
@@ -579,7 +597,9 @@ class CanopenNetwork(Network):
             raise ILFirmwareLoadError("Could not recover drive") from e
 
     @staticmethod
-    def __optimize_firmware_file(sfu_file, callback_status_msg: Optional[Callable[[str], None]]):
+    def __optimize_firmware_file(
+        sfu_file: str, callback_status_msg: Optional[Callable[[str], None]]
+    ) -> str:
         """Convert SFU file to LFU to optimize the firmware loading.
 
         Args:
@@ -677,7 +697,7 @@ class CanopenNetwork(Network):
         logger.info("Download Finished!")
         servo._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
-    def __set_fw_load_status_msg(self, new_value):
+    def __set_fw_load_status_msg(self, new_value: str) -> None:
         """Updates the fw_load_status_msg value and triggers
         all the callbacks associated.
 
@@ -689,7 +709,7 @@ class CanopenNetwork(Network):
         for callback in self.__observers_fw_load_status_msg:
             callback(new_value)
 
-    def __set_fw_load_progress(self, new_value):
+    def __set_fw_load_progress(self, new_value: int) -> None:
         """Updates the fw_load_progress value and triggers
         all the callbacks associated.
 
@@ -701,7 +721,7 @@ class CanopenNetwork(Network):
         for callback in self.__observers_fw_load_progress:
             callback(new_value)
 
-    def __set_fw_load_errors_enabled(self, new_value):
+    def __set_fw_load_errors_enabled(self, new_value: bool) -> None:
         """Updates the fw_load_errors_enabled value and triggers
         all the callbacks associated.
 
@@ -714,8 +734,14 @@ class CanopenNetwork(Network):
             callback(new_value)
 
     def change_baudrate(
-        self, target_node, new_target_baudrate, vendor_id, product_code, rev_number, serial_number
-    ):
+        self,
+        target_node: int,
+        new_target_baudrate: CAN_BAUDRATE,
+        vendor_id: int,
+        product_code: int,
+        rev_number: int,
+        serial_number: int,
+    ) -> None:
         """Changes the node ID of a given target node ID.
 
         .. note::
@@ -759,8 +785,14 @@ class CanopenNetwork(Network):
             logger.info("Baudrate changed to {}".format(new_target_baudrate))
 
     def change_node_id(
-        self, target_node, new_target_node, vendor_id, product_code, rev_number, serial_number
-    ):
+        self,
+        target_node: int,
+        new_target_node: int,
+        vendor_id: int,
+        product_code: int,
+        rev_number: int,
+        serial_number: int,
+    ) -> None:
         """Changes the node ID of a given target node ID.
 
         .. note::
@@ -802,20 +834,24 @@ class CanopenNetwork(Network):
             self._lss_reset_connection_nodes(target_node)
             logger.info("Node ID changed to {}".format(new_target_node))
 
-    def _lss_store_configuration(self):
+    def _lss_store_configuration(self) -> None:
         """Stores the current configuration of the LSS"""
+        if self._connection is None:
+            return
         self._connection.lss.store_configuration()
         sleep(0.1)
         logger.info("Stored new configuration")
         self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
 
-    def _lss_reset_connection_nodes(self, target_node):
+    def _lss_reset_connection_nodes(self, target_node: int) -> None:
         """Resets the connection and starts node guarding for the connection nodes.
 
         Args:
             target_node (int): Node ID of the targeted device.
 
         """
+        if self._connection is None:
+            return
         self._connection.nodes[target_node].nmt.send_command(0x82)
 
         logger.debug("Wait until node is reset")
@@ -830,7 +866,7 @@ class CanopenNetwork(Network):
 
         self._connection.nodes[target_node].nmt.start_node_guarding(1)
 
-    def subscribe_to_status(self, callback):
+    def subscribe_to_status(self, callback: Callable[[NET_DEV_EVT], Any]) -> None:
         """Subscribe to network state changes.
 
         Args:
@@ -842,7 +878,7 @@ class CanopenNetwork(Network):
             return
         self.__observers_net_state.append(callback)
 
-    def unsubscribe_from_status(self, callback):
+    def unsubscribe_from_status(self, callback: Callable[[NET_DEV_EVT], Any]) -> None:
         """Unsubscribe from network state changes.
 
         Args:
@@ -854,17 +890,17 @@ class CanopenNetwork(Network):
             return
         self.__observers_net_state.remove(callback)
 
-    def _notify_status(self, status):
+    def _notify_status(self, status: NET_DEV_EVT) -> None:
         for callback in self.__observers_net_state:
             callback(status)
 
-    def is_listener_started(self, servo):
+    def is_listener_started(self, servo: CanopenServo) -> bool:
         for listener in self.__listeners_net_status:
             if listener.node.id == servo.node.id:
                 return True
         return False
 
-    def start_status_listener(self, servo):
+    def start_status_listener(self, servo: CanopenServo) -> None:  # type: ignore [override]
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.is_listener_started(servo):
             logger.info(f"Listener on node {servo.node.id} is already started.")
@@ -873,8 +909,10 @@ class CanopenNetwork(Network):
         listener.start()
         self.__listeners_net_status.append(listener)
 
-    def stop_status_listener(self, servo):
+    def stop_status_listener(self, servo: CanopenServo) -> None:  # type: ignore [override]
         """Stops the NetStatusListener from listening to the drive."""
+        if self._connection is None:
+            return
         try:
             for node_id, node_obj in self._connection.nodes.items():
                 if node_id == servo.node.id:
@@ -891,35 +929,35 @@ class CanopenNetwork(Network):
             self.__listeners_net_status.remove(servo_listener)
 
     @property
-    def device(self):
-        """CAN_DEVICE: Current device of the network."""
+    def device(self) -> str:
+        """str: Current device of the network."""
         return self.__device
 
     @property
-    def channel(self):
-        """int: Current device of the network."""
+    def channel(self) -> Union[int, str]:
+        """int, str: Current channel of the network."""
         return self.__channel
 
     @property
-    def baudrate(self):
+    def baudrate(self) -> int:
         """int: Current baudrate of the network."""
         return self.__baudrate
 
     @property
-    def network(self):
+    def network(self) -> canopen.Network:
         """canopen.Network: Returns the instance of the CANopen Network."""
         return self._connection
 
     @property
-    def protocol(self):
+    def protocol(self) -> NET_PROT:
         """NET_PROT: Obtain network protocol."""
         return NET_PROT.CAN
 
     @property
-    def status(self):
+    def status(self) -> NET_STATE:
         """NET_STATE: Network state."""
         return self.__net_state
 
     @status.setter
-    def status(self, new_state):
+    def status(self, new_state: NET_STATE) -> None:
         self.__net_state = new_state
