@@ -41,14 +41,14 @@ class EthercatServo(Servo):  # type: ignore
         access=REG_ACCESS.RO,
     )
     DIST_DATA = CanopenRegister(
-        identifier="",
+        identifier="DISTURBANCE_DATA",
         units="",
         subnode=0,
         idx=0x58B4,
         subidx=0x00,
         cyclic="CONFIG",
         dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.RW,
+        access=REG_ACCESS.WO,
     )
 
     def __init__(
@@ -67,19 +67,17 @@ class EthercatServo(Servo):  # type: ignore
     ) -> bytes:
         self._lock.acquire()
         try:
-            value: bytearray = self.__slave.sdo_read(
-                reg.idx, reg.subidx, buffer_size, complete_access
-            )
+            value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
         except Exception as e:
             raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
         finally:
             self._lock.release()
         return value
 
-    def _write_raw(self, reg: CanopenRegister, data: bytes) -> None:
+    def _write_raw(self, reg: CanopenRegister, data: bytes, complete_access: bool = False) -> None:
         self._lock.acquire()
         try:
-            self.__slave.sdo_write(reg.idx, reg.subidx, data)
+            self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
         except Exception as e:
             raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
         finally:
@@ -88,6 +86,10 @@ class EthercatServo(Servo):  # type: ignore
     def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame."""
         return self._read_raw(self.MONITORING_DATA, buffer_size=1024, complete_access=True)
+
+    def _disturbance_write_data(self, data: bytearray) -> None:
+        """Write disturbance data."""
+        return self._write_raw(self.DIST_DATA, bytes(data), complete_access=True)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:

@@ -1001,12 +1001,16 @@ class Servo:
             channels, dtypes, data_arr, self.MAX_WRITE_SIZE
         )
         for chunk in chunks:
-            self._write_raw(self.DIST_DATA, data=chunk)
+            self._disturbance_write_data(chunk)
         self.disturbance_data = data
 
     def _monitoring_read_data(self):
         """Read monitoring data frame."""
         return self._read_raw(self.MONITORING_DATA)
+
+    def _disturbance_write_data(self, data):
+        """Write disturbance data."""
+        return self._write_raw(self.DIST_DATA, data=data)
 
     @abstractmethod
     def _write_raw(self, reg, data):
