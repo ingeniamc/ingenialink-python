@@ -33,7 +33,6 @@ from ingenialink.enums.servo import SERVO_STATE
 from ingenialink.dictionary import Dictionary
 
 import ingenialogger
-from numpy import ndarray
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -636,7 +635,7 @@ class Servo:
             sample_size = sum(self.__monitoring_size[reg] for reg in self.__monitoring_size)
             return num_samples * sample_size
 
-    def monitoring_read_data(self) -> ndarray:
+    def monitoring_read_data(self) -> None:
         """Obtain processed monitoring data.
 
         Returns:
