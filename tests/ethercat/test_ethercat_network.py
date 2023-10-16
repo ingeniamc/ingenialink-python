@@ -23,16 +23,9 @@ def test_load_firmware_no_slave_detected_error(mocker, read_config):
 
 
 @pytest.mark.no_connection
-def test_load_firmware_value_error(mocker):
-    net = EthercatNetwork("not existing ifname")
-    mocker.patch("os.path.isfile", return_value=True)
-    with pytest.raises(
-        ILFirmwareLoadError,
-        match=(
-            "The firmware file could not be loaded correctly. Can’t initialize the network adapter"
-        ),
-    ):
-        net.load_firmware(fw_file="dummy_file.lfu")
+def test_wrong_interface_name_error():
+    with pytest.raises(ConnectionError):
+        EthercatNetwork("not existing ifname")
 
 
 @pytest.mark.no_connection
