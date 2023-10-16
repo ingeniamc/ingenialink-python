@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Add
+- EtherCAT communication via CoE (SDOs).
+
 ### Fixed
 - Fix CANopen load_firmware function.
 - Set product name correctly if no dictionary is provided.
