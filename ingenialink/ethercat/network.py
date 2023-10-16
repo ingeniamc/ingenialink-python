@@ -5,7 +5,7 @@ import subprocess
 import inspect
 import time
 from collections import defaultdict
-from typing import Optional, Any, Callable
+from typing import Optional, Any, Callable, List, Dict
 from threading import Thread
 
 import ingenialogger
@@ -78,16 +78,16 @@ class EthercatNetwork(Network):  # type: ignore
     ):
         super(EthercatNetwork, self).__init__()
         self.interface_name: str = interface_name
-        self.servos: list[EthercatServo] = []
-        self.__servos_state: dict[int, NET_STATE] = {}
+        self.servos: List[EthercatServo] = []
+        self.__servos_state: Dict[int, NET_STATE] = {}
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: dict[int, list[Any]] = defaultdict(list)
+        self.__observers_net_state: Dict[int, List[Any]] = defaultdict(list)
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
         self._ecat_master.open(self.interface_name)
         self._ecat_master.sdo_read_timeout = int(1_000_000 * connection_timeout)
         self._ecat_master.sdo_write_timeout = int(1_000_000 * connection_timeout)
 
-    def scan_slaves(self) -> list[int]:
+    def scan_slaves(self) -> List[int]:
         """Scans for nodes in the network.
 
         Returns:
