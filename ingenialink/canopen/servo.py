@@ -35,24 +35,20 @@ class CanopenServo(Servo):
     RESTORE_COCO_ALL = "CIA301_COMMS_RESTORE_ALL"
     STORE_COCO_ALL = "CIA301_COMMS_STORE_ALL"
     MONITORING_DATA = CanopenRegister(
-        identifier="",
-        units="",
-        subnode=0,
         idx=0x58B2,
         subidx=0x00,
         cyclic="CONFIG",
         dtype=REG_DTYPE.U16,
         access=REG_ACCESS.RO,
+        subnode=0,
     )
     DIST_DATA = CanopenRegister(
-        identifier="",
-        units="",
-        subnode=0,
         idx=0x58B4,
         subidx=0x00,
         cyclic="CONFIG",
         dtype=REG_DTYPE.U16,
         access=REG_ACCESS.RW,
+        subnode=0,
     )
 
     def __init__(self, target, node, dictionary_path=None, servo_status_listener=False):

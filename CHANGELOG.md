@@ -8,6 +8,14 @@
 ### Fixed
 - Fix CANopen load_firmware function.
 - Set product name correctly if no dictionary is provided.
+- Docstrings from Register constructor and its subclasses are updated.
+- CanopenRegister and EthernetRegister have the same signature.
+
+## [7.0.4] - 2023-10-11
+
+### Fixed
+- Reread when ethernet read a wrong address
+- Read strings until NULL character
 
 ## [7.0.3] - 2023-09-05
 
