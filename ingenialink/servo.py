@@ -935,7 +935,7 @@ class Servo:
         chunks = [data[i : i + max_size] for i in range(0, len(data), max_size)]
         return data, chunks
 
-    def write(self, reg, data, subnode=1):
+    def write(self, reg, data, subnode=1, **kwargs):
         """Writes a data to a target register.
 
         Args:
@@ -953,7 +953,7 @@ class Servo:
         if _reg.access == REG_ACCESS.RO:
             raise ILAccessError("Register is Read-only")
         value = convert_dtype_to_bytes(data, _reg.dtype)
-        self._write_raw(_reg, value)
+        self._write_raw(_reg, value, **kwargs)
 
     def read(self, reg, subnode=1):
         """Read a register value from servo.
