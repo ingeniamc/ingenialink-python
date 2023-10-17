@@ -1,4 +1,5 @@
 import time
+from enum import Enum
 from typing import List
 
 import pysoem
@@ -8,6 +9,16 @@ from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.utils._utils import convert_bytes_to_dtype
 from ingenialink.exceptions import ILError
 from ingenialink.canopen.register import CanopenRegister
+
+
+class SlaveState(Enum):
+    INIT_STATE = 1
+    NONE_STATE = 0
+    OP_STATE = 8
+    PREOP_STATE = 2
+    SAFEOP_STATE = 4
+    STATE_ACK = 16
+    STATE_ERROR = 16
 
 
 class ProcessDataExample:
@@ -97,7 +108,8 @@ class ProcessDataExample:
     )
 
     rpdo_registers = [
-        "CIA402_DRV_STATE_CONTROL",
+        "DRV_STATE_CONTROL",
+        "CL_VEL_SET_POINT_VALUE",
     ]
 
     tpdo_registers = [
@@ -160,16 +172,14 @@ class ProcessDataExample:
         self.map_rpdo()
         self.map_tpdo()
 
-    def check_state(self, state: int) -> None:
-        if self.master.state_check(state, 50000) != pysoem.SAFEOP_STATE:
+    def check_state(self, state: SlaveState) -> None:
+        if self.master.state_check(state.value, 50000) != state.value:
             self.master.read_state()
-            if self.slave.state != state:
-                print(f"{self.slave.name} did not reach {state}")
-                print(
-                    "al status code"
-                    f" {hex(self.slave.al_status)} ({pysoem.al_status_code_to_string(self.slave.al_status)})"
+            if self.slave.state != state.value:
+                raise ILError(
+                    f"{self.slave.name} did not reach {SlaveState(state).name}."
+                    f" {hex(self.slave.al_status)} {pysoem.al_status_code_to_string(self.slave.al_status)}"
                 )
-                raise ILError(f"Not all slaves reached state {state}")
 
     def map_register(self, register: CanopenRegister) -> bytes:
         index = register.idx
@@ -198,10 +208,11 @@ class ProcessDataExample:
     def run(self) -> None:
         self.slave.config_func = self.pdo_setup
         self.master.config_map()
-        self.check_state(pysoem.SAFEOP_STATE)
-        self.master.state = pysoem.OP_STATE
+        self.master.config_dc()
+        self.check_state(SlaveState.SAFEOP_STATE)
+        self.master.state = SlaveState.OP_STATE.value
         self.master.write_state()
-        self.check_state(pysoem.OP_STATE)
+        self.check_state(SlaveState.OP_STATE)
         print("Process data started")
         try:
             self.process_data_loop()
