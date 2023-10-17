@@ -1,3 +1,5 @@
+import argparse
+import threading
 import time
 from enum import Enum
 from typing import List
@@ -107,10 +109,7 @@ class ProcessDataExample:
         access=REG_ACCESS.RW,
     )
 
-    rpdo_registers = [
-        "DRV_STATE_CONTROL",
-        "CL_VEL_SET_POINT_VALUE",
-    ]
+    rpdo_registers = ["CIA402_CL_POS_SET_POINTVALUE"]
 
     tpdo_registers = [
         "CIA402_CL_POS_FBK_VALUE",
@@ -118,22 +117,34 @@ class ProcessDataExample:
     ]
 
     def __init__(self, interface_name: str, dictionary_path: str):
+        """Basic example on EtherCAT PDOs.
+
+        Args:
+            interface_name: Network adapter interface name.
+            dictionary_path: Drive's dictionary path.
+
+        """
         self.net = EthercatNetwork(interface_name)
         self.master = self.net._ecat_master
         slave = self.net.scan_slaves()[0]
         self.servo = self.net.connect_to_slave(slave, dictionary_path)
         self.slave = self.master.slaves[slave]
         self.tpdo_registers_sizes: List[int] = []
+        self._pd_thread_stop_event = threading.Event()
+        self.feedback_resolution = self.servo.read("FBK_DIGENC1_RESOLUTION")
 
     def reset_rpdo_mapping(self) -> None:
+        """Reset the RPDO mappings"""
         self.servo.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, 0)
         self.servo.write(self.RPDO_MAP_REGISTER_SUB_IDX_0, 0)
 
     def reset_tpdo_mapping(self) -> None:
+        """Reset the TPDO mappings"""
         self.servo.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, 0)
         self.servo.write(self.TPDO_MAP_REGISTER_SUB_IDX_0, 0)
 
     def map_rpdo(self) -> None:
+        """Map the RPDO registers"""
         rpdo_map = bytes()
         for register in self.rpdo_registers:
             rpdo_register = self.servo.dictionary.registers(1)[register]
@@ -150,6 +161,7 @@ class ProcessDataExample:
         )
 
     def map_tpdo(self) -> None:
+        """Map the TPDO registers."""
         tpdo_map = bytes()
         for register in self.tpdo_registers:
             tpdo_register = self.servo.dictionary.registers(1)[register]
@@ -166,14 +178,29 @@ class ProcessDataExample:
             complete_access=True,
         )
 
-    def pdo_setup(self, slave_pos: int) -> None:
+    def pdo_setup(self, slave_id: int) -> None:
+        """Map RPDOs and TPDOs.
+
+        Args:
+            slave_id: Slave ID.
+
+        """
         self.reset_rpdo_mapping()
         self.reset_tpdo_mapping()
         self.map_rpdo()
         self.map_tpdo()
 
     def check_state(self, state: SlaveState) -> None:
-        if self.master.state_check(state.value, 50000) != state.value:
+        """Check if the slave reached the requested state.
+
+        Args:
+            state: Requested state.
+
+        Raises:
+            ILError: If state is not reached.
+
+        """
+        if self.master.state_check(state.value, 50_000) != state.value:
             self.master.read_state()
             if self.slave.state != state.value:
                 raise ILError(
@@ -182,6 +209,15 @@ class ProcessDataExample:
                 )
 
     def map_register(self, register: CanopenRegister) -> bytes:
+        """Arrange register information into PDO mapping format.
+
+        Args:
+            register: Register to map.
+
+        Returns:
+            PDO register mapping format.
+
+        """
         index = register.idx
         size_bytes = self.dtype_size[register.dtype]
         mapped_register = (index << 16) | (size_bytes * 8)
@@ -189,6 +225,7 @@ class ProcessDataExample:
         return mapped_register_bytes
 
     def process_inputs(self) -> None:
+        """Print TPDOs values to console."""
         input_data = self.slave.input
         for idx, register in enumerate(self.tpdo_registers):
             tpdo_register = self.servo.dictionary.registers(1)[register]
@@ -198,32 +235,67 @@ class ProcessDataExample:
             value = convert_bytes_to_dtype(data, tpdo_register.dtype)
             print(f"{register} value: {value}")
 
+    def generate_output(self, position_set_point: int) -> int:
+        """Generate the position set-point value to be writen.
+
+        Args:
+            position_set_point: Current position set-point.
+
+        Returns:
+              New position set-point.
+
+        """
+        self.slave.output = int.to_bytes(position_set_point, 4, "little")
+        position_set_point += 100
+        if position_set_point >= self.feedback_resolution:
+            position_set_point = 0
+        return position_set_point
+
     def process_data_loop(self) -> None:
+        """Process inputs and generate outputs."""
+        position_set_point = 0
         while True:
-            self.master.send_processdata()
-            self.master.receive_processdata(2000)
             self.process_inputs()
+            position_set_point = self.generate_output(position_set_point)
             time.sleep(0.1)
 
+    def _processdata_thread(self) -> None:
+        """Background thread that sends and receives the process-data frame in a 10ms interval."""
+        while not self._pd_thread_stop_event.is_set():
+            self.master.send_processdata()
+            self._actual_wkc = self.master.receive_processdata(timeout=100_000)
+            if self._actual_wkc != self.master.expected_wkc:
+                print("incorrect wkc")
+            time.sleep(0.01)
+
     def run(self) -> None:
+        """Main loop of the program."""
         self.slave.config_func = self.pdo_setup
         self.master.config_map()
         self.master.config_dc()
         self.check_state(SlaveState.SAFEOP_STATE)
         self.master.state = SlaveState.OP_STATE.value
         self.master.write_state()
+        proc_thread = threading.Thread(target=self._processdata_thread)
+        proc_thread.start()
         self.check_state(SlaveState.OP_STATE)
         print("Process data started")
+        self.servo.enable()
         try:
             self.process_data_loop()
         except KeyboardInterrupt:
             print("Process data stopped")
+        self._pd_thread_stop_event.set()
+        proc_thread.join()
         self.master.state = pysoem.INIT_STATE
         self.master.write_state()
         self.master.close()
+        self.servo.disable()
 
 
 if __name__ == "__main__":
-    interface_name = r"\Device\NPF_{43144EC3-59EF-408B-8D9B-4867F1324D62}"
-    dictionary = "C://Users//martin.acosta//Documents//issues//INGK-672//cap-net-c_can_2.4.1.xdf"
-    ProcessDataExample(interface_name, dictionary).run()
+    parser = argparse.ArgumentParser(description="EtherCAT PDOs example script.")
+    parser.add_argument("-ifname", type=str, help="Network adapter interface name.")
+    parser.add_argument("-dict", type=str, help="Drive's dictionary.")
+    args = parser.parse_args()
+    ProcessDataExample(args.ifname, args.dict).run()
