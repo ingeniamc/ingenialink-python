@@ -9,7 +9,7 @@ import pysoem
 
 from ingenialink import REG_DTYPE, REG_ACCESS
 from ingenialink.ethercat.network import EthercatNetwork
-from ingenialink.utils._utils import convert_bytes_to_dtype
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.exceptions import ILError
 from ingenialink.canopen.register import CanopenRegister
 
@@ -246,8 +246,10 @@ class ProcessDataExample:
               New position set-point.
         """
         position_set_point = 0
+        rpdo_register = self.rpdo_registers[0]
+        register_dtype = self.servo.dictionary.registers(1)[rpdo_register].dtype
         while True:
-            yield int.to_bytes(position_set_point, 4, "little")
+            yield convert_dtype_to_bytes(position_set_point, register_dtype)
             position_set_point += 100
             if position_set_point > self.feedback_resolution:
                 position_set_point = 0
