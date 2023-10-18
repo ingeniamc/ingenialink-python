@@ -294,6 +294,7 @@ class ProcessDataExample:
         self.master.write_state()
         self.master.close()
         self.servo.disable()
+        self.net.disconnect_from_slave(self.servo)
 
 
 if __name__ == "__main__":
