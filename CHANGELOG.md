@@ -4,6 +4,7 @@
 
 ### Add
 - EtherCAT communication via CoE (SDOs).
+- Create EtherCAT PDOs example script.
 
 ### Fixed
 - Fix CANopen load_firmware function.
