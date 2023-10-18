@@ -21,45 +21,41 @@ import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
 PROG_STAT_1 = CanopenRegister(
-    identifier="CIA302_BL_PROGRAM_CONTROL_1",
-    units="",
-    subnode=0,
     idx=0x1F51,
     subidx=0x01,
     cyclic="CONFIG",
     dtype=REG_DTYPE.U8,
     access=REG_ACCESS.RW,
+    identifier="CIA302_BL_PROGRAM_CONTROL_1",
+    subnode=0,
 )
 PROG_DL_1 = CanopenRegister(
-    identifier="CIA302_BL_PROGRAM_DATA",
-    units="",
-    subnode=0,
     idx=0x1F50,
     subidx=0x01,
     cyclic="CONFIG",
     dtype=REG_DTYPE.DOMAIN,
     access=REG_ACCESS.RW,
+    identifier="CIA302_BL_PROGRAM_DATA",
+    subnode=0,
 )
 FORCE_BOOT = CanopenRegister(
-    identifier="DRV_BOOT_COCO_FORCE",
-    units="",
-    subnode=0,
     idx=0x5EDE,
     subidx=0x00,
     cyclic="CONFIG",
     dtype=REG_DTYPE.U32,
     access=REG_ACCESS.WO,
+    identifier="DRV_BOOT_COCO_FORCE",
+    subnode=0,
 )
 
 CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
-    identifier="",
-    units="",
-    subnode=0,
     idx=0x1000,
     subidx=0x00,
     cyclic="CONFIG",
     dtype=REG_DTYPE.U32,
     access=REG_ACCESS.RO,
+    identifier="",
+    subnode=0,
 )
 
 CANOPEN_BOTT_NODE_GUARDING_PERIOD = 5

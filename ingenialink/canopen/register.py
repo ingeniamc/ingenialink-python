@@ -8,20 +8,19 @@ class CanopenRegister(Register):
     """CANopen Register.
 
     Args:
-        identifier (str): Identifier.
-        units (str): Units.
-        cyclic (str): Cyclic typed register.
         idx (int): Index of the register.
         subidx (int): Subindex of the register.
         dtype (REG_DTYPE): Data type.
         access (REG_ACCESS): Access type.
+        identifier (str): Identifier.
+        units (str): Units.
+        cyclic (str): Cyclic typed register.
         phy (REG_PHY, optional): Physical units.
         subnode (int): Subnode.
         storage (any, optional): Storage.
         reg_range (tuple, optional): Range (min, max).
         labels (dict, optional): Register labels.
         enums (dict): Enumeration registers.
-        enums_count (int): Number of enumeration registers.
         cat_id (str, optional): Category ID.
         scat_id (str, optional): Sub-category ID.
         internal_use (int, optional): Internal use.
@@ -36,13 +35,13 @@ class CanopenRegister(Register):
 
     def __init__(
         self,
-        identifier: Optional[str],
-        units: Optional[str],
-        cyclic: str,
         idx: int,
         subidx: int,
         dtype: REG_DTYPE,
         access: REG_ACCESS,
+        identifier: Optional[str],
+        units: Optional[str],
+        cyclic: str,
         phy: REG_PHY = REG_PHY.NONE,
         subnode: int = 1,
         storage: Any = None,

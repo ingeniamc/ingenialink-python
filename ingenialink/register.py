@@ -35,7 +35,6 @@ class Register(ABC):
         reg_range (tuple, optional): Range (min, max).
         labels (dict, optional): Register labels.
         enums (dict): Enumeration registers.
-        enums_count (int): Number of enumeration registers.
         cat_id (str, optional): Category ID.
         scat_id (str, optional): Sub-category ID.
         internal_use (int): Internal use.
