@@ -1,4 +1,5 @@
 import argparse
+import sys
 import threading
 import time
 from enum import Enum
@@ -227,13 +228,16 @@ class ProcessDataExample:
     def process_inputs(self) -> None:
         """Print TPDOs values to console."""
         input_data = self.slave.input
+        console_output = ""
         for idx, register in enumerate(self.tpdo_registers):
             tpdo_register = self.servo.dictionary.registers(1)[register]
             data_size = self.tpdo_registers_sizes[idx]
             data = input_data[:data_size]
             input_data = input_data[data_size:]
             value = convert_bytes_to_dtype(data, tpdo_register.dtype)
-            print(f"{register} value: {value}")
+            console_output += f"{register} value: {value} "
+        sys.stdout.write("\r" + console_output)
+        sys.stdout.flush()
 
     def generate_output(self) -> Iterator[bytes]:
         """Generate the position set-point value to be writen.
