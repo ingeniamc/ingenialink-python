@@ -2,7 +2,7 @@ import argparse
 import threading
 import time
 from enum import Enum
-from typing import List
+from typing import List, Iterator
 
 import pysoem
 
@@ -235,28 +235,25 @@ class ProcessDataExample:
             value = convert_bytes_to_dtype(data, tpdo_register.dtype)
             print(f"{register} value: {value}")
 
-    def generate_output(self, position_set_point: int) -> int:
+    def generate_output(self) -> Iterator[bytes]:
         """Generate the position set-point value to be writen.
-
-        Args:
-            position_set_point: Current position set-point.
 
         Returns:
               New position set-point.
-
         """
-        self.slave.output = int.to_bytes(position_set_point, 4, "little")
-        position_set_point += 100
-        if position_set_point >= self.feedback_resolution:
-            position_set_point = 0
-        return position_set_point
+        position_set_point = 0
+        while True:
+            yield int.to_bytes(position_set_point, 4, "little")
+            position_set_point += 100
+            if position_set_point > self.feedback_resolution:
+                position_set_point = 0
 
     def process_data_loop(self) -> None:
         """Process inputs and generate outputs."""
-        position_set_point = 0
+        generator = self.generate_output()
         while True:
             self.process_inputs()
-            position_set_point = self.generate_output(position_set_point)
+            self.slave.output = next(generator)
             time.sleep(0.1)
 
     def _processdata_thread(self) -> None:
