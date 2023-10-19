@@ -126,7 +126,7 @@ class EthercatNetwork(Network):  # type: ignore
             raise ILError("Could not find any slaves in the network.")
         if slave_id not in slaves:
             raise (ILError(f"Slave {slave_id} was not found."))
-        slave = self._ecat_master.slaves[slave_id]
+        slave = self._ecat_master.slaves[slave_id - 1]
         servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
         self.servos.append(servo)
         self._set_servo_state(slave_id, NET_STATE.CONNECTED)
