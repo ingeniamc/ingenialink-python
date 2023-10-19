@@ -3,6 +3,7 @@ from enum import Enum
 from time import sleep
 from threading import Thread
 from typing import Optional, Callable, Union
+from collections import defaultdict
 
 from .register import CanopenRegister
 from ingenialink.utils.mcb import MCB
@@ -119,34 +120,35 @@ class NetStatusListener(Thread):
 
     Args:
         network (CanopenNetwork): Network instance of the CANopen communication.
-        node (canopen.RemoteNode): Identifier for the targeted node ID.
 
     """
 
-    def __init__(self, network, node):
+    def __init__(self, network):
         super(NetStatusListener, self).__init__()
         self.__network = network
-        self.node = node
-        self.__timestamp = self.node.nmt.timestamp
-        self.__state = NET_STATE.CONNECTED
         self.__stop = False
 
     def run(self):
+        timestamps = {
+            node_id: node.nmt.timestamp
+            for node_id, node in self.__network._connection.nodes.items()
+        }
         while not self.__stop:
-            if self.__timestamp == self.node.nmt.timestamp:
-                if self.__state != NET_STATE.DISCONNECTED:
-                    self.__network.status = NET_STATE.DISCONNECTED
-                    self.__state = NET_STATE.DISCONNECTED
-                    self.__network._notify_status(NET_DEV_EVT.REMOVED)
-                else:
+            for node_id, node in self.__network._connection.nodes.items():
+                current_timestamp = node.nmt.timestamp
+                is_alive = current_timestamp != timestamps[node_id]
+                servo_state = self.__network._get_servo_state(node_id)
+                if is_alive:
+                    if servo_state != NET_STATE.CONNECTED:
+                        self.__network._notify_status(node_id, NET_DEV_EVT.ADDED)
+                        self.__network._set_servo_state(node_id, NET_STATE.CONNECTED)
+                    timestamps[node_id] = node.nmt.timestamp
+                elif servo_state == NET_STATE.DISCONNECTED:
                     self.__network._reset_connection()
-            else:
-                if self.__state != NET_STATE.CONNECTED:
-                    self.__network.status = NET_STATE.CONNECTED
-                    self.__state = NET_STATE.CONNECTED
-                    self.__network._notify_status(NET_DEV_EVT.ADDED)
-                self.__timestamp = self.node.nmt.timestamp
-            sleep(1.5)
+                else:
+                    self.__network._notify_status(node_id, NET_DEV_EVT.REMOVED)
+                    self.__network._set_servo_state(node_id, NET_STATE.DISCONNECTED)
+                sleep(1.5)
 
     def stop(self):
         self.__stop = True
@@ -170,8 +172,9 @@ class CanopenNetwork(Network):
         self._connection = None
         self.__listeners_net_status = []
         self.__net_state = NET_STATE.DISCONNECTED
-
-        self.__observers_net_state = []
+        self.__servos_state = {}
+        self.__listener_net_status = None
+        self.__observers_net_state = defaultdict(list)
         self.__observers_fw_load_status_msg = []
         self.__observers_fw_load_progress = []
         self.__observers_fw_load_errors_enabled = []
@@ -249,11 +252,10 @@ class CanopenNetwork(Network):
                 servo = CanopenServo(
                     target, node, dictionary, servo_status_listener=servo_status_listener
                 )
-
-                if net_status_listener:
-                    self.start_status_listener(servo)
-
                 self.servos.append(servo)
+                self._set_servo_state(target, NET_STATE.CONNECTED)
+                if net_status_listener:
+                    self.start_status_listener()
                 return servo
             except Exception as e:
                 logger.error("Failed connecting to node %i. Exception: %s", target, e)
@@ -273,7 +275,7 @@ class CanopenNetwork(Network):
             servo (CanopenServo): Instance of the servo connected.
 
         """
-        self.stop_status_listener(servo)
+        self.stop_status_listener()
         servo.stop_status_listener()
         self.servos.remove(servo)
         if not self.servos:
@@ -371,9 +373,9 @@ class CanopenNetwork(Network):
 
         """
         servo = self.__load_fw_checks(target, fw_file, callback_status_msg)
-        start_network_listener_after_reconnect = self.is_listener_started(servo)
+        start_network_listener_after_reconnect = self.is_listener_started()
         start_servo_listener_after_reconnect = servo.is_listener_started()
-        self.stop_status_listener(servo)
+        self.stop_status_listener()
         servo.stop_status_listener()
         initial_status = servo.read(PROG_STAT_1, subnode=0)
         _, file_extension = os.path.splitext(fw_file)
@@ -392,7 +394,7 @@ class CanopenNetwork(Network):
         if callback_status_msg:
             callback_status_msg("Bootloader finished successfully!")
         if start_network_listener_after_reconnect:
-            self.start_status_listener(servo)
+            self.start_status_listener()
         if start_servo_listener_after_reconnect:
             servo.start_status_listener()
 
@@ -826,65 +828,58 @@ class CanopenNetwork(Network):
 
         self._connection.nodes[target_node].nmt.start_node_guarding(1)
 
-    def subscribe_to_status(self, callback):
+    def subscribe_to_status(self, node_id, callback):
         """Subscribe to network state changes.
 
         Args:
+            node_id (int): Drive's node ID.
             callback (function): Callback function.
 
         """
-        if callback in self.__observers_net_state:
+        if callback in self.__observers_net_state[node_id]:
             logger.info("Callback already subscribed.")
             return
-        self.__observers_net_state.append(callback)
+        self.__observers_net_state[node_id].append(callback)
 
-    def unsubscribe_from_status(self, callback):
+    def unsubscribe_from_status(self, node_id, callback):
         """Unsubscribe from network state changes.
 
         Args:
+            node_id (int): Drive's node ID.
             callback (function): Callback function.
 
         """
-        if callback not in self.__observers_net_state:
+        if callback not in self.__observers_net_state[node_id]:
             logger.info("Callback not subscribed.")
             return
-        self.__observers_net_state.remove(callback)
+        self.__observers_net_state[node_id].remove(callback)
 
-    def _notify_status(self, status):
-        for callback in self.__observers_net_state:
+    def _notify_status(self, node_id, status):
+        """Notify subscribers of a network state change."""
+        for callback in self.__observers_net_state[node_id]:
             callback(status)
 
-    def is_listener_started(self, servo):
-        for listener in self.__listeners_net_status:
-            if listener.node.id == servo.node.id:
-                return True
-        return False
+    def is_listener_started(self):
+        return self.__listener_net_status is not None
 
-    def start_status_listener(self, servo):
+    def start_status_listener(self):
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
-        if self.is_listener_started(servo):
-            logger.info(f"Listener on node {servo.node.id} is already started.")
-            return
-        listener = NetStatusListener(self, servo.node)
-        listener.start()
-        self.__listeners_net_status.append(listener)
+        if self.__listener_net_status is None:
+            listener = NetStatusListener(self)
+            listener.start()
+            self.__listener_net_status = listener
 
-    def stop_status_listener(self, servo):
+    def stop_status_listener(self):
         """Stops the NetStatusListener from listening to the drive."""
         try:
             for node_id, node_obj in self._connection.nodes.items():
-                if node_id == servo.node.id:
-                    node_obj.nmt.stop_node_guarding()
+                node_obj.nmt.stop_node_guarding()
         except Exception as e:
             logger.error("Could not stop node guarding. Exception: %s", str(e))
-        servo_listener = None
-        for listener in self.__listeners_net_status:
-            if listener.node.id == servo.node.id and listener.is_alive:
-                listener.stop()
-                listener.join()
-                servo_listener = listener
-        if servo_listener is not None:
-            self.__listeners_net_status.remove(servo_listener)
+        if self.__listener_net_status is not None:
+            self.__listener_net_status.stop()
+            self.__listener_net_status.join()
+        self.__listener_net_status = None
 
     @property
     def device(self):
@@ -919,3 +914,9 @@ class CanopenNetwork(Network):
     @status.setter
     def status(self, new_state):
         self.__net_state = new_state
+
+    def _get_servo_state(self, node_id):
+        return self.__servos_state[node_id]
+
+    def _set_servo_state(self, node_id, state):
+        self.__servos_state[node_id] = state
