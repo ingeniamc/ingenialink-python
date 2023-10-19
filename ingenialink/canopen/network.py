@@ -906,15 +906,6 @@ class CanopenNetwork(Network):
         """NET_PROT: Obtain network protocol."""
         return NET_PROT.CAN
 
-    @property
-    def status(self):
-        """NET_STATE: Network state."""
-        return self.__net_state
-
-    @status.setter
-    def status(self, new_state):
-        self.__net_state = new_state
-
     def _get_servo_state(self, node_id):
         return self.__servos_state[node_id]
 
