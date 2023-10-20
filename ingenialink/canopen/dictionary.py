@@ -31,13 +31,13 @@ class CanopenDictionary(Dictionary):
             subidx = aux_var & 0xFF
 
             canopen_register = CanopenRegister(
-                current_read_register.identifier,
-                current_read_register.units,
-                current_read_register.cyclic,
                 idx,
                 subidx,
                 current_read_register.dtype,
                 current_read_register.access,
+                identifier=current_read_register.identifier,
+                units=current_read_register.units,
+                cyclic=current_read_register.cyclic,
                 phy=current_read_register.phy,
                 subnode=current_read_register.subnode,
                 storage=current_read_register.storage,

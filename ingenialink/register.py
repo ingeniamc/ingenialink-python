@@ -24,21 +24,21 @@ class Register(ABC):
     """Register Base class.
 
     Args:
-        dtype (REG_DTYPE): Data type.
-        access (REG_ACCESS): Access type.
-        identifier (str, optional): Identifier.
-        units (str, optional): Units.
-        cyclic (str, optional): Cyclic typed register.
-        phy (REG_PHY, optional): Physical units.
-        subnode (int): Subnode.
-        storage (any, optional): Storage.
-        reg_range (tuple, optional): Range (min, max).
-        labels (dict, optional): Register labels.
-        enums (dict): Enumeration registers.
-        cat_id (str, optional): Category ID.
-        scat_id (str, optional): Sub-category ID.
-        internal_use (int): Internal use.
-        address_type (REG_ADDRESS_TYPE): Address tpye.
+        dtype: Data type.
+        access: Access type.
+        identifier: Identifier.
+        units: Units.
+        cyclic: Cyclic typed register.
+        phy: Physical units.
+        subnode: Subnode.
+        storage: Storage.
+        reg_range: Range (min, max).
+        labels: Register labels.
+        enums: Enumeration registers.
+        cat_id: Category ID.
+        scat_id: Sub-category ID.
+        internal_use: Internal use.
+        address_type: Address tpye.
 
     Raises:
         TypeError: If any of the parameters has invalid type.

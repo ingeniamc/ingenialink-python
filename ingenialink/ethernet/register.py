@@ -8,22 +8,22 @@ class EthernetRegister(Register):
     """Ethernet Register.
 
     Args:
-        address (int): Address of the register.
-        dtype (REG_DTYPE): Data type.
-        access (REG_ACCESS): Access type.
-        identifier (str, optional): Identifier.
-        units (str, optional): Units.
-        cyclic (str, optional): Cyclic typed register.
-        phy (REG_PHY, optional): Physical units.
-        subnode (int): Subnode.
-        storage (any, optional): Storage.
-        reg_range (tuple, optional): Range (min, max).
-        labels (dict, optional): Register labels.
-        enums (dict): Enumeration registers.
-        cat_id (str, optional): Category ID.
-        scat_id (str, optional): Sub-category ID.
-        internal_use (int, optional): Internal use.
-        address_type (REG_ADDRESS_TYPE): Address Type.
+        address: Address of the register.
+        dtype: Data type.
+        access: Access type.
+        identifier: Identifier.
+        units: Units.
+        cyclic: Cyclic typed register.
+        phy: Physical units.
+        subnode: Subnode.
+        storage: Storage.
+        reg_range: Range (min, max).
+        labels: Register labels.
+        enums: Enumeration registers.
+        cat_id: Category ID.
+        scat_id: Sub-category ID.
+        internal_use: Internal use.
+        address_type: Address Type.
 
     Raises:
         TypeError: If any of the parameters has invalid type.
