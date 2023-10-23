@@ -26,6 +26,7 @@ class EthercatServo(Servo):  # type: ignore
 
     DICTIONARY_CLASS = CanopenDictionary
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
+    WRONG_WORKING_COUNTER = -1
 
     STATUS_WORD_REGISTERS = "CIA402_DRV_STATE_STATUS"
     RESTORE_COCO_ALL = "CIA301_COMMS_RESTORE_ALL"
@@ -68,7 +69,8 @@ class EthercatServo(Servo):  # type: ignore
         self._lock.acquire()
         try:
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
-        except (SdoError, MailboxError, PacketError) as e:
+            self._check_working_counter()
+        except (SdoError, MailboxError, PacketError, ILIOError) as e:
             raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
         finally:
             self._lock.release()
@@ -78,7 +80,8 @@ class EthercatServo(Servo):  # type: ignore
         self._lock.acquire()
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
-        except (SdoError, MailboxError, PacketError) as e:
+            self._check_working_counter()
+        except (SdoError, MailboxError, PacketError, ILIOError) as e:
             raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
         finally:
             self._lock.release()
@@ -119,6 +122,16 @@ class EthercatServo(Servo):  # type: ignore
             subnode, ipb_address, dtype, size
         )
         return mapped_address
+
+    def _check_working_counter(self) -> None:
+        """Check if the slave responds with a correct working counter.
+
+        Raises:
+            ILIOError: If the received working counter is incorrect.
+
+        """
+        if self.__slave.mbx_receive() == self.WRONG_WORKING_COUNTER:
+            raise ILIOError("Wrong working counter")
 
     @property
     def slave(self) -> CdefSlave:
