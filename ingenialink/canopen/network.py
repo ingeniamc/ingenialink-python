@@ -129,13 +129,14 @@ class NetStatusListener(Thread):
         self.__stop = False
 
     def run(self):
-        timestamps = {
-            node_id: node.nmt.timestamp
-            for node_id, node in self.__network._connection.nodes.items()
-        }
+        timestamps = {}
         while not self.__stop:
-            for node_id, node in self.__network._connection.nodes.items():
+            for node_id, node in list(self.__network._connection.nodes.items()):
+                sleep(1.5)
                 current_timestamp = node.nmt.timestamp
+                if node_id not in timestamps:
+                    timestamps[node_id] = current_timestamp
+                    continue
                 is_alive = current_timestamp != timestamps[node_id]
                 servo_state = self.__network._get_servo_state(node_id)
                 if is_alive:
@@ -148,7 +149,6 @@ class NetStatusListener(Thread):
                 else:
                     self.__network._notify_status(node_id, NET_DEV_EVT.REMOVED)
                     self.__network._set_servo_state(node_id, NET_STATE.DISCONNECTED)
-                sleep(1.5)
 
     def stop(self):
         self.__stop = True
