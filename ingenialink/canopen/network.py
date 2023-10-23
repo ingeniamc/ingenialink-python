@@ -1,4 +1,7 @@
 import contextlib
+import re
+import os
+import tempfile
 from enum import Enum
 from time import sleep
 from threading import Thread
@@ -11,11 +14,8 @@ from can import CanError
 from ..network import NET_PROT, NET_STATE, NET_DEV_EVT, Network
 from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT
 
-import re
-import os
 import canopen
 from canopen import Network as NetworkLib
-import tempfile
 import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
@@ -119,8 +119,8 @@ class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
     Args:
-        network (CanopenNetwork): Network instance of the CANopen communication.
-        node (canopen.RemoteNode): Identifier for the targeted node ID.
+        network: Network instance of the CANopen communication.
+        node: Identifier for the targeted node ID.
 
     """
 
@@ -157,9 +157,9 @@ class CanopenNetwork(Network):
     """Network of the CANopen communication.
 
     Args:
-        device (CAN_DEVICE): Targeted device to connect.
-        channel (int): Targeted channel number of the transceiver.
-        baudrate (CAN_BAUDRATE): Baudrate to communicate through.
+        device: Targeted device to connect.
+        channel: Targeted channel number of the transceiver.
+        baudrate: Baudrate to communicate through.
 
     """
 
@@ -191,7 +191,7 @@ class CanopenNetwork(Network):
         """Scans for nodes in the network.
 
         Returns:
-            list: Containing all the detected node IDs.
+            Containing all the detected node IDs.
 
         """
         is_connection_created = False
@@ -237,11 +237,11 @@ class CanopenNetwork(Network):
         """Connects to a drive through a given target node ID.
 
         Args:
-            target (int): Targeted node ID to be connected.
-            dictionary (str): Path to the dictionary file.
-            servo_status_listener (bool): Toggle the listener of the servo for
+            target: Targeted node ID to be connected.
+            dictionary: Path to the dictionary file.
+            servo_status_listener: Toggle the listener of the servo for
                 its status, errors, faults, etc.
-            net_status_listener (bool): Toggle the listener of the network
+            net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
 
         """
@@ -282,7 +282,7 @@ class CanopenNetwork(Network):
         """Disconnects the slave from the network.
 
         Args:
-            servo (CanopenServo): Instance of the servo connected.
+            servo: Instance of the servo connected.
 
         """
         self.stop_status_listener(servo)
@@ -747,15 +747,12 @@ class CanopenNetwork(Network):
             changes will not be applied.
 
         Args:
-            target_node (int): Node ID of the targeted device.
-            new_target_baudrate (CAN_BAUDRATE): New baudrate for the targeted device.
-            vendor_id (int): Vendor ID of the targeted device.
-            product_code (int): Product code of the targeted device.
-            rev_number (int): Revision number of the targeted device.
-            serial_number (int): Serial number of the targeted device.
-
-        Returns:
-            bool: Indicates if the operation was successful.
+            target_node: Node ID of the targeted device.
+            new_target_baudrate: New baudrate for the targeted device.
+            vendor_id: Vendor ID of the targeted device.
+            product_code: Product code of the targeted device.
+            rev_number: Revision number of the targeted device.
+            serial_number: Serial number of the targeted device.
 
         """
         if self._connection is None:
@@ -796,15 +793,12 @@ class CanopenNetwork(Network):
             to make the changes visible and update all the internal data.
 
         Args:
-            target_node (int): Node ID of the targeted device.
-            new_target_node (int): New node ID for the targeted device.
-            vendor_id (int): Vendor ID of the targeted device.
-            product_code (int): Product code of the targeted device.
-            rev_number (int): Revision number of the targeted device.
-            serial_number (int): Serial number of the targeted device.
-
-        Returns:
-            bool: Indicates if the operation was successful.
+            target_node: Node ID of the targeted device.
+            new_target_node: New node ID for the targeted device.
+            vendor_id: Vendor ID of the targeted device.
+            product_code: Product code of the targeted device.
+            rev_number: Revision number of the targeted device.
+            serial_number: Serial number of the targeted device.
 
         """
         if self._connection is None:
@@ -843,7 +837,7 @@ class CanopenNetwork(Network):
         """Resets the connection and starts node guarding for the connection nodes.
 
         Args:
-            target_node (int): Node ID of the targeted device.
+            target_node: Node ID of the targeted device.
 
         """
         if self._connection is None:
@@ -866,7 +860,7 @@ class CanopenNetwork(Network):
         """Subscribe to network state changes.
 
         Args:
-            callback (function): Callback function.
+            callback: Callback function.
 
         """
         if callback in self.__observers_net_state:
@@ -878,7 +872,7 @@ class CanopenNetwork(Network):
         """Unsubscribe from network state changes.
 
         Args:
-            callback (function): Callback function.
+            callback: Callback function.
 
         """
         if callback not in self.__observers_net_state:
@@ -926,32 +920,32 @@ class CanopenNetwork(Network):
 
     @property
     def device(self) -> str:
-        """str: Current device of the network."""
+        """Current device of the network."""
         return self.__device
 
     @property
     def channel(self) -> Union[int, str]:
-        """int, str: Current channel of the network."""
+        """Current channel of the network."""
         return self.__channel
 
     @property
     def baudrate(self) -> int:
-        """int: Current baudrate of the network."""
+        """Current baudrate of the network."""
         return self.__baudrate
 
     @property
     def network(self) -> canopen.Network:
-        """canopen.Network: Returns the instance of the CANopen Network."""
+        """Returns the instance of the CANopen Network."""
         return self._connection
 
     @property
     def protocol(self) -> NET_PROT:
-        """NET_PROT: Obtain network protocol."""
+        """Obtain network protocol."""
         return NET_PROT.CAN
 
     @property
     def status(self) -> NET_STATE:
-        """NET_STATE: Network state."""
+        """Network state."""
         return self.__net_state
 
     @status.setter

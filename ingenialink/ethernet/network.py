@@ -33,7 +33,7 @@ class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
     Args:
-        network (EthernetNetwork): Network instance of the Ethernet communication.
+        network: Network instance of the Ethernet communication.
 
     """
 
@@ -92,10 +92,10 @@ class EthernetNetwork(Network):
             become obsolete.
 
         Args:
-            fw_file (str): Path to the firmware file to be loaded.
-            target (str): IP of the target slave.
-            ftp_user (str): FTP user to connect with.
-            ftp_pwd (str): FTP password for the given user.
+            fw_file: Path to the firmware file to be loaded.
+            target: IP of the target slave.
+            ftp_user: FTP user to connect with.
+            ftp_pwd: FTP password for the given user.
 
         Raises:
             ILError: If the loading firmware process fails.
@@ -154,7 +154,7 @@ class EthernetNetwork(Network):
             moco_file: Path to the firmware file.
 
         Returns:
-            int: Result code.
+            Result code.
 
         Raises:
             ILFirmwareLoadError: The firmware load process fails
@@ -210,13 +210,13 @@ class EthernetNetwork(Network):
         """Connects to a slave through the given network settings.
 
         Args:
-            target (str): IP of the target slave.
-            dictionary (str): Path to the target dictionary file.
-            port (int): Port to connect to the slave.
-            connection_timeout (float): Time in seconds of the connection timeout.
-            servo_status_listener (bool): Toggle the listener of the servo for
+            target: IP of the target slave.
+            dictionary: Path to the target dictionary file.
+            port: Port to connect to the slave.
+            connection_timeout: Time in seconds of the connection timeout.
+            servo_status_listener: Toggle the listener of the servo for
                 its status, errors, faults, etc.
-            net_status_listener (bool): Toggle the listener of the network
+            net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
 
         Returns:
@@ -246,7 +246,7 @@ class EthernetNetwork(Network):
         """Disconnects the slave from the network.
 
         Args:
-            servo (EthernetServo): Instance of the servo connected.
+            servo: Instance of the servo connected.
 
         """
         self.servos.remove(servo)
@@ -285,8 +285,8 @@ class EthernetNetwork(Network):
         """Subscribe to network state changes.
 
         Args:
-            ip (str): IP of the drive to subscribe.
-            callback (function): Callback function.
+            ip: IP of the drive to subscribe.
+            callback: Callback function.
 
         """
         if callback in self.__observers_net_state[ip]:
@@ -298,8 +298,8 @@ class EthernetNetwork(Network):
         """Unsubscribe from network state changes.
 
         Args:
-            ip (str): IP of the drive to unsubscribe.
-            callback (function): Callback function.
+            ip: IP of the drive to unsubscribe.
+            callback: Callback function.
 
         """
         if callback not in self.__observers_net_state[ip]:
@@ -315,5 +315,5 @@ class EthernetNetwork(Network):
 
     @property
     def protocol(self) -> NET_PROT:
-        """NET_PROT: Obtain network protocol."""
+        """Obtain network protocol."""
         return NET_PROT.ETH

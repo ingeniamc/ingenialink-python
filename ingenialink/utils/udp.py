@@ -36,7 +36,7 @@ class UDP:
         """Sends a message through the established socket.
 
         Args:
-              frame (bytes): Frame to be sent.
+            frame: Frame to be sent.
         """
         self.socket.sendto(frame, (self.ip, self.port))
         self.check_ack()
@@ -45,7 +45,7 @@ class UDP:
         """Reads a message from the socket.
 
         Returns:
-            bytes: Data read from the buffer.
+            Data read from the buffer.
         """
         data, _ = self.socket.recvfrom(self.rcv_buffer_size)
         return data
@@ -54,7 +54,7 @@ class UDP:
         """Checks if the received message has a valid ACK.
 
         Returns:
-            int: Command code of the message.
+            Command code of the message.
         """
         rcv = self.read()
         ret_cmd = self.unmsg(rcv)
@@ -72,10 +72,10 @@ class UDP:
         Data [8 bytes]) and CRC [2 bytes] is 14 bytes long
 
         Args:
-            in_frame (bytes): Input frame.
+            in_frame: Input frame.
 
         Returns:
-            int: Command from the given message.
+            Command from the given message.
         """
         header = in_frame[2:4]
         cmd = struct.unpack("<H", header)[0] >> 1
@@ -94,13 +94,13 @@ class UDP:
         """Creates a raw message with the proper format.
 
         Args:
-            node (int): Node ID.
-            subnode (int): Subnode to be targeted.
-            cmd (int): Command of the message.
-            data (bytes): Data of the message.
-            size (int): Size of the message.
+            node: Node ID.
+            subnode: Subnode to be targeted.
+            cmd: Command of the message.
+            data: Data of the message.
+            size: Size of the message.
         Returns:
-            bytes: Message frame.
+            Message frame.
         """
         node_head = (node << 4) | (subnode & 0xF)
         node_head_bytes = struct.pack("<H", node_head)
@@ -130,10 +130,10 @@ class UDP:
         """Creates a frame message and sends it.
 
         Args:
-            node (int): Node ID.
-            subnode (int): Subnode to be targeted.
-            cmd (int): Command of the message.
-            data (bytes): Data of the message.
+            node: Node ID.
+            subnode: Subnode to be targeted.
+            cmd: Command of the message.
+            data: Data of the message.
         """
         if len(data) <= 8:
             data = data + bytes([0] * (8 - len(data)))

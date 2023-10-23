@@ -15,8 +15,8 @@ class PollerTimer:
     """Custom timer for the Poller.
 
     Args:
-        time (int): Timeout to use for the timer.
-        cb (function): Callback.
+        time: Timeout to use for the timer.
+        cb: Callback.
 
     """
 
@@ -46,8 +46,8 @@ class Poller:
     """Register poller for CANOpen/Ethernet communications.
 
     Args:
-        servo (CanopenServo, EthernetServo): Servo.
-        num_channels (int): Number of channels.
+        servo: Servo.
+        num_channels: Number of channels.
 
     """
 
@@ -95,11 +95,11 @@ class Poller:
         """Configure data.
 
         Args:
-            t_s (int, float): Polling period (s).
-            sz (int): Buffer size.
+            t_s: Polling period (s).
+            sz: Buffer size.
 
         Returns:
-            int: Status code.
+            Status code.
 
         Raises:
             ILStateError: The poller is already running.
@@ -125,12 +125,12 @@ class Poller:
         """Configure a poller channel mapping.
 
         Args:
-            channel (int): Channel to be configured.
-            reg (Register): Register to associate to the given channel.
-            subnode (int): Subnode for the register.
+            channel: Channel to be configured.
+            reg: Register to associate to the given channel.
+            subnode: Subnode for the register.
 
         Returns:
-            int: Status code.
+            Status code.
 
         Raises:
             ILStateError: The poller is already running.
@@ -161,14 +161,14 @@ class Poller:
         """Disable a channel.
 
         Args:
-            channel (int): Channel to be disabled.
+            channel: Channel to be disabled.
 
         Raises:
             ILStateError: The poller is already running.
             ILValueError: Channel out of range.
 
         Returns:
-            int: Status code.
+            Status code.
 
         """
 
@@ -187,7 +187,7 @@ class Poller:
         """Disable all channels.
 
         Returns:
-            int: Status code.
+            Status code.
 
         """
         for channel in range(self.num_channels):
@@ -232,8 +232,7 @@ class Poller:
 
     @property
     def data(self) -> Tuple[List[float], List[List[float]], bool]:
-        """tuple (list, list, bool): Time vector, array of data vectors and a
-        flag indicating if data was lost."""
+        """Time vector, array of data vectors and a flag indicating if data was lost."""
         t = list(self.__acq_time[0 : self.__samples_count])
         d = []
 
@@ -259,7 +258,7 @@ class Poller:
 
     @property
     def servo(self) -> Servo:
-        """Servo: Servo instance to be used."""
+        """Servo instance to be used."""
         return self.__servo
 
     @servo.setter
@@ -268,7 +267,7 @@ class Poller:
 
     @property
     def num_channels(self) -> int:
-        """int: Number of channels in the poller."""
+        """Number of channels in the poller."""
         return self.__num_channels
 
     @num_channels.setter

@@ -24,7 +24,7 @@ class VirtualMonDistBase:
     """Base class to implement VirtualMonitoring and VirtualDisturbance.
 
     Args:
-        drive (VirtualDrive): Virtual drive instance.
+        drive: Virtual drive instance.
 
     """
 
@@ -65,7 +65,7 @@ class VirtualMonDistBase:
 
     @property
     def divider(self) -> int:
-        """int: Frequency divider."""
+        """Frequency divider."""
         value = self.drive.get_value_by_id(0, self.FREQ_DIVIDER_REG)
         if isinstance(value, int):
             return value
@@ -74,7 +74,7 @@ class VirtualMonDistBase:
 
     @property
     def buffer_size(self) -> int:
-        """int: Monitoring buffer size."""
+        """Monitoring buffer size."""
         value = self.drive.get_value_by_id(0, self.BUFFER_SIZE_REG)
         if isinstance(value, int):
             return value
@@ -83,7 +83,7 @@ class VirtualMonDistBase:
 
     @property
     def bytes_per_block(self) -> int:
-        """int: Monitoring bytes per sample."""
+        """Monitoring bytes per sample."""
         value = self.drive.get_value_by_id(0, self.BYTES_PER_BLOCK_REG)
         if isinstance(value, int):
             return value
@@ -96,7 +96,7 @@ class VirtualMonDistBase:
 
     @property
     def number_mapped_registers(self) -> int:
-        """int: Number of mapped registers."""
+        """Number of mapped registers."""
         value = self.drive.get_value_by_id(0, self.NUMBER_MAP_REGS)
         if isinstance(value, int):
             return value
@@ -109,7 +109,7 @@ class VirtualMonDistBase:
 
     @property
     def available_bytes(self) -> int:
-        """int: Actual number of monitoring bytes."""
+        """Actual number of monitoring bytes."""
         value = self.drive.get_value_by_id(0, self.AVAILABLE_BYTES_REG)
         if isinstance(value, int):
             return value
@@ -124,13 +124,13 @@ class VirtualMonDistBase:
         """Decodes the register with the information of a mapped register.
 
         Args:
-            channel (int): Channel of the register to be decoded.
+            channel: Channel of the register to be decoded.
 
         Returns:
-            int: Register subnode
-            int: Register address
-            int: Register dtype index
-            int: Channel size
+            Register subnode
+            Register address
+            Register dtype index
+            Channel size
 
         """
         register_id = self.MAP_REG_CFG.format(channel)
@@ -164,7 +164,7 @@ class VirtualMonitoring(VirtualMonDistBase):
     """Emulates monitoring at the VirtualDrive.
 
     Args:
-        drive (VirtualDrive): Virtual drive instance.
+        drive: Virtual drive instance.
 
     """
 
@@ -236,7 +236,7 @@ class VirtualMonitoring(VirtualMonDistBase):
 
     @property
     def trigger_type(self) -> int:
-        """int: Trigger type Auto(0), Force (1) or Rising or Failing (2)."""
+        """Trigger type Auto(0), Force (1) or Rising or Failing (2)."""
         value = self.drive.get_value_by_id(0, self.TRIGGER_TYPE_REG)
         if isinstance(value, int):
             return value
@@ -248,7 +248,7 @@ class VirtualDisturbance(VirtualMonDistBase):
     """Emulates disturbance at the VirtualDrive.
 
     Args:
-        drive (VirtualDrive): Virtual drive instance.
+        drive: Virtual drive instance.
 
     """
 
@@ -272,7 +272,7 @@ class VirtualDisturbance(VirtualMonDistBase):
         """Append received disturbance data until the buffer is full.
 
         Args:
-            data (bytes): Received data.
+            data: Received data.
         """
         if len(self.channels_data) == 0:
             super().map_registers()
@@ -297,7 +297,7 @@ class VirtualDisturbance(VirtualMonDistBase):
 
     @property
     def buffer_size_bytes(self) -> int:
-        """int: Buffer size in bytes."""
+        """Buffer size in bytes."""
         buffer_size_bytes = 0
         n_samples = self.buffer_size
         for channel in range(self.number_mapped_registers):
@@ -309,9 +309,9 @@ class VirtualDrive(Thread):
     """Emulates a drive by creating a UDP server that sends and receives MCB messages.
 
     Args:
-        ip (str): Server IP address.
-        port (int): Server port number.
-        dictionary_path (str): Path to the dictionary.
+        ip: Server IP address.
+        port: Server port number.
+        dictionary_path: Path to the dictionary.
 
     """
 
@@ -418,8 +418,8 @@ class VirtualDrive(Thread):
         """Send a message and update log.
 
         Args:
-            response (bytes): Message to be sent.
-            address (tuple): IP address and port.
+            response: Message to be sent.
+            address: IP address and port.
         """
         time.sleep(0.01)  # Emulate latency of 10 ms
         self.socket.sendto(response, address)
@@ -429,10 +429,10 @@ class VirtualDrive(Thread):
         """Creates a response for monitoring data.
 
         Args:
-            data (bytes): Data to be sent.
+            data: Data to be sent.
 
         Returns:
-            bytes: MCB frame.
+            MCB frame.
         """
         sent_cmd = self.ACK_CMD
         reg_add = self.id_to_address(0, "MON_DATA")
@@ -447,9 +447,9 @@ class VirtualDrive(Thread):
         """Updates log.
 
         Args:
-            ip_port (tuple): IP address and port.
-            message (bytes): Received or sent message.
-            msg_type (MSG_TYPE): Sent or Received.
+            ip_port: IP address and port.
+            message: Received or sent message.
+            msg_type: Sent or Received.
         """
         self.__logger.append(
             {
@@ -462,7 +462,7 @@ class VirtualDrive(Thread):
 
     @property
     def log(self) -> List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]]:
-        """dict: Dictionary containing log information."""
+        """Dictionary containing log information."""
         return self.__logger
 
     def clean_log(self) -> None:
@@ -473,9 +473,9 @@ class VirtualDrive(Thread):
         """Decodes received messages and run specific methods if needed.
 
         Args:
-            reg_add (int): Register address.
-            subnode (int): Subnode.
-            data (bytes): Received data.
+            reg_add: Register address.
+            subnode: Subnode.
+            data: Received data.
         """
         register = self.get_register(subnode, reg_add)
         reg_id = register.identifier
@@ -502,11 +502,11 @@ class VirtualDrive(Thread):
         """Converts a register address into its ID.
 
         Args:
-            subnode (int): Subnode.
-            address (int): Register address.
+            subnode: Subnode.
+            address: Register address.
 
         Returns:
-            str: Register ID.
+            Register ID.
         """
         return self.__reg_address_to_id[subnode][address]
 
@@ -514,11 +514,11 @@ class VirtualDrive(Thread):
         """Converts a register address into an ID.
 
         Args:
-            subnode (int): Subnode.
-            id (str): Register ID.
+            subnode: Subnode.
+            id: Register ID.
 
         Returns:
-            int: Register address.
+            Register address.
         """
         register = self.__dictionary.registers(subnode)[id]
         return register.address
@@ -527,11 +527,11 @@ class VirtualDrive(Thread):
         """Returns a register value by its ID.
 
         Args:
-            subnode (int): Subnode.
-            id (str): Register ID.
+            subnode: Subnode.
+            id: Register ID.
 
         Returns:
-            (float, int, str): Register value.
+            Register value.
         """
         register = self.__dictionary.registers(subnode)[id]
         value: Union[int, float, str]
@@ -555,9 +555,9 @@ class VirtualDrive(Thread):
         """Set a register value by its ID.
 
         Args:
-            subnode (int): Subnode.
-            id (str): Register ID.
-            value (int, float, str): Value to be set.
+            subnode: Subnode.
+            id: Register ID.
+            value: Value to be set.
         """
         self.__dictionary.registers(subnode)[id].storage = value
 
@@ -567,12 +567,12 @@ class VirtualDrive(Thread):
         """Returns a register by its address or ID.
 
         Args:
-            subnode (int): Subnode.
-            address (int): Register address. Default to None.
-            id (str): Register ID. Default to None.
+            subnode: Subnode.
+            address: Register address. Default to None.
+            id: Register ID. Default to None.
 
         Returns:
-            EthernetRegister: Register instance.
+            Register instance.
 
         Raises:
             ValueError: If both address and id are None.

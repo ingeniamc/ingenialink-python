@@ -128,42 +128,42 @@ class Register(ABC):
 
     @property
     def dtype(self) -> REG_DTYPE:
-        """REG_DTYPE: Data type of the register."""
+        """Data type of the register."""
         return REG_DTYPE(self._dtype)
 
     @property
     def access(self) -> REG_ACCESS:
-        """REG_ACCESS: Access type of the register."""
+        """Access type of the register."""
         return REG_ACCESS(self._access)
 
     @property
     def identifier(self) -> Optional[str]:
-        """str: Register identifier."""
+        """Register identifier."""
         return self._identifier
 
     @property
     def units(self) -> Optional[str]:
-        """str: Units of the register."""
+        """Units of the register."""
         return self._units
 
     @property
     def cyclic(self) -> str:
-        """str: Defines if the register is cyclic."""
+        """Defines if the register is cyclic."""
         return self._cyclic
 
     @property
     def phy(self) -> REG_PHY:
-        """REG_PHY: Physical units of the register."""
+        """Physical units of the register."""
         return REG_PHY(self._phy)
 
     @property
     def subnode(self) -> int:
-        """int: Target subnode of the register."""
+        """Target subnode of the register."""
         return self._subnode
 
     @property
     def storage(self) -> Any:
-        """any: Defines if the register needs to be stored."""
+        """Defines if the register needs to be stored."""
         if not self.storage_valid:
             return None
 
@@ -184,17 +184,17 @@ class Register(ABC):
 
     @storage.setter
     def storage(self, value: Any) -> None:
-        """any: Defines if the register needs to be stored."""
+        """Defines if the register needs to be stored."""
         self._storage = value
 
     @property
     def storage_valid(self) -> bool:
-        """bool: Defines if the register storage is valid."""
+        """Defines if the register storage is valid."""
         return self._storage_valid
 
     @storage_valid.setter
     def storage_valid(self, value: bool) -> None:
-        """bool: Defines if the register storage is valid."""
+        """Defines if the register storage is valid."""
         self._storage_valid = value
 
     @property
@@ -208,35 +208,35 @@ class Register(ABC):
 
     @property
     def labels(self) -> Dict[str, str]:
-        """dict: Containing the labels of the register."""
+        """Containing the labels of the register."""
         return self._labels
 
     @property
     def enums(self) -> List[Dict[str, Union[str, int]]]:
-        """dict: Containing all the enums for the register."""
+        """Containing all the enums for the register."""
         return self._enums
 
     @property
     def enums_count(self) -> int:
-        """int: The number of the enums in the register."""
+        """The number of the enums in the register."""
         return self._enums_count
 
     @property
     def cat_id(self) -> Optional[str]:
-        """str: Category ID"""
+        """Category ID"""
         return self._cat_id
 
     @property
     def scat_id(self) -> Optional[str]:
-        """str: Sub-Category ID"""
+        """Sub-Category ID"""
         return self._scat_id
 
     @property
     def internal_use(self) -> int:
-        """int: Defines if the register is only for internal uses."""
+        """Defines if the register is only for internal uses."""
         return self._internal_use
 
     @property
     def address_type(self) -> Optional[REG_ADDRESS_TYPE]:
-        """REG_ADDRESS_TYPE: Address type of the register."""
+        """Address type of the register."""
         return REG_ADDRESS_TYPE(self._address_type)

@@ -39,11 +39,11 @@ class MCB:
         """Creates a command message following the MCB protocol.
 
         Args:
-            node (int): Reserved bits used to identify the destination device.
-            subnode (int): Subsystem bits used to identify the destination device.
-            cmd (int): Command to lead the message.
-            data (bytes): Data to be added to the message.
-            size (int): Size of data.
+            node: Reserved bits used to identify the destination device.
+            subnode: Subsystem bits used to identify the destination device.
+            cmd: Command to lead the message.
+            data: Data to be added to the message.
+            size: Size of data.
 
         Returns:
             bin: MCB command message.
@@ -80,11 +80,11 @@ class MCB:
         """Creates and adds a MCB message to a given file.
 
         Args:
-            node (int): Reserved bits used to identify the destination device.
-            subnode (int): Subsystem bits used to identify the destination device.
-            cmd (int): Command to lead the message.
-            data (bytes): Data to be added to the message.
-            output (file): File object to store the message.
+            node: Reserved bits used to identify the destination device.
+            subnode: Subsystem bits used to identify the destination device.
+            cmd: Command to lead the message.
+            data: Data to be added to the message.
+            output: File object to store the message.
         """
         if len(data) <= self.EXTENDED_MESSAGE_SIZE:
             data = data + bytes([0] * (self.EXTENDED_MESSAGE_SIZE - len(data)))
@@ -98,13 +98,13 @@ class MCB:
         """Build an MCB frame.
 
         Args:
-            cmd (int): Read/write command.
-            subnode (int): Target axis of the drive.
-            address (int): Register address to be read/written.
-            data (bytes): Data to be written to the register.
+            cmd: Read/write command.
+            subnode: Target axis of the drive.
+            address: Register address to be read/written.
+            data: Data to be written to the register.
 
         Returns:
-            bytes: MCB frame.
+            MCB frame.
         """
         if data is None:
             data = b"\x00" * cls.MCB_DATA_SIZE
@@ -131,9 +131,9 @@ class MCB:
         """Read an MCB frame and return its data.
 
         Args:
-            expected_address (int): Address of the expected register to be
+            expected_address: Address of the expected register to be
             read.
-            frame (bytes): MCB frame.
+            frame: MCB frame.
 
         Raises:
             ILWrongCRCError: If the received CRC code does not match
@@ -143,7 +143,7 @@ class MCB:
             the expected address.
 
         Returns:
-            bytes: data contained in frame.
+            data contained in frame.
         """
         recv_add, _, cmd, data = cls.read_mcb_frame(frame)
 
@@ -164,13 +164,13 @@ class MCB:
         """Read an MCB frame and return its address, subnode, data and command.
 
         Args:
-            frame (bytes): MCB frame.
+            frame: MCB frame.
 
         Returns:
-            int: register address
-            int: subnode
-            int: command
-            bytes: data contained in frame.
+            register address
+            subnode
+            command
+            data contained in frame.
 
         Raises:
             ILWrongCRCError: If the received CRC code does not match

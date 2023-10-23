@@ -18,7 +18,7 @@ class EthercatNetwork:
     """Network for all EtherCAT communications.
 
     Args:
-        interface_name (str): Interface name to be targeted.
+        interface_name: Interface name to be targeted.
 
     """
 
@@ -34,17 +34,17 @@ class EthercatNetwork:
 
     def __init__(self, interface_name: str) -> None:
         self.interface_name = interface_name
-        """str: Interface name used in the network settings."""
+        """Interface name used in the network settings."""
         self.servos: List[int] = []
-        """list: List of the connected servos in the network."""
+        """List of the connected servos in the network."""
         self._ecat_master = None
 
     def load_firmware(self, fw_file: str, slave_id: int = 1) -> None:
         """Loads a given firmware file to a target slave.
 
         Args:
-            fw_file (str): Path to the firmware file.
-            slave_id (int): Slave ID to which load the firmware file.
+            fw_file: Path to the firmware file.
+            slave_id: Slave ID to which load the firmware file.
 
         Raises:
             FileNotFoundError: If the firmware file cannot be found.
@@ -82,5 +82,5 @@ class EthercatNetwork:
 
     @property
     def protocol(self) -> NET_PROT:
-        """NET_PROT: Obtain network protocol."""
+        """Obtain network protocol."""
         return NET_PROT.ECAT

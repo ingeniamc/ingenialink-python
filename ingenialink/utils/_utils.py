@@ -63,10 +63,10 @@ def to_ms(s: Union[int, float]) -> int:
     """Convert from seconds to milliseconds.
 
     Args:
-        s (float, int): Value in seconds.
+        s: Value in seconds.
 
     Returns:
-        int: Value in milliseconds.
+        Value in milliseconds.
     """
     return int(s * 1e3)
 
@@ -75,8 +75,8 @@ def remove_xml_subelement(element: ET.Element, subelement: ET.Element) -> None:
     """Removes a subelement from the given element the element contains the subelement
 
     Args:
-        element (Element): Element to be extracted from.
-        subelement (Element): Element to be extracted.
+        element: Element to be extracted from.
+        subelement: Element to be extracted.
     """
     if subelement is not None and subelement in element:
         element.remove(subelement)
@@ -86,8 +86,8 @@ def pop_element(dictionary: Dict[str, Any], element: str) -> None:
     """Pops an element from a dictionary only if it is contained in it
 
     Args:
-        dictionary (dict): Dictionary containing all the elements
-        element (str): Element to be popped from the dictionary.
+        dictionary: Dictionary containing all the elements
+        element: Element to be popped from the dictionary.
     """
     if element in dictionary:
         dictionary.pop(element)
@@ -98,7 +98,7 @@ def cleanup_register(register: ET.Element) -> None:
     unnecessary fields for a configuration file
 
     Args:
-        register (Register): Register to be cleaned.
+        register: Register to be cleaned.
     """
     labels = register.find("./Labels")
     range = register.find("./Range")
@@ -130,7 +130,7 @@ def get_drive_identification(
         subnode: subnode to be targeted.
 
     Returns:
-        int, int: Product code and revision number of the targeted subnode.
+        int, Product code and revision number of the targeted subnode.
     """
     prod_code = None
     re_number = None
@@ -151,7 +151,7 @@ def convert_ip_to_int(ip: str) -> int:
     """Converts a string type IP to its integer value.
 
     Args:
-        ip (str): IP to be converted.
+        ip: IP to be converted.
 
     """
     split_ip = ip.split(".")
@@ -166,7 +166,7 @@ def convert_int_to_ip(int_ip: int) -> str:
     """Converts an integer type IP to its string form.
 
     Args:
-        int_ip (int): IP to be converted.
+        int_ip: IP to be converted.
 
     """
     drive_ip1 = (int_ip >> 24) & 0x000000FF
@@ -230,7 +230,7 @@ def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: REG_DTYPE
     """Convert data in dtype to bytes.
     Args:
         data: Data to convert.
-        dtype (REG_DTYPE): Data type.
+        dtype: Data type.
     """
     if dtype == REG_DTYPE.DOMAIN:
         if not isinstance(data, bytes):

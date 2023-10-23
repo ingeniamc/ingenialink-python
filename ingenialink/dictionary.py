@@ -23,7 +23,7 @@ class DictionaryCategories:
     """Contains all categories from a Dictionary.
 
     Args:
-        list_xdf_categories (list): List of Elements from xdf file
+        list_xdf_categories: List of Elements from xdf file
 
     """
 
@@ -48,17 +48,17 @@ class DictionaryCategories:
 
     @property
     def category_ids(self) -> List[str]:
-        """list: Category IDs."""
+        """Category IDs."""
         return self._cat_ids
 
     def labels(self, cat_id: str) -> Dict[str, str]:
         """Obtain labels for a certain category ID.
 
         Args:
-        cat_id (str):  Category ID
+        cat_id:  Category ID
 
         Returns:
-            dict: Labels dictionary.
+            Labels dictionary.
 
         """
         return self._categories[cat_id]
@@ -68,7 +68,7 @@ class DictionaryErrors:
     """Errors for the dictionary.
 
     Args:
-        list_xdf_errors (list):  List of Elements from xdf file
+        list_xdf_errors:  List of Elements from xdf file
     """
 
     def __init__(self, list_xdf_errors: List[ET.Element]) -> None:
@@ -95,7 +95,7 @@ class DictionaryErrors:
         """Get the errors dictionary.
 
         Returns:
-            dict: Errors dictionary.
+            Errors dictionary.
         """
         return self._errors
 
@@ -104,7 +104,7 @@ class Dictionary(ABC):
     """Ingenia dictionary Abstract Base Class.
 
     Args:
-        dictionary_path (str): Dictionary file path.
+        dictionary_path: Dictionary file path.
 
     Raises:
         ILCreationError: If the dictionary could not be created.
@@ -163,27 +163,27 @@ class Dictionary(ABC):
 
     def __init__(self, dictionary_path: str) -> None:
         self.path = dictionary_path
-        """str: Path of the dictionary."""
+        """Path of the dictionary."""
         self.version = "1"
-        """str: Version of the dictionary."""
+        """Version of the dictionary."""
         self.firmware_version: Optional[str] = None
-        """str: Firmware version declared in the dictionary."""
+        """Firmware version declared in the dictionary."""
         self.product_code: Optional[int] = None
-        """int: Product code declared in the dictionary."""
+        """Product code declared in the dictionary."""
         self.part_number: Optional[str] = None
-        """str: Part number declared in the dictionary."""
+        """Part number declared in the dictionary."""
         self.revision_number: Optional[int] = None
-        """int: Revision number declared in the dictionary."""
+        """Revision number declared in the dictionary."""
         self.interface: Optional[str] = None
-        """str: Interface declared in the dictionary."""
+        """Interface declared in the dictionary."""
         self.subnodes: int = SINGLE_AXIS_MINIMUM_SUBNODES
-        """int: Number of subnodes in the dictionary."""
+        """Number of subnodes in the dictionary."""
         self.categories: Optional[DictionaryCategories] = None
-        """DictionaryCategories: Instance of all the categories in the dictionary."""
+        """Instance of all the categories in the dictionary."""
         self.errors: Optional[DictionaryErrors] = None
-        """DictionaryErrors: Instance of all the errors in the dictionary."""
+        """Instance of all the errors in the dictionary."""
         self._registers: List[Dict[str, Register]] = []
-        """list(dict): Instance of all the registers in the dictionary"""
+        """Instance of all the registers in the dictionary"""
 
         self.read_dictionary()
 
@@ -191,10 +191,10 @@ class Dictionary(ABC):
         """Gets the register dictionary to the targeted subnode.
 
         Args:
-            subnode (int): Identifier for the subnode.
+            subnode: Identifier for the subnode.
 
         Returns:
-            dict: Dictionary of all the registers for a subnode.
+            Dictionary of all the registers for a subnode.
 
         """
         return self._registers[subnode]
@@ -264,10 +264,10 @@ class Dictionary(ABC):
         """Reads a register from the dictionary and creates a Register instance.
 
         Args:
-            register (Element): Register instance from the dictionary.
+            register: Register instance from the dictionary.
 
         Returns:
-            Register: The current register which it has been reading
+            The current register which it has been reading
             None: When at least a mandatory attribute is not in a xdf file
 
         Raises:
@@ -375,7 +375,7 @@ class Dictionary(ABC):
         """Adds the current read register into the _registers list
 
         Args:
-            register (Register): the current read register it will be instanced
+            register: the current read register it will be instanced
 
         """
         identifier = register.identifier

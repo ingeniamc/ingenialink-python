@@ -22,9 +22,9 @@ class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
 
     Args:
-        socket (socket):
-        dictionary_path (str): Path to the dictionary.
-        servo_status_listener (bool): Toggle the listener of the servo for
+        socket: Socket.
+        dictionary_path: Path to the dictionary.
+        servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
 
     """
@@ -82,9 +82,9 @@ class EthernetServo(Servo):
             in order for the changes to be properly applied.
 
         Args:
-            ip_address (str): IP Address to be changed.
-            subnet_mask (str): Subnet mask to be changed.
-            gateway (str): Gateway to be changed.
+            ip_address: IP Address to be changed.
+            subnet_mask: Subnet mask to be changed.
+            gateway: Gateway to be changed.
 
         Raises:
             ValueError: If the drive or gateway IP is not a
@@ -129,13 +129,13 @@ class EthernetServo(Servo):
         """Send an MCB frame to the drive.
 
         Args:
-            cmd (int): Read/write command.
-            reg (int): Register address to be read/written.
-            subnode (int): Target axis of the drive.
-            data (bytes): Data to be written to the register.
+            cmd: Read/write command.
+            reg: Register address to be read/written.
+            subnode: Target axis of the drive.
+            data: Data to be written to the register.
 
         Returns:
-            bytes: The response frame.
+            The response frame.
         """
         frame = MCB.build_mcb_frame(cmd, subnode, reg, data)
         self._lock.acquire()

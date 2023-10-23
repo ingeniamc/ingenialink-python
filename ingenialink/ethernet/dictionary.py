@@ -13,7 +13,7 @@ class EthernetDictionary(Dictionary):
     """Contains all registers and information of a Ethernet dictionary.
 
     Args:
-        dictionary_path (str): Path to the Ingenia dictionary.
+        dictionary_path: Path to the Ingenia dictionary.
 
     """
 
@@ -59,10 +59,10 @@ class EthernetDictionary(Dictionary):
         """Gets the register dictionary to the targeted subnode.
 
         Args:
-            subnode (int): Identifier for the subnode.
+            subnode: Identifier for the subnode.
 
         Returns:
-            dict: Dictionary of all the registers for a subnode.
+            Dictionary of all the registers for a subnode.
 
         """
         return self._registers[subnode]

@@ -78,15 +78,15 @@ class CanopenRegister(Register):
 
     @property
     def idx(self) -> int:
-        """int: Register index."""
+        """Register index."""
         return self.__idx
 
     @property
     def subidx(self) -> int:
-        """int: Register subindex."""
+        """Register subindex."""
         return self.__subidx
 
     @property
     def mapped_address(self) -> int:
-        """int: Register mapped address used for monitoring/disturbance."""
+        """Register mapped address used for monitoring/disturbance."""
         return self.idx

@@ -43,7 +43,7 @@ class ServoStatusListener(threading.Thread):
     """Reads the status word to check if the drive is alive.
 
     Args:
-        servo (Servo): Servo instance of the drive.
+        servo: Servo instance of the drive.
 
     """
 
@@ -75,9 +75,9 @@ class Servo:
     """Declaration of a general Servo object.
 
     Args:
-        target (str, int): Target ID of the servo.
-        dictionary_path (str): Path to the dictionary file.
-        servo_status_listener (bool): Toggle the listener of the servo for
+        target: Target ID of the servo.
+        dictionary_path: Path to the dictionary file.
+        servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
 
     Raises:
@@ -131,7 +131,7 @@ class Servo:
         self._info = None
         self.name = DEFAULT_DRIVE_NAME
         self.full_name = f"{prod_name} {self.name} ({self.target})"
-        """str: Obtains the servo full name."""
+        """Obtains the servo full name."""
         self.units_torque = None
         """SERVO_UNITS_TORQUE: Torque units."""
         self.units_pos = None
@@ -183,8 +183,8 @@ class Servo:
         """Write current dictionary storage to the servo drive.
 
         Args:
-            config_file (str): Path to the dictionary.
-            subnode (int): Subnode of the axis.
+            config_file: Path to the dictionary.
+            subnode: Subnode of the axis.
 
         Raises:
             FileNotFoundError: If the configuration file cannot be found.
@@ -227,8 +227,8 @@ class Servo:
         storage.
 
         Args:
-            config_file (str): Destination path for the configuration file.
-            subnode (int): Subnode of the axis.
+            config_file: Destination path for the configuration file.
+            subnode: Subnode of the axis.
 
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
@@ -284,11 +284,11 @@ class Servo:
         """Read a configuration file. Returns the device metadata and the registers list.
 
         Args:
-            config_file (str): Path to the dictionary.
+            config_file: Path to the dictionary.
 
         Returns:
             device:
-            list: Register list.
+            Register list.
 
         Raises:
             FileNotFoundError: If the configuration file cannot be found.
@@ -321,7 +321,7 @@ class Servo:
             in order for the changes to be properly applied.
 
         Args:
-            subnode (int): Subnode of the axis. `None` by default which restores
+            subnode: Subnode of the axis. `None` by default which restores
             all the parameters.
 
         Raises:
@@ -350,7 +350,7 @@ class Servo:
         """Store all the current parameters of the target subnode.
 
         Args:
-            subnode (int): Subnode of the axis. `None` by default which stores
+            subnode: Subnode of the axis. `None` by default which stores
             all the parameters.
 
         Raises:
@@ -396,8 +396,8 @@ class Servo:
         """Enable PDS.
 
          Args:
-             subnode (int): Subnode of the drive.
-             timeout (int): Timeout in milliseconds.
+             subnode: Subnode of the drive.
+             timeout: Timeout in milliseconds.
 
         Raises:
              ILTimeoutError: The servo could not be enabled due to timeout.
@@ -435,8 +435,8 @@ class Servo:
         """Disable PDS.
 
         Args:
-            subnode (int): Subnode of the drive.
-            timeout (int): Timeout in milliseconds.
+            subnode: Subnode of the drive.
+            timeout: Timeout in milliseconds.
 
         Raises:
             ILTimeoutError: The servo could not be disabled due to timeout.
@@ -463,8 +463,8 @@ class Servo:
         """Executes a fault reset on the drive.
 
         Args:
-            subnode (int): Subnode of the drive.
-            timeout (int): Timeout in milliseconds.
+            subnode: Subnode of the drive.
+            timeout: Timeout in milliseconds.
 
         Raises:
             ILTimeoutError: If fault reset spend too much time.
@@ -486,9 +486,9 @@ class Servo:
         """Waits for a status word change.
 
         Args:
-            status_word (int): Status word to wait for.
-            timeout (int): Maximum value to wait for the change.
-            subnode (int): Subnode of the drive.
+            status_word: Status word to wait for.
+            timeout: Maximum value to wait for the change.
+            subnode: Subnode of the drive.
 
         Raises:
             ILTimeoutError: If status word does not change in the given time.
@@ -508,9 +508,9 @@ class Servo:
         """Waits for a state change.
 
         Args:
-            state (SERVO_STATE): Servo state to wait for.
-            timeout (int): Maximum value to wait for the change.
-            subnode (int): Subnode of the drive.
+            state: Servo state to wait for.
+            timeout: Maximum value to wait for the change.
+            subnode: Subnode of the drive.
 
         Raises:
             ILTimeoutError: If state does not change in the given time.
@@ -527,7 +527,7 @@ class Servo:
             actual_state = self.get_state(subnode)
 
     def get_state(self, subnode: int = 1) -> SERVO_STATE:
-        """SERVO_STATE: Current drive state."""
+        """Current drive state."""
         status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
         state = self.status_word_decode(int(status_word))
         return state
@@ -537,10 +537,10 @@ class Servo:
         """Decodes the status word to a known value.
 
         Args:
-            status_word (int): Read value for the status word.
+            status_word: Read value for the status word.
 
         Returns:
-            SERVO_STATE: Status word value.
+            Status word value.
 
         """
         if (status_word & constants.IL_MC_PDS_STA_NRTSO_MSK) == constants.IL_MC_PDS_STA_NRTSO:
@@ -581,11 +581,11 @@ class Servo:
         """Set monitoring mapped register.
 
         Args:
-            channel (int): Identity channel number.
-            address (int): Register address to map.
-            subnode (int): Subnode to be targeted.
-            dtype (int): Register data type.
-            size (int): Size of data in bytes.
+            channel: Identity channel number.
+            address: Register address to map.
+            subnode: Subnode to be targeted.
+            dtype: Register data type.
+            size: Size of data in bytes.
 
         """
         self.__monitoring_data[channel] = []
@@ -602,7 +602,7 @@ class Servo:
         """Obtain the number of monitoring mapped registers.
 
         Returns:
-            int: Actual number of mapped registers.
+            Actual number of mapped registers.
 
         """
         return int(self.read(self.MONITORING_NUMBER_MAPPED_REGISTERS, 0))
@@ -611,7 +611,7 @@ class Servo:
         """Obtain Bytes x Block configured.
 
         Returns:
-            int: Actual number of Bytes x Block configured.
+            Actual number of Bytes x Block configured.
 
         """
         return int(self.read(self.MONITORING_BYTES_PER_BLOCK, subnode=0))
@@ -639,7 +639,7 @@ class Servo:
         """Obtain processed monitoring data.
 
         Returns:
-            array: Actual processed monitoring data.
+            Actual processed monitoring data.
 
         """
         num_available_bytes = self.monitoring_actual_number_bytes()
@@ -660,8 +660,8 @@ class Servo:
         """Obtain processed monitoring data of a channel.
 
         Args:
-            channel (int): Identity channel number.
-            dtype (REG_DTYPE): Data type of the register to map.
+            channel: Identity channel number.
+            dtype: Data type of the register to map.
 
         Note:
             The dtype argument is not necessary for this function, it
@@ -669,7 +669,7 @@ class Servo:
             of monitoring.
 
         Returns:
-            List: Monitoring data.
+            Monitoring data.
 
         """
         return self.__monitoring_data[channel]
@@ -693,11 +693,11 @@ class Servo:
         """Set monitoring mapped register.
 
         Args:
-            channel (int): Identity channel number.
-            address (int): Register address to map.
-            subnode (int): Subnode to be targeted.
-            dtype (int): Register data type.
-            size (int): Size of data in bytes.
+            channel: Identity channel number.
+            address: Register address to map.
+            subnode: Subnode to be targeted.
+            dtype: Register data type.
+            size: Size of data in bytes.
 
         """
         self.__disturbance_size[channel] = size
@@ -713,7 +713,7 @@ class Servo:
         """Obtain the number of disturbance mapped registers.
 
         Returns:
-            int: Actual number of mapped registers.
+            Actual number of mapped registers.
 
         """
         return int(self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, 0))
@@ -732,10 +732,10 @@ class Servo:
         """Subscribe to state changes.
 
         Args:
-            callback (function): Callback function.
+            callback: Callback function.
 
         Returns:
-            int: Assigned slot.
+            Assigned slot.
 
         """
         if callback in self.__observers_servo_state:
@@ -747,7 +747,7 @@ class Servo:
         """Unsubscribe from state changes.
 
         Args:
-            callback (function): Callback function.
+            Callback function.
 
         """
         if callback not in self.__observers_servo_state:
@@ -759,7 +759,7 @@ class Servo:
         """Checks if the servo responds to a reading a register.
 
         Returns:
-            bool: Return code with the result of the read.
+            Return code with the result of the read.
 
         """
         _is_alive = True
@@ -774,7 +774,7 @@ class Servo:
         """Force to reload all dictionary errors.
 
         Args:
-            dictionary (str): Dictionary.
+            Dictionary.
 
         """
         pass
@@ -782,10 +782,10 @@ class Servo:
     def _get_reg(self, reg: Union[str, Register], subnode: int = 1) -> Register:
         """Validates a register.
         Args:
-            reg (Register): Targeted register to validate.
-            subnode (int): Subnode for the register.
+            reg: Targeted register to validate.
+            subnode: Subnode for the register.
         Returns:
-            Register: Instance of the desired register from the dictionary.
+            Instance of the desired register from the dictionary.
         Raises:
             ValueError: If the dictionary is not loaded.
             ILWrongRegisterError: If the register has invalid format.
@@ -808,8 +808,8 @@ class Servo:
         storage parameters.
 
         Args:
-            register (Element): Register element to be updated.
-            subnode (int): Target subnode.
+            register: Register element to be updated.
+            subnode: Target subnode.
 
         Returns:
 
@@ -833,8 +833,8 @@ class Servo:
         """Notify the state to the observers.
 
         Args:
-            state (SERVO_STATE): Current servo state.
-            subnode (int): Subnode of the drive.
+            state: Current servo state.
+            subnode: Subnode of the drive.
 
         """
         for callback in self.__observers_servo_state:
@@ -845,11 +845,11 @@ class Servo:
         reads the MOCO register
 
         Args:
-            register_coco (str): COCO Register ID to be read.
-            register_moco (str): MOCO Register ID to be read.
+            register_coco: COCO Register ID to be read.
+            register_moco: MOCO Register ID to be read.
 
         Returns:
-            (int, str): Read value of the register.
+            Read value of the register.
 
         """
         try:
@@ -865,7 +865,7 @@ class Servo:
         """Get the first available Monitoring Mapped Register slot.
 
         Returns:
-            str: Monitoring Mapped Register ID.
+            Monitoring Mapped Register ID.
 
         """
         if self.monitoring_number_mapped_registers < 10:
@@ -880,10 +880,10 @@ class Servo:
         """Arrange necessary data to map a monitoring/disturbance register.
 
         Args:
-            subnode (int): Subnode to be targeted.
-            address (int): Register address to map.
-            dtype (int): Register data type.
-            size (int): Size of data in bytes.
+            subnode: Subnode to be targeted.
+            address: Register address to map.
+            dtype: Register data type.
+            size: Size of data in bytes.
 
         """
         data_h = address | subnode << 12
@@ -926,7 +926,7 @@ class Servo:
         """Get the first available Disturbance Mapped Register slot.
 
         Returns:
-            str: Disturbance Mapped Register ID.
+            Disturbance Mapped Register ID.
 
         """
         return f"DIST_CFG_REG{self.disturbance_number_mapped_registers}_MAP"
@@ -949,10 +949,10 @@ class Servo:
         """Divide disturbance data into chunks.
 
         Args:
-            channels (int or list of int): Channel identifier.
-            dtypes (REG_DTYPE or list of REG_DTYPE): Data type.
-            data_arr (list or list of list): Data array.
-            max_size (int): Max chunk size in bytes.
+            channels: Channel identifier.
+            dtypes: Data type.
+            data_arr: Data array.
+            max_size: Max chunk size in bytes.
 
         """
         if not isinstance(channels, list):
@@ -983,9 +983,9 @@ class Servo:
         """Writes a data to a target register.
 
         Args:
-            reg (Register, str): Target register to be written.
-            data (int, str, float): Data to be written.
-            subnode (int): Target axis of the drive.
+            reg: Target register to be written.
+            data: Data to be written.
+            subnode: Target axis of the drive.
 
         Raises:
             ILAccessError: Wrong access to the register.
@@ -1006,11 +1006,11 @@ class Servo:
         """Read a register value from servo.
 
         Args:
-            reg (str, Register): Register.
-            subnode (int): Target axis of the drive.
+            reg: Register.
+            subnode: Target axis of the drive.
 
         Returns:
-            int, float or str: Value stored in the register.
+            int, float or Value stored in the register.
 
         Raises:
             ILAccessError: Wrong access to the register.
@@ -1030,7 +1030,7 @@ class Servo:
         """Deletes and creates a new instance of the dictionary.
 
         Args:
-            dictionary (str): Path to the dictionary.
+            dictionary: Path to the dictionary.
 
         """
         self._dictionary = self.DICTIONARY_CLASS(dictionary)
@@ -1044,9 +1044,9 @@ class Servo:
         """Write disturbance data.
 
         Args:
-            channels (int or list of int): Channel identifier.
-            dtypes (REG_DTYPE or list of REG_DTYPE): Data type.
-            data_arr (list or list of list): Data array.
+            channels: Channel identifier.
+            dtypes: Data type.
+            data_arr: Data array.
 
         """
         if self.DIST_DATA is None:
@@ -1069,8 +1069,8 @@ class Servo:
         """Write raw bytes to a target register.
 
         Args:
-            reg (Register): Target register to be written.
-            data (bytearray): Data to be written.
+            reg: Target register to be written.
+            data: Data to be written.
 
         Raises:
             ILIOError: Error writing the register.
@@ -1083,10 +1083,10 @@ class Servo:
         """Read raw bytes from a target register.
 
         Args:
-            reg (Register): Register.
+            reg: Register.
 
         Returns:
-            bytearray: Raw bytes reading from servo.
+            Raw bytes reading from servo.
 
         Raises:
             ILIOError: Error reading the register.
@@ -1101,7 +1101,7 @@ class Servo:
 
     @property
     def full_name(self) -> str:
-        """str: Drive full name."""
+        """Drive full name."""
         return self.__full_name
 
     @full_name.setter
@@ -1110,18 +1110,18 @@ class Servo:
 
     @property
     def status(self) -> Dict[int, SERVO_STATE]:
-        """dict: Servo status."""
+        """Servo status."""
         status = {subnode: self.get_state(subnode) for subnode in range(1, self.subnodes)}
         return status
 
     @property
     def subnodes(self) -> int:
-        """int: Number of subnodes."""
+        """Number of subnodes."""
         return self.dictionary.subnodes
 
     @property
     def errors(self) -> Dict[int, List[Optional[str]]]:
-        """dict: Errors."""
+        """Errors."""
         if self.dictionary.errors:
             return self.dictionary.errors.errors
         else:
@@ -1129,7 +1129,7 @@ class Servo:
 
     @property
     def info(self) -> Dict[str, Union[str, int]]:
-        """dict: Servo information."""
+        """Servo information."""
         serial_number = self.__read_coco_moco_register(
             self.SERIAL_NUMBER_REGISTERS[0], self.SERIAL_NUMBER_REGISTERS[1]
         )
@@ -1163,7 +1163,7 @@ class Servo:
         """Obtain monitoring data size.
 
         Returns:
-            int: Current monitoring data size in bytes.
+            Current monitoring data size in bytes.
 
         """
         number_of_samples = int(self.read("MON_CFG_WINDOW_SAMP", subnode=0))
@@ -1174,7 +1174,7 @@ class Servo:
         """Obtain disturbance data.
 
         Returns:
-            array: Current disturbance data.
+            Current disturbance data.
 
         """
         return self.__disturbance_data
@@ -1184,7 +1184,7 @@ class Servo:
         """Set disturbance data.
 
         Args:
-            value (array): Array with the disturbance to send.
+            value: Array with the disturbance to send.
 
         """
         self.__disturbance_data = value
@@ -1194,7 +1194,7 @@ class Servo:
         """Obtain disturbance data size.
 
         Returns:
-            int: Current disturbance data size.
+            Current disturbance data size.
 
         """
         return len(self.__disturbance_data)

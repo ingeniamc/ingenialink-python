@@ -51,7 +51,7 @@ class Network(ABC):
 
     def __init__(self) -> None:
         self.servos: List[Any] = []
-        """list: List of the connected servos in the network."""
+        """List of the connected servos in the network."""
 
     @abstractmethod
     def scan_slaves(self) -> List[int]:

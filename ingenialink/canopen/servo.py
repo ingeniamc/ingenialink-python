@@ -5,8 +5,7 @@ import canopen
 from canopen.emcy import EmcyConsumer
 
 from ingenialink.constants import CAN_MAX_WRITE_SIZE
-from ingenialink.exceptions import ILAccessError, ILIOError
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.exceptions import ILIOError
 from ingenialink.servo import Servo
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.canopen.register import CanopenRegister
@@ -23,10 +22,10 @@ class CanopenServo(Servo):
     """CANopen Servo instance.
 
     Args:
-        target (int): Node ID to be connected.
-        node (canopen.RemoteNode): Remote Node of the drive.
-        dictionary_path (str): Path to the dictionary.
-        servo_status_listener (bool): Toggle the listener of the servo for
+        target: Node ID to be connected.
+        node: Remote Node of the drive.
+        dictionary_path: Path to the dictionary.
+        servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
 
     """
@@ -75,9 +74,8 @@ class CanopenServo(Servo):
         """Store all the current parameters of the target subnode.
 
         Args:
-            subnode (int): Subnode of the axis. `None` by default which stores
-            all the parameters.
-            sdo_timeout (int): Timeout value for each SDO response.
+            subnode: Subnode of the axis. `None` by default which stores all the parameters.
+            sdo_timeout: Timeout value for each SDO response.
 
         Raises:
             ILError: Invalid subnode.
@@ -120,7 +118,7 @@ class CanopenServo(Servo):
             cb: Callback
 
         Returns:
-            int: Assigned slot.
+            Assigned slot.
 
         """
         self.__emcy_consumer.add_callback(cb)
@@ -131,7 +129,7 @@ class CanopenServo(Servo):
         """Unsubscribe from emergency messages.
 
         Args:
-            slot (int): Assigned slot when subscribed.
+            slot: Assigned slot when subscribed.
 
         """
         del self.__emcy_consumer.callbacks[slot]
@@ -151,10 +149,10 @@ class CanopenServo(Servo):
         """Arrange necessary data to map a monitoring/disturbance register.
 
         Args:
-            subnode (int): Subnode to be targeted.
-            address (int): Register address to map.
-            dtype (int): Register data type.
-            size (int): Size of data in bytes.
+            subnode: Subnode to be targeted.
+            address: Register address to map.
+            dtype: Register data type.
+            size: Size of data in bytes.
 
         """
         ipb_address = self.__monitoring_disturbance_map_can_address(address, subnode)
@@ -164,5 +162,5 @@ class CanopenServo(Servo):
 
     @property
     def node(self) -> canopen.RemoteNode:
-        """canopen.RemoteNode: Remote node of the servo."""
+        """Remote node of the servo."""
         return self.__node

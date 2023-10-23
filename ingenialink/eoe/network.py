@@ -29,9 +29,8 @@ class EoENetwork(EthernetNetwork):
     """Network for EoE (Ethernet over EtherCAT) communication.
 
     Args:
-        ifname (str): Network interface name.
-        connection_timeout (float): Time in seconds of the connection timeout
-        to the EoE service.
+        ifname: Network interface name.
+        connection_timeout: Time in seconds of the connection timeout to the EoE service.
 
     """
 
@@ -79,14 +78,14 @@ class EoENetwork(EthernetNetwork):
         """Connects to a slave through the given network settings.
 
         Args:
-            slave_id (int): EtherCAT slave ID.
-            ip_address (str): IP address to be assigned to the slave.
-            dictionary (str): Path to the target dictionary file.
-            port (int): Port to connect to the slave.
-            connection_timeout (float): Time in seconds of the connection timeout.
-            servo_status_listener (bool): Toggle the listener of the servo for
+            slave_id: EtherCAT slave ID.
+            ip_address: IP address to be assigned to the slave.
+            dictionary: Path to the target dictionary file.
+            port: Port to connect to the slave.
+            connection_timeout: Time in seconds of the connection timeout.
+            servo_status_listener: Toggle the listener of the servo for
                 its status, errors, faults, etc.
-            net_status_listener (bool): Toggle the listener of the network
+            net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
 
         Raises:
@@ -158,7 +157,7 @@ class EoENetwork(EthernetNetwork):
         """Scan slaves connected to the network adapter.
 
         Returns:
-            list: List containing the ids of the connected slaves.
+            List containing the ids of the connected slaves.
 
         Raises:
             ILError: If the EoE service fails to perform a scan.
@@ -177,7 +176,7 @@ class EoENetwork(EthernetNetwork):
         """Make the scan request to the EoE service
 
         Returns:
-            list: List containing the ids of the connected slaves.
+            List containing the ids of the connected slaves.
 
         Raises:
             ILError: If the EoE service fails to perform a scan.
@@ -204,11 +203,11 @@ class EoENetwork(EthernetNetwork):
         +----------+----------+
 
         Args:
-            cmd (int): Indicates which operation to perform.
-            data (bytes): Contains the necessary data to perform the desired command.
+            cmd: Indicates which operation to perform.
+            data: Contains the necessary data to perform the desired command.
 
         Returns:
-            bytes: The message to send.
+            The message to send.
 
         """
         if data is None:
@@ -222,10 +221,10 @@ class EoENetwork(EthernetNetwork):
         Send command to EoE service.
 
         Args:
-            msg (bytes): Message to send.
+            msg: Message to send.
 
         Returns:
-            int: Response from the EoE service.
+            Response from the EoE service.
 
         Raises:
             ILTimeoutError: Timeout while receiving a response from
@@ -292,8 +291,8 @@ class EoENetwork(EthernetNetwork):
         Configure an EtherCAT slave with a given IP.
 
         Args:
-            slave_id (int): EtherCAT slave ID.
-            ip_address (str): IP address to be set to the slave.
+            slave_id: EtherCAT slave ID.
+            ip_address: IP address to be set to the slave.
 
         Raises:
             ILError: If the EoE service fails to configure a slave.
@@ -362,7 +361,7 @@ class EoENetwork(EthernetNetwork):
         +-----------+------+------+
 
         Returns:
-            int: get status response
+            Status response
 
         Raises:
            ILError: If get status request fails.

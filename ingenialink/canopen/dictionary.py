@@ -1,8 +1,7 @@
-from typing import List, Dict, Optional, Union, Tuple
+from typing import Optional
 
 from ingenialink.dictionary import Dictionary
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.register import Register, REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
 
 import ingenialogger
 import xml.etree.ElementTree as ET
@@ -14,7 +13,7 @@ class CanopenDictionary(Dictionary):
     """Contains all registers and information of a CANopen dictionary.
 
     Args:
-        dictionary_path (str): Path to the Ingenia dictionary.
+        dictionary_path: Path to the Ingenia dictionary.
 
     """
 
