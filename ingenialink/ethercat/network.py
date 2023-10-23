@@ -83,9 +83,9 @@ class EthercatNetwork(Network):  # type: ignore
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: Dict[int, List[Any]] = defaultdict(list)
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
-        self._ecat_master.open(self.interface_name)
         self._ecat_master.sdo_read_timeout = int(1_000_000 * connection_timeout)
         self._ecat_master.sdo_write_timeout = int(1_000_000 * connection_timeout)
+        self.__is_master_running = False
 
     def scan_slaves(self) -> List[int]:
         """Scans for nodes in the network.
@@ -94,6 +94,7 @@ class EthercatNetwork(Network):  # type: ignore
             List containing all the detected node IDs.
 
         """
+        self._start_master()
         nodes = self._ecat_master.config_init()
         return list(range(1, nodes + 1))
 
@@ -126,7 +127,7 @@ class EthercatNetwork(Network):  # type: ignore
             raise ILError("Could not find any slaves in the network.")
         if slave_id not in slaves:
             raise (ILError(f"Slave {slave_id} was not found."))
-        slave = self._ecat_master.slaves[slave_id]
+        slave = self._ecat_master.slaves[slave_id - 1]
         servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
         self.servos.append(servo)
         self._set_servo_state(slave_id, NET_STATE.CONNECTED)
@@ -145,6 +146,7 @@ class EthercatNetwork(Network):  # type: ignore
         if not self.servos:
             self.stop_status_listener()
             self._ecat_master.close()
+            self.__is_master_running = False
 
     def subscribe_to_status(
         self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None]
@@ -230,6 +232,12 @@ class EthercatNetwork(Network):  # type: ignore
                 f"The firmware file could not be loaded correctly. {foe_return_error}"
             ) from e
         logger.info("Firmware updated successfully")
+
+    def _start_master(self) -> None:
+        """Start the EtherCAT master if it has not been already started."""
+        if not self.__is_master_running:
+            self._ecat_master.open(self.interface_name)
+            self.__is_master_running = True
 
     @property
     def protocol(self) -> NET_PROT:
