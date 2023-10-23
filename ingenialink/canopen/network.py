@@ -323,15 +323,20 @@ class CanopenNetwork(Network):
         """Tears down the already established connection
         and deletes the network interface"""
         if self._connection is None:
+            logger.warning("Can not disconnect. The connection is not established yet.")
             return
         self._connection.disconnect()
         self._connection = None
         logger.info("Tear down connection.")
 
     def _reset_connection(self) -> None:
-        """Resets the established CANopen network."""
+        """Resets the established CANopen network.
+        
+        Raises:
+            ILError: If the connection was not established yet.
+        """
         if self._connection is None:
-            return
+            raise ILError("Can not reset connection. The connection is not established yet.")
         try:
             self._connection.disconnect()
         except BaseException as e:
@@ -460,10 +465,13 @@ class CanopenNetwork(Network):
         Args:
             servo: target drive
             callback_status_msg: Subscribed callback function for the status message
-
+        
+        Raises:
+            ILError: If the connection was not established yet.
+            
         """
         if self._connection is None:
-            return
+            raise ILError("Can not force boot. The connection is not established yet.")
         device_type = int(servo.read(CIA301_DRV_ID_DEVICE_TYPE, subnode=0))
         device_type = device_type & 0xFFFF
         if device_type == APPLICATION_LOADED_STATE:
@@ -825,9 +833,13 @@ class CanopenNetwork(Network):
             logger.info("Node ID changed to {}".format(new_target_node))
 
     def _lss_store_configuration(self) -> None:
-        """Stores the current configuration of the LSS"""
+        """Stores the current configuration of the LSS
+        
+        Raises:
+            ILError: If the connection was not established yet.
+        """
         if self._connection is None:
-            return
+            raise ILError("Can not store configuration. The connection is not established yet.")
         self._connection.lss.store_configuration()
         sleep(0.1)
         logger.info("Stored new configuration")
@@ -839,9 +851,12 @@ class CanopenNetwork(Network):
         Args:
             target_node: Node ID of the targeted device.
 
+        Raises:
+            ILError: If the connection was not established yet.
+
         """
         if self._connection is None:
-            return
+            raise ILError("Can not reset connection. The connection is not established yet.")
         self._connection.nodes[target_node].nmt.send_command(0x82)
 
         logger.debug("Wait until node is reset")
@@ -900,9 +915,14 @@ class CanopenNetwork(Network):
         self.__listeners_net_status.append(listener)
 
     def stop_status_listener(self, servo: CanopenServo) -> None:  # type: ignore [override]
-        """Stops the NetStatusListener from listening to the drive."""
+        """Stops the NetStatusListener from listening to the drive.
+        
+        Raises:
+            ILError: If the connection was not established yet.
+            
+        """
         if self._connection is None:
-            return
+            raise ILError("Can not reset connection. The connection is not established yet.")
         try:
             for node_id, node_obj in self._connection.nodes.items():
                 if node_id == servo.node.id:

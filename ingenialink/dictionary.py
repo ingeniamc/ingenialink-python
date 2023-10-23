@@ -40,9 +40,11 @@ class DictionaryCategories:
             self._cat_ids.append(element.attrib["id"])
             cat_element = element.find(DICT_LABELS_LABEL)
             if cat_element is None:
+                logger.warning(f"The element of the category {element.attrib['id']} could not be load")
                 continue
             cat_id = cat_element.text
             if cat_id is None:
+                logger.warning(f"The ID of the category {element.attrib['id']} could not be load")
                 continue
             self._categories[element.attrib["id"]] = {"en_US": cat_id}
 
@@ -82,6 +84,7 @@ class DictionaryErrors:
         for element in self._list_xdf_errors:
             label = element.find(DICT_LABELS_LABEL)
             if label is None:
+                logger.warning(f"Could not load label of error {element.attrib['id']}")
                 continue
             self._errors[int(element.attrib["id"], 16)] = [
                 element.attrib["id"],

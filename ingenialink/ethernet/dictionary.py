@@ -26,10 +26,10 @@ class EthernetDictionary(Dictionary):
         if current_read_register is None:
             return None
         try:
-            address = int(register.attrib["address"], 16)
+            reg_address = int(register.attrib["address"], 16)
 
             ethernet_register = EthernetRegister(
-                address,
+                reg_address,
                 current_read_register.dtype,
                 current_read_register.access,
                 identifier=current_read_register.identifier,
