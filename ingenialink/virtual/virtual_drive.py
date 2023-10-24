@@ -29,13 +29,13 @@ class VirtualMonDistBase:
     """
 
     FREQUENCY = 20000
-    FREQ_DIVIDER_REG = ""
-    BUFFER_SIZE_REG = ""
-    NUMBER_MAP_REGS = ""
-    MAP_REG_CFG = ""
-    BYTES_PER_BLOCK_REG = ""
-    AVAILABLE_BYTES_REG = ""
-    DATA_REG = ""
+    FREQ_DIVIDER_REG: str
+    BUFFER_SIZE_REG: str
+    NUMBER_MAP_REGS: str
+    MAP_REG_CFG: str
+    BYTES_PER_BLOCK_REG: str
+    AVAILABLE_BYTES_REG: str
+    DATA_REG: str
 
     def __init__(self, drive: "VirtualDrive") -> None:
         self.drive = drive

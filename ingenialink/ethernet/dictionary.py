@@ -1,10 +1,10 @@
 from typing import Optional, Dict, List
+import xml.etree.ElementTree as ET
+
+import ingenialogger
 
 from ingenialink.dictionary import Dictionary
 from ingenialink.ethernet.register import EthernetRegister
-
-import ingenialogger
-import xml.etree.ElementTree as ET
 
 logger = ingenialogger.get_logger(__name__)
 
