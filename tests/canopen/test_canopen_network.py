@@ -24,7 +24,6 @@ def test_getters_canopen(virtual_network):
     assert virtual_network.channel == test_channel
     assert virtual_network.baudrate == test_baudrate
     assert virtual_network.network is None
-    assert virtual_network.status == NET_STATE.DISCONNECTED
 
 
 @pytest.mark.canopen

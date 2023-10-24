@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Add
+- Support for multi-drive in CANopen's NetStatusListener.
 - EtherCAT communication via CoE (SDOs).
 
 ### Fixed
