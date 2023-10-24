@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Add
+- Support for multi-drive in CANopen's NetStatusListener.
+
 ### Fixed
 - Fix CANopen load_firmware function.
 - Set product name correctly if no dictionary is provided.
