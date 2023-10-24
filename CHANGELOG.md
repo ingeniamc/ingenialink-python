@@ -4,6 +4,7 @@
 
 ### Add
 - Support for multi-drive in CANopen's NetStatusListener.
+- Add image attribute to dictionary class.
 
 ### Fixed
 - Fix CANopen load_firmware function.

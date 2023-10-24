@@ -1,4 +1,6 @@
 import xml.etree.ElementTree as ET
+from pathlib import Path
+
 import ingenialogger
 
 from abc import ABC, abstractmethod
@@ -127,6 +129,7 @@ class Dictionary(ABC):
     # ORIGIN: ENUMERATIONS
     DICT_ENUMERATIONS = "./Enumerations"
     DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
+    DICT_IMAGE = "DriveImage"
 
     class AttrRegDict:
         IDENTIFIER = "identifier"
@@ -189,6 +192,8 @@ class Dictionary(ABC):
         """DictionaryErrors: Instance of all the errors in the dictionary."""
         self._registers = []
         """list(dict): Instance of all the registers in the dictionary"""
+        self.image = None
+        """Drive's encoded image."""
 
         self.read_dictionary()
 
@@ -257,7 +262,10 @@ class Dictionary(ABC):
                 current_read_register = self._read_xdf_register(register)
                 if current_read_register:
                     self._add_register_list(current_read_register)
-
+        try:
+            self.image = root.find(self.DICT_IMAGE).text
+        except AttributeError:
+            logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
         xdf_file.close()
 
