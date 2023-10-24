@@ -331,7 +331,7 @@ class CanopenNetwork(Network):
 
     def _reset_connection(self) -> None:
         """Resets the established CANopen network.
-        
+
         Raises:
             ILError: If the connection was not established yet.
         """
@@ -465,10 +465,10 @@ class CanopenNetwork(Network):
         Args:
             servo: target drive
             callback_status_msg: Subscribed callback function for the status message
-        
+
         Raises:
             ILError: If the connection was not established yet.
-            
+
         """
         if self._connection is None:
             raise ILError("Can not force boot. The connection is not established yet.")
@@ -834,7 +834,7 @@ class CanopenNetwork(Network):
 
     def _lss_store_configuration(self) -> None:
         """Stores the current configuration of the LSS
-        
+
         Raises:
             ILError: If the connection was not established yet.
         """
@@ -916,10 +916,10 @@ class CanopenNetwork(Network):
 
     def stop_status_listener(self, servo: CanopenServo) -> None:  # type: ignore [override]
         """Stops the NetStatusListener from listening to the drive.
-        
+
         Raises:
             ILError: If the connection was not established yet.
-            
+
         """
         if self._connection is None:
             raise ILError("Can not reset connection. The connection is not established yet.")

@@ -40,7 +40,9 @@ class DictionaryCategories:
             self._cat_ids.append(element.attrib["id"])
             cat_element = element.find(DICT_LABELS_LABEL)
             if cat_element is None:
-                logger.warning(f"The element of the category {element.attrib['id']} could not be load")
+                logger.warning(
+                    f"The element of the category {element.attrib['id']} could not be load"
+                )
                 continue
             cat_id = cat_element.text
             if cat_id is None:
