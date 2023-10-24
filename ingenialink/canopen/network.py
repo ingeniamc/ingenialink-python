@@ -131,6 +131,8 @@ class NetStatusListener(Thread):
 
     def run(self) -> None:
         timestamps = {}
+        if self.__network._connection is None:
+            return
         while not self.__stop:
             for node_id, node in list(self.__network._connection.nodes.items()):
                 sleep(1.5)
@@ -177,11 +179,10 @@ class CanopenNetwork(Network):
         self.__channel: Union[int, str] = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
         self._connection: Optional[NetworkLib] = None
-        self.__listeners_net_status: List[NetStatusListener] = []
         self.__net_state = NET_STATE.DISCONNECTED
-        self.__servos_state: Dict[int, NET_DEV_EVT] = {}
+        self.__servos_state: Dict[int, NET_STATE] = {}
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: Dict[int, Callable[[NET_DEV_EVT], Any]] = defaultdict(list)
+        self.__observers_net_state: Dict[int, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(list)
         self.__observers_fw_load_status_msg: List[Callable[[str], Any]] = []
         self.__observers_fw_load_progress: List[Callable[[int], Any]] = []
         self.__observers_fw_load_errors_enabled: List[Callable[[bool], Any]] = []
@@ -873,7 +874,7 @@ class CanopenNetwork(Network):
 
         self._connection.nodes[target_node].nmt.start_node_guarding(1)
 
-    def subscribe_to_status(self, node_id: int, callback: Callable[[NET_DEV_EVT], Any]) -> None:
+    def subscribe_to_status(self, node_id: int, callback: Callable[[NET_DEV_EVT], Any]) -> None: # type: ignore [override]
         """Subscribe to network state changes.
 
         Args:
@@ -886,7 +887,7 @@ class CanopenNetwork(Network):
             return
         self.__observers_net_state[node_id].append(callback)
 
-    def unsubscribe_from_status(self, node_id: int, callback: Callable[[NET_DEV_EVT], Any]) -> None:
+    def unsubscribe_from_status(self, node_id: int, callback: Callable[[NET_DEV_EVT], Any]) -> None: # type: ignore [override]
         """Unsubscribe from network state changes.
 
         Args:
@@ -907,15 +908,17 @@ class CanopenNetwork(Network):
     def is_listener_started(self) -> bool:
         return self.__listener_net_status is not None
 
-    def start_status_listener(self) -> None:
+    def start_status_listener(self) -> None: # type: ignore [override]
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
             listener = NetStatusListener(self)
             listener.start()
             self.__listener_net_status = listener
 
-    def stop_status_listener(self) -> None:
+    def stop_status_listener(self) -> None: # type: ignore [override]
         """Stops the NetStatusListener from listening to the drive."""
+        if self._connection is None:
+            return
         try:
             for node_id, node_obj in self._connection.nodes.items():
                 node_obj.nmt.stop_node_guarding()
@@ -951,8 +954,8 @@ class CanopenNetwork(Network):
         """Obtain network protocol."""
         return NET_PROT.CAN
 
-    def _get_servo_state(self, node_id: int) -> NET_DEV_EVT:
+    def _get_servo_state(self, node_id: int) -> NET_STATE:
         return self.__servos_state[node_id]
 
-    def _set_servo_state(self, node_id: int, state: NET_DEV_EVT):
+    def _set_servo_state(self, node_id: int, state: NET_STATE) -> None:
         self.__servos_state[node_id] = state
