@@ -12,6 +12,7 @@ from ingenialink.exceptions import (
     ILStateError,
     ILAccessError,
     ILTimeoutError,
+    ILValueError,
 )
 from ingenialink.register import Register
 from ingenialink.utils._utils import (
@@ -997,9 +998,12 @@ class Servo:
             data_arr (list or list of list): Data array.
 
         """
-        data, chunks = self._disturbance_create_data_chunks(
-            channels, dtypes, data_arr, self.MAX_WRITE_SIZE
-        )
+        try:
+            data, chunks = self._disturbance_create_data_chunks(
+                channels, dtypes, data_arr, self.MAX_WRITE_SIZE
+            )
+        except OverflowError as e:
+            raise ILValueError(f"Disturbance data cannot be written. Reason: {e}")
         for chunk in chunks:
             self._write_raw(self.DIST_DATA, data=chunk)
         self.disturbance_data = data
