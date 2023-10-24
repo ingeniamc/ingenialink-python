@@ -10,7 +10,7 @@ from ingenialink.register import REG_ADDRESS_TYPE
 from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.register import REG_DTYPE
 from ingenialink.servo import SERVO_STATE
-from ingenialink.exceptions import ILStateError, ILTimeoutError
+from ingenialink.exceptions import ILStateError, ILTimeoutError, ILValueError
 
 
 MONITORING_CH_DATA_SIZE = 4
@@ -467,3 +467,20 @@ def test_status_word_wait_change(connect_to_slave):
     status_word = servo.read(servo.STATUS_WORD_REGISTERS, subnode=subnode)
     with pytest.raises(ILTimeoutError):
         servo.status_word_wait_change(status_word, timeout, subnode)
+
+
+@pytest.mark.ethernet
+@pytest.mark.canopen
+def test_disturbance_overflow(connect_to_slave, pytestconfig):
+    protocol = pytestconfig.getoption("--protocol")
+    servo, net = connect_to_slave
+    servo.disturbance_disable()
+    servo.disturbance_remove_all_mapped_registers()
+    reg = servo._get_reg("DRV_OP_CMD", subnode=1)
+    address = _get_reg_address(reg, protocol)
+    servo.disturbance_set_mapped_register(
+        0, address, 1, REG_DTYPE.U16.value, DISTURBANCE_CH_DATA_SIZE
+    )
+    data = list(range(-10, 11))
+    with pytest.raises(ILValueError):
+        servo.disturbance_write_data(0, REG_DTYPE.U16, data)
