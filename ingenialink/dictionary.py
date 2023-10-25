@@ -130,6 +130,7 @@ class Dictionary(ABC):
     DICT_ENUMERATIONS = "./Enumerations"
     DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
     DICT_IMAGE = "DriveImage"
+    DICT_MOCO_IMAGE_ATTRIB = "moco"
 
     class AttrRegDict:
         IDENTIFIER = "identifier"
@@ -194,6 +195,8 @@ class Dictionary(ABC):
         """list(dict): Instance of all the registers in the dictionary"""
         self.image = None
         """Drive's encoded image."""
+        self.moco_image = None
+        """Motion CORE encoded image. Only available when using a COM-KIT."""
 
         self.read_dictionary()
 
@@ -263,7 +266,16 @@ class Dictionary(ABC):
                 if current_read_register:
                     self._add_register_list(current_read_register)
         try:
-            self.image = root.find(self.DICT_IMAGE).text
+            images = root.findall(self.DICT_IMAGE)
+            for image in images:
+                if image.text is not None and image.text.strip():
+                    if (
+                        "type" in image.attrib
+                        and image.attrib["type"] == self.DICT_MOCO_IMAGE_ATTRIB
+                    ):
+                        self.moco_image = image.text
+                    else:
+                        self.image = image.text
         except AttributeError:
             logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
