@@ -7,7 +7,7 @@ from ingenialink.exceptions import ILIOError
 from ingenialink.servo import Servo
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS
-from ingenialink.constants import CAN_MAX_WRITE_SIZE
+from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -103,7 +103,7 @@ class EthercatServo(Servo):  # type: ignore
             address: Register address to map.
 
         """
-        return address - (0x2000 + (0x800 * (subnode - 1)))
+        return address - (CANOPEN_ADDRESS_OFFSET + (MAP_ADDRESS_OFFSET * (subnode - 1)))
 
     def _monitoring_disturbance_data_to_map_register(
         self, subnode: int, address: int, dtype: REG_DTYPE, size: int
