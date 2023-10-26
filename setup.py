@@ -38,7 +38,8 @@ setuptools.setup(
         'canopen==1.2.1',
         'python-can==3.3.4',
         'ingenialogger>=0.2.1',
-        'ping3==4.0.3'
+        'ping3==4.0.3',
+        'pysoem==1.0.7',
     ],
     extras_require={
         "dev": [
