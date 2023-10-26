@@ -4,6 +4,7 @@ import threading
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from abc import abstractmethod
+from typing import Union, List, Dict, Optional, Tuple, Callable, Any
 
 from ingenialink.exceptions import (
     ILIOError,
@@ -29,6 +30,7 @@ from ingenialink.constants import (
 from ingenialink.utils import constants
 from ingenialink.enums.register import REG_DTYPE, REG_ADDRESS_TYPE, REG_ACCESS
 from ingenialink.enums.servo import SERVO_STATE
+from ingenialink.dictionary import Dictionary
 
 import ingenialogger
 
@@ -41,18 +43,18 @@ class ServoStatusListener(threading.Thread):
     """Reads the status word to check if the drive is alive.
 
     Args:
-        servo (Servo): Servo instance of the drive.
+        servo: Servo instance of the drive.
 
     """
 
-    def __init__(self, servo):
+    def __init__(self, servo: "Servo") -> None:
         super(ServoStatusListener, self).__init__()
         self.__servo = servo
         self.__stop = False
 
-    def run(self):
+    def run(self) -> None:
         """Checks if the drive is alive by reading the status word register"""
-        previous_states = {}
+        previous_states: Dict[int, SERVO_STATE] = {}
         while not self.__stop:
             for subnode in range(1, self.__servo.subnodes):
                 try:
@@ -64,7 +66,7 @@ class ServoStatusListener(threading.Thread):
                     logger.error("Error getting drive status. Exception : %s", e)
             time.sleep(1.5)
 
-    def stop(self):
+    def stop(self) -> None:
         """Stops the loop that reads the status word register"""
         self.__stop = True
 
@@ -73,9 +75,9 @@ class Servo:
     """Declaration of a general Servo object.
 
     Args:
-        target (str, int): Target ID of the servo.
-        dictionary_path (str): Path to the dictionary file.
-        servo_status_listener (bool): Toggle the listener of the servo for
+        target: Target ID of the servo.
+        dictionary_path: Path to the dictionary file.
+        servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
 
     Raises:
@@ -83,8 +85,8 @@ class Servo:
 
     """
 
-    DICTIONARY_CLASS = None
-    MAX_WRITE_SIZE = None
+    DICTIONARY_CLASS = Dictionary
+    MAX_WRITE_SIZE = 1
 
     STATUS_WORD_REGISTERS = "DRV_STATE_STATUS"
     RESTORE_COCO_ALL = "DRV_RESTORE_COCO_ALL"
@@ -101,32 +103,35 @@ class Servo:
     MONITORING_NUMBER_MAPPED_REGISTERS = "MON_CFG_TOTAL_MAP"
     MONITORING_BYTES_PER_BLOCK = "MON_CFG_BYTES_PER_BLOCK"
     MONITORING_ACTUAL_NUMBER_BYTES = "MON_CFG_BYTES_VALUE"
-    MONITORING_DATA = None
+    MONITORING_DATA: Optional[Register] = None
     MONITORING_DISTURBANCE_VERSION = "MON_DIST_VERSION"
     DISTURBANCE_ENABLE = "DIST_ENABLE"
     DISTURBANCE_REMOVE_DATA = "DIST_REMOVE_DATA"
     DISTURBANCE_NUMBER_MAPPED_REGISTERS = "DIST_CFG_MAP_REGS"
     DIST_NUMBER_SAMPLES = "DIST_CFG_SAMPLES"
-    DIST_DATA = None
+    DIST_DATA: Optional[Register] = None
     MONITORING_ACTUAL_NUMBER_SAMPLES = "MON_CFG_CYCLES_VALUE"
     DISTURBANCE_REMOVE_REGISTERS_OLD = "DIST_CMD_RM_REGS"
     MONITORING_REMOVE_REGISTERS_OLD = "MON_CMD_RM_REG"
     DISTURBANCE_ADD_REGISTERS_OLD = "DIST_CMD_ADD_REG"
     MONITORING_ADD_REGISTERS_OLD = "MON_OP_ADD_REG"
 
-    def __init__(self, target, dictionary_path=None, servo_status_listener=False):
+    def __init__(
+        self,
+        target: Union[int, str],
+        dictionary_path: str,
+        servo_status_listener: bool = False,
+    ):
+        self._dictionary = self.DICTIONARY_CLASS(dictionary_path)
+        self.subnodes
         self.target = target
         prod_name = ""
-        if dictionary_path is not None:
-            self._dictionary = self.DICTIONARY_CLASS(dictionary_path)
-            if self.dictionary.part_number is not None:
-                prod_name = self.dictionary.part_number
-        else:
-            self._dictionary = None
+        if self.dictionary.part_number is not None:
+            prod_name = self.dictionary.part_number
         self._info = None
         self.name = DEFAULT_DRIVE_NAME
         self.full_name = f"{prod_name} {self.name} ({self.target})"
-        """str: Obtains the servo full name."""
+        """Obtains the servo full name."""
         self.units_torque = None
         """SERVO_UNITS_TORQUE: Torque units."""
         self.units_pos = None
@@ -136,23 +141,27 @@ class Servo:
         self.units_acc = None
         """SERVO_UNITS_ACC: Acceleration units."""
         self._lock = threading.Lock()
-        self.__observers_servo_state = []
-        self.__listener_servo_status = None
-        self.__monitoring = {}
-        self.__disturbance = {"data": bytearray()}
+        self.__observers_servo_state: List[Callable[[SERVO_STATE, None, int], Any]] = []
+        self.__listener_servo_status: Optional[ServoStatusListener] = None
+        self.__monitoring_data: Dict[int, List[Union[int, float]]] = {}
+        self.__monitoring_size: Dict[int, int] = {}
+        self.__monitoring_dtype: Dict[int, REG_DTYPE] = {}
+        self.__disturbance_data = bytearray()
+        self.__disturbance_size: Dict[int, int] = {}
+        self.__disturbance_dtype: Dict[int, str] = {}
         if servo_status_listener:
             self.start_status_listener()
         else:
             self.stop_status_listener()
 
-    def start_status_listener(self):
+    def start_status_listener(self) -> None:
         """Start listening for servo status events (SERVO_STATE)."""
         if self.__listener_servo_status is not None:
             return
         self.__listener_servo_status = ServoStatusListener(self)
         self.__listener_servo_status.start()
 
-    def stop_status_listener(self):
+    def stop_status_listener(self) -> None:
         """Stop listening for servo status events (SERVO_STATE)."""
         if self.__listener_servo_status is None:
             return
@@ -170,12 +179,12 @@ class Servo:
         """
         return self.__listener_servo_status is not None
 
-    def load_configuration(self, config_file, subnode=None):
+    def load_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
         """Write current dictionary storage to the servo drive.
 
         Args:
-            config_file (str): Path to the dictionary.
-            subnode (int): Subnode of the axis.
+            config_file: Path to the dictionary.
+            subnode: Subnode of the axis.
 
         Raises:
             FileNotFoundError: If the configuration file cannot be found.
@@ -213,13 +222,13 @@ class Servo:
                     e,
                 )
 
-    def save_configuration(self, config_file, subnode=None):
+    def save_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
         """Read all dictionary registers content and put it to the dictionary
         storage.
 
         Args:
-            config_file (str): Destination path for the configuration file.
-            subnode (int): Subnode of the axis.
+            config_file: Destination path for the configuration file.
+            subnode: Subnode of the axis.
 
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
@@ -237,18 +246,18 @@ class Servo:
         device = ET.SubElement(body, "Device")
         registers = ET.SubElement(device, "Registers")
 
-        device.set("Interface", self.dictionary.interface)
+        device.set("Interface", str(self.dictionary.interface))
         if self.dictionary.part_number is not None:
             device.set("PartNumber", self.dictionary.part_number)
         device.set("ProductCode", str(prod_code))
         device.set("RevisionNumber", str(rev_number))
-        device.set("firmwareVersion", self.dictionary.firmware_version)
+        device.set("firmwareVersion", str(self.dictionary.firmware_version))
 
         access_ops = {value: key for key, value in self.dictionary.access_xdf_options.items()}
         dtype_ops = {value: key for key, value in self.dictionary.dtype_xdf_options.items()}
 
         if subnode is None:
-            subnodes = range(self.dictionary.subnodes)
+            subnodes = list(range(self.dictionary.subnodes))
         else:
             subnodes = [subnode]
 
@@ -271,18 +280,19 @@ class Servo:
             f.write(dom.toprettyxml(indent="\t").encode())
 
     @staticmethod
-    def _read_configuration_file(config_file):
+    def _read_configuration_file(config_file: str) -> Tuple[ET.Element, List[ET.Element]]:
         """Read a configuration file. Returns the device metadata and the registers list.
 
         Args:
-            config_file (str): Path to the dictionary.
+            config_file: Path to the dictionary.
 
         Returns:
             device:
-            list: Register list.
+            Register list.
 
         Raises:
             FileNotFoundError: If the configuration file cannot be found.
+            ILIOError: If the configuration file does not have device information or registers.
         """
         if not os.path.isfile(config_file):
             raise FileNotFoundError(f"Could not find {config_file}.")
@@ -297,9 +307,13 @@ class Servo:
         else:
             # Single axis
             registers = root.findall("./Body/Device/Registers/Register")
+        if not isinstance(device, ET.Element):
+            raise ILIOError("Configuration file does not have device information")
+        if not isinstance(registers, list):
+            raise ILIOError("Configuration file does not have register list")
         return device, registers
 
-    def restore_parameters(self, subnode=None):
+    def restore_parameters(self, subnode: Optional[int] = None) -> None:
         """Restore all the current parameters of all the slave to default.
 
         .. note::
@@ -307,7 +321,7 @@ class Servo:
             in order for the changes to be properly applied.
 
         Args:
-            subnode (int): Subnode of the axis. `None` by default which restores
+            subnode: Subnode of the axis. `None` by default which restores
             all the parameters.
 
         Raises:
@@ -332,11 +346,11 @@ class Servo:
             raise ILError("Invalid subnode {subnode}.")
         time.sleep(1.5)
 
-    def store_parameters(self, subnode=None):
+    def store_parameters(self, subnode: Optional[int] = None) -> None:
         """Store all the current parameters of the target subnode.
 
         Args:
-            subnode (int): Subnode of the axis. `None` by default which stores
+            subnode: Subnode of the axis. `None` by default which stores
             all the parameters.
 
         Raises:
@@ -378,12 +392,12 @@ class Servo:
         finally:
             time.sleep(1.5)
 
-    def enable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
+    def enable(self, subnode: int = 1, timeout: int = DEFAULT_PDS_TIMEOUT) -> None:
         """Enable PDS.
 
          Args:
-             subnode (int): Subnode of the drive.
-             timeout (int): Timeout in milliseconds.
+             subnode: Subnode of the drive.
+             timeout: Timeout in milliseconds.
 
         Raises:
              ILTimeoutError: The servo could not be enabled due to timeout.
@@ -417,12 +431,12 @@ class Servo:
             # Wait for state change
             self.state_wait_change(state, timeout, subnode=subnode)
 
-    def disable(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
+    def disable(self, subnode: int = 1, timeout: int = DEFAULT_PDS_TIMEOUT) -> None:
         """Disable PDS.
 
         Args:
-            subnode (int): Subnode of the drive.
-            timeout (int): Timeout in milliseconds.
+            subnode: Subnode of the drive.
+            timeout: Timeout in milliseconds.
 
         Raises:
             ILTimeoutError: The servo could not be disabled due to timeout.
@@ -445,12 +459,12 @@ class Servo:
                 # Wait until state changes
                 self.state_wait_change(state, timeout, subnode=subnode)
 
-    def fault_reset(self, subnode=1, timeout=DEFAULT_PDS_TIMEOUT):
+    def fault_reset(self, subnode: int = 1, timeout: int = DEFAULT_PDS_TIMEOUT) -> None:
         """Executes a fault reset on the drive.
 
         Args:
-            subnode (int): Subnode of the drive.
-            timeout (int): Timeout in milliseconds.
+            subnode: Subnode of the drive.
+            timeout: Timeout in milliseconds.
 
         Raises:
             ILTimeoutError: If fault reset spend too much time.
@@ -468,13 +482,13 @@ class Servo:
             # Wait until status word changes
             self.state_wait_change(state, timeout, subnode=subnode)
 
-    def status_word_wait_change(self, status_word, timeout, subnode=1):
+    def status_word_wait_change(self, status_word: int, timeout: int, subnode: int = 1) -> None:
         """Waits for a status word change.
 
         Args:
-            status_word (int): Status word to wait for.
-            timeout (int): Maximum value to wait for the change.
-            subnode (int): Subnode of the drive.
+            status_word: Status word to wait for.
+            timeout: Maximum value to wait for the change.
+            subnode: Subnode of the drive.
 
         Raises:
             ILTimeoutError: If status word does not change in the given time.
@@ -490,13 +504,13 @@ class Servo:
                 raise ILTimeoutError
             actual_status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
 
-    def state_wait_change(self, state, timeout, subnode=1):
+    def state_wait_change(self, state: SERVO_STATE, timeout: int, subnode: int = 1) -> None:
         """Waits for a state change.
 
         Args:
-            state (SERVO_STATE): Servo state to wait for.
-            timeout (int): Maximum value to wait for the change.
-            subnode (int): Subnode of the drive.
+            state: Servo state to wait for.
+            timeout: Maximum value to wait for the change.
+            subnode: Subnode of the drive.
 
         Raises:
             ILTimeoutError: If state does not change in the given time.
@@ -512,21 +526,21 @@ class Servo:
                 raise ILTimeoutError
             actual_state = self.get_state(subnode)
 
-    def get_state(self, subnode=1):
-        """SERVO_STATE: Current drive state."""
+    def get_state(self, subnode: int = 1) -> SERVO_STATE:
+        """Current drive state."""
         status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
-        state = self.status_word_decode(status_word)
+        state = self.status_word_decode(int(status_word))
         return state
 
     @staticmethod
-    def status_word_decode(status_word):
+    def status_word_decode(status_word: int) -> SERVO_STATE:
         """Decodes the status word to a known value.
 
         Args:
-            status_word (int): Read value for the status word.
+            status_word: Read value for the status word.
 
         Returns:
-            SERVO_STATE: Status word value.
+            Status word value.
 
         """
         if (status_word & constants.IL_MC_PDS_STA_NRTSO_MSK) == constants.IL_MC_PDS_STA_NRTSO:
@@ -549,30 +563,34 @@ class Servo:
             state = SERVO_STATE.NRDY
         return state
 
-    def monitoring_enable(self):
+    def monitoring_enable(self) -> None:
         """Enable monitoring process."""
         self.write(self.MONITORING_DIST_ENABLE, data=1, subnode=0)
 
-    def monitoring_disable(self):
+    def monitoring_disable(self) -> None:
         """Disable monitoring process."""
         self.write(self.MONITORING_DIST_ENABLE, data=0, subnode=0)
 
-    def monitoring_remove_data(self):
+    def monitoring_remove_data(self) -> None:
         """Remove monitoring data."""
         self.write(self.MONITORING_REMOVE_DATA, data=1, subnode=0)
 
-    def monitoring_set_mapped_register(self, channel, address, subnode, dtype, size):
+    def monitoring_set_mapped_register(
+        self, channel: int, address: int, subnode: int, dtype: int, size: int
+    ) -> None:
         """Set monitoring mapped register.
 
         Args:
-            channel (int): Identity channel number.
-            address (int): Register address to map.
-            subnode (int): Subnode to be targeted.
-            dtype (int): Register data type.
-            size (int): Size of data in bytes.
+            channel: Identity channel number.
+            address: Register address to map.
+            subnode: Subnode to be targeted.
+            dtype: Register data type.
+            size: Size of data in bytes.
 
         """
-        self.__monitoring[channel] = {"size": size, "dtype": REG_DTYPE(dtype), "processed_data": []}
+        self.__monitoring_data[channel] = []
+        self.__monitoring_dtype[channel] = REG_DTYPE(dtype)
+        self.__monitoring_size[channel] = size
         data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
         try:
             self.write(self.__monitoring_map_register(), data=data, subnode=0)
@@ -580,46 +598,48 @@ class Servo:
         except ILAccessError:
             self.write(self.MONITORING_ADD_REGISTERS_OLD, data=address, subnode=0)
 
-    def monitoring_get_num_mapped_registers(self):
+    def monitoring_get_num_mapped_registers(self) -> int:
         """Obtain the number of monitoring mapped registers.
 
         Returns:
-            int: Actual number of mapped registers.
+            Actual number of mapped registers.
 
         """
-        return self.read(self.MONITORING_NUMBER_MAPPED_REGISTERS, 0)
+        return int(self.read(self.MONITORING_NUMBER_MAPPED_REGISTERS, 0))
 
-    def monitoring_get_bytes_per_block(self):
+    def monitoring_get_bytes_per_block(self) -> int:
         """Obtain Bytes x Block configured.
 
         Returns:
-            int: Actual number of Bytes x Block configured.
+            Actual number of Bytes x Block configured.
 
         """
-        return self.read(self.MONITORING_BYTES_PER_BLOCK, subnode=0)
+        return int(self.read(self.MONITORING_BYTES_PER_BLOCK, subnode=0))
 
-    def monitoring_remove_all_mapped_registers(self):
+    def monitoring_remove_all_mapped_registers(self) -> None:
         """Remove all monitoring mapped registers."""
         try:
             self.write(self.MONITORING_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
         except ILAccessError:
             self.write(self.MONITORING_REMOVE_REGISTERS_OLD, data=1, subnode=0)
-        self.__monitoring = {}
+        self.__monitoring_data = {}
+        self.__monitoring_size = {}
+        self.__monitoring_dtype = {}
 
-    def monitoring_actual_number_bytes(self):
+    def monitoring_actual_number_bytes(self) -> int:
         """Get the number of monitoring bytes left to be read."""
         try:
-            return self.read(self.MONITORING_ACTUAL_NUMBER_BYTES, subnode=0)
+            return int(self.read(self.MONITORING_ACTUAL_NUMBER_BYTES, subnode=0))
         except ILRegisterNotFoundError:
-            num_samples = self.read(self.MONITORING_ACTUAL_NUMBER_SAMPLES, subnode=0)
-            sample_size = sum(self.__monitoring[reg]["size"] for reg in self.__monitoring)
+            num_samples = int(self.read(self.MONITORING_ACTUAL_NUMBER_SAMPLES, subnode=0))
+            sample_size = sum(self.__monitoring_size[reg] for reg in self.__monitoring_size)
             return num_samples * sample_size
 
-    def monitoring_read_data(self):
+    def monitoring_read_data(self) -> None:
         """Obtain processed monitoring data.
 
         Returns:
-            array: Actual processed monitoring data.
+            Actual processed monitoring data.
 
         """
         num_available_bytes = self.monitoring_actual_number_bytes()
@@ -634,12 +654,14 @@ class Servo:
             num_available_bytes = self.monitoring_actual_number_bytes()
         self.__monitoring_process_data(monitoring_data)
 
-    def monitoring_channel_data(self, channel, dtype=None):
+    def monitoring_channel_data(
+        self, channel: int, dtype: Optional[REG_DTYPE] = None
+    ) -> List[float]:
         """Obtain processed monitoring data of a channel.
 
         Args:
-            channel (int): Identity channel number.
-            dtype (REG_DTYPE): Data type of the register to map.
+            channel: Identity channel number.
+            dtype: Data type of the register to map.
 
         Note:
             The dtype argument is not necessary for this function, it
@@ -647,36 +669,39 @@ class Servo:
             of monitoring.
 
         Returns:
-            List: Monitoring data.
+            Monitoring data.
 
         """
-        return self.__monitoring[channel]["processed_data"]
+        return self.__monitoring_data[channel]
 
-    def disturbance_enable(self):
+    def disturbance_enable(self) -> None:
         """Enable disturbance process."""
         self.write(self.DISTURBANCE_ENABLE, data=1, subnode=0)
 
-    def disturbance_disable(self):
+    def disturbance_disable(self) -> None:
         """Disable disturbance process."""
         self.write(self.DISTURBANCE_ENABLE, data=0, subnode=0)
 
-    def disturbance_remove_data(self):
+    def disturbance_remove_data(self) -> None:
         """Remove disturbance data."""
         self.write(self.DISTURBANCE_REMOVE_DATA, data=1, subnode=0)
         self.disturbance_data = bytearray()
 
-    def disturbance_set_mapped_register(self, channel, address, subnode, dtype, size):
+    def disturbance_set_mapped_register(
+        self, channel: int, address: int, subnode: int, dtype: int, size: int
+    ) -> None:
         """Set monitoring mapped register.
 
         Args:
-            channel (int): Identity channel number.
-            address (int): Register address to map.
-            subnode (int): Subnode to be targeted.
-            dtype (int): Register data type.
-            size (int): Size of data in bytes.
+            channel: Identity channel number.
+            address: Register address to map.
+            subnode: Subnode to be targeted.
+            dtype: Register data type.
+            size: Size of data in bytes.
 
         """
-        self.__disturbance[channel] = {"size": size, "dtype": REG_DTYPE(dtype).name}
+        self.__disturbance_size[channel] = size
+        self.__disturbance_dtype[channel] = REG_DTYPE(dtype).name
         data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
         try:
             self.write(self.__disturbance_map_register(), data=data, subnode=0)
@@ -684,31 +709,33 @@ class Servo:
         except ILRegisterNotFoundError:
             self.write(self.DISTURBANCE_ADD_REGISTERS_OLD, data=address, subnode=0)
 
-    def disturbance_get_num_mapped_registers(self):
+    def disturbance_get_num_mapped_registers(self) -> int:
         """Obtain the number of disturbance mapped registers.
 
         Returns:
-            int: Actual number of mapped registers.
+            Actual number of mapped registers.
 
         """
-        return self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, 0)
+        return int(self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, 0))
 
-    def disturbance_remove_all_mapped_registers(self):
+    def disturbance_remove_all_mapped_registers(self) -> None:
         """Remove all disturbance mapped registers."""
         try:
             self.write(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
         except ILAccessError:
             self.write(self.DISTURBANCE_REMOVE_REGISTERS_OLD, data=1, subnode=0)
-        self.__disturbance = {"data": bytearray()}
+        self.__disturbance_data = bytearray()
+        self.__disturbance_size = {}
+        self.__disturbance_dtype = {}
 
-    def subscribe_to_status(self, callback):
+    def subscribe_to_status(self, callback: Callable[[SERVO_STATE, None, int], Any]) -> None:
         """Subscribe to state changes.
 
         Args:
-            callback (function): Callback function.
+            callback: Callback function.
 
         Returns:
-            int: Assigned slot.
+            Assigned slot.
 
         """
         if callback in self.__observers_servo_state:
@@ -716,11 +743,11 @@ class Servo:
             return
         self.__observers_servo_state.append(callback)
 
-    def unsubscribe_from_status(self, callback):
+    def unsubscribe_from_status(self, callback: Callable[[SERVO_STATE, None, int], Any]) -> None:
         """Unsubscribe from state changes.
 
         Args:
-            callback (function): Callback function.
+            Callback function.
 
         """
         if callback not in self.__observers_servo_state:
@@ -728,11 +755,11 @@ class Servo:
             return
         self.__observers_servo_state.remove(callback)
 
-    def is_alive(self):
+    def is_alive(self) -> bool:
         """Checks if the servo responds to a reading a register.
 
         Returns:
-            bool: Return code with the result of the read.
+            Return code with the result of the read.
 
         """
         _is_alive = True
@@ -743,22 +770,22 @@ class Servo:
             logger.error(e)
         return _is_alive
 
-    def reload_errors(self, dictionary):
+    def reload_errors(self, dictionary: str) -> None:
         """Force to reload all dictionary errors.
 
         Args:
-            dictionary (str): Dictionary.
+            Dictionary.
 
         """
         pass
 
-    def _get_reg(self, reg, subnode=1):
+    def _get_reg(self, reg: Union[str, Register], subnode: int = 1) -> Register:
         """Validates a register.
         Args:
-            reg (Register): Targeted register to validate.
-            subnode (int): Subnode for the register.
+            reg: Targeted register to validate.
+            subnode: Subnode for the register.
         Returns:
-            Register: Instance of the desired register from the dictionary.
+            Instance of the desired register from the dictionary.
         Raises:
             ValueError: If the dictionary is not loaded.
             ILWrongRegisterError: If the register has invalid format.
@@ -776,13 +803,13 @@ class Servo:
         else:
             raise TypeError("Invalid register")
 
-    def __update_register_dict(self, register, subnode):
+    def __update_register_dict(self, register: ET.Element, subnode: int) -> None:
         """Updates the register from a dictionary with the
         storage parameters.
 
         Args:
-            register (Element): Register element to be updated.
-            subnode (int): Target subnode.
+            register: Register element to be updated.
+            subnode: Target subnode.
 
         Returns:
 
@@ -794,7 +821,7 @@ class Servo:
             # Update register object
             reg = self.dictionary.registers(subnode)[register.attrib["id"]]
             reg.storage = storage
-            reg.storage_valid = 1
+            reg.storage_valid = True
         except BaseException as e:
             logger.error(
                 "Exception during save_configuration, register %s: %s",
@@ -802,43 +829,43 @@ class Servo:
                 e,
             )
 
-    def _notify_state(self, state, subnode):
+    def _notify_state(self, state: SERVO_STATE, subnode: int) -> None:
         """Notify the state to the observers.
 
         Args:
-            state (SERVO_STATE): Current servo state.
-            subnode (int): Subnode of the drive.
+            state: Current servo state.
+            subnode: Subnode of the drive.
 
         """
         for callback in self.__observers_servo_state:
             callback(state, None, subnode)
 
-    def __read_coco_moco_register(self, register_coco, register_moco):
+    def __read_coco_moco_register(self, register_coco: str, register_moco: str) -> str:
         """Reads the COCO register and if it does not exist,
         reads the MOCO register
 
         Args:
-            register_coco (str): COCO Register ID to be read.
-            register_moco (str): MOCO Register ID to be read.
+            register_coco: COCO Register ID to be read.
+            register_moco: MOCO Register ID to be read.
 
         Returns:
-            (int, str): Read value of the register.
+            Read value of the register.
 
         """
         try:
-            return self.read(register_coco, subnode=0)
+            return str(self.read(register_coco, subnode=0))
         except ILError:
             logger.warning(f"Error reading register {register_coco} from COCO. Trying MOCO")
         try:
-            return self.read(register_moco, subnode=1)
+            return str(self.read(register_moco, subnode=1))
         except ILError:
             raise ILError(f"Error reading register {register_moco} from MOCO.")
 
-    def __monitoring_map_register(self):
+    def __monitoring_map_register(self) -> str:
         """Get the first available Monitoring Mapped Register slot.
 
         Returns:
-            str: Monitoring Mapped Register ID.
+            Monitoring Mapped Register ID.
 
         """
         if self.monitoring_number_mapped_registers < 10:
@@ -847,22 +874,23 @@ class Servo:
             register_id = f"MON_CFG_REFG{self.monitoring_number_mapped_registers}_MAP"
         return register_id
 
-    @staticmethod
-    def _monitoring_disturbance_data_to_map_register(subnode, address, dtype, size):
+    def _monitoring_disturbance_data_to_map_register(
+        self, subnode: int, address: int, dtype: int, size: int
+    ) -> int:
         """Arrange necessary data to map a monitoring/disturbance register.
 
         Args:
-            subnode (int): Subnode to be targeted.
-            address (int): Register address to map.
-            dtype (int): Register data type.
-            size (int): Size of data in bytes.
+            subnode: Subnode to be targeted.
+            address: Register address to map.
+            dtype: Register data type.
+            size: Size of data in bytes.
 
         """
         data_h = address | subnode << 12
         data_l = dtype << 8 | size
         return (data_h << 16) | data_l
 
-    def __monitoring_update_num_mapped_registers(self):
+    def __monitoring_update_num_mapped_registers(self) -> None:
         """Update the number of mapped monitoring registers."""
         self.write(
             self.MONITORING_NUMBER_MAPPED_REGISTERS,
@@ -870,7 +898,7 @@ class Servo:
             subnode=0,
         )
 
-    def __monitoring_process_data(self, monitoring_data):
+    def __monitoring_process_data(self, monitoring_data: List[bytearray]) -> None:
         """Arrange monitoring data."""
         data_bytes = bytearray()
         for i in range(len(monitoring_data)):
@@ -879,29 +907,31 @@ class Servo:
         number_of_blocks = len(data_bytes) // bytes_per_block
         number_of_channels = self.monitoring_get_num_mapped_registers()
         for channel in range(number_of_channels):
-            self.__monitoring[channel]["processed_data"] = []
+            self.__monitoring_data[channel] = []
         for block in range(number_of_blocks):
             block_data = data_bytes[
                 block * bytes_per_block : block * bytes_per_block + bytes_per_block
             ]
             for channel in range(number_of_channels):
-                channel_data_size = self.__monitoring[channel]["size"]
+                channel_data_size = self.__monitoring_size[channel]
                 val = convert_bytes_to_dtype(
-                    block_data[:channel_data_size], self.__monitoring[channel]["dtype"]
+                    block_data[:channel_data_size], self.__monitoring_dtype[channel]
                 )
-                self.__monitoring[channel]["processed_data"].append(val)
+                if not isinstance(val, (int, float)):
+                    continue
+                self.__monitoring_data[channel].append(val)
                 block_data = block_data[channel_data_size:]
 
-    def __disturbance_map_register(self):
+    def __disturbance_map_register(self) -> str:
         """Get the first available Disturbance Mapped Register slot.
 
         Returns:
-            str: Disturbance Mapped Register ID.
+            Disturbance Mapped Register ID.
 
         """
         return f"DIST_CFG_REG{self.disturbance_number_mapped_registers}_MAP"
 
-    def __disturbance_update_num_mapped_registers(self):
+    def __disturbance_update_num_mapped_registers(self) -> None:
         """Update the number of mapped disturbance registers."""
         self.write(
             self.DISTURBANCE_NUMBER_MAPPED_REGISTERS,
@@ -909,39 +939,53 @@ class Servo:
             subnode=0,
         )
 
-    def _disturbance_create_data_chunks(self, channels, dtypes, data_arr, max_size):
+    def _disturbance_create_data_chunks(
+        self,
+        channels: Union[int, List[int]],
+        dtypes: Union[REG_DTYPE, List[REG_DTYPE]],
+        data_arr: Union[List[Union[int, float]], List[List[Union[int, float]]]],
+        max_size: int,
+    ) -> Tuple[bytearray, List[bytearray]]:
         """Divide disturbance data into chunks.
 
         Args:
-            channels (int or list of int): Channel identifier.
-            dtypes (int or list of int): Data type.
-            data_arr (list or list of list): Data array.
-            max_size (int): Max chunk size in bytes.
+            channels: Channel identifier.
+            dtypes: Data type.
+            data_arr: Data array.
+            max_size: Max chunk size in bytes.
 
         """
         if not isinstance(channels, list):
             channels = [channels]
         if not isinstance(dtypes, list):
             dtypes = [dtypes]
+
+        data_arr_aux: List[List[Union[int, float]]]
+
         if not isinstance(data_arr[0], list):
-            data_arr = [data_arr]
-        num_samples = len(data_arr[0])
+            num_samples = len(data_arr)
+            data_arr_aux = [data_arr]  # type: ignore [list-item]
+        else:
+            num_samples = len(data_arr[0])
+            data_arr_aux = data_arr  # type: ignore [assignment]
         self.write(self.DIST_NUMBER_SAMPLES, num_samples, subnode=0)
         data = bytearray()
         for sample_idx in range(num_samples):
-            for channel in range(len(data_arr)):
-                val = convert_dtype_to_bytes(data_arr[channel][sample_idx], dtypes[channel])
+            for channel in range(len(data_arr_aux)):
+                val = convert_dtype_to_bytes(data_arr_aux[channel][sample_idx], dtypes[channel])
                 data += val
         chunks = [data[i : i + max_size] for i in range(0, len(data), max_size)]
         return data, chunks
 
-    def write(self, reg, data, subnode=1):
+    def write(
+        self, reg: Union[str, Register], data: Union[int, float, str, bytes], subnode: int = 1
+    ) -> None:
         """Writes a data to a target register.
 
         Args:
-            reg (Register, str): Target register to be written.
-            data (int, str, float): Data to be written.
-            subnode (int): Target axis of the drive.
+            reg: Target register to be written.
+            data: Data to be written.
+            subnode: Target axis of the drive.
 
         Raises:
             ILAccessError: Wrong access to the register.
@@ -952,18 +996,21 @@ class Servo:
 
         if _reg.access == REG_ACCESS.RO:
             raise ILAccessError("Register is Read-only")
-        value = convert_dtype_to_bytes(data, _reg.dtype)
+        if not isinstance(data, bytes):
+            value = convert_dtype_to_bytes(data, _reg.dtype)
+        else:
+            value = data
         self._write_raw(_reg, value)
 
-    def read(self, reg, subnode=1):
+    def read(self, reg: Union[str, Register], subnode: int = 1) -> Union[int, float, str]:
         """Read a register value from servo.
 
         Args:
-            reg (str, Register): Register.
-            subnode (int): Target axis of the drive.
+            reg: Register.
+            subnode: Target axis of the drive.
 
         Returns:
-            int, float or str: Value stored in the register.
+            int, float or Value stored in the register.
 
         Raises:
             ILAccessError: Wrong access to the register.
@@ -979,24 +1026,31 @@ class Servo:
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
         return value
 
-    def replace_dictionary(self, dictionary):
+    def replace_dictionary(self, dictionary: str) -> None:
         """Deletes and creates a new instance of the dictionary.
 
         Args:
-            dictionary (str): Path to the dictionary.
+            dictionary: Path to the dictionary.
 
         """
         self._dictionary = self.DICTIONARY_CLASS(dictionary)
 
-    def disturbance_write_data(self, channels, dtypes, data_arr):
+    def disturbance_write_data(
+        self,
+        channels: Union[int, List[int]],
+        dtypes: Union[REG_DTYPE, List[REG_DTYPE]],
+        data_arr: Union[List[Union[int, float]], List[List[Union[int, float]]]],
+    ) -> None:
         """Write disturbance data.
 
         Args:
-            channels (int or list of int): Channel identifier.
-            dtypes (int or list of int): Data type.
-            data_arr (list or list of list): Data array.
+            channels: Channel identifier.
+            dtypes: Data type.
+            data_arr: Data array.
 
         """
+        if self.DIST_DATA is None:
+            return
         data, chunks = self._disturbance_create_data_chunks(
             channels, dtypes, data_arr, self.MAX_WRITE_SIZE
         )
@@ -1004,8 +1058,10 @@ class Servo:
             self._disturbance_write_data(chunk)
         self.disturbance_data = data
 
-    def _monitoring_read_data(self):
+    def _monitoring_read_data(self) -> bytearray:
         """Read monitoring data frame."""
+        if self.MONITORING_DATA is None:
+            return bytearray()
         return self._read_raw(self.MONITORING_DATA)
 
     def _disturbance_write_data(self, data):
@@ -1013,13 +1069,12 @@ class Servo:
         return self._write_raw(self.DIST_DATA, data=data)
 
     @abstractmethod
-    def _write_raw(self, reg, data):
+    def _write_raw(self, reg: Register, data: bytes) -> None:
         """Write raw bytes to a target register.
 
         Args:
-            reg (Register): Target register to be written.
-            data (bytearray): Data to be written.
-            subnode (int): Target axis of the drive.
+            reg: Target register to be written.
+            data: Data to be written.
 
         Raises:
             ILIOError: Error writing the register.
@@ -1028,14 +1083,14 @@ class Servo:
         raise NotImplementedError
 
     @abstractmethod
-    def _read_raw(self, reg):
+    def _read_raw(self, reg: Register) -> bytearray:
         """Read raw bytes from a target register.
 
         Args:
-            reg (Register): Register.
+            reg: Register.
 
         Returns:
-            bytearray: Raw bytes reading from servo.
+            Raw bytes reading from servo.
 
         Raises:
             ILIOError: Error reading the register.
@@ -1044,38 +1099,41 @@ class Servo:
         raise NotImplementedError
 
     @property
-    def dictionary(self):
+    def dictionary(self) -> Dictionary:
         """Returns dictionary object"""
         return self._dictionary
 
     @property
-    def full_name(self):
-        """str: Drive full name."""
+    def full_name(self) -> str:
+        """Drive full name."""
         return self.__full_name
 
     @full_name.setter
-    def full_name(self, new_name):
+    def full_name(self, new_name: str) -> None:
         self.__full_name = new_name
 
     @property
-    def status(self):
-        """dict: Servo status."""
+    def status(self) -> Dict[int, SERVO_STATE]:
+        """Servo status."""
         status = {subnode: self.get_state(subnode) for subnode in range(1, self.subnodes)}
         return status
 
     @property
-    def subnodes(self):
-        """int: Number of subnodes."""
+    def subnodes(self) -> int:
+        """Number of subnodes."""
         return self.dictionary.subnodes
 
     @property
-    def errors(self):
-        """dict: Errors."""
-        return self.dictionary.errors.errors
+    def errors(self) -> Dict[int, List[Optional[str]]]:
+        """Errors."""
+        if self.dictionary.errors:
+            return self.dictionary.errors.errors
+        else:
+            return {}
 
     @property
-    def info(self):
-        """dict: Servo information."""
+    def info(self) -> Dict[str, Union[str, int]]:
+        """Servo information."""
         serial_number = self.__read_coco_moco_register(
             self.SERIAL_NUMBER_REGISTERS[0], self.SERIAL_NUMBER_REGISTERS[1]
         )
@@ -1100,52 +1158,52 @@ class Servo:
         }
 
     @property
-    def monitoring_number_mapped_registers(self):
+    def monitoring_number_mapped_registers(self) -> int:
         """Get the number of mapped monitoring registers."""
-        return self.read(self.MONITORING_NUMBER_MAPPED_REGISTERS, subnode=0)
+        return int(self.read(self.MONITORING_NUMBER_MAPPED_REGISTERS, subnode=0))
 
     @property
-    def monitoring_data_size(self):
+    def monitoring_data_size(self) -> int:
         """Obtain monitoring data size.
 
         Returns:
-            int: Current monitoring data size in bytes.
+            Current monitoring data size in bytes.
 
         """
-        number_of_samples = self.read("MON_CFG_WINDOW_SAMP", subnode=0)
+        number_of_samples = int(self.read("MON_CFG_WINDOW_SAMP", subnode=0))
         return self.monitoring_get_bytes_per_block() * number_of_samples
 
     @property
-    def disturbance_data(self):
+    def disturbance_data(self) -> bytearray:
         """Obtain disturbance data.
 
         Returns:
-            array: Current disturbance data.
+            Current disturbance data.
 
         """
-        return self.__disturbance["data"]
+        return self.__disturbance_data
 
     @disturbance_data.setter
-    def disturbance_data(self, value):
+    def disturbance_data(self, value: bytearray) -> None:
         """Set disturbance data.
 
         Args:
-            value (array): Array with the disturbance to send.
+            value: Array with the disturbance to send.
 
         """
-        self.__disturbance["data"] = value
+        self.__disturbance_data = value
 
     @property
-    def disturbance_data_size(self):
+    def disturbance_data_size(self) -> int:
         """Obtain disturbance data size.
 
         Returns:
-            int: Current disturbance data size.
+            Current disturbance data size.
 
         """
-        return len(self.__disturbance["data"])
+        return len(self.__disturbance_data)
 
     @property
-    def disturbance_number_mapped_registers(self):
+    def disturbance_number_mapped_registers(self) -> int:
         """Get the number of mapped disturbance registers."""
-        return self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, subnode=0)
+        return int(self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, subnode=0))
