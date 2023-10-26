@@ -2,6 +2,8 @@ from typing import List, Dict, Optional, Union, Tuple
 from abc import ABC, abstractmethod
 
 import xml.etree.ElementTree as ET
+from pathlib import Path
+
 import ingenialogger
 
 from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
@@ -142,6 +144,8 @@ class Dictionary(ABC):
     # ORIGIN: ENUMERATIONS
     DICT_ENUMERATIONS = "./Enumerations"
     DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
+    DICT_IMAGE = "DriveImage"
+    DICT_MOCO_IMAGE_ATTRIB = "moco"
 
     dtype_xdf_options = {
         "float": REG_DTYPE.FLOAT,
@@ -189,6 +193,10 @@ class Dictionary(ABC):
         """Instance of all the errors in the dictionary."""
         self._registers: List[Dict[str, Register]] = []
         """Instance of all the registers in the dictionary"""
+        self.image: Optional[str] = None
+        """Drive's encoded image."""
+        self.moco_image: Optional[str] = None
+        """Motion CORE encoded image. Only available when using a COM-KIT."""
 
         self.read_dictionary()
 
@@ -261,7 +269,19 @@ class Dictionary(ABC):
                 current_read_register = self._read_xdf_register(register)
                 if current_read_register:
                     self._add_register_list(current_read_register)
-
+        try:
+            images = root.findall(self.DICT_IMAGE)
+            for image in images:
+                if image.text is not None and image.text.strip():
+                    if (
+                        "type" in image.attrib
+                        and image.attrib["type"] == self.DICT_MOCO_IMAGE_ATTRIB
+                    ):
+                        self.moco_image = image.text
+                    else:
+                        self.image = image.text
+        except AttributeError:
+            logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
         xdf_file.close()
 
