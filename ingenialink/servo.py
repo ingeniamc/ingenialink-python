@@ -979,7 +979,11 @@ class Servo:
         return data, chunks
 
     def write(
-        self, reg: Union[str, Register], data: Union[int, float, str, bytes], subnode: int = 1, **kwargs,
+        self,
+        reg: Union[str, Register],
+        data: Union[int, float, str, bytes],
+        subnode: int = 1,
+        **kwargs: Any,
     ) -> None:
         """Writes a data to a target register.
 
