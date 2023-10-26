@@ -12,6 +12,9 @@
 - Docstrings from Register constructor and its subclasses are updated.
 - CanopenRegister and EthernetRegister have the same signature.
 
+### Changed
+- Raise ILValueError when the disturbance data does not fit in a register.
+
 ## [7.0.4] - 2023-10-11
 
 ### Fixed
