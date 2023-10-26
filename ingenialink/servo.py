@@ -1058,9 +1058,6 @@ class Servo:
             )
         except OverflowError as e:
             raise ILValueError("Disturbance data cannot be written.") from e
-        data, chunks = self._disturbance_create_data_chunks(
-            channels, dtypes, data_arr, self.MAX_WRITE_SIZE
-        )
         for chunk in chunks:
             self._write_raw(self.DIST_DATA, data=chunk)
         self.disturbance_data = data
