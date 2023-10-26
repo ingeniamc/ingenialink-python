@@ -13,6 +13,7 @@ from ingenialink.exceptions import (
     ILStateError,
     ILAccessError,
     ILTimeoutError,
+    ILValueError,
 )
 from ingenialink.register import Register
 from ingenialink.utils._utils import (
@@ -109,7 +110,7 @@ class Servo:
     DISTURBANCE_REMOVE_DATA = "DIST_REMOVE_DATA"
     DISTURBANCE_NUMBER_MAPPED_REGISTERS = "DIST_CFG_MAP_REGS"
     DIST_NUMBER_SAMPLES = "DIST_CFG_SAMPLES"
-    DIST_DATA: Optional[Register] = None
+    DIST_DATA: Register
     MONITORING_ACTUAL_NUMBER_SAMPLES = "MON_CFG_CYCLES_VALUE"
     DISTURBANCE_REMOVE_REGISTERS_OLD = "DIST_CMD_RM_REGS"
     MONITORING_REMOVE_REGISTERS_OLD = "MON_CMD_RM_REG"
@@ -1051,11 +1052,14 @@ class Servo:
         """
         if self.DIST_DATA is None:
             return
-        data, chunks = self._disturbance_create_data_chunks(
-            channels, dtypes, data_arr, self.MAX_WRITE_SIZE
-        )
+        try:
+            data, chunks = self._disturbance_create_data_chunks(
+                channels, dtypes, data_arr, self.MAX_WRITE_SIZE
+            )
+        except OverflowError as e:
+            raise ILValueError("Disturbance data cannot be written.") from e
         for chunk in chunks:
-            self._write_raw(self.DIST_DATA, data=chunk)
+            self._disturbance_write_data(chunk)
         self.disturbance_data = data
 
     def _monitoring_read_data(self) -> bytearray:
@@ -1063,6 +1067,10 @@ class Servo:
         if self.MONITORING_DATA is None:
             return bytearray()
         return self._read_raw(self.MONITORING_DATA)
+
+    def _disturbance_write_data(self, data: bytes) -> None:
+        """Write disturbance data."""
+        return self._write_raw(self.DIST_DATA, data=data)
 
     @abstractmethod
     def _write_raw(self, reg: Register, data: bytes) -> None:
