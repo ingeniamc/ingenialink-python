@@ -52,7 +52,8 @@ setuptools.setup(
             "jinja2==3.0.3",
             "pycodestyle==2.6.0",
             "wheel==0.37.1",
-            "m2r2==0.3.2"
+            "m2r2==0.3.2",
+            "mypy==0.971"
         ],
     },
 )

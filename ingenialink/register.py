@@ -1,12 +1,13 @@
+from abc import ABC
+from typing import Optional, Any, Tuple, Union, Dict, List
+
 from ingenialink import exceptions as exc
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
-
-from abc import ABC
 
 # CANOPEN DTYPES
 IL_REG_DTYPE_DOMAIN = 15
 
-dtypes_ranges = {
+dtypes_ranges: Dict[REG_DTYPE, Dict[str, Union[int, float]]] = {
     REG_DTYPE.U8: {"max": 255, "min": 0},
     REG_DTYPE.S8: {"max": 127, "min": -128},
     REG_DTYPE.U16: {"max": 65535, "min": 0},
@@ -23,21 +24,21 @@ class Register(ABC):
     """Register Base class.
 
     Args:
-        dtype (REG_DTYPE): Data type.
-        access (REG_ACCESS): Access type.
-        identifier (str, optional): Identifier.
-        units (str, optional): Units.
-        cyclic (str, optional): Cyclic typed register.
-        phy (REG_PHY, optional): Physical units.
-        subnode (int): Subnode.
-        storage (any, optional): Storage.
-        reg_range (tuple, optional): Range (min, max).
-        labels (dict, optional): Register labels.
-        enums (dict): Enumeration registers.
-        cat_id (str, optional): Category ID.
-        scat_id (str, optional): Sub-category ID.
-        internal_use (int, optional): Internal use.
-        address_type (REG_ADDRESS_TYPE): Address tpye.
+        dtype: Data type.
+        access: Access type.
+        identifier: Identifier.
+        units: Units.
+        cyclic: Cyclic typed register.
+        phy: Physical units.
+        subnode: Subnode.
+        storage: Storage.
+        reg_range: Range (min, max).
+        labels: Register labels.
+        enums: Enumeration registers.
+        cat_id: Category ID.
+        scat_id: Sub-category ID.
+        internal_use: Internal use.
+        address_type: Address tpye.
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -48,26 +49,28 @@ class Register(ABC):
 
     def __init__(
         self,
-        dtype,
-        access,
-        identifier=None,
-        units=None,
-        cyclic="CONFIG",
-        phy=REG_PHY.NONE,
-        subnode=1,
-        storage=None,
-        reg_range=(None, None),
-        labels=None,
-        enums=None,
-        cat_id=None,
-        scat_id=None,
-        internal_use=0,
-        address_type=None,
-    ):
+        dtype: REG_DTYPE,
+        access: REG_ACCESS,
+        identifier: Optional[str] = None,
+        units: Optional[str] = None,
+        cyclic: str = "CONFIG",
+        phy: REG_PHY = REG_PHY.NONE,
+        subnode: int = 1,
+        storage: Any = None,
+        reg_range: Union[
+            Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]
+        ] = (None, None),
+        labels: Optional[Dict[str, str]] = None,
+        enums: Optional[List[Dict[str, Union[str, int]]]] = None,
+        cat_id: Optional[str] = None,
+        scat_id: Optional[str] = None,
+        internal_use: int = 0,
+        address_type: Optional[REG_ADDRESS_TYPE] = None,
+    ) -> None:
         if labels is None:
             labels = {}
         if enums is None:
-            enums = {}
+            enums = []
 
         self.__type_errors(dtype, access, phy)
 
@@ -81,18 +84,16 @@ class Register(ABC):
         self._storage = storage
         self._range = (None, None) if not reg_range else reg_range
         self._labels = labels
-        self._enums = enums
         self._enums_count = len(enums)
         self._cat_id = cat_id
         self._scat_id = scat_id
         self._internal_use = internal_use
-        self._storage_valid = 0 if not storage else 1
+        self._storage_valid = False if not storage else True
         self._address_type = address_type
-
+        self._enums = enums
         self.__config_range(reg_range)
-        self._enums = self.__config_enums()
 
-    def __type_errors(self, dtype, access, phy):
+    def __type_errors(self, dtype: REG_DTYPE, access: REG_ACCESS, phy: REG_PHY) -> None:
         if not isinstance(dtype, REG_DTYPE):
             raise exc.ILValueError("Invalid data type")
 
@@ -102,7 +103,10 @@ class Register(ABC):
         if not isinstance(phy, REG_PHY):
             raise exc.ILValueError("Invalid physical units type")
 
-    def __config_range(self, reg_range):
+    def __config_range(
+        self,
+        reg_range: Union[Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]],
+    ) -> None:
         if self.dtype in dtypes_ranges:
             if self.dtype == REG_DTYPE.FLOAT:
                 if self.storage:
@@ -120,54 +124,46 @@ class Register(ABC):
                 )
             self._range = aux_range
         else:
-            self._storage_valid = 0
-
-    def __config_enums(self):
-        aux_enums = []
-        for key, value in self._enums.items():
-            dictionary = {"label": value, "value": int(key)}
-            aux_enums.append(dictionary)
-
-        return aux_enums
+            self._storage_valid = False
 
     @property
-    def dtype(self):
-        """REG_DTYPE: Data type of the register."""
+    def dtype(self) -> REG_DTYPE:
+        """Data type of the register."""
         return REG_DTYPE(self._dtype)
 
     @property
-    def access(self):
-        """REG_ACCESS: Access type of the register."""
+    def access(self) -> REG_ACCESS:
+        """Access type of the register."""
         return REG_ACCESS(self._access)
 
     @property
-    def identifier(self):
-        """str: Register identifier."""
+    def identifier(self) -> Optional[str]:
+        """Register identifier."""
         return self._identifier
 
     @property
-    def units(self):
-        """str: Units of the register."""
+    def units(self) -> Optional[str]:
+        """Units of the register."""
         return self._units
 
     @property
-    def cyclic(self):
-        """str: Defines if the register is cyclic."""
+    def cyclic(self) -> str:
+        """Defines if the register is cyclic."""
         return self._cyclic
 
     @property
-    def phy(self):
-        """REG_PHY: Physical units of the register."""
+    def phy(self) -> REG_PHY:
+        """Physical units of the register."""
         return REG_PHY(self._phy)
 
     @property
-    def subnode(self):
-        """int: Target subnode of the register."""
+    def subnode(self) -> int:
+        """Target subnode of the register."""
         return self._subnode
 
     @property
-    def storage(self):
-        """any: Defines if the register needs to be stored."""
+    def storage(self) -> Any:
+        """Defines if the register needs to be stored."""
         if not self.storage_valid:
             return None
 
@@ -187,63 +183,60 @@ class Register(ABC):
             return None
 
     @storage.setter
-    def storage(self, value):
-        """any: Defines if the register needs to be stored."""
+    def storage(self, value: Any) -> None:
+        """Defines if the register needs to be stored."""
         self._storage = value
 
     @property
-    def storage_valid(self):
-        """bool: Defines if the register storage is valid."""
+    def storage_valid(self) -> bool:
+        """Defines if the register storage is valid."""
         return self._storage_valid
 
     @storage_valid.setter
-    def storage_valid(self, value):
-        """bool: Defines if the register storage is valid."""
+    def storage_valid(self, value: bool) -> None:
+        """Defines if the register storage is valid."""
         self._storage_valid = value
 
     @property
-    def range(self):
+    def range(
+        self,
+    ) -> Union[Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]]:
         """tuple: Containing the minimum and the maximum values of the register."""
         if self._range:
-            return self._range[0], self._range[1]
-        return None
+            return self._range
+        return (None, None)
 
     @property
-    def labels(self):
-        """dict: Containing the labels of the register."""
+    def labels(self) -> Dict[str, str]:
+        """Containing the labels of the register."""
         return self._labels
 
     @property
-    def enums(self):
-        """dict: Containing all the enums for the register."""
-        if not hasattr(self, "_enums"):
-            self._enums = []
-            for i in range(0, self.enums_count):
-                aux_dict = {"label": self._enums[i].label, "value": self._enums[i].value}
-                self._enums.append(aux_dict)
+    def enums(self) -> List[Dict[str, Union[str, int]]]:
+        """Containing all the enums for the register."""
         return self._enums
 
     @property
-    def enums_count(self):
-        """int: The number of the enums in the register."""
+    def enums_count(self) -> int:
+        """The number of the enums in the register."""
         return self._enums_count
 
     @property
-    def cat_id(self):
-        """str: Category ID"""
+    def cat_id(self) -> Optional[str]:
+        """Category ID"""
         return self._cat_id
 
     @property
-    def scat_id(self):
-        """str: Sub-Category ID"""
+    def scat_id(self) -> Optional[str]:
+        """Sub-Category ID"""
         return self._scat_id
 
     @property
-    def internal_use(self):
-        """int: Defines if the register is only for internal uses."""
+    def internal_use(self) -> int:
+        """Defines if the register is only for internal uses."""
         return self._internal_use
 
     @property
-    def address_type(self):
-        """REG_ADDRESS_TYPE: Address type of the register."""
+    def address_type(self) -> Optional[REG_ADDRESS_TYPE]:
+        """Address type of the register."""
         return REG_ADDRESS_TYPE(self._address_type)

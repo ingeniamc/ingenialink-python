@@ -1,8 +1,12 @@
 import struct
 from binascii import crc_hqx
+import io
+from typing import Optional, Tuple, Type, TypeVar
 
 from ingenialink.exceptions import ILWrongCRCError, ILNACKError, ILWrongRegisterError
 from ingenialink.constants import MCB_CMD_ACK
+
+T = TypeVar("T", bound="MCB")
 
 
 class MCB:
@@ -25,27 +29,27 @@ class MCB:
     DATA_END_BYTE = MCB_FRAME_SIZE - MCB_CRC_SIZE
     ERR_CODE_SIZE = 4
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def __del__(self):
+    def __del__(self) -> None:
         pass
 
-    def create_msg(self, node, subnode, cmd, data, size):
+    def create_msg(self, node: int, subnode: int, cmd: int, data: bytes, size: int) -> bytes:
         """Creates a command message following the MCB protocol.
 
         Args:
-            node (int): Reserved bits used to identify the destination device.
-            subnode (int): Subsystem bits used to identify the destination device.
-            cmd (int): Command to lead the message.
-            data (bytes): Data to be added to the message.
-            size (int): Size of data.
+            node: Reserved bits used to identify the destination device.
+            subnode: Subsystem bits used to identify the destination device.
+            cmd: Command to lead the message.
+            data: Data to be added to the message.
+            size: Size of data.
 
         Returns:
             bin: MCB command message.
         """
         node_head = (node << 4) | (subnode & 0xF)
-        node_head = struct.pack("<H", node_head)
+        node_head_bytes = struct.pack("<H", node_head)
 
         if size > self.EXTENDED_MESSAGE_SIZE:
             cmd = cmd + 1
@@ -53,27 +57,34 @@ class MCB:
             head_size = struct.pack("<H", size)
             head_size = head_size + bytes([0] * (self.EXTENDED_MESSAGE_SIZE - len(head_size)))
             ret = (
-                node_head
+                node_head_bytes
                 + head
                 + head_size
-                + struct.pack("<H", crc_hqx(node_head + head + head_size, 0))
+                + struct.pack("<H", crc_hqx(node_head_bytes + head + head_size, 0))
                 + data
             )
         else:
             head = struct.pack("<H", cmd)
-            ret = node_head + head + data + struct.pack("<H", crc_hqx(node_head + head + data, 0))
+            ret = (
+                node_head_bytes
+                + head
+                + data
+                + struct.pack("<H", crc_hqx(node_head_bytes + head + data, 0))
+            )
 
         return ret
 
-    def add_cmd(self, node, subnode, cmd, data, output):
+    def add_cmd(
+        self, node: int, subnode: int, cmd: int, data: bytes, output: io.BufferedWriter
+    ) -> None:
         """Creates and adds a MCB message to a given file.
 
         Args:
-            node (int): Reserved bits used to identify the destination device.
-            subnode (int): Subsystem bits used to identify the destination device.
-            cmd (int): Command to lead the message.
-            data (bytes): Data to be added to the message.
-            output (file): File object to store the message.
+            node: Reserved bits used to identify the destination device.
+            subnode: Subsystem bits used to identify the destination device.
+            cmd: Command to lead the message.
+            data: Data to be added to the message.
+            output: File object to store the message.
         """
         if len(data) <= self.EXTENDED_MESSAGE_SIZE:
             data = data + bytes([0] * (self.EXTENDED_MESSAGE_SIZE - len(data)))
@@ -81,17 +92,19 @@ class MCB:
         output.write(frame)
 
     @classmethod
-    def build_mcb_frame(cls, cmd, subnode, address, data=None):
+    def build_mcb_frame(
+        cls: Type[T], cmd: int, subnode: int, address: int, data: Optional[bytes] = None
+    ) -> bytes:
         """Build an MCB frame.
 
         Args:
-            cmd (int): Read/write command.
-            subnode (int): Target axis of the drive.
-            address (int): Register address to be read/written.
-            data (bytes): Data to be written to the register.
+            cmd: Read/write command.
+            subnode: Target axis of the drive.
+            address: Register address to be read/written.
+            data: Data to be written to the register.
 
         Returns:
-            bytes: MCB frame.
+            MCB frame.
         """
         if data is None:
             data = b"\x00" * cls.MCB_DATA_SIZE
@@ -114,13 +127,13 @@ class MCB:
         return frame
 
     @classmethod
-    def read_mcb_data(cls, expected_address, frame):
+    def read_mcb_data(cls: Type[T], expected_address: int, frame: bytes) -> bytes:
         """Read an MCB frame and return its data.
 
         Args:
-            expected_address (int): Address of the expected register to be
+            expected_address: Address of the expected register to be
             read.
-            frame (bytes): MCB frame.
+            frame: MCB frame.
 
         Raises:
             ILWrongCRCError: If the received CRC code does not match
@@ -130,7 +143,7 @@ class MCB:
             the expected address.
 
         Returns:
-            bytes: data contained in frame.
+            data contained in frame.
         """
         recv_add, _, cmd, data = cls.read_mcb_frame(frame)
 
@@ -147,17 +160,17 @@ class MCB:
         return data
 
     @classmethod
-    def read_mcb_frame(cls, frame):
+    def read_mcb_frame(cls: Type[T], frame: bytes) -> Tuple[int, int, int, bytes]:
         """Read an MCB frame and return its address, subnode, data and command.
 
         Args:
-            frame (bytes): MCB frame.
+            frame: MCB frame.
 
         Returns:
-            int: register address
-            int: subnode
-            bytes: data contained in frame.
-            int: command
+            register address
+            subnode
+            command
+            data contained in frame.
 
         Raises:
             ILWrongCRCError: If the received CRC code does not match
