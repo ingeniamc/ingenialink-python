@@ -193,9 +193,9 @@ class Dictionary(ABC):
         """Instance of all the errors in the dictionary."""
         self._registers: List[Dict[str, Register]] = []
         """Instance of all the registers in the dictionary"""
-        self.image = None
+        self.image: Optional[str] = None
         """Drive's encoded image."""
-        self.moco_image = None
+        self.moco_image: Optional[str] = None
         """Motion CORE encoded image. Only available when using a COM-KIT."""
 
         self.read_dictionary()
