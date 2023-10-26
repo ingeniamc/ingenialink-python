@@ -1,9 +1,13 @@
+from typing import List, Dict, Optional, Union, Tuple
+from abc import ABC, abstractmethod
+
 import xml.etree.ElementTree as ET
+from pathlib import Path
+
 import ingenialogger
 
-from abc import ABC, abstractmethod
 from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
-from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
+from ingenialink.register import Register, REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
 from ingenialink import exceptions as exc
 
 logger = ingenialogger.get_logger(__name__)
@@ -21,36 +25,46 @@ class DictionaryCategories:
     """Contains all categories from a Dictionary.
 
     Args:
-        list_xdf_categories (list): List of Elements from xdf file
+        list_xdf_categories: List of Elements from xdf file
 
     """
 
-    def __init__(self, list_xdf_categories):
+    def __init__(self, list_xdf_categories: List[ET.Element]) -> None:
         self._list_xdf_categories = list_xdf_categories
-        self._cat_ids = []
-        self._categories = {}
+        self._cat_ids: List[str] = []
+        self._categories: Dict[str, Dict[str, str]] = {}
 
         self.load_cat_ids()
 
-    def load_cat_ids(self):
+    def load_cat_ids(self) -> None:
         """Load category IDs from dictionary."""
         for element in self._list_xdf_categories:
             self._cat_ids.append(element.attrib["id"])
-            self._categories[element.attrib["id"]] = {"en_US": element.find(DICT_LABELS_LABEL).text}
+            cat_element = element.find(DICT_LABELS_LABEL)
+            if cat_element is None:
+                logger.warning(
+                    f"The element of the category {element.attrib['id']} could not be load"
+                )
+                continue
+            cat_id = cat_element.text
+            if cat_id is None:
+                logger.warning(f"The ID of the category {element.attrib['id']} could not be load")
+                continue
+            self._categories[element.attrib["id"]] = {"en_US": cat_id}
 
     @property
-    def category_ids(self):
-        """list: Category IDs."""
+    def category_ids(self) -> List[str]:
+        """Category IDs."""
         return self._cat_ids
 
-    def labels(self, cat_id):
+    def labels(self, cat_id: str) -> Dict[str, str]:
         """Obtain labels for a certain category ID.
 
         Args:
-        cat_id (str):  Category ID
+        cat_id:  Category ID
 
         Returns:
-            dict: Labels dictionary.
+            Labels dictionary.
 
         """
         return self._categories[cat_id]
@@ -60,19 +74,22 @@ class DictionaryErrors:
     """Errors for the dictionary.
 
     Args:
-        list_xdf_errors (list):  List of Elements from xdf file
+        list_xdf_errors:  List of Elements from xdf file
     """
 
-    def __init__(self, list_xdf_errors):
+    def __init__(self, list_xdf_errors: List[ET.Element]) -> None:
         self._list_xdf_errors = list_xdf_errors
-        self._errors = {}
+        self._errors: Dict[int, List[Optional[str]]] = {}
 
         self.load_errors()
 
-    def load_errors(self):
+    def load_errors(self) -> None:
         """Load errors from dictionary."""
         for element in self._list_xdf_errors:
             label = element.find(DICT_LABELS_LABEL)
+            if label is None:
+                logger.warning(f"Could not load label of error {element.attrib['id']}")
+                continue
             self._errors[int(element.attrib["id"], 16)] = [
                 element.attrib["id"],
                 element.attrib["affected_module"],
@@ -81,11 +98,11 @@ class DictionaryErrors:
             ]
 
     @property
-    def errors(self):
+    def errors(self) -> Dict[int, List[Optional[str]]]:
         """Get the errors dictionary.
 
         Returns:
-            dict: Errors dictionary.
+            Errors dictionary.
         """
         return self._errors
 
@@ -94,7 +111,7 @@ class Dictionary(ABC):
     """Ingenia dictionary Abstract Base Class.
 
     Args:
-        dictionary_path (str): Dictionary file path.
+        dictionary_path: Dictionary file path.
 
     Raises:
         ILCreationError: If the dictionary could not be created.
@@ -127,21 +144,8 @@ class Dictionary(ABC):
     # ORIGIN: ENUMERATIONS
     DICT_ENUMERATIONS = "./Enumerations"
     DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
-
-    class AttrRegDict:
-        IDENTIFIER = "identifier"
-        UNITS = "units"
-        CYCLIC = "cyclic"
-        DTYPE = "dtype"
-        ACCESS = "access"
-        SUBNODE = "subnode"
-        STORAGE = "storage"
-        REG_RANGE = "reg_range"
-        LABELS = "labels"
-        ENUMS = "enums"
-        CAT_ID = "cat_id"
-        INT_USE = "internal_use"
-        ADDRESS_TYPE = "address_type"
+    DICT_IMAGE = "DriveImage"
+    DICT_MOCO_IMAGE_ATTRIB = "moco"
 
     dtype_xdf_options = {
         "float": REG_DTYPE.FLOAT,
@@ -166,45 +170,49 @@ class Dictionary(ABC):
         "NVM_HW": REG_ADDRESS_TYPE.NVM_HW,
     }
 
-    def __init__(self, dictionary_path):
+    def __init__(self, dictionary_path: str) -> None:
         self.path = dictionary_path
-        """str: Path of the dictionary."""
+        """Path of the dictionary."""
         self.version = "1"
-        """str: Version of the dictionary."""
-        self.firmware_version = None
-        """str: Firmware version declared in the dictionary."""
-        self.product_code = None
-        """int: Product code declared in the dictionary."""
-        self.part_number = None
-        """str: Part number declared in the dictionary."""
-        self.revision_number = None
-        """int: Revision number declared in the dictionary."""
-        self.interface = None
-        """str: Interface declared in the dictionary."""
-        self.subnodes = SINGLE_AXIS_MINIMUM_SUBNODES
-        """int: Number of subnodes in the dictionary."""
-        self.categories = None
-        """DictionaryCategories: Instance of all the categories in the dictionary."""
-        self.errors = None
-        """DictionaryErrors: Instance of all the errors in the dictionary."""
-        self._registers = []
-        """list(dict): Instance of all the registers in the dictionary"""
+        """Version of the dictionary."""
+        self.firmware_version: Optional[str] = None
+        """Firmware version declared in the dictionary."""
+        self.product_code: Optional[int] = None
+        """Product code declared in the dictionary."""
+        self.part_number: Optional[str] = None
+        """Part number declared in the dictionary."""
+        self.revision_number: Optional[int] = None
+        """Revision number declared in the dictionary."""
+        self.interface: Optional[str] = None
+        """Interface declared in the dictionary."""
+        self.subnodes: int = SINGLE_AXIS_MINIMUM_SUBNODES
+        """Number of subnodes in the dictionary."""
+        self.categories: Optional[DictionaryCategories] = None
+        """Instance of all the categories in the dictionary."""
+        self.errors: Optional[DictionaryErrors] = None
+        """Instance of all the errors in the dictionary."""
+        self._registers: List[Dict[str, Register]] = []
+        """Instance of all the registers in the dictionary"""
+        self.image: Optional[str] = None
+        """Drive's encoded image."""
+        self.moco_image: Optional[str] = None
+        """Motion CORE encoded image. Only available when using a COM-KIT."""
 
         self.read_dictionary()
 
-    def registers(self, subnode):
+    def registers(self, subnode: int) -> Dict[str, Register]:
         """Gets the register dictionary to the targeted subnode.
 
         Args:
-            subnode (int): Identifier for the subnode.
+            subnode: Identifier for the subnode.
 
         Returns:
-            dict: Dictionary of all the registers for a subnode.
+            Dictionary of all the registers for a subnode.
 
         """
         return self._registers[subnode]
 
-    def read_dictionary(self):
+    def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
         try:
             with open(self.path, "r", encoding="utf-8") as xdf_file:
@@ -214,6 +222,10 @@ class Dictionary(ABC):
         root = tree.getroot()
 
         device = root.find(self.DICT_ROOT_DEVICE)
+        if device is None:
+            raise exc.ILError(
+                f"Could not load the dictionary {self.path}. Device information is missing"
+            )
 
         # Subnodes
         if root.findall(self.DICT_ROOT_AXES):
@@ -232,7 +244,7 @@ class Dictionary(ABC):
 
         # Version
         version_node = root.find(self.DICT_ROOT_VERSION)
-        if version_node is not None:
+        if version_node is not None and version_node.text is not None:
             self.version = version_node.text
 
         self.firmware_version = device.attrib.get("firmwareVersion")
@@ -257,18 +269,30 @@ class Dictionary(ABC):
                 current_read_register = self._read_xdf_register(register)
                 if current_read_register:
                     self._add_register_list(current_read_register)
-
+        try:
+            images = root.findall(self.DICT_IMAGE)
+            for image in images:
+                if image.text is not None and image.text.strip():
+                    if (
+                        "type" in image.attrib
+                        and image.attrib["type"] == self.DICT_MOCO_IMAGE_ATTRIB
+                    ):
+                        self.moco_image = image.text
+                    else:
+                        self.image = image.text
+        except AttributeError:
+            logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
         xdf_file.close()
 
-    def _read_xdf_register(self, register):
+    def _read_xdf_register(self, register: ET.Element) -> Optional[Register]:
         """Reads a register from the dictionary and creates a Register instance.
 
         Args:
-            register (Element): Register instance from the dictionary.
+            register: Register instance from the dictionary.
 
         Returns:
-            dict: The current register which it has been reading
+            The current register which it has been reading
             None: When at least a mandatory attribute is not in a xdf file
 
         Raises:
@@ -280,105 +304,107 @@ class Dictionary(ABC):
 
         """
         try:
-            # Dictionary where the current register attributes will be saved
-            current_read_register = dict()
-
-            # Identifier
-            current_read_register[self.AttrRegDict.IDENTIFIER] = register.attrib["id"]
-
+            identifier = register.attrib["id"]
         except KeyError as ke:
             logger.error(f"The register doesn't have an identifier. Error caught: {ke}")
             return None
 
         try:
-            # Units
-            current_read_register[self.AttrRegDict.UNITS] = register.attrib["units"]
-
-            # Cyclic
-            current_read_register[self.AttrRegDict.CYCLIC] = register.attrib.get("cyclic", "CONFIG")
+            units = register.attrib["units"]
+            cyclic = register.attrib.get("cyclic", "CONFIG")
 
             # Data type
             dtype_aux = register.attrib["dtype"]
-
+            dtype = None
             if dtype_aux in self.dtype_xdf_options:
-                current_read_register[self.AttrRegDict.DTYPE] = self.dtype_xdf_options[dtype_aux]
+                dtype = self.dtype_xdf_options[dtype_aux]
             else:
                 raise ValueError(
-                    f"The data type {dtype_aux} does not exist for the register: "
-                    f'{current_read_register["identifier"]}'
+                    f"The data type {dtype_aux} does not exist for the register: {identifier}"
                 )
 
             # Access type
             access_aux = register.attrib["access"]
-
+            access = None
             if access_aux in self.access_xdf_options:
-                current_read_register[self.AttrRegDict.ACCESS] = self.access_xdf_options[access_aux]
+                access = self.access_xdf_options[access_aux]
             else:
                 raise ValueError(
-                    f"The access type {access_aux} does not exist for the register: "
-                    f"{current_read_register[self.AttrRegDict.IDENTIFIER]}"
+                    f"The access type {access_aux} does not exist for the register: {identifier}"
                 )
 
             # Address type
             address_type_aux = register.attrib["address_type"]
 
             if address_type_aux in self.address_type_xdf_options:
-                current_read_register[
-                    self.AttrRegDict.ADDRESS_TYPE
-                ] = self.address_type_xdf_options[address_type_aux]
+                address_type = self.address_type_xdf_options[address_type_aux]
             else:
                 raise ValueError(
                     f"The address type {address_type_aux} does not exist for the register: "
-                    f"{current_read_register[self.AttrRegDict.IDENTIFIER]}"
+                    f"{identifier}"
                 )
 
-            # Subnode
-            current_read_register[self.AttrRegDict.SUBNODE] = int(register.attrib.get("subnode", 1))
-
-            # Storage
-            current_read_register[self.AttrRegDict.STORAGE] = register.attrib.get("storage")
-
-            # Category Id
-            current_read_register[self.AttrRegDict.CAT_ID] = register.attrib.get("cat_id")
-
-            # Description
-            current_read_register[self.AttrRegDict.INT_USE] = register.attrib.get("internal_use", 0)
+            subnode = int(register.attrib.get("subnode", 1))
+            storage = register.attrib.get("storage")
+            cat_id = register.attrib.get("cat_id")
+            internal_use = int(register.attrib.get("internal_use", 0))
 
             # Labels
             labels_elem = register.findall(DICT_LABELS_LABEL)
-            current_read_register[self.AttrRegDict.LABELS] = {
-                label.attrib["lang"]: label.text for label in labels_elem
-            }
+            labels = {label.attrib["lang"]: str(label.text) for label in labels_elem}
 
             # Range
             range_elem = register.find(self.DICT_RANGE)
-            current_read_register[self.AttrRegDict.REG_RANGE] = (None, None)
+            reg_range: Union[Tuple[None, None], Tuple[str, str]] = (None, None)
             if range_elem is not None:
                 range_min = range_elem.attrib["min"]
                 range_max = range_elem.attrib["max"]
-                current_read_register[self.AttrRegDict.REG_RANGE] = (range_min, range_max)
+                reg_range = (range_min, range_max)
 
             # Enumerations
             enums_elem = register.findall(self.DICT_ENUMERATIONS_ENUMERATION)
-            current_read_register[self.AttrRegDict.ENUMS] = {
-                enum.attrib["value"]: enum.text for enum in enums_elem
-            }
+            enums = []
+            for enum in enums_elem:
+                dictionary: Dict[str, Union[str, int]] = {
+                    "label": str(enum.text),
+                    "value": int(enum.attrib["value"]),
+                }
+                enums.append(dictionary)
+
+            current_read_register = Register(
+                dtype,
+                access,
+                identifier=identifier,
+                units=units,
+                cyclic=cyclic,
+                subnode=subnode,
+                storage=storage,
+                reg_range=reg_range,
+                labels=labels,
+                enums=enums,
+                cat_id=cat_id,
+                internal_use=internal_use,
+                address_type=address_type,
+            )
 
             return current_read_register
 
         except KeyError as ke:
-            logger.error(
-                f"Register with ID {current_read_register[self.AttrRegDict.IDENTIFIER]} has not"
-                f" attribute {ke}"
-            )
+            logger.error(f"Register with ID {identifier} has not attribute {ke}")
             return None
 
-    @abstractmethod
-    def _add_register_list(self, register):
+    def _add_register_list(
+        self,
+        register: Register,
+    ) -> None:
         """Adds the current read register into the _registers list
 
         Args:
-            register (dict): the current read register it will be instanced
+            register: the current read register it will be instanced
 
         """
-        pass
+        identifier = register.identifier
+        subnode = register.subnode
+        if identifier is None:
+            return
+        self._registers[subnode][identifier] = register

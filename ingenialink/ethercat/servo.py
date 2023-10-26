@@ -1,18 +1,16 @@
-from typing import Optional
-
-from pysoem import CdefSlave, SdoError, MailboxError, PacketError
+from pysoem import CdefSlave, SdoError, MailboxError, PacketError  # type: ignore
 import ingenialogger
 
 from ingenialink.exceptions import ILIOError
 from ingenialink.servo import Servo
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS
-from ingenialink.constants import CAN_MAX_WRITE_SIZE
+from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthercatServo(Servo):  # type: ignore
+class EthercatServo(Servo):
     """Ethercat Servo instance.
 
     Args:
@@ -56,14 +54,14 @@ class EthercatServo(Servo):  # type: ignore
         self,
         slave: CdefSlave,
         slave_id: int,
-        dictionary_path: Optional[str] = None,
+        dictionary_path: str,
         servo_status_listener: bool = False,
     ):
         self.__slave = slave
         self.slave_id = slave_id
         super(EthercatServo, self).__init__(slave.name, dictionary_path, servo_status_listener)
 
-    def _read_raw(
+    def _read_raw(  # type: ignore [override]
         self, reg: CanopenRegister, buffer_size: int = 0, complete_access: bool = False
     ) -> bytes:
         self._lock.acquire()
@@ -76,7 +74,7 @@ class EthercatServo(Servo):  # type: ignore
             self._lock.release()
         return value
 
-    def _write_raw(self, reg: CanopenRegister, data: bytes, complete_access: bool = False) -> None:
+    def _write_raw(self, reg: CanopenRegister, data: bytes, complete_access: bool = False) -> None:  # type: ignore [override]
         self._lock.acquire()
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
@@ -86,11 +84,11 @@ class EthercatServo(Servo):  # type: ignore
         finally:
             self._lock.release()
 
-    def _monitoring_read_data(self) -> bytes:
+    def _monitoring_read_data(self) -> bytes:  # type: ignore [override]
         """Read monitoring data frame."""
         return self._read_raw(self.MONITORING_DATA, buffer_size=1024, complete_access=True)
 
-    def _disturbance_write_data(self, data: bytearray) -> None:
+    def _disturbance_write_data(self, data: bytearray) -> None:  # type: ignore [override]
         """Write disturbance data."""
         return self._write_raw(self.DIST_DATA, bytes(data), complete_access=True)
 
@@ -103,10 +101,13 @@ class EthercatServo(Servo):  # type: ignore
             address: Register address to map.
 
         """
-        return address - (0x2000 + (0x800 * (subnode - 1)))
+        mapped_address: int = address - (
+            CANOPEN_ADDRESS_OFFSET + (MAP_ADDRESS_OFFSET * (subnode - 1))
+        )
+        return mapped_address
 
     def _monitoring_disturbance_data_to_map_register(
-        self, subnode: int, address: int, dtype: REG_DTYPE, size: int
+        self, subnode: int, address: int, dtype: int, size: int
     ) -> int:
         """Arrange necessary data to map a monitoring/disturbance register.
 

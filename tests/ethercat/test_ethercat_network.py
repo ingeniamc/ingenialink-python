@@ -23,11 +23,12 @@ def test_load_firmware_no_slave_detected_error(mocker, read_config):
 
 
 @pytest.mark.no_connection
-def test_wrong_interface_name_error():
+def test_wrong_interface_name_error(read_config):
     with pytest.raises(ConnectionError):
         net = EthercatNetwork("not existing ifname")
         slave_id = 1
-        net.connect_to_slave(slave_id)
+        dictionary = read_config["ethernet"]["dictionary"]
+        net.connect_to_slave(slave_id, dictionary)
 
 
 @pytest.mark.no_connection

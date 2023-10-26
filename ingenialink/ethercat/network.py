@@ -9,7 +9,7 @@ from typing import Optional, Any, Callable, List, Dict
 from threading import Thread
 
 import ingenialogger
-import pysoem
+import pysoem  # type: ignore
 
 from ingenialink.network import Network, NET_PROT, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError, ILError
@@ -54,7 +54,7 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthercatNetwork(Network):  # type: ignore
+class EthercatNetwork(Network):
     """Network for all EtherCAT communications.
 
     Args:
@@ -98,10 +98,10 @@ class EthercatNetwork(Network):  # type: ignore
         nodes = self._ecat_master.config_init()
         return list(range(1, nodes + 1))
 
-    def connect_to_slave(
+    def connect_to_slave(  # type: ignore [override]
         self,
         slave_id: int,
-        dictionary: Optional[str] = None,
+        dictionary: str,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
     ) -> EthercatServo:
@@ -135,7 +135,7 @@ class EthercatNetwork(Network):  # type: ignore
             self.start_status_listener()
         return servo
 
-    def disconnect_from_slave(self, servo: EthercatServo) -> None:
+    def disconnect_from_slave(self, servo: EthercatServo) -> None:  # type: ignore [override]
         """Disconnects the slave from the network.
 
         Args:
@@ -148,7 +148,7 @@ class EthercatNetwork(Network):  # type: ignore
             self._ecat_master.close()
             self.__is_master_running = False
 
-    def subscribe_to_status(
+    def subscribe_to_status(  # type: ignore [override]
         self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None]
     ) -> None:
         """Subscribe to network state changes.
@@ -163,7 +163,7 @@ class EthercatNetwork(Network):  # type: ignore
             return
         self.__observers_net_state[slave_id].append(callback)
 
-    def unsubscribe_from_status(
+    def unsubscribe_from_status(  # type: ignore [override]
         self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None]
     ) -> None:
         """Unsubscribe from network state changes.
@@ -178,21 +178,21 @@ class EthercatNetwork(Network):  # type: ignore
             return
         self.__observers_net_state[slave_id].remove(callback)
 
-    def start_status_listener(self) -> None:
+    def start_status_listener(self) -> None:  # type: ignore [override]
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
             listener = NetStatusListener(self)
             listener.start()
             self.__listener_net_status = listener
 
-    def stop_status_listener(self) -> None:
+    def stop_status_listener(self) -> None:  # type: ignore [override]
         """Stops the NetStatusListener from listening to the drive."""
         if self.__listener_net_status is not None:
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
         self.__listener_net_status = None
 
-    def load_firmware(self, fw_file: str, slave_id: int = 1) -> None:
+    def load_firmware(self, fw_file: str, slave_id: int = 1) -> None:  # type: ignore [override]
         """Loads a given firmware file to a target slave.
 
         Args:

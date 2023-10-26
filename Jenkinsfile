@@ -85,6 +85,14 @@ pipeline {
                         """
                     }
                 }
+                stage('Type checking') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            venv\\Scripts\\python.exe -m mypy ingenialink
+                        """
+                    }
+                }
                 stage('Generate documentation') {
                     steps {
                         bat """

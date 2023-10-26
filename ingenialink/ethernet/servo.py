@@ -1,5 +1,6 @@
 import ipaddress
 import socket
+from typing import Optional
 
 from ingenialink.exceptions import ILError, ILTimeoutError, ILIOError, ILWrongRegisterError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
@@ -8,11 +9,8 @@ from ingenialink.constants import MCB_CMD_READ, MCB_CMD_WRITE, ETH_MAX_WRITE_SIZ
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
 from ingenialink.servo import Servo
 from ingenialink.utils.mcb import MCB
-from ingenialink.utils._utils import (
-    convert_bytes_to_dtype,
-    convert_dtype_to_bytes,
-    convert_ip_to_int,
-)
+from ingenialink.utils._utils import convert_ip_to_int
+
 from ingenialink.ethernet.dictionary import EthernetDictionary
 
 import ingenialogger
@@ -24,9 +22,9 @@ class EthernetServo(Servo):
     """Servo object for all the Ethernet slave functionalities.
 
     Args:
-        socket (socket):
-        dictionary_path (str): Path to the dictionary.
-        servo_status_listener (bool): Toggle the listener of the servo for
+        socket: Socket.
+        dictionary_path: Path to the dictionary.
+        servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
 
     """
@@ -56,24 +54,26 @@ class EthernetServo(Servo):
         access=REG_ACCESS.WO,
     )
 
-    def __init__(self, socket, dictionary_path=None, servo_status_listener=False):
+    def __init__(
+        self, socket: socket.socket, dictionary_path: str, servo_status_listener: bool = False
+    ) -> None:
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
         super(EthernetServo, self).__init__(self.ip_address, dictionary_path, servo_status_listener)
 
-    def store_tcp_ip_parameters(self):
+    def store_tcp_ip_parameters(self) -> None:
         """Stores the TCP/IP values. Affects IP address,
         subnet mask and gateway"""
         self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Store TCP/IP successfully done.")
 
-    def restore_tcp_ip_parameters(self):
+    def restore_tcp_ip_parameters(self) -> None:
         """Restores the TCP/IP values back to default. Affects
         IP address, subnet mask and gateway"""
         self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Restore TCP/IP successfully done.")
 
-    def change_tcp_ip_parameters(self, ip_address, subnet_mask, gateway):
+    def change_tcp_ip_parameters(self, ip_address: str, subnet_mask: str, gateway: str) -> None:
         """Stores the TCP/IP values. Affects IP address,
         network mask and gateway
 
@@ -82,9 +82,9 @@ class EthernetServo(Servo):
             in order for the changes to be properly applied.
 
         Args:
-            ip_address (str): IP Address to be changed.
-            subnet_mask (str): Subnet mask to be changed.
-            gateway (str): Gateway to be changed.
+            ip_address: IP Address to be changed.
+            subnet_mask: Subnet mask to be changed.
+            gateway: Gateway to be changed.
 
         Raises:
             ValueError: If the drive or gateway IP is not a
@@ -117,23 +117,25 @@ class EthernetServo(Servo):
         except ILError:
             self.store_parameters()
 
-    def _write_raw(self, reg, data):
+    def _write_raw(self, reg: EthernetRegister, data: bytes) -> None:  # type: ignore [override]
         self._send_mcb_frame(MCB_CMD_WRITE, reg.address, reg.subnode, data)
 
-    def _read_raw(self, reg):
+    def _read_raw(self, reg: EthernetRegister) -> bytes:  # type: ignore [override]
         return self._send_mcb_frame(MCB_CMD_READ, reg.address, reg.subnode)
 
-    def _send_mcb_frame(self, cmd, reg, subnode, data=None):
+    def _send_mcb_frame(
+        self, cmd: int, reg: int, subnode: int, data: Optional[bytes] = None
+    ) -> bytes:
         """Send an MCB frame to the drive.
 
         Args:
-            cmd (int): Read/write command.
-            reg (int): Register address to be read/written.
-            subnode (int): Target axis of the drive.
-            data (bytes): Data to be written to the register.
+            cmd: Read/write command.
+            reg: Register address to be read/written.
+            subnode: Target axis of the drive.
+            data: Data to be written to the register.
 
         Returns:
-            bytes: The response frame.
+            The response frame.
         """
         frame = MCB.build_mcb_frame(cmd, subnode, reg, data)
         self._lock.acquire()
