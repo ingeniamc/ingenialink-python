@@ -4,6 +4,7 @@
 
 ### Add
 - Support for multi-drive in CANopen's NetStatusListener.
+- EtherCAT communication via CoE (SDOs).
 
 ### Fixed
 - Fix CANopen load_firmware function.
