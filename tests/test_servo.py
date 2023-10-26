@@ -166,7 +166,7 @@ def test_load_configuration(connect_to_slave, read_config, pytestconfig):
 @pytest.mark.no_connection
 def test_read_configuration_file(read_config):
     test_file = "./tests/resources/test_config_file.xcf"
-    servo = CanopenServo("test", 0, dictionary_path=read_config["canopen"]["dictionary"])
+    servo = CanopenServo("test", 0, read_config["canopen"]["dictionary"])
     device, registers = servo._read_configuration_file(test_file)
 
     assert device.attrib.get("PartNumber") == "EVE-NET-C"

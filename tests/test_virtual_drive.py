@@ -3,6 +3,7 @@ import time
 import pytest
 
 from ingenialink.ethernet.network import EthernetNetwork
+from ingenialink.enums.register import REG_DTYPE
 
 
 MONITORING_CH_DATA_SIZE = 4
@@ -129,11 +130,14 @@ def test_virtual_disturbance(virtual_drive, read_config):
         address = reg.address
         servo.disturbance_set_mapped_register(idx, address, subnode, reg.dtype.value, 4)
         dtypes.append(reg.dtype)
-        data_arr.append([0, -1, 2, 3])
+        if reg.dtype == REG_DTYPE.FLOAT:
+            data_arr.append([0.0, -1.0, 2.0, 3.0])
+        else:
+            data_arr.append([0, -1, 2, 3])
 
     channels = list(range(len(registers_key)))
     servo.disturbance_write_data(channels, dtypes, data_arr)
     servo.disturbance_enable()
 
     for channel in range(len(registers_key)):
-        assert server._VirtualDrive__disturbance.channels[channel]["data"] == data_arr[channel]
+        assert server._VirtualDrive__disturbance.channels_data[channel] == data_arr[channel]
