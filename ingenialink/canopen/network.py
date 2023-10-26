@@ -251,13 +251,13 @@ class CanopenNetwork(Network):
                 status, connection and disconnection.
 
         """
-        if self._connection is None:
-            raise ILError("Connection has not been established")
         nodes = self.scan_slaves()
         if len(nodes) < 1:
             raise ILError("Could not find any nodes in the network")
 
         self._setup_connection()
+        if self._connection is None:
+            raise ILError("Connection has not been established")
         if target in nodes:
             try:
                 node = self._connection.add_node(target)
