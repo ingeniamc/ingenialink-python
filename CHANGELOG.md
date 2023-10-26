@@ -12,6 +12,7 @@
 - Set product name correctly if no dictionary is provided.
 - Docstrings from Register constructor and its subclasses are updated.
 - CanopenRegister and EthernetRegister have the same signature.
+- Add PySOEM to setup.py.
 
 ### Changed
 - Raise ILValueError when the disturbance data does not fit in a register.
