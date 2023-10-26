@@ -113,3 +113,17 @@ def test_read_xdf_register():
 
     assert ethercat_dict.registers(subnode)[reg_id].idx == idx
     assert ethercat_dict.registers(subnode)[reg_id].subidx == subidx
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize(
+    "register_uid, subnode, idx",
+    [("DIST_CFG_REG0_MAP", 0, 0x5890), ("DRV_OP_CMD", 1, 0x2014), ("DRV_STATE_CONTROL", 2, 0x2810)],
+)
+def test_mcb_to_can_mapping(register_uid, subnode, idx):
+    dictionary_path = join_path(path_resources, "test_dict_ethercat_axis.xdf")
+
+    ethercat_dict = EthercatDictionary(dictionary_path)
+
+    ethercat_register = ethercat_dict.registers(subnode)[register_uid]
+    assert ethercat_register.idx == idx

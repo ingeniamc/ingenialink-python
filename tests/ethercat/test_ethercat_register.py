@@ -1,6 +1,5 @@
 import pytest
 
-from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.register import (
     EthercatRegister,
     REG_DTYPE,
