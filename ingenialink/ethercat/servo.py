@@ -56,7 +56,7 @@ class EthercatServo(Servo):
     ):
         self.__slave = slave
         self.slave_id = slave_id
-        super(EthercatServo, self).__init__(slave.name, dictionary_path, servo_status_listener)
+        super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
 
     def _read_raw(  # type: ignore [override]
         self, reg: EthercatRegister, buffer_size: int = 0, complete_access: bool = False
