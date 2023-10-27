@@ -13,6 +13,7 @@
 - Docstrings from Register constructor and its subclasses are updated.
 - CanopenRegister and EthernetRegister have the same signature.
 - Add PySOEM to setup.py.
+- Unexpected closing when disconnecting from an EtherCAT (SDOs) drive if servo status listener is active.
 
 ### Changed
 - Raise ILValueError when the disturbance data does not fit in a register.
