@@ -5,7 +5,7 @@ import time
 from enum import Enum
 from typing import List, Iterator
 
-import pysoem
+import pysoem  # type: ignore
 
 from ingenialink import REG_DTYPE, REG_ACCESS
 from ingenialink.ethercat.network import EthercatNetwork
@@ -149,7 +149,7 @@ class ProcessDataExample:
         rpdo_map = bytes()
         for register in self.rpdo_registers:
             rpdo_register = self.servo.dictionary.registers(1)[register]
-            rpdo_map += self.map_register(rpdo_register)
+            rpdo_map += self.map_register(rpdo_register)  # type: ignore
         self.servo.write(self.RPDO_MAP_REGISTER_SUB_IDX_0, len(self.rpdo_registers))
         self.servo.write(
             self.RPDO_MAP_REGISTER_SUB_IDX_1, rpdo_map.decode("utf-8"), complete_access=True
@@ -166,7 +166,7 @@ class ProcessDataExample:
         tpdo_map = bytes()
         for register in self.tpdo_registers:
             tpdo_register = self.servo.dictionary.registers(1)[register]
-            tpdo_map += self.map_register(tpdo_register)
+            tpdo_map += self.map_register(tpdo_register)  # type: ignore
             self.tpdo_registers_sizes.append(self.dtype_size[tpdo_register.dtype])
         self.servo.write(self.TPDO_MAP_REGISTER_SUB_IDX_0, len(self.tpdo_registers))
         self.servo.write(
@@ -251,7 +251,7 @@ class ProcessDataExample:
         while True:
             yield convert_dtype_to_bytes(position_set_point, register_dtype)
             position_set_point += 100
-            if position_set_point > self.feedback_resolution:
+            if position_set_point > self.feedback_resolution:  # type: ignore
                 position_set_point = 0
 
     def process_data_loop(self) -> None:
