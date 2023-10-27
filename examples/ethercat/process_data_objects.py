@@ -11,7 +11,7 @@ from ingenialink import REG_DTYPE, REG_ACCESS
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.exceptions import ILError
-from ingenialink.canopen.register import CanopenRegister
+from ingenialink.ethercat.register import EthercatRegister
 
 
 class SlaveState(Enum):
@@ -37,7 +37,7 @@ class ProcessDataExample:
         REG_DTYPE.FLOAT: 4,
     }
 
-    RPDO_ASSIGN_REGISTER_SUB_IDX_0 = CanopenRegister(
+    RPDO_ASSIGN_REGISTER_SUB_IDX_0 = EthercatRegister(
         identifier="RPDO_ASSIGN_REGISTER",
         units="",
         subnode=0,
@@ -46,7 +46,7 @@ class ProcessDataExample:
         dtype=REG_DTYPE.S32,
         access=REG_ACCESS.RW,
     )
-    RPDO_ASSIGN_REGISTER_SUB_IDX_1 = CanopenRegister(
+    RPDO_ASSIGN_REGISTER_SUB_IDX_1 = EthercatRegister(
         identifier="RPDO_ASSIGN_REGISTER",
         units="",
         subnode=0,
@@ -55,7 +55,7 @@ class ProcessDataExample:
         dtype=REG_DTYPE.S32,
         access=REG_ACCESS.RW,
     )
-    RPDO_MAP_REGISTER_SUB_IDX_0 = CanopenRegister(
+    RPDO_MAP_REGISTER_SUB_IDX_0 = EthercatRegister(
         identifier="RPDO_MAP_REGISTER",
         units="",
         subnode=0,
@@ -64,7 +64,7 @@ class ProcessDataExample:
         dtype=REG_DTYPE.S32,
         access=REG_ACCESS.RW,
     )
-    RPDO_MAP_REGISTER_SUB_IDX_1 = CanopenRegister(
+    RPDO_MAP_REGISTER_SUB_IDX_1 = EthercatRegister(
         identifier="RPDO_MAP_REGISTER",
         units="",
         subnode=0,
@@ -73,7 +73,7 @@ class ProcessDataExample:
         dtype=REG_DTYPE.STR,
         access=REG_ACCESS.RW,
     )
-    TPDO_ASSIGN_REGISTER_SUB_IDX_0 = CanopenRegister(
+    TPDO_ASSIGN_REGISTER_SUB_IDX_0 = EthercatRegister(
         identifier="TPDO_ASSIGN_REGISTER",
         units="",
         subnode=0,
@@ -82,7 +82,7 @@ class ProcessDataExample:
         dtype=REG_DTYPE.S32,
         access=REG_ACCESS.RW,
     )
-    TPDO_ASSIGN_REGISTER_SUB_IDX_1 = CanopenRegister(
+    TPDO_ASSIGN_REGISTER_SUB_IDX_1 = EthercatRegister(
         identifier="TPDO_ASSIGN_REGISTER",
         units="",
         subnode=0,
@@ -91,7 +91,7 @@ class ProcessDataExample:
         dtype=REG_DTYPE.S32,
         access=REG_ACCESS.RW,
     )
-    TPDO_MAP_REGISTER_SUB_IDX_0 = CanopenRegister(
+    TPDO_MAP_REGISTER_SUB_IDX_0 = EthercatRegister(
         identifier="TPDO_MAP_REGISTER",
         units="",
         subnode=0,
@@ -100,7 +100,7 @@ class ProcessDataExample:
         dtype=REG_DTYPE.S32,
         access=REG_ACCESS.RW,
     )
-    TPDO_MAP_REGISTER_SUB_IDX_1 = CanopenRegister(
+    TPDO_MAP_REGISTER_SUB_IDX_1 = EthercatRegister(
         identifier="TPDO_MAP_REGISTER",
         units="",
         subnode=0,
@@ -110,11 +110,11 @@ class ProcessDataExample:
         access=REG_ACCESS.RW,
     )
 
-    rpdo_registers = ["CIA402_CL_POS_SET_POINTVALUE"]
+    rpdo_registers = ["CL_POS_SET_POINT_VALUE"]
 
     tpdo_registers = [
-        "CIA402_CL_POS_FBK_VALUE",
-        "CIA402_CL_VEL_FBK_VALUE",
+        "CL_POS_FBK_VALUE",
+        "CL_VEL_FBK_VALUE",
     ]
 
     def __init__(self, interface_name: str, dictionary_path: str):
@@ -209,7 +209,7 @@ class ProcessDataExample:
                     f" {hex(self.slave.al_status)} {pysoem.al_status_code_to_string(self.slave.al_status)}"
                 )
 
-    def map_register(self, register: CanopenRegister) -> bytes:
+    def map_register(self, register: EthercatRegister) -> bytes:
         """Arrange register information into PDO mapping format.
 
         Args:
