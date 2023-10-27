@@ -142,6 +142,7 @@ class EthercatNetwork(Network):
             servo: Instance of the servo connected.
 
         """
+        servo.stop_status_listener()
         self.servos.remove(servo)
         if not self.servos:
             self.stop_status_listener()
