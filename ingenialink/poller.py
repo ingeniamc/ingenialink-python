@@ -65,7 +65,7 @@ class Poller:
         self.__mappings_enabled: List[bool] = []
         self.__lock = Lock()
         self.__acq_time: List[float] = []
-        self.__acq_data: List[Union[List[float], List[int]]] = [[0.0]]
+        self.__acq_data: List[Union[List[float], List[int]]] = []
         self._reset_acq()
 
     def start(self) -> int:
@@ -197,7 +197,7 @@ class Poller:
     def _reset_acq(self) -> None:
         """Resets the acquired channels."""
         self.__acq_time = [0.0]
-        self.__acq_data = [[0.0]]
+        self.__acq_data = []
 
     def _acquire_callback_poller_data(self) -> None:
         """Acquire callback for poller data."""
