@@ -14,6 +14,7 @@
 - CanopenRegister and EthernetRegister have the same signature.
 - Add PySOEM to setup.py.
 - Exception error when trying to write an int to a register of dtype float.
+- Fix acquisition data variable initialization in Poller class.
 
 ### Changed
 - Raise ILValueError when the disturbance data does not fit in a register.
