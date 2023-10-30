@@ -3,8 +3,9 @@ import ingenialogger
 
 from ingenialink.exceptions import ILIOError
 from ingenialink.servo import Servo
-from ingenialink.canopen.dictionary import CanopenDictionary
-from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS
+from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.register import REG_DTYPE, REG_ACCESS
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 
 logger = ingenialogger.get_logger(__name__)
@@ -22,14 +23,11 @@ class EthercatServo(Servo):
 
     """
 
-    DICTIONARY_CLASS = CanopenDictionary
+    DICTIONARY_CLASS = EthercatDictionary
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
     WRONG_WORKING_COUNTER = -1
 
-    STATUS_WORD_REGISTERS = "CIA402_DRV_STATE_STATUS"
-    RESTORE_COCO_ALL = "CIA301_COMMS_RESTORE_ALL"
-    STORE_COCO_ALL = "CIA301_COMMS_STORE_ALL"
-    MONITORING_DATA = CanopenRegister(
+    MONITORING_DATA = EthercatRegister(
         identifier="MONITORING_DATA",
         units="",
         subnode=0,
@@ -39,7 +37,7 @@ class EthercatServo(Servo):
         dtype=REG_DTYPE.U16,
         access=REG_ACCESS.RO,
     )
-    DIST_DATA = CanopenRegister(
+    DIST_DATA = EthercatRegister(
         identifier="DISTURBANCE_DATA",
         units="",
         subnode=0,
@@ -59,10 +57,10 @@ class EthercatServo(Servo):
     ):
         self.__slave = slave
         self.slave_id = slave_id
-        super(EthercatServo, self).__init__(slave.name, dictionary_path, servo_status_listener)
+        super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
 
     def _read_raw(  # type: ignore [override]
-        self, reg: CanopenRegister, buffer_size: int = 0, complete_access: bool = False
+        self, reg: EthercatRegister, buffer_size: int = 0, complete_access: bool = False
     ) -> bytes:
         self._lock.acquire()
         try:
@@ -74,7 +72,7 @@ class EthercatServo(Servo):
             self._lock.release()
         return value
 
-    def _write_raw(self, reg: CanopenRegister, data: bytes, complete_access: bool = False) -> None:  # type: ignore [override]
+    def _write_raw(self, reg: EthercatRegister, data: bytes, complete_access: bool = False) -> None:  # type: ignore [override]
         self._lock.acquire()
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)

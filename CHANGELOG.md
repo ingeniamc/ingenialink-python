@@ -6,6 +6,8 @@
 - Support for multi-drive in CANopen's NetStatusListener.
 - EtherCAT communication via CoE (SDOs).
 - Add image attribute to dictionary class.
+- Add EthercatDictionary class.
+- Add EthercatRegister class.
 
 ### Fixed
 - Fix CANopen load_firmware function.

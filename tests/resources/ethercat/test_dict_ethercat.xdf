@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<IngeniaDictionary>
+  <Header>
+    <Version>2</Version>
+    <DefaultLanguage>en_US</DefaultLanguage>
+  </Header>
+  <Body>
+    <Device family="Summit" firmwareVersion="2.0.1" ProductCode="57745409" PartNumber="CAP-NET-E" RevisionNumber="196635" Interface="ETH" name="Generic">
+      <Categories>
+        <Category id="IDENTIFICATION">
+          <Labels>
+            <Label lang="en_US">Product Identification</Label>
+          </Labels>
+        </Category>
+        <Category id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Commutation</Label>
+          </Labels>
+        </Category>
+        <Category id="COMMUNICATIONS">
+          <Labels>
+            <Label lang="en_US">Communications</Label>
+          </Labels>
+        </Category>
+        <Category id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Reporting</Label>
+          </Labels>
+        </Category>
+        <Category id="MONITORING">
+          <Labels>
+            <Label lang="en_US">Monitoring</Label>
+          </Labels>
+        </Category>
+      </Categories>
+      <Registers>
+        <Register access="r" address_type="NVM_NONE" address="0x000F" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" units="-" subnode="0" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Last error</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x0090" dtype="u32" id="DIST_CFG_REG0_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 0." cat_id="MONITORING">
+          <Labels>
+            <Label lang="en_US">Disturbance mapped register 0</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM" address="0x00A1" dtype="u32" id="COMMS_ETH_IP" units="-" subnode="0" cyclic="CONFIG" desc="" cat_id="COMMUNICATIONS">
+          <Labels>
+            <Label lang="en_US">IP Address</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM" address="0x00A2" dtype="u32" id="COMMS_ETH_NET_MASK" units="-" subnode="0" cyclic="CONFIG" desc="" cat_id="COMMUNICATIONS">
+          <Labels>
+            <Label lang="en_US">Netmask</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x00AA" dtype="str" id="DRV_BOOT_COCO_VERSION" units="-" subnode="0" cyclic="CONFIG" desc="" cat_id="IDENTIFICATION">
+          <Labels>
+            <Label lang="en_US">Bootloader version</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x00F1" dtype="u16" id="MON_CFG_EOC_TYPE" units="none" subnode="0" cyclic="CONFIG" desc="" cat_id="MONITORING">
+          <Labels>
+            <Label lang="en_US">Monitor trigger config</Label>
+          </Labels>
+          <Enumerations>
+            <Enum value="0">TRIGGER_CONFIG_RISING_OR_FALLING</Enum>
+            <Enum value="1">TRIGGER_CONFIG_RISING</Enum>
+            <Enum value="2">TRIGGER_CONFIG_FALLING</Enum>
+          </Enumerations>
+        </Register>
+                <Register access="rw" address_type="NVM_CFG" address="0x0151" dtype="u16" id="COMMU_ANGLE_SENSOR" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the sensor used for angle readings" cat_id="COMMUTATION">
+                    <Labels>
+                        <Label lang="en_US">Commutation feedback sensor</Label>
+                    </Labels>
+                    <Enumerations>
+                        <Enum value="1">BiSS-C / SSI - slave 1</Enum>
+                        <Enum value="3">Internal generator</Enum>
+                        <Enum value="4">Digital encoder 1</Enum>
+                        <Enum value="5">Digital halls</Enum>
+                        <Enum value="6">Secondary SSI encoder</Enum>
+                        <Enum value="7">BiSS-C slave 2</Enum>
+                        <Enum value="8">Digital encoder 2</Enum>
+                    </Enumerations>
+                </Register>
+      </Registers>
+    </Device>
+    <Errors>
+      <Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">STO Active and Power stage is shutdown</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00007380" affected_module="Feedback" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Too many error bits or invalid position flags detected in absolute encoder</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00007385" affected_module="Control Loops" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Position out of limits out of position modes</Label>
+        </Labels>
+      </Error>
+      <Error id="0x06010000" affected_module="Register dictionary" error_type="configuration">
+        <Labels>
+          <Label lang="en_US">Incorrect access type</Label>
+        </Labels>
+      </Error>
+    </Errors>
+  </Body>
+  <DriveImage encoding="xs:base64Binary">
+  </DriveImage>
+</IngeniaDictionary>
