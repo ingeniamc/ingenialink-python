@@ -1,12 +1,7 @@
 import pytest
 
-from ingenialink.ethercat.register import (
-    EthercatRegister,
-    REG_DTYPE,
-    REG_ACCESS,
-    REG_PHY,
-    REG_ADDRESS_TYPE,
-)
+from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
 
 
 @pytest.mark.no_connection
