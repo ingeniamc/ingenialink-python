@@ -1,7 +1,7 @@
 from typing import Optional
+import xml.etree.ElementTree as ET
 
 import ingenialogger
-import xml.etree.ElementTree as ET
 
 from ingenialink.dictionary import Dictionary
 from ingenialink.ethercat.register import EthercatRegister
