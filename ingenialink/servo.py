@@ -979,7 +979,11 @@ class Servo:
         return data, chunks
 
     def write(
-        self, reg: Union[str, Register], data: Union[int, float, str, bytes], subnode: int = 1
+        self,
+        reg: Union[str, Register],
+        data: Union[int, float, str, bytes],
+        subnode: int = 1,
+        **kwargs: Any,
     ) -> None:
         """Writes a data to a target register.
 
@@ -1001,7 +1005,7 @@ class Servo:
             value = convert_dtype_to_bytes(data, _reg.dtype)
         else:
             value = data
-        self._write_raw(_reg, value)
+        self._write_raw(_reg, value, **kwargs)
 
     def read(self, reg: Union[str, Register], subnode: int = 1) -> Union[int, float, str]:
         """Read a register value from servo.

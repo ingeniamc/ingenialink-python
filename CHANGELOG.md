@@ -8,6 +8,7 @@
 - Add image attribute to dictionary class.
 - Add EthercatDictionary class.
 - Add EthercatRegister class.
+- Create EtherCAT PDOs example script.
 
 ### Fixed
 - Fix CANopen load_firmware function.
