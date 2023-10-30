@@ -1,5 +1,8 @@
 from typing import Optional
 
+import ingenialogger
+import xml.etree.ElementTree as ET
+
 from ingenialink.dictionary import Dictionary
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.constants import (
@@ -7,9 +10,6 @@ from ingenialink.constants import (
     CANOPEN_SUBNODE_0_ADDRESS_OFFSET,
     MAP_ADDRESS_OFFSET,
 )
-
-import ingenialogger
-import xml.etree.ElementTree as ET
 
 logger = ingenialogger.get_logger(__name__)
 
