@@ -4,7 +4,8 @@ import ingenialogger
 from ingenialink.exceptions import ILIOError
 from ingenialink.servo import Servo
 from ingenialink.ethercat.dictionary import EthercatDictionary
-from ingenialink.ethercat.register import EthercatRegister, REG_DTYPE, REG_ACCESS
+from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.register import REG_DTYPE, REG_ACCESS
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 
 logger = ingenialogger.get_logger(__name__)
