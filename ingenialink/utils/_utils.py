@@ -237,7 +237,7 @@ def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: REG_DTYPE
             raise ValueError(f"Expected data of type bytes, but got {type(data)}")
         return data
     if dtype == REG_DTYPE.FLOAT:
-        if not isinstance(data, float):
+        if not isinstance(data, (float, int)):
             raise ValueError(f"Expected data of type float, but got {type(data)}")
         return struct.pack("f", float(data))
     if dtype == REG_DTYPE.STR:
