@@ -19,6 +19,7 @@
 - Exception error when trying to write an int to a register of dtype float.
 - Fix acquisition data variable initialization in Poller class.
 - Unexpected closing when disconnecting from an EtherCAT (SDOs) drive if servo status listener is active.
+- Improve the enable and disable methods of the Servo class.
 
 ### Changed
 - Raise ILValueError when the disturbance data does not fit in a register.
