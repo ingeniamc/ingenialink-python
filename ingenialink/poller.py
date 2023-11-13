@@ -2,7 +2,12 @@ from datetime import datetime
 from threading import Timer, Lock
 from typing import List, Dict, Tuple, Union, Callable, Optional, Any
 
-from ingenialink.exceptions import ILAlreadyInitializedError, ILStateError, ILValueError
+from ingenialink.exceptions import (
+    ILAlreadyInitializedError,
+    ILStateError,
+    ILValueError,
+    ILTimeoutError,
+)
 from ingenialink.servo import Servo
 from ingenialink.register import Register
 
@@ -221,12 +226,21 @@ class Poller:
                 if is_enabled
             ]
 
+            reading_error = False
             for channel in enabled_channel_indexes:
                 register = self.__mappings[channel]
-                self.__acq_data[channel][self.__samples_count] = self.servo.read(register)  # type: ignore
+                try:
+                    self.__acq_data[channel][self.__samples_count] = self.servo.read(register)  # type: ignore
+                except ILTimeoutError:
+                    reading_error = True
+                    logger.warning(
+                        f"Could not read {register.identifier} register. This sample is lost for"
+                        " all channels."
+                    )
 
-            # Increment samples count
-            self.__samples_count += 1
+            if not reading_error:
+                # Increment samples count
+                self.__samples_count += 1
 
         self.__lock.release()
 
