@@ -16,35 +16,15 @@ import ingenialogger
 logger = ingenialogger.get_logger(__name__)
 
 
-class PollerTimer:
-    """Custom timer for the Poller.
+class PollerTimer(Timer):
+    def __init__(self, interval: float, function: Callable[..., Any]) -> None:
+        super().__init__(interval, function)
+        self.cb = function
+        self.time = interval
 
-    Args:
-        time: Timeout to use for the timer.
-        cb: Callback.
-
-    """
-
-    def __init__(self, time: float, cb: Callable[..., Any]) -> None:
-        self.cb = cb
-        self.time = time
-        self.thread = Timer(self.time, self.handle_function)
-
-    def handle_function(self) -> None:
-        """Handle method that creates the timer for the poller"""
-        self.cb()
-        self.thread = Timer(self.time, self.handle_function)
-        self.thread.start()
-
-    def start(self) -> None:
-        """Starts the poller timer"""
-        self.thread.start()
-
-    def cancel(self) -> None:
-        """Stops the poller timer"""
-        self.thread.cancel()
-        if self.thread.is_alive():
-            self.thread.join()
+    def run(self) -> None:
+        while not self.finished.wait(self.time):
+            self.cb(*self.args, **self.kwargs)
 
 
 class Poller:

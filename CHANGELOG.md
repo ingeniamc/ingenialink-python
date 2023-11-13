@@ -20,6 +20,7 @@
 - Fix acquisition data variable initialization in Poller class.
 - Unexpected closing when disconnecting from an EtherCAT (SDOs) drive if servo status listener is active.
 - Avoid crashes in the Poller due to read timeouts.
+- Poller timer thread not closing after the poller is finished.
 
 ### Changed
 - Raise ILValueError when the disturbance data does not fit in a register.
