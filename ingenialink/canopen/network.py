@@ -582,7 +582,7 @@ class CanopenNetwork(Network):
         try:
             servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
         except VCIError as e:
-            raise ILFirmwareLoadError(f"Firmware loading error using ixxat device: {e}")
+            raise ILFirmwareLoadError(f"Firmware loading error using ixxat device") from e
         try:
             servo.node.nmt.wait_for_heartbeat(timeout=RECONNECTION_TIMEOUT)
         except canopen.nmt.NmtError as e:
