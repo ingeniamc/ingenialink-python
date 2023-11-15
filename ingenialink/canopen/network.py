@@ -18,6 +18,7 @@ from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIM
 import canopen
 from canopen import Network as NetworkLib
 import ingenialogger
+from can.interfaces.ixxat.exceptions import VCIError
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -573,7 +574,10 @@ class CanopenNetwork(Network):
         logger.info("Flashing firmware")
         with contextlib.suppress(ILError):
             servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
-        servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
+        try:
+            servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
+        except VCIError as e:
+            raise ILFirmwareLoadError(f"Firmware loading error using ixxat device: {e}")
         try:
             servo.node.nmt.wait_for_heartbeat(timeout=RECONNECTION_TIMEOUT)
         except canopen.nmt.NmtError as e:
