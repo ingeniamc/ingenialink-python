@@ -1,23 +1,29 @@
 import contextlib
-import re
 import os
+import re
 import tempfile
-from enum import Enum
-from time import sleep
-from threading import Thread
-from typing import Optional, Callable, Union, List, Any, Dict, Tuple
 from collections import defaultdict
-
-from .register import CanopenRegister
-from ingenialink.utils.mcb import MCB
-from ..exceptions import ILFirmwareLoadError, ILObjectNotExist, ILError
-from can import CanError
-from ..network import NET_PROT, NET_STATE, NET_DEV_EVT, Network
-from .servo import CanopenServo, REG_ACCESS, REG_DTYPE, CANOPEN_SDO_RESPONSE_TIMEOUT
+from enum import Enum
+from threading import Thread
+from time import sleep
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import canopen
-from canopen import Network as NetworkLib
 import ingenialogger
+from can import CanError
+from can.interfaces.ixxat.exceptions import VCIError
+from canopen import Network as NetworkLib
+
+from ingenialink.canopen.register import CanopenRegister
+from ingenialink.canopen.servo import (
+    CANOPEN_SDO_RESPONSE_TIMEOUT,
+    REG_ACCESS,
+    REG_DTYPE,
+    CanopenServo,
+)
+from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
+from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network
+from ingenialink.utils.mcb import MCB
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -573,7 +579,11 @@ class CanopenNetwork(Network):
         logger.info("Flashing firmware")
         with contextlib.suppress(ILError):
             servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
-        servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
+        try:
+            servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
+        except VCIError as e:
+            # This error is a specific error for ixxat transceivers
+            raise ILFirmwareLoadError("An error occurred when starting the node guarding.") from e
         try:
             servo.node.nmt.wait_for_heartbeat(timeout=RECONNECTION_TIMEOUT)
         except canopen.nmt.NmtError as e:

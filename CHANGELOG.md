@@ -22,6 +22,7 @@
 - Avoid crashes in the Poller due to read timeouts.
 - Poller timer thread not closing after the poller is finished.
 - Improve the enable and disable methods of the Servo class.
+- Unexpected VCIErrors.
 
 ### Changed
 - Raise ILValueError when the disturbance data does not fit in a register.
