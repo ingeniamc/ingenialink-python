@@ -64,7 +64,7 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def disconnect_from_slave(self, servo: str) -> None:
+    def disconnect_from_slave(self, servo: Servo) -> None:
         raise NotImplementedError
 
     @abstractmethod
