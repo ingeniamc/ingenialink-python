@@ -4,6 +4,8 @@ from typing import List, Any, Callable
 
 import ingenialogger
 
+from ingenialink.servo import Servo
+
 logger = ingenialogger.get_logger(__name__)
 
 
@@ -58,7 +60,7 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def connect_to_slave(self, *args: Any, **kwargs: Any) -> None:
+    def connect_to_slave(self, *args: Any, **kwargs: Any) -> Servo:
         raise NotImplementedError
 
     @abstractmethod
