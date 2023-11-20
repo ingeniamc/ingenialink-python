@@ -240,3 +240,8 @@ class Register(ABC):
     def address_type(self) -> Optional[REG_ADDRESS_TYPE]:
         """Address type of the register."""
         return REG_ADDRESS_TYPE(self._address_type)
+
+    @property
+    def mapped_address(self) -> int:
+        """Register mapped address used for monitoring/disturbance."""
+        raise NotImplementedError()

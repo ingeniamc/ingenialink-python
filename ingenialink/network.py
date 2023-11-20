@@ -1,8 +1,10 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import List, Any, Callable
+from typing import List, Any, Callable, Union
 
 import ingenialogger
+
+from ingenialink.servo import Servo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -58,11 +60,11 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def connect_to_slave(self, *args: Any, **kwargs: Any) -> None:
+    def connect_to_slave(self, *args: Any, **kwargs: Any) -> Servo:
         raise NotImplementedError
 
     @abstractmethod
-    def disconnect_from_slave(self, servo: str) -> None:
+    def disconnect_from_slave(self, servo: Servo) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -70,11 +72,15 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def subscribe_to_status(self, callback: Callable[[NET_DEV_EVT], Any]) -> None:
+    def subscribe_to_status(
+        self, target: Union[int, str], callback: Callable[[NET_DEV_EVT], Any]
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def unsubscribe_from_status(self, callback: Callable[[NET_DEV_EVT], Any]) -> None:
+    def unsubscribe_from_status(
+        self, target: Union[int, str], callback: Callable[[NET_DEV_EVT], Any]
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
