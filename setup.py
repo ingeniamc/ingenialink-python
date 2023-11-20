@@ -57,4 +57,5 @@ setuptools.setup(
             "mypy==0.971"
         ],
     },
+    python_requires='>=3.8',
 )

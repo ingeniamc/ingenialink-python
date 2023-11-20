@@ -27,6 +27,9 @@
 ### Changed
 - Raise ILValueError when the disturbance data does not fit in a register.
 
+### Deprecated 
+- Support to Python 3.6 and 3.7.
+
 ## [7.0.4] - 2023-10-11
 
 ### Fixed
