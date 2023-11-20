@@ -1,6 +1,6 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import List, Any, Callable
+from typing import List, Any, Callable, Union
 
 import ingenialogger
 
@@ -72,11 +72,11 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def subscribe_to_status(self, callback: Callable[[NET_DEV_EVT], Any]) -> None:
+    def subscribe_to_status(self, target: Union[int, str], callback: Callable[[NET_DEV_EVT], Any]) -> None:
         raise NotImplementedError
 
     @abstractmethod
-    def unsubscribe_from_status(self, callback: Callable[[NET_DEV_EVT], Any]) -> None:
+    def unsubscribe_from_status(self, target: Union[int, str], callback: Callable[[NET_DEV_EVT], Any]) -> None:
         raise NotImplementedError
 
     @abstractmethod
