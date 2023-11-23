@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.1.0]
 
 ### Add
 - Support for multi-drive in CANopen's NetStatusListener.
