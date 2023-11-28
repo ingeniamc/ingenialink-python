@@ -1,4 +1,4 @@
-from pysoem import CdefSlave, SdoError, MailboxError, PacketError  # type: ignore
+from pysoem import CdefSlave, SdoError, MailboxError, PacketError, Emergency  # type: ignore
 import ingenialogger
 
 from ingenialink.exceptions import ILIOError
@@ -66,7 +66,7 @@ class EthercatServo(Servo):
         try:
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
             self._check_working_counter()
-        except (SdoError, MailboxError, PacketError, ILIOError) as e:
+        except (SdoError, MailboxError, PacketError, ILIOError, Emergency) as e:
             raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
         finally:
             self._lock.release()
@@ -77,7 +77,7 @@ class EthercatServo(Servo):
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
             self._check_working_counter()
-        except (SdoError, MailboxError, PacketError, ILIOError) as e:
+        except (SdoError, MailboxError, PacketError, ILIOError, Emergency) as e:
             raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
         finally:
             self._lock.release()
