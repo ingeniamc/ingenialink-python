@@ -1,5 +1,35 @@
 # Changelog
 
+## [7.1.0] - 2023-11-28
+
+### Add
+- Support for multi-drive in CANopen's NetStatusListener.
+- EtherCAT communication via CoE (SDOs).
+- Add image attribute to dictionary class.
+- Add EthercatDictionary class.
+- Add EthercatRegister class.
+- Create EtherCAT PDOs example script.
+
+### Fixed
+- Fix CANopen load_firmware function.
+- Set product name correctly if no dictionary is provided.
+- Docstrings from Register constructor and its subclasses are updated.
+- CanopenRegister and EthernetRegister have the same signature.
+- Add PySOEM to setup.py.
+- Exception error when trying to write an int to a register of dtype float.
+- Fix acquisition data variable initialization in Poller class.
+- Unexpected closing when disconnecting from an EtherCAT (SDOs) drive if servo status listener is active.
+- Avoid crashes in the Poller due to read timeouts.
+- Poller timer thread not closing after the poller is finished.
+- Improve the enable and disable methods of the Servo class.
+- Unexpected VCIErrors.
+
+### Changed
+- Raise ILValueError when the disturbance data does not fit in a register.
+
+### Deprecated 
+- Support to Python 3.6 and 3.7.
+
 ## [7.0.4] - 2023-10-11
 
 ### Fixed

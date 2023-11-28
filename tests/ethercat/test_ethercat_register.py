@@ -1,13 +1,14 @@
 import pytest
 
-from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE, dtypes_ranges
+from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
 
 
 @pytest.mark.no_connection
 @pytest.mark.smoke
-def test_getters_ethernet_register():
-    reg_address = 0x58F0
+def test_getters_ethercat_register():
+    reg_idx = 0x58F0
+    reg_subidx = 0x00
     reg_dtype = REG_DTYPE.U32
     reg_access = REG_ACCESS.RW
     reg_kwargs = {
@@ -26,14 +27,21 @@ def test_getters_ethernet_register():
         "address_type": REG_ADDRESS_TYPE.NVM,
     }
 
-    register = EthernetRegister(reg_address, reg_dtype, reg_access, **reg_kwargs)
+    register = EthercatRegister(
+        reg_idx,
+        reg_subidx,
+        reg_dtype,
+        reg_access,
+        **reg_kwargs,
+    )
 
-    assert register.address == reg_address
+    assert register.idx == reg_idx
+    assert register.subidx == reg_subidx
+    assert register.dtype == reg_dtype
+    assert register.access == reg_access
     assert register.identifier == reg_kwargs["identifier"]
     assert register.units == reg_kwargs["units"]
     assert register.cyclic == reg_kwargs["cyclic"]
-    assert register.dtype == reg_dtype
-    assert register.access == reg_access
     assert register.phy == reg_kwargs["phy"]
     assert register.subnode == reg_kwargs["subnode"]
     assert register.storage == reg_kwargs["storage"]
@@ -45,4 +53,4 @@ def test_getters_ethernet_register():
     assert register.address_type == reg_kwargs["address_type"]
     assert register.enums == reg_kwargs["enums"]
     assert register.enums_count == 2
-    assert register.storage_valid == True
+    assert register.storage_valid

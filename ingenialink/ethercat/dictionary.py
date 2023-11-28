@@ -1,16 +1,21 @@
 from typing import Optional
-
-from ingenialink.dictionary import Dictionary
-from ingenialink.canopen.register import CanopenRegister
+import xml.etree.ElementTree as ET
 
 import ingenialogger
-import xml.etree.ElementTree as ET
+
+from ingenialink.dictionary import Dictionary
+from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.constants import (
+    CANOPEN_ADDRESS_OFFSET,
+    CANOPEN_SUBNODE_0_ADDRESS_OFFSET,
+    MAP_ADDRESS_OFFSET,
+)
 
 logger = ingenialogger.get_logger(__name__)
 
 
-class CanopenDictionary(Dictionary):
-    """Contains all registers and information of a CANopen dictionary.
+class EthercatDictionary(Dictionary):
+    """Contains all registers and information of a EtherCAT dictionary.
 
     Args:
         dictionary_path: Path to the Ingenia dictionary.
@@ -20,16 +25,34 @@ class CanopenDictionary(Dictionary):
     def __init__(self, dictionary_path: str) -> None:
         super().__init__(dictionary_path)
 
-    def _read_xdf_register(self, register: ET.Element) -> Optional[CanopenRegister]:
+    @staticmethod
+    def __get_cia_offset(subnode: int) -> int:
+        """Get the CiA offset for the register based on the subnode.
+
+        Args:
+            subnode: register subnode.
+
+        Returs:
+            The CiA offset for the register.
+
+        """
+        return (
+            CANOPEN_SUBNODE_0_ADDRESS_OFFSET
+            if subnode == 0
+            else CANOPEN_ADDRESS_OFFSET + MAP_ADDRESS_OFFSET * (subnode - 1)
+        )
+
+    def _read_xdf_register(self, register: ET.Element) -> Optional[EthercatRegister]:
         current_read_register = super()._read_xdf_register(register)
         if current_read_register is None:
             return None
         try:
-            aux_var = int(register.attrib["address"], 16)
-            idx = aux_var >> 8
-            subidx = aux_var & 0xFF
+            idx = int(register.attrib["address"], 16) + self.__get_cia_offset(
+                current_read_register.subnode
+            )
+            subidx = 0x00
 
-            canopen_register = CanopenRegister(
+            ethercat_register = EthercatRegister(
                 idx,
                 subidx,
                 current_read_register.dtype,
@@ -49,7 +72,7 @@ class CanopenDictionary(Dictionary):
                 address_type=current_read_register.address_type,
             )
 
-            return canopen_register
+            return ethercat_register
 
         except KeyError as ke:
             logger.error(

@@ -16,7 +16,7 @@ setuptools.setup(
     version=_version,
     packages=setuptools.find_packages(exclude=["test", "examples"]),
     include_package_data=True,
-    package_data={"ingenialink": ["bin/FoE/*/*"]},
+    package_data={"ingenialink": ["bin/FoE/*/*", "py.typed"]},
     description='IngeniaLink Communications Library',
     long_description=open('README.rst').read(),
     author='Ingenia Motion Control',
@@ -38,7 +38,8 @@ setuptools.setup(
         'canopen==1.2.1',
         'python-can==3.3.4',
         'ingenialogger>=0.2.1',
-        'ping3==4.0.3'
+        'ping3==4.0.3',
+        'pysoem==1.0.7',
     ],
     extras_require={
         "dev": [
@@ -52,7 +53,8 @@ setuptools.setup(
             "jinja2==3.0.3",
             "pycodestyle==2.6.0",
             "wheel==0.37.1",
-            "m2r2==0.3.2"
+            "m2r2==0.3.2",
+            "mypy==0.971"
         ],
-    },
+    }
 )
