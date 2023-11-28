@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pysoem import CdefSlave, SdoError, MailboxError, PacketError, Emergency  # type: ignore
 import ingenialogger
 
@@ -66,8 +68,13 @@ class EthercatServo(Servo):
         try:
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
             self._check_working_counter()
-        except (SdoError, MailboxError, PacketError, ILIOError, Emergency) as e:
+        except (SdoError, MailboxError, PacketError, ILIOError) as e:
             raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
+        except Emergency as e:
+            error_description = self._get_emergency_description(e.error_code)
+            if error_description is None:
+                error_description = e
+            raise ILIOError(f"Error reading {reg.identifier}. Reason: {error_description}") from e
         finally:
             self._lock.release()
         return value
@@ -77,8 +84,13 @@ class EthercatServo(Servo):
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
             self._check_working_counter()
-        except (SdoError, MailboxError, PacketError, ILIOError, Emergency) as e:
+        except (SdoError, MailboxError, PacketError, ILIOError) as e:
             raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
+        except Emergency as e:
+            error_description = self._get_emergency_description(e.error_code)
+            if error_description is None:
+                error_description = e
+            raise ILIOError(f"Error reading {reg.identifier}. Reason: {error_description}") from e
         finally:
             self._lock.release()
 
@@ -131,6 +143,21 @@ class EthercatServo(Servo):
         """
         if self.__slave.mbx_receive() == self.WRONG_WORKING_COUNTER:
             raise ILIOError("Wrong working counter")
+
+    def _get_emergency_description(self, error_code: int) -> Optional[str]:
+        """Get the error description from the error code.
+
+        Args:
+            error_code: Error code received.
+
+        Returns:
+            The error description corresponding to the error code.
+
+        """
+        error_description = None
+        if self.dictionary.errors is not None:
+            error_description = self.dictionary.errors.errors[error_code & 0xFFFF][-1]
+        return error_description
 
     @property
     def slave(self) -> CdefSlave:
