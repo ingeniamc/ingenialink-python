@@ -90,7 +90,7 @@ class EthercatServo(Servo):
             error_description = self._get_emergency_description(e.error_code)
             if error_description is None:
                 error_description = e
-            raise ILIOError(f"Error reading {reg.identifier}. Reason: {error_description}") from e
+            raise ILIOError(f"Error writing {reg.identifier}. Reason: {error_description}") from e
         finally:
             self._lock.release()
 
