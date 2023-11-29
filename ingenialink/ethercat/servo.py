@@ -64,27 +64,63 @@ class EthercatServo(Servo):
     ) -> bytes:
         self._lock.acquire()
         try:
+            value = self._read_raw_attempt(reg, buffer_size, complete_access)
+        except Emergency:
+            value = self._read_raw_attempt(reg, buffer_size, complete_access)
+        finally:
+            self._lock.release()
+        return value
+
+    def _read_raw_attempt(
+        self, reg: EthercatRegister, buffer_size: int, complete_access: bool
+    ) -> bytes:
+        """Attempt to perform a read operation.
+
+        Args:
+            reg: Register to be read.
+            buffer_size: Defaults to 256 bytes.
+            complete_access: Whether to access the whole object.
+
+        Returns:
+            Register value in bytes.
+
+        Raises:
+            ILIOError: If the register cannot be read.
+
+        """
+        try:
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
             self._check_working_counter()
         except (SdoError, MailboxError, PacketError, ILIOError) as e:
             raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
-        except Emergency:
-            value = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
-        finally:
-            self._lock.release()
         return value
 
     def _write_raw(self, reg: EthercatRegister, data: bytes, complete_access: bool = False) -> None:  # type: ignore [override]
         self._lock.acquire()
         try:
+            self._write_raw_attempt(reg, data, complete_access)
+        except Emergency:
+            self._write_raw_attempt(reg, data, complete_access)
+        finally:
+            self._lock.release()
+
+    def _write_raw_attempt(self, reg: EthercatRegister, data: bytes, complete_access: bool) -> None:
+        """Attempt to perform a write operation.
+
+        Args:
+            reg: Register to be written.
+            data: Data to write.
+            complete_access: Whether to access the whole object.
+
+        Raises:
+            ILIOError: If the register cannot be written.
+
+        """
+        try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
             self._check_working_counter()
         except (SdoError, MailboxError, PacketError, ILIOError) as e:
             raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
-        except Emergency:
-            self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
-        finally:
-            self._lock.release()
 
     def _monitoring_read_data(self) -> bytes:  # type: ignore [override]
         """Read monitoring data frame."""
