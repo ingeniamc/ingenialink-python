@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pysoem import CdefSlave, SdoError, MailboxError, PacketError, Emergency  # type: ignore
+from pysoem import CdefSlave, SdoError, MailboxError, PacketError, Emergency, pysoem  # type: ignore
 import ingenialogger
 
 from ingenialink.exceptions import ILIOError
@@ -141,7 +141,16 @@ class EthercatServo(Servo):
             ILIOError: If the received working counter is incorrect.
 
         """
-        if self.__slave.mbx_receive() == self.WRONG_WORKING_COUNTER:
+        working_counter = self.WRONG_WORKING_COUNTER
+        try:
+            working_counter = self.__slave.mbx_receive()
+        except pysoem.Emergency as e:
+            logger.info(f"An emergency message was received: {e}")
+            try:
+                working_counter = self.__slave.mbx_receive()
+            except pysoem.Emergency:
+                logger.info("Clearing emergency message")
+        if working_counter == self.WRONG_WORKING_COUNTER:
             raise ILIOError("Wrong working counter")
 
     def _get_emergency_description(self, error_code: int) -> Optional[str]:
