@@ -1,4 +1,4 @@
-from pysoem import CdefSlave, SdoError, MailboxError, PacketError, Emergency, pysoem  # type: ignore
+from pysoem import CdefSlave, SdoError, MailboxError, PacketError, Emergency
 import ingenialogger
 
 from ingenialink.exceptions import ILIOError
