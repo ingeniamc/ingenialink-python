@@ -66,6 +66,7 @@ class EthercatServo(Servo):
         try:
             value = self._read_raw_attempt(reg, buffer_size, complete_access)
         except Emergency:
+            logger.info("An emergency message was received. Retrying read operation.")
             value = self._read_raw_attempt(reg, buffer_size, complete_access)
         finally:
             self._lock.release()
@@ -100,6 +101,7 @@ class EthercatServo(Servo):
         try:
             self._write_raw_attempt(reg, data, complete_access)
         except Emergency:
+            logger.info("An emergency message was received. Retrying write operation.")
             self._write_raw_attempt(reg, data, complete_access)
         finally:
             self._lock.release()
