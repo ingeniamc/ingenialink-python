@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pysoem import CdefSlave, SdoError, MailboxError, PacketError, Emergency
 import ingenialogger
 
@@ -64,65 +66,33 @@ class EthercatServo(Servo):
     ) -> bytes:
         self._lock.acquire()
         try:
-            value = self._read_raw_attempt(reg, buffer_size, complete_access)
-        except Emergency:
-            logger.info("An emergency message was received. Retrying read operation.")
-            value = self._read_raw_attempt(reg, buffer_size, complete_access)
-        finally:
-            self._lock.release()
-        return value
-
-    def _read_raw_attempt(
-        self, reg: EthercatRegister, buffer_size: int, complete_access: bool
-    ) -> bytes:
-        """Attempt to perform a read operation.
-
-        Args:
-            reg: Register to be read.
-            buffer_size: Defaults to 256 bytes.
-            complete_access: Whether to access the whole object.
-
-        Returns:
-            Register value in bytes.
-
-        Raises:
-            ILIOError: If the register cannot be read.
-
-        """
-        try:
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
             self._check_working_counter()
         except (SdoError, MailboxError, PacketError, ILIOError) as e:
             raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
+        except Emergency as e:
+            error_description = self._get_emergency_description(e.error_code)
+            if error_description is None:
+                error_description = e
+            raise ILIOError(f"Error reading {reg.identifier}. Reason: {error_description}") from e
+        finally:
+            self._lock.release()
         return value
 
     def _write_raw(self, reg: EthercatRegister, data: bytes, complete_access: bool = False) -> None:  # type: ignore [override]
         self._lock.acquire()
         try:
-            self._write_raw_attempt(reg, data, complete_access)
-        except Emergency:
-            logger.info("An emergency message was received. Retrying write operation.")
-            self._write_raw_attempt(reg, data, complete_access)
-        finally:
-            self._lock.release()
-
-    def _write_raw_attempt(self, reg: EthercatRegister, data: bytes, complete_access: bool) -> None:
-        """Attempt to perform a write operation.
-
-        Args:
-            reg: Register to be written.
-            data: Data to write.
-            complete_access: Whether to access the whole object.
-
-        Raises:
-            ILIOError: If the register cannot be written.
-
-        """
-        try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
             self._check_working_counter()
-        except (SdoError, MailboxError, PacketError, ILIOError) as e:
+        except (SdoError, MailboxError, PacketError, ILIOError, Emergency) as e:
             raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
+        except Emergency as e:
+            error_description = self._get_emergency_description(e.error_code)
+            if error_description is None:
+                error_description = e
+            raise ILIOError(f"Error writing {reg.identifier}. Reason: {error_description}") from e
+        finally:
+            self._lock.release()
 
     def _monitoring_read_data(self) -> bytes:  # type: ignore [override]
         """Read monitoring data frame."""
@@ -173,6 +143,18 @@ class EthercatServo(Servo):
         """
         if self.__slave.mbx_receive() == self.WRONG_WORKING_COUNTER:
             raise ILIOError("Wrong working counter")
+
+    def _get_emergency_description(self, error_code: int) -> Optional[str]:
+        """Get the error description from the error code.
+        Args:
+            error_code: Error code received.
+        Returns:
+            The error description corresponding to the error code.
+        """
+        error_description = None
+        if self.dictionary.errors is not None:
+            error_description = self.dictionary.errors.errors[error_code & 0xFFFF][-1]
+        return error_description
 
     @property
     def slave(self) -> CdefSlave:
