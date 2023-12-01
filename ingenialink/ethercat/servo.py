@@ -84,7 +84,7 @@ class EthercatServo(Servo):
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
             self._check_working_counter()
-        except (SdoError, MailboxError, PacketError, ILIOError, Emergency) as e:
+        except (SdoError, MailboxError, PacketError, ILIOError) as e:
             raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
         except Emergency as e:
             error_description = self._get_emergency_description(e.error_code)
