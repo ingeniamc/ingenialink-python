@@ -153,7 +153,9 @@ class EthercatServo(Servo):
         """
         error_description = None
         if self.dictionary.errors is not None:
-            error_description = self.dictionary.errors.errors[error_code & 0xFFFF][-1]
+            error_code &= 0xFFFF
+            if error_code in self.dictionary.errors.errors:
+                error_description = self.dictionary.errors.errors[error_code][-1]
         return error_description
 
     @property
