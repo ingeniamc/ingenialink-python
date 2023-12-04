@@ -4,6 +4,7 @@ from typing import List, Dict, Tuple, Union, Callable, Optional, Any
 
 from ingenialink.exceptions import (
     ILAlreadyInitializedError,
+    ILIOError,
     ILStateError,
     ILValueError,
     ILTimeoutError,
@@ -211,7 +212,7 @@ class Poller:
                 register = self.__mappings[channel]
                 try:
                     self.__acq_data[channel][self.__samples_count] = self.servo.read(register)  # type: ignore
-                except ILTimeoutError:
+                except (ILTimeoutError, ILIOError):
                     reading_error = True
                     logger.warning(
                         f"Could not read {register.identifier} register. This sample is lost for"
