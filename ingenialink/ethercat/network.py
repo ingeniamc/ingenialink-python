@@ -9,7 +9,7 @@ from typing import Optional, Any, Callable, List, Dict
 from threading import Thread
 
 import ingenialogger
-import pysoem  # type: ignore
+import pysoem
 
 from ingenialink.network import Network, NET_PROT, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError, ILError
