@@ -213,7 +213,7 @@ class VirtualMonitoring(VirtualMonDistBase):
         self.map_registers()
         self.disable()
         self.enable()
-        
+
     def __create_signals(self) -> None:
         """Creates emulated monitoring signals."""
         for channel in range(self.number_mapped_registers):
