@@ -371,7 +371,7 @@ class VirtualDrive(Thread):
             elif cmd == self.READ_CMD:
                 value = self.get_value_by_id(subnode, str(register.identifier))
                 sent_cmd = self.ACK_CMD
-                if reg_add == self.id_to_address(0, "MON_DATA"):
+                if reg_add == self.id_to_address(0, "MON_DATA") and isinstance(value, bytes):
                     response = self._response_monitoring_data(value)
                 else:
                     data = convert_dtype_to_bytes(value, register.dtype)
