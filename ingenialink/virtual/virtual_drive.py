@@ -36,10 +36,12 @@ class VirtualMonDistBase:
     BYTES_PER_BLOCK_REG: str
     AVAILABLE_BYTES_REG: str
     DATA_REG: str
+    STATUS_REGISTER: str
 
     def __init__(self, drive: "VirtualDrive") -> None:
         self.drive = drive
         self.enabled = False
+        self.disable()
         self.number_mapped_registers = 0
         self.channels_data: Dict[int, List[Union[int, float]]] = {}
         self.channels_dtype: Dict[int, REG_DTYPE] = {}
@@ -51,17 +53,17 @@ class VirtualMonDistBase:
     def enable(self) -> None:
         """Enable Monitoring/Disturbance."""
         self.enabled = True
+        self.drive.set_value_by_id(0, self.STATUS_REGISTER, 1)
 
     def disable(self) -> None:
         """Disable Monitoring/Disturbance."""
         self.enabled = False
+        self.drive.set_value_by_id(0, self.STATUS_REGISTER, 0)
 
     def remove_data(self) -> None:
         """Remove Monitoring/Disturbance data."""
-        for channel in range(self.number_mapped_registers):
-            empty_list: List[float] = []
-            self.channels_data[channel] = empty_list
-            self.drive.set_value_by_id(0, self.DATA_REG, 0)
+        self.channels_data = {}
+        self.drive.set_value_by_id(0, self.DATA_REG, 0)
 
     @property
     def divider(self) -> int:
@@ -176,6 +178,7 @@ class VirtualMonitoring(VirtualMonDistBase):
     DATA_REG = "MON_DATA"
     TRIGGER_TYPE_REG = "MON_CFG_SOC_TYPE"
     AVAILABLE_BYTES_REG = "MON_CFG_BYTES_VALUE"
+    STATUS_REGISTER = "MON_DIST_STATUS"
 
     def __init__(self, drive: "VirtualDrive") -> None:
         self.start_time = 0.0
@@ -186,9 +189,10 @@ class VirtualMonitoring(VirtualMonDistBase):
         super().enable()
         self.__create_signals()
 
-    def disable(self) -> None:
-        if self.enabled is False or self.start_time == 0.0:
-            return
+        # Set monitoring end and frame available
+        self.drive.set_value_by_id(0, self.STATUS_REGISTER, 0x10 | (0x8 + 1))
+
+        # Store data
         sampling_rate = self.FREQUENCY / self.divider
         elapsed_time = time.time() - self.start_time
         elapsed_samples = int(elapsed_time * sampling_rate)
@@ -198,13 +202,18 @@ class VirtualMonitoring(VirtualMonDistBase):
         self.available_bytes = n_samples * self.bytes_per_block
         self._store_data_bytes()
         self.start_time = 0.0
-        super().disable()
 
     def trigger(self) -> None:
         """Triggers monitoring."""
         if self.enabled:
             self.start_time = time.time()
 
+    def rearm(self) -> None:
+        """Rearm monitoring."""
+        self.map_registers()
+        self.disable()
+        self.enable()
+        
     def __create_signals(self) -> None:
         """Creates emulated monitoring signals."""
         for channel in range(self.number_mapped_registers):
@@ -259,6 +268,7 @@ class VirtualDisturbance(VirtualMonDistBase):
     BYTES_PER_BLOCK_REG = "DIST_CFG_BYTES_PER_BLOCK"
     AVAILABLE_BYTES_REG = "DIST_CFG_BYTES"
     DATA_REG = "DIST_DATA"
+    STATUS_REGISTER = "DIST_STATUS"
 
     def __init__(self, drive: "VirtualDrive") -> None:
         self.start_time = 0.0
@@ -360,11 +370,11 @@ class VirtualDrive(Thread):
                     self.__decode_msg(reg_add, subnode, data)
             elif cmd == self.READ_CMD:
                 value = self.get_value_by_id(subnode, str(register.identifier))
-                data = convert_dtype_to_bytes(value, register.dtype)
                 sent_cmd = self.ACK_CMD
                 if reg_add == self.id_to_address(0, "MON_DATA"):
-                    response = self._response_monitoring_data(data)
+                    response = self._response_monitoring_data(value)
                 else:
+                    data = convert_dtype_to_bytes(value, register.dtype)
                     response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data)
                 # TODO: send error if the register is WO
             else:
@@ -403,6 +413,9 @@ class VirtualDrive(Thread):
         self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_RTSO)
         self.set_value_by_id(1, "DRV_POS_VEL_RATE", 20000)
         self.set_value_by_id(0, "DIST_MAX_SIZE", 8192)
+        self.set_value_by_id(0, "MON_MAX_SIZE", 8192)
+        self.set_value_by_id(0, VirtualMonitoring.STATUS_REGISTER, 0)
+        self.set_value_by_id(0, VirtualDisturbance.STATUS_REGISTER, 0)
 
     def _update_registers(self) -> None:
         """Force storage_valid at each register and add registers that are not in the dictionary."""
@@ -500,6 +513,8 @@ class VirtualDrive(Thread):
             self.__monitoring.trigger()
         if reg_id == "MON_REMOVE_DATA" and subnode == 0 and value == 1:
             self.__monitoring.remove_data()
+        if reg_id == "MON_REARM" and subnode == 0 and value == 1:
+            self.__monitoring.rearm()
         if reg_id == "DIST_ENABLE" and subnode == 0 and value == 1:
             self.__disturbance.enable()
         if reg_id == "DIST_ENABLE" and subnode == 0 and value == 0:
