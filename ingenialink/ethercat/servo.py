@@ -7,6 +7,7 @@ from ingenialink.exceptions import ILIOError
 from ingenialink.servo import Servo
 from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.ethercat.pdo import PDOMapper, PDOMap, PDOMapping
 from ingenialink.register import REG_DTYPE, REG_ACCESS
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 
@@ -59,6 +60,8 @@ class EthercatServo(Servo):
     ):
         self.__slave = slave
         self.slave_id = slave_id
+        self.pdo_mapper = None
+        self.pdo_mapping = None
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
 
     def _read_raw(  # type: ignore [override]
@@ -157,6 +160,20 @@ class EthercatServo(Servo):
             if error_code in self.dictionary.errors.errors:
                 error_description = self.dictionary.errors.errors[error_code][-1]
         return error_description
+
+    def map_pdo(self, pdo_map: PDOMap):
+        self.pdo_mapper = PDOMapper(self, pdo_map)
+        pdo_map.tpdo_dtypes = self._get_pdo_register_dtypes(pdo_map.tpdo_registers)
+        pdo_map.rpdo_dtypes = self._get_pdo_register_dtypes(pdo_map.rpdo_registers)
+        self.pdo_mapping = PDOMapping(pdo_map)
+        return self.pdo_mapper.set_slave_mapping()
+
+    def _get_pdo_register_dtypes(self, registers):
+        reg_types = []
+        for reg in registers:
+            pdo_register = self.dictionary.registers(1)[reg]
+            reg_types.append(pdo_register.dtype)
+        return reg_types
 
     @property
     def slave(self) -> CdefSlave:
