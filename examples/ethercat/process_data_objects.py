@@ -49,10 +49,10 @@ class ProcessDataExample:
             dictionary_path: Drive's dictionary path.
 
         """
-        self.net = EthercatNetwork('\\Device\\NPF_{43144EC3-59EF-408B-8D9B-4867F1324D62}')
+        self.net = EthercatNetwork(interface_name)
         self.master = self.net._ecat_master
         slave = self.net.scan_slaves()[0]
-        self.servo = self.net.connect_to_slave(slave, "C://Users//martin.acosta//Documents//issues//INGM-350//eve-net-e_eoe_2.4.1.xdf")
+        self.servo = self.net.connect_to_slave(slave, dictionary_path)
         self.slave = self.master.slaves[slave]
         self._pd_thread_stop_event = threading.Event()
         self.pdo_map = PDOMap(rpdo_registers=["CL_POS_SET_POINT_VALUE"], tpdo_registers=["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"], rpdo_callback=generate_output, tpdo_callback=process_inputs)
