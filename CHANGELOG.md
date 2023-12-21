@@ -1,5 +1,10 @@
 # Changelog
 
+## [7.1.1]
+
+### Fixed
+- Import Ingenialink does not raise an error if WinPcap is not installed, but ethercat features are disabled.
+
 ## [7.1.0] - 2023-11-28
 
 ### Add
