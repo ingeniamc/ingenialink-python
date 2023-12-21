@@ -12,7 +12,9 @@ import ingenialogger
 
 try:
     import pysoem  # type: ignore
-except ImportError:
+except ImportError as e:
+    if isinstance(e, ModuleNotFoundError):
+        raise e
     pysoem = None
 
 from ingenialink.network import Network, NET_PROT, NET_STATE, NET_DEV_EVT
@@ -29,6 +31,9 @@ class NetStatusListener(Thread):
 
     Args:
         network: Network instance of the EtherCAT communication.
+
+    Raises:
+        ImportError: WinPcap is not installed
 
     """
 

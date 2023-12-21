@@ -4,7 +4,9 @@ import ingenialogger
 
 try:
     import pysoem  # type: ignore
-except ImportError:
+except ImportError as e:
+    if isinstance(e, ModuleNotFoundError):
+        raise e
     pysoem = None
 if TYPE_CHECKING:
     from pysoem import CdefSlave
@@ -28,6 +30,9 @@ class EthercatServo(Servo):
         dictionary_path: Path to the dictionary.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
+
+    Raises:
+        ImportError: WinPcap is not installed
 
     """
 
