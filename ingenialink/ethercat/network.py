@@ -12,10 +12,9 @@ import ingenialogger
 
 try:
     import pysoem  # type: ignore
-except ImportError as e:
-    if isinstance(e, ModuleNotFoundError):
-        raise e
+except ImportError as ex:
     pysoem = None
+    pysoem_import_error = ex
 
 from ingenialink.network import Network, NET_PROT, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError, ILError
@@ -86,7 +85,7 @@ class EthercatNetwork(Network):
         self, interface_name: str, connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT
     ):
         if not pysoem:
-            raise ImportError("DLLs required not found: Please install WinPcap and restart")
+            raise pysoem_import_error
         super(EthercatNetwork, self).__init__()
         self.interface_name: str = interface_name
         self.servos: List[EthercatServo] = []

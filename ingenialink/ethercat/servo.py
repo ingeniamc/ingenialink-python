@@ -4,10 +4,10 @@ import ingenialogger
 
 try:
     import pysoem  # type: ignore
-except ImportError as e:
-    if isinstance(e, ModuleNotFoundError):
-        raise e
+except ImportError as ex:
     pysoem = None
+    pysoem_import_error = ex
+
 if TYPE_CHECKING:
     from pysoem import CdefSlave
 
@@ -69,7 +69,7 @@ class EthercatServo(Servo):
         servo_status_listener: bool = False,
     ):
         if not pysoem:
-            raise ImportError("DLLs required not found: Please install WinPcap and restart")
+            raise pysoem_import_error
         self.__slave = slave
         self.slave_id = slave_id
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
