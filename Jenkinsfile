@@ -104,6 +104,7 @@ pipeline {
                 stage('Run docker tests') {
                     steps {
                         bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             venv\\Scripts\\python.exe -m coverage run -m pytest tests -m docker --junitxml=pytest_docker_report.xml
                             move .coverage ${env.WORKSPACE}\\.coverage_docker
                             move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
