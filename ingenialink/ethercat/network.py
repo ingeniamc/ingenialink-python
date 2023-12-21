@@ -31,9 +31,6 @@ class NetStatusListener(Thread):
     Args:
         network: Network instance of the EtherCAT communication.
 
-    Raises:
-        ImportError: WinPcap is not installed
-
     """
 
     def __init__(self, network: "EthercatNetwork", refresh_time: float = 0.25):
@@ -68,6 +65,9 @@ class EthercatNetwork(Network):
     Args:
         interface_name: Interface name to be targeted.
         connection_timeout: Time in seconds of the connection timeout.
+
+    Raises:
+        ImportError: WinPcap is not installed
 
     """
 
