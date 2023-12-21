@@ -101,17 +101,6 @@ pipeline {
                         """
                     }
                 }
-                stage('Run no-connection tests') {
-                    steps {
-                        bat '''
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --junitxml=pytest_no_connection_report.xml
-                            move .coverage .coverage_no_connection
-                            exit /b 0
-                        '''
-                        junit 'pytest_no_connection_report.xml'
-                    }
-                }
                 stage('Archive') {
                     steps {
                         bat """
@@ -120,8 +109,6 @@ pipeline {
                             XCOPY dist ${env.WORKSPACE}\\dist /i
                             XCOPY docs.zip ${env.WORKSPACE}
                         """
-                        stash includes: '.coverage_no_connection', name: 'coverage_no_connection'
-                        archiveArtifacts artifacts: 'pytest_no_connection_report.xml'
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
                     }
                 }
@@ -173,9 +160,19 @@ pipeline {
                         junit 'pytest_ethercat_report.xml'
                     }
                 }
+                stage('Run no-connection tests') {
+                    steps {
+                        bat '''
+                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --junitxml=pytest_no_connection_report.xml
+                            move .coverage .coverage_no_connection
+                            exit /b 0
+                        '''
+                        junit 'pytest_no_connection_report.xml'
+                    }
+                }
                 stage('Archive') {
                     steps {
-                        stash includes: '.coverage_ethercat', name: 'coverage_ethercat'
+                        stash includes: '.coverage_no_connection, .coverage_ethercat', name: 'coverage_reports'
                         archiveArtifacts artifacts: '*.xml'
                     }
                 }
@@ -239,8 +236,7 @@ pipeline {
                 }
                 stage('Save test results') {
                     steps {
-                        unstash 'coverage_no_connection'
-                        unstash 'coverage_ethercat'
+                        unstash 'coverage_reports'
                         bat '''
                             venv\\Scripts\\python.exe -m coverage combine .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
                             venv\\Scripts\\python.exe -m coverage xml --include=ingenialink/*
