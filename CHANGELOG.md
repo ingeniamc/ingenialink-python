@@ -2,6 +2,9 @@
 
 ## [7.1.1]
 
+### Added
+- Missing EtherCAT protocol documentation.
+
 ### Fixed
 - Import Ingenialink does not raise an error if WinPcap is not installed, but ethercat features are disabled.
 
