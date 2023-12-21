@@ -85,8 +85,8 @@ class ProcessDataExample:
     def process_data_loop(self) -> None:
         """Process inputs and generate outputs."""
         while True:
-            self.servo.process_pdo_inputs(self.slave.input)
-            self.slave.output = self.servo.generate_pdo_outputs()
+            self.servo.process_pdo_inputs()
+            self.servo.generate_pdo_outputs()
             time.sleep(0.1)
 
     def _processdata_thread(self) -> None:

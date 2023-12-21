@@ -169,7 +169,8 @@ class EthercatServo(Servo):
         pdo_mapper = PDOMapper(self, self.pdo_map)
         return pdo_mapper.set_slave_mapping()
 
-    def process_pdo_inputs(self, input_data: bytes):
+    def process_pdo_inputs(self):
+        input_data = self.__slave.input
         for pdo_map_item in self.pdo_map.tpdo_registers:
             reg_dtype = pdo_map_item.register.dtype
             data_size = dtype_value[reg_dtype][0]
@@ -183,7 +184,7 @@ class EthercatServo(Servo):
             reg_dtype = pdo_map_item.register.dtype
             reg_value = pdo_map_item.callback()
             output += convert_dtype_to_bytes(reg_value, reg_dtype)
-        return output
+        self.__slave.output = output
 
     @property
     def slave(self) -> CdefSlave:
