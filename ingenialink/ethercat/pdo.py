@@ -1,20 +1,39 @@
-from dataclasses import dataclass
-from typing import List, Callable, Optional, Any
+from enum import Enum, auto
+
+from dataclasses import dataclass, field
+from typing import List, Callable
 
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.utils._utils import convert_dtype_to_bytes, convert_bytes_to_dtype, dtype_value
+from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.utils._utils import dtype_value
 from ingenialink.register import REG_DTYPE, REG_ACCESS
+
+
+class PDOType(Enum):
+    TPDO = auto()
+    RDPO = auto()
+
+
+@dataclass
+class PDOMapItem:
+    register: EthercatRegister
+    callback: Callable
 
 
 @dataclass
 class PDOMap:
-    rpdo_registers: List[str]
-    tpdo_registers: List[str]
-    rpdo_callback: Callable[..., List[Any]]
-    tpdo_callback: Callable[[List[Any]], None]
-    rpdo_dtypes: Optional[List[REG_DTYPE]] = None
-    tpdo_dtypes: Optional[List[REG_DTYPE]] = None
+    dictionary: EthercatDictionary
+    rpdo_registers: List[PDOMapItem] = field(default_factory=list)
+    tpdo_registers: List[PDOMapItem] = field(default_factory=list)
+
+    def add_register(self, register: str, callback: Callable, pdo_type: PDOType, axis=1) -> None:
+        reg = self.dictionary.registers(axis)[register]
+        pdo_map_item = PDOMapItem(register=reg, callback=callback)
+        if pdo_type == PDOType.RDPO:
+            self.rpdo_registers.append(pdo_map_item)
+        else:
+            self.tpdo_registers.append(pdo_map_item)
 
 
 class PDOMapper:
@@ -91,10 +110,10 @@ class PDOMapper:
         access=REG_ACCESS.RW,
     )
 
-    def __init__(self, servo: EthercatServo, pdo_mapping_info: PDOMap):
+    def __init__(self, servo: EthercatServo, pdo_map: PDOMap):
         self.servo = servo
-        self.rpdo_registers = pdo_mapping_info.rpdo_registers
-        self.tpdo_registers = pdo_mapping_info.tpdo_registers
+        self.rpdo_registers = pdo_map.rpdo_registers
+        self.tpdo_registers = pdo_map.tpdo_registers
 
     def set_slave_mapping(self, slave_id: int = 1) -> None:
         self.reset_rpdo_mapping()
@@ -115,9 +134,8 @@ class PDOMapper:
     def map_rpdo(self) -> None:
         """Map the RPDO registers"""
         rpdo_map = bytes()
-        for register in self.rpdo_registers:
-            rpdo_register = self.servo.dictionary.registers(1)[register]
-            rpdo_map += self.map_register(rpdo_register)  # type: ignore
+        for pdo_map_item in self.rpdo_registers:
+            rpdo_map += self.map_register(pdo_map_item.register)  # type: ignore
         self.servo.write(self.RPDO_MAP_REGISTER_SUB_IDX_0, len(self.rpdo_registers))
         self.servo.write(
             self.RPDO_MAP_REGISTER_SUB_IDX_1, rpdo_map.decode("utf-8"), complete_access=True
@@ -132,9 +150,8 @@ class PDOMapper:
     def map_tpdo(self) -> None:
         """Map the TPDO registers."""
         tpdo_map = bytes()
-        for register in self.tpdo_registers:
-            tpdo_register = self.servo.dictionary.registers(1)[register]
-            tpdo_map += self.map_register(tpdo_register)  # type: ignore
+        for pdo_map_item in self.tpdo_registers:
+            tpdo_map += self.map_register(pdo_map_item.register)  # type: ignore
         self.servo.write(self.TPDO_MAP_REGISTER_SUB_IDX_0, len(self.tpdo_registers))
         self.servo.write(
             self.TPDO_MAP_REGISTER_SUB_IDX_1, tpdo_map.decode("utf-8"), complete_access=True
@@ -146,7 +163,8 @@ class PDOMapper:
             complete_access=True,
         )
 
-    def map_register(self, register: EthercatRegister) -> bytes:
+    @staticmethod
+    def map_register(register: EthercatRegister) -> bytes:
         """Arrange register information into PDO mapping format.
 
         Args:
@@ -161,31 +179,3 @@ class PDOMapper:
         mapped_register = (index << 16) | (size_bytes * 8)
         mapped_register_bytes: bytes = mapped_register.to_bytes(4, "little")
         return mapped_register_bytes
-
-
-class PDOMapping:
-    def __init__(self, pdo_mapping_info: PDOMap):
-        self.rpdo_dtypes = pdo_mapping_info.rpdo_dtypes
-        self.tpdo_dtypes = pdo_mapping_info.tpdo_dtypes
-        self.tpdo_callback = pdo_mapping_info.tpdo_callback
-        self.rpdo_callback = pdo_mapping_info.rpdo_callback
-
-    def process_inputs(self, input_data: bytes) -> None:
-        inputs: List[Any] = []
-        if self.tpdo_dtypes is None:
-            self.tpdo_callback(inputs)
-            return
-        for reg_dtype in self.tpdo_dtypes:
-            data_size = dtype_value[reg_dtype][0]
-            data = input_data[:data_size]
-            input_data = input_data[data_size:]
-            inputs.append(convert_bytes_to_dtype(data, reg_dtype))
-        self.tpdo_callback(inputs)
-
-    def generate_outputs(self) -> bytes:
-        output = bytes()
-        if self.rpdo_dtypes is None:
-            return output
-        for value, reg_dtype in zip(self.rpdo_callback(), self.rpdo_dtypes):
-            output += convert_dtype_to_bytes(value, reg_dtype)
-        return output

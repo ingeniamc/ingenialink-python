@@ -8,7 +8,7 @@ from enum import Enum
 import pysoem  # type: ignore
 
 from ingenialink.ethercat.network import EthercatNetwork
-from ingenialink.ethercat.pdo import PDOMap
+from ingenialink.ethercat.pdo import PDOMap, PDOType
 from ingenialink.exceptions import ILError
 
 
@@ -55,7 +55,14 @@ class ProcessDataExample:
         self.servo = self.net.connect_to_slave(slave, dictionary_path)
         self.slave = self.master.slaves[slave]
         self._pd_thread_stop_event = threading.Event()
-        self.pdo_map = PDOMap(rpdo_registers=["CL_POS_SET_POINT_VALUE"], tpdo_registers=["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"], rpdo_callback=generate_output, tpdo_callback=process_inputs)
+        self.pdo_map = self.create_pdo_map()
+
+    def create_pdo_map(self) -> PDOMap:
+        pdo_map = self.servo.create_pdo_map()
+        pdo_map.add_register("CL_POS_SET_POINT_VALUE", generate_output, PDOType.RDPO)
+        pdo_map.add_register("CL_POS_FBK_VALUE", process_inputs, PDOType.TPDO)
+        pdo_map.add_register("CL_VEL_FBK_VALUE", process_inputs, PDOType.TPDO)
+        return pdo_map
 
     def check_state(self, state: SlaveState) -> None:
         """Check if the slave reached the requested state.
@@ -78,8 +85,8 @@ class ProcessDataExample:
     def process_data_loop(self) -> None:
         """Process inputs and generate outputs."""
         while True:
-            self.servo.pdo_mapping.process_inputs(self.slave.input)
-            self.slave.output = self.servo.pdo_mapping.generate_outputs()
+            self.servo.process_pdo_inputs(self.slave.input)
+            self.slave.output = self.servo.generate_pdo_outputs()
             time.sleep(0.1)
 
     def _processdata_thread(self) -> None:

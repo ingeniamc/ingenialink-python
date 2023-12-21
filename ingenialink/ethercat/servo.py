@@ -1,4 +1,4 @@
-from typing import Optional, List, Any
+from typing import Optional, Any
 
 from pysoem import CdefSlave, SdoError, MailboxError, PacketError, Emergency
 import ingenialogger
@@ -7,9 +7,10 @@ from ingenialink.exceptions import ILIOError
 from ingenialink.servo import Servo
 from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.ethercat.pdo import PDOMapper, PDOMap, PDOMapping
+from ingenialink.ethercat.pdo import PDOMapper, PDOMap
 from ingenialink.register import REG_DTYPE, REG_ACCESS
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
+from ingenialink.utils._utils import convert_dtype_to_bytes, convert_bytes_to_dtype, dtype_value
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -60,8 +61,7 @@ class EthercatServo(Servo):
     ):
         self.__slave = slave
         self.slave_id = slave_id
-        self.pdo_mapper: Optional[PDOMapper] = None
-        self.pdo_mapping: Optional[PDOMapping] = None
+        self.pdo_map = Optional[PDOMap] = None
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
 
     def _read_raw(  # type: ignore [override]
@@ -161,19 +161,29 @@ class EthercatServo(Servo):
                 error_description = self.dictionary.errors.errors[error_code][-1]
         return error_description
 
-    def map_pdo(self, pdo_map: PDOMap) -> Any:
-        self.pdo_mapper = PDOMapper(self, pdo_map)
-        pdo_map.tpdo_dtypes = self._get_pdo_register_dtypes(pdo_map.tpdo_registers)
-        pdo_map.rpdo_dtypes = self._get_pdo_register_dtypes(pdo_map.rpdo_registers)
-        self.pdo_mapping = PDOMapping(pdo_map)
-        return self.pdo_mapper.set_slave_mapping()
+    def create_pdo_map(self):
+        return PDOMap(self.dictionary)
 
-    def _get_pdo_register_dtypes(self, registers: List[str]) -> List[REG_DTYPE]:
-        reg_types = []
-        for reg in registers:
-            pdo_register = self.dictionary.registers(1)[reg]
-            reg_types.append(pdo_register.dtype)
-        return reg_types
+    def map_pdo(self, pdo_map: PDOMap) -> Any:
+        self.pdo_map = pdo_map
+        pdo_mapper = PDOMapper(self, self.pdo_map)
+        return pdo_mapper.set_slave_mapping()
+
+    def process_pdo_inputs(self, input_data: bytes):
+        for pdo_map_item in self.pdo_map.tpdo_registers:
+            reg_dtype = pdo_map_item.register.dtype
+            data_size = dtype_value[reg_dtype][0]
+            data = input_data[:data_size]
+            input_data = input_data[data_size:]
+            pdo_map_item.callback(convert_bytes_to_dtype(data, reg_dtype))
+
+    def generate_pdo_outputs(self):
+        output = bytes()
+        for pdo_map_item in self.pdo_map.rpdo_registers:
+            reg_dtype = pdo_map_item.register.dtype
+            reg_value = pdo_map_item.callback()
+            output += convert_dtype_to_bytes(reg_value, reg_dtype)
+        return output
 
     @property
     def slave(self) -> CdefSlave:
