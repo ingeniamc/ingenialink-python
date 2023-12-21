@@ -8,6 +8,7 @@ from ingenialink.exceptions import ILFirmwareLoadError, ILError
 def test_raise_exception_if_not_winpcap():
     try:
         import pysoem
+
         pytest.skip("WinPcap is installed")
     except ImportError:
         pass
