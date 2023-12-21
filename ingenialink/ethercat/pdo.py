@@ -1,19 +1,20 @@
 from dataclasses import dataclass
-from typing import List, Callable, Optional
+from typing import List, Callable, Optional, Any
 
 from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.utils._utils import convert_dtype_to_bytes, convert_bytes_to_dtype, dtype_value
 from ingenialink.register import REG_DTYPE, REG_ACCESS
 
 
 @dataclass
 class PDOMap:
-    rpdo_registers: List
-    tpdo_registers: List
-    rpdo_callback: Callable
-    tpdo_callback: Callable
-    rpdo_dtypes: Optional[List] = None
-    tpdo_dtypes: Optional[List] = None
+    rpdo_registers: List[str]
+    tpdo_registers: List[str]
+    rpdo_callback: Callable[..., List[Any]]
+    tpdo_callback: Callable[[List[Any]], None]
+    rpdo_dtypes: Optional[List[REG_DTYPE]] = None
+    tpdo_dtypes: Optional[List[REG_DTYPE]] = None
 
 
 class PDOMapper:
@@ -90,12 +91,12 @@ class PDOMapper:
         access=REG_ACCESS.RW,
     )
 
-    def __init__(self, servo, pdo_mapping_info):
+    def __init__(self, servo: EthercatServo, pdo_mapping_info: PDOMap):
         self.servo = servo
         self.rpdo_registers = pdo_mapping_info.rpdo_registers
         self.tpdo_registers = pdo_mapping_info.tpdo_registers
 
-    def set_slave_mapping(self, slave_id: int = 1):
+    def set_slave_mapping(self, slave_id: int = 1) -> None:
         self.reset_rpdo_mapping()
         self.reset_tpdo_mapping()
         self.map_rpdo()
@@ -163,14 +164,17 @@ class PDOMapper:
 
 
 class PDOMapping:
-    def __init__(self, pdo_mapping_info):
+    def __init__(self, pdo_mapping_info: PDOMap):
         self.rpdo_dtypes = pdo_mapping_info.rpdo_dtypes
         self.tpdo_dtypes = pdo_mapping_info.tpdo_dtypes
         self.tpdo_callback = pdo_mapping_info.tpdo_callback
         self.rpdo_callback = pdo_mapping_info.rpdo_callback
 
-    def process_inputs(self, input_data):
-        inputs = []
+    def process_inputs(self, input_data: bytes) -> None:
+        inputs: List[Any] = []
+        if self.tpdo_dtypes is None:
+            self.tpdo_callback(inputs)
+            return
         for reg_dtype in self.tpdo_dtypes:
             data_size = dtype_value[reg_dtype][0]
             data = input_data[:data_size]
@@ -178,8 +182,10 @@ class PDOMapping:
             inputs.append(convert_bytes_to_dtype(data, reg_dtype))
         self.tpdo_callback(inputs)
 
-    def generate_outputs(self):
+    def generate_outputs(self) -> bytes:
         output = bytes()
+        if self.rpdo_dtypes is None:
+            return output
         for value, reg_dtype in zip(self.rpdo_callback(), self.rpdo_dtypes):
             output += convert_dtype_to_bytes(value, reg_dtype)
         return output

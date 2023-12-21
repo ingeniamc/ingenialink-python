@@ -40,6 +40,7 @@ setuptools.setup(
         'ingenialogger>=0.2.1',
         'ping3==4.0.3',
         'pysoem==1.0.7',
+        'dataclasses==0.6',
     ],
     extras_require={
         "dev": [
