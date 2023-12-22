@@ -63,7 +63,7 @@ pipeline {
                     steps {
                         bat '''
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            python -m venv venv
+                            py -3.9 -m venv venv
                             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
                             venv\\Scripts\\python.exe -m pip install -e .
                         '''
