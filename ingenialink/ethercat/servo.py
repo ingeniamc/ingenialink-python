@@ -162,14 +162,26 @@ class EthercatServo(Servo):
         return error_description
 
     def create_pdo_map(self) -> PDOMap:
+        """Create an empty PDO Map using the servo's dictionary.
+
+        Returns:
+            PDO map.
+        """
         return PDOMap(self.dictionary)
 
-    def map_pdo(self, pdo_map: PDOMap) -> Any:
+    def map_pdo(self, pdo_map: PDOMap) -> None:
+        """Map the PDOs into the servo according to the PDO Map.
+
+        Args:
+            pdo_map: PDO Map information.
+        """
         self.pdo_map = pdo_map
         pdo_mapper = PDOMapper(self, self.pdo_map)
         return pdo_mapper.set_slave_mapping()
 
     def process_pdo_inputs(self) -> None:
+        """Convert the TPDO values from bytes to the register data type
+        and send it to the callback function."""
         if self.pdo_map is None:
             return
         input_data = self.__slave.input
@@ -182,6 +194,8 @@ class EthercatServo(Servo):
             pdo_map_item.callback(pdo_map_item)
 
     def generate_pdo_outputs(self) -> None:
+        """Retrieve the RPDO values from the callback functions and convert them into
+        bytes."""
         if self.pdo_map is None:
             return
         output = bytes()
