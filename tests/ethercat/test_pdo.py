@@ -95,9 +95,10 @@ def test_map_rpdo(connect_to_slave, create_pdo_map):
     pdo_mapper = PDOMapper(servo, pdo_map)
     pdo_mapper.reset_rpdo_mapping()
     pdo_mapper.map_rpdo()
-    assert int.to_bytes(0x16000001, 4, "little") == servo._read_raw(
+    value = servo._read_raw(
         PDOMapper.RPDO_ASSIGN_REGISTER_SUB_IDX_0, complete_access=True
     )
+    assert int.to_bytes(0x16000001, 4, "little") == value[:4]
 
 
 @pytest.mark.ethercat
@@ -107,6 +108,7 @@ def test_map_tpdo(connect_to_slave, create_pdo_map):
     pdo_mapper = PDOMapper(servo, pdo_map)
     pdo_mapper.reset_tpdo_mapping()
     pdo_mapper.map_tpdo()
-    assert int.to_bytes(0x1A000001, 4, "little") == servo._read_raw(
+    value = servo._read_raw(
         PDOMapper.TPDO_ASSIGN_REGISTER_SUB_IDX_0, complete_access=True
     )
+    assert int.to_bytes(0x1A000001, 4, "little") == value[:4]
