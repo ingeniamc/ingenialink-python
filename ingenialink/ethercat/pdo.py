@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class PDOType(Enum):
     TPDO = auto()
-    RDPO = auto()
+    RPDO = auto()
 
 
 @dataclass
@@ -49,7 +49,7 @@ class PDOMap:
         """
         reg = self.dictionary.registers(axis)[register]
         pdo_map_item = PDOMapItem(register=reg, callback=callback)
-        if pdo_type == PDOType.RDPO:
+        if pdo_type == PDOType.RPDO:
             self.rpdo_registers.append(pdo_map_item)
         else:
             self.tpdo_registers.append(pdo_map_item)

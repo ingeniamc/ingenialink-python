@@ -71,7 +71,7 @@ class ProcessDataExample:
         for tpdo_register in TPDO_REGISTERS:
             pdo_map.add_register(tpdo_register, process_inputs, PDOType.TPDO)
         for rpdo_register in RPDO_REGISTERS:
-            pdo_map.add_register(rpdo_register, generate_output, PDOType.RDPO)
+            pdo_map.add_register(rpdo_register, generate_output, PDOType.RPDO)
         return pdo_map
 
     def check_state(self, state: SlaveState) -> None:
