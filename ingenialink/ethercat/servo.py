@@ -61,7 +61,7 @@ class EthercatServo(Servo):
     ):
         self.__slave = slave
         self.slave_id = slave_id
-        self.pdo_map = Optional[PDOMap] = None
+        self.pdo_map: Optional[PDOMap] = None
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
 
     def _read_raw(  # type: ignore [override]
@@ -161,7 +161,7 @@ class EthercatServo(Servo):
                 error_description = self.dictionary.errors.errors[error_code][-1]
         return error_description
 
-    def create_pdo_map(self):
+    def create_pdo_map(self) -> PDOMap:
         return PDOMap(self.dictionary)
 
     def map_pdo(self, pdo_map: PDOMap) -> Any:
@@ -169,21 +169,26 @@ class EthercatServo(Servo):
         pdo_mapper = PDOMapper(self, self.pdo_map)
         return pdo_mapper.set_slave_mapping()
 
-    def process_pdo_inputs(self):
+    def process_pdo_inputs(self) -> None:
+        if self.pdo_map is None:
+            return
         input_data = self.__slave.input
         for pdo_map_item in self.pdo_map.tpdo_registers:
             reg_dtype = pdo_map_item.register.dtype
             data_size = dtype_value[reg_dtype][0]
             data = input_data[:data_size]
             input_data = input_data[data_size:]
-            pdo_map_item.callback(convert_bytes_to_dtype(data, reg_dtype))
+            pdo_map_item.value = convert_bytes_to_dtype(data, reg_dtype)
+            pdo_map_item.callback(pdo_map_item)
 
-    def generate_pdo_outputs(self):
+    def generate_pdo_outputs(self) -> None:
+        if self.pdo_map is None:
+            return
         output = bytes()
         for pdo_map_item in self.pdo_map.rpdo_registers:
             reg_dtype = pdo_map_item.register.dtype
-            reg_value = pdo_map_item.callback()
-            output += convert_dtype_to_bytes(reg_value, reg_dtype)
+            pdo_map_item.value = pdo_map_item.callback(pdo_map_item)
+            output += convert_dtype_to_bytes(pdo_map_item.value, reg_dtype)
         self.__slave.output = output
 
     @property

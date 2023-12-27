@@ -1,13 +1,14 @@
 from enum import Enum, auto
-
 from dataclasses import dataclass, field
-from typing import List, Callable
+from typing import List, Callable, TYPE_CHECKING, Optional, Any, Union
 
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.utils._utils import dtype_value
-from ingenialink.register import REG_DTYPE, REG_ACCESS
+from ingenialink.register import Register, REG_DTYPE, REG_ACCESS
+from ingenialink.dictionary import Dictionary
+
+if TYPE_CHECKING:
+    from ingenialink.ethercat.servo import EthercatServo
 
 
 class PDOType(Enum):
@@ -17,17 +18,35 @@ class PDOType(Enum):
 
 @dataclass
 class PDOMapItem:
-    register: EthercatRegister
-    callback: Callable
+    register: Register
+    callback: Callable[["PDOMapItem"], Union[int, float, str, bytes]]
+    value: Optional[Any] = None
 
 
 @dataclass
 class PDOMap:
-    dictionary: EthercatDictionary
+    dictionary: Dictionary
     rpdo_registers: List[PDOMapItem] = field(default_factory=list)
     tpdo_registers: List[PDOMapItem] = field(default_factory=list)
 
-    def add_register(self, register: str, callback: Callable, pdo_type: PDOType, axis=1) -> None:
+    def add_register(
+        self,
+        register: str,
+        callback: Callable[["PDOMapItem"], Any],
+        pdo_type: PDOType,
+        axis: int = 1,
+    ) -> None:
+        """
+        Adds a register to the PDO map.
+
+        Args:
+            register: the register UID.
+            callback: In the case of an RPDO register the function from where to retrieve the value to be set.
+            In the case of a TPDO register, the function to send the register value.
+            pdo_type: Whether the register is a TPDO or RPDO.
+            axis: register axis.
+
+        """
         reg = self.dictionary.registers(axis)[register]
         pdo_map_item = PDOMapItem(register=reg, callback=callback)
         if pdo_type == PDOType.RDPO:
@@ -110,12 +129,20 @@ class PDOMapper:
         access=REG_ACCESS.RW,
     )
 
-    def __init__(self, servo: EthercatServo, pdo_map: PDOMap):
+    def __init__(self, servo: "EthercatServo", pdo_map: PDOMap):
+        """Mapper for TPDO and RPDO registers.
+
+        Args:
+            servo: Servo instance to map the PDOs into.
+            pdo_map: PDO mapping information.
+
+        """
         self.servo = servo
         self.rpdo_registers = pdo_map.rpdo_registers
         self.tpdo_registers = pdo_map.tpdo_registers
 
-    def set_slave_mapping(self, slave_id: int = 1) -> None:
+    def set_slave_mapping(self) -> None:
+        """Map the PDOs according to the PDO Map"""
         self.reset_rpdo_mapping()
         self.reset_tpdo_mapping()
         self.map_rpdo()
@@ -135,7 +162,7 @@ class PDOMapper:
         """Map the RPDO registers"""
         rpdo_map = bytes()
         for pdo_map_item in self.rpdo_registers:
-            rpdo_map += self.map_register(pdo_map_item.register)  # type: ignore
+            rpdo_map += self.map_register(pdo_map_item.register)
         self.servo.write(self.RPDO_MAP_REGISTER_SUB_IDX_0, len(self.rpdo_registers))
         self.servo.write(
             self.RPDO_MAP_REGISTER_SUB_IDX_1, rpdo_map.decode("utf-8"), complete_access=True
@@ -151,7 +178,7 @@ class PDOMapper:
         """Map the TPDO registers."""
         tpdo_map = bytes()
         for pdo_map_item in self.tpdo_registers:
-            tpdo_map += self.map_register(pdo_map_item.register)  # type: ignore
+            tpdo_map += self.map_register(pdo_map_item.register)
         self.servo.write(self.TPDO_MAP_REGISTER_SUB_IDX_0, len(self.tpdo_registers))
         self.servo.write(
             self.TPDO_MAP_REGISTER_SUB_IDX_1, tpdo_map.decode("utf-8"), complete_access=True
@@ -164,7 +191,7 @@ class PDOMapper:
         )
 
     @staticmethod
-    def map_register(register: EthercatRegister) -> bytes:
+    def map_register(register: Register) -> bytes:
         """Arrange register information into PDO mapping format.
 
         Args:
@@ -174,6 +201,10 @@ class PDOMapper:
             PDO register mapping format.
 
         """
+        if not isinstance(register, EthercatRegister):
+            raise NotImplementedError(
+                f"PDO mapping not supported for register type: {type(register)}"
+            )
         index = register.idx
         size_bytes = dtype_value[register.dtype][0]
         mapped_register = (index << 16) | (size_bytes * 8)

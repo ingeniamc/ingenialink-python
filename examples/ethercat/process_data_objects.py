@@ -1,11 +1,10 @@
 import argparse
-import random
 import sys
 import threading
 import time
 from enum import Enum
 
-import pysoem  # type: ignore
+import pysoem
 
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethercat.pdo import PDOMap, PDOType
@@ -22,22 +21,31 @@ class SlaveState(Enum):
     STATE_ERROR = 16
 
 
-def process_inputs(inputs) -> None:
-    """Print TPDOs values to console."""
-    console_output = ""
-    for value in inputs:
-        console_output += f"Value: {value} "
-    sys.stdout.write("\r" + console_output)
-    sys.stdout.flush()
+TPDO_REGISTERS = {
+    "CL_POS_FBK_VALUE": 0,
+    "CL_VEL_FBK_VALUE": 0,
+}
+
+RPDO_REGISTERS = {
+    "CL_POS_SET_POINT_VALUE": 0,
+}
 
 
-def generate_output():
-    """Generate the position set-point value to be writen.
+def process_inputs(pdo_map_item) -> None:
+    """Store the received TPDO register value."""
+    tpdo_reg = pdo_map_item.register
+    TPDO_REGISTERS[tpdo_reg.identifier] = pdo_map_item.value
+
+
+def generate_output(pdo_map_item):
+    """Generate a value to be set to a RPDO register.
 
     Returns:
-          New position set-point.
+          The value to be set.
     """
-    return [random.randrange(1000, 1500)]
+    rpdo_reg = pdo_map_item.register
+    RPDO_REGISTERS[rpdo_reg.identifier] += 100
+    return RPDO_REGISTERS[rpdo_reg.identifier]
 
 
 class ProcessDataExample:
@@ -58,10 +66,12 @@ class ProcessDataExample:
         self.pdo_map = self.create_pdo_map()
 
     def create_pdo_map(self) -> PDOMap:
+        """Create a PDO Map with the RPDO and TPDO registers."""
         pdo_map = self.servo.create_pdo_map()
-        pdo_map.add_register("CL_POS_SET_POINT_VALUE", generate_output, PDOType.RDPO)
-        pdo_map.add_register("CL_POS_FBK_VALUE", process_inputs, PDOType.TPDO)
-        pdo_map.add_register("CL_VEL_FBK_VALUE", process_inputs, PDOType.TPDO)
+        for tpdo_register in TPDO_REGISTERS:
+            pdo_map.add_register(tpdo_register, process_inputs, PDOType.TPDO)
+        for rpdo_register in RPDO_REGISTERS:
+            pdo_map.add_register(rpdo_register, generate_output, PDOType.RDPO)
         return pdo_map
 
     def check_state(self, state: SlaveState) -> None:
@@ -87,6 +97,7 @@ class ProcessDataExample:
         while True:
             self.servo.process_pdo_inputs()
             self.servo.generate_pdo_outputs()
+            self._print_values_to_console()
             time.sleep(0.1)
 
     def _processdata_thread(self) -> None:
@@ -97,6 +108,13 @@ class ProcessDataExample:
             if self._actual_wkc != self.master.expected_wkc:
                 print("incorrect wkc")
             time.sleep(0.01)
+
+    @staticmethod
+    def _print_values_to_console():
+        """Print the TPDO register values to console."""
+        console_output = "".join(f"{reg}: {value} " for reg, value in TPDO_REGISTERS.items())
+        sys.stdout.write("\r" + console_output)
+        sys.stdout.flush()
 
     def run(self) -> None:
         """Main loop of the program."""
