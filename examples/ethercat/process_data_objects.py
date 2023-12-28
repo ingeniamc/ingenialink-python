@@ -142,10 +142,10 @@ class ProcessDataExample:
             print("Process data stopped")
         self._pd_thread_stop_event.set()
         proc_thread.join()
+        self.servo.disable()
         self.master.state = pysoem.INIT_STATE
         self.master.write_state()
         self.master.close()
-        self.servo.disable()
         self.net.disconnect_from_slave(self.servo)
 
 

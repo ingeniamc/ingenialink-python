@@ -108,3 +108,16 @@ def test_map_tpdo(connect_to_slave, create_pdo_map):
     pdo_mapper.map_tpdo()
     value = servo._read_raw(PDOMapper.TPDO_ASSIGN_REGISTER_SUB_IDX_0, complete_access=True)
     assert int.to_bytes(0x1A00, 2, "little") == value[2:4]
+
+
+@pytest.mark.ethercat
+def test_pdo_example(read_config, script_runner):
+    protocol_contents = read_config["ethercat"]
+    ifname = protocol_contents["ifname"]
+    dictionary = protocol_contents["dictionary"]
+    script_path = "examples/ethercat/process_data_objects.py"
+    result = script_runner.run(
+        script_path, f"-ifname={ifname}", f"-dict={dictionary}", "-auto_stop"
+    )
+    assert result.returncode == 0
+    assert result.stderr == ""
