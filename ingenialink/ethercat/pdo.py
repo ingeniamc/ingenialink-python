@@ -12,12 +12,23 @@ if TYPE_CHECKING:
 
 
 class PDOType(Enum):
+    """PDO type."""
+
     TPDO = auto()
     RPDO = auto()
 
 
 @dataclass
 class PDOMapItem:
+    """Class to hold a mapped register attributes.
+
+    Attributes:
+        register: mapped register object.
+        callback: register callback function.
+        value: the register value.
+
+    """
+
     register: Register
     callback: Callable[["PDOMapItem"], Union[int, float, str, bytes]]
     value: Optional[Any] = None
@@ -25,6 +36,15 @@ class PDOMapItem:
 
 @dataclass
 class PDOMap:
+    """PDO mapping information.
+
+    Attributes:
+        dictionary: servo's dictionary.
+        rpdo_registers: List of RPDO registers attributes.
+        tpdo_registers: List of TPDO registers attributes.
+
+    """
+
     dictionary: Dictionary
     rpdo_registers: List[PDOMapItem] = field(default_factory=list)
     tpdo_registers: List[PDOMapItem] = field(default_factory=list)
@@ -42,7 +62,7 @@ class PDOMap:
         Args:
             register: the register UID.
             callback: In the case of an RPDO register the function from where to retrieve the value to be set.
-            In the case of a TPDO register, the function to send the register value.
+                In the case of a TPDO register, the function to send the register value.
             pdo_type: Whether the register is a TPDO or RPDO.
             axis: register axis.
 
@@ -56,6 +76,14 @@ class PDOMap:
 
 
 class PDOMapper:
+    """Mapper for TPDO and RPDO registers.
+
+    Args:
+        servo: Servo instance to map the PDOs into.
+        pdo_map: PDO mapping information.
+
+    """
+
     RPDO_ASSIGN_REGISTER_SUB_IDX_0 = EthercatRegister(
         identifier="RPDO_ASSIGN_REGISTER",
         units="",
@@ -130,36 +158,29 @@ class PDOMapper:
     )
 
     def __init__(self, servo: "EthercatServo", pdo_map: PDOMap):
-        """Mapper for TPDO and RPDO registers.
-
-        Args:
-            servo: Servo instance to map the PDOs into.
-            pdo_map: PDO mapping information.
-
-        """
         self.servo = servo
         self.rpdo_registers = pdo_map.rpdo_registers
         self.tpdo_registers = pdo_map.tpdo_registers
 
     def set_slave_mapping(self) -> None:
-        """Map the PDOs according to the PDO Map"""
+        """Map the PDOs into the servo drive according to the PDO Map"""
         self.reset_rpdo_mapping()
         self.reset_tpdo_mapping()
         self.map_rpdo()
         self.map_tpdo()
 
     def reset_rpdo_mapping(self) -> None:
-        """Reset the RPDO mappings"""
+        """Delete the RPDO mapping stored in the servo drive"""
         self.servo.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, 0)
         self.servo.write(self.RPDO_MAP_REGISTER_SUB_IDX_0, 0)
 
     def reset_tpdo_mapping(self) -> None:
-        """Reset the TPDO mappings"""
+        """Delete the TPDO mapping stored in the servo drive"""
         self.servo.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, 0)
         self.servo.write(self.TPDO_MAP_REGISTER_SUB_IDX_0, 0)
 
     def map_rpdo(self) -> None:
-        """Map the RPDO registers"""
+        """Map the RPDO registers into the servo drive"""
         rpdo_map = bytes()
         for pdo_map_item in self.rpdo_registers:
             rpdo_map += self.map_register(pdo_map_item.register)
@@ -175,7 +196,7 @@ class PDOMapper:
         )
 
     def map_tpdo(self) -> None:
-        """Map the TPDO registers."""
+        """Map the TPDO registers into the servo drive"""
         tpdo_map = bytes()
         for pdo_map_item in self.tpdo_registers:
             tpdo_map += self.map_register(pdo_map_item.register)

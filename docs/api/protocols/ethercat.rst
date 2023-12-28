@@ -6,3 +6,4 @@ EtherCAT API documentation
     :glob:
 
     ethercat/network
+    ethercat/pdo
