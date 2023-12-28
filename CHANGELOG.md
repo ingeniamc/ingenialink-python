@@ -1,5 +1,10 @@
 # Changelog
 
+## [7.2.0]
+
+### Added
+- EtherCAT PDO module.
+
 ## [7.1.0] - 2023-11-28
 
 ### Add
