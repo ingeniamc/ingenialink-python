@@ -49,12 +49,13 @@ def generate_output(pdo_map_item):
 
 
 class ProcessDataExample:
-    def __init__(self, interface_name: str, dictionary_path: str):
+    def __init__(self, interface_name: str, dictionary_path: str, auto_stop: bool = False):
         """Basic example on EtherCAT PDOs.
 
         Args:
             interface_name: Network adapter interface name.
             dictionary_path: Drive's dictionary path.
+            auto_stop: Automatically stop the PDO process after 5 seconds.
 
         """
         self.net = EthercatNetwork(interface_name)
@@ -64,6 +65,8 @@ class ProcessDataExample:
         self.slave = self.master.slaves[slave]
         self._pd_thread_stop_event = threading.Event()
         self.pdo_map = self.create_pdo_map()
+        if auto_stop:
+            threading.Timer(5, self._stop_process_data).start()
 
     def create_pdo_map(self) -> PDOMap:
         """Create a PDO Map with the RPDO and TPDO registers."""
@@ -94,7 +97,7 @@ class ProcessDataExample:
 
     def process_data_loop(self) -> None:
         """Process inputs and generate outputs."""
-        while True:
+        while not self._pd_thread_stop_event.is_set():
             self.servo.process_pdo_inputs()
             self.servo.generate_pdo_outputs()
             self._print_values_to_console()
@@ -115,6 +118,10 @@ class ProcessDataExample:
         console_output = "".join(f"{reg}: {value} " for reg, value in TPDO_REGISTERS.items())
         sys.stdout.write("\r" + console_output)
         sys.stdout.flush()
+
+    def _stop_process_data(self):
+        """Stop the data processing."""
+        self._pd_thread_stop_event.set()
 
     def run(self) -> None:
         """Main loop of the program."""
@@ -146,5 +153,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="EtherCAT PDOs example script.")
     parser.add_argument("-ifname", type=str, help="Network adapter interface name.")
     parser.add_argument("-dict", type=str, help="Drive's dictionary.")
+    parser.add_argument(
+        "-auto_stop",
+        help="Automatically stop the PDO process after 5 seconds.",
+        action="store_true",
+    )
     args = parser.parse_args()
-    ProcessDataExample(args.ifname, args.dict).run()
+    ProcessDataExample(args.ifname, args.dict, args.auto_stop).run()
