@@ -1,18 +1,19 @@
+import random
 import socket
 import time
 from enum import Enum
 from threading import Thread
-import random
-from typing import Tuple, List, Dict, Union, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
-from ingenialink.utils.mcb import MCB
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
-from ingenialink.ethernet.servo import EthernetServo
+from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
 from ingenialink.ethernet.dictionary import EthernetDictionary
 from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
+from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.utils import constants
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.utils.constants import IL_MC_CW_EO
+from ingenialink.utils.mcb import MCB
 
 
 class MSG_TYPE(Enum):
@@ -475,14 +476,12 @@ class VirtualDrive(Thread):
             message: Received or sent message.
             msg_type: Sent or Received.
         """
-        self.__logger.append(
-            {
-                "timestamp": time.time(),
-                "ip_port": ip_port,
-                "type": msg_type.value,
-                "message": message,
-            }
-        )
+        self.__logger.append({
+            "timestamp": time.time(),
+            "ip_port": ip_port,
+            "type": msg_type.value,
+            "message": message,
+        })
 
     @property
     def log(self) -> List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]]:
@@ -523,6 +522,10 @@ class VirtualDrive(Thread):
             self.__disturbance.remove_data()
         if reg_id == "DIST_DATA" and subnode == 0:
             self.__disturbance.append_data(data)
+        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value & IL_MC_CW_EO):
+            self.motor_enable()
+        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_DV):
+            self.motor_disable()
 
     def address_to_id(self, subnode: int, address: int) -> str:
         """Converts a register address into its ID.
@@ -609,3 +612,11 @@ class VirtualDrive(Thread):
             if id is None:
                 raise ValueError("Register address or id should be passed")
         return self.__dictionary.registers(subnode)[id]
+
+    def motor_enable(self):
+        """Motor enable."""
+        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_OE)
+
+    def motor_disable(self):
+        """Motor disable."""
+        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_RTSO)
