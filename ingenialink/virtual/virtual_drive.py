@@ -523,9 +523,11 @@ class VirtualDrive(Thread):
         if reg_id == "DIST_DATA" and subnode == 0:
             self.__disturbance.append_data(data)
         if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value & IL_MC_CW_EO):
-            self.motor_enable()
+            self.__set_motor_enable()
         if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_DV):
-            self.motor_disable()
+            self.__set_motor_disable()
+        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_SD):
+            self.__set_motor_ready_to_switch_on()
 
     def address_to_id(self, subnode: int, address: int) -> str:
         """Converts a register address into its ID.
@@ -613,10 +615,14 @@ class VirtualDrive(Thread):
                 raise ValueError("Register address or id should be passed")
         return self.__dictionary.registers(subnode)[id]
 
-    def motor_enable(self):
-        """Motor enable."""
+    def __set_motor_enable(self):
+        """Set the enabled state."""
         self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_OE)
 
-    def motor_disable(self):
-        """Motor disable."""
+    def __set_motor_disable(self):
+        """Set the disabled state."""
+        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_SOD)
+
+    def __set_motor_ready_to_switch_on(self) -> None:
+        """Set the ready-to-switch-on state."""
         self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_RTSO)
