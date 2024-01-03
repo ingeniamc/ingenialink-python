@@ -2,9 +2,9 @@ import time
 
 import pytest
 
-from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.enums.register import REG_DTYPE
-
+from ingenialink.enums.servo import SERVO_STATE
+from ingenialink.ethernet.network import EthernetNetwork
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -141,3 +141,17 @@ def test_virtual_disturbance(virtual_drive, read_config):
 
     for channel in range(len(registers_key)):
         assert server._VirtualDrive__disturbance.channels_data[channel] == data_arr[channel]
+
+
+@pytest.mark.no_connection
+def test_virtual_motor_enable_disable(virtual_drive, read_config):
+    server = virtual_drive
+    net = EthernetNetwork()
+    protocol_contents = read_config["ethernet"]
+    servo = net.connect_to_slave(server.ip, protocol_contents["dictionary"], server.port)
+
+    assert servo.get_state() == SERVO_STATE.RDY
+    servo.enable()
+    assert servo.get_state() == SERVO_STATE.ENABLED
+    servo.disable()
+    assert servo.get_state() == SERVO_STATE.DISABLED

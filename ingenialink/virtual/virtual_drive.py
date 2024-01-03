@@ -1,4 +1,5 @@
 import random
+import random
 import socket
 import time
 from enum import Enum, IntEnum
@@ -15,6 +16,7 @@ from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.utils import constants
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.utils.constants import IL_MC_CW_EO
 from ingenialink.utils.mcb import MCB
 
 
@@ -648,6 +650,7 @@ class VirtualDrive(Thread):
         self._update_registers()
         self._monitoring = VirtualMonitoring(self)
         self._disturbance = VirtualDisturbance(self)
+        self.__set_motor_ready_to_switch_on()
         self._plant_open_loop_rl_d = PlantOpenLoopRL(self)
         self._plant_closed_loop_rl_d = PlantClosedLoopRL(self, self._plant_open_loop_rl_d.plant)
         self._plant_open_loop_rl_q = PlantOpenLoopRLQuadrature(self)
@@ -729,7 +732,6 @@ class VirtualDrive(Thread):
         self.set_value_by_id(1, "FBK_BISS_CHAIN", 1)
         self.set_value_by_id(1, "DRV_PS_FREQ_SELECTION", 0)
         self.set_value_by_id(1, "DRV_PS_FREQ_1", 20000)
-        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_RTSO)
         self.set_value_by_id(1, "DRV_POS_VEL_RATE", 20000)
         self.set_value_by_id(1, "CL_CUR_FREQ", 20000)
         self.set_value_by_id(0, "DIST_MAX_SIZE", 8192)
@@ -920,6 +922,12 @@ class VirtualDrive(Thread):
             self._plant_open_loop_vol_to_vel.jog(value)
         if reg_id == "DRV_OP_CMD":
             self.__clean_plant_signals()
+        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (int(value) & IL_MC_CW_EO):
+            self.__set_motor_enable()
+        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_DV):
+            self.__set_motor_disable()
+        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_SD):
+            self.__set_motor_ready_to_switch_on()
 
     def address_to_id(self, subnode: int, address: int) -> str:
         """Converts a register address into its ID.
@@ -1021,6 +1029,18 @@ class VirtualDrive(Thread):
             if id is None:
                 raise ValueError("Register address or id should be passed")
         return self.__dictionary.registers(subnode)[id]
+
+    def __set_motor_enable(self) -> None:
+        """Set the enabled state."""
+        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_OE)
+
+    def __set_motor_disable(self) -> None:
+        """Set the disabled state."""
+        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_SOD)
+
+    def __set_motor_ready_to_switch_on(self) -> None:
+        """Set the ready-to-switch-on state."""
+        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_RTSO)
 
     def __emulate_plants(self):
         if self.operation_mode == OperationMode.CURRENT:
