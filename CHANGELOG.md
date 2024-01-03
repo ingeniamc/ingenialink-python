@@ -1,6 +1,6 @@
 # Changelog
 
-## [7.1.1]
+## [7.1.1] - 2024-01-03
 
 ### Added
 - Missing EtherCAT protocol documentation.
