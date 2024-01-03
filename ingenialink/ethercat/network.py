@@ -9,7 +9,12 @@ from typing import Optional, Any, Callable, List, Dict
 from threading import Thread
 
 import ingenialogger
-import pysoem  # type: ignore
+
+try:
+    import pysoem  # type: ignore
+except ImportError as ex:
+    pysoem = None
+    pysoem_import_error = ex
 
 from ingenialink.network import Network, NET_PROT, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError, ILError
@@ -61,6 +66,9 @@ class EthercatNetwork(Network):
         interface_name: Interface name to be targeted.
         connection_timeout: Time in seconds of the connection timeout.
 
+    Raises:
+        ImportError: WinPcap is not installed
+
     """
 
     FOE_APPLICATION = {"win32": {"64bit": "FoE/win_64x/FoEUpdateFirmware.exe"}}
@@ -76,6 +84,8 @@ class EthercatNetwork(Network):
     def __init__(
         self, interface_name: str, connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT
     ):
+        if not pysoem:
+            raise pysoem_import_error
         super(EthercatNetwork, self).__init__()
         self.interface_name: str = interface_name
         self.servos: List[EthercatServo] = []

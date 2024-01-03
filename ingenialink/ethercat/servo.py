@@ -1,5 +1,15 @@
-from pysoem import CdefSlave, SdoError, MailboxError, PacketError  # type: ignore
+from typing import TYPE_CHECKING
+
 import ingenialogger
+
+try:
+    import pysoem  # type: ignore
+except ImportError as ex:
+    pysoem = None
+    pysoem_import_error = ex
+
+if TYPE_CHECKING:
+    from pysoem import CdefSlave
 
 from ingenialink.exceptions import ILIOError
 from ingenialink.servo import Servo
@@ -20,6 +30,9 @@ class EthercatServo(Servo):
         dictionary_path: Path to the dictionary.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
+
+    Raises:
+        ImportError: WinPcap is not installed
 
     """
 
@@ -50,11 +63,13 @@ class EthercatServo(Servo):
 
     def __init__(
         self,
-        slave: CdefSlave,
+        slave: "CdefSlave",
         slave_id: int,
         dictionary_path: str,
         servo_status_listener: bool = False,
     ):
+        if not pysoem:
+            raise pysoem_import_error
         self.__slave = slave
         self.slave_id = slave_id
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
@@ -66,7 +81,7 @@ class EthercatServo(Servo):
         try:
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
             self._check_working_counter()
-        except (SdoError, MailboxError, PacketError, ILIOError) as e:
+        except (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError, ILIOError) as e:
             raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
         finally:
             self._lock.release()
@@ -77,7 +92,7 @@ class EthercatServo(Servo):
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
             self._check_working_counter()
-        except (SdoError, MailboxError, PacketError, ILIOError) as e:
+        except (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError, ILIOError) as e:
             raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
         finally:
             self._lock.release()
@@ -133,6 +148,6 @@ class EthercatServo(Servo):
             raise ILIOError("Wrong working counter")
 
     @property
-    def slave(self) -> CdefSlave:
+    def slave(self) -> "CdefSlave":
         """Ethercat slave"""
         return self.__slave
