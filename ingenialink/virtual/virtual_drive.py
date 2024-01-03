@@ -346,6 +346,7 @@ class VirtualDrive(Thread):
         self._update_registers()
         self.__monitoring = VirtualMonitoring(self)
         self.__disturbance = VirtualDisturbance(self)
+        self.__set_motor_ready_to_switch_on()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def run(self) -> None:
@@ -411,7 +412,6 @@ class VirtualDrive(Thread):
         self.set_value_by_id(1, "PROF_POS_VEL_RATIO", 1.0)
         self.set_value_by_id(1, "FBK_BISS_CHAIN", 1)
         self.set_value_by_id(1, "DRV_PS_FREQ_SELECTION", 0)
-        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_RTSO)
         self.set_value_by_id(1, "DRV_POS_VEL_RATE", 20000)
         self.set_value_by_id(0, "DIST_MAX_SIZE", 8192)
         self.set_value_by_id(0, "MON_MAX_SIZE", 8192)
@@ -522,7 +522,7 @@ class VirtualDrive(Thread):
             self.__disturbance.remove_data()
         if reg_id == "DIST_DATA" and subnode == 0:
             self.__disturbance.append_data(data)
-        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value & IL_MC_CW_EO):
+        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (int(value) & IL_MC_CW_EO):
             self.__set_motor_enable()
         if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_DV):
             self.__set_motor_disable()
@@ -615,11 +615,11 @@ class VirtualDrive(Thread):
                 raise ValueError("Register address or id should be passed")
         return self.__dictionary.registers(subnode)[id]
 
-    def __set_motor_enable(self):
+    def __set_motor_enable(self) -> None:
         """Set the enabled state."""
         self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_OE)
 
-    def __set_motor_disable(self):
+    def __set_motor_disable(self) -> None:
         """Set the disabled state."""
         self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_SOD)
 
