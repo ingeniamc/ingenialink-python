@@ -4,6 +4,7 @@
 
 ### Add
 - Motor enable and disable features in the virtual drive.
+- Emulate control loops in the virtual drive.
 
 
 ## [7.1.0] - 2023-11-28
