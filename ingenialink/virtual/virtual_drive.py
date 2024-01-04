@@ -255,7 +255,7 @@ class BaseClosedLoopPlant(BasePlant):
         super().emulate_plant(from_disturbance=from_disturbance)
         self.__obtain_command_signal()
 
-    def __obtain_command_signal(self):
+    def __obtain_command_signal(self) -> None:
         """Obtain command signal from the output by applying the inverse of the open-loop plant."""
         if not (
             self.TUNING_OPERATION_MODE is not None
@@ -945,10 +945,12 @@ class VirtualDrive(Thread):
                 element.attrib["id"],
                 cast_data.get(reg_dtype, int)(reg_data),
             )
+        value: Union[str, int]
         for subnode in range(self.__dictionary.subnodes):
             for reg_id, reg in self.__dictionary.registers(subnode).items():
                 if reg._storage is not None:
                     continue
+
                 value = "" if reg.dtype == REG_DTYPE.STR else 0
                 self.set_value_by_id(subnode, reg_id, value)
 
