@@ -1,5 +1,4 @@
 import random
-import random
 import socket
 import time
 from enum import Enum, IntEnum
@@ -18,6 +17,14 @@ from ingenialink.utils import constants
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.utils.constants import IL_MC_CW_EO
 from ingenialink.utils.mcb import MCB
+
+R_VALUE = 1.1
+L_VALUE = 3.9e-4
+J_VALUE = 0.012
+B_VALUE = 0.027
+TORQUE_CONSTANT = 0.05
+
+STATUS_WORD_COMMUTATION_FEEDBACK_ALIGNED_BIT = 0x4000
 
 
 class MSG_TYPE(Enum):
@@ -47,9 +54,26 @@ class OperationMode(IntEnum):
 
 
 class BasePlant:
+    """Base class for open-loop and closed-loop plants.
+
+    Args:
+        drive: Instance of VirtualDrive.
+
+    Attributes:
+        drive: Instance of VirtualDrive.
+        plant: Plant's discrete transfer function.
+        monitoring_frequency: Monitoring frequency
+        set_point_register: Set-point register.
+        command_register: Command register.
+        value_register: Value register.
+    """
+
     REGISTER_SET_POINT: str
+    """Register of the set-point signal."""
     REGISTER_COMMAND: str
+    """Register of the command signal."""
     REGISTER_VALUE: str
+    """Register of the value (output) signal."""
 
     def __init__(self, drive: "VirtualDrive") -> None:
         self.drive = drive
@@ -59,8 +83,13 @@ class BasePlant:
         self.command_register = self.drive.get_register(1, id=self.REGISTER_COMMAND)
         self.value_register = self.drive.get_register(1, id=self.REGISTER_VALUE)
 
-    def emulate_plant(self, from_disturbance=True):
-        dist_signal = self.set_point_register.signal
+    def emulate_plant(self, from_disturbance: bool = True) -> None:
+        """Emulate the plant by filtering the excitation signal with the plant's frequency response.
+
+        Args:
+            from_disturbance: If True the input signal is repeated to fit the monitoring window.
+        """
+        dist_signal = self.drive.reg_signals[self.REGISTER_SET_POINT]
         if len(dist_signal) == 0:
             return
 
@@ -69,16 +98,59 @@ class BasePlant:
             if monitoring_size > len(dist_signal):
                 repetitions = monitoring_size // len(dist_signal) + 1
                 dist_signal = np.tile(dist_signal, repetitions)
-            # dist_signal = dist_signal[:monitoring_size]
 
-        mon_signal = signal.lfilter(self.plant.num, self.plant.den, dist_signal)
+        initial_value = (
+            self.set_point_register.storage if self.set_point_register.storage > 0 else 0
+        )
+        use_fft_method = self.value_register.dtype == REG_DTYPE.FLOAT
+        mon_signal = self.__filter_signal(
+            dist_signal, use_fft_method=use_fft_method, initial_value=initial_value
+        )
 
-        self.command_register.signal = dist_signal
-        self.value_register.signal = mon_signal
-        self.command_register.time = self.set_point_register.time
-        self.value_register.time = self.set_point_register.time
+        self.drive.reg_signals[self.REGISTER_COMMAND] = dist_signal
+        self.drive.reg_time[self.REGISTER_COMMAND] = self.drive.reg_time[self.REGISTER_SET_POINT]
+        self.drive.reg_signals[self.REGISTER_VALUE] = mon_signal
+        self.drive.reg_time[self.REGISTER_VALUE] = self.drive.reg_time[self.REGISTER_SET_POINT]
 
-    def jog(self, new_value: float) -> None:
+    def __filter_signal(
+        self, input_signal: np.ndarray, use_fft_method: bool = True, initial_value: float = 0.0
+    ) -> np.ndarray:
+        """Filter signal with the plant's frequency response.
+
+        Args:
+            input_signal: Signal to be filtered.
+            use_fft_method: If True the FFT method is used.
+            initial_value: Initial value.
+
+        Returns:
+            Filtered signal.
+        """
+        if len(self.plant.num) == 1 and len(self.plant.den) == 1:
+            gain = self.plant.num[0] / self.plant.den[0]
+            output_signal = input_signal * gain
+        if use_fft_method:
+            input_signal_fft = np.fft.fft(input_signal)
+            _, freq_response = signal.freqz(
+                self.plant.num, self.plant.den, worN=len(input_signal), whole=True
+            )
+            output_signal_fft = input_signal_fft * freq_response
+            output_signal = np.real(np.fft.ifft(output_signal_fft))
+        else:
+            initial_x = [initial_value] * (len(self.plant.num) - 1)
+            initial_y = [initial_value] * (len(self.plant.den) - 1)
+            zi = signal.lfiltic(self.plant.num, self.plant.den, initial_y, x=initial_x)
+            output_signal, _ = signal.lfilter(self.plant.num, self.plant.den, input_signal, zi=zi)
+
+        return output_signal
+
+    def jog(self, new_value: Union[int, float]) -> None:
+        """Emulate jogs by disturbing the input register using a step signal.
+
+        Args:
+            new_value: Target value.
+        """
+        if not self.drive.enabled:
+            return
         time_of_change = time.time()
         start_time = time_of_change - 1
         end_time = start_time + 5
@@ -88,37 +160,69 @@ class BasePlant:
         current_value = self.set_point_register.storage
         jog_signal[:index_change] = current_value
         jog_signal[index_change:] = new_value
-        self.set_point_register.time = time_vector
-        self.set_point_register.signal = jog_signal
+        self.drive.reg_signals[self.REGISTER_SET_POINT] = jog_signal
+        self.drive.reg_time[self.REGISTER_SET_POINT] = time_vector
         self.emulate_plant(from_disturbance=False)
 
-    def clean_signals(self):
-        self.command_register.signal = np.array([])
-        self.command_register.time = np.array([])
-        self.value_register.signal = np.array([])
-        self.value_register.time = np.array([])
-        self.set_point_register.signal = np.array([])
-        self.set_point_register.time = np.array([])
+    def clean_signals(self) -> None:
+        """Clean all signals."""
+        self.drive.reg_time[self.REGISTER_COMMAND] = np.array([])
+        self.drive.reg_signals[self.REGISTER_COMMAND] = np.array([])
+        self.drive.reg_time[self.REGISTER_VALUE] = np.array([])
+        self.drive.reg_signals[self.REGISTER_VALUE] = np.array([])
+        self.drive.reg_time[self.REGISTER_SET_POINT] = np.array([])
+        self.drive.reg_signals[self.REGISTER_SET_POINT] = np.array([])
 
 
 class BaseOpenLoopPlant(BasePlant):
+    """Base class for open-loop plants.
+
+    Args:
+        drive: Instance of VirtualDrive.
+        num: Numerator of the continuos transfer function.
+        den: Denominator of the continuos transfer function.
+
+    Attributes:
+        drive: Instance of VirtualDrive.
+        plant: Plant's discrete transfer function.
+    """
+
     def __init__(self, drive: "VirtualDrive", num: List[float], den: List[float]) -> None:
         super().__init__(drive)
         self.plant = signal.TransferFunction(num, den).to_discrete(dt=1 / self.monitoring_frequency)
-        self.value_register.noise_amplitude = 0.01
+        self.drive.reg_noise_amplitude[self.REGISTER_VALUE] = 0.01
 
 
 class BaseClosedLoopPlant(BasePlant):
+    """Base class for closed-loop plants.
+
+    Args:
+        drive: Instance of VirtualDrive.
+        open_loop_plant: Open-loop plant's discrete transfer function.
+
+    Attributes:
+        drive: Instance of VirtualDrive.
+        open_loop_plant: Open-loop plant's discrete transfer function.
+        plant: Closed-loop plant's discrete transfer function.
+    """
 
     KI_REG: str
+    """Register containing the Ki value."""
     KP_REG: str
+    """Register containing the Kp value."""
+
+    TUNING_OPERATION_MODE: Optional[OperationMode] = None
+    """Operation mode used for tuning."""
+    OL_PLANT_INPUT: str
+    """Register of the open-loop plant's input."""
 
     def __init__(self, drive: "VirtualDrive", open_loop_plant: signal.TransferFunction) -> None:
         super().__init__(drive)
         self.open_loop_plant = open_loop_plant
         self.create_closed_loop_plant()
 
-    def create_closed_loop_plant(self):
+    def create_closed_loop_plant(self) -> None:
+        """Create the closed-loop plant."""
         discrete_controller = signal.TransferFunction(
             [self.kp + self.kp * self.ki * 1 / self.monitoring_frequency, -self.kp],
             [1, -1],
@@ -139,17 +243,42 @@ class BaseClosedLoopPlant(BasePlant):
 
         self.plant = signal.TransferFunction(num, den, dt=1 / self.monitoring_frequency)
 
-    def emulate_plant(self, from_disturbance=True):
+    def emulate_plant(self, from_disturbance: bool = True) -> None:
         self.create_closed_loop_plant()
-        return super().emulate_plant(from_disturbance=from_disturbance)
+        super().emulate_plant(from_disturbance=from_disturbance)
+        if (
+            self.TUNING_OPERATION_MODE is not None
+            and self.drive.operation_mode == self.TUNING_OPERATION_MODE
+            and len(self.drive.reg_signals[self.REGISTER_VALUE]) > 0
+        ):
+            command_value = signal.lfilter(
+                self.open_loop_plant.den,
+                self.open_loop_plant.num,
+                self.drive.reg_signals[self.REGISTER_VALUE],
+            )
+            self.drive.reg_signals[self.OL_PLANT_INPUT] = command_value
+            self.drive.reg_time[self.OL_PLANT_INPUT] = self.drive.reg_time[self.REGISTER_VALUE]
+            self.drive.reg_noise_amplitude[self.OL_PLANT_INPUT] = self.drive.reg_noise_amplitude[
+                self.REGISTER_VALUE
+            ]
 
     @property
-    def kp(self):
-        return self.drive.get_value_by_id(1, self.KP_REG)
+    def kp(self) -> float:
+        """Return Kp value.
+
+        Returns:
+            Kp value.
+        """
+        return float(self.drive.get_value_by_id(1, self.KP_REG))
 
     @property
-    def ki(self):
-        return self.drive.get_value_by_id(1, self.KI_REG)
+    def ki(self) -> float:
+        """Return Ki value.
+
+        Returns:
+            Ki value.
+        """
+        return float(self.drive.get_value_by_id(1, self.KI_REG))
 
 
 class PlantOpenLoopRL(BaseOpenLoopPlant):
@@ -160,8 +289,8 @@ class PlantOpenLoopRL(BaseOpenLoopPlant):
     REGISTER_VALUE = "CL_CUR_D_VALUE"
 
     def __init__(self, drive: "VirtualDrive") -> None:
-        self.l_henry = 0.39e-3
-        self.r_ohm = 1.1
+        self.l_henry = L_VALUE
+        self.r_ohm = R_VALUE
         super().__init__(drive, [1], [self.l_henry, self.r_ohm])
 
 
@@ -175,6 +304,12 @@ class PlantClosedLoopRL(BaseClosedLoopPlant):
     KI_REG = "CL_CUR_D_KI"
     KP_REG = "CL_CUR_D_KP"
 
+    TUNING_OPERATION_MODE = OperationMode.CURRENT
+    OL_PLANT_INPUT = PlantOpenLoopRL.REGISTER_COMMAND
+
+    def emulate_plant(self, from_disturbance: bool = True) -> None:
+        super().emulate_plant(from_disturbance)
+
 
 class PlantOpenLoopRLQuadrature(BaseOpenLoopPlant):
     """Emulator of a open-loop RL quadrature plant."""
@@ -184,8 +319,8 @@ class PlantOpenLoopRLQuadrature(BaseOpenLoopPlant):
     REGISTER_VALUE = "CL_CUR_Q_VALUE"
 
     def __init__(self, drive: "VirtualDrive") -> None:
-        self.l_henry = 0.39e-3
-        self.r_ohm = 1.1
+        self.l_henry = L_VALUE
+        self.r_ohm = R_VALUE
         super().__init__(drive, [1], [self.l_henry, self.r_ohm])
 
 
@@ -208,8 +343,8 @@ class PlantOpenLoopJB(BaseOpenLoopPlant):
     REGISTER_VALUE = "CL_VEL_FBK_VALUE"
 
     def __init__(self, drive: "VirtualDrive") -> None:
-        self.j_value = 0.012
-        self.b_value = 0.027
+        self.j_value = J_VALUE
+        self.b_value = B_VALUE
         super().__init__(drive, [1], [self.j_value, self.b_value])
 
 
@@ -222,6 +357,9 @@ class PlantClosedLoopJB(BaseClosedLoopPlant):
 
     KI_REG = "CL_VEL_PID_KI"
     KP_REG = "CL_VEL_PID_KP"
+
+    TUNING_OPERATION_MODE = OperationMode.PROFILE_VELOCITY
+    OL_PLANT_INPUT = "CL_CUR_Q_CMD_VALUE"
 
 
 class PlantOpenLoopPosition(BaseOpenLoopPlant):
@@ -247,6 +385,9 @@ class PlantClosedLoopPosition(BaseClosedLoopPlant):
     KI_REG = "CL_POS_PID_KI"
     KP_REG = "CL_POS_PID_KP"
 
+    TUNING_OPERATION_MODE = OperationMode.PROFILE_POSITION_S_CURVE
+    OL_PLANT_INPUT = "CL_VEL_CMD_VALUE"
+
 
 class PlantOpenLoopVoltageToVelocity(BaseOpenLoopPlant):
     """Emulator of a open-loop voltage-to-velocity plant."""
@@ -259,7 +400,29 @@ class PlantOpenLoopVoltageToVelocity(BaseOpenLoopPlant):
         self,
         drive: "VirtualDrive",
     ) -> None:
-        super().__init__(drive, [1.7], [1])
+        self.gain = TORQUE_CONSTANT / (R_VALUE * B_VALUE)
+        super().__init__(drive, [self.gain], [1])
+        self.plant = signal.TransferFunction([self.gain], [1], dt=1 / self.monitoring_frequency)
+
+
+class PlantOpenLoopVoltageToCurrentA(PlantOpenLoopRL):
+    """Emulator of a open-loop voltage-to-current (A) plant."""
+
+    REGISTER_SET_POINT = "CL_VOL_D_SET_POINT"
+    REGISTER_COMMAND = "CL_VOL_D_REF_VALUE"
+    REGISTER_VALUE = "FBK_CUR_A_VALUE"
+
+
+class PlantOpenLoopVoltageToCurrentB(PlantOpenLoopVoltageToCurrentA):
+    """Emulator of a open-loop voltage-to-current (B) plant."""
+
+    REGISTER_VALUE = "FBK_CUR_B_VALUE"
+
+
+class PlantOpenLoopVoltageToCurrentC(PlantOpenLoopVoltageToCurrentA):
+    """Emulator of a open-loop voltage-to-current (C) plant."""
+
+    REGISTER_VALUE = "FBK_CUR_C_VALUE"
 
 
 class VirtualMonDistBase:
@@ -327,7 +490,7 @@ class VirtualMonDistBase:
             return 0
 
     @property
-    def buffer_time(self) -> int:
+    def buffer_time(self) -> float:
         """Monitoring buffer size in seconds."""
         return self.buffer_size * self.divider / self.FREQUENCY
 
@@ -409,7 +572,7 @@ class VirtualMonDistBase:
             self.channels_signal[channel] = empty_list.copy()
             self.bytes_per_block += size
 
-    def get_channel_index(self, reg_id) -> Optional[int]:
+    def get_channel_index(self, reg_id: str) -> Optional[int]:
         channel_index = None
         for channel in range(self.number_mapped_registers):
             subnode, address, _, _ = self.get_mapped_register(channel)
@@ -482,13 +645,17 @@ class VirtualMonitoring(VirtualMonDistBase):
         for channel in range(self.number_mapped_registers):
             subnode = self.channels_subnode[channel]
             address = self.channels_address[channel]
-            reg = self.drive.get_register(subnode, address)
-            if len(reg.signal) > 0:
-                indexes = np.arange(0, self.buffer_size * self.divider - 1, self.divider, dtype=int)
-                self.channels_signal[channel] = reg.signal[indexes]
-                if reg.noise_amplitude > 0:
-                    noise = reg.noise_amplitude * np.random.normal(
-                        size=self.channels_signal[channel].size
+            reg_id = self.drive.address_to_id(subnode, address)
+            if len(self.drive.reg_signals[reg_id]) > 0:
+                self.channels_signal[channel] = self.drive.reg_signals[reg_id]
+                if self.divider > 1:
+                    indexes = np.arange(
+                        0, self.buffer_size * self.divider - 1, self.divider, dtype=int
+                    )
+                    self.channels_signal[channel] = self.channels_signal[channel][indexes]
+                if self.drive.reg_noise_amplitude[reg_id] > 0:
+                    noise = self.drive.reg_noise_amplitude[reg_id] * np.random.normal(
+                        size=len(self.channels_signal[channel])
                     )
                     self.channels_signal[channel] = self.channels_signal[channel] + noise
                 continue
@@ -559,7 +726,7 @@ class VirtualDisturbance(VirtualMonDistBase):
             subnode = self.channels_subnode[channel]
             address = self.channels_address[channel]
             reg = self.drive.get_register(subnode, address)
-            reg.time = reg.time + self.start_time
+            self.drive.reg_time[str(reg.identifier)] += self.start_time
         super().enable()
 
     def disable(self) -> None:
@@ -605,10 +772,10 @@ class VirtualDisturbance(VirtualMonDistBase):
 
             subnode = self.channels_subnode[channel]
             address = self.channels_address[channel]
-            reg = self.drive.get_register(subnode, address)
+            reg_id = str(self.drive.get_register(subnode, address).identifier)
 
-            reg.time = time_vector
-            reg.signal = dist_signal
+            self.drive.reg_time[reg_id] = time_vector
+            self.drive.reg_signals[reg_id] = dist_signal
 
     @property
     def buffer_size_bytes(self) -> int:
@@ -646,11 +813,18 @@ class VirtualDrive(Thread):
         self.__logger: List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]] = []
         self.__reg_address_to_id: Dict[int, Dict[int, str]] = {}
         self.__dictionary = EthernetDictionary(dictionary_path)
+        self.reg_signals: Dict[str, np.ndarray] = {}
+        self.reg_time: Dict[str, np.ndarray] = {}
+        self.reg_noise_amplitude: Dict[str, float] = {}
+
         self._init_registers()
         self._update_registers()
+        self.__set_motor_ready_to_switch_on()
+        self._init_register_signals()
+
         self._monitoring = VirtualMonitoring(self)
         self._disturbance = VirtualDisturbance(self)
-        self.__set_motor_ready_to_switch_on()
+
         self._plant_open_loop_rl_d = PlantOpenLoopRL(self)
         self._plant_closed_loop_rl_d = PlantClosedLoopRL(self, self._plant_open_loop_rl_d.plant)
         self._plant_open_loop_rl_q = PlantOpenLoopRLQuadrature(self)
@@ -664,6 +838,10 @@ class VirtualDrive(Thread):
             self, self._plant_open_loop_position.plant
         )
         self._plant_open_loop_vol_to_vel = PlantOpenLoopVoltageToVelocity(self)
+        self._plant_open_loop_vol_to_curr_a = PlantOpenLoopVoltageToCurrentA(self)
+        self._plant_open_loop_vol_to_curr_b = PlantOpenLoopVoltageToCurrentB(self)
+        self._plant_open_loop_vol_to_curr_c = PlantOpenLoopVoltageToCurrentC(self)
+
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def run(self) -> None:
@@ -671,7 +849,6 @@ class VirtualDrive(Thread):
         server_address = (self.ip, self.port)
         self.socket.bind(server_address)
         self.socket.settimeout(2)
-        value: Union[int, float, bytes, str]
         while not self.__stop:
             try:
                 frame, add = self.socket.recvfrom(ETH_BUF_SIZE)
@@ -681,28 +858,52 @@ class VirtualDrive(Thread):
             self.__log(add, frame, MSG_TYPE.RECEIVED)
             register = self.get_register(subnode, reg_add)
             if cmd == self.WRITE_CMD:
-                sent_cmd = self.ACK_CMD
-                response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data[:8])
-                if register.access in [REG_ACCESS.RW, REG_ACCESS.WO]:  # TODO: send error otherwise
-                    value = convert_bytes_to_dtype(data, register.dtype)
-                    self.__decode_msg(reg_add, subnode, data)
-                    self.set_value_by_id(subnode, str(register.identifier), value)
+                response = self.__get_response_to_write_command(register, data)
             elif cmd == self.READ_CMD:
-                value = self.get_value_by_id(subnode, str(register.identifier))
-                sent_cmd = self.ACK_CMD
-                if reg_add == self.id_to_address(0, "MON_DATA") and isinstance(value, bytes):
-                    self.__emulate_plants()
-                    self._monitoring.update_data()
-                    response = self._response_monitoring_data(value)
-                else:
-                    data = convert_dtype_to_bytes(value, register.dtype)
-                    response = MCB.build_mcb_frame(sent_cmd, subnode, reg_add, data)
-                # TODO: send error if the register is WO
+                response = self.__get_response_to_read_command(register, data)
             else:
                 continue
             self.__send(response, add)
 
         time.sleep(0.1)
+
+    def __get_response_to_write_command(self, register: EthernetRegister, data: bytes) -> bytes:
+        """Return the response to a WRITE command.
+
+        Args:
+            register: Register instance.
+            data: Received data frame.
+
+        Returns:
+            bytes: Response to be sent.
+        """
+        response = MCB.build_mcb_frame(self.ACK_CMD, register.subnode, register.address, data[:8])
+        if register.access in [REG_ACCESS.RW, REG_ACCESS.WO]:
+            value = convert_bytes_to_dtype(data, register.dtype)
+            self.__decode_msg(register.address, register.subnode, data)
+            self.set_value_by_id(register.subnode, str(register.identifier), value)
+
+        return response
+
+    def __get_response_to_read_command(self, register: EthernetRegister, data: bytes) -> bytes:
+        """Return the response to a READ command.
+
+        Args:
+            register: Register instance.
+            data: Received data frame.
+
+        Returns:
+            bytes: Response to be sent.
+        """
+        value = self.get_value_by_id(register.subnode, str(register.identifier))
+        if register.address == self.id_to_address(0, "MON_DATA") and isinstance(value, bytes):
+            self._monitoring.update_data()
+            response = self._response_monitoring_data(value)
+        else:
+            data = convert_dtype_to_bytes(value, register.dtype)
+            response = MCB.build_mcb_frame(self.ACK_CMD, register.subnode, register.address, data)
+
+        return response
 
     def stop(self) -> None:
         """Stop socket."""
@@ -730,8 +931,8 @@ class VirtualDrive(Thread):
         self.set_value_by_id(1, "CL_AUX_FBK_SENSOR", 4)
         self.set_value_by_id(1, "PROF_POS_VEL_RATIO", 1.0)
         self.set_value_by_id(1, "FBK_BISS_CHAIN", 1)
-        self.set_value_by_id(1, "DRV_PS_FREQ_SELECTION", 0)
-        self.set_value_by_id(1, "DRV_PS_FREQ_1", 20000)
+        self.set_value_by_id(1, "DRV_PS_FREQ_SELECTION", 2)
+        self.set_value_by_id(1, "DRV_PS_FREQ_3", 100000)
         self.set_value_by_id(1, "DRV_POS_VEL_RATE", 20000)
         self.set_value_by_id(1, "CL_CUR_FREQ", 20000)
         self.set_value_by_id(0, "DIST_MAX_SIZE", 8192)
@@ -775,6 +976,14 @@ class VirtualDrive(Thread):
         self.set_value_by_id(1, PlantOpenLoopVoltageToVelocity.REGISTER_COMMAND, 0)
         self.set_value_by_id(1, PlantOpenLoopVoltageToVelocity.REGISTER_VALUE, 0)
         self.set_value_by_id(1, "CL_VOL_D_SET_POINT", 0)
+        self.set_value_by_id(1, "COMMU_PHASING_MODE", 1)
+        self.set_value_by_id(1, "COMMU_PHASING_MAX_CURRENT", 2.66)
+        self.set_value_by_id(1, "COMMU_PHASING_ACCURACY", 3600)
+        self.set_value_by_id(1, "COMMU_PHASING_TIMEOUT", 2000)
+        self.set_value_by_id(1, "TORQUE_ESTIM_KT", 1)
+        self.set_value_by_id(1, "CL_TOR_PID_KP", 1)
+        self.set_value_by_id(1, "CL_VEL_PID_KD", 0)
+        self.set_value_by_id(1, "CL_POS_PID_KD", 0)
 
     def _update_registers(self) -> None:
         """Force storage_valid at each register and add registers that are not in the dictionary."""
@@ -783,9 +992,6 @@ class VirtualDrive(Thread):
             for reg_id, reg in self.__dictionary.registers(subnode).items():
                 self.__reg_address_to_id[subnode][reg.address] = reg_id
                 self.__dictionary.registers(subnode)[reg_id].storage_valid = True
-                self.__dictionary.registers(subnode)[reg_id].signal = np.array([])
-                self.__dictionary.registers(subnode)[reg_id].time = np.array([])
-                self.__dictionary.registers(subnode)[reg_id].noise_amplitude = 0.0
 
         custom_regs = {
             "MON_DATA": EthernetServo.MONITORING_DATA,
@@ -800,6 +1006,14 @@ class VirtualDrive(Thread):
 
             self.__reg_address_to_id[reg.subnode][reg.address] = id
 
+    def _init_register_signals(self) -> None:
+        """Init signals, vector time and noise amplitude for each register."""
+        for subnode in range(self.__dictionary.subnodes):
+            for reg_id in self.__dictionary.registers(subnode).keys():
+                self.reg_signals[reg_id] = np.array([])
+                self.reg_time[reg_id] = np.array([])
+                self.reg_noise_amplitude[reg_id] = 0.0
+
     def __send(self, response: bytes, address: Tuple[str, int]) -> None:
         """Send a message and update log.
 
@@ -807,7 +1021,6 @@ class VirtualDrive(Thread):
             response: Message to be sent.
             address: IP address and port.
         """
-        # time.sleep(0.01)  # Emulate latency of 10 ms
         self.socket.sendto(response, address)
         self.__log(address, response, MSG_TYPE.SENT)
 
@@ -875,6 +1088,7 @@ class VirtualDrive(Thread):
             self._monitoring.remove_data()
         if reg_id == "MON_REARM" and subnode == 0 and value == 1:
             self._monitoring.rearm()
+            self.__emulate_plants()
         if reg_id == "DIST_ENABLE" and subnode == 0 and value == 1:
             self._disturbance.enable()
             self.__emulate_plants()
@@ -885,24 +1099,39 @@ class VirtualDrive(Thread):
             self._disturbance.remove_data()
         if reg_id == "DIST_DATA" and subnode == 0:
             self._disturbance.append_data(data)
+        if reg_id == "DRV_OP_CMD":
+            self.operation_mode = int(value)
+            self.__clean_plant_signals()
+        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (int(value) & IL_MC_CW_EO):
+            self.__set_motor_enable()
+        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_DV):
+            self.__set_motor_disable()
+        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_SD):
+            self.__set_motor_ready_to_switch_on()
+        if (
+            reg_id == PlantOpenLoopJB.REGISTER_SET_POINT
+            and subnode == 1
+            and self.operation_mode in [OperationMode.CURRENT]
+        ):
+            self._plant_open_loop_jb.jog(float(value))
         if (
             reg_id == PlantClosedLoopRL.REGISTER_SET_POINT
             and subnode == 1
-            and self.operation_mode in [OperationMode.CURRENT]
+            and self.operation_mode in [OperationMode.CURRENT, OperationMode.VOLTAGE]
         ):
-            self._plant_closed_loop_rl_d.jog(value)
+            self._plant_closed_loop_rl_d.jog(float(value))
         if (
             reg_id == PlantClosedLoopRLQuadrature.REGISTER_SET_POINT
             and subnode == 1
-            and self.operation_mode in [OperationMode.CURRENT]
+            and self.operation_mode in [OperationMode.CURRENT, OperationMode.VOLTAGE]
         ):
-            self._plant_closed_loop_rl_q.jog(value)
+            self._plant_closed_loop_rl_q.jog(float(value))
         if (
             reg_id == PlantClosedLoopJB.REGISTER_SET_POINT
             and subnode == 1
             and self.operation_mode in [OperationMode.VELOCITY, OperationMode.PROFILE_VELOCITY]
         ):
-            self._plant_closed_loop_jb.jog(value)
+            self._plant_closed_loop_jb.jog(float(value))
         if (
             reg_id == PlantClosedLoopPosition.REGISTER_SET_POINT
             and subnode == 1
@@ -913,21 +1142,13 @@ class VirtualDrive(Thread):
                 OperationMode.PROFILE_POSITION_S_CURVE,
             ]
         ):
-            self._plant_closed_loop_position.jog(value)
+            self._plant_closed_loop_position.jog(int(value))
         if (
             reg_id == PlantOpenLoopVoltageToVelocity.REGISTER_SET_POINT
             and subnode == 1
             and self.operation_mode in [OperationMode.VOLTAGE]
         ):
-            self._plant_open_loop_vol_to_vel.jog(value)
-        if reg_id == "DRV_OP_CMD":
-            self.__clean_plant_signals()
-        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (int(value) & IL_MC_CW_EO):
-            self.__set_motor_enable()
-        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_DV):
-            self.__set_motor_disable()
-        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_SD):
-            self.__set_motor_ready_to_switch_on()
+            self._plant_open_loop_vol_to_vel.jog(float(value))
 
     def address_to_id(self, subnode: int, address: int) -> str:
         """Converts a register address into its ID.
@@ -966,17 +1187,17 @@ class VirtualDrive(Thread):
         """
         register = self.__dictionary.registers(subnode)[id]
         value: Union[int, float, str]
-        if hasattr(register, "signal") and len(register.signal) > 0:
+        if len(self.reg_signals[id]) > 0:
             actual_time = time.time()
             if self._disturbance.enabled:
                 time_diff = actual_time - self._disturbance.start_time
                 actual_time = self._disturbance.start_time + (
                     time_diff % self._disturbance.buffer_time
                 )
-            sample_index = np.argmin(np.abs(register.time - actual_time))
-            value = register.signal[sample_index]
-            if register.noise_amplitude > 0:
-                value = value + register.noise_amplitude * np.random.uniform()
+            sample_index = np.argmin(np.abs(self.reg_time[id] - actual_time))
+            value = self.reg_signals[id][sample_index]
+            if self.reg_noise_amplitude[id] > 0:
+                value = value + self.reg_noise_amplitude[id] * np.random.uniform()
 
             if register.dtype != REG_DTYPE.FLOAT:
                 value = int(value)
@@ -1032,37 +1253,49 @@ class VirtualDrive(Thread):
 
     def __set_motor_enable(self) -> None:
         """Set the enabled state."""
-        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_OE)
+        new_status_word = STATUS_WORD_COMMUTATION_FEEDBACK_ALIGNED_BIT | constants.IL_MC_PDS_STA_OE
+        self.set_value_by_id(1, "DRV_STATE_STATUS", new_status_word)
 
     def __set_motor_disable(self) -> None:
         """Set the disabled state."""
-        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_SOD)
+        new_status_word = STATUS_WORD_COMMUTATION_FEEDBACK_ALIGNED_BIT | constants.IL_MC_PDS_STA_SOD
+        self.set_value_by_id(1, "DRV_STATE_STATUS", new_status_word)
 
     def __set_motor_ready_to_switch_on(self) -> None:
         """Set the ready-to-switch-on state."""
-        self.set_value_by_id(1, "DRV_STATE_STATUS", constants.IL_MC_PDS_STA_RTSO)
+        new_status_word = (
+            STATUS_WORD_COMMUTATION_FEEDBACK_ALIGNED_BIT | constants.IL_MC_PDS_STA_RTSO
+        )
+        self.set_value_by_id(1, "DRV_STATE_STATUS", new_status_word)
 
-    def __emulate_plants(self):
-        if self.operation_mode == OperationMode.CURRENT:
+    def __emulate_plants(self) -> None:
+        """Emulate plants according the operation mode."""
+        if self.operation_mode in [OperationMode.VOLTAGE]:
             self._plant_open_loop_rl_d.emulate_plant()
-            self._plant_closed_loop_rl_d.emulate_plant()
             self._plant_open_loop_rl_q.emulate_plant()
+            self._plant_open_loop_vol_to_curr_a.emulate_plant()
+            self._plant_open_loop_vol_to_curr_b.emulate_plant()
+            self._plant_open_loop_vol_to_curr_c.emulate_plant()
+        if self.operation_mode in [OperationMode.CURRENT]:
+            self._plant_open_loop_jb.emulate_plant()
+            self._plant_closed_loop_rl_d.emulate_plant()
             self._plant_closed_loop_rl_q.emulate_plant()
+        if self.operation_mode in [OperationMode.VELOCITY]:
+            self._plant_open_loop_position.emulate_plant()
         if self.operation_mode in [
             OperationMode.VELOCITY,
             OperationMode.PROFILE_VELOCITY,
         ]:
-            self._plant_open_loop_jb.emulate_plant()
             self._plant_closed_loop_jb.emulate_plant()
         if self.operation_mode in [
             OperationMode.POSITION,
             OperationMode.PROFILE_POSITION,
             OperationMode.PROFILE_POSITION_S_CURVE,
         ]:
-            self._plant_open_loop_position.emulate_plant()
             self._plant_closed_loop_position.emulate_plant()
 
-    def __clean_plant_signals(self):
+    def __clean_plant_signals(self) -> None:
+        """Clean all plant signals."""
         self._plant_open_loop_jb.clean_signals()
         self._plant_closed_loop_jb.clean_signals()
         self._plant_open_loop_position.clean_signals()
@@ -1072,13 +1305,31 @@ class VirtualDrive(Thread):
         self._plant_closed_loop_rl_d.clean_signals()
         self._plant_closed_loop_rl_q.clean_signals()
         self._plant_open_loop_vol_to_vel.clean_signals()
+        self._plant_open_loop_vol_to_curr_a.clean_signals()
+        self._plant_open_loop_vol_to_curr_b.clean_signals()
+        self._plant_open_loop_vol_to_curr_c.clean_signals()
 
     @property
     def operation_mode(self) -> int:
         """Operation Mode."""
-        return self.get_value_by_id(1, "DRV_OP_CMD")
+        return int(self.get_value_by_id(1, "DRV_OP_VALUE"))
+
+    @operation_mode.setter
+    def operation_mode(self, operation_mode: int) -> None:
+        """Set Operation Mode."""
+        self.set_value_by_id(1, "DRV_OP_VALUE", operation_mode)
 
     @property
     def current_loop_rate(self) -> int:
         """Current loop rate."""
-        return self.get_value_by_id(1, "CL_CUR_FREQ")
+        return int(self.get_value_by_id(1, "CL_CUR_FREQ"))
+
+    @property
+    def enabled(self) -> bool:
+        """Return true if the motor is enabled.
+
+        Returns:
+            True if the motor is enabled.
+        """
+        status_word = int(self.get_value_by_id(1, "DRV_STATE_STATUS"))
+        return (status_word & constants.IL_MC_PDS_STA_OE_MSK) == constants.IL_MC_PDS_STA_OE
