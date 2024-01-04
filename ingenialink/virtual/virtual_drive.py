@@ -103,7 +103,7 @@ class BasePlant:
             self.set_point_register.storage if self.set_point_register.storage > 0 else 0
         )
         use_fft_method = self.value_register.dtype == REG_DTYPE.FLOAT
-        mon_signal = self.__filter_signal(
+        mon_signal = self._filter_signal(
             dist_signal, use_fft_method=use_fft_method, initial_value=initial_value
         )
 
@@ -112,8 +112,12 @@ class BasePlant:
         self.drive.reg_signals[self.REGISTER_VALUE] = mon_signal
         self.drive.reg_time[self.REGISTER_VALUE] = self.drive.reg_time[self.REGISTER_SET_POINT]
 
-    def __filter_signal(
-        self, input_signal: np.ndarray, use_fft_method: bool = True, initial_value: float = 0.0
+    def _filter_signal(
+        self,
+        input_signal: np.ndarray,
+        use_fft_method: bool = True,
+        initial_value: float = 0.0,
+        plant: Optional[signal.TransferFunction] = None,
     ) -> np.ndarray:
         """Filter signal with the plant's frequency response.
 
@@ -125,21 +129,22 @@ class BasePlant:
         Returns:
             Filtered signal.
         """
-        if len(self.plant.num) == 1 and len(self.plant.den) == 1:
-            gain = self.plant.num[0] / self.plant.den[0]
+        plant = plant or self.plant
+        if len(plant.num) == 1 and len(plant.den) == 1:
+            gain = plant.num[0] / plant.den[0]
             output_signal = input_signal * gain
         if use_fft_method:
             input_signal_fft = np.fft.fft(input_signal)
             _, freq_response = signal.freqz(
-                self.plant.num, self.plant.den, worN=len(input_signal), whole=True
+                plant.num, plant.den, worN=len(input_signal), whole=True
             )
             output_signal_fft = input_signal_fft * freq_response
             output_signal = np.real(np.fft.ifft(output_signal_fft))
         else:
-            initial_x = [initial_value] * (len(self.plant.num) - 1)
-            initial_y = [initial_value] * (len(self.plant.den) - 1)
-            zi = signal.lfiltic(self.plant.num, self.plant.den, initial_y, x=initial_x)
-            output_signal, _ = signal.lfilter(self.plant.num, self.plant.den, input_signal, zi=zi)
+            initial_x = [initial_value] * (len(plant.num) - 1)
+            initial_y = [initial_value] * (len(plant.den) - 1)
+            zi = signal.lfiltic(plant.num, plant.den, initial_y, x=initial_x)
+            output_signal, _ = signal.lfilter(plant.num, plant.den, input_signal, zi=zi)
 
         return output_signal
 
@@ -246,21 +251,31 @@ class BaseClosedLoopPlant(BasePlant):
     def emulate_plant(self, from_disturbance: bool = True) -> None:
         self.create_closed_loop_plant()
         super().emulate_plant(from_disturbance=from_disturbance)
-        if (
+        self.__obtain_command_signal()
+
+    def __obtain_command_signal(self):
+        """Obtain command signal from the output by applying the inverse of the open-loop plant."""
+        if not (
             self.TUNING_OPERATION_MODE is not None
             and self.drive.operation_mode == self.TUNING_OPERATION_MODE
             and len(self.drive.reg_signals[self.REGISTER_VALUE]) > 0
         ):
-            command_value = signal.lfilter(
-                self.open_loop_plant.den,
-                self.open_loop_plant.num,
-                self.drive.reg_signals[self.REGISTER_VALUE],
-            )
-            self.drive.reg_signals[self.OL_PLANT_INPUT] = command_value
-            self.drive.reg_time[self.OL_PLANT_INPUT] = self.drive.reg_time[self.REGISTER_VALUE]
-            self.drive.reg_noise_amplitude[self.OL_PLANT_INPUT] = self.drive.reg_noise_amplitude[
-                self.REGISTER_VALUE
-            ]
+            return
+        output_signal = self.drive.reg_signals[self.REGISTER_VALUE]
+        inverse_open_loop = signal.TransferFunction(
+            self.open_loop_plant.den, self.open_loop_plant.num, dt=self.open_loop_plant.dt
+        )
+        command_value = self._filter_signal(
+            output_signal,
+            use_fft_method=False,
+            initial_value=output_signal[0],
+            plant=inverse_open_loop,
+        )
+        self.drive.reg_signals[self.OL_PLANT_INPUT] = command_value
+        self.drive.reg_time[self.OL_PLANT_INPUT] = self.drive.reg_time[self.REGISTER_VALUE]
+        self.drive.reg_noise_amplitude[self.OL_PLANT_INPUT] = self.drive.reg_noise_amplitude[
+            self.REGISTER_VALUE
+        ]
 
     @property
     def kp(self) -> float:
