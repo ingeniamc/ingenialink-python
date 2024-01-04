@@ -253,7 +253,7 @@ class BaseClosedLoopPlant(BasePlant):
         super().emulate_plant(from_disturbance=from_disturbance)
         self.__obtain_command_signal()
 
-    def __obtain_command_signal(self):
+    def __obtain_command_signal(self) -> None:
         """Obtain command signal from the output by applying the inverse of the open-loop plant."""
         if not (
             self.TUNING_OPERATION_MODE is not None
