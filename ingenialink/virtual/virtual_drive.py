@@ -1,18 +1,20 @@
+import os
+import pathlib
+import random
 import socket
 import time
 from enum import Enum
 from threading import Thread
-import random
-from typing import Tuple, List, Dict, Union, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
-from ingenialink.utils.mcb import MCB
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
-from ingenialink.ethernet.servo import EthernetServo
+from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
 from ingenialink.ethernet.dictionary import EthernetDictionary
 from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
+from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.utils import constants
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.utils.mcb import MCB
 
 
 class MSG_TYPE(Enum):
@@ -321,7 +323,7 @@ class VirtualDrive(Thread):
     Args:
         ip: Server IP address.
         port: Server port number.
-        dictionary_path: Path to the dictionary.
+        dictionary_path: Path to the dictionary. If None, the default dictionary is used.
 
     """
 
@@ -329,18 +331,19 @@ class VirtualDrive(Thread):
     WRITE_CMD = 2
     READ_CMD = 1
 
-    def __init__(
-        self, ip: str, port: int, dictionary_path: str = "./tests/resources/virtual_drive.xdf"
-    ) -> None:
+    def __init__(self, ip: str, port: int, dictionary_path: Optional[str] = None) -> None:
         super(VirtualDrive, self).__init__()
         self.ip = ip
         self.port = port
-        self.dictionary_path = dictionary_path
+        default_dictionary = os.path.join(
+            pathlib.Path(__file__).parent.resolve(), "./resources/virtual_drive.xdf"
+        )
+        self.dictionary_path = dictionary_path or default_dictionary
         self.__stop = False
         self.device_info = None
         self.__logger: List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]] = []
         self.__reg_address_to_id: Dict[int, Dict[int, str]] = {}
-        self.__dictionary = EthernetDictionary(dictionary_path)
+        self.__dictionary = EthernetDictionary(self.dictionary_path)
         self._init_registers()
         self._update_registers()
         self.__monitoring = VirtualMonitoring(self)
@@ -475,14 +478,12 @@ class VirtualDrive(Thread):
             message: Received or sent message.
             msg_type: Sent or Received.
         """
-        self.__logger.append(
-            {
-                "timestamp": time.time(),
-                "ip_port": ip_port,
-                "type": msg_type.value,
-                "message": message,
-            }
-        )
+        self.__logger.append({
+            "timestamp": time.time(),
+            "ip_port": ip_port,
+            "type": msg_type.value,
+            "message": message,
+        })
 
     @property
     def log(self) -> List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]]:

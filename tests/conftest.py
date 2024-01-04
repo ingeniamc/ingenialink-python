@@ -1,10 +1,11 @@
 import json
+
 import pytest
 
-from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
+from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from ingenialink.eoe.network import EoENetwork
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.virtual.virtual_drive import VirtualDrive
-from ingenialink.eoe.network import EoENetwork
 
 ALLOW_PROTOCOLS = ["no_connection", "ethernet", "ethercat", "canopen", "eoe"]
 
@@ -100,7 +101,7 @@ def connect_to_slave(pytestconfig, read_config):
 def virtual_drive():
     test_ip = "127.0.0.1"
     test_port = 81
-    server = VirtualDrive(test_ip, test_port, dictionary_path="./tests/resources/virtual_drive.xdf")
+    server = VirtualDrive(test_ip, test_port)
     server.start()
     yield server
     server.stop()
