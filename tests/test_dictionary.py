@@ -1,23 +1,22 @@
 import io
 import os
 import xml.etree.ElementTree as ET
+from os.path import join as join_path
 from xml.dom import minidom
 
 import pytest
-from os.path import join as join_path
 
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.ethernet.dictionary import EthernetDictionary
 
-
 path_resources = "./tests/resources/"
+path_to_dictionary = "./ingenialink/virtual/resources/virtual_drive.xdf"
 
 
 @pytest.mark.parametrize("dictionary_class", [CanopenDictionary, EthernetDictionary])
 @pytest.mark.no_connection
 def test_dictionary_image(dictionary_class):
-    dictionary_path = join_path(path_resources, "virtual_drive.xdf")
-    dictionary = dictionary_class(dictionary_path)
+    dictionary = dictionary_class(path_to_dictionary)
     assert isinstance(dictionary.image, str)
     assert dictionary.moco_image is None
 
@@ -25,8 +24,7 @@ def test_dictionary_image(dictionary_class):
 @pytest.mark.parametrize("dictionary_class", [CanopenDictionary, EthernetDictionary])
 @pytest.mark.no_connection
 def test_dictionary_image_none(dictionary_class):
-    dictionary_path = join_path(path_resources, "virtual_drive.xdf")
-    with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+    with open(path_to_dictionary, "r", encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
     root.remove(root.find(dictionary_class.DICT_IMAGE))
@@ -46,8 +44,7 @@ def test_dictionary_image_none(dictionary_class):
 @pytest.mark.parametrize("dictionary_class", [CanopenDictionary, EthernetDictionary])
 @pytest.mark.no_connection
 def test_dictionary_moco_image(dictionary_class):
-    dictionary_path = join_path(path_resources, "virtual_drive.xdf")
-    with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+    with open(path_to_dictionary, "r", encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
     image_section = root.find(dictionary_class.DICT_IMAGE)
