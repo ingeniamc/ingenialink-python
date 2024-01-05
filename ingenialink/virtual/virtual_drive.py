@@ -949,8 +949,12 @@ class VirtualDrive(Thread):
             for reg_id, reg in self.__dictionary.registers(subnode).items():
                 if reg._storage is not None:
                     continue
-
-                value = "" if reg.dtype == REG_DTYPE.STR else 0
+                elif reg.enums_count > 0:
+                    value = reg.enums[0]["value"]
+                elif reg.dtype == REG_DTYPE.STR:
+                    value = ""
+                else:
+                    value = 0
                 self.set_value_by_id(subnode, reg_id, value)
 
     def _update_registers(self) -> None:
@@ -1186,6 +1190,15 @@ class VirtualDrive(Thread):
             id: Register ID.
             value: Value to be set.
         """
+        register = self.__dictionary.registers(subnode)[id]
+        if register.enums_count > 0:
+            value_in_enum_keys = False
+            for enum in register.enums:
+                if enum["value"] == value:
+                    value_in_enum_keys = True
+                    break
+            if not value_in_enum_keys:
+                return
         self.__dictionary.registers(subnode)[id].storage = value
 
     def get_register(
