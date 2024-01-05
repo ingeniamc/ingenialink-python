@@ -7,6 +7,14 @@
 - Emulate control loops in the virtual drive.
 
 
+## [7.1.1] - 2024-01-03
+
+### Added
+- Missing EtherCAT protocol documentation.
+
+### Fixed
+- Import Ingenialink does not raise an error if WinPcap is not installed, but ethercat features are disabled.
+
 ## [7.1.0] - 2023-11-28
 
 ### Add
