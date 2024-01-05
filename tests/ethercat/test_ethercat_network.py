@@ -4,14 +4,26 @@ from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.exceptions import ILFirmwareLoadError, ILError
 
 
-@pytest.mark.no_connection
+@pytest.mark.docker
+def test_raise_exception_if_not_winpcap():
+    try:
+        import pysoem
+
+        pytest.skip("WinPcap is installed")
+    except ImportError:
+        pass
+    with pytest.raises(ImportError):
+        EthercatNetwork("dummy_ifname")
+
+
+@pytest.mark.ethercat
 def test_load_firmware_file_not_found_error(read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     with pytest.raises(FileNotFoundError):
         net.load_firmware(fw_file="ethercat.sfu")
 
 
-@pytest.mark.no_connection
+@pytest.mark.ethercat
 def test_load_firmware_no_slave_detected_error(mocker, read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     mocker.patch("os.path.isfile", return_value=True)
@@ -22,7 +34,7 @@ def test_load_firmware_no_slave_detected_error(mocker, read_config):
         net.load_firmware(fw_file="dummy_file.lfu", slave_id=23)
 
 
-@pytest.mark.no_connection
+@pytest.mark.ethercat
 def test_wrong_interface_name_error(read_config):
     with pytest.raises(ConnectionError):
         net = EthercatNetwork("not existing ifname")
@@ -31,7 +43,7 @@ def test_wrong_interface_name_error(read_config):
         net.connect_to_slave(slave_id, dictionary)
 
 
-@pytest.mark.no_connection
+@pytest.mark.ethercat
 def test_load_firmware_not_implemented_error(mocker, read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     mocker.patch("os.path.isfile", return_value=True)

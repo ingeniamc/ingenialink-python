@@ -1,14 +1,13 @@
 import sys
 
-from ingenialink.ethernet.network import EthernetNetwork, NET_TRANS_PROT
+from ingenialink.ethernet.network import EthernetNetwork
 
 
 def eth_store_parameters():
     net = EthernetNetwork()
     servo = net.connect_to_slave("192.168.2.22",
                                  "../../resources/dictionaries/eve-net-c_eth_1.8.1.xdf",
-                                 1061,
-                                 NET_TRANS_PROT.UDP)
+                                 1061)
 
     print(servo.read('DRV_ID_SOFTWARE_VERSION'))
 
@@ -25,8 +24,7 @@ def eth_restore_parameters():
     net = EthernetNetwork()
     servo = net.connect_to_slave("192.168.2.22",
                                  "../../resources/dictionaries/eve-net-c_eth_1.8.1.xdf",
-                                 1061,
-                                 NET_TRANS_PROT.UDP)
+                                 1061)
 
     print(servo.read('DRV_ID_SOFTWARE_VERSION'))
 
