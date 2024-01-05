@@ -55,6 +55,17 @@
 				<Register access="rw" dtype="u16" id="MON_DIST_FREQ_DIV" storage="1" subnode="0"/>
 				<Register access="rw" dtype="u16" id="DIST_FREQ_DIV" storage="1" subnode="0"/>
 				<Register access="r" dtype="u32" id="MON_CFG_CYCLES_VALUE" storage="1024" subnode="0"/>
+				<Register access="r" dtype="float" id="DRV_PROT_MAN_OVER_TEMP" storage="115.0" subnode="1"/>
+				<Register access="r" dtype="float" id="DRV_PROT_MAN_UNDER_TEMP" storage="-20.0" subnode="1"/>
+				<Register access="r" dtype="float" id="DRV_PROT_TEMP_VALUE" storage="40.5" subnode="1"/>
+				<Register access="r" dtype="float" id="DRV_PROT_MAN_OVER_VOLT" storage="45.0" subnode="1"/>
+				<Register access="r" dtype="float" id="DRV_PROT_MAN_UNDER_VOLT" storage="4.5" subnode="1"/>
+				<Register access="r" dtype="float" id="DRV_PROT_MAN_MAX_PEAK_CURRENT_VALUE" storage="20.0" subnode="1"/>
+				<Register access="r" dtype="u32" id="DRV_PROT_MAN_MAX_PEAK_CURRENT_TIME" storage="1000" subnode="1"/>
+				<Register access="r" dtype="float" id="FBK_CUR_MEAS_RANGE1" storage="-33.15" subnode="1"/>
+				<Register access="r" dtype="float" id="FBK_CUR_MEAS_RANGE2" storage="-33.15" subnode="1"/>
+				<Register access="r" dtype="float" id="FBK_CUR_MEAS_RANGE3" storage="-33.15" subnode="1"/>
+				<Register access="r" dtype="float" id="FBK_CUR_MEAS_RANGE4" storage="-33.15" subnode="1"/>
 				<Register access="rw" dtype="u32" id="COMMS_ETH_IP" storage="3232236054" subnode="0"/>
 				<Register access="rw" dtype="u32" id="COMMS_ETH_NET_MASK" storage="4294967040" subnode="0"/>
 				<Register access="rw" dtype="u32" id="COMMS_ETH_GW" storage="3232236033" subnode="0"/>
