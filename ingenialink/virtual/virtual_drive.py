@@ -1224,12 +1224,14 @@ class VirtualDrive(Thread):
             message: Received or sent message.
             msg_type: Sent or Received.
         """
-        self.__logger.append({
-            "timestamp": time.time(),
-            "ip_port": ip_port,
-            "type": msg_type.value,
-            "message": message,
-        })
+        self.__logger.append(
+            {
+                "timestamp": time.time(),
+                "ip_port": ip_port,
+                "type": msg_type.value,
+                "message": message,
+            }
+        )
 
     @property
     def log(self) -> List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]]:
