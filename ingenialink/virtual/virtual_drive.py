@@ -28,6 +28,9 @@ TORQUE_CONSTANT = 0.05
 
 STATUS_WORD_COMMUTATION_FEEDBACK_ALIGNED_BIT = 0x4000
 
+INC_ENC1_RESOLUTION = 4096
+INC_ENC2_RESOLUTION = 2000
+
 
 class MSG_TYPE(Enum):
     RECEIVED = "RECEIVED"
@@ -53,6 +56,36 @@ class OperationMode(IntEnum):
     HOMING = 0x113
     TORQUE = 0x05
     CYCLIC_TORQUE = 0x25
+
+
+class GeneratorMode(IntEnum):
+    """Generator modes"""
+
+    CONSTANT = 0
+    """Constant"""
+    SAW_TOOTH = 1
+    """Saw tooth"""
+    SQUARE = 2
+    """Square"""
+
+
+class SensorType(IntEnum):
+    """Summit series feedback type enum"""
+
+    ABS1 = 1
+    """Absolute encoder 1"""
+    INTGEN = 3
+    """Internal generator"""
+    QEI = 4
+    """Digital/Incremental encoder 1"""
+    HALLS = 5
+    """Digital halls"""
+    SSI2 = 6
+    """Secondary SSI"""
+    BISSC2 = 7
+    """Absolute encoder 2"""
+    QEI2 = 8
+    """Digital/Incremental encoder 2"""
 
 
 class BasePlant:
@@ -440,6 +473,177 @@ class PlantOpenLoopVoltageToCurrentC(PlantOpenLoopVoltageToCurrentA):
     """Emulator of a open-loop voltage-to-current (C) plant."""
 
     REGISTER_VALUE = "FBK_CUR_C_VALUE"
+
+
+class VirtualInternalGenerator:
+    """Emulate the virtual generator with the only purpose of mocking the feedback tests.
+
+    Args:
+        drive: Instance of VirtualDrive.
+    """
+
+    MODE_REGISTER = "FBK_GEN_MODE"
+    FREQUENCY_REGISTER = "FBK_GEN_FREQ"
+    GAIN_REGISTER = "FBK_GEN_GAIN"
+    OFFSET_REGISTER = "FBK_GEN_OFFSET"
+    CYCLE_NUMBER_REGISTER = "FBK_GEN_CYCLES"
+    REARM_REGISTER = "FBK_GEN_REARM"
+
+    ACTUAL_POSITION_REGISTER = "CL_POS_FBK_VALUE"
+    POLE_PAIRS_REGISTER = "MOT_PAIR_POLES"
+    DIG_HALL_POLE_PAIRS_REGISTER = "FBK_DIGHALL_PAIRPOLES"
+    ABS1_ST_BITS_REGISTER = "FBK_BISS1_SSI1_POS_ST_BITS"
+    ABS2_ST_BITS_REGISTER = "FBK_BISS2_POS_ST_BITS"
+    COMMUTATION_FEEDBACK_REGISTER = "COMMU_ANGLE_SENSOR"
+    POSITION_FEEDBACK_REGISTER = "CL_POS_FBK_SENSOR"
+
+    HALL_VALUES = [1, 3, 2, 6, 4, 5]
+
+    ENCODER_REGISTERS = {
+        SensorType.QEI: "FBK_DIGENC1_VALUE",
+        SensorType.QEI2: "FBK_DIGENC2_VALUE",
+        SensorType.HALLS: "FBK_DIGHALL_VALUE",
+        SensorType.ABS1: "FBK_BISS1_SSI1_POS_VALUE",
+        SensorType.BISSC2: "FBK_BISS2_POS_VALUE",
+    }
+
+    def __init__(self, drive: "VirtualDrive") -> None:
+        self.drive = drive
+        self.start_time = 0.0
+
+    def enable(self) -> None:
+        """Enable internal generator and generate the encoder and position signals."""
+        self.start_time = time.time()
+        if (
+            self.commutation_feedback != SensorType.INTGEN
+            or self.generator_mode != GeneratorMode.SAW_TOOTH
+            or self.position_encoder not in self.ENCODER_REGISTERS
+        ):
+            return
+        if self.position_encoder == SensorType.HALLS:
+            pole_pairs = self.drive.get_value_by_id(1, self.POLE_PAIRS_REGISTER)
+            self.drive.set_value_by_id(1, self.DIG_HALL_POLE_PAIRS_REGISTER, pole_pairs)
+
+        period = 1 / self.frequency
+        n_samples = int(self.drive._monitoring.FREQUENCY * period * self.cycles)
+        time_vector = self.start_time + np.linspace(0, period * self.cycles, n_samples)
+
+        signal_period = self.offset + np.linspace(0, self.gain, int(n_samples / self.cycles))
+        pos_signal = np.tile(signal_period, self.cycles)
+        initial_value = self.drive.get_value_by_id(1, self.ACTUAL_POSITION_REGISTER)
+        pos_signal = initial_value + (pos_signal - pos_signal[0]) * self.encoder_resolution
+        pos_signal = pos_signal.astype(int)
+
+        if self.position_encoder == SensorType.HALLS:
+            encoder_signal = self.__create_halls_encoder_signal(pos_signal)
+        elif self.position_encoder in [SensorType.ABS1, SensorType.BISSC2]:
+            encoder_signal = self.__create_abs_encoder_signal(pos_signal)
+        else:
+            encoder_signal = pos_signal.copy()
+
+        self.drive.reg_signals[self.encoder_register] = encoder_signal
+        self.drive.reg_time[self.encoder_register] = time_vector
+        self.drive.reg_signals[self.ACTUAL_POSITION_REGISTER] = pos_signal
+        self.drive.reg_time[self.ACTUAL_POSITION_REGISTER] = time_vector
+
+    def __create_halls_encoder_signal(self, pos_signal: np.ndarray) -> np.ndarray:
+        """Create the halls encoder signal by discretizing the pos_signal using the hall values.
+
+        Args:
+            pos_signal: Position signal.
+
+        Returns:
+            Encoder signal.
+
+        """
+        encoder_signal = pos_signal.copy()
+        encoder_signal[0] = self.drive.get_value_by_id(1, self.encoder_register)
+        hall_value_ix = self.HALL_VALUES.index(encoder_signal[0])
+        for sample_ix in range(1, len(encoder_signal)):
+            hall_change = 0
+            if (pos_signal[sample_ix] - pos_signal[sample_ix - 1]) > 0:
+                hall_change = 1
+            elif (pos_signal[sample_ix] - pos_signal[sample_ix - 1]) < 0:
+                hall_change = -1
+            else:
+                hall_change = 0
+            hall_value_ix = (hall_value_ix + hall_change) % len(self.HALL_VALUES)
+            encoder_signal[sample_ix] = self.HALL_VALUES[hall_value_ix]
+        return encoder_signal
+
+    def __create_abs_encoder_signal(self, pos_signal: np.ndarray) -> np.ndarray:
+        """Crete the absolute encoder signal by saturating the position signal.
+
+        Args:
+            pos_signal: Position signal.
+
+        Returns:
+            Encoder signal.
+        """
+        encoder_signal = pos_signal.copy()
+        for sample_ix in range(1, len(encoder_signal)):
+            if encoder_signal[sample_ix] > self.encoder_resolution - 1:
+                encoder_signal[sample_ix:] = encoder_signal[sample_ix:] - self.encoder_resolution
+            elif encoder_signal[sample_ix] < 0:
+                encoder_signal[sample_ix:] = encoder_signal[sample_ix:] + self.encoder_resolution
+        return encoder_signal
+
+    @property
+    def encoder_register(self) -> str:
+        """Register of the encoder value."""
+        return self.ENCODER_REGISTERS[self.position_encoder]
+
+    @property
+    def encoder_resolution(self) -> int:
+        """Encoder resolution."""
+        if self.position_encoder == SensorType.QEI:
+            return INC_ENC1_RESOLUTION
+        elif self.position_encoder == SensorType.QEI2:
+            return INC_ENC2_RESOLUTION
+        elif self.position_encoder == SensorType.HALLS:
+            pole_pairs = self.drive.get_value_by_id(1, self.DIG_HALL_POLE_PAIRS_REGISTER)
+            return pole_pairs * len(self.HALL_VALUES)
+        elif self.position_encoder == SensorType.ABS1:
+            single_turn_bits = self.drive.get_value_by_id(1, self.ABS1_ST_BITS_REGISTER)
+            return 2**single_turn_bits
+        elif self.position_encoder == SensorType.BISSC2:
+            single_turn_bits = self.drive.get_value_by_id(1, self.ABS2_ST_BITS_REGISTER)
+            return 2**single_turn_bits
+
+    @property
+    def position_encoder(self) -> int:
+        """Position encoder."""
+        return self.drive.get_value_by_id(1, self.POSITION_FEEDBACK_REGISTER)
+
+    @property
+    def generator_mode(self) -> int:
+        """Generator mode."""
+        return self.drive.get_value_by_id(1, self.MODE_REGISTER)
+
+    @property
+    def commutation_feedback(self) -> int:
+        """Commutation feedback sensor."""
+        return self.drive.get_value_by_id(1, self.COMMUTATION_FEEDBACK_REGISTER)
+
+    @property
+    def frequency(self) -> float:
+        """Internal generator frequency."""
+        return self.drive.get_value_by_id(1, self.FREQUENCY_REGISTER)
+
+    @property
+    def offset(self) -> float:
+        """Internal generator offset."""
+        return self.drive.get_value_by_id(1, self.OFFSET_REGISTER)
+
+    @property
+    def gain(self) -> float:
+        """Internal generator gain."""
+        return self.drive.get_value_by_id(1, self.GAIN_REGISTER)
+
+    @property
+    def cycles(self) -> float:
+        """Internal generator cycles."""
+        return self.drive.get_value_by_id(1, self.CYCLE_NUMBER_REGISTER)
 
 
 class VirtualMonDistBase:
@@ -858,6 +1062,8 @@ class VirtualDrive(Thread):
         self._plant_open_loop_vol_to_curr_b = PlantOpenLoopVoltageToCurrentB(self)
         self._plant_open_loop_vol_to_curr_c = PlantOpenLoopVoltageToCurrentC(self)
 
+        self.internal_generator = VirtualInternalGenerator(self)
+
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def run(self) -> None:
@@ -1018,14 +1224,12 @@ class VirtualDrive(Thread):
             message: Received or sent message.
             msg_type: Sent or Received.
         """
-        self.__logger.append(
-            {
-                "timestamp": time.time(),
-                "ip_port": ip_port,
-                "type": msg_type.value,
-                "message": message,
-            }
-        )
+        self.__logger.append({
+            "timestamp": time.time(),
+            "ip_port": ip_port,
+            "type": msg_type.value,
+            "message": message,
+        })
 
     @property
     def log(self) -> List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]]:
@@ -1119,6 +1323,8 @@ class VirtualDrive(Thread):
             and self.operation_mode in [OperationMode.VOLTAGE]
         ):
             self._plant_open_loop_vol_to_vel.jog(float(value))
+        if reg_id == VirtualInternalGenerator.REARM_REGISTER and subnode == 1:
+            self.internal_generator.enable()
 
     def address_to_id(self, subnode: int, address: int) -> str:
         """Converts a register address into its ID.

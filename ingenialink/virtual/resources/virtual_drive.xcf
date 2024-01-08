@@ -68,6 +68,8 @@
 				<Register access="r" dtype="float" id="FBK_CUR_MEAS_RANGE4" storage="-33.15" subnode="1"/>
 				<Register access="r" dtype="u16" id="DRV_PROT_STO_STATUS" storage="23" subnode="1"/>
 				<Register access="r" dtype="u32" id="DRV_PROT_STO_CFG" storage="13" subnode="1"/>
+				<Register access="r" dtype="float" id="DRV_PROT_MAN_MAX_CONT_CURRENT_VALUE" storage="10.0" subnode="1"/>
+				<Register access="r" dtype="u16" id="FBK_DIGHALL_VALUE" storage="3" subnode="1"/>
 				<Register access="rw" dtype="u32" id="COMMS_ETH_IP" storage="3232236054" subnode="0"/>
 				<Register access="rw" dtype="u32" id="COMMS_ETH_NET_MASK" storage="4294967040" subnode="0"/>
 				<Register access="rw" dtype="u32" id="COMMS_ETH_GW" storage="3232236033" subnode="0"/>
@@ -181,9 +183,9 @@
 				<Register access="rw" dtype="u16" id="FBK_BISS2_ERROR_TOLERANCE" storage="5" subnode="1"/>
 				<Register access="rw" dtype="u16" id="FBK_BISS2_POS_POLARITY" storage="0" subnode="1"/>
 				<Register access="rw" dtype="u16" id="FBK_BISS2_FRAME_TYPE" storage="0" subnode="1"/>
-				<Register access="rw" dtype="u16" id="FBK_BISS2_POS_BITS" storage="22" subnode="1"/>
-				<Register access="rw" dtype="u16" id="FBK_BISS2_POS_ST_BITS" storage="22" subnode="1"/>
-				<Register access="rw" dtype="u16" id="FBK_BISS2_POS_START_BIT" storage="0" subnode="1"/>
+				<Register access="rw" dtype="u16" id="FBK_BISS2_POS_BITS" storage="15" subnode="1"/>
+				<Register access="rw" dtype="u16" id="FBK_BISS2_POS_ST_BITS" storage="15" subnode="1"/>
+				<Register access="rw" dtype="u16" id="FBK_BISS2_POS_START_BIT" storage="8" subnode="1"/>
 				<Register access="rw" dtype="s32" id="FBK_BISS1_SSI1_OFFSET" storage="0" subnode="1"/>
 				<Register access="rw" dtype="s32" id="FBK_BISS2_OFFSET" storage="0" subnode="1"/>
 				<Register access="rw" dtype="s32" id="FBK_SSI2_OFFSET" storage="0" subnode="1"/>
