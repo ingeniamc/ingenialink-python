@@ -588,6 +588,16 @@ class VirtualMonDistBase:
             self.bytes_per_block += size
 
     def get_channel_index(self, reg_id: str) -> Optional[int]:
+        """Return the channel index of a mapped register.
+
+        If the register is not mapped returns None.
+
+        Args:
+            reg_id: Register ID.
+
+        Returns:
+            Channel index. None if the register is not mapped.
+        """
         channel_index = None
         for channel in range(self.number_mapped_registers):
             subnode, address, _, _ = self.get_mapped_register(channel)
