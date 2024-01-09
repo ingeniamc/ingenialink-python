@@ -1,10 +1,9 @@
 import os
 import pathlib
-import random
 import socket
 import time
 from enum import Enum, IntEnum
-from threading import Thread
+from threading import Thread, Timer
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -58,15 +57,15 @@ class OperationMode(IntEnum):
     CYCLIC_TORQUE = 0x25
 
 
-class GeneratorMode(IntEnum):
-    """Generator modes"""
+class PhasingMode(IntEnum):
+    """Phasing modes"""
 
-    CONSTANT = 0
-    """Constant"""
-    SAW_TOOTH = 1
-    """Saw tooth"""
-    SQUARE = 2
-    """Square"""
+    NON_FORCED = 0
+    """Non forced"""
+    FORCED = 1
+    """Forced"""
+    NO_PHASING = 2
+    """No phasing"""
 
 
 class SensorType(IntEnum):
@@ -86,6 +85,17 @@ class SensorType(IntEnum):
     """Absolute encoder 2"""
     QEI2 = 8
     """Digital/Incremental encoder 2"""
+
+
+class GeneratorMode(IntEnum):
+    """Generator modes"""
+
+    CONSTANT = 0
+    """Constant"""
+    SAW_TOOTH = 1
+    """Saw tooth"""
+    SQUARE = 2
+    """Square"""
 
 
 class BasePlant:
@@ -473,6 +483,188 @@ class PlantOpenLoopVoltageToCurrentC(PlantOpenLoopVoltageToCurrentA):
     """Emulator of a open-loop voltage-to-current (C) plant."""
 
     REGISTER_VALUE = "FBK_CUR_C_VALUE"
+
+
+class VirtualPhasing:
+    """Mock of the phasing calibration.
+
+    Args:
+        drive: Instance of the VirtualDrive.
+    """
+
+    PHASING_MODE_REGISTER = "COMMU_PHASING_MODE"
+    PHASING_CURRENT_REGISTER = "COMMU_PHASING_MAX_CURRENT"
+    PHASING_TIMEOUT_REGISTER = "COMMU_PHASING_TIMEOUT"
+    PHASING_ACCURACY_REGISTER = "COMMU_PHASING_ACCURACY"
+
+    REFERENCE_ANGLE_VALUE_REGISTER = "COMMU_ANGLE_REF_VALUE"
+    COMMUTATION_ANGLE_VALUE_REGISTER = "COMMU_ANGLE_VALUE"
+    REFERENCE_ANGLE_OFFSET_REGISTER = "COMMU_ANGLE_REF_OFFSET"
+    COMMUTATION_ANGLE_OFFSET_REGISTER = "COMMU_ANGLE_OFFSET"
+
+    REFERENCE_FEEDBACK_SENSOR = "COMMU_ANGLE_REF_SENSOR"
+
+    CURRENT_CMD_VALUE_REGISTER = "CL_CUR_CMD_VALUE"
+    CURRENT_ACTUAL_VALUE_REGISTER = "FBK_CUR_MODULE_VALUE"
+
+    SETUP_TIME = 1.0
+    INITIAL_ANGLE = 180.0
+    INITIAL_ANGLE_HALLS = 240.0
+    SAMPLING_RATE = 100
+
+    def __init__(self, drive: "VirtualDrive") -> None:
+        self.drive = drive
+        self.start_time = 0.0
+        self.phased = False
+        self.drive.reg_signals[self.REFERENCE_ANGLE_VALUE_REGISTER] = (
+            np.ones(1) * self.reference_angle_offset
+        )
+        self.drive.reg_time[self.REFERENCE_ANGLE_VALUE_REGISTER] = np.zeros(1)
+        self.drive.reg_signals[self.COMMUTATION_ANGLE_VALUE_REGISTER] = (
+            np.ones(1) * self.commutation_angle_offset
+        )
+        self.drive.reg_time[self.COMMUTATION_ANGLE_VALUE_REGISTER] = np.zeros(1)
+        self.drive.reg_signals[self.CURRENT_CMD_VALUE_REGISTER] = np.zeros(1)
+        self.drive.reg_time[self.CURRENT_CMD_VALUE_REGISTER] = np.zeros(1)
+        self.drive.reg_signals[self.CURRENT_ACTUAL_VALUE_REGISTER] = np.zeros(1)
+        self.drive.reg_time[self.CURRENT_ACTUAL_VALUE_REGISTER] = np.zeros(1)
+        self.drive.reg_noise_amplitude[self.CURRENT_ACTUAL_VALUE_REGISTER] = 0.01
+
+    def enable(self) -> None:
+        """Enable phasing and create signals."""
+        if self.phasing_mode != PhasingMode.FORCED or self.phasing_bit:
+            return
+        self.start_time = time.time()
+        period = self.SETUP_TIME + self.phasing_steps * self.phasing_timeout
+        n_samples = int(self.SAMPLING_RATE * period)
+        time_vector = self.start_time - self.SETUP_TIME + np.linspace(0, period, n_samples)
+
+        setup_ix = int(self.SETUP_TIME * self.SAMPLING_RATE)
+        step_samples = int(self.phasing_timeout * self.SAMPLING_RATE)
+
+        commutation_signal = np.zeros(n_samples)
+        commutation_signal[:setup_ix] = self.commutation_angle_offset
+        commutation_signal[setup_ix:] = 0.0
+
+        reference_signal = np.zeros(n_samples)
+        reference_signal[:setup_ix] = self.commutation_angle_offset
+        initial_angle_rev = self.initial_angle / 360
+        actual_angle_rev = initial_angle_rev
+        for step in range(self.phasing_steps):
+            step_ix = step * step_samples + setup_ix
+            reference_signal[step_ix : step_ix + step_samples] = actual_angle_rev
+            actual_angle_rev += (1 - actual_angle_rev) / 2
+
+        current_signal = np.zeros(n_samples)
+        current_signal[:setup_ix] = 0.0
+        current_signal[setup_ix : step_samples + setup_ix] = np.linspace(
+            0, self.phasing_current, step_samples
+        )
+        current_signal[step_samples + setup_ix :] = self.phasing_current
+
+        self.drive.reg_signals[self.REFERENCE_ANGLE_VALUE_REGISTER] = reference_signal
+        self.drive.reg_time[self.REFERENCE_ANGLE_VALUE_REGISTER] = time_vector
+        self.drive.reg_signals[self.COMMUTATION_ANGLE_VALUE_REGISTER] = commutation_signal
+        self.drive.reg_time[self.COMMUTATION_ANGLE_VALUE_REGISTER] = time_vector
+        self.drive.reg_signals[self.CURRENT_CMD_VALUE_REGISTER] = current_signal
+        self.drive.reg_time[self.CURRENT_CMD_VALUE_REGISTER] = time_vector
+        self.drive.reg_signals[self.CURRENT_ACTUAL_VALUE_REGISTER] = current_signal
+        self.drive.reg_time[self.CURRENT_ACTUAL_VALUE_REGISTER] = time_vector
+
+        self.phased = True
+        Timer(
+            self.phasing_steps * self.phasing_timeout,
+            self.set_phasing_bit,
+            args=(reference_signal[-1],),
+        ).start()
+
+    @property
+    def phasing_steps(self) -> int:
+        """Phasing steps."""
+        delta = 3 * self.phasing_accuracy / 1000
+
+        actual_angle = self.initial_angle
+        num_of_steps = 1
+        while actual_angle > delta:
+            actual_angle = actual_angle / 2
+            num_of_steps += 1
+        return num_of_steps
+
+    def set_phasing_bit(self, new_offset: Optional[float] = None) -> None:
+        """Set the phasing bit.
+
+        Args:
+            new_offset: New offset to be set.
+        """
+        if not self.phased:
+            return
+        new_status_word = self.drive.status_word | STATUS_WORD_COMMUTATION_FEEDBACK_ALIGNED_BIT
+        self.drive.status_word = new_status_word
+        if new_offset:
+            self.reference_angle_offset = new_offset
+            self.commutation_angle_offset = new_offset
+
+    def clear_phasing_bit(self) -> None:
+        """Clear phasing bit."""
+        new_status_word = self.drive.status_word & ~STATUS_WORD_COMMUTATION_FEEDBACK_ALIGNED_BIT
+        self.drive.status_word = new_status_word
+
+    @property
+    def phasing_bit(self) -> bool:
+        """Phasing bit."""
+        phasing_bit = self.drive.status_word & STATUS_WORD_COMMUTATION_FEEDBACK_ALIGNED_BIT
+        return bool(phasing_bit)
+
+    @property
+    def phasing_mode(self) -> int:
+        """Phasing mode."""
+        return int(self.drive.get_value_by_id(1, self.PHASING_MODE_REGISTER))
+
+    @property
+    def phasing_current(self) -> int:
+        """Phasing max current."""
+        return int(self.drive.get_value_by_id(1, self.PHASING_CURRENT_REGISTER))
+
+    @property
+    def phasing_timeout(self) -> float:
+        """Phasing timeout."""
+        return float(self.drive.get_value_by_id(1, self.PHASING_TIMEOUT_REGISTER)) / 1000
+
+    @property
+    def phasing_accuracy(self) -> int:
+        """Phasing accuracy."""
+        return int(self.drive.get_value_by_id(1, self.PHASING_ACCURACY_REGISTER))
+
+    @property
+    def reference_feedback(self) -> int:
+        """Reference feedback sensor."""
+        return int(self.drive.get_value_by_id(1, self.REFERENCE_FEEDBACK_SENSOR))
+
+    @property
+    def reference_angle_offset(self) -> float:
+        """Reference angle offset."""
+        return float(self.drive.get_value_by_id(1, self.REFERENCE_ANGLE_OFFSET_REGISTER))
+
+    @reference_angle_offset.setter
+    def reference_angle_offset(self, value: float) -> None:
+        self.drive.set_value_by_id(1, self.REFERENCE_ANGLE_OFFSET_REGISTER, value)
+
+    @property
+    def commutation_angle_offset(self) -> float:
+        """Commutation angle offset."""
+        return float(self.drive.get_value_by_id(1, self.COMMUTATION_ANGLE_OFFSET_REGISTER))
+
+    @commutation_angle_offset.setter
+    def commutation_angle_offset(self, value: float) -> None:
+        self.drive.set_value_by_id(1, self.COMMUTATION_ANGLE_OFFSET_REGISTER, value)
+
+    @property
+    def initial_angle(self) -> float:
+        """Initial angle."""
+        if self.reference_feedback == SensorType.HALLS:
+            return self.INITIAL_ANGLE_HALLS
+        else:
+            return self.INITIAL_ANGLE
 
 
 class VirtualInternalGenerator:
@@ -1055,8 +1247,8 @@ class VirtualDrive(Thread):
 
         self._init_registers()
         self._update_registers()
-        self.__set_motor_ready_to_switch_on()
         self._init_register_signals()
+        self.__set_motor_ready_to_switch_on()
 
         self._monitoring = VirtualMonitoring(self)
         self._disturbance = VirtualDisturbance(self)
@@ -1078,6 +1270,7 @@ class VirtualDrive(Thread):
         self._plant_open_loop_vol_to_curr_b = PlantOpenLoopVoltageToCurrentB(self)
         self._plant_open_loop_vol_to_curr_c = PlantOpenLoopVoltageToCurrentC(self)
 
+        self.phasing = VirtualPhasing(self)
         self.internal_generator = VirtualInternalGenerator(self)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -1304,6 +1497,8 @@ class VirtualDrive(Thread):
             self.__set_motor_disable()
         if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_SD):
             self.__set_motor_ready_to_switch_on()
+        if reg_id == "COMMU_ANGLE_SENSOR" and subnode == 1:
+            self.phasing.clear_phasing_bit()
         if (
             reg_id == PlantOpenLoopJB.REGISTER_SET_POINT
             and subnode == 1
@@ -1450,20 +1645,26 @@ class VirtualDrive(Thread):
 
     def __set_motor_enable(self) -> None:
         """Set the enabled state."""
-        new_status_word = STATUS_WORD_COMMUTATION_FEEDBACK_ALIGNED_BIT | constants.IL_MC_PDS_STA_OE
-        self.set_value_by_id(1, "DRV_STATE_STATUS", new_status_word)
+        new_status_word = (
+            self.status_word & ~constants.IL_MC_PDS_STA_OE_MSK | constants.IL_MC_PDS_STA_OE
+        )
+        self.status_word = new_status_word
+        self.phasing.enable()
 
     def __set_motor_disable(self) -> None:
         """Set the disabled state."""
-        new_status_word = STATUS_WORD_COMMUTATION_FEEDBACK_ALIGNED_BIT | constants.IL_MC_PDS_STA_SOD
-        self.set_value_by_id(1, "DRV_STATE_STATUS", new_status_word)
+        new_status_word = (
+            self.status_word & ~constants.IL_MC_PDS_STA_OE_MSK | constants.IL_MC_PDS_STA_SOD
+        )
+        self.status_word = new_status_word
+        self.phasing.set_phasing_bit()
 
     def __set_motor_ready_to_switch_on(self) -> None:
         """Set the ready-to-switch-on state."""
         new_status_word = (
-            STATUS_WORD_COMMUTATION_FEEDBACK_ALIGNED_BIT | constants.IL_MC_PDS_STA_RTSO
+            self.status_word & ~constants.IL_MC_PDS_STA_OE_MSK | constants.IL_MC_PDS_STA_RTSO
         )
-        self.set_value_by_id(1, "DRV_STATE_STATUS", new_status_word)
+        self.status_word = new_status_word
 
     def __emulate_plants(self) -> None:
         """Emulate plants according the operation mode."""
@@ -1528,5 +1729,12 @@ class VirtualDrive(Thread):
         Returns:
             True if the motor is enabled.
         """
-        status_word = int(self.get_value_by_id(1, "DRV_STATE_STATUS"))
-        return (status_word & constants.IL_MC_PDS_STA_OE_MSK) == constants.IL_MC_PDS_STA_OE
+        return (self.status_word & constants.IL_MC_PDS_STA_OE_MSK) == constants.IL_MC_PDS_STA_OE
+
+    @property
+    def status_word(self) -> int:
+        return int(self.get_value_by_id(1, "DRV_STATE_STATUS"))
+
+    @status_word.setter
+    def status_word(self, value: int) -> None:
+        return self.set_value_by_id(1, "DRV_STATE_STATUS", value)
