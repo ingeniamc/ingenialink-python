@@ -819,7 +819,7 @@ class VirtualDrive(Thread):
     Args:
         ip: Server IP address.
         port: Server port number.
-        dictionary_path: Path to the dictionary.
+        dictionary_path: Path to the dictionary. If None, the default dictionary is used.
 
     """
 
@@ -828,19 +828,21 @@ class VirtualDrive(Thread):
     READ_CMD = 1
 
     PATH_CONFIGURATION_RELATIVE = "./resources/virtual_drive.xcf"
+    PATH_DICTIONARY_RELATIVE = "./resources/virtual_drive.xdf"
 
-    def __init__(
-        self, ip: str, port: int, dictionary_path: str = "./tests/resources/virtual_drive.xdf"
-    ) -> None:
+    def __init__(self, ip: str, port: int, dictionary_path: Optional[str] = None) -> None:
         super(VirtualDrive, self).__init__()
         self.ip = ip
         self.port = port
-        self.dictionary_path = dictionary_path
+        default_dictionary = os.path.join(
+            pathlib.Path(__file__).parent.resolve(), self.PATH_DICTIONARY_RELATIVE
+        )
+        self.dictionary_path = dictionary_path or default_dictionary
         self.__stop = False
         self.device_info = None
         self.__logger: List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]] = []
         self.__reg_address_to_id: Dict[int, Dict[int, str]] = {}
-        self.__dictionary = EthernetDictionary(dictionary_path)
+        self.__dictionary = EthernetDictionary(self.dictionary_path)
         self.reg_signals: Dict[str, np.ndarray] = {}
         self.reg_time: Dict[str, np.ndarray] = {}
         self.reg_noise_amplitude: Dict[str, float] = {}
