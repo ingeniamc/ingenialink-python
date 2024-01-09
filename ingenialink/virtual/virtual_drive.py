@@ -817,6 +817,8 @@ class VirtualDrive(Thread):
     WRITE_CMD = 2
     READ_CMD = 1
 
+    PATH_CONFIGURATION_RELATIVE = "./resources/virtual_drive.xcf"
+
     def __init__(
         self, ip: str, port: int, dictionary_path: str = "./tests/resources/virtual_drive.xdf"
     ) -> None:
@@ -931,7 +933,7 @@ class VirtualDrive(Thread):
     def _init_registers(self) -> None:
         """Initialize the registers using the configuration file."""
         configuration_file = os.path.join(
-            pathlib.Path(__file__).parent.resolve(), "./resources/virtual_drive.xcf"
+            pathlib.Path(__file__).parent.resolve(), self.PATH_CONFIGURATION_RELATIVE
         )
         _, registers = EthernetServo._read_configuration_file(configuration_file)
         cast_data = {"float": float, "str": str}
