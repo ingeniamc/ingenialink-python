@@ -591,7 +591,7 @@ class VirtualInternalGenerator:
     @property
     def encoder_register(self) -> str:
         """Register of the encoder value."""
-        return self.ENCODER_REGISTERS[self.position_encoder]
+        return self.ENCODER_REGISTERS[SensorType(self.position_encoder)]
 
     @property
     def encoder_resolution(self) -> int:
@@ -601,49 +601,51 @@ class VirtualInternalGenerator:
         elif self.position_encoder == SensorType.QEI2:
             return INC_ENC2_RESOLUTION
         elif self.position_encoder == SensorType.HALLS:
-            pole_pairs = self.drive.get_value_by_id(1, self.DIG_HALL_POLE_PAIRS_REGISTER)
+            pole_pairs = int(self.drive.get_value_by_id(1, self.DIG_HALL_POLE_PAIRS_REGISTER))
             return pole_pairs * len(self.HALL_VALUES)
         elif self.position_encoder == SensorType.ABS1:
-            single_turn_bits = self.drive.get_value_by_id(1, self.ABS1_ST_BITS_REGISTER)
-            return 2**single_turn_bits
+            single_turn_bits = int(self.drive.get_value_by_id(1, self.ABS1_ST_BITS_REGISTER))
+            return int(2**single_turn_bits)
         elif self.position_encoder == SensorType.BISSC2:
-            single_turn_bits = self.drive.get_value_by_id(1, self.ABS2_ST_BITS_REGISTER)
-            return 2**single_turn_bits
+            single_turn_bits = int(self.drive.get_value_by_id(1, self.ABS2_ST_BITS_REGISTER))
+            return int(2**single_turn_bits)
+        else:
+            return 1
 
     @property
     def position_encoder(self) -> int:
         """Position encoder."""
-        return self.drive.get_value_by_id(1, self.POSITION_FEEDBACK_REGISTER)
+        return int(self.drive.get_value_by_id(1, self.POSITION_FEEDBACK_REGISTER))
 
     @property
     def generator_mode(self) -> int:
         """Generator mode."""
-        return self.drive.get_value_by_id(1, self.MODE_REGISTER)
+        return int(self.drive.get_value_by_id(1, self.MODE_REGISTER))
 
     @property
     def commutation_feedback(self) -> int:
         """Commutation feedback sensor."""
-        return self.drive.get_value_by_id(1, self.COMMUTATION_FEEDBACK_REGISTER)
+        return int(self.drive.get_value_by_id(1, self.COMMUTATION_FEEDBACK_REGISTER))
 
     @property
     def frequency(self) -> float:
         """Internal generator frequency."""
-        return self.drive.get_value_by_id(1, self.FREQUENCY_REGISTER)
+        return float(self.drive.get_value_by_id(1, self.FREQUENCY_REGISTER))
 
     @property
     def offset(self) -> float:
         """Internal generator offset."""
-        return self.drive.get_value_by_id(1, self.OFFSET_REGISTER)
+        return float(self.drive.get_value_by_id(1, self.OFFSET_REGISTER))
 
     @property
     def gain(self) -> float:
         """Internal generator gain."""
-        return self.drive.get_value_by_id(1, self.GAIN_REGISTER)
+        return float(self.drive.get_value_by_id(1, self.GAIN_REGISTER))
 
     @property
     def cycles(self) -> float:
         """Internal generator cycles."""
-        return self.drive.get_value_by_id(1, self.CYCLE_NUMBER_REGISTER)
+        return float(self.drive.get_value_by_id(1, self.CYCLE_NUMBER_REGISTER))
 
 
 class VirtualMonDistBase:
