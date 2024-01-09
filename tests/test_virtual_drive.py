@@ -57,6 +57,20 @@ def test_virtual_drive_write_read(virtual_drive, reg, value, subnode):
     assert response == value
 
 
+@pytest.mark.no_connection
+def test_virtual_drive_write_wrong_enum(virtual_drive):
+    _, virtual_servo = virtual_drive
+
+    register = "FBK_GEN_MODE"
+    subnode = 1
+
+    assert virtual_servo.read(register, subnode) == 0
+    virtual_servo.write(register, 1, subnode)
+    assert virtual_servo.read(register, subnode) == 1
+    virtual_servo.write(register, 5, subnode)
+    assert virtual_servo.read(register, subnode) == 1
+
+
 @pytest.mark.ethernet
 @pytest.mark.parametrize(
     "reg, value, subnode", [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)]
@@ -231,4 +245,10 @@ def test_plants(virtual_drive, plant_name, dist_reg, monit_regs, op_mode):
 # TODO: INGK-779 Use ingeniamotion to test the phasing
 @pytest.mark.skip
 def test_phasing():
+    pass
+
+
+# TODO: INGK-779 Use ingeniamotion to test the feedbacks
+@pytest.mark.skip
+def test_feedbacks():
     pass
