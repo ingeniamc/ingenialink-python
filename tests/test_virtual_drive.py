@@ -226,3 +226,9 @@ def test_plants(virtual_drive, plant_name, dist_reg, monit_regs, op_mode):
     assert np.allclose(
         np.abs(freq_response), np.abs(freq_response_est), atol=np.amax(np.abs(freq_response)) / 2
     )
+
+
+# TODO: INGK-779 Use ingeniamotion to test the phasing
+@pytest.mark.skip
+def test_phasing():
+    pass
