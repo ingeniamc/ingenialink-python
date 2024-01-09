@@ -1,3 +1,5 @@
+import os
+import pathlib
 import random
 import socket
 import time
@@ -825,6 +827,8 @@ class VirtualDrive(Thread):
     WRITE_CMD = 2
     READ_CMD = 1
 
+    PATH_CONFIGURATION_RELATIVE = "./resources/virtual_drive.xcf"
+
     def __init__(
         self, ip: str, port: int, dictionary_path: str = "./tests/resources/virtual_drive.xdf"
     ) -> None:
@@ -937,77 +941,29 @@ class VirtualDrive(Thread):
         self._monitoring.disable()
 
     def _init_registers(self) -> None:
-        """Initialize some relevant registers."""
-        self.set_value_by_id(0, "DRV_ID_PRODUCT_CODE_COCO", 123456)
-        self.set_value_by_id(1, "DRV_ID_PRODUCT_CODE", 123456)
-        self.set_value_by_id(0, "DRV_ID_REVISION_NUMBER_COCO", 654321)
-        self.set_value_by_id(1, "DRV_ID_REVISION_NUMBER", 654321)
-        self.set_value_by_id(0, "DRV_APP_COCO_VERSION", "0.1.0")
-        self.set_value_by_id(1, "DRV_ID_SOFTWARE_VERSION", "0.1.0")
-        self.set_value_by_id(0, "DRV_ID_SERIAL_NUMBER_COCO", 123456789)
-        self.set_value_by_id(1, "DRV_ID_SERIAL_NUMBER", 123456789)
-        self.set_value_by_id(0, "DRV_ID_VENDOR_ID_COCO", 987654321)
-        self.set_value_by_id(1, "DRV_ID_VENDOR_ID", 987654321)
-        self.set_value_by_id(1, "COMMU_ANGLE_REF_SENSOR", 4)
-        self.set_value_by_id(1, "COMMU_ANGLE_SENSOR", 4)
-        self.set_value_by_id(1, "CL_VEL_FBK_SENSOR", 4)
-        self.set_value_by_id(1, "CL_POS_FBK_SENSOR", 4)
-        self.set_value_by_id(1, "CL_AUX_FBK_SENSOR", 4)
-        self.set_value_by_id(1, "PROF_POS_VEL_RATIO", 1.0)
-        self.set_value_by_id(1, "FBK_BISS_CHAIN", 1)
-        self.set_value_by_id(1, "DRV_PS_FREQ_SELECTION", 2)
-        self.set_value_by_id(1, "DRV_PS_FREQ_3", 100000)
-        self.set_value_by_id(1, "DRV_POS_VEL_RATE", 20000)
-        self.set_value_by_id(1, "CL_CUR_FREQ", 20000)
-        self.set_value_by_id(0, "DIST_MAX_SIZE", 8192)
-        self.set_value_by_id(0, "MON_MAX_SIZE", 8192)
-        self.set_value_by_id(0, VirtualMonitoring.STATUS_REGISTER, 0)
-        self.set_value_by_id(0, VirtualDisturbance.STATUS_REGISTER, 0)
-        self.set_value_by_id(1, PlantClosedLoopRL.KI_REG, 2800.0)
-        self.set_value_by_id(1, PlantClosedLoopRL.KP_REG, 2.1)
-        self.set_value_by_id(1, PlantClosedLoopRLQuadrature.KI_REG, 2800.0)
-        self.set_value_by_id(1, PlantClosedLoopRLQuadrature.KP_REG, 2.1)
-        self.set_value_by_id(1, PlantClosedLoopJB.KI_REG, 2.0)
-        self.set_value_by_id(1, PlantClosedLoopJB.KP_REG, 0.7)
-        self.set_value_by_id(1, PlantClosedLoopPosition.KI_REG, 0.0)
-        self.set_value_by_id(1, PlantClosedLoopPosition.KP_REG, 0.015)
-        self.set_value_by_id(1, "DRV_OP_CMD", 0)
-        self.set_value_by_id(1, "FBK_DIGENC1_RESOLUTION", 4096)
-        self.set_value_by_id(1, "PROF_POS_VEL_RATIO", 1)
-        self.set_value_by_id(1, "MOT_COMMU_MOD", 0)
-        self.set_value_by_id(1, "MOT_COMMU_MOD", 0)
-        self.set_value_by_id(1, "CL_CUR_REF_MAX", 20)
-        self.set_value_by_id(1, "CL_VEL_REF_MAX", 100)
-        self.set_value_by_id(1, "MOT_RATED_CURRENT", 10)
-        self.set_value_by_id(1, "DRV_PROT_VBUS_VALUE", 48)
-        self.set_value_by_id(1, "CL_CUR_STATUS", 0)
-        self.set_value_by_id(0, "DRV_DIAG_ERROR_TOTAL_COM", 0)
-        self.set_value_by_id(0, "DRV_DIAG_SYS_ERROR_TOTAL_COM", 0)
-        self.set_value_by_id(1, "DRV_DIAG_ERROR_TOTAL", 0)
-        self.set_value_by_id(1, PlantClosedLoopRL.REGISTER_SET_POINT, 0)
-        self.set_value_by_id(1, PlantClosedLoopRL.REGISTER_COMMAND, 0)
-        self.set_value_by_id(1, PlantClosedLoopRL.REGISTER_VALUE, 0)
-        self.set_value_by_id(1, PlantClosedLoopRLQuadrature.REGISTER_SET_POINT, 0)
-        self.set_value_by_id(1, PlantClosedLoopRLQuadrature.REGISTER_COMMAND, 0)
-        self.set_value_by_id(1, PlantClosedLoopRLQuadrature.REGISTER_VALUE, 0)
-        self.set_value_by_id(1, PlantClosedLoopJB.REGISTER_SET_POINT, 0)
-        self.set_value_by_id(1, PlantClosedLoopJB.REGISTER_COMMAND, 0)
-        self.set_value_by_id(1, PlantClosedLoopJB.REGISTER_VALUE, 0)
-        self.set_value_by_id(1, PlantClosedLoopPosition.REGISTER_SET_POINT, 0)
-        self.set_value_by_id(1, PlantClosedLoopPosition.REGISTER_COMMAND, 0)
-        self.set_value_by_id(1, PlantClosedLoopPosition.REGISTER_VALUE, 0)
-        self.set_value_by_id(1, PlantOpenLoopVoltageToVelocity.REGISTER_SET_POINT, 0)
-        self.set_value_by_id(1, PlantOpenLoopVoltageToVelocity.REGISTER_COMMAND, 0)
-        self.set_value_by_id(1, PlantOpenLoopVoltageToVelocity.REGISTER_VALUE, 0)
-        self.set_value_by_id(1, "CL_VOL_D_SET_POINT", 0)
-        self.set_value_by_id(1, "COMMU_PHASING_MODE", 1)
-        self.set_value_by_id(1, "COMMU_PHASING_MAX_CURRENT", 2.66)
-        self.set_value_by_id(1, "COMMU_PHASING_ACCURACY", 3600)
-        self.set_value_by_id(1, "COMMU_PHASING_TIMEOUT", 2000)
-        self.set_value_by_id(1, "TORQUE_ESTIM_KT", 1)
-        self.set_value_by_id(1, "CL_TOR_PID_KP", 1)
-        self.set_value_by_id(1, "CL_VEL_PID_KD", 0)
-        self.set_value_by_id(1, "CL_POS_PID_KD", 0)
+        """Initialize the registers using the configuration file."""
+        configuration_file = os.path.join(
+            pathlib.Path(__file__).parent.resolve(), self.PATH_CONFIGURATION_RELATIVE
+        )
+        _, registers = EthernetServo._read_configuration_file(configuration_file)
+        cast_data = {"float": float, "str": str}
+        for element in registers:
+            subnode = int(element.attrib["subnode"])
+            reg_dtype = element.attrib["dtype"]
+            reg_data = element.attrib["storage"]
+            self.set_value_by_id(
+                subnode,
+                element.attrib["id"],
+                cast_data.get(reg_dtype, int)(reg_data),
+            )
+        value: Union[str, int]
+        for subnode in range(self.__dictionary.subnodes):
+            for reg_id, reg in self.__dictionary.registers(subnode).items():
+                if reg._storage is not None:
+                    continue
+
+                value = "" if reg.dtype == REG_DTYPE.STR else 0
+                self.set_value_by_id(subnode, reg_id, value)
 
     def _update_registers(self) -> None:
         """Force storage_valid at each register and add registers that are not in the dictionary."""
@@ -1228,16 +1184,6 @@ class VirtualDrive(Thread):
             if register.dtype != REG_DTYPE.FLOAT:
                 value = int(value)
             return value
-        if register._storage is None:
-            range_value = register.range
-            if not register.range[0]:
-                range_value = (1, 10)
-            value = random.uniform(*range_value)
-            if register.dtype != REG_DTYPE.FLOAT:
-                value = int(value)
-                if register.dtype == REG_DTYPE.STR:
-                    value = ""
-            self.set_value_by_id(subnode, id, value)
         storage_value = self.__dictionary.registers(subnode)[id]._storage
         if isinstance(storage_value, (int, float, str, bytes)):
             return storage_value
