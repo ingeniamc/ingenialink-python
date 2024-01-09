@@ -331,12 +331,14 @@ class VirtualDrive(Thread):
     WRITE_CMD = 2
     READ_CMD = 1
 
+    PATH_DICTIONARY_RELATIVE = "./resources/virtual_drive.xdf"
+
     def __init__(self, ip: str, port: int, dictionary_path: Optional[str] = None) -> None:
         super(VirtualDrive, self).__init__()
         self.ip = ip
         self.port = port
         default_dictionary = os.path.join(
-            pathlib.Path(__file__).parent.resolve(), "./resources/virtual_drive.xdf"
+            pathlib.Path(__file__).parent.resolve(), self.PATH_DICTIONARY_RELATIVE
         )
         self.dictionary_path = dictionary_path or default_dictionary
         self.__stop = False

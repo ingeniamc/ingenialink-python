@@ -9,14 +9,14 @@ import pytest
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.ethernet.dictionary import EthernetDictionary
 
-path_resources = "./tests/resources/"
-path_to_dictionary = "./ingenialink/virtual/resources/virtual_drive.xdf"
+PATH_RESOURCE = "./tests/resources/"
+PATH_TO_DICTIONARY = "./ingenialink/virtual/resources/virtual_drive.xdf"
 
 
 @pytest.mark.parametrize("dictionary_class", [CanopenDictionary, EthernetDictionary])
 @pytest.mark.no_connection
 def test_dictionary_image(dictionary_class):
-    dictionary = dictionary_class(path_to_dictionary)
+    dictionary = dictionary_class(PATH_TO_DICTIONARY)
     assert isinstance(dictionary.image, str)
     assert dictionary.moco_image is None
 
@@ -24,14 +24,14 @@ def test_dictionary_image(dictionary_class):
 @pytest.mark.parametrize("dictionary_class", [CanopenDictionary, EthernetDictionary])
 @pytest.mark.no_connection
 def test_dictionary_image_none(dictionary_class):
-    with open(path_to_dictionary, "r", encoding="utf-8") as xdf_file:
+    with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
     root.remove(root.find(dictionary_class.DICT_IMAGE))
     xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
         indent="  ", newl="", encoding="UTF-8"
     )
-    temp_file = join_path(path_resources, "temp.xdf")
+    temp_file = join_path(PATH_RESOURCE, "temp.xdf")
     merged_file = io.open(temp_file, "wb")
     merged_file.write(xml_str)
     merged_file.close()
@@ -44,7 +44,7 @@ def test_dictionary_image_none(dictionary_class):
 @pytest.mark.parametrize("dictionary_class", [CanopenDictionary, EthernetDictionary])
 @pytest.mark.no_connection
 def test_dictionary_moco_image(dictionary_class):
-    with open(path_to_dictionary, "r", encoding="utf-8") as xdf_file:
+    with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
     image_section = root.find(dictionary_class.DICT_IMAGE)
@@ -52,7 +52,7 @@ def test_dictionary_moco_image(dictionary_class):
     xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
         indent="  ", newl="", encoding="UTF-8"
     )
-    temp_file = join_path(path_resources, "temp.xdf")
+    temp_file = join_path(PATH_RESOURCE, "temp.xdf")
     merged_file = io.open(temp_file, "wb")
     merged_file.write(xml_str)
     merged_file.close()
