@@ -17,8 +17,8 @@ from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.utils import constants
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
-from ingenialink.utils.mcb import MCB
 from ingenialink.utils.constants import IL_MC_CW_EO
+from ingenialink.utils.mcb import MCB
 
 R_VALUE = 1.1
 L_VALUE = 3.9e-4
