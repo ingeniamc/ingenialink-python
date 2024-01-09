@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Add
+- Motor enable and disable features in the virtual drive.
+
+
 ## [7.1.1] - 2024-01-03
 
 ### Added
