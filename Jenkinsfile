@@ -89,7 +89,7 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            venv\\Scripts\\python.exe -m mypy ingenialink
+                            venv\\Scripts\\python.exe -m mypy ingenialink virtual_drive
                         """
                     }
                 }

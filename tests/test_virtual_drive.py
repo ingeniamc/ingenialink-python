@@ -6,7 +6,7 @@ from scipy import signal
 
 from ingenialink.enums.register import REG_DTYPE
 from ingenialink.enums.servo import SERVO_STATE
-from ingenialink.virtual.virtual_drive import OperationMode
+from virtual_drive.core import OperationMode
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
