@@ -10,7 +10,7 @@ from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.ethernet.dictionary import EthernetDictionary
 
 PATH_RESOURCE = "./tests/resources/"
-PATH_TO_DICTIONARY = "./ingenialink/virtual/resources/virtual_drive.xdf"
+PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
 
 
 @pytest.mark.parametrize("dictionary_class", [CanopenDictionary, EthernetDictionary])

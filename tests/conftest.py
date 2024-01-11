@@ -5,7 +5,7 @@ import pytest
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.eoe.network import EoENetwork
 from ingenialink.ethernet.network import EthernetNetwork
-from ingenialink.virtual.virtual_drive import VirtualDrive
+from virtual_drive.core import VirtualDrive
 
 ALLOW_PROTOCOLS = ["no_connection", "ethernet", "ethercat", "canopen", "eoe"]
 
