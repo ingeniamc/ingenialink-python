@@ -12,9 +12,12 @@ def get_docs_url():
 setuptools.setup(
     name="ingenialink",
     version=_version,
-    packages=setuptools.find_packages(exclude=["tests", "examples"]),
+    packages=setuptools.find_packages(exclude=["tests*", "examples*"]),
     include_package_data=True,
-    package_data={"ingenialink": ["bin/FoE/*/*", "py.typed"], "virtual_drive": ["py.typed"]},
+    package_data={
+        "ingenialink": ["bin/FoE/*/*", "py.typed"],
+        "virtual_drive": ["py.typed", "resources/*"],
+    },
     description="IngeniaLink Communications Library",
     long_description=open("README.rst").read(),
     author="Ingenia Motion Control",
