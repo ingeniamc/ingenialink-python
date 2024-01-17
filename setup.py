@@ -12,7 +12,7 @@ def get_docs_url():
 setuptools.setup(
     name="ingenialink",
     version=_version,
-    packages=["ingenialink", "virtual_drive"],
+    packages=setuptools.find_packages(exclude=["tests", "examples"]),
     include_package_data=True,
     package_data={"ingenialink": ["bin/FoE/*/*", "py.typed"], "virtual_drive": ["py.typed"]},
     description="IngeniaLink Communications Library",
