@@ -32,7 +32,7 @@ class PDOMapItem:
         """Check if the passed register is mappable. I.e., if the cyclic information is correct.
 
         Raises:
-            NotImplementedError: _description_
+            ILError: Tf the register is not mappable.
         """
         if not self.register.cyclic == self.ACCEPTED_CYCLIC:
             raise ILError(
@@ -186,6 +186,8 @@ class PDOMap:
 
 
 class RPDOMap(PDOMap):
+    """Class to store RPDO mapping information."""
+
     PDO_MAP_ITEM_CLASS = RPDOMapItem
 
     def get_item_bytes(self) -> bytes:
@@ -213,6 +215,8 @@ class RPDOMap(PDOMap):
 
 
 class TPDOMap(PDOMap):
+    """Class to store TPDO mapping information."""
+
     PDO_MAP_ITEM_CLASS = TPDOMapItem
 
     def set_item_bytes(self, data_bytes: bytes) -> None:
@@ -422,7 +426,7 @@ class PDOServo(Servo):
         raise NotImplementedError
 
     def _process_tpdo(self, input_data: bytes) -> None:
-        """Convert the TPDO values from bytes to the register data type."""
+        """Convert the TPDO values from bytes to the registers data type."""
         if len(self._tpdo_maps) == 0:
             return
         for tpdo_map in self._tpdo_maps:
@@ -430,7 +434,7 @@ class PDOServo(Servo):
             tpdo_map.set_item_bytes(map_bytes)
 
     def _process_rpdo(self) -> Optional[bytes]:
-        """Retrieve the RPDO data waw from each map."""
+        """Retrieve the RPDO raw data from each map."""
         if len(self._rpdo_maps) == 0:
             return None
         output = bytes()
