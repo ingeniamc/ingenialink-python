@@ -9,4 +9,3 @@ EtherCAT API documentation
     ethercat/servo
     ethercat/dictionary
     ethercat/register
-    ethercat/pdo

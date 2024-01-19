@@ -40,7 +40,7 @@ setuptools.setup(
         "pysoem==1.0.7",
         "numpy==1.19.5",
         "scipy==1.5.4",
-        'dataclasses==0.6',
+        "dataclasses==0.6",
     ],
     extras_require={
         "dev": [
