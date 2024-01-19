@@ -37,7 +37,7 @@ pipeline {
             agent {
                 docker {
                     label SW_NODE
-                    image 'ingeniacontainers.azurecr.io/win-python-builder:1.0'
+                    image 'ingeniacontainers.azurecr.io/win-python-builder:1.5'
                 }
             }
             stages {
@@ -63,7 +63,7 @@ pipeline {
                     steps {
                         bat '''
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            python -m venv venv
+                            py -3.9 -m venv venv
                             venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
                             venv\\Scripts\\python.exe -m pip install -e .
                         '''
@@ -89,7 +89,7 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            venv\\Scripts\\python.exe -m mypy ingenialink
+                            venv\\Scripts\\python.exe -m mypy ingenialink virtual_drive
                         """
                     }
                 }
@@ -101,6 +101,18 @@ pipeline {
                         """
                     }
                 }
+                stage('Run docker tests') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            venv\\Scripts\\python.exe -m coverage run -m pytest tests -m docker --junitxml=pytest_docker_report.xml
+                            move .coverage ${env.WORKSPACE}\\.coverage_docker
+                            move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
+                            exit /b 0
+                        """
+                        junit 'pytest_docker_report.xml'
+                    }
+                }
                 stage('Archive') {
                     steps {
                         bat """
@@ -109,6 +121,8 @@ pipeline {
                             XCOPY dist ${env.WORKSPACE}\\dist /i
                             XCOPY docs.zip ${env.WORKSPACE}
                         """
+                        stash includes: '.coverage_docker', name: 'coverage_docker'
+                        archiveArtifacts artifacts: 'pytest_docker_report.xml'
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
                     }
                 }
@@ -236,9 +250,10 @@ pipeline {
                 }
                 stage('Save test results') {
                     steps {
+                        unstash 'coverage_docker'
                         unstash 'coverage_reports'
                         bat '''
-                            venv\\Scripts\\python.exe -m coverage combine .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
+                            venv\\Scripts\\python.exe -m coverage combine .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
                             venv\\Scripts\\python.exe -m coverage xml --include=ingenialink/*
                         '''
                         publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]

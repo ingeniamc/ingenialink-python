@@ -1,10 +1,10 @@
-import time
 import socket
+import time
 
 import pytest
 
-from ingenialink.ethernet.network import EthernetNetwork, NET_PROT, NET_STATE, NET_DEV_EVT
-from ingenialink.exceptions import ILFirmwareLoadError, ILError
+from ingenialink.ethernet.network import NET_DEV_EVT, NET_PROT, NET_STATE, EthernetNetwork
+from ingenialink.exceptions import ILError, ILFirmwareLoadError
 
 
 @pytest.fixture()
@@ -99,7 +99,7 @@ def test_load_firmware_error_during_loading():
 
 @pytest.mark.no_connection
 def test_net_status_listener_connection(virtual_drive, read_config):
-    server = virtual_drive
+    server, _ = virtual_drive
     net = EthernetNetwork()
     protocol_contents = read_config["ethernet"]
     status_list = []
@@ -126,7 +126,7 @@ def test_net_status_listener_disconnection():
 
 @pytest.mark.no_connection
 def test_unsubscribe_from_status(virtual_drive, read_config):
-    server = virtual_drive
+    server, _ = virtual_drive
     net = EthernetNetwork()
     protocol_contents = read_config["ethernet"]
 

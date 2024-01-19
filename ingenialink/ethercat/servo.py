@@ -1,8 +1,17 @@
 from functools import partial
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 import ingenialogger
 from pysoem import CdefSlave, Emergency, MailboxError, PacketError, SdoError
+
+try:
+    import pysoem
+except ImportError as ex:
+    pysoem = None
+    pysoem_import_error = ex
+
+if TYPE_CHECKING:
+    from pysoem import CdefSlave
 
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.ethercat.dictionary import EthercatDictionary
@@ -23,6 +32,9 @@ class EthercatServo(PDOServo):
         dictionary_path: Path to the dictionary.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
+
+    Raises:
+        ImportError: WinPcap is not installed
 
     """
 
@@ -138,11 +150,13 @@ class EthercatServo(PDOServo):
 
     def __init__(
         self,
-        slave: CdefSlave,
+        slave: "CdefSlave",
         slave_id: int,
         dictionary_path: str,
         servo_status_listener: bool = False,
     ):
+        if not pysoem:
+            raise pysoem_import_error
         self.__slave = slave
         self.slave_id = slave_id
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
@@ -154,9 +168,9 @@ class EthercatServo(PDOServo):
         try:
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
             self._check_working_counter()
-        except (SdoError, MailboxError, PacketError, ILIOError) as e:
+        except (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError, ILIOError) as e:
             raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
-        except Emergency as e:
+        except pysoem.Emergency as e:
             error_description = self._get_emergency_description(e.error_code)
             if error_description is None:
                 error_description = e
@@ -170,9 +184,9 @@ class EthercatServo(PDOServo):
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
             self._check_working_counter()
-        except (SdoError, MailboxError, PacketError, ILIOError) as e:
+        except (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError, ILIOError) as e:
             raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
-        except Emergency as e:
+        except pysoem.Emergency as e:
             error_description = self._get_emergency_description(e.error_code)
             if error_description is None:
                 error_description = e
@@ -257,6 +271,6 @@ class EthercatServo(PDOServo):
         self.__slave.output = self._process_rpdo()
 
     @property
-    def slave(self) -> CdefSlave:
+    def slave(self) -> "CdefSlave":
         """Ethercat slave"""
         return self.__slave

@@ -1,10 +1,8 @@
-#!/usr/bin/env python
-
 import re
+
 import setuptools
 
-_version = re.search(r'__version__\s+=\s+\"(.*)\"',
-                     open('ingenialink/__init__.py').read()).group(1)
+_version = re.search(r"__version__\s+=\s+\"(.*)\"", open("ingenialink/__init__.py").read()).group(1)
 
 
 def get_docs_url():
@@ -12,34 +10,36 @@ def get_docs_url():
 
 
 setuptools.setup(
-    name='ingenialink',
+    name="ingenialink",
     version=_version,
-    packages=setuptools.find_packages(exclude=["test", "examples"]),
+    packages=["ingenialink", "virtual_drive"],
     include_package_data=True,
-    package_data={"ingenialink": ["bin/FoE/*/*", "py.typed"]},
-    description='IngeniaLink Communications Library',
-    long_description=open('README.rst').read(),
-    author='Ingenia Motion Control',
-    author_email='support@ingeniamc.com',
-    url='https://www.ingeniamc.com',
+    package_data={"ingenialink": ["bin/FoE/*/*", "py.typed"], "virtual_drive": ["py.typed"]},
+    description="IngeniaLink Communications Library",
+    long_description=open("README.rst").read(),
+    author="Ingenia Motion Control",
+    author_email="support@ingeniamc.com",
+    url="https://www.ingeniamc.com",
     project_urls={
-      'Documentation': get_docs_url(),
-      'Source': 'https://github.com/ingeniamc/ingenialink-python'
+        "Documentation": get_docs_url(),
+        "Source": "https://github.com/ingeniamc/ingenialink-python",
     },
     classifiers=[
-        'Development Status :: 4 - Beta',
-        'Intended Audience :: Developers',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3',
-        'Topic :: Communications',
-        'Topic :: Software Development :: Libraries'
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Topic :: Communications",
+        "Topic :: Software Development :: Libraries",
     ],
     install_requires=[
-        'canopen==1.2.1',
-        'python-can==3.3.4',
-        'ingenialogger>=0.2.1',
-        'ping3==4.0.3',
-        'pysoem==1.0.7',
+        "canopen==1.2.1",
+        "python-can==3.3.4",
+        "ingenialogger>=0.2.1",
+        "ping3==4.0.3",
+        "pysoem==1.0.7",
+        "numpy==1.19.5",
+        "scipy==1.5.4",
         'dataclasses==0.6',
     ],
     extras_require={
@@ -55,7 +55,7 @@ setuptools.setup(
             "pycodestyle==2.6.0",
             "wheel==0.37.1",
             "m2r2==0.3.2",
-            "mypy==0.971"
+            "mypy==0.971",
         ],
-    }
+    },
 )

@@ -6,4 +6,7 @@ EtherCAT API documentation
     :glob:
 
     ethercat/network
+    ethercat/servo
+    ethercat/dictionary
+    ethercat/register
     ethercat/pdo
