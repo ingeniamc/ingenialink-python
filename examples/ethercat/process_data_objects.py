@@ -33,23 +33,6 @@ RPDO_REGISTERS = {
 }
 
 
-def process_inputs(pdo_map_item) -> None:
-    """Store the received TPDO register value."""
-    tpdo_reg = pdo_map_item.register
-    TPDO_REGISTERS[tpdo_reg.identifier] = pdo_map_item.value
-
-
-def generate_output(pdo_map_item):
-    """Generate a value to be set to a RPDO register.
-
-    Returns:
-          The value to be set.
-    """
-    rpdo_reg = pdo_map_item.register
-    RPDO_REGISTERS[rpdo_reg.identifier] += 100
-    return RPDO_REGISTERS[rpdo_reg.identifier]
-
-
 class ProcessDataExample:
     def __init__(self, interface_name: str, dictionary_path: str, auto_stop: bool = False):
         """Basic example on EtherCAT PDOs.
