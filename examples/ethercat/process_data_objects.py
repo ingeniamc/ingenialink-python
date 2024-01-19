@@ -3,12 +3,14 @@ import sys
 import threading
 import time
 from enum import Enum
+from functools import partial
+from typing import Tuple
 
 import pysoem
 
 from ingenialink.ethercat.network import EthercatNetwork
-from ingenialink.ethercat.pdo import PDOMap, PDOType
 from ingenialink.exceptions import ILError
+from ingenialink.pdo import PDOMap
 
 
 class SlaveState(Enum):
@@ -64,18 +66,20 @@ class ProcessDataExample:
         self.servo = self.net.connect_to_slave(slave, dictionary_path)
         self.slave = self.master.slaves[slave]
         self._pd_thread_stop_event = threading.Event()
-        self.pdo_map = self.create_pdo_map()
+        self.create_pdo_maps()
         if auto_stop:
             threading.Timer(5, self._stop_process_data).start()
 
-    def create_pdo_map(self) -> PDOMap:
+    def create_pdo_maps(self) -> Tuple[PDOMap]:
         """Create a PDO Map with the RPDO and TPDO registers."""
-        pdo_map = self.servo.create_pdo_map()
+        self.rpdo_map = self.servo.create_rpdo_map()
+        self.tpdo_map = self.servo.create_tpdo_map()
         for tpdo_register in TPDO_REGISTERS:
-            pdo_map.add_register(tpdo_register, process_inputs, PDOType.TPDO)
+            register = self.servo.dictionary.registers(1)[tpdo_register]
+            self.tpdo_map.add_registers(register)
         for rpdo_register in RPDO_REGISTERS:
-            pdo_map.add_register(rpdo_register, generate_output, PDOType.RPDO)
-        return pdo_map
+            register = self.servo.dictionary.registers(1)[rpdo_register]
+            self.rpdo_map.add_registers(register)
 
     def check_state(self, state: SlaveState) -> None:
         """Check if the slave reached the requested state.
@@ -99,6 +103,11 @@ class ProcessDataExample:
         """Process inputs and generate outputs."""
         while not self._pd_thread_stop_event.is_set():
             self.servo.process_pdo_inputs()
+            for item in self.tpdo_map.items:
+                TPDO_REGISTERS[item.register.identifier] = item.value
+            for item in self.rpdo_map.items:
+                RPDO_REGISTERS[item.register.identifier] += 100
+                item.value = RPDO_REGISTERS[item.register.identifier]
             self.servo.generate_pdo_outputs()
             self._print_values_to_console()
             time.sleep(0.1)
@@ -125,7 +134,7 @@ class ProcessDataExample:
 
     def run(self) -> None:
         """Main loop of the program."""
-        self.slave.config_func = self.servo.map_pdo(self.pdo_map)
+        self.servo.set_mapping_in_slave([self.rpdo_map], [self.tpdo_map])
         self.master.config_map()
         self.master.config_dc()
         self.check_state(SlaveState.SAFEOP_STATE)

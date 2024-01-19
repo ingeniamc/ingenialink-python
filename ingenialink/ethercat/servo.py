@@ -1,21 +1,20 @@
-from typing import Optional, Any
+from functools import partial
+from typing import List, Optional
 
-from pysoem import CdefSlave, SdoError, MailboxError, PacketError, Emergency
 import ingenialogger
+from pysoem import CdefSlave, Emergency, MailboxError, PacketError, SdoError
 
-from ingenialink.exceptions import ILIOError
-from ingenialink.servo import Servo
+from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.ethercat.pdo import PDOMapper, PDOMap
-from ingenialink.register import REG_DTYPE, REG_ACCESS
-from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
-from ingenialink.utils._utils import convert_dtype_to_bytes, convert_bytes_to_dtype, dtype_value
+from ingenialink.exceptions import ILIOError
+from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
+from ingenialink.register import REG_ACCESS, REG_DTYPE
 
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthercatServo(Servo):
+class EthercatServo(PDOServo):
     """Ethercat Servo instance.
 
     Args:
@@ -52,6 +51,91 @@ class EthercatServo(Servo):
         access=REG_ACCESS.WO,
     )
 
+    RPDO_ASSIGN_REGISTER_SUB_IDX_0 = EthercatRegister(
+        identifier="RPDO_ASSIGN_REGISTER",
+        units="",
+        subnode=0,
+        idx=0x1C12,
+        subidx=0x00,
+        dtype=REG_DTYPE.S32,
+        access=REG_ACCESS.RW,
+    )
+    RPDO_ASSIGN_REGISTER_SUB_IDX_1 = [
+        EthercatRegister(
+            identifier="RPDO_ASSIGN_REGISTER",
+            units="",
+            subnode=0,
+            idx=0x1C12,
+            subidx=0x01,
+            dtype=REG_DTYPE.S32,
+            access=REG_ACCESS.RW,
+        )
+    ]
+    RPDO_MAP_REGISTER_SUB_IDX_0 = [
+        EthercatRegister(
+            identifier="RPDO_MAP_REGISTER",
+            units="",
+            subnode=0,
+            idx=0x1600,
+            subidx=0x00,
+            dtype=REG_DTYPE.S32,
+            access=REG_ACCESS.RW,
+        )
+    ]
+    RPDO_MAP_REGISTER_SUB_IDX_1 = [
+        EthercatRegister(
+            identifier="RPDO_MAP_REGISTER",
+            units="",
+            subnode=0,
+            idx=0x1600,
+            subidx=0x01,
+            dtype=REG_DTYPE.STR,
+            access=REG_ACCESS.RW,
+        )
+    ]
+    TPDO_ASSIGN_REGISTER_SUB_IDX_0 = EthercatRegister(
+        identifier="TPDO_ASSIGN_REGISTER",
+        units="",
+        subnode=0,
+        idx=0x1C13,
+        subidx=0x00,
+        dtype=REG_DTYPE.S32,
+        access=REG_ACCESS.RW,
+    )
+    TPDO_ASSIGN_REGISTER_SUB_IDX_1 = [
+        EthercatRegister(
+            identifier="TPDO_ASSIGN_REGISTER",
+            units="",
+            subnode=0,
+            idx=0x1C13,
+            subidx=0x01,
+            dtype=REG_DTYPE.S32,
+            access=REG_ACCESS.RW,
+        )
+    ]
+    TPDO_MAP_REGISTER_SUB_IDX_0 = [
+        EthercatRegister(
+            identifier="TPDO_MAP_REGISTER",
+            units="",
+            subnode=0,
+            idx=0x1A00,
+            subidx=0x00,
+            dtype=REG_DTYPE.S32,
+            access=REG_ACCESS.RW,
+        )
+    ]
+    TPDO_MAP_REGISTER_SUB_IDX_1 = [
+        EthercatRegister(
+            identifier="TPDO_MAP_REGISTER",
+            units="",
+            subnode=0,
+            idx=0x1A00,
+            subidx=0x01,
+            dtype=REG_DTYPE.STR,
+            access=REG_ACCESS.RW,
+        )
+    ]
+
     def __init__(
         self,
         slave: CdefSlave,
@@ -61,7 +145,6 @@ class EthercatServo(Servo):
     ):
         self.__slave = slave
         self.slave_id = slave_id
-        self.pdo_map: Optional[PDOMap] = None
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
 
     def _read_raw(  # type: ignore [override]
@@ -161,49 +244,17 @@ class EthercatServo(Servo):
                 error_description = self.dictionary.errors.errors[error_code][-1]
         return error_description
 
-    def create_pdo_map(self) -> PDOMap:
-        """Create an empty PDO Map using the servo's dictionary.
-
-        Returns:
-            PDO map.
-        """
-        return PDOMap(self.dictionary)
-
-    def map_pdo(self, pdo_map: PDOMap) -> None:
-        """Map the PDOs into the servo according to the PDO Map.
-
-        Args:
-            pdo_map: PDO Map information.
-        """
-        self.pdo_map = pdo_map
-        pdo_mapper = PDOMapper(self, self.pdo_map)
-        return pdo_mapper.set_slave_mapping()
+    def set_mapping_in_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
+        self.slave.config_func = partial(self.map_pdos, rpdo_maps, tpdo_maps)
 
     def process_pdo_inputs(self) -> None:
-        """Convert the TPDO values from bytes to the register data type
-        and send it to the callback function."""
-        if self.pdo_map is None:
-            return
-        input_data = self.__slave.input
-        for pdo_map_item in self.pdo_map.tpdo_registers:
-            reg_dtype = pdo_map_item.register.dtype
-            data_size = dtype_value[reg_dtype][0]
-            data = input_data[:data_size]
-            input_data = input_data[data_size:]
-            pdo_map_item.value = convert_bytes_to_dtype(data, reg_dtype)
-            pdo_map_item.callback(pdo_map_item)
+        self._process_tpdo(self.__slave.input)
 
     def generate_pdo_outputs(self) -> None:
-        """Retrieve the RPDO values from the callback functions and convert them into
-        bytes."""
-        if self.pdo_map is None:
+        output = self._process_rpdo()
+        if output is None:
             return
-        output = bytes()
-        for pdo_map_item in self.pdo_map.rpdo_registers:
-            reg_dtype = pdo_map_item.register.dtype
-            pdo_map_item.value = pdo_map_item.callback(pdo_map_item)
-            output += convert_dtype_to_bytes(pdo_map_item.value, reg_dtype)
-        self.__slave.output = output
+        self.__slave.output = self._process_rpdo()
 
     @property
     def slave(self) -> CdefSlave:
