@@ -63,7 +63,7 @@ pipeline {
                     steps {
                         bat '''
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            pip install tox==3.28.0
+                            py -3.9 -m pip install tox==3.28.0
                         '''
                     }
                 }
