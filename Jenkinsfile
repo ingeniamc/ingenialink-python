@@ -11,7 +11,7 @@ def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
 def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_VERSION = ""
 
-def PYTHON_VERSIONS = "py38,py39"
+def PYTHON_VERSIONS = "py39,py310,py311,py312"
 def TOX_VERSION = "4.12.1"
 
 pipeline {

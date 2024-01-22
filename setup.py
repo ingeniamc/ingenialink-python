@@ -36,13 +36,13 @@ setuptools.setup(
         "Topic :: Software Development :: Libraries",
     ],
     install_requires=[
-        "canopen==1.2.1",
-        "python-can==3.3.4",
+        "canopen==2.2.0",
+        "python-can==4.3.1",
         "ingenialogger>=0.2.1",
         "ping3==4.0.3",
-        "pysoem==1.0.7",
-        "numpy==1.19.5",
-        "scipy==1.5.4",
+        "pysoem==1.1.5",
+        "numpy==1.26.3",
+        "scipy==1.12.0",
     ],
     extras_require={
         "dev": ["tox==4.12.1"],
