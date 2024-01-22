@@ -12,6 +12,7 @@ def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_VERSION = ""
 
 def PYTHON_VERSIONS = "py38,py39"
+def DEFAULT_PYTHON_VERSION = "3.9"
 def TOX_VERSION = "4.12.1"
 
 pipeline {
@@ -66,7 +67,7 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            py -3.9 -m pip install tox==${TOX_VERSION}
+                            py -${DEFAULT_PYTHON_VERSION} -m pip install tox==${TOX_VERSION}
                         """
                     }
                 }
@@ -155,7 +156,7 @@ pipeline {
                 stage('Install deps') {
                     steps {
                         bat """
-                            python -m venv venv
+                            py -${DEFAULT_PYTHON_VERSION} -m venv venv
                             venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
                         """
                     }
@@ -221,7 +222,7 @@ pipeline {
                 stage('Install deps') {
                     steps {
                         bat """
-                            python -m venv venv
+                            py -${DEFAULT_PYTHON_VERSION} -m venv venv
                             venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
                         """
                     }
