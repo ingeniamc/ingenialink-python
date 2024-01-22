@@ -426,7 +426,12 @@ class PDOServo(Servo):
         raise NotImplementedError
 
     def _process_tpdo(self, input_data: bytes) -> None:
-        """Convert the TPDO values from bytes to the registers data type."""
+        """Convert the TPDO values from bytes to the registers data type.
+
+        Args:
+            input_data: Concatenated received data bytes.
+
+        """
         if len(self._tpdo_maps) == 0:
             return
         for tpdo_map in self._tpdo_maps:
@@ -434,7 +439,11 @@ class PDOServo(Servo):
             tpdo_map.set_item_bytes(map_bytes)
 
     def _process_rpdo(self) -> Optional[bytes]:
-        """Retrieve the RPDO raw data from each map."""
+        """Retrieve the RPDO raw data from each map.
+
+        Return:
+            Concatenated data bytes to be sent.
+        """
         if len(self._rpdo_maps) == 0:
             return None
         output = bytes()
