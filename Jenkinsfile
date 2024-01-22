@@ -11,7 +11,7 @@ def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
 def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_VERSION = ""
 
-def PYTHON_VERSIONS = "py38,py39,py310,py311,py312"
+def PYTHON_VERSIONS = "py38,py39"
 def TOX_VERSION = "4.12.1"
 
 pipeline {
@@ -170,6 +170,8 @@ pipeline {
                     steps {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethercat --junitxml=pytest_ethercat_report.xml
+                        """
+                        bat """
                             move .coverage .coverage_ethercat
                         """
                         junit 'pytest_ethercat_report.xml'
@@ -179,6 +181,8 @@ pipeline {
                     steps {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
+                        """
+                        bat """
                             move .coverage .coverage_no_connection
                         """
                         junit 'pytest_no_connection_report.xml'
@@ -232,6 +236,8 @@ pipeline {
                     steps {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol canopen --junitxml=pytest_canopen_report.xml
+                        """
+                        bat """
                             move .coverage .coverage_canopen
                         """
                         junit 'pytest_canopen_report.xml'
@@ -241,6 +247,8 @@ pipeline {
                     steps {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
+                        """
+                        bat """
                             move .coverage .coverage_ethernet
                         """
                         junit 'pytest_ethernet_report.xml'
