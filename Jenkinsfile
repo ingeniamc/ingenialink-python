@@ -12,6 +12,7 @@ def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_VERSION = ""
 
 def PYTHON_VERSIONS = "py38,py39,py310,py311,py312"
+def TOX_VERSION = "4.12.1"
 
 pipeline {
     agent none
@@ -63,10 +64,10 @@ pipeline {
                 }
                 stage('Install deps') {
                     steps {
-                        bat '''
+                        bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            py -3.9 -m pip install tox==4.12.1
-                        '''
+                            py -3.9 -m pip install tox==${TOX_VERSION}
+                        """
                     }
                 }
                 stage('Build wheels') {
@@ -106,6 +107,8 @@ pipeline {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             tox -e ${PYTHON_VERSIONS} -- -m docker --junitxml=pytest_docker_report.xml
+                        """
+                        bat """
                             move .coverage ${env.WORKSPACE}\\.coverage_docker
                             move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
                         """
@@ -150,10 +153,10 @@ pipeline {
                 }
                 stage('Install deps') {
                     steps {
-                        bat '''
+                        bat """
                             python -m venv venv
-                            venv\\Scripts\\python.exe -m pip install tox==4.12.1
-                        '''
+                            venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
+                        """
                     }
                 }
                 stage('Update drives FW') {
@@ -212,10 +215,10 @@ pipeline {
                 }
                 stage('Install deps') {
                     steps {
-                        bat '''
+                        bat """
                             python -m venv venv
-                            venv\\Scripts\\python.exe -m pip install tox==3.28.0
-                        '''
+                            venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
+                        """
                     }
                 }
                 stage('Update drives FW') {
