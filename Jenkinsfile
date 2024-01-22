@@ -150,21 +150,22 @@ pipeline {
                 stage('Install deps') {
                     steps {
                         bat '''
-                            pip install tox==3.28.0
+                            python -m venv venv
+                            venv\\Scripts\\python.exe -m pip install tox==3.28.0
                         '''
                     }
                 }
                 stage('Update drives FW') {
                     steps {
                         bat '''
-                             tox -e firmware -- ethercat
+                            venv\\Scripts\\python.exe -m tox -e firmware -- ethercat
                         '''
                     }
                 }
                 stage('Run EtherCAT tests') {
                     steps {
                         bat '''
-                            tox -e py39 -- --protocol ethercat --junitxml=pytest_ethercat_report.xml
+                            venv\\Scripts\\python.exe -m tox -e py36 -- --protocol ethercat --junitxml=pytest_ethercat_report.xml
                             move .coverage .coverage_ethercat
                             exit /b 0
                         '''
@@ -174,7 +175,7 @@ pipeline {
                 stage('Run no-connection tests') {
                     steps {
                         bat '''
-                            tox -e py39 -- --junitxml=pytest_no_connection_report.xml
+                            venv\\Scripts\\python.exe -m tox -e py36 -- --junitxml=pytest_no_connection_report.xml
                             move .coverage .coverage_no_connection
                             exit /b 0
                         '''
@@ -213,21 +214,22 @@ pipeline {
                 stage('Install deps') {
                     steps {
                         bat '''
-                            pip install tox==3.28.0
+                            python -m venv venv
+                            venv\\Scripts\\python.exe -m pip install tox==3.28.0
                         '''
                     }
                 }
                 stage('Update drives FW') {
                     steps {
                         bat '''
-                             tox -e firmware -- canopen
+                             venv\\Scripts\\python.exe -m tox -e firmware -- canopen
                         '''
                     }
                 }
                 stage('Run CANopen tests') {
                     steps {
                         bat '''
-                            tox -e py39 -- --protocol canopen --junitxml=pytest_canopen_report.xml
+                            venv\\Scripts\\python.exe -m tox -e py36 -- --protocol canopen --junitxml=pytest_canopen_report.xml
                             move .coverage .coverage_canopen
                             exit /b 0
                         '''
@@ -237,7 +239,7 @@ pipeline {
                 stage('Run Ethernet tests') {
                     steps {
                         bat '''
-                            tox -e py39 -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
+                            venv\\Scripts\\python.exe -m tox -e py36 -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
                             move .coverage .coverage_ethernet
                             exit /b 0
                         '''
@@ -249,7 +251,7 @@ pipeline {
                         unstash 'coverage_docker'
                         unstash 'coverage_reports'
                         bat '''
-                            tox -e coverage .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
+                            venv\\Scripts\\python.exe -m tox -e coverage .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
                         '''
                         publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
                         archiveArtifacts artifacts: '*.xml'
