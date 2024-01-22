@@ -103,7 +103,7 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            tox -e py39 -- -m docker --junitxml=pytest_docker_report.xml
+                            tox -e py36,py37,py38,py39 -- -m docker --junitxml=pytest_docker_report.xml
                             move .coverage ${env.WORKSPACE}\\.coverage_docker
                             move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
                             exit /b 0
