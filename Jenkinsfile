@@ -11,6 +11,8 @@ def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
 def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_VERSION = ""
 
+def PYTHON_VERSIONS = "py36,py37,py38,py39"
+
 pipeline {
     agent none
     stages {
@@ -103,12 +105,21 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            tox -e py36,py37,py38,py39 -- -m docker --junitxml=pytest_docker_report.xml
+                            tox -e ${PYTHON_VERSIONS} -- -m docker --junitxml=pytest_docker_report.xml
                             move .coverage ${env.WORKSPACE}\\.coverage_docker
                             move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
-                            exit /b 0
                         """
                         junit 'pytest_docker_report.xml'
+                    }
+                }
+                stage('Run no-connection tests') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
+                            move .coverage .coverage_no_connection
+                        """
+                        junit 'pytest_no_connection_report.xml'
                     }
                 }
                 stage('Archive') {
@@ -119,14 +130,14 @@ pipeline {
                             XCOPY dist ${env.WORKSPACE}\\dist /i
                             XCOPY docs.zip ${env.WORKSPACE}
                         """
-                        stash includes: '.coverage_docker', name: 'coverage_docker'
+                        stash includes: '.coverage_docker, .coverage_no_connection', name: 'coverage_docker'
                         archiveArtifacts artifacts: 'pytest_docker_report.xml'
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
                     }
                 }
             }
         }
-        stage('EtherCAT and no-connection tests') {
+        stage('EtherCAT tests') {
             options {
                 lock(ECAT_NODE_LOCK)
             }
@@ -167,24 +178,13 @@ pipeline {
                         bat '''
                             venv\\Scripts\\python.exe -m tox -e py36 -- --protocol ethercat --junitxml=pytest_ethercat_report.xml
                             move .coverage .coverage_ethercat
-                            exit /b 0
                         '''
                         junit 'pytest_ethercat_report.xml'
                     }
                 }
-                stage('Run no-connection tests') {
-                    steps {
-                        bat '''
-                            venv\\Scripts\\python.exe -m tox -e py36 -- --junitxml=pytest_no_connection_report.xml
-                            move .coverage .coverage_no_connection
-                            exit /b 0
-                        '''
-                        junit 'pytest_no_connection_report.xml'
-                    }
-                }
                 stage('Archive') {
                     steps {
-                        stash includes: '.coverage_no_connection, .coverage_ethercat', name: 'coverage_reports'
+                        stash includes: '.coverage_ethercat', name: 'coverage_reports'
                         archiveArtifacts artifacts: '*.xml'
                     }
                 }
@@ -231,7 +231,6 @@ pipeline {
                         bat '''
                             venv\\Scripts\\python.exe -m tox -e py36 -- --protocol canopen --junitxml=pytest_canopen_report.xml
                             move .coverage .coverage_canopen
-                            exit /b 0
                         '''
                         junit 'pytest_canopen_report.xml'
                     }
@@ -241,7 +240,6 @@ pipeline {
                         bat '''
                             venv\\Scripts\\python.exe -m tox -e py36 -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
                             move .coverage .coverage_ethernet
-                            exit /b 0
                         '''
                         junit 'pytest_ethernet_report.xml'
                     }
