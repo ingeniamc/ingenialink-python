@@ -112,16 +112,6 @@ pipeline {
                         junit 'pytest_docker_report.xml'
                     }
                 }
-                stage('Run no-connection tests') {
-                    steps {
-                        bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
-                            move .coverage .coverage_no_connection
-                        """
-                        junit 'pytest_no_connection_report.xml'
-                    }
-                }
                 stage('Archive') {
                     steps {
                         bat """
@@ -130,14 +120,14 @@ pipeline {
                             XCOPY dist ${env.WORKSPACE}\\dist /i
                             XCOPY docs.zip ${env.WORKSPACE}
                         """
-                        stash includes: '.coverage_docker, .coverage_no_connection', name: 'coverage_docker'
+                        stash includes: '.coverage_docker', name: 'coverage_docker'
                         archiveArtifacts artifacts: 'pytest_docker_report.xml'
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
                     }
                 }
             }
         }
-        stage('EtherCAT tests') {
+        stage('EtherCAT and no-connection tests') {
             options {
                 lock(ECAT_NODE_LOCK)
             }
@@ -182,9 +172,18 @@ pipeline {
                         junit 'pytest_ethercat_report.xml'
                     }
                 }
+                stage('Run no-connection tests') {
+                    steps {
+                        bat """
+                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
+                            move .coverage .coverage_no_connection
+                        """
+                        junit 'pytest_no_connection_report.xml'
+                    }
+                }
                 stage('Archive') {
                     steps {
-                        stash includes: '.coverage_ethercat', name: 'coverage_reports'
+                        stash includes: '.coverage_ethercat, .coverage_no_connection', name: 'coverage_reports'
                         archiveArtifacts artifacts: '*.xml'
                     }
                 }
