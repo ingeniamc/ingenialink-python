@@ -109,6 +109,7 @@ pipeline {
                             tox -e ${PYTHON_VERSIONS} -- -m docker --junitxml=pytest_docker_report.xml
                         """
                         bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             move .coverage ${env.WORKSPACE}\\.coverage_docker
                             move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
                         """
