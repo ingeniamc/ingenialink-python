@@ -65,7 +65,7 @@ pipeline {
                     steps {
                         bat '''
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            py -3.9 -m pip install tox==3.28.0
+                            py -3.9 -m pip install tox==4.12.1
                         '''
                     }
                 }
@@ -116,7 +116,7 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
+                            tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
                             move .coverage .coverage_no_connection
                         """
                         junit 'pytest_no_connection_report.xml'
