@@ -111,6 +111,8 @@ class EthercatNetwork(Network):
         """
         self._start_master()
         nodes = self._ecat_master.config_init()
+        for servo in self.servos:
+            self._change_drive_state(servo.slave, pysoem.PREOP_STATE)
         return list(range(1, nodes + 1))
 
     def connect_to_slave(  # type: ignore [override]
@@ -182,12 +184,12 @@ class EthercatNetwork(Network):
                 logger.warning("Drive can not reach SafeOp state")
         if not op_servo_list:
             logger.warning("No drives has PDO mapping")
+            return
         # TODO Add porcessdata function INGK-799
         self._ecat_master.send_processdata()
         porcessdata_wkc = self._ecat_master.receive_processdata(
             timeout=self.ECAT_PROCESSDATA_TIMEOUT
         )
-        print(porcessdata_wkc)
         for servo in op_servo_list:
             self._change_drive_state(servo.slave, pysoem.OP_STATE)
 
