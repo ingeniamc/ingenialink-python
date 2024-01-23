@@ -32,6 +32,10 @@ setuptools.setup(
         "Intended Audience :: Developers",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Communications",
         "Topic :: Software Development :: Libraries",
     ],
@@ -47,4 +51,5 @@ setuptools.setup(
     extras_require={
         "dev": ["tox==4.12.1"],
     },
+    python_requires=">=3.9",
 )
