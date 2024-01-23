@@ -1,6 +1,9 @@
 import time
 
-import pysoem
+try:
+    import pysoem
+except ImportError:
+    pass
 import pytest
 
 from ingenialink.enums.register import REG_DTYPE

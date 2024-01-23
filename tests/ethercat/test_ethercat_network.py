@@ -1,4 +1,7 @@
-import pysoem
+try:
+    import pysoem
+except ImportError:
+    pass
 import pytest
 
 from ingenialink.ethercat.network import EthercatNetwork
