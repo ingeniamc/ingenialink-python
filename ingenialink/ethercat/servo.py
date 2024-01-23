@@ -2,7 +2,6 @@ from functools import partial
 from typing import TYPE_CHECKING, List, Optional
 
 import ingenialogger
-from pysoem import CdefSlave, Emergency, MailboxError, PacketError, SdoError
 
 try:
     import pysoem
