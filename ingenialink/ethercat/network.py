@@ -20,7 +20,6 @@ from ingenialink.network import Network, NET_PROT, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError, ILError
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.constants import DEFAULT_ECAT_CONNECTION_TIMEOUT
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -80,6 +79,11 @@ class EthercatNetwork(Network):
         5: "Drive can't init. Ensure the FW file is right",
     }
     UNKNOWN_FOE_ERROR = "Unknown error"
+    MANUAL_STATE_CHANGE = 1
+
+    DEFAULT_ECAT_CONNECTION_TIMEOUT = 1
+    ECAT_STATE_CHANGE_TIMEOUT = 1_000_000
+    ECAT_PROCESSDATA_TIMEOUT = 100_000
 
     def __init__(
         self, interface_name: str, connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT
@@ -95,6 +99,7 @@ class EthercatNetwork(Network):
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
         self._ecat_master.sdo_read_timeout = int(1_000_000 * connection_timeout)
         self._ecat_master.sdo_write_timeout = int(1_000_000 * connection_timeout)
+        self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
         self.__is_master_running = False
 
     def scan_slaves(self) -> List[int]:
@@ -128,6 +133,7 @@ class EthercatNetwork(Network):
         Raises:
             ValueError: If the slave ID is not valid.
             ILError: If no slaves are found.
+            ILError: If slave can not reach PreOp state
 
         """
         if not isinstance(slave_id, int) or slave_id < 0:
@@ -138,6 +144,8 @@ class EthercatNetwork(Network):
         if slave_id not in slaves:
             raise (ILError(f"Slave {slave_id} was not found."))
         slave = self._ecat_master.slaves[slave_id - 1]
+        if not self._change_drive_state(slave, pysoem.PREOP_STATE):
+            raise ILError("Slave can not reach PreOp state")
         servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
         self.servos.append(servo)
         self._set_servo_state(slave_id, NET_STATE.CONNECTED)
@@ -153,11 +161,59 @@ class EthercatNetwork(Network):
 
         """
         servo.stop_status_listener()
+        if not self._change_drive_state(servo.slave, pysoem.INIT_STATE):
+            logger.warning("Drive can not reach Init state")
         self.servos.remove(servo)
         if not self.servos:
             self.stop_status_listener()
             self._ecat_master.close()
             self.__is_master_running = False
+
+    def start_pdos(self) -> None:
+        """Configure the PDOs and set slave state to OP for all slaves with mapped PDOs"""
+        self._ecat_master.config_map()
+        self._ecat_master.state = pysoem.SAFEOP_STATE
+        op_servo_list: List[EthercatServo] = []
+        for servo in self.servos:
+            if not (servo._rpdo_maps or servo._tpdo_maps):
+                continue
+            op_servo_list.append(servo)
+            if not self._change_drive_state(servo.slave, pysoem.SAFEOP_STATE):
+                logger.warning("Drive can not reach SafeOp state")
+        if not op_servo_list:
+            logger.warning("No drives has PDO mapping")
+        # TODO Add porcessdata function INGK-799
+        self._ecat_master.send_processdata()
+        porcessdata_wkc = self._ecat_master.receive_processdata(
+            timeout=self.ECAT_PROCESSDATA_TIMEOUT
+        )
+        print(porcessdata_wkc)
+        for servo in op_servo_list:
+            self._change_drive_state(servo.slave, pysoem.OP_STATE)
+
+    def stop_pdos(self):
+        """For all slaves in OP or SafeOp state, set state to PreOp"""
+        self._ecat_master.read_state()
+        for servo in self.servos:
+            if servo.slave.state not in [pysoem.OP_STATE, pysoem.SAFEOP_STATE]:
+                continue
+            if not self._change_drive_state(servo.slave, pysoem.PREOP_STATE):
+                logger.warning("Drive can not reach PreOp state")
+
+    def _change_drive_state(self, slave: pysoem.CdefSlave, target_state: int) -> bool:
+        """Set selected slave ECAT state to target state
+
+        Args:
+            slave: target slave that will be updated
+            target_state: target ECAt state
+
+        Returns:
+            True if state was reached, else False.
+        """
+        slave.state = target_state
+        slave.write_state()
+        self._ecat_master.read_state()
+        return bool(target_state == slave.state_check(target_state, self.ECAT_STATE_CHANGE_TIMEOUT))
 
     def subscribe_to_status(  # type: ignore [override]
         self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None]
