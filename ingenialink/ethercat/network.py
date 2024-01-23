@@ -193,7 +193,7 @@ class EthercatNetwork(Network):
         for servo in op_servo_list:
             self._change_drive_state(servo.slave, pysoem.OP_STATE)
 
-    def stop_pdos(self):
+    def stop_pdos(self) -> None:
         """For all slaves in OP or SafeOp state, set state to PreOp"""
         self._ecat_master.read_state()
         for servo in self.servos:

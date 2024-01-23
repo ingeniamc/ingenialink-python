@@ -6,6 +6,7 @@
 - Motor enable and disable features in the virtual drive.
 - Emulate control loops in the virtual drive.
 - EtherCAT PDO module.
+- Add functionalities to update ECAT state machine
 
 
 ## [7.1.1] - 2024-01-03
