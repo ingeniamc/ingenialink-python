@@ -1,3 +1,6 @@
+import time
+
+import pysoem
 import pytest
 
 from ingenialink.enums.register import REG_DTYPE
@@ -231,3 +234,24 @@ def test_pdo_example(read_config, script_runner):
     )
     assert result.returncode == 0
     assert result.stderr == ""
+
+
+@pytest.mark.ethercat
+def test_start_stop_pdo(connect_to_slave, create_pdo_map):
+    tpdo_map, rpdo_map = create_pdo_map
+    servo, net = connect_to_slave
+    servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    net._ecat_master.read_state()
+    assert servo.slave.state == pysoem.PREOP_STATE
+    net.start_pdos()
+    for _ in range(5):
+        net._ecat_master.send_processdata()
+        porcessdata_wkc = net._ecat_master.receive_processdata(
+            timeout=net.ECAT_PROCESSDATA_TIMEOUT
+        )
+        time.sleep(0.01)
+    assert servo.slave.state == pysoem.OP_STATE
+    net.stop_pdos()
+    assert servo.slave.state == pysoem.PREOP_STATE
+
+

@@ -1,3 +1,4 @@
+import pysoem
 import pytest
 
 from ingenialink.ethercat.network import EthercatNetwork
@@ -70,3 +71,12 @@ def test_connect_to_slave_no_slaves_detected(mocker, read_config):
     mocker.patch.object(net, "scan_slaves", scan_slaves)
     with pytest.raises(ILError):
         net.connect_to_slave(1)
+
+
+@pytest.mark.ethercat
+def test_scan_slaves_keeps_already_connected_salves_state(connect_to_slave):
+    servo, net = connect_to_slave
+    net._ecat_master.read_state()
+    assert servo.slave.state == pysoem.PREOP_STATE
+    net.scan_slaves()
+    assert servo.slave.state == pysoem.PREOP_STATE
