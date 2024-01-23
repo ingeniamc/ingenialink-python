@@ -5,7 +5,7 @@ import subprocess
 import inspect
 import time
 from collections import defaultdict
-from typing import Optional, Any, Callable, List, Dict
+from typing import Optional, Any, Callable, List, Dict, TYPE_CHECKING
 from threading import Thread
 
 import ingenialogger
@@ -15,6 +15,9 @@ try:
 except ImportError as ex:
     pysoem = None
     pysoem_import_error = ex
+
+if TYPE_CHECKING:
+    from pysoem import CdefSlave
 
 from ingenialink.network import Network, NET_PROT, NET_STATE, NET_DEV_EVT
 from ingenialink.exceptions import ILFirmwareLoadError, ILError
@@ -202,7 +205,7 @@ class EthercatNetwork(Network):
             if not self._change_drive_state(servo.slave, pysoem.PREOP_STATE):
                 logger.warning("Drive can not reach PreOp state")
 
-    def _change_drive_state(self, slave: pysoem.CdefSlave, target_state: int) -> bool:
+    def _change_drive_state(self, slave: "CdefSlave", target_state: int) -> bool:
         """Set selected slave ECAT state to target state
 
         Args:
