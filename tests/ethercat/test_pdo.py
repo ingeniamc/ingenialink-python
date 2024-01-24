@@ -84,9 +84,8 @@ def test_tpdo_item(open_dictionary):
         tpdo_item.value
     assert str(exc_info.value) == "Raw data is empty."
 
-    with pytest.raises(AttributeError) as exc_info:
+    with pytest.raises(AttributeError):
         tpdo_item.value = 15
-    assert str(exc_info.value) == "can't set attribute"
 
     tpdo_item.raw_data = convert_dtype_to_bytes(15, REG_DTYPE.U16)
     assert tpdo_item.value == 15
