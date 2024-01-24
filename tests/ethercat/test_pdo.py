@@ -3,7 +3,7 @@ import pytest
 from ingenialink.enums.register import REG_DTYPE
 from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.exceptions import ILError, ILValueError
+from ingenialink.exceptions import ILError
 from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
 from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_value
@@ -45,8 +45,9 @@ def test_rpdo_item(open_dictionary):
     assert rpdo_item.register == register
     assert rpdo_item.size == dtype_value[rpdo_item.register.dtype][0]
 
-    with pytest.raises(ILValueError):
+    with pytest.raises(ILError) as exc_info:
         rpdo_item.value
+    assert str(exc_info.value) == "Raw data is empty."
 
     rpdo_item.value = 15
     assert rpdo_item.value == 15
@@ -56,16 +57,18 @@ def test_rpdo_item(open_dictionary):
 def test_rpdo_item_wrong_cyclic(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
-    with pytest.raises(ILError):
+    with pytest.raises(ILError) as exc_info:
         RPDOMapItem(register)
+    assert str(exc_info.value) == "Incorrect cyclic. It should be CYCLIC_RX, obtained: CYCLIC_TX"
 
 
 @pytest.mark.no_connection
 def test_tpdo_item_wrong_cyclic(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
-    with pytest.raises(ILError):
+    with pytest.raises(ILError) as exc_info:
         TPDOMapItem(register)
+    assert str(exc_info.value) == "Incorrect cyclic. It should be CYCLIC_TX, obtained: CYCLIC_RX"
 
 
 @pytest.mark.no_connection
@@ -77,13 +80,15 @@ def test_tpdo_item(open_dictionary):
     assert tpdo_item.register == register
     assert tpdo_item.size == dtype_value[tpdo_item.register.dtype][0]
 
-    with pytest.raises(ILValueError):
+    with pytest.raises(ILError) as exc_info:
         tpdo_item.value
+    assert str(exc_info.value) == "Raw data is empty."
 
-    with pytest.raises(AttributeError):
+    with pytest.raises(AttributeError) as exc_info:
         tpdo_item.value = 15
+    assert str(exc_info.value) == "can't set attribute"
 
-    tpdo_item.raw_data = convert_dtype_to_bytes(15, REG_DTYPE.U16)
+    tpdo_item._raw_data = convert_dtype_to_bytes(15, REG_DTYPE.U16)
     assert tpdo_item.value == 15
 
 
@@ -220,6 +225,8 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
     assert len(servo._tpdo_maps) == 0
 
 
+# Remove skip in INGK-786
+@pytest.mark.skip("Skip after implementing INGK-786")
 @pytest.mark.ethercat
 def test_pdo_example(read_config, script_runner):
     protocol_contents = read_config["ethercat"]

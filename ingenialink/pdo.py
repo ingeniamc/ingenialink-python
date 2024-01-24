@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILError, ILValueError
+from ingenialink.exceptions import ILError
 from ingenialink.servo import Servo
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, dtype_value
 
@@ -25,7 +25,7 @@ class PDOMapItem:
     ) -> None:
         self.register = register
         self.size = size or dtype_value[register.dtype][0]
-        self.raw_data: Optional[bytes] = None
+        self._raw_data: Optional[bytes] = None
         self._check_if_mappable()
 
     def _check_if_mappable(self) -> None:
@@ -41,21 +41,34 @@ class PDOMapItem:
             )
 
     @property
+    def raw_data(self) -> bytes:
+        """Raw data in bytes.
+
+        Returns:
+            Raw data in bytes
+
+        Raises:
+            ILError: If the raw data is empty.
+
+        """
+        if self._raw_data is None:
+            raise ILError("Raw data is empty.")
+        return self._raw_data
+
+    @property
     def value(self) -> Union[int, float]:
         """Register value. Converts the raw data bytes into the register value.
 
         Raises:
-            ILValueError: If the raw data is empty.
-            ILValueError: If the register type is not int or float.
+            ILError: If the raw data is empty.
+            ILError: If the register type is not int or float.
 
         Returns:
             Register value.
         """
-        if self.raw_data is None:
-            raise ILValueError("Raw data is empty.")
         value = convert_bytes_to_dtype(self.raw_data, self.register.dtype)
-        if not isinstance(value, (int, float)):
-            raise ILValueError("Wrong register value type")
+        if not isinstance(value, (int, float, bool)):
+            raise ILError("Wrong register value type")
         return value
 
     @property
@@ -67,8 +80,7 @@ class PDOMapItem:
 
         """
         index = self.register.idx
-        size_bytes = dtype_value[self.register.dtype][0]
-        mapped_register = (index << 16) | (size_bytes * 8)
+        mapped_register = (index << 16) | (self.size * 8)
         mapped_register_bytes: bytes = mapped_register.to_bytes(4, "little")
         return mapped_register_bytes
 
@@ -82,6 +94,14 @@ class RPDOMapItem(PDOMapItem):
         self, register: Union[EthercatRegister, CanopenRegister], size: Optional[int] = None
     ) -> None:
         super().__init__(register, size)
+
+    @property
+    def raw_data(self) -> bytes:
+        return super().raw_data
+
+    @raw_data.setter
+    def raw_data(self, data: bytes) -> None:
+        self._raw_data = data
 
     @property
     def value(self) -> Union[int, float]:
@@ -161,7 +181,7 @@ class PDOMap:
 
     @property
     def map_register_index(self) -> Optional[int]:
-        """Index of the mapping register. None if the it is not mapped in the drive.
+        """Index of the mapping register. None if it is not mapped in the drive.
 
         Returns:
             Index of the mapping register.
@@ -184,13 +204,25 @@ class PDOMap:
             length += item.size
         return length
 
+    @property
+    def items_mapping(self) -> bytearray:
+        """Returns all register item mappings concatenated.
+
+        Returns:
+            int: _description_
+        """
+        map_bytes = bytearray()
+        for pdo_map_item in self.items:
+            map_bytes += pdo_map_item.register_mapping
+        return map_bytes
+
 
 class RPDOMap(PDOMap):
     """Class to store RPDO mapping information."""
 
     PDO_MAP_ITEM_CLASS = RPDOMapItem
 
-    def get_item_bytes(self) -> bytes:
+    def get_item_bytes(self) -> bytearray:
         """Return the concatenated items raw data to be sent to the drive.
 
         Raises:
@@ -200,7 +232,7 @@ class RPDOMap(PDOMap):
         Returns:
             Concatenated items raw data.
         """
-        data_bytes = bytes()
+        data_bytes = bytearray()
         for item in self.items:
             if item.raw_data is None:
                 raise ILError(f"PDO item {item.register.identifier} does not have data stored.")
@@ -261,6 +293,8 @@ class PDOServo(Servo):
         servo_status_listener: bool = False,
     ):
         super().__init__(target, dictionary_path, servo_status_listener)
+        self._rpdo_maps: List[RPDOMap] = []
+        self._tpdo_maps: List[TPDOMap] = []
         self.reset_rpdo_mapping()
         self.reset_tpdo_mapping()
 
@@ -269,23 +303,25 @@ class PDOServo(Servo):
         self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, 0)
         for map_register in self.RPDO_MAP_REGISTER_SUB_IDX_0:
             self.write(map_register, 0)
-        self._rpdo_maps: List[RPDOMap] = []
+        self._rpdo_maps.clear()
 
     def reset_tpdo_mapping(self) -> None:
         """Delete the TPDO mapping stored in the servo drive."""
         self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, 0)
         for map_register in self.TPDO_MAP_REGISTER_SUB_IDX_0:
             self.write(map_register, 0)
-        self._tpdo_maps: List[TPDOMap] = []
+        self._tpdo_maps.clear()
 
     def add_rpdo_map(self, rpdo_map: RPDOMap) -> None:
         """Add a new RPDO map into the drive.
+
+        It takes the first available (not mapped yet) RPDO assignment slot of the drive.
 
         Args:
             rpdo_map: RPDO map to be added.
 
         Raises:
-            ILError: If there are not available PDOs.
+            ILError: If there are no available PDOs.
         """
         if len(self._rpdo_maps) + 1 > self.AVAILABLE_PDOS:
             raise ILError("Could not add a new RPDO map, there are no available PDOs.")
@@ -293,15 +329,10 @@ class PDOServo(Servo):
         map_index = len(self._rpdo_maps) - 1
 
         self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._rpdo_maps))
-
-        rpdo_map_bytes = bytes()
-        for pdo_map_item in rpdo_map.items:
-            rpdo_map_bytes += pdo_map_item.register_mapping
-
         self.write(self.RPDO_MAP_REGISTER_SUB_IDX_0[map_index], len(rpdo_map.items))
         self.write(
             self.RPDO_MAP_REGISTER_SUB_IDX_1[map_index],
-            rpdo_map_bytes.decode("utf-8"),
+            rpdo_map.items_mapping.decode("utf-8"),
             complete_access=True,
         )
         self.write(
@@ -314,11 +345,13 @@ class PDOServo(Servo):
     def add_tpdo_map(self, tpdo_map: TPDOMap) -> None:
         """Add a new TPDO map into the drive.
 
+        It takes the first available (not mapped yet) TPDO assignment slot of the drive.
+
         Args:
             tpdo_map: TPDO map to be added.
 
         Raises:
-            ILError: If there are not available PDOs.
+            ILError: If there are no available PDOs.
         """
         if len(self._tpdo_maps) + 1 > self.AVAILABLE_PDOS:
             raise ILError("Could not add a new TPDO map, there are no available PDOs.")
@@ -326,15 +359,10 @@ class PDOServo(Servo):
         map_index = len(self._tpdo_maps) - 1
 
         self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._tpdo_maps))
-
-        tpdo_map_bytes = bytes()
-        for pdo_map_item in tpdo_map.items:
-            tpdo_map_bytes += pdo_map_item.register_mapping
-
         self.write(self.TPDO_MAP_REGISTER_SUB_IDX_0[map_index], len(tpdo_map.items))
         self.write(
             self.TPDO_MAP_REGISTER_SUB_IDX_1[map_index],
-            tpdo_map_bytes.decode("utf-8"),
+            tpdo_map.items_mapping.decode("utf-8"),
             complete_access=True,
         )
         self.write(
@@ -386,22 +414,6 @@ class PDOServo(Servo):
         self.map_tpdos(tpdo_maps)
         self.map_rpdos(rpdo_maps)
 
-    def create_rpdo_map(self) -> RPDOMap:
-        """Create a new RPDO map.
-
-        Returns:
-            New RPDO map.
-        """
-        return RPDOMap()
-
-    def create_tpdo_map(self) -> TPDOMap:
-        """Create a new TPDO map.
-
-        Returns:
-            New TPDO map.
-        """
-        return TPDOMap()
-
     def set_mapping_in_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
         """Callback called by the slave to configure the mapping.
 
@@ -446,7 +458,7 @@ class PDOServo(Servo):
         """
         if len(self._rpdo_maps) == 0:
             return None
-        output = bytes()
+        output = bytearray()
         for rpdo_map in self._rpdo_maps:
             output += rpdo_map.get_item_bytes()
-        return output
+        return bytes(output)
