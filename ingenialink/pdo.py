@@ -55,6 +55,10 @@ class PDOMapItem:
             raise ILError("Raw data is empty.")
         return self._raw_data
 
+    @raw_data.setter
+    def raw_data(self, data: bytes) -> None:
+        self._raw_data = data
+
     @property
     def value(self) -> Union[int, float]:
         """Register value. Converts the raw data bytes into the register value.
@@ -94,14 +98,6 @@ class RPDOMapItem(PDOMapItem):
         self, register: Union[EthercatRegister, CanopenRegister], size: Optional[int] = None
     ) -> None:
         super().__init__(register, size)
-
-    @property
-    def raw_data(self) -> bytes:
-        return super().raw_data
-
-    @raw_data.setter
-    def raw_data(self, data: bytes) -> None:
-        self._raw_data = data
 
     @property
     def value(self) -> Union[int, float]:
