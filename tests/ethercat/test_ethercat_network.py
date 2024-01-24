@@ -80,6 +80,6 @@ def test_connect_to_slave_no_slaves_detected(mocker, read_config):
 def test_scan_slaves_keeps_already_connected_slaves_state(connect_to_slave):
     servo, net = connect_to_slave
     net._ecat_master.read_state()
-    assert servo.slave.state == pysoem.PREOP_STATE
+    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
     net.scan_slaves()
-    assert servo.slave.state == pysoem.PREOP_STATE
+    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
