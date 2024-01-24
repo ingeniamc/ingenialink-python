@@ -5,7 +5,10 @@
 ### Add
 - Motor enable and disable features in the virtual drive.
 - Emulate control loops in the virtual drive.
+- Support to Python 3.9 to 3.12.
 
+### Deprecated
+- Support to Python 3.6 to 3.8.
 
 ## [7.1.1] - 2024-01-03
 
