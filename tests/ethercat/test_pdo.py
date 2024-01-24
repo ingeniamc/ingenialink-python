@@ -94,7 +94,7 @@ def test_tpdo_item(open_dictionary):
         tpdo_item.value = 15
     assert str(exc_info.value) == "can't set attribute"
 
-    tpdo_item._raw_data = convert_dtype_to_bytes(15, REG_DTYPE.U16)
+    tpdo_item.raw_data = convert_dtype_to_bytes(15, REG_DTYPE.U16)
     assert tpdo_item.value == 15
 
 
