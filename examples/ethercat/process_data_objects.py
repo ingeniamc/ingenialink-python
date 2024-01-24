@@ -69,8 +69,8 @@ class ProcessDataExample:
             self.servo.process_pdo_inputs()
             for item in self.tpdo_map.items:
                 TPDO_REGISTERS[item.register.identifier] = item.value
+            RPDO_REGISTERS["CL_POS_SET_POINT_VALUE"] += 100
             for item in self.rpdo_map.items:
-                RPDO_REGISTERS["CL_POS_SET_POINT_VALUE"] += 100
                 item.value = RPDO_REGISTERS[item.register.identifier]
             self.servo.generate_pdo_outputs()
             self._print_values_to_console()

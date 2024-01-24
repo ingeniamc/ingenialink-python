@@ -261,8 +261,6 @@ class PDOServo(Servo):
         servo_status_listener: bool = False,
     ):
         super().__init__(target, dictionary_path, servo_status_listener)
-        self.reset_rpdo_mapping()
-        self.reset_tpdo_mapping()
 
     def reset_rpdo_mapping(self) -> None:
         """Delete the RPDO mapping stored in the servo drive."""

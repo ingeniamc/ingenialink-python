@@ -124,7 +124,6 @@ class Servo:
         servo_status_listener: bool = False,
     ):
         self._dictionary = self.DICTIONARY_CLASS(dictionary_path)
-        self.subnodes
         self.target = target
         prod_name = ""
         if self.dictionary.part_number is not None:
