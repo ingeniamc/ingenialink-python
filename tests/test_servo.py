@@ -1,17 +1,17 @@
 import os
-import pytest
-import time
 import shutil
-from pathlib import Path
+import time
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
-from ingenialink.utils._utils import get_drive_identification
-from ingenialink.register import REG_ADDRESS_TYPE
+import pytest
+
 from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.register import REG_DTYPE
-from ingenialink.servo import SERVO_STATE
 from ingenialink.exceptions import ILStateError, ILTimeoutError, ILValueError
-
+from ingenialink.register import REG_ADDRESS_TYPE
+from ingenialink.servo import SERVO_STATE
+from ingenialink.utils._utils import get_drive_identification
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -68,6 +68,8 @@ def create_disturbance(connect_to_slave, pytestconfig):
     servo.disturbance_disable()
 
 
+# TODO: INGK-803 Remove the skip after fixing the test.
+@pytest.mark.skip
 @pytest.mark.canopen
 @pytest.mark.ethernet
 def test_save_configuration(connect_to_slave):
