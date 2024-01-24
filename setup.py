@@ -45,19 +45,6 @@ setuptools.setup(
         "scipy==1.5.4",
     ],
     extras_require={
-        "dev": [
-            "sphinx==3.5.4",
-            "sphinx-rtd-theme==1.0.0",
-            "sphinxcontrib-bibtex==2.4.1",
-            "nbsphinx==0.8.6",
-            "pytest==6.2.4",
-            "pytest-cov==2.12.1",
-            "pytest-mock==3.6.1",
-            "jinja2==3.0.3",
-            "pycodestyle==2.6.0",
-            "wheel==0.37.1",
-            "m2r2==0.3.2",
-            "mypy==0.971",
-        ],
+        "dev": ["tox==4.12.1"],
     },
 )

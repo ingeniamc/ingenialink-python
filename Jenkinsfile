@@ -11,6 +11,10 @@ def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
 def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_VERSION = ""
 
+def PYTHON_VERSIONS = "py38,py39"
+def DEFAULT_PYTHON_VERSION = "3.9"
+def TOX_VERSION = "4.12.1"
+
 pipeline {
     agent none
     stages {
@@ -61,19 +65,17 @@ pipeline {
                 }
                 stage('Install deps') {
                     steps {
-                        bat '''
+                        bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            py -3.9 -m venv venv
-                            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
-                            venv\\Scripts\\python.exe -m pip install -e .
-                        '''
+                            py -${DEFAULT_PYTHON_VERSION} -m pip install tox==${TOX_VERSION}
+                        """
                     }
                 }
                 stage('Build wheels') {
                     steps {
                         bat '''
                              cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                             venv\\Scripts\\python.exe setup.py build sdist bdist_wheel
+                             tox -e build
                         '''
                     }
                 }
@@ -81,7 +83,7 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            venv\\Scripts\\python.exe -m black --check ingenialink tests
+                            tox -e format
                         """
                     }
                 }
@@ -89,7 +91,7 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            venv\\Scripts\\python.exe -m mypy ingenialink virtual_drive
+                            tox -e type
                         """
                     }
                 }
@@ -97,7 +99,7 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            venv\\Scripts\\python.exe -m sphinx -b html docs _docs
+                            tox -e docs
                         """
                     }
                 }
@@ -105,10 +107,12 @@ pipeline {
                     steps {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            venv\\Scripts\\python.exe -m coverage run -m pytest tests -m docker --junitxml=pytest_docker_report.xml
+                            tox -e ${PYTHON_VERSIONS} -- -m docker --junitxml=pytest_docker_report.xml
+                        """
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             move .coverage ${env.WORKSPACE}\\.coverage_docker
                             move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
-                            exit /b 0
                         """
                         junit 'pytest_docker_report.xml'
                     }
@@ -151,42 +155,44 @@ pipeline {
                 }
                 stage('Install deps') {
                     steps {
-                        bat '''
-                            python -m venv venv
-                            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
-                        '''
+                        bat """
+                            py -${DEFAULT_PYTHON_VERSION} -m venv venv
+                            venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
+                        """
                     }
                 }
                 stage('Update drives FW') {
                     steps {
                         bat '''
-                             venv\\Scripts\\python.exe -m tests.resources.Scripts.load_FWs ethercat
+                            venv\\Scripts\\python.exe -m tox -e firmware -- ethercat
                         '''
                     }
                 }
                 stage('Run EtherCAT tests') {
                     steps {
-                        bat '''
-                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --protocol ethercat --junitxml=pytest_ethercat_report.xml
+                        bat """
+                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethercat --junitxml=pytest_ethercat_report.xml
+                        """
+                        bat """
                             move .coverage .coverage_ethercat
-                            exit /b 0
-                        '''
+                        """
                         junit 'pytest_ethercat_report.xml'
                     }
                 }
                 stage('Run no-connection tests') {
                     steps {
-                        bat '''
-                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --junitxml=pytest_no_connection_report.xml
+                        bat """
+                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
+                        """
+                        bat """
                             move .coverage .coverage_no_connection
-                            exit /b 0
-                        '''
+                        """
                         junit 'pytest_no_connection_report.xml'
                     }
                 }
                 stage('Archive') {
                     steps {
-                        stash includes: '.coverage_no_connection, .coverage_ethercat', name: 'coverage_reports'
+                        stash includes: '.coverage_ethercat, .coverage_no_connection', name: 'coverage_reports'
                         archiveArtifacts artifacts: '*.xml'
                     }
                 }
@@ -215,36 +221,38 @@ pipeline {
                 }
                 stage('Install deps') {
                     steps {
-                        bat '''
-                            python -m venv venv
-                            venv\\Scripts\\python.exe -m pip install -r requirements\\dev-requirements.txt
-                        '''
+                        bat """
+                            py -${DEFAULT_PYTHON_VERSION} -m venv venv
+                            venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
+                        """
                     }
                 }
                 stage('Update drives FW') {
                     steps {
                         bat '''
-                             venv\\Scripts\\python.exe -m tests.resources.Scripts.load_FWs canopen
+                             venv\\Scripts\\python.exe -m tox -e firmware -- canopen
                         '''
                     }
                 }
                 stage('Run CANopen tests') {
                     steps {
-                        bat '''
-                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --protocol canopen --junitxml=pytest_canopen_report.xml
+                        bat """
+                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol canopen --junitxml=pytest_canopen_report.xml
+                        """
+                        bat """
                             move .coverage .coverage_canopen
-                            exit /b 0
-                        '''
+                        """
                         junit 'pytest_canopen_report.xml'
                     }
                 }
                 stage('Run Ethernet tests') {
                     steps {
-                        bat '''
-                            venv\\Scripts\\python.exe -m coverage run -m pytest tests --protocol ethernet --junitxml=pytest_ethernet_report.xml
+                        bat """
+                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
+                        """
+                        bat """
                             move .coverage .coverage_ethernet
-                            exit /b 0
-                        '''
+                        """
                         junit 'pytest_ethernet_report.xml'
                     }
                 }
@@ -253,8 +261,7 @@ pipeline {
                         unstash 'coverage_docker'
                         unstash 'coverage_reports'
                         bat '''
-                            venv\\Scripts\\python.exe -m coverage combine .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
-                            venv\\Scripts\\python.exe -m coverage xml --include=ingenialink/*
+                            venv\\Scripts\\python.exe -m tox -e coverage -- .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
                         '''
                         publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
                         archiveArtifacts artifacts: '*.xml'
