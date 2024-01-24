@@ -3,14 +3,13 @@ import sys
 import threading
 import time
 from enum import Enum
-from functools import partial
 from typing import Tuple
 
 import pysoem
 
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.exceptions import ILError
-from ingenialink.pdo import PDOMap
+from ingenialink.pdo import RPDOMap, TPDOMap
 
 
 class SlaveState(Enum):
@@ -52,10 +51,10 @@ class ProcessDataExample:
         if auto_stop:
             threading.Timer(5, self._stop_process_data).start()
 
-    def create_pdo_maps(self) -> Tuple[PDOMap]:
+    def create_pdo_maps(self) -> None:
         """Create a PDO Map with the RPDO and TPDO registers."""
-        self.rpdo_map = self.servo.create_rpdo_map()
-        self.tpdo_map = self.servo.create_tpdo_map()
+        self.rpdo_map = RPDOMap()
+        self.tpdo_map = TPDOMap()
         for tpdo_register in TPDO_REGISTERS:
             register = self.servo.dictionary.registers(1)[tpdo_register]
             self.tpdo_map.add_registers(register)
@@ -86,13 +85,13 @@ class ProcessDataExample:
             time.sleep(0.01)
 
     @staticmethod
-    def _print_values_to_console():
+    def _print_values_to_console() -> None:
         """Print the TPDO register values to console."""
         console_output = "".join(f"{reg}: {value} " for reg, value in TPDO_REGISTERS.items())
         sys.stdout.write("\r" + console_output)
         sys.stdout.flush()
 
-    def _stop_process_data(self):
+    def _stop_process_data(self) -> None:
         """Stop the data processing."""
         self._pd_thread_stop_event.set()
 
