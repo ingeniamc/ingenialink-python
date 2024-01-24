@@ -19,7 +19,7 @@ ingenialink-python is a Python library for simple motion control tasks and commu
 Requirements
 ------------
 
-* Python 3.8 or higher
+* Python 3.9 or higher
 * WinPcap_ 4.1.3
 
 .. _WinPcap: https://www.winpcap.org/install/
