@@ -65,23 +65,18 @@ class ProcessDataExample:
     def process_data_loop(self) -> None:
         """Process inputs and generate outputs."""
         while not self._pd_thread_stop_event.is_set():
-            self.servo.process_pdo_inputs()
             for item in self.tpdo_map.items:
                 TPDO_REGISTERS[item.register.identifier] = item.value
             RPDO_REGISTERS["CL_POS_SET_POINT_VALUE"] += 100
             for item in self.rpdo_map.items:
                 item.value = RPDO_REGISTERS[item.register.identifier]
-            self.servo.generate_pdo_outputs()
-            self._print_values_to_console()
             time.sleep(0.1)
 
     def _processdata_thread(self) -> None:
         """Background thread that sends and receives the process-data frame in a 10ms interval."""
         while not self._pd_thread_stop_event.is_set():
-            self.net._ecat_master.send_processdata()
-            self._actual_wkc = self.net._ecat_master.receive_processdata(timeout=100_000)
-            if self._actual_wkc != self.net._ecat_master.expected_wkc:
-                print("incorrect wkc")
+            self.net.send_receive_processdata()
+            self._print_values_to_console()
             time.sleep(0.01)
 
     @staticmethod
@@ -97,6 +92,8 @@ class ProcessDataExample:
 
     def run(self) -> None:
         """Main loop of the program."""
+        for item in self.rpdo_map.items:
+            item.value = RPDO_REGISTERS[item.register.identifier]
         self.servo.set_mapping_in_slave([self.rpdo_map], [self.tpdo_map])
         self.net.start_pdos()
         proc_thread = threading.Thread(target=self._processdata_thread)

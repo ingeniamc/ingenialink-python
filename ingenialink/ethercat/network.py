@@ -190,11 +190,7 @@ class EthercatNetwork(Network):
             return
         if not self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE):
             raise ILStateError("Drives can not reach SafeOp state")
-        # TODO Add porcessdata function INGK-799
-        self._ecat_master.send_processdata()
-        processdata_wkc = self._ecat_master.receive_processdata(
-            timeout=self.ECAT_PROCESSDATA_TIMEOUT_NS
-        )
+        self.send_receive_processdata()
         self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
 
     def stop_pdos(self) -> None:
@@ -207,6 +203,17 @@ class EthercatNetwork(Network):
         ]
         if not self._change_nodes_state(op_servo_list, pysoem.PREOP_STATE):
             logger.warning("Drive can not reach PreOp state")
+
+    def send_receive_processdata(self) -> None:
+        for servo in self.servos:
+            servo.process_pdo_inputs()
+        self._ecat_master.send_processdata()
+        processdata_wkc = self._ecat_master.receive_processdata(
+            timeout=self.ECAT_PROCESSDATA_TIMEOUT_NS
+        )
+        for servo in self.servos:
+            servo.generate_pdo_outputs()
+
 
     def _change_nodes_state(
         self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int
