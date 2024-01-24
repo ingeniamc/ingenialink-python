@@ -122,7 +122,7 @@ class TPDOMapItem(PDOMapItem):
 class PDOMap:
     """Abstract class that contains PDO mapping information."""
 
-    PDO_MAP_ITEM_CLASS = PDOMapItem
+    _PDO_MAP_ITEM_CLASS = PDOMapItem
 
     def __init__(self) -> None:
         self.__items: List[PDOMapItem] = []
@@ -140,7 +140,7 @@ class PDOMap:
         Returns:
             PDO Map item.
         """
-        item = self.PDO_MAP_ITEM_CLASS(register, size)
+        item = self._PDO_MAP_ITEM_CLASS(register, size)
         return item
 
     def add_item(self, item: PDOMapItem) -> None:
@@ -220,7 +220,7 @@ class PDOMap:
 class RPDOMap(PDOMap):
     """Class to store RPDO mapping information."""
 
-    PDO_MAP_ITEM_CLASS = RPDOMapItem
+    _PDO_MAP_ITEM_CLASS = RPDOMapItem
 
     def get_item_bytes(self) -> bytearray:
         """Return the concatenated items raw data to be sent to the drive.
@@ -249,7 +249,7 @@ class RPDOMap(PDOMap):
 class TPDOMap(PDOMap):
     """Class to store TPDO mapping information."""
 
-    PDO_MAP_ITEM_CLASS = TPDOMapItem
+    _PDO_MAP_ITEM_CLASS = TPDOMapItem
 
     def set_item_bytes(self, data_bytes: bytes) -> None:
         """Set the items raw data from a byte array received from the drive.
