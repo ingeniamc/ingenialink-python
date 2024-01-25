@@ -11,13 +11,13 @@ from scipy import signal
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
-from ingenialink.ethernet.dictionary import EthernetDictionary
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.utils import constants
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.utils.constants import IL_MC_CW_EO
 from ingenialink.utils.mcb import MCB
+from ingenialink.virtual.dictionary import VirtualDictionary
 
 R_VALUE = 1.1
 L_VALUE = 3.9e-4
@@ -1240,7 +1240,7 @@ class VirtualDrive(Thread):
         self.device_info = None
         self.__logger: List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]] = []
         self.__reg_address_to_id: Dict[int, Dict[int, str]] = {}
-        self.__dictionary = EthernetDictionary(self.dictionary_path)
+        self.__dictionary = VirtualDictionary(self.dictionary_path)
         self.reg_signals: Dict[str, np.ndarray] = {}
         self.reg_time: Dict[str, np.ndarray] = {}
         self.reg_noise_amplitude: Dict[str, float] = {}
@@ -1354,6 +1354,8 @@ class VirtualDrive(Thread):
             subnode = int(element.attrib["subnode"])
             reg_dtype = element.attrib["dtype"]
             reg_data = element.attrib["storage"]
+            if not self.__register_exists(subnode, element.attrib["id"]):
+                continue
             self.set_value_by_id(
                 subnode,
                 element.attrib["id"],
@@ -1619,6 +1621,18 @@ class VirtualDrive(Thread):
             if not value_in_enum_keys:
                 return
         self.__dictionary.registers(subnode)[id].storage = value
+
+    def __register_exists(self, subnode: int, id: str) -> bool:
+        """Returns True if the register exists in the dictionary
+
+        Args:
+            subnode: Subnode.
+            id: Register ID.
+
+        Returns:
+            Register value.
+        """
+        return subnode < self.__dictionary.subnodes and id in self.__dictionary.registers(subnode)
 
     def get_register(
         self, subnode: int, address: Optional[int] = None, id: Optional[str] = None
