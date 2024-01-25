@@ -61,13 +61,7 @@ def test_virtual_drive_disconnection(connect_virtual_drive):
 @pytest.mark.virtual
 def test_connect_virtual_custom_dictionaries(connect_virtual_drive, read_config):
     config = read_config
-    for protocol in ALLOW_PROTOCOLS:
-        if (
-            protocol not in config
-            or protocol == "no_connection"
-            or "dictionary" not in config[protocol]
-        ):
-            continue
+    for protocol in ["ethernet", "canopen"]:
         dictionary = config[protocol]["dictionary"]
         servo, net = connect_virtual_drive(dictionary)
         assert servo is not None and net is not None
