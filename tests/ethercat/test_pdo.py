@@ -187,6 +187,9 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, _ = connect_to_slave
 
+    servo.reset_tpdo_mapping()
+    servo.reset_rpdo_mapping()
+
     assert servo.read(EthercatServo.TPDO_ASSIGN_REGISTER_SUB_IDX_0) == 0
     assert servo.read(EthercatServo.RPDO_ASSIGN_REGISTER_SUB_IDX_0) == 0
 
