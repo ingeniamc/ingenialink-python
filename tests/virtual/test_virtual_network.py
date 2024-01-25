@@ -65,7 +65,7 @@ def test_connect_virtual_custom_dictionaries(connect_virtual_drive, read_config)
         if (
             protocol not in config
             or protocol == "no_connection"
-            or dictionary not in config[protocol]
+            or "dictionary" not in config[protocol]
         ):
             continue
         dictionary = config[protocol]["dictionary"]
