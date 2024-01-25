@@ -62,7 +62,11 @@ def test_virtual_drive_disconnection(connect_virtual_drive):
 def test_connect_virtual_custom_dictionaries(connect_virtual_drive, read_config):
     config = read_config
     for protocol in ALLOW_PROTOCOLS:
-        if protocol not in config or "dictionary" not in config[protocol]:
+        if (
+            protocol not in config
+            or protocol == "no_connection"
+            or dictionary not in config[protocol]
+        ):
             continue
         dictionary = config[protocol]["dictionary"]
         servo, net = connect_virtual_drive(dictionary)
