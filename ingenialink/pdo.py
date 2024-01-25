@@ -176,6 +176,21 @@ class PDOMap:
         return self.__items
 
     @property
+    def map_register_index_bytes(self) -> bytes:
+        """Index of the mapping register in bytes.
+
+        Returns:
+            Index of the mapping register in bytes.
+
+        Raises:
+            ValueError: If map_register_index is None
+        """
+        if self.map_register_index is None:
+            raise ValueError("map_register_index is None")
+        else:
+            return self.map_register_index.to_bytes(4, "little")
+
+    @property
     def map_register_index(self) -> Optional[int]:
         """Index of the mapping register. None if it is not mapped in the drive.
 
@@ -273,12 +288,12 @@ class PDOServo(Servo):
     AVAILABLE_PDOS = 1
 
     RPDO_ASSIGN_REGISTER_SUB_IDX_0: Union[EthercatRegister, CanopenRegister]
-    RPDO_ASSIGN_REGISTER_SUB_IDX_1: List[Union[EthercatRegister, CanopenRegister]]
+    RPDO_ASSIGN_REGISTER_SUB_IDX_1: Union[EthercatRegister, CanopenRegister]
     RPDO_MAP_REGISTER_SUB_IDX_0: List[Union[EthercatRegister, CanopenRegister]]
     RPDO_MAP_REGISTER_SUB_IDX_1: List[Union[EthercatRegister, CanopenRegister]]
 
     TPDO_ASSIGN_REGISTER_SUB_IDX_0: Union[EthercatRegister, CanopenRegister]
-    TPDO_ASSIGN_REGISTER_SUB_IDX_1: List[Union[EthercatRegister, CanopenRegister]]
+    TPDO_ASSIGN_REGISTER_SUB_IDX_1: Union[EthercatRegister, CanopenRegister]
     TPDO_MAP_REGISTER_SUB_IDX_0: List[Union[EthercatRegister, CanopenRegister]]
     TPDO_MAP_REGISTER_SUB_IDX_1: List[Union[EthercatRegister, CanopenRegister]]
 
@@ -306,107 +321,80 @@ class PDOServo(Servo):
             self.write(map_register, 0)
         self._tpdo_maps.clear()
 
-    def add_rpdo_map(self, rpdo_map: RPDOMap) -> None:
-        """Add a new RPDO map into the drive.
-
-        It takes the first available (not mapped yet) RPDO assignment slot of the drive.
-
-        Args:
-            rpdo_map: RPDO map to be added.
-
-        Raises:
-            ILError: If there are no available PDOs.
-        """
-        if len(self._rpdo_maps) + 1 > self.AVAILABLE_PDOS:
-            raise ILError("Could not add a new RPDO map, there are no available PDOs.")
-        self._rpdo_maps.append(rpdo_map)
-        map_index = len(self._rpdo_maps) - 1
-
-        self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._rpdo_maps))
-        self.write(self.RPDO_MAP_REGISTER_SUB_IDX_0[map_index], len(rpdo_map.items))
-        self.write(
-            self.RPDO_MAP_REGISTER_SUB_IDX_1[map_index],
-            rpdo_map.items_mapping.decode("utf-8"),
-            complete_access=True,
-        )
-        self.write(
-            self.RPDO_ASSIGN_REGISTER_SUB_IDX_1[map_index],
-            self.RPDO_MAP_REGISTER_SUB_IDX_0[map_index].idx,
-            complete_access=True,
-        )
-        rpdo_map.map_register_index = self.RPDO_MAP_REGISTER_SUB_IDX_0[map_index].idx
-
-    def add_tpdo_map(self, tpdo_map: TPDOMap) -> None:
-        """Add a new TPDO map into the drive.
-
-        It takes the first available (not mapped yet) TPDO assignment slot of the drive.
-
-        Args:
-            tpdo_map: TPDO map to be added.
-
-        Raises:
-            ILError: If there are no available PDOs.
-        """
-        if len(self._tpdo_maps) + 1 > self.AVAILABLE_PDOS:
-            raise ILError("Could not add a new TPDO map, there are no available PDOs.")
-        self._tpdo_maps.append(tpdo_map)
-        map_index = len(self._tpdo_maps) - 1
-
-        self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._tpdo_maps))
-        self.write(self.TPDO_MAP_REGISTER_SUB_IDX_0[map_index], len(tpdo_map.items))
-        self.write(
-            self.TPDO_MAP_REGISTER_SUB_IDX_1[map_index],
-            tpdo_map.items_mapping.decode("utf-8"),
-            complete_access=True,
-        )
-        self.write(
-            self.TPDO_ASSIGN_REGISTER_SUB_IDX_1[map_index],
-            self.TPDO_MAP_REGISTER_SUB_IDX_0[map_index].idx,
-            complete_access=True,
-        )
-        tpdo_map.map_register_index = self.TPDO_MAP_REGISTER_SUB_IDX_0[map_index].idx
-
-    def map_rpdos(self, rpdo_maps: List[RPDOMap]) -> None:
+    def map_rpdos(self) -> None:
         """Map the RPDO registers into the servo drive.
+        It takes the first available RPDO assignment slot of the drive.
 
-        Args:
-            rpdo_maps: List of RPDO maps.
+        Raises:
+            ILError: If there are no available PDOs.
         """
-        if len(rpdo_maps) > self.AVAILABLE_PDOS:
+        if len(self._rpdo_maps) > self.AVAILABLE_PDOS:
             raise ILError(
-                f"Could not map the RPDO maps, received {len(rpdo_maps)} PDOs and only"
+                f"Could not map the RPDO maps, received {len(self._rpdo_maps)} PDOs and only"
                 " {self.AVAILABLE_PDOS} are available"
             )
+        self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._rpdo_maps))
+        custom_map_index = 0
+        rpdo_assigns = b""
+        for rpdo_map in self._rpdo_maps:
+            if rpdo_map.map_register_index is not None:
+                rpdo_assigns += rpdo_map.map_register_index_bytes
+            self.write(self.RPDO_MAP_REGISTER_SUB_IDX_0[custom_map_index], len(rpdo_map.items))
+            self.write(
+                self.RPDO_MAP_REGISTER_SUB_IDX_1[custom_map_index],
+                rpdo_map.items_mapping.decode("utf-8"),
+                complete_access=True,
+            )
+            rpdo_map.map_register_index = self.RPDO_MAP_REGISTER_SUB_IDX_0[custom_map_index].idx
+            rpdo_assigns += rpdo_map.map_register_index_bytes
+            custom_map_index += 1
+        self.write(
+            self.RPDO_ASSIGN_REGISTER_SUB_IDX_1,
+            rpdo_assigns,
+            complete_access=True,
+        )
 
-        self.reset_rpdo_mapping()
-        for rpdo_map in rpdo_maps:
-            self.add_rpdo_map(rpdo_map)
-
-    def map_tpdos(self, tpdo_maps: List[TPDOMap]) -> None:
+    def map_tpdos(self) -> None:
         """Map the TPDO registers into the servo drive.
+        It takes the first available TPDO assignment slot of the drive.
 
-        Args:
-            tpdo_maps: List of TPDO maps.
+        Raises:
+            ILError: If there are no available PDOs.
         """
-        if len(tpdo_maps) > self.AVAILABLE_PDOS:
+        if len(self._tpdo_maps) > self.AVAILABLE_PDOS:
             raise ILError(
-                f"Could not map the TPDO maps, received {len(tpdo_maps)} PDOs and only"
+                f"Could not map the TPDO maps, received {len(self._tpdo_maps)} PDOs and only"
                 f" {self.AVAILABLE_PDOS} are available"
             )
+        self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._tpdo_maps))
+        custom_map_index = 0
+        tpdo_assigns = b""
+        for tpdo_map in self._tpdo_maps:
+            if tpdo_map.map_register_index is not None:
+                tpdo_assigns += tpdo_map.map_register_index_bytes
+            self.write(self.TPDO_MAP_REGISTER_SUB_IDX_0[custom_map_index], len(tpdo_map.items))
+            self.write(
+                self.TPDO_MAP_REGISTER_SUB_IDX_1[custom_map_index],
+                tpdo_map.items_mapping.decode("utf-8"),
+                complete_access=True,
+            )
+            tpdo_map.map_register_index = self.TPDO_MAP_REGISTER_SUB_IDX_0[custom_map_index].idx
+            tpdo_assigns += tpdo_map.map_register_index_bytes
+            custom_map_index += 1
+        self.write(
+            self.TPDO_ASSIGN_REGISTER_SUB_IDX_1,
+            tpdo_assigns,
+            complete_access=True,
+        )
 
-        self.reset_tpdo_mapping()
-        for tpdo_map in tpdo_maps:
-            self.add_tpdo_map(tpdo_map)
-
-    def map_pdos(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap], *args: int) -> None:
+    def map_pdos(self, *args: int) -> None:
         """Map RPDO and TPDO register into the drive.
 
         Args:
-            rpdo_maps: List of RPDO maps.
-            tpdo_maps: List of TPDO maps.
+            args: List of RPDO maps.
         """
-        self.map_tpdos(tpdo_maps)
-        self.map_rpdos(rpdo_maps)
+        self.map_tpdos()
+        self.map_rpdos()
 
     def set_mapping_in_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
         """Callback called by the slave to configure the mapping.

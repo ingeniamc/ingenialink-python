@@ -96,9 +96,9 @@ class ProcessDataExample:
             item.value = RPDO_REGISTERS[item.register.identifier]
         self.servo.set_mapping_in_slave([self.rpdo_map], [self.tpdo_map])
         self.net.start_pdos()
+        print("Process data started")
         proc_thread = threading.Thread(target=self._processdata_thread)
         proc_thread.start()
-        print("Process data started")
         self.servo.enable()
         try:
             self.process_data_loop()

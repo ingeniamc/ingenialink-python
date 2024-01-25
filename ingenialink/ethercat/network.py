@@ -182,9 +182,15 @@ class EthercatNetwork(Network):
             ILStateError: If slaves can not reach SafeOp state
 
         """
+        op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
+        try:
+            for servo in op_servo_list:
+                for rpdo_map in servo._rpdo_maps:
+                    rpdo_map.get_item_bytes()
+        except ILError as e:
+            raise ILError("RPDOs initial value should be set before start PDOs") from e
         self._ecat_master.config_map()
         self._ecat_master.state = pysoem.SAFEOP_STATE
-        op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
         if not op_servo_list:
             logger.warning("No drives has PDO mapping")
             return
@@ -213,7 +219,6 @@ class EthercatNetwork(Network):
         )
         for servo in self.servos:
             servo.generate_pdo_outputs()
-
 
     def _change_nodes_state(
         self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int

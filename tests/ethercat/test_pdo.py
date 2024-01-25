@@ -249,6 +249,8 @@ def test_pdo_example(read_config, script_runner):
 def test_start_stop_pdo(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
+    for item in rpdo_map.items:
+        item.value = 0
     servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
     net._ecat_master.read_state()
     assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
@@ -264,3 +266,21 @@ def test_start_stop_pdo(connect_to_slave, create_pdo_map):
     net.stop_pdos()
     net._ecat_master.read_state()
     assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+
+
+@pytest.mark.ethercat
+def test_set_mapping_in_slave(connect_to_slave, create_pdo_map):
+    tpdo_map, rpdo_map = create_pdo_map
+    servo, net = connect_to_slave
+    for item in rpdo_map.items:
+        item.value = 0
+    # servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    assert servo.slave.config_func is not None
+
+
+@pytest.mark.ethercat
+def test_set_mapping_in_slave_no_initial_value_error(connect_to_slave, create_pdo_map):
+    tpdo_map, rpdo_map = create_pdo_map
+    servo, net = connect_to_slave
+    with pytest.raises(ILError, match="RPDOs inital value should be set before map it"):
+        servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
