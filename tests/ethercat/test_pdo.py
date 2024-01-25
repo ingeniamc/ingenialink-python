@@ -193,8 +193,8 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
     assert servo.read(EthercatServo.TPDO_ASSIGN_REGISTER_SUB_IDX_0) == 0
     assert servo.read(EthercatServo.RPDO_ASSIGN_REGISTER_SUB_IDX_0) == 0
 
-    servo.add_tpdo_map(tpdo_map)
-    servo.add_rpdo_map(rpdo_map)
+    servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    servo.map_pdos(1)
 
     assert servo.read(EthercatServo.TPDO_ASSIGN_REGISTER_SUB_IDX_0) == 1
     assert len(servo._tpdo_maps) == 1
@@ -216,8 +216,8 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, _ = connect_to_slave
 
-    servo.add_tpdo_map(tpdo_map)
-    servo.add_rpdo_map(rpdo_map)
+    servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    servo.map_pdos(1)
 
     assert servo.read(EthercatServo.TPDO_ASSIGN_REGISTER_SUB_IDX_0) == 1
     assert servo.read(EthercatServo.RPDO_ASSIGN_REGISTER_SUB_IDX_0) == 1
@@ -272,18 +272,19 @@ def test_start_stop_pdo(connect_to_slave, create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_set_mapping_in_slave(connect_to_slave, create_pdo_map):
+def test_start_pdo_error_rpod_values_not_set(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
-    for item in rpdo_map.items:
-        item.value = 0
-    # servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
-    assert servo.slave.config_func is not None
+    servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    with pytest.raises(ILError):
+        net.start_pdos()
 
 
 @pytest.mark.ethercat
-def test_set_mapping_in_slave_no_initial_value_error(connect_to_slave, create_pdo_map):
+def test_set_mapping_in_slave(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
-    with pytest.raises(ILError, match="RPDOs inital value should be set before map it"):
-        servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    assert servo._rpdo_maps[0] == rpdo_map
+    assert servo._tpdo_maps[0] == tpdo_map
+    assert servo.slave.config_func is not None
