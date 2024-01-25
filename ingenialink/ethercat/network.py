@@ -104,20 +104,34 @@ class EthercatNetwork(Network):
         self._ecat_master.sdo_write_timeout = int(1_000_000 * connection_timeout)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
         self.__is_master_running = False
+        self.__last_init_nodes: List[int] = []
 
     def scan_slaves(self) -> List[int]:
-        """Scans for nodes in the network.
-        Also set already connected slaves to PreOp state.
+        """Scans for nodes in the network. If any node is already connected scan can not be done.
 
         Returns:
             List containing all the detected node IDs.
 
+        Raises:
+            ILError: If any node is already connected.
+
         """
-        self._start_master()
+        if self.servos:
+            raise ILError("Some nodes are already connected")
+        if not self.__is_master_running:
+            self._start_master()
+        self.__init_nodes()
+        return self.__last_init_nodes
+
+    def __init_nodes(self) -> None:
+        """Init all the nodes and set already connected nodes to PreOp state.
+        Also fill `__last_init_nodes` attribute.
+        """
+        self._ecat_master.slaves = []  # That is because of a bug of pysoem
         nodes = self._ecat_master.config_init()
         if self.servos:
             self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
-        return list(range(1, nodes + 1))
+        self.__last_init_nodes = list(range(1, nodes + 1))
 
     def connect_to_slave(  # type: ignore [override]
         self,
@@ -144,10 +158,13 @@ class EthercatNetwork(Network):
         """
         if not isinstance(slave_id, int) or slave_id < 0:
             raise ValueError("Invalid slave ID value")
-        slaves = self.scan_slaves()
-        if len(slaves) == 0:
+        if not self.__is_master_running:
+            self._start_master()
+        if slave_id not in self.__last_init_nodes:
+            self.__init_nodes()
+        if len(self.__last_init_nodes) == 0:
             raise ILError("Could not find any slaves in the network.")
-        if slave_id not in slaves:
+        if slave_id not in self.__last_init_nodes:
             raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
         servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
@@ -174,6 +191,7 @@ class EthercatNetwork(Network):
             self.stop_status_listener()
             self._ecat_master.close()
             self.__is_master_running = False
+            self.__last_init_nodes = []
 
     def start_pdos(self) -> None:
         """Configure the PDOs and set slave state to OP for all slaves with mapped PDOs
@@ -323,10 +341,9 @@ class EthercatNetwork(Network):
         logger.info("Firmware updated successfully")
 
     def _start_master(self) -> None:
-        """Start the EtherCAT master if it has not been already started."""
-        if not self.__is_master_running:
-            self._ecat_master.open(self.interface_name)
-            self.__is_master_running = True
+        """Start the EtherCAT master"""
+        self._ecat_master.open(self.interface_name)
+        self.__is_master_running = True
 
     @property
     def protocol(self) -> NET_PROT:
