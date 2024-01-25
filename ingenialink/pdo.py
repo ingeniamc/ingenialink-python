@@ -230,9 +230,10 @@ class RPDOMap(PDOMap):
         """
         data_bytes = bytearray()
         for item in self.items:
-            if item.raw_data is None:
+            try:
+                data_bytes += item.raw_data
+            except ILError:
                 raise ILError(f"PDO item {item.register.identifier} does not have data stored.")
-            data_bytes += item.raw_data
 
         if len(data_bytes) != self.data_bytes_length:
             raise ILError(
