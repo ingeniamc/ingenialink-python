@@ -77,9 +77,10 @@ def test_connect_to_slave_no_slaves_detected(mocker, read_config):
 
 
 @pytest.mark.ethercat
-def test_scan_slaves_keeps_already_connected_slaves_state(connect_to_slave):
+def test_scan_slaves_raises_exception_if_drive_is_already_connected(connect_to_slave):
     servo, net = connect_to_slave
     net._ecat_master.read_state()
     assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
-    net.scan_slaves()
+    with pytest.raises(ILError):
+        net.scan_slaves()
     assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
