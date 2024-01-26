@@ -22,7 +22,7 @@ def test_read_xdf_register_ethernet():
 @pytest.mark.no_connection
 def test_read_xdf_register_canopen():
     dictionary_path = join_path(path_resources, "canopen/test_dict_can.xdf")
-    address = 0x580F
+    address = 0x380F
     reg_id = "DRV_DIAG_ERROR_LAST_COM"
     subnode = 0
 
