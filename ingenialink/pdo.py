@@ -411,8 +411,8 @@ class PDOServo(Servo):
         self.map_tpdos(tpdo_maps)
         self.map_rpdos(rpdo_maps)
 
-    def set_mapping_in_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
-        """Callback called by the slave to configure the mapping.
+    def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
+        """Callback called by the slave to configure the map.
 
         Args:
             rpdo_maps: List of RPDO maps.
