@@ -13,7 +13,6 @@ class PDOMapItem:
     Attributes:
         register: mapped register object.
         size: custom register size.
-        raw_data: the register value in bytes.
 
     """
 
