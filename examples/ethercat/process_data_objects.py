@@ -47,14 +47,14 @@ class ProcessDataExample:
         slave = self.net.scan_slaves()[0]
         self.servo = self.net.connect_to_slave(slave, dictionary_path)
         self._pd_thread_stop_event = threading.Event()
+        self.rpdo_map = RPDOMap()
+        self.tpdo_map = TPDOMap()
         self.create_pdo_maps()
         if auto_stop:
             threading.Timer(5, self._stop_process_data).start()
 
     def create_pdo_maps(self) -> None:
         """Create a PDO Map with the RPDO and TPDO registers."""
-        self.rpdo_map = RPDOMap()
-        self.tpdo_map = TPDOMap()
         for tpdo_register in TPDO_REGISTERS:
             register = self.servo.dictionary.registers(1)[tpdo_register]
             self.tpdo_map.add_registers(register)
@@ -94,7 +94,7 @@ class ProcessDataExample:
         """Main loop of the program."""
         for item in self.rpdo_map.items:
             item.value = RPDO_REGISTERS[item.register.identifier]
-        self.servo.set_mapping_in_slave([self.rpdo_map], [self.tpdo_map])
+        self.servo.set_pdo_map_to_slave([self.rpdo_map], [self.tpdo_map])
         self.net.start_pdos()
         print("Process data started")
         proc_thread = threading.Thread(target=self._processdata_thread)
