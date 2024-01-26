@@ -230,9 +230,10 @@ class RPDOMap(PDOMap):
         """
         data_bytes = bytearray()
         for item in self.items:
-            if item.raw_data is None:
+            try:
+                data_bytes += item.raw_data
+            except ILError:
                 raise ILError(f"PDO item {item.register.identifier} does not have data stored.")
-            data_bytes += item.raw_data
 
         if len(data_bytes) != self.data_bytes_length:
             raise ILError(
@@ -408,8 +409,8 @@ class PDOServo(Servo):
         self.map_tpdos(tpdo_maps)
         self.map_rpdos(rpdo_maps)
 
-    def set_mapping_in_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
-        """Callback called by the slave to configure the mapping.
+    def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
+        """Callback called by the slave to configure the map.
 
         Args:
             rpdo_maps: List of RPDO maps.
