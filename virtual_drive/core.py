@@ -1609,7 +1609,6 @@ class VirtualDrive(Thread):
             id: Register ID.
             value: Value to be set.
         """
-        register = self.__dictionary.registers(subnode)[id]
         self.__dictionary.registers(subnode)[id].storage = value
 
     def get_register(
