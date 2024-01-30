@@ -7,6 +7,7 @@
 - Emulate control loops in the virtual drive.
 - Support to Python 3.9 to 3.12.
 - EtherCAT PDO module.
+- Store and restore functionalities for subnode 0.
 
 ### Deprecated
 - Support to Python 3.6 to 3.8.
