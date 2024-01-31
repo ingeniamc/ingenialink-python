@@ -250,21 +250,16 @@ class EthercatNetwork(Network):
         Returns:
             True if all nodes reached the target state, else False.
         """
-        if not isinstance(nodes, list):
-            node_list = [nodes]
-        else:
-            node_list = nodes
+        node_list = nodes if isinstance(nodes, list) else [nodes]
         for drive in node_list:
             drive.slave.state = target_state
             drive.slave.write_state()
         self._ecat_master.read_state()
 
         return all(
-            [
-                target_state
-                == drive.slave.state_check(target_state, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
-                for drive in node_list
-            ]
+            target_state
+            == drive.slave.state_check(target_state, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
+            for drive in node_list
         )
 
     def subscribe_to_status(  # type: ignore [override]

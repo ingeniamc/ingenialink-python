@@ -260,7 +260,7 @@ def test_start_stop_pdo(connect_to_slave, create_pdo_map):
     net.start_pdos()
     for _ in range(5):
         net._ecat_master.send_processdata()
-        porcessdata_wkc = net._ecat_master.receive_processdata(
+        net._ecat_master.receive_processdata(
             timeout=net.ECAT_PROCESSDATA_TIMEOUT_NS
         )
         time.sleep(0.01)
