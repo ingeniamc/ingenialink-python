@@ -1612,15 +1612,6 @@ class VirtualDrive(Thread):
             id: Register ID.
             value: Value to be set.
         """
-        register = self.__dictionary.registers(subnode)[id]
-        if register.enums_count > 0:
-            value_in_enum_keys = False
-            for enum in register.enums:
-                if enum["value"] == value:
-                    value_in_enum_keys = True
-                    break
-            if not value_in_enum_keys:
-                return
         self.__dictionary.registers(subnode)[id].storage = value
 
     def __register_exists(self, subnode: int, id: str) -> bool:
