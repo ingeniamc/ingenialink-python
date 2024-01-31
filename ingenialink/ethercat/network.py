@@ -210,9 +210,7 @@ class EthercatNetwork(Network):
             raise ILStateError("Drives can not reach SafeOp state")
         # TODO Add porcessdata function INGK-799
         self._ecat_master.send_processdata()
-        self._ecat_master.receive_processdata(
-            timeout=self.ECAT_PROCESSDATA_TIMEOUT_NS
-        )
+        self._ecat_master.receive_processdata(timeout=self.ECAT_PROCESSDATA_TIMEOUT_NS)
         self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
 
     def stop_pdos(self) -> None:
@@ -245,8 +243,7 @@ class EthercatNetwork(Network):
         self._ecat_master.read_state()
 
         return all(
-            target_state
-            == drive.slave.state_check(target_state, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
+            target_state == drive.slave.state_check(target_state, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
             for drive in node_list
         )
 
