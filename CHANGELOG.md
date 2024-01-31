@@ -9,6 +9,7 @@
 - EtherCAT PDO module.
 - Store and restore functionalities for subnode 0.
 - Add functionalities to update ECAT state machine
+- Add send_receive_processdata function
 
 ### Deprecated
 - Support to Python 3.6 to 3.8.

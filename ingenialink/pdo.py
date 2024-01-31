@@ -337,22 +337,31 @@ class PDOServo(Servo):
         custom_map_index = 0
         rpdo_assigns = b""
         for rpdo_map in self._rpdo_maps:
-            if rpdo_map.map_register_index is not None:
-                rpdo_assigns += rpdo_map.map_register_index_bytes
-            self.write(self.RPDO_MAP_REGISTER_SUB_IDX_0[custom_map_index], len(rpdo_map.items))
-            self.write(
-                self.RPDO_MAP_REGISTER_SUB_IDX_1[custom_map_index],
-                rpdo_map.items_mapping.decode("utf-8"),
-                complete_access=True,
-            )
-            rpdo_map.map_register_index = self.RPDO_MAP_REGISTER_SUB_IDX_0[custom_map_index].idx
+            if rpdo_map.map_register_index is None:
+                self._set_rpdo_map_register(custom_map_index, rpdo_map)
+                custom_map_index += 1
             rpdo_assigns += rpdo_map.map_register_index_bytes
-            custom_map_index += 1
         self.write(
             self.RPDO_ASSIGN_REGISTER_SUB_IDX_1,
             rpdo_assigns,
             complete_access=True,
         )
+
+    def _set_rpdo_map_register(self, rpdo_map_register_index: int, rpdo_map: RPDOMap) -> None:
+        """Fill RPDO map register with PRDOMap object data
+
+        Args:
+            rpdo_map_register_index: custom rpdo map register index
+            rpdo_map: custom rpdo data
+
+        """
+        self.write(self.RPDO_MAP_REGISTER_SUB_IDX_0[rpdo_map_register_index], len(rpdo_map.items))
+        self.write(
+            self.RPDO_MAP_REGISTER_SUB_IDX_1[rpdo_map_register_index],
+            rpdo_map.items_mapping.decode("utf-8"),
+            complete_access=True,
+        )
+        rpdo_map.map_register_index = self.RPDO_MAP_REGISTER_SUB_IDX_0[rpdo_map_register_index].idx
 
     def map_tpdos(self) -> None:
         """Map the TPDO registers into the servo drive.
@@ -370,22 +379,31 @@ class PDOServo(Servo):
         custom_map_index = 0
         tpdo_assigns = b""
         for tpdo_map in self._tpdo_maps:
-            if tpdo_map.map_register_index is not None:
-                tpdo_assigns += tpdo_map.map_register_index_bytes
-            self.write(self.TPDO_MAP_REGISTER_SUB_IDX_0[custom_map_index], len(tpdo_map.items))
-            self.write(
-                self.TPDO_MAP_REGISTER_SUB_IDX_1[custom_map_index],
-                tpdo_map.items_mapping.decode("utf-8"),
-                complete_access=True,
-            )
-            tpdo_map.map_register_index = self.TPDO_MAP_REGISTER_SUB_IDX_0[custom_map_index].idx
+            if tpdo_map.map_register_index is None:
+                self._set_tpdo_map_register(custom_map_index, tpdo_map)
+                custom_map_index += 1
             tpdo_assigns += tpdo_map.map_register_index_bytes
-            custom_map_index += 1
         self.write(
             self.TPDO_ASSIGN_REGISTER_SUB_IDX_1,
             tpdo_assigns,
             complete_access=True,
         )
+
+    def _set_tpdo_map_register(self, tpdo_map_register_index: int, tpdo_map: TPDOMap) -> None:
+        """Fill TPDO map register with TRDOMap object data
+
+        Args:
+            tpdo_map_register_index: custom tpdo map register index
+            tpdo_map: custom tpdo data
+
+        """
+        self.write(self.TPDO_MAP_REGISTER_SUB_IDX_0[tpdo_map_register_index], len(tpdo_map.items))
+        self.write(
+            self.TPDO_MAP_REGISTER_SUB_IDX_1[tpdo_map_register_index],
+            tpdo_map.items_mapping.decode("utf-8"),
+            complete_access=True,
+        )
+        tpdo_map.map_register_index = self.TPDO_MAP_REGISTER_SUB_IDX_0[tpdo_map_register_index].idx
 
     def map_pdos(self, *args: int) -> None:
         """Map RPDO and TPDO register into the drive.
