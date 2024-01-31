@@ -1,17 +1,16 @@
-from typing import Optional, Union, Callable, Any
+from typing import Any, Callable, Optional, Union
 
-import ingenialogger
 import canopen
+import ingenialogger
 from canopen.emcy import EmcyConsumer
 
-from ingenialink.constants import CAN_MAX_WRITE_SIZE
-from ingenialink.exceptions import ILIOError
-from ingenialink.servo import Servo
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
+from ingenialink.constants import CAN_MAX_WRITE_SIZE
+from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
+from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
-
+from ingenialink.servo import Servo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -139,7 +138,7 @@ class CanopenServo(Servo):
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
     @staticmethod
-    def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
+    def _monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
         """Map CAN register address to IPB register address."""
         return address - (0x2000 + (0x800 * (subnode - 1)))
 
@@ -155,7 +154,7 @@ class CanopenServo(Servo):
             size: Size of data in bytes.
 
         """
-        ipb_address = self.__monitoring_disturbance_map_can_address(address, subnode)
+        ipb_address = self._monitoring_disturbance_map_can_address(address, subnode)
         return super()._monitoring_disturbance_data_to_map_register(
             subnode, ipb_address, dtype, size
         )
