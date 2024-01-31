@@ -6,9 +6,13 @@
 - Motor enable and disable features in the virtual drive.
 - Emulate control loops in the virtual drive.
 - Support to Python 3.9 to 3.12.
+- EtherCAT PDO module.
 
 ### Deprecated
 - Support to Python 3.6 to 3.8.
+
+### Changed
+- The PCAN transceiver bus is automatically reset when the bus-off state is reached.
 
 ## [7.1.1] - 2024-01-03
 

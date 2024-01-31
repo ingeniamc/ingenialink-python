@@ -1,39 +1,39 @@
 import os
-import time
 import threading
+import time
 import xml.etree.ElementTree as ET
-from xml.dom import minidom
 from abc import abstractmethod
-from typing import Union, List, Dict, Optional, Tuple, Callable, Any
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from xml.dom import minidom
 
+import ingenialogger
+
+from ingenialink.constants import (
+    DEFAULT_DRIVE_NAME,
+    DEFAULT_PDS_TIMEOUT,
+    MONITORING_BUFFER_SIZE,
+    PASSWORD_RESTORE_ALL,
+    PASSWORD_STORE_ALL,
+)
+from ingenialink.dictionary import Dictionary
+from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
+from ingenialink.enums.servo import SERVO_STATE
 from ingenialink.exceptions import (
+    ILAccessError,
+    ILError,
     ILIOError,
     ILRegisterNotFoundError,
-    ILError,
     ILStateError,
-    ILAccessError,
     ILTimeoutError,
     ILValueError,
 )
 from ingenialink.register import Register
+from ingenialink.utils import constants
 from ingenialink.utils._utils import (
-    get_drive_identification,
     convert_bytes_to_dtype,
     convert_dtype_to_bytes,
+    get_drive_identification,
 )
-from ingenialink.constants import (
-    PASSWORD_RESTORE_ALL,
-    PASSWORD_STORE_ALL,
-    DEFAULT_PDS_TIMEOUT,
-    MONITORING_BUFFER_SIZE,
-    DEFAULT_DRIVE_NAME,
-)
-from ingenialink.utils import constants
-from ingenialink.enums.register import REG_DTYPE, REG_ADDRESS_TYPE, REG_ACCESS
-from ingenialink.enums.servo import SERVO_STATE
-from ingenialink.dictionary import Dictionary
-
-import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 

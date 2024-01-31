@@ -4,6 +4,7 @@ import pytest
 
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.eoe.network import EoENetwork
+from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethernet.network import EthernetNetwork
 from virtual_drive.core import VirtualDrive
 
@@ -69,6 +70,13 @@ def connect_ethernet(protocol_contents):
     return servo, net
 
 
+def connect_ethercat(protocol_contents):
+    net = EthercatNetwork(protocol_contents["ifname"])
+
+    servo = net.connect_to_slave(protocol_contents["slave"], protocol_contents["dictionary"])
+    return servo, net
+
+
 def connect_eoe(protocol_contents):
     net = EoENetwork(protocol_contents["ifname"])
 
@@ -92,6 +100,8 @@ def connect_to_slave(pytestconfig, read_config):
         servo, net = connect_canopen(protocol_contents)
     elif protocol == "eoe":
         servo, net = connect_eoe(protocol_contents)
+    elif protocol == "ethercat":
+        servo, net = connect_ethercat(protocol_contents)
 
     yield servo, net
     net.disconnect_from_slave(servo)
