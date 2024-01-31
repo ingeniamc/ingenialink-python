@@ -86,7 +86,7 @@ class EthercatNetwork(Network):
 
     DEFAULT_ECAT_CONNECTION_TIMEOUT_S = 1
     ECAT_STATE_CHANGE_TIMEOUT_NS = 1_000_000
-    ECAT_PROCESSDATA_TIMEOUT_NS = 100_000
+    ECAT_PROCESSDATA_TIMEOUT_S = 0.1
 
     def __init__(
         self, interface_name: str, connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT_S
@@ -201,17 +201,19 @@ class EthercatNetwork(Network):
 
         """
         op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
+        if not op_servo_list:
+            logger.warning("There are no PDOs assigned to any connected slave.")
+            return
         try:
             for servo in op_servo_list:
                 for rpdo_map in servo._rpdo_maps:
                     rpdo_map.get_item_bytes()
         except ILError as e:
-            raise ILError("RPDOs initial value should be set before start PDOs") from e
+            raise ILError(
+                "The RPDO values should be set before starting the PDO exchange process."
+            ) from e
         self._ecat_master.config_map()
         self._ecat_master.state = pysoem.SAFEOP_STATE
-        if not op_servo_list:
-            logger.warning("No drives has PDO mapping")
-            return
         if not self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE):
             raise ILStateError("Drives can not reach SafeOp state")
         self.send_receive_processdata()
@@ -228,13 +230,24 @@ class EthercatNetwork(Network):
         if not self._change_nodes_state(op_servo_list, pysoem.PREOP_STATE):
             logger.warning("Drive can not reach PreOp state")
 
-    def send_receive_processdata(self) -> None:
+    def send_receive_processdata(self, timeout: float = ECAT_PROCESSDATA_TIMEOUT_S) -> None:
+        """Send and receive PDOs
+
+        Args:
+            timeout: receive processdata timeout in seconds, 0.1 seconds by default.
+
+        Raises:
+            ILError: If processdata working count is wrong
+
+        """
         for servo in self.servos:
             servo.process_pdo_inputs()
         self._ecat_master.send_processdata()
-        processdata_wkc = self._ecat_master.receive_processdata(
-            timeout=self.ECAT_PROCESSDATA_TIMEOUT_NS
-        )
+        processdata_wkc = self._ecat_master.receive_processdata(timeout=int(timeout * 1_000_000))
+        if processdata_wkc != self._ecat_master.expected_wkc:
+            raise ILError(
+                "Processdata working count is wrong, check all the nodes are correctly connected"
+            )
         for servo in self.servos:
             servo.generate_pdo_outputs()
 

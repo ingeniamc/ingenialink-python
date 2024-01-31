@@ -331,7 +331,7 @@ class PDOServo(Servo):
         if len(self._rpdo_maps) > self.AVAILABLE_PDOS:
             raise ILError(
                 f"Could not map the RPDO maps, received {len(self._rpdo_maps)} PDOs and only"
-                " {self.AVAILABLE_PDOS} are available"
+                f" {self.AVAILABLE_PDOS} are available"
             )
         self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._rpdo_maps))
         custom_map_index = 0
