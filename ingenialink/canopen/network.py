@@ -307,11 +307,15 @@ class CanopenNetwork(Network):
         with all the network attributes already specified."""
         if self._connection is None:
             self._connection = canopen.Network()
-
+            connection_args = {
+                "bustype": self.__device,
+                "channel": self.__channel,
+                "bitrate": self.__baudrate,
+            }
+            if self.__device == CAN_DEVICE.PCAN.value:
+                connection_args["auto_reset"] = True
             try:
-                self._connection.connect(
-                    bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate
-                )
+                self._connection.connect(**connection_args)
             except CanError as e:
                 logger.error("Transceiver not found in network. Exception: %s", e)
                 raise ILError(

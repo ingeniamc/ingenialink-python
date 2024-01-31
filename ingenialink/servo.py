@@ -14,6 +14,7 @@ from ingenialink.constants import (
     MONITORING_BUFFER_SIZE,
     PASSWORD_RESTORE_ALL,
     PASSWORD_STORE_ALL,
+    PASSWORD_STORE_RESTORE_SUB_0,
 )
 from ingenialink.dictionary import Dictionary
 from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
@@ -335,7 +336,7 @@ class Servo:
             logger.info("Restore all successfully done.")
         elif subnode == 0:
             # Restore subnode 0
-            raise ILError("The current firmware version does not have this feature implemented.")
+            self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
         elif subnode > 0:
             # Restore axis
             self.write(
@@ -343,7 +344,10 @@ class Servo:
             )
             logger.info(f"Restore subnode {subnode} successfully done.")
         else:
-            raise ILError("Invalid subnode {subnode}.")
+            raise ILError(
+                f"The drive's configuration cannot be restored. The subnode value: {subnode} is"
+                " invalid."
+            )
         time.sleep(1.5)
 
     def store_parameters(self, subnode: Optional[int] = None) -> None:
@@ -378,9 +382,7 @@ class Servo:
                         logger.info(f"Store axis {dict_subnode} successfully done.")
             elif subnode == 0:
                 # Store subnode 0
-                raise ILError(
-                    "The current firmware version does not have this feature implemented."
-                )
+                self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
             elif subnode > 0:
                 # Store axis
                 self.write(
@@ -388,7 +390,10 @@ class Servo:
                 )
                 logger.info(f"Store axis {subnode} successfully done.")
             else:
-                raise ILError("Invalid subnode.")
+                raise ILError(
+                    f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
+                    " invalid."
+                )
         finally:
             time.sleep(1.5)
 

@@ -68,7 +68,7 @@ def test_virtual_drive_write_wrong_enum(virtual_drive):
     virtual_servo.write(register, 1, subnode)
     assert virtual_servo.read(register, subnode) == 1
     virtual_servo.write(register, 5, subnode)
-    assert virtual_servo.read(register, subnode) == 1
+    assert virtual_servo.read(register, subnode) == 5
 
 
 @pytest.mark.ethernet
