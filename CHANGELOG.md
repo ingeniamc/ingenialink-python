@@ -11,6 +11,9 @@
 ### Deprecated
 - Support to Python 3.6 to 3.8.
 
+### Changed
+- The PCAN transceiver bus is automatically reset when the bus-off state is reached.
+
 ## [7.1.1] - 2024-01-03
 
 ### Added
