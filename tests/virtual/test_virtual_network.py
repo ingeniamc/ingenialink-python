@@ -10,16 +10,14 @@ from tests.conftest import ALLOW_PROTOCOLS
 from virtual_drive.core import VirtualDrive
 
 RESOURCES_FOLDER = "virtual_drive/resources/"
-TEST_IP = "127.0.0.1"
-TEST_PORT = 81
+TEST_PORT = 82
 
-server = VirtualDrive(TEST_IP, TEST_PORT)
+server = VirtualDrive(TEST_PORT)
 
 
 @pytest.fixture(autouse=True, scope="function")
 def stop_virtual_drive():
     yield
-    print("STOP")
     server.stop()
 
 
@@ -28,10 +26,10 @@ def connect_virtual_drive():
     def connect(dictionary):
         global server
         server.stop()
-        server = VirtualDrive(TEST_IP, TEST_PORT, dictionary)
+        server = VirtualDrive(TEST_PORT, dictionary)
         server.start()
         net = VirtualNetwork()
-        servo = net.connect_to_slave(TEST_IP, dictionary, TEST_PORT)
+        servo = net.connect_to_slave(dictionary, TEST_PORT)
         return servo, net
 
     return connect
@@ -53,7 +51,7 @@ def test_virtual_drive_disconnection(connect_virtual_drive):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
     servo, net = connect_virtual_drive(dictionary)
     net.disconnect_from_slave(servo)
-    assert net._get_servo_state(TEST_IP) == NET_STATE.DISCONNECTED
+    assert net._get_servo_state(VirtualDrive.IP_ADDRESS) == NET_STATE.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
 
@@ -72,6 +70,7 @@ def test_connect_virtual_custom_dictionaries(connect_virtual_drive, read_config)
         for reg_key, register in servo.dictionary.registers(1).items():
             if register.access in [REG_ACCESS.RO, REG_ACCESS.RW]:
                 value = servo.read(reg_key)
+                print(reg_key)
                 assert pytest.approx(server.get_value_by_id(1, reg_key), abs=0.01) == value
 
             if register.access in [REG_ACCESS.WO, REG_ACCESS.RW]:

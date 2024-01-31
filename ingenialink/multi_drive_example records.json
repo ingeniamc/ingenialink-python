@@ -1,0 +1,8 @@
+{
+    "version": "1.0.0",
+    "fw_files": [
+        {"id": "file1", "filename": "cap-net-1-e_2.4.0.lfu", "hash": "hash1"},
+        {"id": "file2", "filename": "cap-net-2-e_2.4.0.lfu", "hash": "hash2"}
+    ],
+    "mapping": {"filename": "mapping.json", "hash": "hash3"}
+}

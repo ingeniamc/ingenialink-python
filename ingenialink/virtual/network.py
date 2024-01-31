@@ -6,6 +6,7 @@ from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.ethernet.network import NET_STATE, EthernetNetwork
 from ingenialink.exceptions import ILError
 from ingenialink.virtual.servo import VirtualServo
+from virtual_drive.core import VirtualDrive
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -15,7 +16,6 @@ class VirtualNetwork(EthernetNetwork):
 
     def connect_to_slave(  # type: ignore [override]
         self,
-        target: str,
         dictionary: str,
         port: int = 1061,
         connection_timeout: float = DEFAULT_ETH_CONNECTION_TIMEOUT,
@@ -26,7 +26,6 @@ class VirtualNetwork(EthernetNetwork):
 
         Args:
             dictionary: Path to the target dictionary file.
-            target: IP of the target slave.
             port: Port to connect to the slave.
             connection_timeout: Time in seconds of the connection timeout.
             servo_status_listener: Toggle the listener of the servo for
@@ -40,15 +39,15 @@ class VirtualNetwork(EthernetNetwork):
         """
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(connection_timeout)
-        sock.connect((target, port))
+        sock.connect((VirtualDrive.IP_ADDRESS, port))
         servo = VirtualServo(sock, dictionary, servo_status_listener)
         try:
             servo.get_state()
         except ILError as e:
             servo.stop_status_listener()
-            raise ILError(f"Drive not found in IP {target}.") from e
+            raise ILError(f"Drive not found in IP {VirtualDrive.IP_ADDRESS}.") from e
         self.servos.append(servo)
-        self._set_servo_state(target, NET_STATE.CONNECTED)
+        self._set_servo_state(VirtualDrive.IP_ADDRESS, NET_STATE.CONNECTED)
 
         if net_status_listener:
             self.start_status_listener()

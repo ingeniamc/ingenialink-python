@@ -3,6 +3,7 @@ from typing import Optional
 
 import ingenialogger
 
+from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.dictionary import EthernetDictionary
 from ingenialink.ethernet.register import EthernetRegister
 
@@ -33,7 +34,9 @@ class VirtualDictionary(EthernetDictionary):
         try:
             if self.interface == "CAN":
                 reg_address = int(register.attrib["address"][:6], 16)
-                reg_address = reg_address - 0x2000
+                reg_address = CanopenServo._monitoring_disturbance_map_can_address(
+                    reg_address, current_read_register.subnode
+                )
             else:
                 reg_address = int(register.attrib["address"], 16)
 

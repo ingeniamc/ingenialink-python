@@ -19,12 +19,13 @@ def test_read_xdf_register_ethernet():
     assert ethernet_dict.registers(subnode)[reg_id].address == address
 
 
+@pytest.mark.parametrize(
+    "reg_id,subnode,address",
+    [("DRV_DIAG_ERROR_LAST_COM", 0, 0x400F), ("COMMU_ANGLE_SENSOR", 1, 0x151)],
+)
 @pytest.mark.no_connection
-def test_read_xdf_register_canopen():
+def test_read_xdf_register_canopen(reg_id, subnode, address):
     dictionary_path = join_path(path_resources, "canopen/test_dict_can.xdf")
-    address = 0x380F
-    reg_id = "DRV_DIAG_ERROR_LAST_COM"
-    subnode = 0
 
     ethernet_dict = VirtualDictionary(dictionary_path)
 

@@ -1215,11 +1215,12 @@ class VirtualDrive(Thread):
     """Emulates a drive by creating a UDP server that sends and receives MCB messages.
 
     Args:
-        ip: Server IP address.
         port: Server port number.
         dictionary_path: Path to the dictionary. If None, the default dictionary is used.
 
     """
+
+    IP_ADDRESS = "127.0.0.1"
 
     ACK_CMD = 3
     WRITE_CMD = 2
@@ -1228,9 +1229,9 @@ class VirtualDrive(Thread):
     PATH_CONFIGURATION_RELATIVE = "./resources/virtual_drive.xcf"
     PATH_DICTIONARY_RELATIVE = "./resources/virtual_drive.xdf"
 
-    def __init__(self, ip: str, port: int, dictionary_path: Optional[str] = None) -> None:
+    def __init__(self, port: int, dictionary_path: Optional[str] = None) -> None:
         super(VirtualDrive, self).__init__()
-        self.ip = ip
+        self.ip = self.IP_ADDRESS
         self.port = port
         default_dictionary = os.path.join(
             pathlib.Path(__file__).parent.resolve(), self.PATH_DICTIONARY_RELATIVE
