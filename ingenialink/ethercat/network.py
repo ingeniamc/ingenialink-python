@@ -107,17 +107,18 @@ class EthercatNetwork(Network):
         self.__last_init_nodes: List[int] = []
 
     def scan_slaves(self) -> List[int]:
-        """Scans for nodes in the network. If any node is already connected scan can not be done.
+        """Scans for slaves in the network. Scanning of slaves cannot be done if a slave is already
+        connected to the network.
 
         Returns:
-            List containing all the detected node IDs.
+            List containing all the detected slaves.
 
         Raises:
-            ILError: If any node is already connected.
+            ILError: If any slaves is already connected.
 
         """
         if self.servos:
-            raise ILError("Some nodes are already connected")
+            raise ILError("Some slaves are already connected")
         if not self.__is_master_running:
             self._start_master()
         self.__init_nodes()
