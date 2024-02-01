@@ -1,5 +1,7 @@
 import time
 
+from ingenialink import EthercatNetwork
+
 try:
     import pysoem
 except ImportError:
@@ -193,12 +195,13 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
     assert servo.read(EthercatServo.TPDO_ASSIGN_REGISTER_SUB_IDX_0) == 0
     assert servo.read(EthercatServo.RPDO_ASSIGN_REGISTER_SUB_IDX_0) == 0
 
-    servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     servo.map_pdos(1)
 
     assert servo.read(EthercatServo.TPDO_ASSIGN_REGISTER_SUB_IDX_0) == 1
     assert len(servo._tpdo_maps) == 1
     assert tpdo_map.map_register_index == EthercatServo.TPDO_MAP_REGISTER_SUB_IDX_0[0].idx
+    assert tpdo_map.map_register_index_bytes == tpdo_map.map_register_index.to_bytes(4, "little")
     assert servo.read(EthercatServo.TPDO_MAP_REGISTER_SUB_IDX_0[0]) == len(TPDO_REGISTERS)
     value = servo._read_raw(EthercatServo.TPDO_ASSIGN_REGISTER_SUB_IDX_0, complete_access=True)
     assert int.to_bytes(0x1A00, 2, "little") == value[2:4]
@@ -206,6 +209,7 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
     assert servo.read(EthercatServo.RPDO_ASSIGN_REGISTER_SUB_IDX_0) == 1
     assert len(servo._rpdo_maps) == 1
     assert rpdo_map.map_register_index == EthercatServo.RPDO_MAP_REGISTER_SUB_IDX_0[0].idx
+    assert rpdo_map.map_register_index_bytes == rpdo_map.map_register_index.to_bytes(4, "little")
     assert servo.read(EthercatServo.RPDO_MAP_REGISTER_SUB_IDX_0[0]) == len(RPDO_REGISTERS)
     value = servo._read_raw(EthercatServo.RPDO_ASSIGN_REGISTER_SUB_IDX_0, complete_access=True)
     assert int.to_bytes(0x1600, 2, "little") == value[2:4]
@@ -216,7 +220,7 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, _ = connect_to_slave
 
-    servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     servo.map_pdos(1)
 
     assert servo.read(EthercatServo.TPDO_ASSIGN_REGISTER_SUB_IDX_0) == 1
@@ -233,8 +237,6 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
     assert len(servo._tpdo_maps) == 0
 
 
-# Remove skip in INGK-786
-@pytest.mark.skip("Skip after implementing INGK-786")
 @pytest.mark.ethercat
 def test_pdo_example(read_config, script_runner):
     protocol_contents = read_config["ethercat"]
@@ -248,41 +250,67 @@ def test_pdo_example(read_config, script_runner):
     assert result.stderr == ""
 
 
+@pytest.fixture
+def connect_to_all_slave(pytestconfig, read_config):
+    servos = []
+    protocol = pytestconfig.getoption("--protocol")
+    if protocol != "ethercat":
+        raise AssertionError("Wrong protocol")
+    protocol_contents = read_config[protocol]
+    net = EthercatNetwork(protocol_contents["ifname"])
+    slaves_ids = net.scan_slaves()
+    for slave_id in slaves_ids:
+        servos.append(net.connect_to_slave(slave_id, protocol_contents["dictionary"]))
+    yield servos, net
+    for servo in servos:
+        net.disconnect_from_slave(servo)
+
+
 @pytest.mark.ethercat
-def test_start_stop_pdo(connect_to_slave, create_pdo_map):
-    tpdo_map, rpdo_map = create_pdo_map
-    servo, net = connect_to_slave
-    for item in rpdo_map.items:
-        item.value = 0
-    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
-    net._ecat_master.read_state()
-    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+def test_start_stop_pdo(connect_to_all_slave):
+    servos, net = connect_to_all_slave
+    for index, servo in enumerate(servos):
+        rpdo_map = RPDOMap()
+        tpdo_map = TPDOMap()
+        for tpdo_register in TPDO_REGISTERS:
+            register = servo.dictionary.registers(SUBNODE)[tpdo_register]
+            tpdo_map.add_registers(register)
+        for rpdo_register in RPDO_REGISTERS:
+            register = servo.dictionary.registers(SUBNODE)[rpdo_register]
+            rpdo_map.add_registers(register)
+        for item in rpdo_map.items:
+            item.value = 0
+        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+        net._ecat_master.read_state()
+        assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
     net.start_pdos()
     for _ in range(5):
         net._ecat_master.send_processdata()
-        net._ecat_master.receive_processdata(timeout=net.ECAT_PROCESSDATA_TIMEOUT_NS)
+        net._ecat_master.receive_processdata(timeout=net.ECAT_PROCESSDATA_TIMEOUT_S)
         time.sleep(0.01)
-    net._ecat_master.read_state()
-    assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+    for servo in servos:
+        net._ecat_master.read_state()
+        assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
     net.stop_pdos()
-    net._ecat_master.read_state()
-    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+    for servo in servos:
+        net._ecat_master.read_state()
+        assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
 
 
 @pytest.mark.ethercat
 def test_start_pdo_error_rpod_values_not_set(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
-    servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     with pytest.raises(ILError):
         net.start_pdos()
 
 
 @pytest.mark.ethercat
-def test_set_mapping_in_slave(connect_to_slave, create_pdo_map):
+def test_set_pdo_map_to_slave(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
-    servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     assert servo._rpdo_maps[0] == rpdo_map
     assert servo._tpdo_maps[0] == tpdo_map
     assert servo.slave.config_func is not None
