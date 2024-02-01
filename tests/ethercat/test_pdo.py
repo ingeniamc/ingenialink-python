@@ -252,7 +252,7 @@ def test_pdo_example(read_config, script_runner):
 def test_start_stop_pdo(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
-    servo.set_mapping_in_slave([rpdo_map], [tpdo_map])
+    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     net._ecat_master.read_state()
     assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
     net.start_pdos()
