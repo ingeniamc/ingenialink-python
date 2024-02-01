@@ -1,3 +1,9 @@
+import time
+
+try:
+    import pysoem
+except ImportError:
+    pass
 import pytest
 
 from ingenialink.enums.register import REG_DTYPE
@@ -181,6 +187,9 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, _ = connect_to_slave
 
+    servo.reset_tpdo_mapping()
+    servo.reset_rpdo_mapping()
+
     assert servo.read(EthercatServo.TPDO_ASSIGN_REGISTER_SUB_IDX_0) == 0
     assert servo.read(EthercatServo.RPDO_ASSIGN_REGISTER_SUB_IDX_0) == 0
 
@@ -237,3 +246,22 @@ def test_pdo_example(read_config, script_runner):
     )
     assert result.returncode == 0
     assert result.stderr == ""
+
+
+@pytest.mark.ethercat
+def test_start_stop_pdo(connect_to_slave, create_pdo_map):
+    tpdo_map, rpdo_map = create_pdo_map
+    servo, net = connect_to_slave
+    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+    net._ecat_master.read_state()
+    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+    net.start_pdos()
+    for _ in range(5):
+        net._ecat_master.send_processdata()
+        net._ecat_master.receive_processdata(timeout=net.ECAT_PROCESSDATA_TIMEOUT_NS)
+        time.sleep(0.01)
+    net._ecat_master.read_state()
+    assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+    net.stop_pdos()
+    net._ecat_master.read_state()
+    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE

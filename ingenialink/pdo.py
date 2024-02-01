@@ -13,7 +13,6 @@ class PDOMapItem:
     Attributes:
         register: mapped register object.
         size: custom register size.
-        raw_data: the register value in bytes.
 
     """
 
@@ -292,8 +291,6 @@ class PDOServo(Servo):
         super().__init__(target, dictionary_path, servo_status_listener)
         self._rpdo_maps: List[RPDOMap] = []
         self._tpdo_maps: List[TPDOMap] = []
-        self.reset_rpdo_mapping()
-        self.reset_tpdo_mapping()
 
     def reset_rpdo_mapping(self) -> None:
         """Delete the RPDO mapping stored in the servo drive."""

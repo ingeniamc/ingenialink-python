@@ -29,6 +29,7 @@ TPDO_REGISTERS = {
 
 RPDO_REGISTERS = {
     "CL_POS_SET_POINT_VALUE": 0,
+    "DRV_OP_CMD": 68,
 }
 
 
@@ -43,10 +44,8 @@ class ProcessDataExample:
 
         """
         self.net = EthercatNetwork(interface_name)
-        self.master = self.net._ecat_master
         slave = self.net.scan_slaves()[0]
         self.servo = self.net.connect_to_slave(slave, dictionary_path)
-        self.slave = self.master.slaves[slave]
         self._pd_thread_stop_event = threading.Event()
         self.rpdo_map = RPDOMap()
         self.tpdo_map = TPDOMap()
@@ -63,32 +62,14 @@ class ProcessDataExample:
             register = self.servo.dictionary.registers(1)[rpdo_register]
             self.rpdo_map.add_registers(register)
 
-    def check_state(self, state: SlaveState) -> None:
-        """Check if the slave reached the requested state.
-
-        Args:
-            state: Requested state.
-
-        Raises:
-            ILError: If state is not reached.
-
-        """
-        if self.master.state_check(state.value, 50_000) != state.value:
-            self.master.read_state()
-            if self.slave.state != state.value:
-                raise ILError(
-                    f"{self.slave.name} did not reach {SlaveState(state).name}."
-                    f" {hex(self.slave.al_status)} {pysoem.al_status_code_to_string(self.slave.al_status)}"
-                )
-
     def process_data_loop(self) -> None:
         """Process inputs and generate outputs."""
         while not self._pd_thread_stop_event.is_set():
             self.servo.process_pdo_inputs()
             for item in self.tpdo_map.items:
                 TPDO_REGISTERS[item.register.identifier] = item.value
+            RPDO_REGISTERS["CL_POS_SET_POINT_VALUE"] += 100
             for item in self.rpdo_map.items:
-                RPDO_REGISTERS[item.register.identifier] += 100
                 item.value = RPDO_REGISTERS[item.register.identifier]
             self.servo.generate_pdo_outputs()
             self._print_values_to_console()
@@ -97,9 +78,9 @@ class ProcessDataExample:
     def _processdata_thread(self) -> None:
         """Background thread that sends and receives the process-data frame in a 10ms interval."""
         while not self._pd_thread_stop_event.is_set():
-            self.master.send_processdata()
-            self._actual_wkc = self.master.receive_processdata(timeout=100_000)
-            if self._actual_wkc != self.master.expected_wkc:
+            self.net._ecat_master.send_processdata()
+            self._actual_wkc = self.net._ecat_master.receive_processdata(timeout=100_000)
+            if self._actual_wkc != self.net._ecat_master.expected_wkc:
                 print("incorrect wkc")
             time.sleep(0.01)
 
@@ -117,14 +98,9 @@ class ProcessDataExample:
     def run(self) -> None:
         """Main loop of the program."""
         self.servo.set_pdo_map_to_slave([self.rpdo_map], [self.tpdo_map])
-        self.master.config_map()
-        self.master.config_dc()
-        self.check_state(SlaveState.SAFEOP_STATE)
-        self.master.state = SlaveState.OP_STATE.value
-        self.master.write_state()
+        self.net.start_pdos()
         proc_thread = threading.Thread(target=self._processdata_thread)
         proc_thread.start()
-        self.check_state(SlaveState.OP_STATE)
         print("Process data started")
         self.servo.enable()
         try:
@@ -134,9 +110,7 @@ class ProcessDataExample:
         self._pd_thread_stop_event.set()
         proc_thread.join()
         self.servo.disable()
-        self.master.state = pysoem.INIT_STATE
-        self.master.write_state()
-        self.master.close()
+        self.net.stop_pdos()
         self.net.disconnect_from_slave(self.servo)
 
 
