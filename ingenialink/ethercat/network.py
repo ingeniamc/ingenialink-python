@@ -247,7 +247,8 @@ class EthercatNetwork(Network):
         processdata_wkc = self._ecat_master.receive_processdata(timeout=int(timeout * 1_000_000))
         if processdata_wkc != self._ecat_master.expected_wkc:
             raise ILError(
-                "Processdata working count is wrong, check all the nodes are correctly connected"
+                f"Processdata working count is wrong, expected: {self._ecat_master.expected_wkc},"
+                f" real: {processdata_wkc}"
             )
         for servo in self.servos:
             servo.generate_pdo_outputs()
