@@ -1,3 +1,4 @@
+import json
 import time
 
 from ingenialink import EthercatNetwork
@@ -251,16 +252,18 @@ def test_pdo_example(read_config, script_runner):
 
 
 @pytest.fixture
-def connect_to_all_slave(pytestconfig, read_config):
-    servos = []
+def connect_to_all_slave(pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     if protocol != "ethercat":
         raise AssertionError("Wrong protocol")
-    protocol_contents = read_config[protocol]
-    net = EthercatNetwork(protocol_contents["ifname"])
-    slaves_ids = net.scan_slaves()
-    for slave_id in slaves_ids:
-        servos.append(net.connect_to_slave(slave_id, protocol_contents["dictionary"]))
+    config = "tests/config.json"
+    with open(config, "r", encoding="utf-8") as fp:
+        contents = json.load(fp)
+    protocol_contents = contents[protocol]
+    servos = []
+    net = EthercatNetwork(protocol_contents[0]["ifname"])
+    for slave_content in protocol_contents:
+        servos.append(net.connect_to_slave(slave_content["slave"], slave_content["dictionary"]))
     yield servos, net
     for servo in servos:
         net.disconnect_from_slave(servo)
