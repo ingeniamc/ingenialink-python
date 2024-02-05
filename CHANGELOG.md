@@ -10,6 +10,9 @@
 - Store and restore functionalities for subnode 0.
 - Add functionalities to update ECAT state machine
 
+### Fixed
+- Raise exception when ECAT SDO write/read is wrong
+
 ### Deprecated
 - Support to Python 3.6 to 3.8.
 
