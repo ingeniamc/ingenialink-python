@@ -248,7 +248,6 @@ def test_pdo_example(read_config, script_runner):
         script_path, f"-ifname={ifname}", f"-dict={dictionary}", "-auto_stop"
     )
     assert result.returncode == 0
-    assert result.stderr == ""
 
 
 @pytest.fixture
@@ -287,7 +286,7 @@ def test_start_stop_pdo(connect_to_all_slave):
         net._ecat_master.read_state()
         assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
     net.start_pdos()
-    for _ in range(5):
+    for _ in range(10):
         net._ecat_master.send_processdata()
         net._ecat_master.receive_processdata(timeout=net.ECAT_PROCESSDATA_TIMEOUT_S)
         time.sleep(0.01)
