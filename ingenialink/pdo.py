@@ -405,11 +405,11 @@ class PDOServo(Servo):
         )
         tpdo_map.map_register_index = self.TPDO_MAP_REGISTER_SUB_IDX_0[tpdo_map_register_index].idx
 
-    def map_pdos(self, *args: int) -> None:
+    def map_pdos(self, slave_index: int) -> None:
         """Map RPDO and TPDO register into the drive.
 
         Args:
-            args: List of RPDO maps.
+            slave_index: salve index.
         """
         self.map_tpdos()
         self.map_rpdos()
