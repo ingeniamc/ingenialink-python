@@ -9,6 +9,7 @@
 - EtherCAT PDO module.
 - Store and restore functionalities for subnode 0.
 - Add functionalities to update ECAT state machine
+- Add send_receive_processdata function
 
 ### Fixed
 - Raise exception when ECAT SDO write/read is wrong

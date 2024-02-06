@@ -16,6 +16,13 @@
     "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_eoe_2.4.0.xdf",
     "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_2.4.0.lfu",
     "boot_in_app": false
+  },
+  {
+    "ifname": "\\Device\\NPF_{DC30BAAA-CD3D-485E-9E8E-FB3953BAE5A2}",
+    "slave": 1,
+    "dictionary": "//awe-srv-max-prd/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-e_eoe_2.4.0.xdf",
+    "fw_file": "//awe-srv-max-prd/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-e_2.4.0.sfu",
+    "boot_in_app": true
   }
   ],
   "canopen": [
