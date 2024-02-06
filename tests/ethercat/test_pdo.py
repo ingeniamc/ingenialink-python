@@ -286,16 +286,12 @@ def test_start_stop_pdo(connect_to_all_slave):
         net._ecat_master.read_state()
         assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
     net.start_pdos()
-    for _ in range(10):
-        net._ecat_master.send_processdata()
-        net._ecat_master.receive_processdata(timeout=net.ECAT_PROCESSDATA_TIMEOUT_S)
-        time.sleep(0.01)
+    net._ecat_master.read_state()
     for servo in servos:
-        net._ecat_master.read_state()
         assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
     net.stop_pdos()
+    net._ecat_master.read_state()
     for servo in servos:
-        net._ecat_master.read_state()
         assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
 
 

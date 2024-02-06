@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from pysoem import CdefSlave
 
 from ingenialink.network import Network, NET_PROT, NET_STATE, NET_DEV_EVT
-from ingenialink.exceptions import ILFirmwareLoadError, ILError, ILStateError
+from ingenialink.exceptions import ILFirmwareLoadError, ILError, ILStateError, ILTimeoutError
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
 
@@ -85,7 +85,7 @@ class EthercatNetwork(Network):
     MANUAL_STATE_CHANGE = 1
 
     DEFAULT_ECAT_CONNECTION_TIMEOUT_S = 1
-    ECAT_STATE_CHANGE_TIMEOUT_NS = 1_000_000
+    ECAT_STATE_CHANGE_TIMEOUT_NS = 50_000
     ECAT_PROCESSDATA_TIMEOUT_S = 0.1
 
     def __init__(
@@ -194,14 +194,15 @@ class EthercatNetwork(Network):
             self.__is_master_running = False
             self.__last_init_nodes = []
 
-    def start_pdos(self, io_overlapping: bool = True) -> None:
+    def start_pdos(self, timeout: float = 1.0, io_overlapping: bool = True) -> None:
         """Configure the PDOs and set slave state to OP for all slaves with mapped PDOs
 
         Args:
+            timeout: timeout in seconds to reach Op state, 1.0 seconds by default.
             io_overlapping: Instance of the servo connected.
 
         Raises:
-            ILStateError: If slaves can not reach SafeOp state
+            ILStateError: If slaves can not reach SafeOp or Op state
 
         """
         op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
@@ -223,8 +224,12 @@ class EthercatNetwork(Network):
         self._ecat_master.state = pysoem.SAFEOP_STATE
         if not self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE):
             raise ILStateError("Drives can not reach SafeOp state")
-        self.send_receive_processdata()
         self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
+        init_time = time.time()
+        while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
+            self.send_receive_processdata()
+            if timeout < time.time() - init_time:
+                raise ILStateError("Drives can not reach Op state")
 
     def stop_pdos(self) -> None:
         """For all slaves in OP or SafeOp state, set state to PreOp"""
@@ -275,6 +280,21 @@ class EthercatNetwork(Network):
         for drive in node_list:
             drive.slave.state = target_state
             drive.slave.write_state()
+        return self._check_node_state(nodes, target_state)
+
+    def _check_node_state(
+        self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int
+    ) -> bool:
+        """Check ECAT state for all nodes in list
+
+        Args:
+            nodes: target node or list of nodes
+            target_state: target ECAT state
+
+        Returns:
+            True if all nodes reached the target state, else False.
+        """
+        node_list = nodes if isinstance(nodes, list) else [nodes]
         self._ecat_master.read_state()
 
         return all(
