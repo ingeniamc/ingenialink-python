@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILIOError
+from ingenialink.exceptions import ILIOError, ILError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 from ingenialink.register import REG_ACCESS, REG_DTYPE
 
@@ -71,17 +71,15 @@ class EthercatServo(PDOServo):
         dtype=REG_DTYPE.S32,
         access=REG_ACCESS.RW,
     )
-    RPDO_ASSIGN_REGISTER_SUB_IDX_1 = [
-        EthercatRegister(
-            identifier="RPDO_ASSIGN_REGISTER",
-            units="",
-            subnode=0,
-            idx=0x1C12,
-            subidx=0x01,
-            dtype=REG_DTYPE.S32,
-            access=REG_ACCESS.RW,
-        )
-    ]
+    RPDO_ASSIGN_REGISTER_SUB_IDX_1 = EthercatRegister(
+        identifier="RPDO_ASSIGN_REGISTER",
+        units="",
+        subnode=0,
+        idx=0x1C12,
+        subidx=0x01,
+        dtype=REG_DTYPE.S32,
+        access=REG_ACCESS.RW,
+    )
     RPDO_MAP_REGISTER_SUB_IDX_0 = [
         EthercatRegister(
             identifier="RPDO_MAP_REGISTER",
@@ -113,17 +111,15 @@ class EthercatServo(PDOServo):
         dtype=REG_DTYPE.S32,
         access=REG_ACCESS.RW,
     )
-    TPDO_ASSIGN_REGISTER_SUB_IDX_1 = [
-        EthercatRegister(
-            identifier="TPDO_ASSIGN_REGISTER",
-            units="",
-            subnode=0,
-            idx=0x1C13,
-            subidx=0x01,
-            dtype=REG_DTYPE.S32,
-            access=REG_ACCESS.RW,
-        )
-    ]
+    TPDO_ASSIGN_REGISTER_SUB_IDX_1 = EthercatRegister(
+        identifier="TPDO_ASSIGN_REGISTER",
+        units="",
+        subnode=0,
+        idx=0x1C13,
+        subidx=0x01,
+        dtype=REG_DTYPE.S32,
+        access=REG_ACCESS.RW,
+    )
     TPDO_MAP_REGISTER_SUB_IDX_0 = [
         EthercatRegister(
             identifier="TPDO_MAP_REGISTER",
@@ -258,7 +254,11 @@ class EthercatServo(PDOServo):
         return error_description
 
     def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
-        self.slave.config_func = partial(self.map_pdos, rpdo_maps, tpdo_maps)
+        self.reset_rpdo_mapping()
+        self.reset_tpdo_mapping()
+        self._rpdo_maps = rpdo_maps
+        self._tpdo_maps = tpdo_maps
+        self.slave.config_func = self.map_pdos
 
     def process_pdo_inputs(self) -> None:
         self._process_tpdo(self.__slave.input)
