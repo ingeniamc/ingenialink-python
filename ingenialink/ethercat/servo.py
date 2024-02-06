@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILIOError, ILError
+from ingenialink.exceptions import ILIOError, ILTimeoutError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 from ingenialink.register import REG_ACCESS, REG_DTYPE
 
@@ -39,7 +39,9 @@ class EthercatServo(PDOServo):
 
     DICTIONARY_CLASS = EthercatDictionary
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
-    WRONG_WORKING_COUNTER = -1
+
+    TIMEOUT_WORKING_COUNTER = -5
+    NOFRAME_WORKING_COUNTER = 0
 
     MONITORING_DATA = EthercatRegister(
         identifier="MONITORING_DATA",
@@ -162,9 +164,14 @@ class EthercatServo(PDOServo):
         self._lock.acquire()
         try:
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
-            self._check_working_counter()
         except (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError, ILIOError) as e:
             raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
+        except pysoem.WkcError as e:
+            if e.wkc == self.NOFRAME_WORKING_COUNTER:
+                raise ILIOError("Error reading data: No frame.") from e
+            if e.wkc == self.TIMEOUT_WORKING_COUNTER:
+                raise ILTimeoutError("Timeout reading data.") from e
+            raise ILIOError("Error reading data") from e
         except pysoem.Emergency as e:
             error_description = self._get_emergency_description(e.error_code)
             if error_description is None:
@@ -178,9 +185,14 @@ class EthercatServo(PDOServo):
         self._lock.acquire()
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
-            self._check_working_counter()
         except (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError, ILIOError) as e:
             raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
+        except pysoem.WkcError as e:
+            if e.wkc == self.NOFRAME_WORKING_COUNTER:
+                raise ILIOError("Error writing data: No frame.") from e
+            if e.wkc == self.TIMEOUT_WORKING_COUNTER:
+                raise ILTimeoutError("Timeout writing data.") from e
+            raise ILIOError("Error writing data") from e
         except pysoem.Emergency as e:
             error_description = self._get_emergency_description(e.error_code)
             if error_description is None:
@@ -228,16 +240,6 @@ class EthercatServo(PDOServo):
             subnode, ipb_address, dtype, size
         )
         return mapped_address
-
-    def _check_working_counter(self) -> None:
-        """Check if the slave responds with a correct working counter.
-
-        Raises:
-            ILIOError: If the received working counter is incorrect.
-
-        """
-        if self.__slave.mbx_receive() == self.WRONG_WORKING_COUNTER:
-            raise ILIOError("Wrong working counter")
 
     def _get_emergency_description(self, error_code: int) -> Optional[str]:
         """Get the error description from the error code.

@@ -1006,6 +1006,7 @@ class Servo:
         Raises:
             ILAccessError: Wrong access to the register.
             ILIOError: Error writing the register.
+            ILTimeoutError: Write timeout.
 
         """
         _reg = self._get_reg(reg, subnode)
@@ -1031,6 +1032,7 @@ class Servo:
         Raises:
             ILAccessError: Wrong access to the register.
             ILIOError: Error reading the register.
+            ILTimeoutError: Read timeout.
 
         """
         _reg = self._get_reg(reg, subnode)

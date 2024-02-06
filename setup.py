@@ -44,7 +44,7 @@ setuptools.setup(
         "python-can==4.3.1",
         "ingenialogger>=0.2.1",
         "ping3==4.0.3",
-        "pysoem==1.1.5",
+        "pysoem==1.1.6",
         "numpy==1.26.3",
         "scipy==1.12.0",
     ],

@@ -11,6 +11,9 @@
 - Add functionalities to update ECAT state machine
 - Add send_receive_processdata function
 
+### Fixed
+- Raise exception when ECAT SDO write/read is wrong
+
 ### Deprecated
 - Support to Python 3.6 to 3.8.
 
