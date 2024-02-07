@@ -2,11 +2,11 @@ import pytest
 
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.canopen.register import (
-    CanopenRegister,
-    REG_DTYPE,
     REG_ACCESS,
-    REG_PHY,
     REG_ADDRESS_TYPE,
+    REG_DTYPE,
+    REG_PHY,
+    CanopenRegister,
 )
 
 
@@ -26,7 +26,7 @@ def test_getters_canopen_register():
         "storage": 1,
         "reg_range": (-20, 20),
         "labels": "Monitoring trigger type",
-        "enums": [{"TRIGGER_EVENT_AUTO": 0}, {"TRIGGER_EVENT_FORCED", 1}],
+        "enums": {0: "TRIGGER_EVENT_AUTO", 1: "TRIGGER_EVENT_FORCED"},
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",
