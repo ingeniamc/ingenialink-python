@@ -170,10 +170,13 @@ class EthercatServo(PDOServo):
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
 
     def _read_raw(  # type: ignore [override]
-        self, reg: EthercatRegister, buffer_size: int = 0, complete_access: bool = False
+        self,
+        reg: EthercatRegister,
+        buffer_size: int = 0,
+        complete_access: bool = False,
+        start_time: float = time.time(),
     ) -> bytes:
         self._lock.acquire()
-        start_time = time.time()
         try:
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
         except (
@@ -185,29 +188,15 @@ class EthercatServo(PDOServo):
         ) as e:
             self._handle_sdo_exception(reg, SDO_OPERATION_MSG.READ, e)
         except pysoem.Emergency as e:
-            while time.time() < start_time + self._connection_timeout:
-                try:
-                    value = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
-                except pysoem.Emergency:
-                    continue
-                except (
-                    pysoem.SdoError,
-                    pysoem.MailboxError,
-                    pysoem.PacketError,
-                    pysoem.WkcError,
-                    ILIOError,
-                ) as exc:
-                    self._handle_sdo_exception(reg, SDO_OPERATION_MSG.READ, exc)
-                else:
-                    return value
+            if time.time() < start_time + self._connection_timeout:
+                return self._read_raw(reg, buffer_size, complete_access, start_time)
             raise ILTimeoutError("Emergency messages could not be cleared.") from e
         finally:
             self._lock.release()
         return value
 
-    def _write_raw(self, reg: EthercatRegister, data: bytes, complete_access: bool = False) -> None:  # type: ignore [override]
+    def _write_raw(self, reg: EthercatRegister, data: bytes, complete_access: bool = False, start_time: float = time.time()) -> None:  # type: ignore [override]
         self._lock.acquire()
-        start_time = time.time()
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
         except (
@@ -219,21 +208,8 @@ class EthercatServo(PDOServo):
         ) as e:
             self._handle_sdo_exception(reg, SDO_OPERATION_MSG.WRITE, e)
         except pysoem.Emergency as e:
-            while time.time() < start_time + self._connection_timeout:
-                try:
-                    self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
-                except pysoem.Emergency:
-                    continue
-                except (
-                    pysoem.SdoError,
-                    pysoem.MailboxError,
-                    pysoem.PacketError,
-                    pysoem.WkcError,
-                    ILIOError,
-                ) as exc:
-                    self._handle_sdo_exception(reg, SDO_OPERATION_MSG.WRITE, exc)
-                else:
-                    return
+            if time.time() < start_time + self._connection_timeout:
+                return self._write_raw(reg, data, complete_access, start_time)
             raise ILTimeoutError("Emergency messages could not be cleared.") from e
         finally:
             self._lock.release()
