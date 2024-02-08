@@ -1,4 +1,5 @@
-from functools import partial
+import time
+from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
 
 import ingenialogger
@@ -22,6 +23,13 @@ from ingenialink.register import REG_ACCESS, REG_DTYPE
 logger = ingenialogger.get_logger(__name__)
 
 
+class SDO_OPERATION_MSG(Enum):
+    """Message for exceptions depending on the operation type."""
+
+    READ = "reading"
+    WRITE = "writing"
+
+
 class EthercatServo(PDOServo):
     """Ethercat Servo instance.
 
@@ -29,6 +37,7 @@ class EthercatServo(PDOServo):
         slave: Slave to be connected.
         slave_id: Slave ID.
         dictionary_path: Path to the dictionary.
+        connection_timeout: Time in seconds of the connection timeout.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
 
@@ -150,56 +159,114 @@ class EthercatServo(PDOServo):
         slave: "CdefSlave",
         slave_id: int,
         dictionary_path: str,
+        connection_timeout: float,
         servo_status_listener: bool = False,
     ):
         if not pysoem:
             raise pysoem_import_error
         self.__slave = slave
         self.slave_id = slave_id
+        self._connection_timeout = connection_timeout
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
 
     def _read_raw(  # type: ignore [override]
         self, reg: EthercatRegister, buffer_size: int = 0, complete_access: bool = False
     ) -> bytes:
         self._lock.acquire()
+        start_time = time.time()
         try:
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
-        except (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError, ILIOError) as e:
-            raise ILIOError(f"Error reading {reg.identifier}. Reason: {e}") from e
-        except pysoem.WkcError as e:
-            if e.wkc == self.NOFRAME_WORKING_COUNTER:
-                raise ILIOError("Error reading data: No frame.") from e
-            if e.wkc == self.TIMEOUT_WORKING_COUNTER:
-                raise ILTimeoutError("Timeout reading data.") from e
-            raise ILIOError("Error reading data") from e
+        except (
+            pysoem.SdoError,
+            pysoem.MailboxError,
+            pysoem.PacketError,
+            pysoem.WkcError,
+            ILIOError,
+        ) as e:
+            self._handle_sdo_exception(reg, SDO_OPERATION_MSG.READ, e)
         except pysoem.Emergency as e:
-            error_description = self._get_emergency_description(e.error_code)
-            if error_description is None:
-                error_description = e
-            raise ILIOError(f"Error reading {reg.identifier}. Reason: {error_description}") from e
+            while time.time() < start_time + self._connection_timeout:
+                try:
+                    value = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
+                except pysoem.Emergency:
+                    continue
+                except (
+                    pysoem.SdoError,
+                    pysoem.MailboxError,
+                    pysoem.PacketError,
+                    pysoem.WkcError,
+                    ILIOError,
+                ) as exc:
+                    self._handle_sdo_exception(reg, SDO_OPERATION_MSG.READ, exc)
+                else:
+                    return value
+            raise ILTimeoutError("Emergency messages could not be cleared.") from e
         finally:
             self._lock.release()
         return value
 
     def _write_raw(self, reg: EthercatRegister, data: bytes, complete_access: bool = False) -> None:  # type: ignore [override]
         self._lock.acquire()
+        start_time = time.time()
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
-        except (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError, ILIOError) as e:
-            raise ILIOError(f"Error writing {reg.identifier}. Reason: {e}") from e
-        except pysoem.WkcError as e:
-            if e.wkc == self.NOFRAME_WORKING_COUNTER:
-                raise ILIOError("Error writing data: No frame.") from e
-            if e.wkc == self.TIMEOUT_WORKING_COUNTER:
-                raise ILTimeoutError("Timeout writing data.") from e
-            raise ILIOError("Error writing data") from e
+        except (
+            pysoem.SdoError,
+            pysoem.MailboxError,
+            pysoem.PacketError,
+            pysoem.WkcError,
+            ILIOError,
+        ) as e:
+            self._handle_sdo_exception(reg, SDO_OPERATION_MSG.WRITE, e)
         except pysoem.Emergency as e:
-            error_description = self._get_emergency_description(e.error_code)
-            if error_description is None:
-                error_description = e
-            raise ILIOError(f"Error writing {reg.identifier}. Reason: {error_description}") from e
+            while time.time() < start_time + self._connection_timeout:
+                try:
+                    self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
+                except pysoem.Emergency:
+                    continue
+                except (
+                    pysoem.SdoError,
+                    pysoem.MailboxError,
+                    pysoem.PacketError,
+                    pysoem.WkcError,
+                    ILIOError,
+                ) as exc:
+                    self._handle_sdo_exception(reg, SDO_OPERATION_MSG.WRITE, exc)
+                else:
+                    return
+            raise ILTimeoutError("Emergency messages could not be cleared.") from e
         finally:
             self._lock.release()
+
+    def _handle_sdo_exception(
+        self, reg: EthercatRegister, operation_msg: SDO_OPERATION_MSG, exception: Exception
+    ) -> None:
+        """
+        Handle the exceptions that occur when reading or writing SDOs.
+
+        Args:
+            reg: The register that was read or written.
+            operation_msg: Operation type message to be shown on the exception.
+            exception: The exception that occurred while reading or writing.
+
+        Raises:
+            ILIOError: If the register cannot be read or written.
+            ILIOError: If the slave fails acknowledge the command.
+            ILTimeoutError: If the slave fails to respond within the connection
+             timeout period.
+
+        """
+        if isinstance(
+            exception, (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError, ILIOError)
+        ):
+            raise ILIOError(
+                f"Error {operation_msg} {reg.identifier}. Reason: {exception}"
+            ) from exception
+        elif isinstance(exception, pysoem.WkcError):
+            if exception.wkc == self.NOFRAME_WORKING_COUNTER:
+                raise ILIOError(f"Error {operation_msg} data: No frame.") from exception
+            if exception.wkc == self.TIMEOUT_WORKING_COUNTER:
+                raise ILTimeoutError(f"Timeout {operation_msg} data.") from exception
 
     def _monitoring_read_data(self) -> bytes:  # type: ignore [override]
         """Read monitoring data frame."""

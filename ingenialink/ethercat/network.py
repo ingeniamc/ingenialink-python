@@ -168,7 +168,9 @@ class EthercatNetwork(Network):
         if slave_id not in self.__last_init_nodes:
             raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
-        servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
+        servo = EthercatServo(
+            slave, slave_id, dictionary, servo_status_listener, self._ecat_master.sdo_read_timeout
+        )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             raise ILStateError("Slave can not reach PreOp state")
         self.servos.append(servo)
