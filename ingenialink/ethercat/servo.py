@@ -1,3 +1,4 @@
+import threading
 import time
 from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
@@ -164,6 +165,7 @@ class EthercatServo(PDOServo):
     ):
         if not pysoem:
             raise pysoem_import_error
+        self._lock = threading.RLock()
         self.__slave = slave
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
