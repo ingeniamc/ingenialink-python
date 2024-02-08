@@ -136,10 +136,10 @@ pipeline {
             agent {
                 label ECAT_NODE
             }
+            options {
+                lock(ECAT_NODE_LOCK)
+            }
             stages {
-                options {
-                    lock(ECAT_NODE_LOCK)
-                }
                 stage('Checkout') {
                     steps {
                         checkout scm
@@ -202,10 +202,10 @@ pipeline {
             agent {
                 label CAN_NODE
             }
+            options {
+                lock(CAN_NODE_LOCK)
+            }
             stages {
-                options {
-                    lock(CAN_NODE_LOCK)
-                }
                 stage('Checkout') {
                     steps {
                         checkout scm
