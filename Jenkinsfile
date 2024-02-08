@@ -133,13 +133,13 @@ pipeline {
             }
         }
         stage('EtherCAT and no-connection tests') {
-            options {
-                lock(ECAT_NODE_LOCK)
-            }
             agent {
                 label ECAT_NODE
             }
             stages {
+                options {
+                    lock(ECAT_NODE_LOCK)
+                }
                 stage('Checkout') {
                     steps {
                         checkout scm
@@ -199,13 +199,13 @@ pipeline {
             }
         }
         stage('CANopen and Ethernet tests') {
-            options {
-                lock(CAN_NODE_LOCK)
-            }
             agent {
                 label CAN_NODE
             }
             stages {
+                options {
+                    lock(CAN_NODE_LOCK)
+                }
                 stage('Checkout') {
                     steps {
                         checkout scm
