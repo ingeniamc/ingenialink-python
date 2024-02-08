@@ -176,8 +176,10 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         buffer_size: int = 0,
         complete_access: bool = False,
-        start_time: float = time.time(),
+        start_time: Optional[float] = None,
     ) -> bytes:
+        if start_time is None:
+            start_time = time.time()
         self._lock.acquire()
         try:
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
@@ -197,7 +199,15 @@ class EthercatServo(PDOServo):
             self._lock.release()
         return value
 
-    def _write_raw(self, reg: EthercatRegister, data: bytes, complete_access: bool = False, start_time: float = time.time()) -> None:  # type: ignore [override]
+    def _write_raw(  # type: ignore [override]
+        self,
+        reg: EthercatRegister,
+        data: bytes,
+        complete_access: bool = False,
+        start_time: Optional[float] = None,
+    ) -> None:
+        if start_time is None:
+            start_time = time.time()
         self._lock.acquire()
         try:
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
