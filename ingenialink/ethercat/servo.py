@@ -165,11 +165,11 @@ class EthercatServo(PDOServo):
     ):
         if not pysoem:
             raise pysoem_import_error
-        self._lock = threading.RLock()
         self.__slave = slave
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
+        self._lock = threading.RLock()
 
     def _read_raw(  # type: ignore [override]
         self,
