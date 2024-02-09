@@ -19,6 +19,7 @@
 
 ### Changed
 - The PCAN transceiver bus is automatically reset when the bus-off state is reached.
+- Emergency (EMCY) messages are discarded when using the CoE protocol.
 
 ## [7.1.1] - 2024-01-03
 
