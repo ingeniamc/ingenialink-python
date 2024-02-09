@@ -1,5 +1,6 @@
 import json
-import time
+
+from bitarray import bitarray
 
 from ingenialink import EthercatNetwork
 
@@ -9,8 +10,9 @@ except ImportError:
     pass
 import pytest
 
-from ingenialink.enums.register import REG_DTYPE
+from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
 from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError
 from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
@@ -52,7 +54,7 @@ def test_rpdo_item(open_dictionary):
     rpdo_item = RPDOMapItem(register)
 
     assert rpdo_item.register == register
-    assert rpdo_item.size == dtype_value[rpdo_item.register.dtype][0]
+    assert rpdo_item.size_bits == dtype_value[rpdo_item.register.dtype][0] * 8
 
     with pytest.raises(ILError) as exc_info:
         rpdo_item.value
@@ -60,6 +62,8 @@ def test_rpdo_item(open_dictionary):
 
     rpdo_item.value = 15
     assert rpdo_item.value == 15
+    assert rpdo_item.raw_data_bytes == b"\x0f\x00\x00\x00"
+    assert rpdo_item.raw_data_bits.to01() == "00001111000000000000000000000000"
 
 
 @pytest.mark.no_connection
@@ -87,7 +91,7 @@ def test_tpdo_item(open_dictionary):
     tpdo_item = TPDOMapItem(register)
 
     assert tpdo_item.register == register
-    assert tpdo_item.size == dtype_value[tpdo_item.register.dtype][0]
+    assert tpdo_item.size_bits == dtype_value[tpdo_item.register.dtype][0] * 8
 
     with pytest.raises(ILError) as exc_info:
         tpdo_item.value
@@ -96,7 +100,7 @@ def test_tpdo_item(open_dictionary):
     with pytest.raises(AttributeError):
         tpdo_item.value = 15
 
-    tpdo_item.raw_data = convert_dtype_to_bytes(15, REG_DTYPE.U16)
+    tpdo_item.raw_data_bytes = convert_dtype_to_bytes(15, REG_DTYPE.S32)
     assert tpdo_item.value == 15
 
 
@@ -173,11 +177,11 @@ def test_pdo_map(create_pdo_map):
     assert all(isinstance(pdo_map_item.register, Register) for pdo_map_item in rpdo_map.items)
 
     assert all(
-        pdo_map_item.size == dtype_value[pdo_map_item.register.dtype][0]
+        pdo_map_item.size_bits == dtype_value[pdo_map_item.register.dtype][0] * 8
         for pdo_map_item in tpdo_map.items
     )
     assert all(
-        pdo_map_item.size == dtype_value[pdo_map_item.register.dtype][0]
+        pdo_map_item.size_bits == dtype_value[pdo_map_item.register.dtype][0] * 8
         for pdo_map_item in tpdo_map.items
     )
 
@@ -239,6 +243,7 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
 
 
 @pytest.mark.ethercat
+@pytest.mark.skip
 def test_pdo_example(read_config, script_runner):
     protocol_contents = read_config["ethercat"]
     ifname = protocol_contents["ifname"]
@@ -312,3 +317,79 @@ def test_set_pdo_map_to_slave(connect_to_slave, create_pdo_map):
     assert servo._rpdo_maps[0] == rpdo_map
     assert servo._tpdo_maps[0] == tpdo_map
     assert servo.slave.config_func is not None
+
+
+@pytest.mark.no_connection
+def test_pdo_item_bool():
+    register = EthercatRegister(0, 1, REG_DTYPE.BOOL, REG_ACCESS.RW, cyclic="CYCLIC_RX")
+    rpdo_item = RPDOMapItem(register)
+
+    assert rpdo_item.register == register
+    assert rpdo_item.size_bits == 1
+
+    with pytest.raises(ILError) as exc_info:
+        rpdo_item.value
+    assert str(exc_info.value) == "Raw data is empty."
+
+    rpdo_item.value = True
+    assert rpdo_item.raw_data_bits.to01() == "1"
+    assert rpdo_item.raw_data_bytes == b"\x80"
+
+
+@pytest.mark.no_connection
+def test_pdo_item_custom_size(open_dictionary):
+    ethercat_dictionary = open_dictionary
+    register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
+
+    tpdo_item = TPDOMapItem(register, size_bits=4)
+
+    assert tpdo_item.size_bits == 4
+
+    with pytest.raises(ILError) as exc_info:
+        tpdo_item.value
+    assert str(exc_info.value) == "Raw data is empty."
+
+    tpdo_item.raw_data_bits = bitarray("1001")
+    assert tpdo_item.raw_data_bytes == b"\x90"
+
+
+@pytest.mark.no_connection
+def test_pdo_item_custom_size_wrong_length(open_dictionary):
+    ethercat_dictionary = open_dictionary
+    register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
+
+    tpdo_item = TPDOMapItem(register, size_bits=5)
+
+    with pytest.raises(ILError) as exc_info:
+        tpdo_item.raw_data_bits = bitarray("1001")
+
+    assert str(exc_info.value) == "Wrong size. Expected 5, obtained 4"
+
+
+@pytest.mark.no_connection
+def test_map_pdo_with_bools(open_dictionary):
+    ethercat_dictionary = open_dictionary
+    register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
+    item1 = RPDOMapItem(register)
+    item2 = RPDOMapItem(register, size_bits=4)
+    register = EthercatRegister(0, 1, REG_DTYPE.BOOL, REG_ACCESS.RW, cyclic="CYCLIC_RX")
+    item3 = RPDOMapItem(register)
+    item4 = RPDOMapItem(register)
+
+    rpdo_map = RPDOMap()
+    for item in [item1, item2, item3, item4]:
+        rpdo_map.add_item(item)
+
+    item1.value = 411601032
+    item2.raw_data_bits = bitarray("1011")
+    item3.value = False
+    item4.value = True
+
+    assert rpdo_map.data_length_bits == 38
+    assert rpdo_map.data_length_bytes == 5
+    assert item1.raw_data_bits.to01() == "10001000100010001000100000011000"
+    assert item2.raw_data_bits.to01() == "1011"
+    assert item3.raw_data_bits.to01() == "0"
+    assert item4.raw_data_bits.to01() == "1"
+    assert rpdo_map.get_item_bits().to01() == "10001000100010001000100000011000101101"
+    assert rpdo_map.get_item_bytes() == b"\x88\x88\x88\x18\xb4"

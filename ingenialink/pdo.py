@@ -1,10 +1,17 @@
 from typing import List, Optional, Union
 
+from bitarray import bitarray, bits2bytes
+
 from ingenialink.canopen.register import CanopenRegister
+from ingenialink.enums.register import REG_DTYPE
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILError
 from ingenialink.servo import Servo
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, dtype_value
+from ingenialink.utils._utils import (
+    convert_bytes_to_dtype,
+    convert_dtype_to_bytes,
+    dtype_length_bits,
+)
 
 
 class PDOMapItem:
@@ -12,7 +19,7 @@ class PDOMapItem:
 
     Attributes:
         register: mapped register object.
-        size: custom register size.
+        size_bits: custom register size in bits.
 
     """
 
@@ -20,11 +27,11 @@ class PDOMapItem:
     """Accepted cyclic: CYCLIC_TX or CYCLIC_RX."""
 
     def __init__(
-        self, register: Union[EthercatRegister, CanopenRegister], size: Optional[int] = None
+        self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
     ) -> None:
         self.register = register
-        self.size = size or dtype_value[register.dtype][0]
-        self._raw_data: Optional[bytes] = None
+        self.size_bits = size_bits or dtype_length_bits[register.dtype]
+        self._raw_data_bits: Optional[bitarray] = None
         self._check_if_mappable()
 
     def _check_if_mappable(self) -> None:
@@ -40,7 +47,28 @@ class PDOMapItem:
             )
 
     @property
-    def raw_data(self) -> bytes:
+    def raw_data_bits(self) -> bitarray:
+        """Raw data in bits.
+
+        Returns:
+            Raw data in bits
+
+        Raises:
+            ILError: If the raw data is empty.
+
+        """
+        if self._raw_data_bits is None:
+            raise ILError("Raw data is empty.")
+        return self._raw_data_bits
+
+    @raw_data_bits.setter
+    def raw_data_bits(self, data: bitarray) -> None:
+        if len(data) != self.size_bits:
+            raise ILError(f"Wrong size. Expected {self.size_bits}, obtained {len(data)}")
+        self._raw_data_bits = data
+
+    @property
+    def raw_data_bytes(self) -> bytes:
         """Raw data in bytes.
 
         Returns:
@@ -50,16 +78,18 @@ class PDOMapItem:
             ILError: If the raw data is empty.
 
         """
-        if self._raw_data is None:
+        if self._raw_data_bits is None:
             raise ILError("Raw data is empty.")
-        return self._raw_data
+        return self._raw_data_bits.tobytes()
 
-    @raw_data.setter
-    def raw_data(self, data: bytes) -> None:
-        self._raw_data = data
+    @raw_data_bytes.setter
+    def raw_data_bytes(self, data: bytes) -> None:
+        data_bits = bitarray()
+        data_bits.frombytes(data)
+        self.raw_data_bits = data_bits
 
     @property
-    def value(self) -> Union[int, float]:
+    def value(self) -> Union[int, float, bool]:
         """Register value. Converts the raw data bytes into the register value.
 
         Raises:
@@ -69,7 +99,10 @@ class PDOMapItem:
         Returns:
             Register value.
         """
-        value = convert_bytes_to_dtype(self.raw_data, self.register.dtype)
+        if self.register.dtype == REG_DTYPE.BOOL:
+            value = self.raw_data_bits.any()
+        else:
+            value = convert_bytes_to_dtype(self.raw_data_bytes, self.register.dtype)
         if not isinstance(value, (int, float, bool)):
             raise ILError("Wrong register value type")
         return value
@@ -83,7 +116,7 @@ class PDOMapItem:
 
         """
         index = self.register.idx
-        mapped_register = (index << 16) | (self.size * 8)
+        mapped_register = (index << 16) | self.size_bits
         mapped_register_bytes: bytes = mapped_register.to_bytes(4, "little")
         return mapped_register_bytes
 
@@ -94,18 +127,23 @@ class RPDOMapItem(PDOMapItem):
     ACCEPTED_CYCLIC = "CYCLIC_RX"
 
     def __init__(
-        self, register: Union[EthercatRegister, CanopenRegister], size: Optional[int] = None
+        self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
     ) -> None:
-        super().__init__(register, size)
+        super().__init__(register, size_bits)
 
     @property
     def value(self) -> Union[int, float]:
         return super().value
 
     @value.setter
-    def value(self, value: Union[int, float]) -> None:
-        raw_data = convert_dtype_to_bytes(value, self.register.dtype)
-        self.raw_data = raw_data
+    def value(self, value: Union[int, float, bool]) -> None:
+        if isinstance(value, bool):
+            raw_data_bits = bitarray()
+            raw_data_bits.append(value)
+            self.raw_data_bits = raw_data_bits
+        else:
+            raw_data_bytes = convert_dtype_to_bytes(value, self.register.dtype)
+            self.raw_data_bytes = raw_data_bytes
 
 
 class TPDOMapItem(PDOMapItem):
@@ -124,18 +162,18 @@ class PDOMap:
         self.__map_register_address: Optional[int] = None
 
     def create_item(
-        self, register: Union[EthercatRegister, CanopenRegister], size: Optional[int] = None
+        self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
     ) -> PDOMapItem:
         """Create a new PDOMapItem.
 
         Args:
             register: Register object.
-            size: Register size.
+            size_bits: Register size in bits.
 
         Returns:
             PDO Map item.
         """
-        item = self._PDO_MAP_ITEM_CLASS(register, size)
+        item = self._PDO_MAP_ITEM_CLASS(register, size_bits)
         return item
 
     def add_item(self, item: PDOMapItem) -> None:
@@ -203,16 +241,25 @@ class PDOMap:
         self.__map_register_address = address
 
     @property
-    def data_bytes_length(self) -> int:
-        """Length of the map bytes.
+    def data_length_bits(self) -> int:
+        """Length of the map in bits.
 
         Returns:
-            Length of the map bytes.
+            Length of the map in bits.
         """
         length = 0
         for item in self.items:
-            length += item.size
+            length += item.size_bits
         return length
+
+    @property
+    def data_length_bytes(self) -> int:
+        """Length of the map in bytes.
+
+        Returns:
+            Length of the map in bytes.
+        """
+        return bits2bytes(self.data_length_bits)
 
     @property
     def items_mapping(self) -> bytearray:
@@ -232,29 +279,42 @@ class RPDOMap(PDOMap):
 
     _PDO_MAP_ITEM_CLASS = RPDOMapItem
 
-    def get_item_bytes(self) -> bytearray:
-        """Return the concatenated items raw data to be sent to the drive.
+    def get_item_bits(self) -> bitarray:
+        """Return the concatenated items raw data to be sent to the drive (in bits).
+
+        Raises:
+            ILError: Raw data is empty.
+            ILError: If the length of the bit array is incorrect.
+
+        Returns:
+            Concatenated items raw data in bits.
+        """
+        data_bits = bitarray()
+        for item in self.items:
+            try:
+                data_bits += item.raw_data_bits
+            except ILError:
+                raise ILError(f"PDO item {item.register.identifier} does not have data stored.")
+
+        if len(data_bits) != self.data_length_bits:
+            raise ILError(
+                "The length in bits of the data array is incorrect. Expected"
+                f" {self.data_length_bits}, obtained {len(data_bits)}"
+            )
+        return data_bits
+
+    def get_item_bytes(self) -> bytes:
+        """Return the concatenated items raw data to be sent to the drive (in bytes).
 
         Raises:
             ILError: Raw data is empty.
             ILError: If the length of th byte array is incorrect.
 
         Returns:
-            Concatenated items raw data.
+            Concatenated items raw data in bytes.
         """
-        data_bytes = bytearray()
-        for item in self.items:
-            try:
-                data_bytes += item.raw_data
-            except ILError:
-                raise ILError(f"PDO item {item.register.identifier} does not have data stored.")
-
-        if len(data_bytes) != self.data_bytes_length:
-            raise ILError(
-                f"The length of the data array is incorrect. Expected {self.data_bytes_length},"
-                f" obtained {len(data_bytes)}"
-            )
-        return data_bytes
+        item_bits = self.get_item_bits()
+        return item_bits.tobytes()
 
 
 class TPDOMap(PDOMap):
@@ -271,15 +331,18 @@ class TPDOMap(PDOMap):
         Raises:
             ILError: If the length of the received data does not coincide.
         """
-        if len(data_bytes) != self.data_bytes_length:
+        if len(data_bytes) != self.data_length_bytes:
             raise ILError(
-                f"The length of the data array is incorrect. Expected {self.data_bytes_length},"
+                f"The length of the data array is incorrect. Expected {self.data_length_bytes},"
                 f" obtained {len(data_bytes)}"
             )
+        data_bits = bitarray()
+        data_bits.frombytes(data_bytes)
+
         offset = 0
         for item in self.items:
-            item.raw_data = data_bytes[offset : item.size + offset]
-            offset += item.size
+            item.raw_data_bits = data_bits[offset : item.size_bits + offset]
+            offset += item.size_bits
 
 
 class PDOServo(Servo):
@@ -447,7 +510,7 @@ class PDOServo(Servo):
         if len(self._tpdo_maps) == 0:
             return
         for tpdo_map in self._tpdo_maps:
-            map_bytes = input_data[: tpdo_map.data_bytes_length]
+            map_bytes = input_data[: tpdo_map.data_length_bytes]
             tpdo_map.set_item_bytes(map_bytes)
 
     def _process_rpdo(self) -> Optional[bytes]:
