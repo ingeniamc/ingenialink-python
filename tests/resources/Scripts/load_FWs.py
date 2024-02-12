@@ -113,10 +113,7 @@ def load_can(drive_conf):
 
 def load_ecat(drive_conf):
     net = EthercatNetwork(drive_conf["ifname"])
-    try:
-        net.load_firmware(drive_conf["fw_file"], drive_conf["slave"])
-    except ILError as e:
-        raise Exception(f"Could not load the firmware: {e}") from e
+    net.load_firmware(drive_conf["fw_file"], drive_conf["slave"])
     logger.info("FW updated. ifname: %s, slave: %d", drive_conf["ifname"], drive_conf["slave"])
 
 
@@ -172,10 +169,7 @@ def load_eth(drive_conf):
         logger.warning(
             f"Drive does not respond ({e}). It may already be in boot mode.", drive=drive_conf["ip"]
         )
-    try:
-        net.load_firmware(drive_conf["fw_file"], drive_conf["ip"], "Ingenia", "Ingenia")
-    except ILError as e:
-        raise Exception(f"Could not load the firmware: {e}")
+    net.load_firmware(drive_conf["fw_file"], drive_conf["ip"], "Ingenia", "Ingenia")
     detected = ping_check(drive_conf["ip"])
     if not detected:
         logger.info("FW not updated. IP: %s", drive_conf["ip"])
@@ -187,16 +181,12 @@ def main(comm, config):
     servo_list = config[comm]
     for index, servo_conf in enumerate(servo_list):
         logger.info("Upload FW comm %s, index: %d", comm, index)
-        try:
-            if comm == "canopen":
-                load_can(servo_conf)
-            if comm == "ethercat":
-                load_ecat(servo_conf)
-            if comm == "ethernet":
-                load_eth(servo_conf)
-        except ILError as e:
-            logger.exception(e)
-            logger.error("Error in FW update. comm %s, index: %d", comm, index)
+        if comm == "canopen":
+            load_can(servo_conf)
+        elif comm == "ethercat":
+            load_ecat(servo_conf)
+        else:
+            load_eth(servo_conf)
 
 
 if __name__ == "__main__":
