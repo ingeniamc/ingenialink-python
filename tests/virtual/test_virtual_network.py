@@ -6,7 +6,6 @@ import pytest
 from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
 from ingenialink.network import NET_STATE
 from ingenialink.virtual.network import VirtualNetwork
-from tests.conftest import ALLOW_PROTOCOLS
 from virtual_drive.core import VirtualDrive
 
 RESOURCES_FOLDER = "virtual_drive/resources/"

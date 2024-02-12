@@ -99,9 +99,10 @@ class EthercatNetwork(Network):
         self.__servos_state: Dict[int, NET_STATE] = {}
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: Dict[int, List[Any]] = defaultdict(list)
+        self._connection_timeout: float = connection_timeout
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
-        self._ecat_master.sdo_read_timeout = int(1_000_000 * connection_timeout)
-        self._ecat_master.sdo_write_timeout = int(1_000_000 * connection_timeout)
+        self._ecat_master.sdo_read_timeout = int(1_000_000 * self._connection_timeout)
+        self._ecat_master.sdo_write_timeout = int(1_000_000 * self._connection_timeout)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
         self.__is_master_running = False
         self.__last_init_nodes: List[int] = []
@@ -168,7 +169,9 @@ class EthercatNetwork(Network):
         if slave_id not in self.__last_init_nodes:
             raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
-        servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
+        servo = EthercatServo(
+            slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
+        )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             raise ILStateError("Slave can not reach PreOp state")
         self.servos.append(servo)
