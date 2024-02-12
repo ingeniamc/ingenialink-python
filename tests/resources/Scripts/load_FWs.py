@@ -113,7 +113,10 @@ def load_can(drive_conf):
 
 def load_ecat(drive_conf):
     net = EthercatNetwork(drive_conf["ifname"])
-    net.load_firmware(drive_conf["fw_file"], drive_conf["slave"])
+    try:
+        net.load_firmware(drive_conf["fw_file"], drive_conf["slave"])
+    except ILError as e:
+        raise Exception(f"Could not load the firmware: {e}") from e
     logger.info("FW updated. ifname: %s, slave: %d", drive_conf["ifname"], drive_conf["slave"])
 
 
