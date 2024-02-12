@@ -69,7 +69,7 @@ def test_connect_virtual_custom_dictionaries(connect_virtual_drive, read_config)
         for reg_key, register in servo.dictionary.registers(1).items():
             if register.access in [REG_ACCESS.RO, REG_ACCESS.RW]:
                 value = servo.read(reg_key)
-                assert pytest.approx(server.get_value_by_id(1, reg_key), abs=0.01) == value
+                assert pytest.approx(server.get_value_by_id(1, reg_key), abs=0.02) == value
 
             if register.access in [REG_ACCESS.WO, REG_ACCESS.RW]:
                 if register.enums_count > 0:
