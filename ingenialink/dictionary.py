@@ -362,7 +362,7 @@ class Dictionary(ABC):
 
             # Enumerations
             enums_elem = register.findall(self.DICT_ENUMERATIONS_ENUMERATION)
-            enums = {int(enum.attrib["value"]): str(enum.text) for enum in enums_elem}
+            enums = {str(enum.text): int(enum.attrib["value"]) for enum in enums_elem}
 
             current_read_register = Register(
                 dtype,
