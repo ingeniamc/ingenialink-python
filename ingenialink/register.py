@@ -61,7 +61,7 @@ class Register(ABC):
             Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]
         ] = (None, None),
         labels: Optional[Dict[str, str]] = None,
-        enums: Optional[Dict[int, str]] = None,
+        enums: Optional[Dict[str, int]] = None,
         cat_id: Optional[str] = None,
         scat_id: Optional[str] = None,
         internal_use: int = 0,
@@ -211,7 +211,7 @@ class Register(ABC):
         return self._labels
 
     @property
-    def enums(self) -> Dict[int, str]:
+    def enums(self) -> Dict[str, int]:
         """Containing all the enums for the register."""
         return self._enums
 
