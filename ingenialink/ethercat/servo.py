@@ -253,8 +253,12 @@ class EthercatServo(PDOServo):
         elif isinstance(exception, pysoem.WkcError):
             if exception.wkc == self.NOFRAME_WORKING_COUNTER:
                 raise ILIOError(f"Error {operation_msg.value} data: No frame.") from exception
-            if exception.wkc == self.TIMEOUT_WORKING_COUNTER:
+            elif exception.wkc == self.TIMEOUT_WORKING_COUNTER:
                 raise ILTimeoutError(f"Timeout {operation_msg.value} data.") from exception
+            else:
+                raise ILIOError(
+                    f"Error {operation_msg.value} data. Wrong working counter: {exception.wkc}"
+                ) from exception
 
     def _monitoring_read_data(self) -> bytes:  # type: ignore [override]
         """Read monitoring data frame."""
