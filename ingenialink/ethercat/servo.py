@@ -240,6 +240,7 @@ class EthercatServo(PDOServo):
         Raises:
             ILIOError: If the register cannot be read or written.
             ILIOError: If the slave fails acknowledge the command.
+            ILIOError: If the working counter value is wrong.
             ILTimeoutError: If the slave fails to respond within the connection
              timeout period.
 
