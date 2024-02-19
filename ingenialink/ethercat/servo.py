@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILIOError, ILTimeoutError
+from ingenialink.exceptions import ILIOError, ILTimeoutError, ILError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 from ingenialink.register import REG_ACCESS, REG_DTYPE
 
@@ -254,7 +254,7 @@ class EthercatServo(PDOServo):
             ) from exception
         elif isinstance(exception, pysoem.WkcError):
             default_error_msg = f"Error {operation_msg.value} data"
-            wkc_exceptions: Dict[int, Exception] = {
+            wkc_exceptions: Dict[int, ILError] = {
                 self.DEFAULT_WORKING_COUNTER: ILIOError(
                     f"{default_error_msg}: The working counter remained unchanged."
                 ),
