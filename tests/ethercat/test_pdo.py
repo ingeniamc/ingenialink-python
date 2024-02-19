@@ -279,7 +279,7 @@ def test_start_stop_pdo(connect_to_all_slave):
         servo.enable()
         initial_positions[index] = servo.read("CL_POS_FBK_VALUE")
         initial_velocities[index] = servo.read("CL_VEL_FBK_VALUE")
-        assert initial_velocities[index] == 0.0
+        assert pytest.approx(0.0, rel=1e-3) == initial_velocities[index]
         rpdo_map = RPDOMap()
         tpdo_map = TPDOMap()
         for tpdo_register in TPDO_REGISTERS:
