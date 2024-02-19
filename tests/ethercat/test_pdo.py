@@ -276,6 +276,7 @@ def test_start_stop_pdo(connect_to_all_slave):
     initial_positions = {}
     initial_velocities = {}
     for index, servo in enumerate(servos):
+        servo.enable()
         initial_positions[index] = servo.read("CL_POS_FBK_VALUE")
         initial_velocities[index] = servo.read("CL_VEL_FBK_VALUE")
         assert initial_velocities[index] == 0.0
@@ -296,7 +297,6 @@ def test_start_stop_pdo(connect_to_all_slave):
     net._ecat_master.read_state()
     for servo in servos:
         assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
-        servo.enable()
     start_time = time.time()
     timeout = 2
     while time.time() < start_time + timeout:
