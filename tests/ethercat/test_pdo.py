@@ -278,9 +278,9 @@ def test_start_stop_pdo(connect_to_all_slave):
     new_operation_mode = {}
     for index, servo in enumerate(servos):
         current_operation_mode[index] = servo.read(operation_mode_uid)
-        if current_operation_mode[index] == default_operation_mode:
-            default_operation_mode += 1
         new_operation_mode[index] = default_operation_mode
+        if current_operation_mode[index] == default_operation_mode:
+            new_operation_mode[index] += 1
         rpdo_map = RPDOMap()
         tpdo_map = TPDOMap()
         for tpdo_register in TPDO_REGISTERS:
