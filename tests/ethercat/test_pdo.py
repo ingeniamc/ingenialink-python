@@ -270,16 +270,17 @@ def connect_to_all_slave(pytestconfig):
 
 @pytest.mark.ethercat
 def test_start_stop_pdo(connect_to_all_slave):
-    RPDO_REGISTERS = ["CL_POS_SET_POINT_VALUE"]
-    TPDO_REGISTERS = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
     servos, net = connect_to_all_slave
-    initial_positions = {}
-    initial_velocities = {}
+    operation_mode_uid = "DRV_OP_CMD"
+    RPDO_REGISTERS = [operation_mode_uid]
+    default_operation_mode = 1
+    current_operation_mode = {}
+    new_operation_mode = {}
     for index, servo in enumerate(servos):
-        servo.enable()
-        initial_positions[index] = servo.read("CL_POS_FBK_VALUE")
-        initial_velocities[index] = servo.read("CL_VEL_FBK_VALUE")
-        assert pytest.approx(0.0, rel=1e-3) == initial_velocities[index]
+        current_operation_mode[index] = servo.read(operation_mode_uid)
+        if current_operation_mode[index] == default_operation_mode:
+            default_operation_mode += 1
+        new_operation_mode[index] = default_operation_mode
         rpdo_map = RPDOMap()
         tpdo_map = TPDOMap()
         for tpdo_register in TPDO_REGISTERS:
@@ -289,28 +290,28 @@ def test_start_stop_pdo(connect_to_all_slave):
             register = servo.dictionary.registers(SUBNODE)[rpdo_register]
             rpdo_map.add_registers(register)
         for item in rpdo_map.items:
-            item.value = initial_positions[index]
+            item.value = new_operation_mode[index]
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
         net._ecat_master.read_state()
         assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
     net.start_pdos()
     net._ecat_master.read_state()
+    start_time = time.time()
+    timeout = 1
+    while time.time() < start_time + timeout:
+        net.send_receive_processdata()
     for servo in servos:
         assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
-    start_time = time.time()
-    timeout = 2
-    while time.time() < start_time + timeout:
-        for servo in servos:
-            for item in servo._rpdo_maps[0].items:
-                item.value += 100
-        net.send_receive_processdata()
     net.stop_pdos()
     net._ecat_master.read_state()
     for index, servo in enumerate(servos):
         assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
-        servo.disable()
-        assert servo._tpdo_maps[0].items[0].value > initial_positions[index]
-        assert servo._tpdo_maps[0].items[1].value > initial_velocities[index]
+        # Check that RPDOs are being received by the slave
+        assert servo._rpdo_maps[0].items[0].value == servo.read(operation_mode_uid)
+        # Restore the previous operation mode
+        servo.write(operation_mode_uid, current_operation_mode[index])
+        # Check that TPDOs are being sent by the slave
+        assert servo._tpdo_maps[0].items[0].value == servo.read(TPDO_REGISTERS[0])
 
 
 @pytest.mark.ethercat
