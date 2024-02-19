@@ -49,7 +49,7 @@ class EthercatServo(PDOServo):
     DICTIONARY_CLASS = EthercatDictionary
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
 
-    DEFAULT_WORKING_COUNTER = 0
+    NO_RESPONSE_WORKING_COUNTER = 0
     TIMEOUT_WORKING_COUNTER = -5
     NOFRAME_WORKING_COUNTER = -1
 
@@ -259,7 +259,7 @@ class EthercatServo(PDOServo):
         elif isinstance(exception, pysoem.WkcError):
             default_error_msg = f"Error {operation_msg.value} data"
             wkc_exceptions: Dict[int, ILError] = {
-                self.DEFAULT_WORKING_COUNTER: ILIOError(
+                self.NO_RESPONSE_WORKING_COUNTER: ILIOError(
                     f"{default_error_msg}: The working counter remained unchanged."
                 ),
                 self.NOFRAME_WORKING_COUNTER: ILIOError(f"{default_error_msg}: No frame."),
