@@ -1,4 +1,3 @@
-import threading
 import time
 from enum import Enum
 from typing import TYPE_CHECKING, List, Optional, Dict
@@ -170,7 +169,6 @@ class EthercatServo(PDOServo):
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
-        self._lock = threading.RLock()
 
     def _read_raw(  # type: ignore [override]
         self,
@@ -179,6 +177,7 @@ class EthercatServo(PDOServo):
         complete_access: bool = False,
         start_time: Optional[float] = None,
     ) -> bytes:
+        retry = False
         if start_time is None:
             start_time = time.time()
         self._lock.acquire()
@@ -193,11 +192,13 @@ class EthercatServo(PDOServo):
         ) as e:
             self._handle_sdo_exception(reg, SDO_OPERATION_MSG.READ, e)
         except pysoem.Emergency as e:
-            if time.time() < start_time + self._connection_timeout:
-                return self._read_raw(reg, buffer_size, complete_access, start_time)
-            raise ILTimeoutError("Emergency messages could not be cleared.") from e
+            if time.time() > start_time + self._connection_timeout:
+                raise ILTimeoutError("Emergency messages could not be cleared.") from e
+            retry = True
         finally:
             self._lock.release()
+        if retry:
+            return self._read_raw(reg, buffer_size, complete_access, start_time)
         return value
 
     def _write_raw(  # type: ignore [override]
@@ -207,6 +208,7 @@ class EthercatServo(PDOServo):
         complete_access: bool = False,
         start_time: Optional[float] = None,
     ) -> None:
+        retry = False
         if start_time is None:
             start_time = time.time()
         self._lock.acquire()
@@ -221,11 +223,13 @@ class EthercatServo(PDOServo):
         ) as e:
             self._handle_sdo_exception(reg, SDO_OPERATION_MSG.WRITE, e)
         except pysoem.Emergency as e:
-            if time.time() < start_time + self._connection_timeout:
-                return self._write_raw(reg, data, complete_access, start_time)
-            raise ILTimeoutError("Emergency messages could not be cleared.") from e
+            if time.time() > start_time + self._connection_timeout:
+                raise ILTimeoutError("Emergency messages could not be cleared.") from e
+            retry = True
         finally:
             self._lock.release()
+        if retry:
+            return self._write_raw(reg, data, complete_access, start_time)
 
     def _handle_sdo_exception(
         self, reg: EthercatRegister, operation_msg: SDO_OPERATION_MSG, exception: Exception

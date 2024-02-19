@@ -141,7 +141,7 @@ class Servo:
         """SERVO_UNITS_VEL: Velocity units."""
         self.units_acc = None
         """SERVO_UNITS_ACC: Acceleration units."""
-        self._lock: Union[threading.Lock, threading.RLock] = threading.Lock()
+        self._lock = threading.Lock()
         self.__observers_servo_state: List[Callable[[SERVO_STATE, None, int], Any]] = []
         self.__listener_servo_status: Optional[ServoStatusListener] = None
         self.__monitoring_data: Dict[int, List[Union[int, float]]] = {}
