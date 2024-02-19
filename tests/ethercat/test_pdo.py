@@ -270,8 +270,15 @@ def connect_to_all_slave(pytestconfig):
 
 @pytest.mark.ethercat
 def test_start_stop_pdo(connect_to_all_slave):
+    RPDO_REGISTERS = ["CL_POS_SET_POINT_VALUE"]
+    TPDO_REGISTERS = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
     servos, net = connect_to_all_slave
+    initial_positions = {}
+    initial_velocities = {}
     for index, servo in enumerate(servos):
+        initial_positions[index] = servo.read("CL_POS_FBK_VALUE")
+        initial_velocities[index] = servo.read("CL_VEL_FBK_VALUE")
+        assert initial_velocities[index] == 0.0
         rpdo_map = RPDOMap()
         tpdo_map = TPDOMap()
         for tpdo_register in TPDO_REGISTERS:
@@ -281,7 +288,7 @@ def test_start_stop_pdo(connect_to_all_slave):
             register = servo.dictionary.registers(SUBNODE)[rpdo_register]
             rpdo_map.add_registers(register)
         for item in rpdo_map.items:
-            item.value = 0
+            item.value = initial_positions[index]
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
         net._ecat_master.read_state()
         assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
@@ -289,10 +296,21 @@ def test_start_stop_pdo(connect_to_all_slave):
     net._ecat_master.read_state()
     for servo in servos:
         assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+        servo.enable()
+    start_time = time.time()
+    timeout = 2
+    while time.time() < start_time + timeout:
+        for servo in servos:
+            for item in servo._rpdo_maps[0].items:
+                item.value += 100
+        net.send_receive_processdata()
     net.stop_pdos()
     net._ecat_master.read_state()
-    for servo in servos:
+    for index, servo in enumerate(servos):
         assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+        servo.disable()
+        assert servo._tpdo_maps[0].items[0].value > initial_positions[index]
+        assert servo._tpdo_maps[0].items[1].value > initial_velocities[index]
 
 
 @pytest.mark.ethercat
