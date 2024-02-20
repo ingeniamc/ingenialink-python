@@ -1,6 +1,6 @@
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Dict
 
 import ingenialogger
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILIOError, ILTimeoutError
+from ingenialink.exceptions import ILIOError, ILTimeoutError, ILError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 from ingenialink.register import REG_ACCESS, REG_DTYPE
 
@@ -49,8 +49,9 @@ class EthercatServo(PDOServo):
     DICTIONARY_CLASS = EthercatDictionary
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
 
+    NO_RESPONSE_WORKING_COUNTER = 0
     TIMEOUT_WORKING_COUNTER = -5
-    NOFRAME_WORKING_COUNTER = 0
+    NOFRAME_WORKING_COUNTER = -1
 
     MONITORING_DATA = EthercatRegister(
         identifier="MONITORING_DATA",
@@ -243,7 +244,8 @@ class EthercatServo(PDOServo):
 
         Raises:
             ILIOError: If the register cannot be read or written.
-            ILIOError: If the slave fails acknowledge the command.
+            ILIOError: If the slave fails to acknowledge the command.
+            ILIOError: If the working counter value is wrong.
             ILTimeoutError: If the slave fails to respond within the connection
              timeout period.
 
@@ -255,10 +257,21 @@ class EthercatServo(PDOServo):
                 f"Error {operation_msg.value} {reg.identifier}. Reason: {exception}"
             ) from exception
         elif isinstance(exception, pysoem.WkcError):
-            if exception.wkc == self.NOFRAME_WORKING_COUNTER:
-                raise ILIOError(f"Error {operation_msg.value} data: No frame.") from exception
-            if exception.wkc == self.TIMEOUT_WORKING_COUNTER:
-                raise ILTimeoutError(f"Timeout {operation_msg.value} data.") from exception
+            default_error_msg = f"Error {operation_msg.value} data"
+            wkc_exceptions: Dict[int, ILError] = {
+                self.NO_RESPONSE_WORKING_COUNTER: ILIOError(
+                    f"{default_error_msg}: The working counter remained unchanged."
+                ),
+                self.NOFRAME_WORKING_COUNTER: ILIOError(f"{default_error_msg}: No frame."),
+                self.TIMEOUT_WORKING_COUNTER: ILTimeoutError(
+                    f"Timeout {operation_msg.value} data."
+                ),
+            }
+            exc = wkc_exceptions.get(
+                exception.wkc,
+                ILIOError(f"{default_error_msg}. Wrong working counter: {exception.wkc}"),
+            )
+            raise exc from exception
 
     def _monitoring_read_data(self) -> bytes:  # type: ignore [override]
         """Read monitoring data frame."""
