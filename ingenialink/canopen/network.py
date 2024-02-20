@@ -2,7 +2,7 @@ import contextlib
 import os
 import re
 import tempfile
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
 from time import sleep
@@ -22,7 +22,8 @@ from ingenialink.canopen.servo import (
     CanopenServo,
 )
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
-from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network
+from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
+from ingenialink.utils._utils import convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 
 logger = ingenialogger.get_logger(__name__)
@@ -173,6 +174,10 @@ class CanopenNetwork(Network):
 
     """
 
+    DRIVE_INFO_INDEX = 0x1018
+    PRODUCT_CODE_SUB_IX = 2
+    REVISION_NUMBER_SUB_IX = 3
+
     def __init__(
         self,
         device: CAN_DEVICE,
@@ -238,6 +243,42 @@ class CanopenNetwork(Network):
             self._teardown_connection()
 
         return nodes  # type: ignore [no-any-return]
+
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
+        """Scans for nodes in the network and return an ordered dict with the slave information.
+
+        Returns:
+            Ordered dict with the slave information.
+
+        """
+        try:
+            slaves = self.scan_slaves()
+        except ILError:
+            return OrderedDict()
+
+        if self._connection is None:
+            try:
+                self._setup_connection()
+            except ILError:
+                self._teardown_connection()
+                return OrderedDict()
+
+        if self._connection is None:
+            return OrderedDict()
+
+        slave_info = OrderedDict()
+        for slave_id in slaves:
+            node = self._connection.add_node(slave_id)
+            product_code = convert_bytes_to_dtype(
+                node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), REG_DTYPE.U32
+            )
+            revision_number = convert_bytes_to_dtype(
+                node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX), REG_DTYPE.U32
+            )
+            slave_info[slave_id] = SlaveInfo(int(product_code), int(revision_number))
+
+        self._teardown_connection()
+        return slave_info
 
     def connect_to_slave(  # type: ignore [override]
         self,

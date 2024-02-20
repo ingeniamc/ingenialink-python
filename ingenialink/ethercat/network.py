@@ -1,12 +1,12 @@
+import inspect
 import os
-import sys
 import platform
 import subprocess
-import inspect
+import sys
 import time
-from collections import defaultdict
-from typing import Optional, Any, Callable, List, Dict, TYPE_CHECKING, Union
+from collections import OrderedDict, defaultdict
 from threading import Thread
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 import ingenialogger
 
@@ -19,10 +19,10 @@ except ImportError as ex:
 if TYPE_CHECKING:
     from pysoem import CdefSlave
 
-from ingenialink.network import Network, NET_PROT, NET_STATE, NET_DEV_EVT
-from ingenialink.exceptions import ILFirmwareLoadError, ILError, ILStateError, ILTimeoutError
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
+from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILTimeoutError
+from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -124,6 +124,26 @@ class EthercatNetwork(Network):
             self._start_master()
         self.__init_nodes()
         return self.__last_init_nodes
+
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
+        """Scans for slaves in the network and return an ordered dict with the slave information.
+
+        Returns:
+            Ordered dict with the slave information.
+
+        Raises:
+            ILError: If any slave is already connected.
+
+        """
+        try:
+            slaves = self.scan_slaves()
+        except ILError:
+            return OrderedDict()
+        slave_info = OrderedDict()
+        for slave_id in slaves:
+            slave = self._ecat_master.slaves[slave_id - 1]
+            slave_info[slave_id] = SlaveInfo(slave.id, slave.rev)
+        return slave_info
 
     def __init_nodes(self) -> None:
         """Init all the nodes and set already connected nodes to PreOp state.

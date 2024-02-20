@@ -1,6 +1,8 @@
-from enum import Enum
 from abc import ABC, abstractmethod
-from typing import List, Any, Callable, Union
+from collections import OrderedDict
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Callable, List, Union
 
 import ingenialogger
 
@@ -48,6 +50,12 @@ class NET_TRANS_PROT(Enum):
     UDP = 2
 
 
+@dataclass
+class SlaveInfo:
+    product_code: int
+    revision_number: int
+
+
 class Network(ABC):
     """Declaration of a general Network object."""
 
@@ -57,6 +65,10 @@ class Network(ABC):
 
     @abstractmethod
     def scan_slaves(self) -> List[int]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         raise NotImplementedError
 
     @abstractmethod
