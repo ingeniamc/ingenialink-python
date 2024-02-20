@@ -1,21 +1,22 @@
 import ftplib
-import time
 import os
 import socket
-from threading import Thread
-from collections import defaultdict
+import time
+from collections import OrderedDict, defaultdict
 from ftplib import FTP
+from threading import Thread
 from time import sleep
-from typing import Callable, Any, Dict, List, Optional
-
-from .servo import EthernetServo
-from ingenialink.utils.udp import UDP
-from ..network import NET_PROT
-from ingenialink.network import Network, NET_STATE, NET_DEV_EVT
-from ingenialink.exceptions import ILFirmwareLoadError, ILError
-from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
+from typing import Any, Callable, Dict, List, Optional
 
 import ingenialogger
+
+from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
+from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from ingenialink.network import NET_DEV_EVT, NET_STATE, Network, SlaveInfo
+from ingenialink.utils.udp import UDP
+
+from ..network import NET_PROT
+from .servo import EthernetServo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -196,6 +197,9 @@ class EthernetNetwork(Network):
             raise ILFirmwareLoadError("Error during bootloader process.")
 
     def scan_slaves(self) -> List[int]:
+        raise NotImplementedError
+
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         raise NotImplementedError
 
     def connect_to_slave(  # type: ignore [override]
