@@ -272,7 +272,7 @@ def connect_to_all_slave(pytestconfig):
 def test_start_stop_pdo(connect_to_all_slave):
     servos, net = connect_to_all_slave
     operation_mode_uid = "DRV_OP_CMD"
-    RPDO_REGISTERS = [operation_mode_uid]
+    rpdo_registers = [operation_mode_uid]
     default_operation_mode = 1
     current_operation_mode = {}
     new_operation_mode = {}
@@ -286,7 +286,7 @@ def test_start_stop_pdo(connect_to_all_slave):
         for tpdo_register in TPDO_REGISTERS:
             register = servo.dictionary.registers(SUBNODE)[tpdo_register]
             tpdo_map.add_registers(register)
-        for rpdo_register in RPDO_REGISTERS:
+        for rpdo_register in rpdo_registers:
             register = servo.dictionary.registers(SUBNODE)[rpdo_register]
             rpdo_map.add_registers(register)
         for item in rpdo_map.items:
