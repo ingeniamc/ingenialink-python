@@ -1,7 +1,7 @@
-from typing import Optional, Any, Union, Tuple, Dict, List
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY
 from ingenialink.register import Register
-from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
 
 
 class CanopenRegister(Register):
@@ -49,7 +49,7 @@ class CanopenRegister(Register):
             Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]
         ] = (None, None),
         labels: Optional[Dict[str, str]] = None,
-        enums: Optional[List[Dict[str, Union[str, int]]]] = None,
+        enums: Optional[Dict[str, int]] = None,
         cat_id: Optional[str] = None,
         scat_id: Optional[str] = None,
         internal_use: int = 0,

@@ -1,7 +1,7 @@
 import pytest
 
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
+from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY
 
 
 @pytest.mark.no_connection
@@ -20,7 +20,7 @@ def test_getters_ethercat_register():
         "storage": 1,
         "reg_range": (-20, 20),
         "labels": "Monitoring trigger type",
-        "enums": [{"TRIGGER_EVENT_AUTO": 0}, {"TRIGGER_EVENT_FORCED", 1}],
+        "enums": {"TRIGGER_EVENT_AUTO": 0, "TRIGGER_EVENT_FORCED": 1},
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",

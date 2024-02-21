@@ -1,10 +1,9 @@
 import pytest
 
-from ingenialink.register import Register
-from ingenialink.register import REG_DTYPE, REG_ACCESS, REG_PHY, dtypes_ranges
-from ingenialink.exceptions import ILValueError, ILAccessError
-from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.canopen.register import CanopenRegister
+from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.exceptions import ILAccessError, ILValueError
+from ingenialink.register import REG_ACCESS, REG_DTYPE, REG_PHY, Register, dtypes_ranges
 
 
 @pytest.mark.no_connection
@@ -20,7 +19,7 @@ def test_getters_register():
         "storage": 1,
         "reg_range": (-20, 20),
         "labels": "Monitoring trigger type",
-        "enums": [{"TRIGGER_EVENT_AUTO": 0}, {"TRIGGER_EVENT_FORCED", 1}],
+        "enums": {"TRIGGER_EVENT_AUTO": 0, "TRIGGER_EVENT_FORCED": 1},
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": 1,

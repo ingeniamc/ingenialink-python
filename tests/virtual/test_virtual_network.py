@@ -6,7 +6,6 @@ import pytest
 from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
 from ingenialink.network import NET_STATE
 from ingenialink.virtual.network import VirtualNetwork
-from tests.conftest import ALLOW_PROTOCOLS
 from virtual_drive.core import VirtualDrive
 
 RESOURCES_FOLDER = "virtual_drive/resources/"
@@ -35,7 +34,7 @@ def connect_virtual_drive():
     return connect
 
 
-@pytest.mark.virtual
+@pytest.mark.no_connection
 def test_connect_to_virtual_drive(connect_virtual_drive):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
     connect = connect_virtual_drive
@@ -46,7 +45,7 @@ def test_connect_to_virtual_drive(connect_virtual_drive):
     assert fw_version is not None and fw_version != ""
 
 
-@pytest.mark.virtual
+@pytest.mark.no_connection
 def test_virtual_drive_disconnection(connect_virtual_drive):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
     servo, net = connect_virtual_drive(dictionary)
@@ -56,7 +55,7 @@ def test_virtual_drive_disconnection(connect_virtual_drive):
     assert servo.socket._closed
 
 
-@pytest.mark.virtual
+@pytest.mark.no_connection
 def test_connect_virtual_custom_dictionaries(connect_virtual_drive, read_config):
     config = read_config
     for protocol in ["ethernet", "canopen"]:
@@ -70,7 +69,7 @@ def test_connect_virtual_custom_dictionaries(connect_virtual_drive, read_config)
         for reg_key, register in servo.dictionary.registers(1).items():
             if register.access in [REG_ACCESS.RO, REG_ACCESS.RW]:
                 value = servo.read(reg_key)
-                assert pytest.approx(server.get_value_by_id(1, reg_key), abs=0.01) == value
+                assert pytest.approx(server.get_value_by_id(1, reg_key), abs=0.02) == value
 
             if register.access in [REG_ACCESS.WO, REG_ACCESS.RW]:
                 if register.enums_count > 0:

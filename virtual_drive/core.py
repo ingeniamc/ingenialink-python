@@ -1368,7 +1368,7 @@ class VirtualDrive(Thread):
                 if reg._storage is not None:
                     continue
                 elif reg.enums_count > 0:
-                    value = reg.enums[0]["value"]
+                    value = next(iter(reg.enums.values()))
                 elif reg.dtype == REG_DTYPE.STR:
                     value = ""
                 else:

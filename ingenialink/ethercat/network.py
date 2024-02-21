@@ -67,6 +67,7 @@ class EthercatNetwork(Network):
     Args:
         interface_name: Interface name to be targeted.
         connection_timeout: Time in seconds of the connection timeout.
+        overlapping_io_map: Map PDOs to overlapping IO map.
 
     Raises:
         ImportError: WinPcap is not installed
@@ -89,7 +90,10 @@ class EthercatNetwork(Network):
     ECAT_PROCESSDATA_TIMEOUT_S = 0.1
 
     def __init__(
-        self, interface_name: str, connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT_S
+        self,
+        interface_name: str,
+        connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT_S,
+        overlapping_io_map: bool = True,
     ):
         if not pysoem:
             raise pysoem_import_error
@@ -99,10 +103,12 @@ class EthercatNetwork(Network):
         self.__servos_state: Dict[int, NET_STATE] = {}
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: Dict[int, List[Any]] = defaultdict(list)
+        self._connection_timeout: float = connection_timeout
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
-        self._ecat_master.sdo_read_timeout = int(1_000_000 * connection_timeout)
-        self._ecat_master.sdo_write_timeout = int(1_000_000 * connection_timeout)
+        self._ecat_master.sdo_read_timeout = int(1_000_000 * self._connection_timeout)
+        self._ecat_master.sdo_write_timeout = int(1_000_000 * self._connection_timeout)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
+        self._overlapping_io_map = overlapping_io_map
         self.__is_master_running = False
         self.__last_init_nodes: List[int] = []
 
@@ -168,7 +174,9 @@ class EthercatNetwork(Network):
         if slave_id not in self.__last_init_nodes:
             raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
-        servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
+        servo = EthercatServo(
+            slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
+        )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             raise ILStateError("Slave can not reach PreOp state")
         self.servos.append(servo)
@@ -194,12 +202,11 @@ class EthercatNetwork(Network):
             self.__is_master_running = False
             self.__last_init_nodes = []
 
-    def start_pdos(self, timeout: float = 1.0, io_overlapping: bool = True) -> None:
+    def start_pdos(self, timeout: float = 1.0) -> None:
         """Configure the PDOs and set slave state to OP for all slaves with mapped PDOs
 
         Args:
             timeout: timeout in seconds to reach Op state, 1.0 seconds by default.
-            io_overlapping: Instance of the servo connected.
 
         Raises:
             ILStateError: If slaves can not reach SafeOp or Op state
@@ -217,7 +224,7 @@ class EthercatNetwork(Network):
             raise ILError(
                 "The RPDO values should be set before starting the PDO exchange process."
             ) from e
-        if io_overlapping:
+        if self._overlapping_io_map:
             self._ecat_master.config_overlap_map()
         else:
             self._ecat_master.config_map()
@@ -254,7 +261,10 @@ class EthercatNetwork(Network):
         """
         for servo in self.servos:
             servo.process_pdo_inputs()
-        self._ecat_master.send_processdata()
+        if self._overlapping_io_map:
+            self._ecat_master.send_overlap_processdata()
+        else:
+            self._ecat_master.send_processdata()
         processdata_wkc = self._ecat_master.receive_processdata(timeout=int(timeout * 1_000_000))
         if processdata_wkc != self._ecat_master.expected_wkc:
             raise ILError(
