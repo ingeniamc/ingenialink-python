@@ -251,7 +251,7 @@ class CanopenNetwork(Network):
             Ordered dict with the slave information.
 
         """
-        slave_info = OrderedDict()
+        slave_info: OrderedDict[int, SlaveInfo] = OrderedDict()
         try:
             slaves = self.scan_slaves()
         except ILError:

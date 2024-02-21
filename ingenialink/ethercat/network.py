@@ -140,7 +140,7 @@ class EthercatNetwork(Network):
             ILError: If any slave is already connected.
 
         """
-        slave_info = OrderedDict()
+        slave_info: OrderedDict[int, SlaveInfo] = OrderedDict()
         try:
             slaves = self.scan_slaves()
         except ILError:
