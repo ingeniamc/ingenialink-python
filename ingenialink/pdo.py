@@ -1,6 +1,6 @@
 from typing import List, Optional, Union
 
-from bitarray import bitarray, bits2bytes
+import bitarray
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.enums.register import REG_DTYPE
@@ -12,6 +12,8 @@ from ingenialink.utils._utils import (
     convert_dtype_to_bytes,
     dtype_length_bits,
 )
+
+bitarray._set_default_endian("little")
 
 
 class PDOMapItem:
@@ -31,7 +33,7 @@ class PDOMapItem:
     ) -> None:
         self.register = register
         self.size_bits = size_bits or dtype_length_bits[register.dtype]
-        self._raw_data_bits: Optional[bitarray] = None
+        self._raw_data_bits: Optional[bitarray.bitarray] = None
         self._check_if_mappable()
 
     def _check_if_mappable(self) -> None:
@@ -47,7 +49,7 @@ class PDOMapItem:
             )
 
     @property
-    def raw_data_bits(self) -> bitarray:
+    def raw_data_bits(self) -> bitarray.bitarray:
         """Raw data in bits.
 
         Returns:
@@ -62,7 +64,7 @@ class PDOMapItem:
         return self._raw_data_bits
 
     @raw_data_bits.setter
-    def raw_data_bits(self, data: bitarray) -> None:
+    def raw_data_bits(self, data: bitarray.bitarray) -> None:
         if len(data) != self.size_bits:
             raise ILError(f"Wrong size. Expected {self.size_bits}, obtained {len(data)}")
         self._raw_data_bits = data
@@ -84,7 +86,7 @@ class PDOMapItem:
 
     @raw_data_bytes.setter
     def raw_data_bytes(self, data: bytes) -> None:
-        data_bits = bitarray()
+        data_bits = bitarray.bitarray()
         data_bits.frombytes(data)
         self.raw_data_bits = data_bits
 
@@ -99,6 +101,7 @@ class PDOMapItem:
         Returns:
             Register value.
         """
+        value: Union[bool, int, float, str]
         if self.register.dtype == REG_DTYPE.BOOL:
             value = self.raw_data_bits.any()
         else:
@@ -138,7 +141,7 @@ class RPDOMapItem(PDOMapItem):
     @value.setter
     def value(self, value: Union[int, float, bool]) -> None:
         if isinstance(value, bool):
-            raw_data_bits = bitarray()
+            raw_data_bits = bitarray.bitarray()
             raw_data_bits.append(value)
             self.raw_data_bits = raw_data_bits
         else:
@@ -259,7 +262,7 @@ class PDOMap:
         Returns:
             Length of the map in bytes.
         """
-        return bits2bytes(self.data_length_bits)
+        return bitarray.bits2bytes(self.data_length_bits)
 
     @property
     def items_mapping(self) -> bytearray:
@@ -279,7 +282,7 @@ class RPDOMap(PDOMap):
 
     _PDO_MAP_ITEM_CLASS = RPDOMapItem
 
-    def get_item_bits(self) -> bitarray:
+    def get_item_bits(self) -> bitarray.bitarray:
         """Return the concatenated items raw data to be sent to the drive (in bits).
 
         Raises:
@@ -289,7 +292,7 @@ class RPDOMap(PDOMap):
         Returns:
             Concatenated items raw data in bits.
         """
-        data_bits = bitarray()
+        data_bits = bitarray.bitarray()
         for item in self.items:
             try:
                 data_bits += item.raw_data_bits
@@ -336,7 +339,7 @@ class TPDOMap(PDOMap):
                 f"The length of the data array is incorrect. Expected {self.data_length_bytes},"
                 f" obtained {len(data_bytes)}"
             )
-        data_bits = bitarray()
+        data_bits = bitarray.bitarray()
         data_bits.frombytes(data_bytes)
 
         offset = 0

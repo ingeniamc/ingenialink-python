@@ -63,7 +63,7 @@ def test_rpdo_item(open_dictionary):
     rpdo_item.value = 15
     assert rpdo_item.value == 15
     assert rpdo_item.raw_data_bytes == b"\x0f\x00\x00\x00"
-    assert rpdo_item.raw_data_bits.to01() == "00001111000000000000000000000000"
+    assert rpdo_item.raw_data_bits.to01() == "11110000000000000000000000000000"
 
 
 @pytest.mark.no_connection
@@ -333,7 +333,7 @@ def test_pdo_item_bool():
 
     rpdo_item.value = True
     assert rpdo_item.raw_data_bits.to01() == "1"
-    assert rpdo_item.raw_data_bytes == b"\x80"
+    assert rpdo_item.raw_data_bytes == b"\x01"
 
 
 @pytest.mark.no_connection
@@ -350,7 +350,7 @@ def test_pdo_item_custom_size(open_dictionary):
     assert str(exc_info.value) == "Raw data is empty."
 
     tpdo_item.raw_data_bits = bitarray("1001")
-    assert tpdo_item.raw_data_bytes == b"\x90"
+    assert tpdo_item.raw_data_bytes == b"\x09"
 
 
 @pytest.mark.no_connection
@@ -387,9 +387,9 @@ def test_map_pdo_with_bools(open_dictionary):
 
     assert rpdo_map.data_length_bits == 38
     assert rpdo_map.data_length_bytes == 5
-    assert item1.raw_data_bits.to01() == "10001000100010001000100000011000"
+    assert item1.raw_data_bits.to01() == "00010001000100010001000100011000"
     assert item2.raw_data_bits.to01() == "1011"
     assert item3.raw_data_bits.to01() == "0"
     assert item4.raw_data_bits.to01() == "1"
-    assert rpdo_map.get_item_bits().to01() == "10001000100010001000100000011000101101"
-    assert rpdo_map.get_item_bytes() == b"\x88\x88\x88\x18\xb4"
+    assert rpdo_map.get_item_bits().to01() == "00010001000100010001000100011000101101"
+    assert rpdo_map.get_item_bytes() == b"\x88\x88\x88\x18-"
