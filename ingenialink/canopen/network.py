@@ -251,22 +251,22 @@ class CanopenNetwork(Network):
             Ordered dict with the slave information.
 
         """
+        slave_info = OrderedDict()
         try:
             slaves = self.scan_slaves()
         except ILError:
-            return OrderedDict()
+            return slave_info
 
         if self._connection is None:
             try:
                 self._setup_connection()
             except ILError:
                 self._teardown_connection()
-                return OrderedDict()
+                return slave_info
 
         if self._connection is None:
-            return OrderedDict()
+            return slave_info
 
-        slave_info = OrderedDict()
         for slave_id in slaves:
             node = self._connection.add_node(slave_id)
             product_code = convert_bytes_to_dtype(

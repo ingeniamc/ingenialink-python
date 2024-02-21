@@ -135,11 +135,11 @@ class EthercatNetwork(Network):
             ILError: If any slave is already connected.
 
         """
+        slave_info = OrderedDict()
         try:
             slaves = self.scan_slaves()
         except ILError:
-            return OrderedDict()
-        slave_info = OrderedDict()
+            return slave_info
         for slave_id in slaves:
             slave = self._ecat_master.slaves[slave_id - 1]
             slave_info[slave_id] = SlaveInfo(slave.id, slave.rev)
