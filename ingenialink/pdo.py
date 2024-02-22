@@ -13,7 +13,8 @@ from ingenialink.utils._utils import (
     dtype_length_bits,
 )
 
-bitarray._set_default_endian("little")
+BIT_ENDIAN = "little"
+bitarray._set_default_endian(BIT_ENDIAN)
 
 
 class PDOMapItem:
@@ -67,6 +68,8 @@ class PDOMapItem:
     def raw_data_bits(self, data: bitarray.bitarray) -> None:
         if len(data) != self.size_bits:
             raise ILError(f"Wrong size. Expected {self.size_bits}, obtained {len(data)}")
+        if data.endian() != BIT_ENDIAN:
+            raise ILError("Bitarray should be little endian.")
         self._raw_data_bits = data
 
     @property
@@ -86,7 +89,7 @@ class PDOMapItem:
 
     @raw_data_bytes.setter
     def raw_data_bytes(self, data: bytes) -> None:
-        data_bits = bitarray.bitarray()
+        data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
         data_bits.frombytes(data)
         self.raw_data_bits = data_bits
 
@@ -141,7 +144,7 @@ class RPDOMapItem(PDOMapItem):
     @value.setter
     def value(self, value: Union[int, float, bool]) -> None:
         if isinstance(value, bool):
-            raw_data_bits = bitarray.bitarray()
+            raw_data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
             raw_data_bits.append(value)
             self.raw_data_bits = raw_data_bits
         else:
@@ -292,7 +295,7 @@ class RPDOMap(PDOMap):
         Returns:
             Concatenated items raw data in bits.
         """
-        data_bits = bitarray.bitarray()
+        data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
         for item in self.items:
             try:
                 data_bits += item.raw_data_bits
@@ -339,7 +342,7 @@ class TPDOMap(PDOMap):
                 f"The length of the data array is incorrect. Expected {self.data_length_bytes},"
                 f" obtained {len(data_bytes)}"
             )
-        data_bits = bitarray.bitarray()
+        data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
         data_bits.frombytes(data_bytes)
 
         offset = 0
