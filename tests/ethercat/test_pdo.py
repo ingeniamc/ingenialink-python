@@ -244,7 +244,6 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
 
 
 @pytest.mark.ethercat
-@pytest.mark.skip
 def test_pdo_example(read_config, script_runner):
     protocol_contents = read_config["ethercat"]
     ifname = protocol_contents["ifname"]
