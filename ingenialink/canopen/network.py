@@ -257,7 +257,9 @@ class CanopenNetwork(Network):
         except ILError:
             return slave_info
 
+        is_connection_created = False
         if self._connection is None:
+            is_connection_created = True
             try:
                 self._setup_connection()
             except ILError:
@@ -277,7 +279,8 @@ class CanopenNetwork(Network):
             )
             slave_info[slave_id] = SlaveInfo(int(product_code), int(revision_number))
 
-        self._teardown_connection()
+        if is_connection_created:
+            self._teardown_connection()
         return slave_info
 
     def connect_to_slave(  # type: ignore [override]
