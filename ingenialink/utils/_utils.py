@@ -1,6 +1,11 @@
+import functools
 import struct
+import warnings
+import xml.etree.ElementTree as ET
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Union
+
+import ingenialogger
 
 from ingenialink.enums.register import REG_DTYPE
 from ingenialink.exceptions import ILValueError
@@ -8,11 +13,6 @@ from ingenialink.exceptions import ILValueError
 if TYPE_CHECKING:
     from ingenialink.servo import Servo
 
-import functools
-import warnings
-import xml.etree.ElementTree as ET
-
-import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
