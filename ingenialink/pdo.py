@@ -235,7 +235,7 @@ class PDOMap:
 
     @property
     def map_register_index(self) -> Optional[int]:
-        """Index of the mapping register. None if it is not mapped in the drive.
+        """Index of the mapping register. None if it is not mapped in the slave.
 
         Returns:
             Index of the mapping register.
@@ -286,7 +286,7 @@ class RPDOMap(PDOMap):
     _PDO_MAP_ITEM_CLASS = RPDOMapItem
 
     def get_item_bits(self) -> bitarray.bitarray:
-        """Return the concatenated items raw data to be sent to the drive (in bits).
+        """Return the concatenated items raw data to be sent to the slave (in bits).
 
         Raises:
             ILError: Raw data is empty.
@@ -310,7 +310,7 @@ class RPDOMap(PDOMap):
         return data_bits
 
     def get_item_bytes(self) -> bytes:
-        """Return the concatenated items raw data to be sent to the drive (in bytes).
+        """Return the concatenated items raw data to be sent to the slave (in bytes).
 
         Raises:
             ILError: Raw data is empty.
@@ -329,10 +329,10 @@ class TPDOMap(PDOMap):
     _PDO_MAP_ITEM_CLASS = TPDOMapItem
 
     def set_item_bytes(self, data_bytes: bytes) -> None:
-        """Set the items raw data from a byte array received from the drive.
+        """Set the items raw data from a byte array received from the slave.
 
         Args:
-            data_bytes: Byte array received from the drive.
+            data_bytes: Byte array received from the slave.
 
         Raises:
             ILError: If the length of the received data does not coincide.
@@ -377,22 +377,22 @@ class PDOServo(Servo):
         self._tpdo_maps: List[TPDOMap] = []
 
     def reset_rpdo_mapping(self) -> None:
-        """Delete the RPDO mapping stored in the servo drive."""
+        """Delete the RPDO mapping stored in the servo slave."""
         self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, 0)
         for map_register in self.RPDO_MAP_REGISTER_SUB_IDX_0:
             self.write(map_register, 0)
         self._rpdo_maps.clear()
 
     def reset_tpdo_mapping(self) -> None:
-        """Delete the TPDO mapping stored in the servo drive."""
+        """Delete the TPDO mapping stored in the servo slave."""
         self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, 0)
         for map_register in self.TPDO_MAP_REGISTER_SUB_IDX_0:
             self.write(map_register, 0)
         self._tpdo_maps.clear()
 
     def map_rpdos(self) -> None:
-        """Map the RPDO registers into the servo drive.
-        It takes the first available RPDO assignment slot of the drive.
+        """Map the RPDO registers into the servo slave.
+        It takes the first available RPDO assignment slot of the slave.
 
         Raises:
             ILError: If there are no available PDOs.
@@ -433,8 +433,8 @@ class PDOServo(Servo):
         rpdo_map.map_register_index = self.RPDO_MAP_REGISTER_SUB_IDX_0[rpdo_map_register_index].idx
 
     def map_tpdos(self) -> None:
-        """Map the TPDO registers into the servo drive.
-        It takes the first available TPDO assignment slot of the drive.
+        """Map the TPDO registers into the servo slave.
+        It takes the first available TPDO assignment slot of the slave.
 
         Raises:
             ILError: If there are no available PDOs.
@@ -475,7 +475,7 @@ class PDOServo(Servo):
         tpdo_map.map_register_index = self.TPDO_MAP_REGISTER_SUB_IDX_0[tpdo_map_register_index].idx
 
     def map_pdos(self, slave_index: int) -> None:
-        """Map RPDO and TPDO register into the drive.
+        """Map RPDO and TPDO register into the slave.
 
         Args:
             slave_index: salve index.
@@ -495,7 +495,7 @@ class PDOServo(Servo):
     def process_pdo_inputs(self) -> None:
         """Process the PDO inputs.
 
-        It should call _process_rpdo method to obtain the bytes to be sent to the drive.
+        It should call _process_rpdo method to obtain the bytes to be sent to the slave.
         """
         raise NotImplementedError
 
