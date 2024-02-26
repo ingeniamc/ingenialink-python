@@ -31,12 +31,18 @@ class VirtualDictionary(EthernetDictionary):
         ):
             return None
 
+        if current_read_register.identifier in ["MON_DATA_VALUE", "DIST_DATA_VALUE"]:
+            return None
+
         try:
             if self.interface == "CAN":
                 reg_address = int(register.attrib["address"][:6], 16)
-                reg_address = CanopenServo._monitoring_disturbance_map_can_address(
-                    reg_address, current_read_register.subnode
-                )
+                if current_read_register.subnode > 0:
+                    reg_address = CanopenServo._monitoring_disturbance_map_can_address(
+                        reg_address, current_read_register.subnode
+                    )
+                else:
+                    reg_address -= 0x5800
             else:
                 reg_address = int(register.attrib["address"], 16)
 
