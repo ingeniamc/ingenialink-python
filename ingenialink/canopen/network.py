@@ -251,6 +251,7 @@ class CanopenNetwork(Network):
             Ordered dict with the slave information.
 
         """
+        connected_slaves = {servo.target: servo.node for servo in self.servos}
         slave_info: OrderedDict[int, SlaveInfo] = OrderedDict()
         try:
             slaves = self.scan_slaves()
@@ -270,7 +271,10 @@ class CanopenNetwork(Network):
             return slave_info
 
         for slave_id in slaves:
-            node = self._connection.add_node(slave_id)
+            if slave_id not in connected_slaves:
+                node = self._connection.add_node(slave_id)
+            else:
+                node = connected_slaves[slave_id]
             product_code = convert_bytes_to_dtype(
                 node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), REG_DTYPE.U32
             )
