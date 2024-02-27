@@ -3,7 +3,6 @@ from typing import Optional
 
 import ingenialogger
 
-from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.dictionary import EthernetDictionary
 from ingenialink.ethernet.register import EthernetRegister
 
@@ -20,21 +19,25 @@ class VirtualDictionary(EthernetDictionary):
 
     """
 
+    def _monitoring_disturbance_map_can_address(self, address: int, subnode: int) -> int:
+        """Map CAN register address to IPB register address."""
+        return address - (0x2000 + (0x800 * (subnode - 1)))
+
     def _read_xdf_register(self, register: ET.Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)
 
         if current_read_register is None:
             return None
 
-        if self.interface == "CAN" and (
+        if self.dict_interface == "CAN" and (
             register.attrib["cat_id"] == "CIA402" or register.attrib["id"].startswith("CIA402_")
         ):
             return None
 
         try:
-            if self.interface == "CAN":
+            if self.dict_interface == "CAN":
                 reg_address = int(register.attrib["address"][:6], 16)
-                reg_address = CanopenServo._monitoring_disturbance_map_can_address(
+                reg_address = self._monitoring_disturbance_map_can_address(
                     reg_address, current_read_register.subnode
                 )
             else:

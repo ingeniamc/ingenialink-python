@@ -3,13 +3,13 @@ import xml.etree.ElementTree as ET
 
 import ingenialogger
 
-from ingenialink.dictionary import Dictionary
+from ingenialink.dictionary import DictionaryV2, Interface
 from ingenialink.ethernet.register import EthernetRegister
 
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthernetDictionary(Dictionary):
+class EthernetDictionary(DictionaryV2):
     """Contains all registers and information of a Ethernet dictionary.
 
     Args:
@@ -17,9 +17,8 @@ class EthernetDictionary(Dictionary):
 
     """
 
-    def __init__(self, dictionary_path: str) -> None:
-        self._registers: List[Dict[str, EthernetRegister]] = []  # type: ignore [assignment]
-        super().__init__(dictionary_path)
+    def __init__(self, dictionary_path: str, interface: Interface) -> None:
+        super().__init__(dictionary_path, interface)
 
     def _read_xdf_register(self, register: ET.Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)
@@ -54,15 +53,3 @@ class EthernetDictionary(Dictionary):
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}"
             )
             return None
-
-    def registers(self, subnode: int) -> Dict[str, EthernetRegister]:  # type: ignore [override]
-        """Gets the register dictionary to the targeted subnode.
-
-        Args:
-            subnode: Identifier for the subnode.
-
-        Returns:
-            Dictionary of all the registers for a subnode.
-
-        """
-        return self._registers[subnode]

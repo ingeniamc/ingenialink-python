@@ -2,6 +2,7 @@ import ipaddress
 import socket
 from typing import Optional
 
+from ingenialink.dictionary import Interface
 from ingenialink.exceptions import ILError, ILTimeoutError, ILIOError, ILWrongRegisterError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
 from ingenialink.ethernet.register import EthernetRegister
@@ -29,7 +30,6 @@ class EthernetServo(Servo):
 
     """
 
-    DICTIONARY_CLASS = EthernetDictionary
     MAX_WRITE_SIZE = ETH_MAX_WRITE_SIZE
 
     COMMS_ETH_IP = "COMMS_ETH_IP"
@@ -57,6 +57,7 @@ class EthernetServo(Servo):
     def __init__(
         self, socket: socket.socket, dictionary_path: str, servo_status_listener: bool = False
     ) -> None:
+        self.interface = Interface.ETH
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
         super(EthernetServo, self).__init__(self.ip_address, dictionary_path, servo_status_listener)

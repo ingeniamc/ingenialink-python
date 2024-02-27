@@ -1,4 +1,5 @@
 import os
+import re
 import threading
 import time
 import xml.etree.ElementTree as ET
@@ -8,6 +9,10 @@ from xml.dom import minidom
 
 import ingenialogger
 
+from ingenialink.ethernet.dictionary import EthernetDictionary
+from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.canopen.dictionary import CanopenDictionary
+from ingenialink.virtual.dictionary import VirtualDictionary
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
     DEFAULT_PDS_TIMEOUT,
@@ -16,7 +21,7 @@ from ingenialink.constants import (
     PASSWORD_STORE_ALL,
     PASSWORD_STORE_RESTORE_SUB_0,
 )
-from ingenialink.dictionary import Dictionary
+from ingenialink.dictionary import Dictionary, SubnodeType, Interface, DictionaryV3
 from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
 from ingenialink.enums.servo import SERVO_STATE
 from ingenialink.exceptions import (
@@ -41,6 +46,87 @@ logger = ingenialogger.get_logger(__name__)
 OPERATION_TIME_OUT = -3
 
 
+class DictionaryFactory:
+    """Dictionary factory, creates a dictionary instance depends on the file version
+    and connection interface"""
+
+    VERSION_ABSOLUTE_PATH = "Header/Version"
+    VERSION_REGEX = r"(\d+)\.*(\d*)"
+    MAJOR_VERSION_GROUP = 1
+    MINOR_VERSION_GROUP = 2
+
+    @classmethod
+    def create_dictionary(cls, dictionary_path: str, interface: Interface) -> Dictionary:
+        """Creates a dictionary instance choosing the class depending on dictionary version and
+         connection interface.
+
+        Args:
+            dictionary_path: target dictionary path
+            interface: connection interface
+
+        Returns:
+            Dictionary instance
+
+        Raises:
+            FileNotFoundError: dictionary path does not exist.
+            ValueError: xdf is not well-formed.
+            ValueError: File is not a xdf.
+            NotImplementedError: Dictionary version is not supported.
+
+        """
+        major_version, minor_version = cls.get_dictionary_version(dictionary_path)
+        if major_version == 3:
+            return DictionaryV3(dictionary_path, interface)
+        if major_version == 2:
+            if interface == Interface.CAN:
+                return CanopenDictionary(dictionary_path, interface)
+            if interface == Interface.ECAT:
+                return EthercatDictionary(dictionary_path, interface)
+            if interface in [Interface.ETH, Interface.EoE]:
+                return EthernetDictionary(dictionary_path, interface)
+            if interface == Interface.VIRTUAL:
+                return VirtualDictionary(dictionary_path, interface)
+        raise NotImplementedError(f"Dictionary version {major_version} is not supported")
+
+    @classmethod
+    def get_dictionary_version(cls, dictionary_path: str) -> Tuple[int, int]:
+        """Return dictionary version, major and minor version.
+
+        Args:
+            dictionary_path: dictionary path
+
+        Returns:
+            Major and minor version
+
+        Raises:
+            FileNotFoundError: dictionary path does not exist.
+            Exception: xdf is not well-formed
+            ValueError: File is not a xdf
+
+        """
+        try:
+            with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+                try:
+                    tree = ET.parse(xdf_file)
+                except ET.ParseError:
+                    raise ValueError("File is not a xdf")
+                version_element = tree.find(cls.VERSION_ABSOLUTE_PATH)
+                if version_element is None or version_element.text is None:
+                    raise ValueError("Version not found")
+                version_str = version_element.text.strip()
+                version_match = re.match(cls.VERSION_REGEX, version_str)
+                if version_match is None:
+                    raise ValueError("Version has a wrong format")
+                major_version = int(version_match.group(cls.MAJOR_VERSION_GROUP))
+                if version_match.group(cls.MINOR_VERSION_GROUP):
+                    minor_version = int(version_match.group(cls.MINOR_VERSION_GROUP))
+                else:
+                    minor_version = 0
+                return major_version, minor_version
+        except FileNotFoundError:
+            raise FileNotFoundError(f"There is not any xdf file in the path: {dictionary_path}")
+
+
 class ServoStatusListener(threading.Thread):
     """Reads the status word to check if the drive is alive.
 
@@ -58,7 +144,9 @@ class ServoStatusListener(threading.Thread):
         """Checks if the drive is alive by reading the status word register"""
         previous_states: Dict[int, SERVO_STATE] = {}
         while not self.__stop:
-            for subnode in range(1, self.__servo.subnodes):
+            for subnode in self.__servo.subnodes:
+                if self.__servo.subnodes[subnode] != SubnodeType.MOTION:
+                    continue
                 try:
                     current_state = self.__servo.get_state(subnode)
                     if subnode not in previous_states or previous_states[subnode] != current_state:
@@ -87,7 +175,6 @@ class Servo:
 
     """
 
-    DICTIONARY_CLASS = Dictionary
     MAX_WRITE_SIZE = 1
 
     STATUS_WORD_REGISTERS = "DRV_STATE_STATUS"
@@ -118,13 +205,15 @@ class Servo:
     DISTURBANCE_ADD_REGISTERS_OLD = "DIST_CMD_ADD_REG"
     MONITORING_ADD_REGISTERS_OLD = "MON_OP_ADD_REG"
 
+    interface: Interface
+
     def __init__(
         self,
         target: Union[int, str],
         dictionary_path: str,
         servo_status_listener: bool = False,
     ):
-        self._dictionary = self.DICTIONARY_CLASS(dictionary_path)
+        self._dictionary = DictionaryFactory.create_dictionary(dictionary_path, self.interface)
         self.target = target
         prod_name = ""
         if self.dictionary.part_number is not None:
@@ -258,7 +347,7 @@ class Servo:
         dtype_ops = {value: key for key, value in self.dictionary.dtype_xdf_options.items()}
 
         if subnode is None:
-            subnodes = list(range(self.dictionary.subnodes))
+            subnodes = list(self.dictionary.subnodes)
         else:
             subnodes = [subnode]
 
@@ -373,13 +462,14 @@ class Servo:
                     logger.warning(f"Store all COCO failed. Reason: {e}. Trying MOCO...")
                     r = -1
                 if r < 0:
-                    for dict_subnode in range(1, self.dictionary.subnodes):
-                        self.write(
-                            reg=self.STORE_MOCO_ALL_REGISTERS,
-                            data=PASSWORD_STORE_ALL,
-                            subnode=dict_subnode,
-                        )
-                        logger.info(f"Store axis {dict_subnode} successfully done.")
+                    for dict_subnode in self.dictionary.subnodes:
+                        if self.dictionary.subnodes[dict_subnode] == SubnodeType.MOTION:
+                            self.write(
+                                reg=self.STORE_MOCO_ALL_REGISTERS,
+                                data=PASSWORD_STORE_ALL,
+                                subnode=dict_subnode,
+                            )
+                            logger.info(f"Store axis {dict_subnode} successfully done.")
             elif subnode == 0:
                 # Store subnode 0
                 self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
@@ -1051,7 +1141,7 @@ class Servo:
             dictionary: Path to the dictionary.
 
         """
-        self._dictionary = self.DICTIONARY_CLASS(dictionary)
+        self._dictionary = DictionaryFactory.create_dictionary(dictionary, self.interface)
 
     def disturbance_write_data(
         self,
@@ -1136,11 +1226,15 @@ class Servo:
     @property
     def status(self) -> Dict[int, SERVO_STATE]:
         """Servo status."""
-        status = {subnode: self.get_state(subnode) for subnode in range(1, self.subnodes)}
+        status = {
+            subnode: self.get_state(subnode)
+            for subnode in self.subnodes
+            if self.subnodes[subnode] == SubnodeType.MOTION
+        }
         return status
 
     @property
-    def subnodes(self) -> int:
+    def subnodes(self) -> Dict[int, SubnodeType]:
         """Number of subnodes."""
         return self.dictionary.subnodes
 

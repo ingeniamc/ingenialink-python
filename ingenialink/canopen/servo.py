@@ -4,6 +4,7 @@ import canopen
 import ingenialogger
 from canopen.emcy import EmcyConsumer
 
+from ingenialink.dictionary import Interface
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.constants import CAN_MAX_WRITE_SIZE
@@ -29,7 +30,6 @@ class CanopenServo(Servo):
 
     """
 
-    DICTIONARY_CLASS = CanopenDictionary
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
 
     STATUS_WORD_REGISTERS = "CIA402_DRV_STATE_STATUS"
@@ -51,6 +51,8 @@ class CanopenServo(Servo):
         access=REG_ACCESS.RW,
         subnode=0,
     )
+
+    interface = Interface.CAN
 
     def __init__(
         self,

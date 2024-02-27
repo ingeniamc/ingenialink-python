@@ -1,6 +1,6 @@
 from typing import Optional
 
-from ingenialink.dictionary import Dictionary
+from ingenialink.dictionary import DictionaryV2
 from ingenialink.canopen.register import CanopenRegister
 
 import ingenialogger
@@ -9,16 +9,13 @@ import xml.etree.ElementTree as ET
 logger = ingenialogger.get_logger(__name__)
 
 
-class CanopenDictionary(Dictionary):
+class CanopenDictionary(DictionaryV2):
     """Contains all registers and information of a CANopen dictionary.
 
     Args:
         dictionary_path: Path to the Ingenia dictionary.
 
     """
-
-    def __init__(self, dictionary_path: str) -> None:
-        super().__init__(dictionary_path)
 
     def _read_xdf_register(self, register: ET.Element) -> Optional[CanopenRegister]:
         current_read_register = super()._read_xdf_register(register)
