@@ -10,7 +10,6 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy import signal
 
-from ingenialink.dictionary import Interface
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
 from ingenialink.ethernet.register import EthernetRegister
@@ -1245,7 +1244,7 @@ class VirtualDrive(Thread):
         self.device_info = None
         self.__logger: List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]] = []
         self.__reg_address_to_id: Dict[int, Dict[int, str]] = {}
-        self.__dictionary = VirtualDictionary(self.dictionary_path, Interface.VIRTUAL)
+        self.__dictionary = VirtualDictionary(self.dictionary_path)
         self.reg_signals: Dict[str, NDArray[np.float_]] = {}
         self.reg_time: Dict[str, NDArray[np.float_]] = {}
         self.reg_noise_amplitude: Dict[str, float] = {}

@@ -1,7 +1,7 @@
 import pytest
-from canopen import Network
 
-from ingenialink.canopen.dictionary import CanopenDictionary
+from ingenialink.dictionary import Interface
+from ingenialink.servo import DictionaryFactory
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, NET_STATE, CanopenNetwork
 from ingenialink.exceptions import ILError
 
@@ -82,7 +82,9 @@ def test_scan_slaves_info(read_config):
         baudrate=CAN_BAUDRATE(read_config["canopen"]["baudrate"]),
     )
     slaves_info = net.scan_slaves_info()
-    dictionary = CanopenDictionary(read_config["canopen"]["dictionary"])
+    dictionary = DictionaryFactory.create_dictionary(
+        read_config["canopen"]["dictionary"], Interface.CAN
+    )
 
     assert len(slaves_info) > 0
     assert read_config["canopen"]["node_id"] in slaves_info
