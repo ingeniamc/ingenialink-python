@@ -206,7 +206,7 @@ class EthernetNetwork(Network):
         connection_timeout: float = DEFAULT_ETH_CONNECTION_TIMEOUT,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
-        is_eoe: bool = False
+        is_eoe: bool = False,
     ) -> EthernetServo:
         """Connects to a slave through the given network settings.
 
