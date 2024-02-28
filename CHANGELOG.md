@@ -10,6 +10,7 @@
 - Store and restore functionalities for subnode 0.
 - Add functionalities to update ECAT state machine
 - Add send_receive_processdata function
+- Add scan_slaves_info method
 
 ### Fixed
 - Raise exception when ECAT SDO write/read is wrong

@@ -7,6 +7,7 @@ from threading import Thread, Timer
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy import signal
 
 from ingenialink.dictionary import Interface
@@ -160,11 +161,11 @@ class BasePlant:
 
     def _filter_signal(
         self,
-        input_signal: np.ndarray,
+        input_signal: NDArray[np.float_],
         use_fft_method: bool = True,
         initial_value: float = 0.0,
         plant: Optional[signal.TransferFunction] = None,
-    ) -> np.ndarray:
+    ) -> NDArray[np.float_]:
         """Filter signal with the plant's frequency response.
 
         Args:
@@ -206,7 +207,7 @@ class BasePlant:
         start_time = time_of_change - 1
         end_time = start_time + 5
         time_vector = np.arange(start_time, end_time, 1 / self.drive.current_loop_rate)
-        index_change = np.argmin(np.abs(time_vector - time_of_change))
+        index_change = int(np.argmin(np.abs(time_vector - time_of_change)))
         jog_signal = np.zeros(len(time_vector))
         current_value = self.set_point_register.storage
         jog_signal[:index_change] = current_value
@@ -721,7 +722,9 @@ class VirtualInternalGenerator:
         n_samples = int(self.drive._monitoring.FREQUENCY * period * self.cycles)
         time_vector = self.start_time + np.linspace(0, period * self.cycles, n_samples)
 
-        signal_period = self.offset + np.linspace(0, self.gain, int(n_samples / self.cycles))
+        signal_period: NDArray[np.float_] = self.offset + np.linspace(
+            0, self.gain, int(n_samples / self.cycles), dtype=np.float_
+        )
         pos_signal = np.tile(signal_period, self.cycles)
         initial_value = self.drive.get_value_by_id(1, self.ACTUAL_POSITION_REGISTER)
         pos_signal = initial_value + (pos_signal - pos_signal[0]) * self.encoder_resolution
@@ -739,7 +742,7 @@ class VirtualInternalGenerator:
         self.drive.reg_signals[self.ACTUAL_POSITION_REGISTER] = pos_signal
         self.drive.reg_time[self.ACTUAL_POSITION_REGISTER] = time_vector
 
-    def __create_halls_encoder_signal(self, pos_signal: np.ndarray) -> np.ndarray:
+    def __create_halls_encoder_signal(self, pos_signal: NDArray[np.float_]) -> NDArray[np.float_]:
         """Create the halls encoder signal by discretizing the pos_signal using the hall values.
 
         Args:
@@ -764,7 +767,7 @@ class VirtualInternalGenerator:
             encoder_signal[sample_ix] = self.HALL_VALUES[hall_value_ix]
         return encoder_signal
 
-    def __create_abs_encoder_signal(self, pos_signal: np.ndarray) -> np.ndarray:
+    def __create_abs_encoder_signal(self, pos_signal: NDArray[np.float_]) -> NDArray[np.float_]:
         """Crete the absolute encoder signal by saturating the position signal.
 
         Args:
@@ -836,9 +839,9 @@ class VirtualInternalGenerator:
         return float(self.drive.get_value_by_id(1, self.GAIN_REGISTER))
 
     @property
-    def cycles(self) -> float:
+    def cycles(self) -> int:
         """Internal generator cycles."""
-        return float(self.drive.get_value_by_id(1, self.CYCLE_NUMBER_REGISTER))
+        return int(self.drive.get_value_by_id(1, self.CYCLE_NUMBER_REGISTER))
 
 
 class VirtualMonDistBase:
@@ -1243,8 +1246,8 @@ class VirtualDrive(Thread):
         self.__logger: List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]] = []
         self.__reg_address_to_id: Dict[int, Dict[int, str]] = {}
         self.__dictionary = VirtualDictionary(self.dictionary_path, Interface.VIRTUAL)
-        self.reg_signals: Dict[str, np.ndarray] = {}
-        self.reg_time: Dict[str, np.ndarray] = {}
+        self.reg_signals: Dict[str, NDArray[np.float_]] = {}
+        self.reg_time: Dict[str, NDArray[np.float_]] = {}
         self.reg_noise_amplitude: Dict[str, float] = {}
 
         self._init_registers()
@@ -1587,7 +1590,7 @@ class VirtualDrive(Thread):
             Register value.
         """
         register = self.__dictionary.registers(subnode)[id]
-        value: Union[int, float, str]
+        value: Union[int, float]
         if len(self.reg_signals[id]) > 0:
             actual_time = time.time()
             if self._disturbance.enabled:
