@@ -6,14 +6,14 @@ from xml.dom import minidom
 
 import pytest
 
-from ingenialink.canopen.dictionary import CanopenDictionary
-from ingenialink.ethernet.dictionary import EthernetDictionary
+from ingenialink.canopen.dictionary import CanopenDictionaryV2
+from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 
 PATH_RESOURCE = "./tests/resources/"
 PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
 
 
-@pytest.mark.parametrize("dictionary_class", [CanopenDictionary, EthernetDictionary])
+@pytest.mark.parametrize("dictionary_class", [CanopenDictionaryV2, EthernetDictionaryV2])
 @pytest.mark.no_connection
 def test_dictionary_image(dictionary_class):
     dictionary = dictionary_class(PATH_TO_DICTIONARY)
@@ -21,7 +21,7 @@ def test_dictionary_image(dictionary_class):
     assert dictionary.moco_image is None
 
 
-@pytest.mark.parametrize("dictionary_class", [CanopenDictionary, EthernetDictionary])
+@pytest.mark.parametrize("dictionary_class", [CanopenDictionaryV2, EthernetDictionaryV2])
 @pytest.mark.no_connection
 def test_dictionary_image_none(dictionary_class):
     with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
@@ -41,7 +41,7 @@ def test_dictionary_image_none(dictionary_class):
     assert dictionary.moco_image is None
 
 
-@pytest.mark.parametrize("dictionary_class", [CanopenDictionary, EthernetDictionary])
+@pytest.mark.parametrize("dictionary_class", [CanopenDictionaryV2, EthernetDictionaryV2])
 @pytest.mark.no_connection
 def test_dictionary_moco_image(dictionary_class):
     with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:

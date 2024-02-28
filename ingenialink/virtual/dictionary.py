@@ -3,13 +3,13 @@ from typing import Optional
 
 import ingenialogger
 
-from ingenialink.ethernet.dictionary import EthernetDictionary
+from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.ethernet.register import EthernetRegister
 
 logger = ingenialogger.get_logger(__name__)
 
 
-class VirtualDictionary(EthernetDictionary):
+class VirtualDictionary(EthernetDictionaryV2):
     """Contains all registers and information of a dictionary compatible with the virtual drive.
 
     It adapts a canopen dictionary to work in the ethernet communication used for the virtual drive.

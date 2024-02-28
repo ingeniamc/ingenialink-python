@@ -2,7 +2,7 @@ import pytest
 from os.path import join as join_path
 
 from ingenialink.dictionary import Interface, SubnodeType
-from ingenialink.canopen.dictionary import CanopenDictionary
+from ingenialink.canopen.dictionary import CanopenDictionaryV2
 
 
 path_resources = "./tests/resources/canopen/"
@@ -23,7 +23,7 @@ def test_read_dictionary():
         "subnodes": SINGLE_AXIS_BASE_SUBNODES,
     }
 
-    canopen_dict = CanopenDictionary(dictionary_path)
+    canopen_dict = CanopenDictionaryV2(dictionary_path)
 
     for attr, value in expected_device_attr.items():
         assert getattr(canopen_dict, attr) == value
@@ -34,7 +34,7 @@ def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
     with pytest.raises(FileNotFoundError):
-        CanopenDictionary(dictionary_path)
+        CanopenDictionaryV2(dictionary_path)
 
 
 @pytest.mark.no_connection
@@ -51,7 +51,7 @@ def test_read_dictionary_registers():
         1: ["COMMU_ANGLE_SENSOR"],
     }
 
-    canopen_dict = CanopenDictionary(dictionary_path)
+    canopen_dict = CanopenDictionaryV2(dictionary_path)
 
     for subnode in expected_regs_per_subnode.keys():
         assert expected_regs_per_subnode[subnode] == [
@@ -64,7 +64,7 @@ def test_read_dictionary_registers_multiaxis():
     expected_num_registers_per_subnode = {0: 6, 1: 5, 2: 5}
     dictionary_path = join_path(path_resources, "test_dict_can_axis.xdf")
 
-    canopen_dict = CanopenDictionary(dictionary_path)
+    canopen_dict = CanopenDictionaryV2(dictionary_path)
 
     for subnode in expected_num_registers_per_subnode.keys():
         num_registers = len(canopen_dict.registers(subnode))
@@ -75,7 +75,7 @@ def test_read_dictionary_registers_multiaxis():
 def test_read_dictionary_registers_attr_errors():
     dictionary_path = join_path(path_resources, "test_dict_can_no_attr_reg.xdf")
 
-    canopen_dict = CanopenDictionary(dictionary_path)
+    canopen_dict = CanopenDictionaryV2(dictionary_path)
 
     for subnode in range(2):
         num_registers = len(canopen_dict.registers(subnode))
@@ -93,7 +93,7 @@ def test_read_dictionary_categories():
     ]
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
 
-    canopen_dict = CanopenDictionary(dictionary_path)
+    canopen_dict = CanopenDictionaryV2(dictionary_path)
 
     assert canopen_dict.categories.category_ids == expected_categories
 
@@ -108,7 +108,7 @@ def test_read_dictionary_errors():
     ]
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
 
-    canopen_dict = CanopenDictionary(dictionary_path)
+    canopen_dict = CanopenDictionaryV2(dictionary_path)
 
     assert [error for error in canopen_dict.errors.errors] == expected_errors
 
@@ -121,7 +121,7 @@ def test_read_xdf_register():
     reg_id = "DRV_DIAG_ERROR_LAST_COM"
     subnode = 0
 
-    canopen_dict = CanopenDictionary(dictionary_path)
+    canopen_dict = CanopenDictionaryV2(dictionary_path)
 
     assert canopen_dict.registers(subnode)[reg_id].idx == idx
     assert canopen_dict.registers(subnode)[reg_id].subidx == subidx

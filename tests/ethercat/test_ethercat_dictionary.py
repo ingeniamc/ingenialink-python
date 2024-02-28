@@ -2,7 +2,7 @@ import pytest
 from os.path import join as join_path
 
 from ingenialink.dictionary import Interface, SubnodeType
-from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 
 
 path_resources = "./tests/resources/ethercat/"
@@ -23,7 +23,7 @@ def test_read_dictionary():
         "subnodes": SINGLE_AXIS_BASE_SUBNODES,
     }
 
-    ethercat_dict = EthercatDictionary(dictionary_path)
+    ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
     for attr, value in expected_device_attr.items():
         assert getattr(ethercat_dict, attr) == value
@@ -34,7 +34,7 @@ def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
     with pytest.raises(FileNotFoundError):
-        EthercatDictionary(dictionary_path)
+        EthercatDictionaryV2(dictionary_path)
 
 
 @pytest.mark.no_connection
@@ -52,7 +52,7 @@ def test_read_dictionary_registers():
         1: ["COMMU_ANGLE_SENSOR"],
     }
 
-    ethercat_dict = EthercatDictionary(dictionary_path)
+    ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
     for subnode in expected_regs_per_subnode.keys():
         assert expected_regs_per_subnode[subnode] == [
@@ -65,7 +65,7 @@ def test_read_dictionary_registers_multiaxis():
     expected_num_registers_per_subnode = {0: 2, 1: 2, 2: 2}
     dictionary_path = join_path(path_resources, "test_dict_ethercat_axis.xdf")
 
-    ethernet_dict = EthercatDictionary(dictionary_path)
+    ethernet_dict = EthercatDictionaryV2(dictionary_path)
 
     for subnode in expected_num_registers_per_subnode.keys():
         num_registers = len(ethernet_dict.registers(subnode))
@@ -83,7 +83,7 @@ def test_read_dictionary_categories():
     ]
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
 
-    ethernet_dict = EthercatDictionary(dictionary_path)
+    ethernet_dict = EthercatDictionaryV2(dictionary_path)
 
     assert ethernet_dict.categories.category_ids == expected_categories
 
@@ -98,7 +98,7 @@ def test_read_dictionary_errors():
     ]
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
 
-    ethercat_dict = EthercatDictionary(dictionary_path)
+    ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
     assert [error for error in ethercat_dict.errors.errors] == expected_errors
 
@@ -111,7 +111,7 @@ def test_read_xdf_register():
     reg_id = "DRV_DIAG_ERROR_LAST_COM"
     subnode = 0
 
-    ethercat_dict = EthercatDictionary(dictionary_path)
+    ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
     assert ethercat_dict.registers(subnode)[reg_id].idx == idx
     assert ethercat_dict.registers(subnode)[reg_id].subidx == subidx
@@ -125,7 +125,7 @@ def test_read_xdf_register():
 def test_mcb_to_can_mapping(register_uid, subnode, idx):
     dictionary_path = join_path(path_resources, "test_dict_ethercat_axis.xdf")
 
-    ethercat_dict = EthercatDictionary(dictionary_path)
+    ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
     ethercat_register = ethercat_dict.registers(subnode)[register_uid]
     assert ethercat_register.idx == idx

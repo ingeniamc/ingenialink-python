@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 logger = ingenialogger.get_logger(__name__)
 
 
-class CanopenDictionary(DictionaryV2):
+class CanopenDictionaryV2(DictionaryV2):
     """Contains all registers and information of a CANopen dictionary.
 
     Args:

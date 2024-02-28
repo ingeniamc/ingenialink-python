@@ -1,6 +1,6 @@
 import pytest
 
-from ingenialink.canopen.dictionary import CanopenDictionary
+from ingenialink.dictionary import Dictionary
 from ingenialink.canopen.register import (
     REG_ACCESS,
     REG_ADDRESS_TYPE,
@@ -67,7 +67,7 @@ def test_canopen_connection_register(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
 
-    assert isinstance(servo.dictionary, CanopenDictionary)
+    assert isinstance(servo.dictionary, Dictionary)
 
     registers_sub_0 = servo.dictionary.registers(0)
     assert registers_sub_0 is not None

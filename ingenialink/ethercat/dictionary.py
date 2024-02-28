@@ -14,7 +14,7 @@ from ingenialink.constants import (
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthercatDictionary(DictionaryV2):
+class EthercatDictionaryV2(DictionaryV2):
     """Contains all registers and information of a EtherCAT dictionary.
 
     Args:

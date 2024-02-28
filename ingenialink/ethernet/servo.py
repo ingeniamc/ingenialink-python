@@ -12,7 +12,7 @@ from ingenialink.servo import Servo
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_ip_to_int
 
-from ingenialink.ethernet.dictionary import EthernetDictionary
+from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 
 import ingenialogger
 

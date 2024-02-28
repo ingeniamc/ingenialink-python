@@ -9,9 +9,9 @@ from xml.dom import minidom
 
 import ingenialogger
 
-from ingenialink.ethernet.dictionary import EthernetDictionary
-from ingenialink.ethercat.dictionary import EthercatDictionary
-from ingenialink.canopen.dictionary import CanopenDictionary
+from ingenialink.ethernet.dictionary import EthernetDictionaryV2
+from ingenialink.ethercat.dictionary import EthercatDictionaryV2
+from ingenialink.canopen.dictionary import CanopenDictionaryV2
 from ingenialink.virtual.dictionary import VirtualDictionary
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
@@ -79,11 +79,11 @@ class DictionaryFactory:
             return DictionaryV3(dictionary_path, interface)
         if major_version == 2:
             if interface == Interface.CAN:
-                return CanopenDictionary(dictionary_path)
+                return CanopenDictionaryV2(dictionary_path)
             if interface == Interface.ECAT:
-                return EthercatDictionary(dictionary_path)
+                return EthercatDictionaryV2(dictionary_path)
             if interface in [Interface.ETH, Interface.EoE]:
-                return EthernetDictionary(dictionary_path)
+                return EthernetDictionaryV2(dictionary_path)
             if interface == Interface.VIRTUAL:
                 return VirtualDictionary(dictionary_path)
         raise NotImplementedError(f"Dictionary version {major_version} is not supported")

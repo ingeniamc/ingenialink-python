@@ -9,7 +9,7 @@ from ingenialink.ethernet.register import EthernetRegister
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthernetDictionary(DictionaryV2):
+class EthernetDictionaryV2(DictionaryV2):
     """Contains all registers and information of a Ethernet dictionary.
 
     Args:

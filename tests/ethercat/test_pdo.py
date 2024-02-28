@@ -9,12 +9,14 @@ except ImportError:
 import pytest
 
 from ingenialink import EthercatNetwork
+from ingenialink.dictionary import Interface
 from ingenialink.enums.register import REG_DTYPE
-from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError
 from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
+from ingenialink.servo import DictionaryFactory
 from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_value
 
 TPDO_REGISTERS = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
@@ -25,7 +27,7 @@ SUBNODE = 1
 @pytest.fixture()
 def open_dictionary(read_config):
     dictionary = read_config["ethercat"]["dictionary"]
-    ethercat_dictionary = EthercatDictionary(dictionary)
+    ethercat_dictionary = DictionaryFactory.create_dictionary(dictionary, Interface.ECAT)
     return ethercat_dictionary
 
 
@@ -107,7 +109,7 @@ def test_tpdo_item(open_dictionary):
 )
 def test_pdo_item_register_mapping(read_config, uid, expected_value):
     dictionary = read_config["ethercat"]["dictionary"]
-    ethercat_dictionary = EthercatDictionary(dictionary)
+    ethercat_dictionary = DictionaryFactory.create_dictionary(dictionary, Interface.ECAT)
     register = ethercat_dictionary.registers(1)[uid]
     tpdo_item = TPDOMapItem(register)
     assert expected_value.to_bytes(4, "little") == tpdo_item.register_mapping
