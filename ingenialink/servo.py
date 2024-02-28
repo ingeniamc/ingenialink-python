@@ -79,13 +79,13 @@ class DictionaryFactory:
             return DictionaryV3(dictionary_path, interface)
         if major_version == 2:
             if interface == Interface.CAN:
-                return CanopenDictionary(dictionary_path, interface)
+                return CanopenDictionary(dictionary_path)
             if interface == Interface.ECAT:
-                return EthercatDictionary(dictionary_path, interface)
+                return EthercatDictionary(dictionary_path)
             if interface in [Interface.ETH, Interface.EoE]:
-                return EthernetDictionary(dictionary_path, interface)
+                return EthernetDictionary(dictionary_path)
             if interface == Interface.VIRTUAL:
-                return VirtualDictionary(dictionary_path, interface)
+                return VirtualDictionary(dictionary_path)
         raise NotImplementedError(f"Dictionary version {major_version} is not supported")
 
     @classmethod
@@ -279,7 +279,7 @@ class Servo:
         Raises:
             FileNotFoundError: If the configuration file cannot be found.
             ValueError: If a configuration file from a subnode different from 0
-            is attempted to be loaded to subnode 0.
+                is attempted to be loaded to subnode 0.
             ValueError: If an invalid subnode is provided.
 
         """
@@ -412,7 +412,7 @@ class Servo:
 
         Args:
             subnode: Subnode of the axis. `None` by default which restores
-            all the parameters.
+                all the parameters.
 
         Raises:
             ILError: Invalid subnode.

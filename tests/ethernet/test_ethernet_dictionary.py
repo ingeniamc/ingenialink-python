@@ -1,11 +1,12 @@
 import pytest
 from os.path import join as join_path
 
+from ingenialink.dictionary import Interface, SubnodeType
 from ingenialink.ethernet.dictionary import EthernetDictionary
-from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
 
 
 path_resources = "./tests/resources/ethernet/"
+SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
 @pytest.mark.no_connection
@@ -18,8 +19,8 @@ def test_read_dictionary():
         "product_code": 57745409,
         "part_number": "CAP-NET-C",
         "revision_number": 196635,
-        "interface": "ETH",
-        "subnodes": SINGLE_AXIS_MINIMUM_SUBNODES,
+        "interface": Interface.ETH,
+        "subnodes": SINGLE_AXIS_BASE_SUBNODES,
     }
 
     ethernet_dict = EthernetDictionary(dictionary_path)

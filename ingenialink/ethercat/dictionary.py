@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 
 import ingenialogger
 
-from ingenialink.dictionary import DictionaryV2
+from ingenialink.dictionary import DictionaryV2, Interface
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.constants import (
     CANOPEN_ADDRESS_OFFSET,
@@ -21,6 +21,9 @@ class EthercatDictionary(DictionaryV2):
         dictionary_path: Path to the Ingenia dictionary.
 
     """
+
+    def __init__(self, dictionary_path: str):
+        super().__init__(dictionary_path, Interface.ECAT)
 
     @staticmethod
     def __get_cia_offset(subnode: int) -> int:

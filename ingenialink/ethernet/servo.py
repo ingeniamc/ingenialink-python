@@ -27,6 +27,7 @@ class EthernetServo(Servo):
         dictionary_path: Path to the dictionary.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
+        is_eoe: True if communication is EoE. ``False`` by default.
 
     """
 
@@ -54,10 +55,17 @@ class EthernetServo(Servo):
         access=REG_ACCESS.WO,
     )
 
+    interface = Interface.ETH
+
     def __init__(
-        self, socket: socket.socket, dictionary_path: str, servo_status_listener: bool = False
+        self,
+        socket: socket.socket,
+        dictionary_path: str,
+        servo_status_listener: bool = False,
+        is_eoe: bool = False,
     ) -> None:
-        self.interface = Interface.ETH
+        if is_eoe:
+            self.interface = Interface.EoE
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
         super(EthernetServo, self).__init__(self.ip_address, dictionary_path, servo_status_listener)
@@ -89,11 +97,11 @@ class EthernetServo(Servo):
 
         Raises:
             ValueError: If the drive or gateway IP is not a
-            valid IP address.
+                valid IP address.
             ValueError: If the drive IP and gateway IP are not
-            on the same network.
+                on the same network.
             NetmaskValueError: If the subnet_mask is not a valid
-            netmask.
+                netmask.
 
         """
         drive_ip = ipaddress.ip_address(ip_address)

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from ingenialink.dictionary import DictionaryV2
+from ingenialink.dictionary import DictionaryV2, Interface
 from ingenialink.canopen.register import CanopenRegister
 
 import ingenialogger
@@ -16,6 +16,9 @@ class CanopenDictionary(DictionaryV2):
         dictionary_path: Path to the Ingenia dictionary.
 
     """
+
+    def __init__(self, dictionary_path: str):
+        super().__init__(dictionary_path, Interface.CAN)
 
     def _read_xdf_register(self, register: ET.Element) -> Optional[CanopenRegister]:
         current_read_register = super()._read_xdf_register(register)

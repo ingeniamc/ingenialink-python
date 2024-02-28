@@ -206,6 +206,7 @@ class EthernetNetwork(Network):
         connection_timeout: float = DEFAULT_ETH_CONNECTION_TIMEOUT,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
+        is_eoe: bool = False
     ) -> EthernetServo:
         """Connects to a slave through the given network settings.
 
@@ -218,6 +219,7 @@ class EthernetNetwork(Network):
                 its status, errors, faults, etc.
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
+            is_eoe: True if communication is EoE. ``False`` by default.
 
         Returns:
             EthernetServo: Instance of the servo connected.
@@ -226,7 +228,7 @@ class EthernetNetwork(Network):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(connection_timeout)
         sock.connect((target, port))
-        servo = EthernetServo(sock, dictionary, servo_status_listener)
+        servo = EthernetServo(sock, dictionary, servo_status_listener, is_eoe)
         try:
             servo.get_state()
         except ILError as e:

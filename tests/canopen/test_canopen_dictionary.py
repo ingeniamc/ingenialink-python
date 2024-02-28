@@ -1,10 +1,12 @@
 import pytest
 from os.path import join as join_path
 
+from ingenialink.dictionary import Interface, SubnodeType
 from ingenialink.canopen.dictionary import CanopenDictionary
 
 
 path_resources = "./tests/resources/canopen/"
+SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
 @pytest.mark.no_connection
@@ -17,8 +19,8 @@ def test_read_dictionary():
         "product_code": 57745409,
         "part_number": "CAP-NET-C",
         "revision_number": 196635,
-        "interface": "CAN",
-        "subnodes": 2,
+        "interface": Interface.CAN,
+        "subnodes": SINGLE_AXIS_BASE_SUBNODES,
     }
 
     canopen_dict = CanopenDictionary(dictionary_path)

@@ -239,20 +239,22 @@ class Dictionary(ABC):
     """Revision number declared in the dictionary."""
     interface: Interface
     """Interface declared in the dictionary."""
-    subnodes: Dict[int, SubnodeType] = {}
+    subnodes: Dict[int, SubnodeType]
     """Number of subnodes in the dictionary."""
     categories: DictionaryCategories
     """Instance of all the categories in the dictionary."""
     errors: DictionaryErrors
     """Instance of all the errors in the dictionary."""
-    image: Optional[str]
+    image: Optional[str] = None
     """Drive's encoded image."""
-    moco_image: str  # TODO study COM-KIT case
+    moco_image: Optional[str] = None  # TODO study COM-KIT case
     """Motion CORE encoded image. Only available when using a COM-KIT."""
-    _registers: Dict[int, Dict[str, Register]] = {}
+    _registers: Dict[int, Dict[str, Register]]
     """Instance of all the registers in the dictionary"""
 
     def __init__(self, dictionary_path: str, interface: Interface) -> None:
+        self._registers = {}
+        self.subnodes = {}
         self.path = dictionary_path
         """Path of the dictionary."""
         self.interface = interface

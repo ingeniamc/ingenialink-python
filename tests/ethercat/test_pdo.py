@@ -1,7 +1,6 @@
 import json
 import time
 
-from ingenialink import EthercatNetwork
 
 try:
     import pysoem
@@ -9,6 +8,7 @@ except ImportError:
     pass
 import pytest
 
+from ingenialink import EthercatNetwork
 from ingenialink.enums.register import REG_DTYPE
 from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.servo import EthercatServo
