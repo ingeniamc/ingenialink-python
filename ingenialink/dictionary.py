@@ -249,10 +249,21 @@ class Dictionary(ABC):
     """Drive's encoded image."""
     moco_image: Optional[str] = None  # TODO study COM-KIT case
     """Motion CORE encoded image. Only available when using a COM-KIT."""
+    is_safe: bool = False
+    """True if has SafetyPDOs element, else False"""
     _registers: Dict[int, Dict[str, Register]]
     """Instance of all the registers in the dictionary"""
+    registers_group: Dict[int, Dict[str, List[Register]]]
+    """Registers group by subnode and UID"""
+    safety_rpdos: Dict[str, DictionarySafetyPDO]
+    """Safety RPDOs by UID"""
+    safety_tpdos: Dict[str, DictionarySafetyPDO]
+    """Safety TPDOs by UID"""
 
     def __init__(self, dictionary_path: str, interface: Interface) -> None:
+        self.registers_group = {}
+        self.safety_rpdos = {}
+        self.safety_tpdos = {}
         self._registers = {}
         self.subnodes = {}
         self.path = dictionary_path
@@ -277,6 +288,53 @@ class Dictionary(ABC):
         """Reads the dictionary file and initializes all its components."""
         pass
 
+    def child_registers(self, uid: str, subnode: int) -> List[Register]:
+        """Return group registers by an UID
+
+        Args:
+            uid: registers group UID
+            subnode: registers group subnode
+
+        Returns:
+            All registers in the group
+
+        """
+        if subnode in self.registers_group and uid in self.registers_group[subnode]:
+            return self.registers_group[subnode][uid]
+        raise KeyError(f"Registers group {uid} in subnode {subnode} not exist")
+
+    def get_safety_rpdo(self, uid: str) -> DictionarySafetyPDO:
+        """Get Safe RPDO by uid
+
+        Args:
+            uid: Safe RPDO uid
+
+        Returns:
+            PDO object description
+
+        """
+        if not self.is_safe:
+            raise NotImplementedError("Safe PDOs are not implemented for this device")
+        if uid in self.safety_rpdos:
+            return self.safety_rpdos[uid]
+        raise KeyError(f"Safe RPDO {uid} not exist")
+
+    def get_safety_tpdo(self, uid: str) -> DictionarySafetyPDO:
+        """Get Safe TPDO by uid
+
+        Args:
+            uid: Safe TPDO uid
+
+        Returns:
+            PDO object description
+
+        """
+        if not self.is_safe:
+            raise NotImplementedError("Safe PDOs are not implemented for this device")
+        if uid in self.safety_tpdos:
+            return self.safety_tpdos[uid]
+        raise KeyError(f"Safe TPDO {uid} not exist")
+
 
 class DictionaryV3(Dictionary):
     DRIVE_IMAGE_ELEMENT = "DriveImage"
@@ -296,6 +354,10 @@ class DictionaryV3(Dictionary):
         Interface.ECAT: "ECATDevice",
         Interface.EoE: "EoEDevice",
     }
+    DEVICE_FW_VERSION_ATTR = "firmwareVersion"
+    DEVICE_PRODUCT_CODE_ATTR = "ProductCode"
+    DEVICE_PART_NUMBER_ATTR = "PartNumber"
+    DEVICE_REVISION_NUMBER_ATTR = "RevisionNumber"
 
     SUBNODES_ELEMENT = "Subnodes"
     SUBNODE_ELEMENT = "Subnode"
@@ -345,10 +407,6 @@ class DictionaryV3(Dictionary):
     PDO_ENTRY_ELEMENT = "PDOEntry"
     PDO_ENTRY_SIZE_ATTR = "size"
     PDO_ENTRY_SUBNODE_ATTR = "subnode"
-
-    canopen_objects: Dict[str, List[CanopenRegister]] = {}
-    safety_rpdos: Dict[str, DictionarySafetyPDO] = {}
-    safety_tpdos: Dict[str, DictionarySafetyPDO] = {}
 
     @staticmethod
     def find_and_check(root: ET.Element, path: str) -> ET.Element:
@@ -468,6 +526,7 @@ class DictionaryV3(Dictionary):
 
         """
         device_element = self.find_and_check(root, self.DEVICE_ELEMENT[self.interface])
+        self.read_device_attributes(device_element)
         if self.interface == Interface.ETH:
             self.read_device_eth(device_element)
         if self.interface == Interface.CAN:
@@ -476,6 +535,12 @@ class DictionaryV3(Dictionary):
             self.read_device_ecat(device_element)
         if self.interface == Interface.EoE:
             self.read_device_eoe(device_element)
+
+    def read_device_attributes(self, device: ET.Element) -> None:
+        self.firmware_version = device.attrib[self.DEVICE_FW_VERSION_ATTR]
+        self.product_code = int(device.attrib[self.DEVICE_PRODUCT_CODE_ATTR])
+        self.part_number = device.attrib[self.DEVICE_PART_NUMBER_ATTR]
+        self.revision_number = int(device.attrib[self.DEVICE_REVISION_NUMBER_ATTR])
 
     def read_device_eoe(self, root: ET.Element) -> None:
         """Process EoEDevice element
@@ -687,7 +752,7 @@ class DictionaryV3(Dictionary):
         self._registers[subnode][identifier] = ethernet_register
 
     def read_canopen_object(self, root: ET.Element) -> None:
-        """Process CANopenObject element and add it to canopen_objects if has UID
+        """Process CANopenObject element and add it to registers_group if has UID
 
         Args:
             root: CANopenObject element
@@ -703,7 +768,9 @@ class DictionaryV3(Dictionary):
         ]
         if object_uid:
             register_list.sort(key=lambda val: val.subidx)
-            self.canopen_objects[object_uid] = register_list
+            if subnode not in self.registers_group:
+                self.registers_group[subnode] = {}
+            self.registers_group[subnode][object_uid] = list(register_list)
 
     def read_canopen_subitem(
         self, subitem: ET.Element, reg_index: int, subnode: int
@@ -766,6 +833,7 @@ class DictionaryV3(Dictionary):
             root: MCBRegister element
 
         """
+        self.is_safe = True
         rpdo_list = self.findall_and_check(root, self.RPDO_ELEMENT)
         for rpdo_element in rpdo_list:
             uid, safety_rpdo = self.read_pdo(rpdo_element)

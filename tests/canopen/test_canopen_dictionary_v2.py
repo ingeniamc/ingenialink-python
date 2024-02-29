@@ -21,6 +21,7 @@ def test_read_dictionary():
         "revision_number": 196635,
         "interface": Interface.CAN,
         "subnodes": SINGLE_AXIS_BASE_SUBNODES,
+        "is_safe": False,
     }
 
     canopen_dict = CanopenDictionaryV2(dictionary_path)
@@ -65,7 +66,11 @@ def test_read_dictionary_registers_multiaxis():
     dictionary_path = join_path(path_resources, "test_dict_can_axis.xdf")
 
     canopen_dict = CanopenDictionaryV2(dictionary_path)
-
+    assert canopen_dict.subnodes == {
+        0: SubnodeType.COMMUNICATION,
+        1: SubnodeType.MOTION,
+        2: SubnodeType.MOTION,
+    }
     for subnode in expected_num_registers_per_subnode.keys():
         num_registers = len(canopen_dict.registers(subnode))
         assert num_registers == expected_num_registers_per_subnode[subnode]
@@ -125,3 +130,21 @@ def test_read_xdf_register():
 
     assert canopen_dict.registers(subnode)[reg_id].idx == idx
     assert canopen_dict.registers(subnode)[reg_id].subidx == subidx
+
+
+@pytest.mark.no_connection
+def test_child_registers_not_exist():
+    dictionary_path = join_path(path_resources, "test_dict_can.xdf")
+    canopen_dict = CanopenDictionaryV2(dictionary_path)
+    with pytest.raises(KeyError):
+        canopen_dict.child_registers("NOT_EXISTING_UID", 0)
+
+
+@pytest.mark.no_connection
+def test_safety_pdo_not_implemented():
+    dictionary_path = join_path(path_resources, "test_dict_can.xdf")
+    canopen_dict = CanopenDictionaryV2(dictionary_path)
+    with pytest.raises(NotImplementedError):
+        canopen_dict.get_safety_rpdo("NOT_EXISTING_UID")
+    with pytest.raises(NotImplementedError):
+        canopen_dict.get_safety_tpdo("NOT_EXISTING_UID")
