@@ -162,35 +162,6 @@ class Dictionary(ABC):
 
     """
 
-    # Dictionary constants guide:
-    # Each constant has this structure: DICT_ORIGIN_END
-    # ORIGIN: The start point of the path
-    # END: The end point of the path
-    # ORIGIN: ROOT
-    DICT_ROOT = "."
-    DICT_ROOT_HEADER = f"{DICT_ROOT}/Header"
-    DICT_ROOT_VERSION = f"{DICT_ROOT_HEADER}/Version"
-    DICT_ROOT_BODY = f"{DICT_ROOT}/Body"
-    DICT_ROOT_DEVICE = f"{DICT_ROOT_BODY}/Device"
-    DICT_ROOT_CATEGORIES = f"{DICT_ROOT_DEVICE}/Categories"
-    DICT_ROOT_CATEGORY = f"{DICT_ROOT_CATEGORIES}/Category"
-    DICT_ROOT_ERRORS = f"{DICT_ROOT_BODY}/Errors"
-    DICT_ROOT_ERROR = f"{DICT_ROOT_ERRORS}/Error"
-    DICT_ROOT_AXES = f"{DICT_ROOT_DEVICE}/Axes"
-    DICT_ROOT_AXIS = f"{DICT_ROOT_AXES}/Axis"
-    DICT_ROOT_REGISTERS = f"{DICT_ROOT_DEVICE}/Registers"
-    DICT_ROOT_REGISTER = f"{DICT_ROOT_REGISTERS}/Register"
-    # ORIGIN: REGISTERS
-    DICT_REGISTERS = "./Registers"
-    DICT_REGISTERS_REGISTER = f"{DICT_REGISTERS}/Register"
-    # ORIGIN: RANGE
-    DICT_RANGE = "./Range"
-    # ORIGIN: ENUMERATIONS
-    DICT_ENUMERATIONS = "./Enumerations"
-    DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
-    DICT_IMAGE = "DriveImage"
-    DICT_MOCO_IMAGE_ATTRIB = "moco"
-
     dtype_xdf_options = {
         "float": REG_DTYPE.FLOAT,
         "s8": REG_DTYPE.S8,
@@ -218,13 +189,6 @@ class Dictionary(ABC):
         "Communication": SubnodeType.COMMUNICATION,
         "Motion": SubnodeType.MOTION,
         "Safety": SubnodeType.SAFETY,
-    }
-
-    cyclic_xdf_options = {
-        "CYCLIC_RX": "CYCLIC_RX",
-        "CYCLIC_TX": "CYCLIC_TX",
-        "CYCLIC_RT": "CYCLIC_RT",
-        "CONFIG": "CONFIG",
     }
 
     version: str
@@ -423,7 +387,7 @@ class DictionaryV3(Dictionary):
     PDO_ENTRY_SUBNODE_ATTR = "subnode"
 
     @staticmethod
-    def find_and_check(root: ET.Element, path: str) -> ET.Element:
+    def __find_and_check(root: ET.Element, path: str) -> ET.Element:
         """Return the path element in the target root element if exists, else, raises an exception.
 
         Args:
@@ -443,7 +407,7 @@ class DictionaryV3(Dictionary):
         return element
 
     @staticmethod
-    def findall_and_check(root: ET.Element, path: str) -> List[ET.Element]:
+    def __findall_and_check(root: ET.Element, path: str) -> List[ET.Element]:
         """Return list of elements in the target root element if exist, else, raises an exception.
 
         Args:
@@ -469,14 +433,14 @@ class DictionaryV3(Dictionary):
         except FileNotFoundError:
             raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}")
         root = tree.getroot()
-        drive_image_element = self.find_and_check(root, self.DRIVE_IMAGE_ELEMENT)
-        self.read_drive_image(drive_image_element)
-        header_element = self.find_and_check(root, self.HEADER_ELEMENT)
-        self.read_header(header_element)
-        body_element = self.find_and_check(root, self.BODY_ELEMENT)
-        self.read_body(body_element)
+        drive_image_element = self.__find_and_check(root, self.DRIVE_IMAGE_ELEMENT)
+        self.__read_drive_image(drive_image_element)
+        header_element = self.__find_and_check(root, self.HEADER_ELEMENT)
+        self.__read_header(header_element)
+        body_element = self.__find_and_check(root, self.BODY_ELEMENT)
+        self.__read_body(body_element)
 
-    def read_drive_image(self, drive_image: ET.Element) -> None:
+    def __read_drive_image(self, drive_image: ET.Element) -> None:
         """Process DriveImage element and set image
 
         Args:
@@ -488,18 +452,18 @@ class DictionaryV3(Dictionary):
         else:
             self.image = None
 
-    def read_header(self, root: ET.Element) -> None:
+    def __read_header(self, root: ET.Element) -> None:
         """Process Header element
 
         Args:
             root: Header element
 
         """
-        version_element = self.find_and_check(root, self.VERSION_ELEMENT)
-        self.read_version(version_element)
+        version_element = self.__find_and_check(root, self.VERSION_ELEMENT)
+        self.__read_version(version_element)
         # Dictionary localization not implemented
 
-    def read_version(self, root: ET.Element) -> None:
+    def __read_version(self, root: ET.Element) -> None:
         """Process Version element and set version
 
         Args:
@@ -513,29 +477,29 @@ class DictionaryV3(Dictionary):
             raise ILDictionaryParseError("Version is empty")
         self.version = root.text.strip()
 
-    def read_body(self, root: ET.Element) -> None:
+    def __read_body(self, root: ET.Element) -> None:
         """Process Body element
 
         Args:
             root: Body element
 
         """
-        categories_element = self.find_and_check(root, self.CATEGORIES_ELEMENT)
-        self.read_categories(categories_element)
-        devices_element = self.find_and_check(root, self.DEVICES_ELEMENT)
-        self.read_devices(devices_element)
+        categories_element = self.__find_and_check(root, self.CATEGORIES_ELEMENT)
+        self.__read_categories(categories_element)
+        devices_element = self.__find_and_check(root, self.DEVICES_ELEMENT)
+        self.__read_devices(devices_element)
 
-    def read_categories(self, root: ET.Element) -> None:
+    def __read_categories(self, root: ET.Element) -> None:
         """Process Categories element and set categories
 
         Args:
             root: Categories element
 
         """
-        category_list = self.findall_and_check(root, self.CATEGORY_ELEMENT)
+        category_list = self.__findall_and_check(root, self.CATEGORY_ELEMENT)
         self.categories = DictionaryCategories(category_list)
 
-    def read_devices(self, root: ET.Element) -> None:
+    def __read_devices(self, root: ET.Element) -> None:
         """Process Devices element
 
         Args:
@@ -545,23 +509,23 @@ class DictionaryV3(Dictionary):
         device_element = root.find(self.DEVICE_ELEMENT[self.interface])
         if device_element is None:
             raise ILDictionaryParseError("Dictionary can not be used for the chose communication")
-        self.read_device_attributes(device_element)
+        self.__read_device_attributes(device_element)
         if self.interface == Interface.ETH:
-            self.read_device_eth(device_element)
+            self.__read_device_eth(device_element)
         if self.interface == Interface.CAN:
-            self.read_device_can(device_element)
+            self.__read_device_can(device_element)
         if self.interface == Interface.ECAT:
-            self.read_device_ecat(device_element)
+            self.__read_device_ecat(device_element)
         if self.interface == Interface.EoE:
-            self.read_device_eoe(device_element)
+            self.__read_device_eoe(device_element)
 
-    def read_device_attributes(self, device: ET.Element) -> None:
+    def __read_device_attributes(self, device: ET.Element) -> None:
         self.firmware_version = device.attrib[self.DEVICE_FW_VERSION_ATTR]
         self.product_code = int(device.attrib[self.DEVICE_PRODUCT_CODE_ATTR])
         self.part_number = device.attrib[self.DEVICE_PART_NUMBER_ATTR]
         self.revision_number = int(device.attrib[self.DEVICE_REVISION_NUMBER_ATTR])
 
-    def read_device_eoe(self, root: ET.Element) -> None:
+    def __read_device_eoe(self, root: ET.Element) -> None:
         """Process EoEDevice element
 
         Args:
@@ -569,64 +533,66 @@ class DictionaryV3(Dictionary):
 
         """
         # Device element is identical
-        self.read_device_eth(root)
+        self.__read_device_eth(root)
 
-    def read_device_eth(self, root: ET.Element) -> None:
+    def __read_device_eth(self, root: ET.Element) -> None:
         """Process ETHDevice element
 
         Args:
             root: ETHDevice element
 
         """
-        subnodes_element = self.find_and_check(root, self.SUBNODES_ELEMENT)
-        self.read_subnodes(subnodes_element)
-        registers_element = self.find_and_check(root, self.MCB_REGISTERS_ELEMENT)
-        register_element_list = self.findall_and_check(registers_element, self.MCB_REGISTER_ELEMENT)
+        subnodes_element = self.__find_and_check(root, self.SUBNODES_ELEMENT)
+        self.__read_subnodes(subnodes_element)
+        registers_element = self.__find_and_check(root, self.MCB_REGISTERS_ELEMENT)
+        register_element_list = self.__findall_and_check(
+            registers_element, self.MCB_REGISTER_ELEMENT
+        )
         for register_element in register_element_list:
-            self.read_mcb_register(register_element)
-        errors_element = self.find_and_check(root, self.ERRORS_ELEMENT)
-        self.read_errors(errors_element)
+            self.__read_mcb_register(register_element)
+        errors_element = self.__find_and_check(root, self.ERRORS_ELEMENT)
+        self.__read_errors(errors_element)
 
-    def read_device_ecat(self, root: ET.Element) -> None:
+    def __read_device_ecat(self, root: ET.Element) -> None:
         """Process ECATDevice element
 
         Args:
             root: ECATDevice element
 
         """
-        subnodes_element = self.find_and_check(root, self.SUBNODES_ELEMENT)
-        self.read_subnodes(subnodes_element)
-        registers_element = self.find_and_check(root, self.CANOPEN_OBJECTS_ELEMENT)
-        register_element_list = self.findall_and_check(
+        subnodes_element = self.__find_and_check(root, self.SUBNODES_ELEMENT)
+        self.__read_subnodes(subnodes_element)
+        registers_element = self.__find_and_check(root, self.CANOPEN_OBJECTS_ELEMENT)
+        register_element_list = self.__findall_and_check(
             registers_element, self.CANOPEN_OBJECT_ELEMENT
         )
         for register_element in register_element_list:
-            self.read_canopen_object(register_element)
-        errors_element = self.find_and_check(root, self.ERRORS_ELEMENT)
-        self.read_errors(errors_element)
+            self.__read_canopen_object(register_element)
+        errors_element = self.__find_and_check(root, self.ERRORS_ELEMENT)
+        self.__read_errors(errors_element)
         safety_pdos_element = root.find(self.SAFETY_PDOS_ELEMENT)
         if safety_pdos_element is not None:
-            self.read_safety_pdos(safety_pdos_element)
+            self.__read_safety_pdos(safety_pdos_element)
 
-    def read_device_can(self, root: ET.Element) -> None:
+    def __read_device_can(self, root: ET.Element) -> None:
         """Process CANDevice element
 
         Args:
             root: CANDevice element
 
         """
-        subnodes_element = self.find_and_check(root, self.SUBNODES_ELEMENT)
-        self.read_subnodes(subnodes_element)
-        registers_element = self.find_and_check(root, self.CANOPEN_OBJECTS_ELEMENT)
-        register_element_list = self.findall_and_check(
+        subnodes_element = self.__find_and_check(root, self.SUBNODES_ELEMENT)
+        self.__read_subnodes(subnodes_element)
+        registers_element = self.__find_and_check(root, self.CANOPEN_OBJECTS_ELEMENT)
+        register_element_list = self.__findall_and_check(
             registers_element, self.CANOPEN_OBJECT_ELEMENT
         )
         for register_element in register_element_list:
-            self.read_canopen_object(register_element)
-        errors_element = self.find_and_check(root, self.ERRORS_ELEMENT)
-        self.read_errors(errors_element)
+            self.__read_canopen_object(register_element)
+        errors_element = self.__find_and_check(root, self.ERRORS_ELEMENT)
+        self.__read_errors(errors_element)
 
-    def read_subnodes(self, root: ET.Element) -> None:
+    def __read_subnodes(self, root: ET.Element) -> None:
         """Process Subnodes element and fill subnodes
 
         Args:
@@ -636,7 +602,7 @@ class DictionaryV3(Dictionary):
             ILDictionaryParseError: Subnode element text is None
 
         """
-        subnode_list = self.findall_and_check(root, self.SUBNODE_ELEMENT)
+        subnode_list = self.__findall_and_check(root, self.SUBNODE_ELEMENT)
         for subnode in subnode_list:
             if subnode.text is None:
                 raise ILDictionaryParseError("Subnode element text is None")
@@ -644,17 +610,17 @@ class DictionaryV3(Dictionary):
                 subnode.text.strip()
             ]
 
-    def read_errors(self, root: ET.Element) -> None:
+    def __read_errors(self, root: ET.Element) -> None:
         """Process Errors element and set errors
 
         Args:
             root: Errors element
 
         """
-        error_list = self.findall_and_check(root, self.ERROR_ELEMENT)
+        error_list = self.__findall_and_check(root, self.ERROR_ELEMENT)
         self.errors = DictionaryErrors(error_list)
 
-    def read_labels(self, root: ET.Element) -> Dict[str, str]:
+    def __read_labels(self, root: ET.Element) -> Dict[str, str]:
         """Process Labels element
 
         Args:
@@ -664,14 +630,14 @@ class DictionaryV3(Dictionary):
             labels by localization
 
         """
-        label_list = self.findall_and_check(root, self.LABEL_ELEMENT)
+        label_list = self.__findall_and_check(root, self.LABEL_ELEMENT)
         labels = {}
         for label in label_list:
-            key, value = self.read_label(label)
+            key, value = self.__read_label(label)
             labels[key] = value
         return labels
 
-    def read_label(self, label: ET.Element) -> Tuple[str, str]:
+    def __read_label(self, label: ET.Element) -> Tuple[str, str]:
         """Process Label element
 
         Args:
@@ -688,7 +654,7 @@ class DictionaryV3(Dictionary):
             raise ILDictionaryParseError("Label text is empty")
         return label.attrib[self.LABEL_LANG_ATTR], label.text.strip()
 
-    def read_range(
+    def __read_range(
         self, range_elem: Optional[ET.Element]
     ) -> Union[Tuple[None, None], Tuple[str, str]]:
         """Process Range element
@@ -706,7 +672,7 @@ class DictionaryV3(Dictionary):
             return range_min, range_max
         return None, None
 
-    def read_enumeration(
+    def __read_enumeration(
         self, enumerations_element: Optional[ET.Element]
     ) -> Optional[Dict[str, int]]:
         """Process Enumerations element if is not None
@@ -719,7 +685,7 @@ class DictionaryV3(Dictionary):
 
         """
         if enumerations_element is not None:
-            enum_list = self.findall_and_check(enumerations_element, self.ENUM_ELEMENT)
+            enum_list = self.__findall_and_check(enumerations_element, self.ENUM_ELEMENT)
             return {
                 str(enum_element.text.strip()): int(enum_element.attrib[self.ENUM_VALUE_ATTR])
                 for enum_element in enum_list
@@ -727,7 +693,7 @@ class DictionaryV3(Dictionary):
             }
         return None
 
-    def read_mcb_register(self, register: ET.Element) -> None:
+    def __read_mcb_register(self, register: ET.Element) -> None:
         """Process MCBRegister element and add it to _registers
 
         Args:
@@ -740,20 +706,20 @@ class DictionaryV3(Dictionary):
         access = self.access_xdf_options[register.attrib[self.ACCESS_ATTR]]
         dtype = self.dtype_xdf_options[register.attrib[self.DTYPE_ATTR]]
         identifier = register.attrib[self.UID_ATTR]
-        cyclic = self.cyclic_xdf_options[register.attrib[self.CYCLIC_ATTR]]
+        cyclic = register.attrib[self.CYCLIC_ATTR]  # TODO use enums
         # TODO use desc
         default = bytes.fromhex(register.attrib[self.DEFAULT_ATTR])
         cat_id = register.attrib[self.CAT_ID_ATTR]
         units = register.attrib.get(self.UNITS_ATTR)
         # Labels
-        labels_element = self.find_and_check(register, self.LABELS_ELEMENT)
-        labels = self.read_labels(labels_element)
+        labels_element = self.__find_and_check(register, self.LABELS_ELEMENT)
+        labels = self.__read_labels(labels_element)
         # Range
         range_elem = register.find(self.RANGE_ELEMENT)
-        reg_range = self.read_range(range_elem)
+        reg_range = self.__read_range(range_elem)
         # Enumerations
         enumerations_element = register.find(self.ENUMERATIONS_ELEMENT)
-        enums = self.read_enumeration(enumerations_element)
+        enums = self.__read_enumeration(enumerations_element)
 
         ethernet_register = EthernetRegister(
             reg_address,
@@ -773,7 +739,7 @@ class DictionaryV3(Dictionary):
             self._registers[subnode] = {}
         self._registers[subnode][identifier] = ethernet_register
 
-    def read_canopen_object(self, root: ET.Element) -> None:
+    def __read_canopen_object(self, root: ET.Element) -> None:
         """Process CANopenObject element and add it to registers_group if has UID
 
         Args:
@@ -783,10 +749,10 @@ class DictionaryV3(Dictionary):
         object_uid = root.attrib.get(self.UID_ATTR)
         reg_index = int(root.attrib[self.INDEX_ATTR], 16)
         subnode = int(root.attrib[self.SUBNODE_ATTR])
-        subitmes_element = self.find_and_check(root, self.SUBITEMS_ELEMENT)
-        subitem_list = self.findall_and_check(subitmes_element, self.SUBITEM_ELEMENT)
+        subitmes_element = self.__find_and_check(root, self.SUBITEMS_ELEMENT)
+        subitem_list = self.__findall_and_check(subitmes_element, self.SUBITEM_ELEMENT)
         register_list = [
-            self.read_canopen_subitem(subitem, reg_index, subnode) for subitem in subitem_list
+            self.__read_canopen_subitem(subitem, reg_index, subnode) for subitem in subitem_list
         ]
         if object_uid:
             register_list.sort(key=lambda val: val.subidx)
@@ -794,7 +760,7 @@ class DictionaryV3(Dictionary):
                 self.registers_group[subnode] = {}
             self.registers_group[subnode][object_uid] = list(register_list)
 
-    def read_canopen_subitem(
+    def __read_canopen_subitem(
         self, subitem: ET.Element, reg_index: int, subnode: int
     ) -> CanopenRegister:
         """Process Subitem element and add it to _registers
@@ -813,20 +779,20 @@ class DictionaryV3(Dictionary):
         access = self.access_xdf_options[subitem.attrib[self.ACCESS_ATTR]]
         dtype = self.dtype_xdf_options[subitem.attrib[self.DTYPE_ATTR]]
         identifier = subitem.attrib[self.UID_ATTR]
-        cyclic = self.cyclic_xdf_options[subitem.attrib[self.CYCLIC_ATTR]]
+        cyclic = subitem.attrib[self.CYCLIC_ATTR]  # TODO use enums
         # TODO use desc
         default = bytes.fromhex(subitem.attrib[self.DEFAULT_ATTR])
         cat_id = subitem.attrib[self.CAT_ID_ATTR]
         units = subitem.attrib.get(self.UNITS_ATTR)
         # Labels
-        labels_element = self.find_and_check(subitem, self.LABELS_ELEMENT)
-        labels = self.read_labels(labels_element)
+        labels_element = self.__find_and_check(subitem, self.LABELS_ELEMENT)
+        labels = self.__read_labels(labels_element)
         # Range
         range_elem = subitem.find(self.RANGE_ELEMENT)
-        reg_range = self.read_range(range_elem)
+        reg_range = self.__read_range(range_elem)
         # Enumerations
         enumerations_element = subitem.find(self.ENUMERATIONS_ELEMENT)
-        enums = self.read_enumeration(enumerations_element)
+        enums = self.__read_enumeration(enumerations_element)
 
         canopen_register = CanopenRegister(
             reg_index,
@@ -848,7 +814,7 @@ class DictionaryV3(Dictionary):
         self._registers[subnode][identifier] = canopen_register
         return canopen_register
 
-    def read_safety_pdos(self, root: ET.Element) -> None:
+    def __read_safety_pdos(self, root: ET.Element) -> None:
         """Process SafetyPDOs element
 
         Args:
@@ -856,16 +822,16 @@ class DictionaryV3(Dictionary):
 
         """
         self.is_safe = True
-        rpdo_list = self.findall_and_check(root, self.RPDO_ELEMENT)
+        rpdo_list = self.__findall_and_check(root, self.RPDO_ELEMENT)
         for rpdo_element in rpdo_list:
-            uid, safety_rpdo = self.read_pdo(rpdo_element)
+            uid, safety_rpdo = self.__read_pdo(rpdo_element)
             self.safety_rpdos[uid] = safety_rpdo
-        tpdo_list = self.findall_and_check(root, self.TPDO_ELEMENT)
+        tpdo_list = self.__findall_and_check(root, self.TPDO_ELEMENT)
         for tpdo_element in tpdo_list:
-            uid, safety_tpdo = self.read_pdo(tpdo_element)
+            uid, safety_tpdo = self.__read_pdo(tpdo_element)
             self.safety_tpdos[uid] = safety_tpdo
 
-    def read_pdo(self, pdo: ET.Element) -> Tuple[str, DictionarySafetyPDO]:
+    def __read_pdo(self, pdo: ET.Element) -> Tuple[str, DictionarySafetyPDO]:
         """Process RPDO and TPDO elements
 
         Args:
@@ -880,7 +846,7 @@ class DictionaryV3(Dictionary):
         """
         uid = pdo.attrib[self.PDO_UID_ATTR]
         pdo_index = int(pdo.attrib[self.PDO_INDEX_ATTR], 16)
-        entry_list = self.findall_and_check(pdo, self.PDO_ENTRY_ELEMENT)
+        entry_list = self.__findall_and_check(pdo, self.PDO_ENTRY_ELEMENT)
         pdo_registers = []
         for entry in entry_list:
             size = int(entry.attrib[self.PDO_ENTRY_SIZE_ATTR])
@@ -901,6 +867,35 @@ class DictionaryV3(Dictionary):
 
 
 class DictionaryV2(Dictionary):
+    # Dictionary constants guide:
+    # Each constant has this structure: DICT_ORIGIN_END
+    # ORIGIN: The start point of the path
+    # END: The end point of the path
+    # ORIGIN: ROOT
+    DICT_ROOT = "."
+    DICT_ROOT_HEADER = f"{DICT_ROOT}/Header"
+    DICT_ROOT_VERSION = f"{DICT_ROOT_HEADER}/Version"
+    DICT_ROOT_BODY = f"{DICT_ROOT}/Body"
+    DICT_ROOT_DEVICE = f"{DICT_ROOT_BODY}/Device"
+    DICT_ROOT_CATEGORIES = f"{DICT_ROOT_DEVICE}/Categories"
+    DICT_ROOT_CATEGORY = f"{DICT_ROOT_CATEGORIES}/Category"
+    DICT_ROOT_ERRORS = f"{DICT_ROOT_BODY}/Errors"
+    DICT_ROOT_ERROR = f"{DICT_ROOT_ERRORS}/Error"
+    DICT_ROOT_AXES = f"{DICT_ROOT_DEVICE}/Axes"
+    DICT_ROOT_AXIS = f"{DICT_ROOT_AXES}/Axis"
+    DICT_ROOT_REGISTERS = f"{DICT_ROOT_DEVICE}/Registers"
+    DICT_ROOT_REGISTER = f"{DICT_ROOT_REGISTERS}/Register"
+    # ORIGIN: REGISTERS
+    DICT_REGISTERS = "./Registers"
+    DICT_REGISTERS_REGISTER = f"{DICT_REGISTERS}/Register"
+    # ORIGIN: RANGE
+    DICT_RANGE = "./Range"
+    # ORIGIN: ENUMERATIONS
+    DICT_ENUMERATIONS = "./Enumerations"
+    DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
+    DICT_IMAGE = "DriveImage"
+    DICT_MOCO_IMAGE_ATTRIB = "moco"
+
     dict_interface: Optional[str]
 
     def read_dictionary(self) -> None:

@@ -75,7 +75,7 @@ class DictionaryFactory:
             NotImplementedError: Dictionary version is not supported.
 
         """
-        major_version, minor_version = cls.get_dictionary_version(dictionary_path)
+        major_version, minor_version = cls.__get_dictionary_version(dictionary_path)
         if major_version == 3:
             return DictionaryV3(dictionary_path, interface)
         if major_version == 2:
@@ -90,7 +90,7 @@ class DictionaryFactory:
         raise NotImplementedError(f"Dictionary version {major_version} is not supported")
 
     @classmethod
-    def get_dictionary_version(cls, dictionary_path: str) -> Tuple[int, int]:
+    def __get_dictionary_version(cls, dictionary_path: str) -> Tuple[int, int]:
         """Return dictionary version, major and minor version.
 
         Args:
