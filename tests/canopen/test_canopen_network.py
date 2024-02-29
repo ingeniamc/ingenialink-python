@@ -1,8 +1,8 @@
 import pytest
-
 from canopen import Network
 
-from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE, NET_STATE
+from ingenialink.canopen.dictionary import CanopenDictionary
+from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, NET_STATE, CanopenNetwork
 from ingenialink.exceptions import ILError
 
 test_bus = "virtual"
@@ -72,6 +72,24 @@ def test_scan_slaves(read_config):
 def test_scan_slaves_none_nodes(virtual_network):
     nodes = virtual_network.scan_slaves()
     assert len(nodes) == 0
+
+
+@pytest.mark.canopen
+def test_scan_slaves_info(read_config):
+    net = CanopenNetwork(
+        device=CAN_DEVICE(read_config["canopen"]["device"]),
+        channel=read_config["canopen"]["channel"],
+        baudrate=CAN_BAUDRATE(read_config["canopen"]["baudrate"]),
+    )
+    slaves_info = net.scan_slaves_info()
+    dictionary = CanopenDictionary(read_config["canopen"]["dictionary"])
+
+    assert len(slaves_info) > 0
+    assert read_config["canopen"]["node_id"] in slaves_info
+    assert slaves_info[read_config["canopen"]["node_id"]].product_code == dictionary.product_code
+    assert (
+        slaves_info[read_config["canopen"]["node_id"]].revision_number == dictionary.revision_number
+    )
 
 
 @pytest.mark.canopen
