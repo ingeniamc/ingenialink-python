@@ -21,6 +21,7 @@ def test_read_dictionary():
         "revision_number": 196635,
         "interface": Interface.ECAT,
         "subnodes": SINGLE_AXIS_BASE_SUBNODES,
+        "is_safe": False,
     }
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
@@ -65,10 +66,15 @@ def test_read_dictionary_registers_multiaxis():
     expected_num_registers_per_subnode = {0: 2, 1: 2, 2: 2}
     dictionary_path = join_path(path_resources, "test_dict_ethercat_axis.xdf")
 
-    ethernet_dict = EthercatDictionaryV2(dictionary_path)
+    ethercat_dict = EthercatDictionaryV2(dictionary_path)
+    assert ethercat_dict.subnodes == {
+        0: SubnodeType.COMMUNICATION,
+        1: SubnodeType.MOTION,
+        2: SubnodeType.MOTION,
+    }
 
     for subnode in expected_num_registers_per_subnode.keys():
-        num_registers = len(ethernet_dict.registers(subnode))
+        num_registers = len(ethercat_dict.registers(subnode))
         assert num_registers == expected_num_registers_per_subnode[subnode]
 
 
@@ -83,9 +89,9 @@ def test_read_dictionary_categories():
     ]
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
 
-    ethernet_dict = EthercatDictionaryV2(dictionary_path)
+    ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
-    assert ethernet_dict.categories.category_ids == expected_categories
+    assert ethercat_dict.categories.category_ids == expected_categories
 
 
 @pytest.mark.no_connection
@@ -129,3 +135,21 @@ def test_mcb_to_can_mapping(register_uid, subnode, idx):
 
     ethercat_register = ethercat_dict.registers(subnode)[register_uid]
     assert ethercat_register.idx == idx
+
+
+@pytest.mark.no_connection
+def test_child_registers_not_exist():
+    dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
+    ethercat_dict = EthercatDictionaryV2(dictionary_path)
+    with pytest.raises(KeyError):
+        ethercat_dict.child_registers("NOT_EXISTING_UID", 0)
+
+
+@pytest.mark.no_connection
+def test_safety_pdo_not_implemented():
+    dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
+    ethercat_dict = EthercatDictionaryV2(dictionary_path)
+    with pytest.raises(NotImplementedError):
+        ethercat_dict.get_safety_rpdo("NOT_EXISTING_UID")
+    with pytest.raises(NotImplementedError):
+        ethercat_dict.get_safety_tpdo("NOT_EXISTING_UID")

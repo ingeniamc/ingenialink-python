@@ -65,6 +65,11 @@ def test_read_dictionary_registers_multiaxis():
     dictionary_path = join_path(path_resources, "test_dict_eth_axis.xdf")
 
     ethernet_dict = EthernetDictionaryV2(dictionary_path)
+    assert ethernet_dict.subnodes == {
+        0: SubnodeType.COMMUNICATION,
+        1: SubnodeType.MOTION,
+        2: SubnodeType.MOTION,
+    }
 
     for subnode in expected_num_registers_per_subnode.keys():
         num_registers = len(ethernet_dict.registers(subnode))
@@ -112,3 +117,21 @@ def test_read_xdf_register():
     ethernet_dict = EthernetDictionaryV2(dictionary_path)
 
     assert ethernet_dict.registers(subnode)[reg_id].address == address
+
+
+@pytest.mark.no_connection
+def test_child_registers_not_exist():
+    dictionary_path = join_path(path_resources, "test_dict_eth.xdf")
+    ethernet_dict = EthernetDictionaryV2(dictionary_path)
+    with pytest.raises(KeyError):
+        ethernet_dict.child_registers("NOT_EXISTING_UID", 0)
+
+
+@pytest.mark.no_connection
+def test_safety_pdo_not_implemented():
+    dictionary_path = join_path(path_resources, "test_dict_eth.xdf")
+    ethernet_dict = EthernetDictionaryV2(dictionary_path)
+    with pytest.raises(NotImplementedError):
+        ethernet_dict.get_safety_rpdo("NOT_EXISTING_UID")
+    with pytest.raises(NotImplementedError):
+        ethernet_dict.get_safety_tpdo("NOT_EXISTING_UID")

@@ -722,7 +722,7 @@ class DictionaryV3(Dictionary):
         # TODO use desc
         default = bytes.fromhex(register.attrib[self.DEFAULT_ATTR])
         cat_id = register.attrib[self.CAT_ID_ATTR]
-        units = register.attrib[self.UNITS_ATTR]
+        units = register.attrib.get(self.UNITS_ATTR)
         # Labels
         labels_element = self.find_and_check(register, self.LABELS_ELEMENT)
         labels = self.read_labels(labels_element)
