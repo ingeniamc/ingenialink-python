@@ -1,13 +1,14 @@
 import pytest
 from os.path import join as join_path
 
+from ingenialink.exceptions import ILDictionaryParseError
 from ingenialink import CanopenRegister
 from ingenialink.dictionary import Interface, SubnodeType, DictionaryV3
 
 
 path_resources = "./tests/resources/canopen/"
-dict_can_v3 = "test_dict_can_v3.0.xml"
-dict_can_v3_axis = "test_dict_can_v3.0_axis.xml"
+dict_can_v3 = "test_dict_can_v3.0.xdf"
+dict_can_v3_axis = "test_dict_can_v3.0_axis.xdf"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
@@ -24,6 +25,7 @@ def test_read_dictionary():
         "interface": Interface.CAN,
         "subnodes": SINGLE_AXIS_BASE_SUBNODES,
         "is_safe": False,
+        "image": None,
     }
 
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
@@ -150,3 +152,11 @@ def test_safety_pdo_not_implemented():
         canopen_dict.get_safety_rpdo("NOT_EXISTING_UID")
     with pytest.raises(NotImplementedError):
         canopen_dict.get_safety_tpdo("NOT_EXISTING_UID")
+
+
+@pytest.mark.no_connection
+def test_wrong_dictionary():
+    with pytest.raises(
+        ILDictionaryParseError, match="Dictionary can not be used for the chose communication"
+    ):
+        DictionaryV3("./tests/resources/test_dict_ecat_eoe_v3.0.xdf", Interface.CAN)

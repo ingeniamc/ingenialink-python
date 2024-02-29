@@ -4,7 +4,7 @@ from os.path import join as join_path
 from ingenialink.dictionary import Interface, SubnodeType, DictionaryV3
 
 path_resources = "./tests/resources/"
-dict_eoe_v3 = "test_dict_ecat_eoe_v3.0.xml"
+dict_eoe_v3 = "test_dict_ecat_eoe_v3.0.xdf"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
@@ -21,6 +21,7 @@ def test_read_dictionary():
         "interface": Interface.EoE,
         "subnodes": SINGLE_AXIS_BASE_SUBNODES,
         "is_safe": False,
+        "image": "image-text",
     }
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)

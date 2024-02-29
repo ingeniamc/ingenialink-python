@@ -483,10 +483,10 @@ class DictionaryV3(Dictionary):
             drive_image: DriveImage element
 
         """
-        image = drive_image.text
-        if image is not None:
-            image = image.strip()
-        self.image = image
+        if drive_image.text is not None and drive_image.text.strip():
+            self.image = drive_image.text.strip()
+        else:
+            self.image = None
 
     def read_header(self, root: ET.Element) -> None:
         """Process Header element
@@ -542,7 +542,9 @@ class DictionaryV3(Dictionary):
             root: Devices element
 
         """
-        device_element = self.find_and_check(root, self.DEVICE_ELEMENT[self.interface])
+        device_element = root.find(self.DEVICE_ELEMENT[self.interface])
+        if device_element is None:
+            raise ILDictionaryParseError("Dictionary can not be used for the chose communication")
         self.read_device_attributes(device_element)
         if self.interface == Interface.ETH:
             self.read_device_eth(device_element)

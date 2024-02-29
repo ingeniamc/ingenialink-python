@@ -94,6 +94,5 @@
 		</Devices>
 	</Body>
 	<DriveImage encoding="xs:base64Binary">
-		image-text
 	</DriveImage>
 </IngeniaDictionary>

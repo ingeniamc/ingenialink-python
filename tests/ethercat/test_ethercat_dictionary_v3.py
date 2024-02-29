@@ -1,11 +1,12 @@
 import pytest
 from os.path import join as join_path
 
+from ingenialink.exceptions import ILDictionaryParseError
 from ingenialink import CanopenRegister
 from ingenialink.dictionary import Interface, SubnodeType, DictionaryV3, DictionarySafetyPDO
 
 path_resources = "./tests/resources/"
-dict_ecat_v3 = "test_dict_ecat_eoe_v3.0.xml"
+dict_ecat_v3 = "test_dict_ecat_eoe_v3.0.xdf"
 SINGLE_AXIS_SAFETY_SUBNODES = {
     0: SubnodeType.COMMUNICATION,
     1: SubnodeType.MOTION,
@@ -26,6 +27,7 @@ def test_read_dictionary():
         "interface": Interface.ECAT,
         "subnodes": SINGLE_AXIS_SAFETY_SUBNODES,
         "is_safe": True,
+        "image": "image-text",
     }
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
@@ -186,3 +188,11 @@ def test_safety_tpdo_not_exist():
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
     with pytest.raises(KeyError):
         ethercat_dict.get_safety_tpdo("READ_ONLY_RPDO_1")
+
+
+@pytest.mark.no_connection
+def test_wrong_dictionary():
+    with pytest.raises(
+        ILDictionaryParseError, match="Dictionary can not be used for the chose communication"
+    ):
+        DictionaryV3("./tests/resources/canopen/test_dict_can_v3.0.xdf", Interface.ECAT)
