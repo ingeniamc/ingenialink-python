@@ -253,10 +253,7 @@ class PDOMap:
         Returns:
             Length of the map in bits.
         """
-        length = 0
-        for item in self.items:
-            length += item.size_bits
-        return length
+        return sum(item.size_bits for item in self.items)
 
     @property
     def data_length_bytes(self) -> int:

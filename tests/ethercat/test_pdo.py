@@ -18,7 +18,7 @@ from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError
 from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
-from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_value
+from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_length_bits, dtype_value
 
 TPDO_REGISTERS = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
 RPDO_REGISTERS = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
@@ -55,7 +55,7 @@ def test_rpdo_item(open_dictionary):
     rpdo_item = RPDOMapItem(register)
 
     assert rpdo_item.register == register
-    assert rpdo_item.size_bits == dtype_value[rpdo_item.register.dtype][0] * 8
+    assert rpdo_item.size_bits == dtype_length_bits[rpdo_item.register.dtype]
 
     with pytest.raises(ILError) as exc_info:
         rpdo_item.value
@@ -101,7 +101,7 @@ def test_tpdo_item(open_dictionary):
     with pytest.raises(AttributeError):
         tpdo_item.value = 15
 
-    tpdo_item.raw_data_bytes = convert_dtype_to_bytes(15, REG_DTYPE.S32)
+    tpdo_item.raw_data_bytes = convert_dtype_to_bytes(15, tpdo_item.register.dtype)
     assert tpdo_item.value == 15
 
 
@@ -357,6 +357,10 @@ def test_pdo_item_bool():
     assert rpdo_item.raw_data_bits.to01() == "1"
     assert rpdo_item.raw_data_bytes == b"\x01"
 
+    rpdo_item.value = False
+    assert rpdo_item.raw_data_bits.to01() == "0"
+    assert rpdo_item.raw_data_bytes == b"\x00"
+
 
 @pytest.mark.no_connection
 def test_pdo_item_custom_size(open_dictionary):
@@ -407,7 +411,7 @@ def test_map_pdo_with_bools(open_dictionary):
     item3.value = False
     item4.value = True
 
-    assert rpdo_map.data_length_bits == 38
+    assert rpdo_map.data_length_bits == 32 + 4 + 1 + 1
     assert rpdo_map.data_length_bytes == 5
     assert item1.raw_data_bits.to01() == "00010001000100010001000100011000"
     assert item2.raw_data_bits.to01() == "1011"
