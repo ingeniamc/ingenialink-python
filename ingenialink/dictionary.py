@@ -7,9 +7,9 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import ingenialogger
 
+from ingenialink.exceptions import ILDictionaryParseError
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink import exceptions as exc
 from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, Register
 
 logger = ingenialogger.get_logger(__name__)
@@ -158,7 +158,7 @@ class Dictionary(ABC):
         interface: communication interface.
 
     Raises:
-        ILCreationError: If the dictionary could not be created.
+        ILDictionaryParseError: If the dictionary could not be created.
 
     """
 
@@ -269,7 +269,10 @@ class Dictionary(ABC):
         self.path = dictionary_path
         """Path of the dictionary."""
         self.interface = interface
-        self.read_dictionary()
+        try:
+            self.read_dictionary()
+        except KeyError as e:
+            raise ILDictionaryParseError("Dictionary not well-formed.") from e
 
     def registers(self, subnode: int) -> Dict[str, Register]:
         """Gets the register dictionary to the targeted subnode.
@@ -298,6 +301,9 @@ class Dictionary(ABC):
         Returns:
             All registers in the group
 
+        Raises:
+            KeyError: Registers group does not exist
+
         """
         if subnode in self.registers_group and uid in self.registers_group[subnode]:
             return self.registers_group[subnode][uid]
@@ -311,6 +317,10 @@ class Dictionary(ABC):
 
         Returns:
             PDO object description
+
+        Raises:
+            NotImplementedError: Device is not safe
+            KeyError: Safe RPDO not exist
 
         """
         if not self.is_safe:
@@ -327,6 +337,10 @@ class Dictionary(ABC):
 
         Returns:
             PDO object description
+
+        Raises:
+            NotImplementedError: Device is not safe
+            KeyError: Safe TPDO not exist
 
         """
         if not self.is_safe:
@@ -420,12 +434,12 @@ class DictionaryV3(Dictionary):
             path element
 
         Raises:
-            Exception: path element not found
+            ILDictionaryParseError: path element not found
 
         """
         element = root.find(path)
         if element is None:
-            raise Exception
+            raise ILDictionaryParseError(f"{path} element is not found")
         return element
 
     @staticmethod
@@ -440,12 +454,12 @@ class DictionaryV3(Dictionary):
           list of path elements
 
         Raises:
-          Exception: path elements not found
+          ILDictionaryParseError: path elements not found
 
         """
         element = root.findall(path)
         if not element:
-            raise Exception
+            raise ILDictionaryParseError(f"{path} element is not found")
         return element
 
     def read_dictionary(self) -> None:
@@ -491,9 +505,12 @@ class DictionaryV3(Dictionary):
         Args:
             root: Version element
 
+        Raises:
+            ILDictionaryParseError: version is empty
+
         """
         if root.text is None:
-            raise Exception
+            raise ILDictionaryParseError("Version is empty")
         self.version = root.text.strip()
 
     def read_body(self, root: ET.Element) -> None:
@@ -614,13 +631,13 @@ class DictionaryV3(Dictionary):
             root: Subnodes element
 
         Raises:
-            Exception: Subnode element text is None
+            ILDictionaryParseError: Subnode element text is None
 
         """
         subnode_list = self.findall_and_check(root, self.SUBNODE_ELEMENT)
         for subnode in subnode_list:
             if subnode.text is None:
-                raise Exception
+                raise ILDictionaryParseError("Subnode element text is None")
             self.subnodes[int(subnode.attrib[self.SUBNODE_INDEX_ATTR])] = self.subnode_xdf_options[
                 subnode.text.strip()
             ]
@@ -661,9 +678,12 @@ class DictionaryV3(Dictionary):
         Returns:
             Tuple with label localization and label text
 
+        Raises:
+            ILDictionaryParseError: Label text is empty
+
         """
         if label.text is None:
-            raise Exception
+            raise ILDictionaryParseError("Label text is empty")
         return label.attrib[self.LABEL_LANG_ATTR], label.text.strip()
 
     def read_range(
@@ -852,6 +872,9 @@ class DictionaryV3(Dictionary):
         Returns:
             PDO uid and class description
 
+        Raises:
+            ILDictionaryParseError: PDO register does not exist
+
         """
         uid = pdo.attrib[self.PDO_UID_ATTR]
         pdo_index = int(pdo.attrib[self.PDO_INDEX_ATTR], 16)
@@ -859,12 +882,16 @@ class DictionaryV3(Dictionary):
         pdo_registers = []
         for entry in entry_list:
             size = int(entry.attrib[self.PDO_ENTRY_SIZE_ATTR])
-            reg_subnode = entry.attrib.get(self.PDO_ENTRY_SUBNODE_ATTR, 1)
+            reg_subnode = int(entry.attrib.get(self.PDO_ENTRY_SUBNODE_ATTR, 1))
             reg_uid = entry.text
             if reg_uid:
-                entry_reg = self._registers[int(reg_subnode)][reg_uid]
+                if not (reg_subnode in self._registers and reg_uid in self._registers[reg_subnode]):
+                    raise ILDictionaryParseError(
+                        f"PDO entry {reg_uid} subnode {reg_subnode} does not exist"
+                    )
+                entry_reg = self._registers[reg_subnode][reg_uid]
                 if not isinstance(entry_reg, CanopenRegister):
-                    raise Exception
+                    raise ValueError(f"{reg_uid} subnode {reg_subnode} is not a CANopen register")
                 pdo_registers.append(DictionarySafetyPDO.PDORegister(entry_reg, size))
             else:
                 pdo_registers.append(DictionarySafetyPDO.PDORegister(None, size))
@@ -884,7 +911,7 @@ class DictionaryV2(Dictionary):
 
         device = root.find(self.DICT_ROOT_DEVICE)
         if device is None:
-            raise exc.ILError(
+            raise ILDictionaryParseError(
                 f"Could not load the dictionary {self.path}. Device information is missing"
             )
 
@@ -962,10 +989,9 @@ class DictionaryV2(Dictionary):
             None: When at least a mandatory attribute is not in a xdf file
 
         Raises:
-            KeyError: If the register doesn't have an identifier.
-            ValueError: If the register data type is invalid.
-            ValueError: If the register access type is invalid.
-            ValueError: If the register address type is invalid.
+            ILDictionaryParseError: If the register data type is invalid.
+            ILDictionaryParseError: If the register access type is invalid.
+            ILDictionaryParseError: If the register address type is invalid.
             KeyError: If some attribute is missing.
 
         """
@@ -985,7 +1011,7 @@ class DictionaryV2(Dictionary):
             if dtype_aux in self.dtype_xdf_options:
                 dtype = self.dtype_xdf_options[dtype_aux]
             else:
-                raise ValueError(
+                raise ILDictionaryParseError(
                     f"The data type {dtype_aux} does not exist for the register: {identifier}"
                 )
 
@@ -995,7 +1021,7 @@ class DictionaryV2(Dictionary):
             if access_aux in self.access_xdf_options:
                 access = self.access_xdf_options[access_aux]
             else:
-                raise ValueError(
+                raise ILDictionaryParseError(
                     f"The access type {access_aux} does not exist for the register: {identifier}"
                 )
 
@@ -1005,7 +1031,7 @@ class DictionaryV2(Dictionary):
             if address_type_aux in self.address_type_xdf_options:
                 address_type = self.address_type_xdf_options[address_type_aux]
             else:
-                raise ValueError(
+                raise ILDictionaryParseError(
                     f"The address type {address_type_aux} does not exist for the register: "
                     f"{identifier}"
                 )

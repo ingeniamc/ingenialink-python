@@ -32,6 +32,7 @@ from ingenialink.exceptions import (
     ILStateError,
     ILTimeoutError,
     ILValueError,
+    ILDictionaryParseError,
 )
 from ingenialink.register import Register
 from ingenialink.utils import constants
@@ -69,8 +70,8 @@ class DictionaryFactory:
 
         Raises:
             FileNotFoundError: dictionary path does not exist.
-            ValueError: xdf is not well-formed.
-            ValueError: File is not a xdf.
+            ILDictionaryParseError: xdf is not well-formed.
+            ILDictionaryParseError: File is not a xdf.
             NotImplementedError: Dictionary version is not supported.
 
         """
@@ -100,8 +101,8 @@ class DictionaryFactory:
 
         Raises:
             FileNotFoundError: dictionary path does not exist.
-            Exception: xdf is not well-formed
-            ValueError: File is not a xdf
+            ILDictionaryParseError: xdf is not well-formed
+            ILDictionaryParseError: File is not a xdf
 
         """
         try:
@@ -109,14 +110,14 @@ class DictionaryFactory:
                 try:
                     tree = ET.parse(xdf_file)
                 except ET.ParseError:
-                    raise ValueError("File is not a xdf")
+                    raise ILDictionaryParseError("File is not a xdf")
                 version_element = tree.find(cls.VERSION_ABSOLUTE_PATH)
                 if version_element is None or version_element.text is None:
-                    raise ValueError("Version not found")
+                    raise ILDictionaryParseError("Version not found")
                 version_str = version_element.text.strip()
                 version_match = re.match(cls.VERSION_REGEX, version_str)
                 if version_match is None:
-                    raise ValueError("Version has a wrong format")
+                    raise ILDictionaryParseError("Version has a wrong format")
                 major_version = int(version_match.group(cls.MAJOR_VERSION_GROUP))
                 if version_match.group(cls.MINOR_VERSION_GROUP):
                     minor_version = int(version_match.group(cls.MINOR_VERSION_GROUP))
@@ -171,7 +172,7 @@ class Servo:
             its status, errors, faults, etc.
 
     Raises:
-        ILCreationError: If the servo cannot be created.
+        ILDictionaryParseError: If dictionary can not be parsed.
 
     """
 
