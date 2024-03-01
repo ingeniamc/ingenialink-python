@@ -1,17 +1,17 @@
+import functools
 import struct
+import warnings
+import xml.etree.ElementTree as ET
 from enum import Enum
-from typing import Union, Callable, Any, Dict, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Union
 
-from ingenialink.exceptions import ILValueError
+import ingenialogger
+
 from ingenialink.enums.register import REG_DTYPE
+from ingenialink.exceptions import ILValueError
 
 if TYPE_CHECKING:
     from ingenialink.servo import Servo
-
-import warnings
-import functools
-import ingenialogger
-import xml.etree.ElementTree as ET
 
 
 logger = ingenialogger.get_logger(__name__)
@@ -28,6 +28,19 @@ dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
     REG_DTYPE.U64: (8, False),
     REG_DTYPE.S64: (8, True),
     REG_DTYPE.FLOAT: (4, True),
+}
+
+dtype_length_bits: Dict[REG_DTYPE, int] = {
+    REG_DTYPE.U8: 8,
+    REG_DTYPE.S8: 8,
+    REG_DTYPE.U16: 16,
+    REG_DTYPE.S16: 16,
+    REG_DTYPE.U32: 32,
+    REG_DTYPE.S32: 32,
+    REG_DTYPE.U64: 64,
+    REG_DTYPE.S64: 64,
+    REG_DTYPE.FLOAT: 32,
+    REG_DTYPE.BOOL: 1,
 }
 
 
