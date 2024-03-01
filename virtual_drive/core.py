@@ -123,7 +123,7 @@ class BasePlant:
 
     def __init__(self, drive: "VirtualDrive") -> None:
         self.drive = drive
-        self.monitoring_frequency = self.drive._monitoring.FREQUENCY
+        self.monitoring_frequency = VirtualMonitoring.FREQUENCY
         self.plant: signal.TransferFunction
         self.set_point_register = self.drive.get_register(1, id=self.REGISTER_SET_POINT)
         self.command_register = self.drive.get_register(1, id=self.REGISTER_COMMAND)
@@ -139,7 +139,7 @@ class BasePlant:
         if len(dist_signal) == 0:
             return
 
-        if from_disturbance:
+        if from_disturbance and self.drive._monitoring:
             monitoring_size = self.drive._monitoring.buffer_size * self.drive._monitoring.divider
             if monitoring_size > len(dist_signal):
                 repetitions = monitoring_size // len(dist_signal) + 1
@@ -718,7 +718,7 @@ class VirtualInternalGenerator:
             self.drive.set_value_by_id(1, self.DIG_HALL_POLE_PAIRS_REGISTER, pole_pairs)
 
         period = 1 / self.frequency
-        n_samples = int(self.drive._monitoring.FREQUENCY * period * self.cycles)
+        n_samples = int(VirtualMonitoring.FREQUENCY * period * self.cycles)
         time_vector = self.start_time + np.linspace(0, period * self.cycles, n_samples)
 
         signal_period: NDArray[np.float_] = self.offset + np.linspace(
@@ -887,7 +887,7 @@ class VirtualMonDistBase:
     def remove_data(self) -> None:
         """Remove Monitoring/Disturbance data."""
         self.channels_data = {}
-        self.drive.set_value_by_id(0, self.DATA_REG, 0)
+        self.drive.set_value_by_id(0, self.DATA_REG, bytes(1))
 
     @property
     def divider(self) -> int:
@@ -1188,11 +1188,11 @@ class VirtualDisturbance(VirtualMonDistBase):
                 buffer = buffer[size:]
 
             dist_signal = np.array(self.channels_data[channel])
-            sampling_rate = self.FREQUENCY / self.drive._disturbance.divider
+            sampling_rate = self.FREQUENCY / self.divider
             total_time = len(dist_signal) / sampling_rate
             time_vector = np.arange(0.0, total_time, 1 / sampling_rate)
 
-            if self.drive._disturbance.divider > 1:
+            if self.divider > 1:
                 time_vector_resampled = np.arange(0.0, total_time, 1 / self.FREQUENCY)
                 dist_signal = np.interp(time_vector_resampled, time_vector, dist_signal)
                 time_vector = time_vector_resampled
@@ -1254,8 +1254,11 @@ class VirtualDrive(Thread):
         self._init_register_signals()
         self.__set_motor_ready_to_switch_on()
 
-        self._monitoring = VirtualMonitoring(self)
-        self._disturbance = VirtualDisturbance(self)
+        self._monitoring: Optional[VirtualMonitoring] = None
+        self._disturbance: Optional[VirtualDisturbance] = None
+        if self.__register_exists(0, VirtualMonitoring.STATUS_REGISTER):
+            self._monitoring = VirtualMonitoring(self)
+            self._disturbance = VirtualDisturbance(self)
 
         self._plant_open_loop_rl_d = PlantOpenLoopRL(self)
         self._plant_closed_loop_rl_d = PlantClosedLoopRL(self, self._plant_open_loop_rl_d.plant)
@@ -1331,7 +1334,11 @@ class VirtualDrive(Thread):
             bytes: Response to be sent.
         """
         value = self.get_value_by_id(register.subnode, str(register.identifier))
-        if register.address == self.id_to_address(0, "MON_DATA") and isinstance(value, bytes):
+        if (
+            register.address == self.id_to_address(0, "MON_DATA")
+            and isinstance(value, bytes)
+            and self._monitoring
+        ):
             self._monitoring.update_data()
             response = self._response_monitoring_data(value)
         else:
@@ -1345,7 +1352,8 @@ class VirtualDrive(Thread):
         if self.socket is not None:
             self.socket.close()
         self.__stop = True
-        self._monitoring.disable()
+        if self._monitoring:
+            self._monitoring.disable()
 
     def _init_registers(self) -> None:
         """Initialize the registers using the configuration file."""
@@ -1426,6 +1434,8 @@ class VirtualDrive(Thread):
         Returns:
             MCB frame.
         """
+        if not self._monitoring:
+            return bytes(1)
         sent_cmd = self.ACK_CMD
         reg_add = self.id_to_address(0, "MON_DATA")
         limit = min(len(data), MONITORING_BUFFER_SIZE)
@@ -1473,26 +1483,26 @@ class VirtualDrive(Thread):
         reg_id = register.identifier
         dtype = register.dtype
         value = convert_bytes_to_dtype(data, dtype)
-        if reg_id == "MON_DIST_ENABLE" and subnode == 0 and value == 1:
+        if reg_id == "MON_DIST_ENABLE" and subnode == 0 and value == 1 and self._monitoring:
             self._monitoring.enable()
-        if reg_id == "MON_DIST_ENABLE" and subnode == 0 and value == 0:
+        if reg_id == "MON_DIST_ENABLE" and subnode == 0 and value == 0 and self._monitoring:
             self._monitoring.disable()
-        if reg_id == "MON_CMD_FORCE_TRIGGER" and subnode == 0 and value == 1:
+        if reg_id == "MON_CMD_FORCE_TRIGGER" and subnode == 0 and value == 1 and self._monitoring:
             self._monitoring.trigger()
-        if reg_id == "MON_REMOVE_DATA" and subnode == 0 and value == 1:
+        if reg_id == "MON_REMOVE_DATA" and subnode == 0 and value == 1 and self._monitoring:
             self._monitoring.remove_data()
-        if reg_id == "MON_REARM" and subnode == 0 and value == 1:
+        if reg_id == "MON_REARM" and subnode == 0 and value == 1 and self._monitoring:
             self._monitoring.rearm()
             self.__emulate_plants()
-        if reg_id == "DIST_ENABLE" and subnode == 0 and value == 1:
+        if reg_id == "DIST_ENABLE" and subnode == 0 and value == 1 and self._disturbance:
             self._disturbance.enable()
             self.__emulate_plants()
-        if reg_id == "DIST_ENABLE" and subnode == 0 and value == 0:
+        if reg_id == "DIST_ENABLE" and subnode == 0 and value == 0 and self._disturbance:
             self._disturbance.disable()
             self.__clean_plant_signals()
-        if reg_id == "DIST_REMOVE_DATA" and subnode == 0 and value == 1:
+        if reg_id == "DIST_REMOVE_DATA" and subnode == 0 and value == 1 and self._disturbance:
             self._disturbance.remove_data()
-        if reg_id == "DIST_DATA" and subnode == 0:
+        if reg_id == "DIST_DATA" and subnode == 0 and self._disturbance:
             self._disturbance.append_data(data)
         if reg_id == "DRV_OP_CMD":
             self.operation_mode = int(value)
@@ -1588,7 +1598,7 @@ class VirtualDrive(Thread):
         value: Union[int, float]
         if len(self.reg_signals[id]) > 0:
             actual_time = time.time()
-            if self._disturbance.enabled:
+            if self._disturbance and self._disturbance.enabled:
                 time_diff = actual_time - self._disturbance.start_time
                 actual_time = self._disturbance.start_time + (
                     time_diff % self._disturbance.buffer_time
