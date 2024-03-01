@@ -92,7 +92,7 @@ def test_tpdo_item(open_dictionary):
     tpdo_item = TPDOMapItem(register)
 
     assert tpdo_item.register == register
-    assert tpdo_item.size_bits == dtype_value[tpdo_item.register.dtype][0] * 8
+    assert tpdo_item.size_bits == dtype_length_bits[tpdo_item.register.dtype]
 
     with pytest.raises(ILError) as exc_info:
         tpdo_item.value
@@ -178,11 +178,11 @@ def test_pdo_map(create_pdo_map):
     assert all(isinstance(pdo_map_item.register, Register) for pdo_map_item in rpdo_map.items)
 
     assert all(
-        pdo_map_item.size_bits == dtype_value[pdo_map_item.register.dtype][0] * 8
+        pdo_map_item.size_bits == dtype_length_bits[pdo_map_item.register.dtype]
         for pdo_map_item in tpdo_map.items
     )
     assert all(
-        pdo_map_item.size_bits == dtype_value[pdo_map_item.register.dtype][0] * 8
+        pdo_map_item.size_bits == dtype_length_bits[pdo_map_item.register.dtype]
         for pdo_map_item in tpdo_map.items
     )
 
