@@ -328,10 +328,8 @@ class EthercatServo(PDOServo):
         return error_description
 
     def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
-        self.reset_rpdo_mapping()
-        self.reset_tpdo_mapping()
-        self._rpdo_maps = rpdo_maps
-        self._tpdo_maps = tpdo_maps
+        self._rpdo_maps.extend(rpdo_maps)
+        self._tpdo_maps.extend(tpdo_maps)
         self.slave.config_func = self.map_pdos
 
     def process_pdo_inputs(self) -> None:

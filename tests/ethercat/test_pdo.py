@@ -419,3 +419,55 @@ def test_map_pdo_with_bools(open_dictionary):
     assert item4.raw_data_bits.to01() == "1"
     assert rpdo_map.get_item_bits().to01() == "00010001000100010001000100011000101101"
     assert rpdo_map.get_item_bytes() == b"\x88\x88\x88\x18-"
+
+
+@pytest.mark.ethercat
+def test_remove_rpdo_map(connect_to_slave, create_pdo_map):
+    _, rpdo_map = create_pdo_map
+    servo, net = connect_to_slave
+    servo.set_pdo_map_to_slave([rpdo_map], [])
+    assert len(servo._rpdo_maps) > 0
+    servo.remove_rpdo_map(rpdo_map)
+    assert len(servo._rpdo_maps) == 0
+    servo._rpdo_maps.append(rpdo_map)
+    servo.remove_rpdo_map(rpdo_map_index=0)
+    assert len(servo._rpdo_maps) == 0
+
+
+@pytest.mark.ethercat
+def test_remove_rpdo_map_exceptions(connect_to_slave, create_pdo_map):
+    tpdo_map, rpdo_map = create_pdo_map
+    servo, net = connect_to_slave
+    servo.set_pdo_map_to_slave([rpdo_map], [])
+    with pytest.raises(ValueError):
+        servo.remove_rpdo_map()
+    with pytest.raises(ValueError):
+        servo.remove_rpdo_map(tpdo_map)
+    with pytest.raises(IndexError):
+        servo.remove_rpdo_map(rpdo_map_index=1)
+
+
+@pytest.mark.ethercat
+def test_remove_tpdo_map(connect_to_slave, create_pdo_map):
+    tpdo_map, _ = create_pdo_map
+    servo, net = connect_to_slave
+    servo.set_pdo_map_to_slave([], [tpdo_map])
+    assert len(servo._tpdo_maps) > 0
+    servo.remove_tpdo_map(tpdo_map)
+    assert len(servo._tpdo_maps) == 0
+    servo._tpdo_maps.append(tpdo_map)
+    servo.remove_tpdo_map(tpdo_map_index=0)
+    assert len(servo._tpdo_maps) == 0
+
+
+@pytest.mark.ethercat
+def test_remove_tpdo_map_exceptions(connect_to_slave, create_pdo_map):
+    tpdo_map, rpdo_map = create_pdo_map
+    servo, net = connect_to_slave
+    servo.set_pdo_map_to_slave([rpdo_map], [])
+    with pytest.raises(ValueError):
+        servo.remove_rpdo_map()
+    with pytest.raises(ValueError):
+        servo.remove_tpdo_map(rpdo_map)
+    with pytest.raises(IndexError):
+        servo.remove_tpdo_map(tpdo_map_index=1)

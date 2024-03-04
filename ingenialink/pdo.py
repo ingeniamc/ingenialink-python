@@ -480,6 +480,55 @@ class PDOServo(Servo):
         self.map_tpdos()
         self.map_rpdos()
 
+    def reset_pdo_mapping(self) -> None:
+        """Reset the RPDO and TPDO mapping in the slave."""
+        self.reset_rpdo_mapping()
+        self.reset_tpdo_mapping()
+
+    def remove_rpdo_map(
+        self, rpdo_map: Optional[RPDOMap] = None, rpdo_map_index: Optional[int] = None
+    ) -> None:
+        """Remove a RPDOMap from the RPDOMap list.
+
+        Args:
+            rpdo_map: The RPDOMap instance to be removed.
+            rpdo_map_index: The index of the RPDOMap list to be removed.
+
+        Raises:
+            ValueError: If the RPDOMap instance is not in the RPDOMap list.
+            IndexError: If the index is out of range.
+
+        """
+        if rpdo_map_index is None and rpdo_map is None:
+            raise ValueError("The RPDOMap instance or the index should be provided.")
+        if rpdo_map is not None:
+            self._rpdo_maps.remove(rpdo_map)
+            return
+        if rpdo_map_index is not None:
+            self._rpdo_maps.pop(rpdo_map_index)
+
+    def remove_tpdo_map(
+        self, tpdo_map: Optional[TPDOMap] = None, tpdo_map_index: Optional[int] = None
+    ) -> None:
+        """Remove a TPDOMap from the TPDOMap list.
+
+        Args:
+            tpdo_map: The TPDOMap instance to be removed.
+            tpdo_map_index: The index of the TPDOMap list to be removed.
+
+        Raises:
+            ValueError: If the TPDOMap instance is not in the TPDOMap list.
+            IndexError: If the index is out of range.
+
+        """
+        if tpdo_map_index is None and tpdo_map is None:
+            raise ValueError("The TPDOMap instance or the index should be provided.")
+        if tpdo_map is not None:
+            self._tpdo_maps.remove(tpdo_map)
+            return
+        if tpdo_map_index is not None:
+            self._tpdo_maps.pop(tpdo_map_index)
+
     def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
         """Callback called by the slave to configure the map.
 
