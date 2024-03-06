@@ -28,8 +28,13 @@ class PDOMapItem:
     """Abstract class to represent a register in the PDO mapping.
 
     Attributes:
-        register: mapped register object.
+        register: mapped register object. If None the item will padding.
         size_bits: custom register size in bits.
+
+    Raises:
+        ValueError: If the register and size_bits are not provided.
+        ValueError: If the size_bits value is invalid. Only when the register
+        is set to None.
 
     """
 
