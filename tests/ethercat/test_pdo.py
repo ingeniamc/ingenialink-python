@@ -393,6 +393,38 @@ def test_pdo_item_custom_size_wrong_length(open_dictionary):
 
 
 @pytest.mark.no_connection
+def test_rpdo_padding():
+    rpdo_item = RPDOMapItem(size_bits=8)
+    padding_register = rpdo_item.register
+    assert isinstance(padding_register, EthercatRegister)
+    assert padding_register.idx == 0x0000
+    assert padding_register.subidx == 0x00
+    assert padding_register.dtype == REG_DTYPE.U8
+    assert rpdo_item.ACCEPTED_CYCLIC == "CYCLIC_RX"
+
+
+@pytest.mark.no_connection
+def test_tpdo_padding():
+    tpdo_item = TPDOMapItem(size_bits=16)
+    padding_register = tpdo_item.register
+    assert isinstance(padding_register, EthercatRegister)
+    assert padding_register.idx == 0x0000
+    assert padding_register.subidx == 0x00
+    assert padding_register.dtype == REG_DTYPE.U16
+    assert tpdo_item.ACCEPTED_CYCLIC == "CYCLIC_TX"
+
+
+@pytest.mark.no_connection
+def test_pdo_padding_exceptions():
+    # Size bits not defined
+    with pytest.raises(ValueError):
+        RPDOMapItem()
+    # Wrong size bits (must be a multiple of 8)
+    with pytest.raises(ValueError):
+        RPDOMapItem(size_bits=5)
+
+
+@pytest.mark.no_connection
 def test_map_pdo_with_bools(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]

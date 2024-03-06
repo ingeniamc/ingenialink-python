@@ -1,9 +1,9 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
 import bitarray
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import REG_DTYPE
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILError
 from ingenialink.servo import Servo
@@ -15,6 +15,13 @@ from ingenialink.utils._utils import (
 
 BIT_ENDIAN = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
+
+bits_length_dtype: Dict[int, REG_DTYPE] = {
+    8: REG_DTYPE.U8,
+    16: REG_DTYPE.U16,
+    32: REG_DTYPE.U32,
+    64: REG_DTYPE.U64,
+}
 
 
 class PDOMapItem:
@@ -30,8 +37,26 @@ class PDOMapItem:
     """Accepted cyclic: CYCLIC_TX or CYCLIC_RX."""
 
     def __init__(
-        self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
+        self,
+        register: Optional[Union[EthercatRegister, CanopenRegister]] = None,
+        size_bits: Optional[int] = None,
     ) -> None:
+        if register is None:
+            if size_bits is None:
+                raise ValueError("The size bits must be set when creating padding items.")
+            if size_bits not in bits_length_dtype:
+                raise ValueError("Invalid size bit. Must be a byte multiple between 8 and 64.")
+            padding_register_dtype = bits_length_dtype[size_bits]
+            register = EthercatRegister(
+                identifier="PADDING",
+                units="",
+                subnode=0,
+                idx=0x0000,
+                subidx=0x00,
+                cyclic=self.ACCEPTED_CYCLIC,
+                dtype=padding_register_dtype,
+                access=REG_ACCESS.RW,
+            )
         self.register = register
         self.size_bits = size_bits or dtype_length_bits[register.dtype]
         self._raw_data_bits: Optional[bitarray.bitarray] = None
@@ -43,7 +68,7 @@ class PDOMapItem:
         Raises:
             ILError: Tf the register is not mappable.
         """
-        if not self.register.cyclic == self.ACCEPTED_CYCLIC:
+        if self.register.cyclic != self.ACCEPTED_CYCLIC:
             raise ILError(
                 f"Incorrect cyclic. It should be {self.ACCEPTED_CYCLIC}, obtained:"
                 f" {self.register.cyclic}"
@@ -133,7 +158,9 @@ class RPDOMapItem(PDOMapItem):
     ACCEPTED_CYCLIC = "CYCLIC_RX"
 
     def __init__(
-        self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
+        self,
+        register: Optional[Union[EthercatRegister, CanopenRegister]] = None,
+        size_bits: Optional[int] = None,
     ) -> None:
         super().__init__(register, size_bits)
 
