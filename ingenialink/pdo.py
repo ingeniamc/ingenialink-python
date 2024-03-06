@@ -16,12 +16,7 @@ from ingenialink.utils._utils import (
 BIT_ENDIAN = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
 
-bits_length_dtype: Dict[int, REG_DTYPE] = {
-    8: REG_DTYPE.U8,
-    16: REG_DTYPE.U16,
-    32: REG_DTYPE.U32,
-    64: REG_DTYPE.U64,
-}
+PADDING_REGISTER_IDENTIFIER = "PADDING"
 
 
 class PDOMapItem:
@@ -49,17 +44,14 @@ class PDOMapItem:
         if register is None:
             if size_bits is None:
                 raise ValueError("The size bits must be set when creating padding items.")
-            if size_bits not in bits_length_dtype:
-                raise ValueError("Invalid size bit. Must be a byte multiple between 8 and 64.")
-            padding_register_dtype = bits_length_dtype[size_bits]
             register = EthercatRegister(
-                identifier="PADDING",
+                identifier=PADDING_REGISTER_IDENTIFIER,
                 units="",
                 subnode=0,
                 idx=0x0000,
                 subidx=0x00,
                 cyclic=self.ACCEPTED_CYCLIC,
-                dtype=padding_register_dtype,
+                dtype=REG_DTYPE.STR,
                 access=REG_ACCESS.RW,
             )
         self.register = register
@@ -121,6 +113,8 @@ class PDOMapItem:
     def raw_data_bytes(self, data: bytes) -> None:
         data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
         data_bits.frombytes(data)
+        if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
+            data_bits = data_bits[: self.size_bits]
         self.raw_data_bits = data_bits
 
     @property
@@ -135,6 +129,10 @@ class PDOMapItem:
             Register value.
         """
         value: Union[bool, int, float, str]
+        if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
+            raise NotImplementedError(
+                "The register value must be read by the raw_data_bytes attribute."
+            )
         if self.register.dtype == REG_DTYPE.BOOL:
             value = self.raw_data_bits.any()
         else:
@@ -175,6 +173,10 @@ class RPDOMapItem(PDOMapItem):
 
     @value.setter
     def value(self, value: Union[int, float, bool]) -> None:
+        if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
+            raise NotImplementedError(
+                "The register value must be set by the raw_data_bytes attribute."
+            )
         if isinstance(value, bool):
             raw_data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
             raw_data_bits.append(value)

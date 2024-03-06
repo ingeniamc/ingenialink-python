@@ -394,24 +394,32 @@ def test_pdo_item_custom_size_wrong_length(open_dictionary):
 
 @pytest.mark.no_connection
 def test_rpdo_padding():
-    rpdo_item = RPDOMapItem(size_bits=8)
+    size_bits = 3
+    rpdo_item = RPDOMapItem(size_bits=size_bits)
+    assert rpdo_item.size_bits == size_bits
+    assert rpdo_item.ACCEPTED_CYCLIC == "CYCLIC_RX"
     padding_register = rpdo_item.register
     assert isinstance(padding_register, EthercatRegister)
     assert padding_register.idx == 0x0000
     assert padding_register.subidx == 0x00
-    assert padding_register.dtype == REG_DTYPE.U8
-    assert rpdo_item.ACCEPTED_CYCLIC == "CYCLIC_RX"
+    assert padding_register.dtype == REG_DTYPE.STR
+    rpdo_item.raw_data_bytes = int.to_bytes(0, 1, "little")
+    assert len(rpdo_item.raw_data_bits) == size_bits
 
 
 @pytest.mark.no_connection
 def test_tpdo_padding():
-    tpdo_item = TPDOMapItem(size_bits=16)
+    size_bits = 4
+    tpdo_item = TPDOMapItem(size_bits=size_bits)
+    assert tpdo_item.size_bits == size_bits
+    assert tpdo_item.ACCEPTED_CYCLIC == "CYCLIC_TX"
     padding_register = tpdo_item.register
     assert isinstance(padding_register, EthercatRegister)
     assert padding_register.idx == 0x0000
     assert padding_register.subidx == 0x00
-    assert padding_register.dtype == REG_DTYPE.U16
-    assert tpdo_item.ACCEPTED_CYCLIC == "CYCLIC_TX"
+    assert padding_register.dtype == REG_DTYPE.STR
+    tpdo_item.raw_data_bytes = int.to_bytes(0, 1, "little")
+    assert len(tpdo_item.raw_data_bits) == size_bits
 
 
 @pytest.mark.no_connection
@@ -419,9 +427,15 @@ def test_pdo_padding_exceptions():
     # Size bits not defined
     with pytest.raises(ValueError):
         RPDOMapItem()
-    # Wrong size bits (must be a multiple of 8)
-    with pytest.raises(ValueError):
-        RPDOMapItem(size_bits=5)
+    padding_item = RPDOMapItem(size_bits=8)
+    # Padding value cannot be set with the value attribute
+    with pytest.raises(NotImplementedError) as exc_info:
+        padding_item.value = int.to_bytes(0, 1, "little")
+    assert str(exc_info.value) == "The register value must be set by the raw_data_bytes attribute."
+    # Padding value cannot be read by the value attribute
+    with pytest.raises(NotImplementedError) as exc_info:
+        _ = padding_item.value
+    assert str(exc_info.value) == "The register value must be read by the raw_data_bytes attribute."
 
 
 @pytest.mark.no_connection
