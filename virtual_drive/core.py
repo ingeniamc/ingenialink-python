@@ -1574,7 +1574,7 @@ class VirtualDrive(Thread):
         return self.__reg_address_to_id[subnode][address]
 
     def id_to_address(self, subnode: int, uid: str) -> int:
-        """Converts a register address into an ID.
+        """Return address of Register with the target subnode and UID
 
         Args:
             subnode: Subnode.

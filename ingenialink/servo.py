@@ -51,10 +51,10 @@ class DictionaryFactory:
     """Dictionary factory, creates a dictionary instance depends on the file version
     and connection interface"""
 
-    VERSION_ABSOLUTE_PATH = "Header/Version"
-    VERSION_REGEX = r"(\d+)\.*(\d*)"
-    MAJOR_VERSION_GROUP = 1
-    MINOR_VERSION_GROUP = 2
+    _VERSION_ABSOLUTE_PATH = "Header/Version"
+    _VERSION_REGEX = r"(\d+)\.*(\d*)"
+    _MAJOR_VERSION_GROUP = 1
+    _MINOR_VERSION_GROUP = 2
 
     @classmethod
     def create_dictionary(cls, dictionary_path: str, interface: Interface) -> Dictionary:
@@ -111,16 +111,16 @@ class DictionaryFactory:
                     tree = ET.parse(xdf_file)
                 except ET.ParseError:
                     raise ILDictionaryParseError("File is not a xdf")
-                version_element = tree.find(cls.VERSION_ABSOLUTE_PATH)
+                version_element = tree.find(cls._VERSION_ABSOLUTE_PATH)
                 if version_element is None or version_element.text is None:
                     raise ILDictionaryParseError("Version not found")
                 version_str = version_element.text.strip()
-                version_match = re.match(cls.VERSION_REGEX, version_str)
+                version_match = re.match(cls._VERSION_REGEX, version_str)
                 if version_match is None:
                     raise ILDictionaryParseError("Version has a wrong format")
-                major_version = int(version_match.group(cls.MAJOR_VERSION_GROUP))
-                if version_match.group(cls.MINOR_VERSION_GROUP):
-                    minor_version = int(version_match.group(cls.MINOR_VERSION_GROUP))
+                major_version = int(version_match.group(cls._MAJOR_VERSION_GROUP))
+                if version_match.group(cls._MINOR_VERSION_GROUP):
+                    minor_version = int(version_match.group(cls._MINOR_VERSION_GROUP))
                 else:
                     minor_version = 0
                 return major_version, minor_version
@@ -1236,7 +1236,7 @@ class Servo:
 
     @property
     def subnodes(self) -> Dict[int, SubnodeType]:
-        """Number of subnodes."""
+        """Dictionary of subnodes and their type"""
         return self.dictionary.subnodes
 
     @property

@@ -12,14 +12,13 @@ import pytest
 from ingenialink import EthercatNetwork
 from ingenialink.dictionary import Interface
 from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
-from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError
 from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
 from ingenialink.servo import DictionaryFactory
-from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_length_bits, dtype_value
+from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_length_bits
 
 TPDO_REGISTERS = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
 RPDO_REGISTERS = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
