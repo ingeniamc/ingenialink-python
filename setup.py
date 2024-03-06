@@ -47,6 +47,7 @@ setuptools.setup(
         "pysoem==1.1.6",
         "numpy==1.26.3",
         "scipy==1.12.0",
+        "bitarray==2.9.2",
     ],
     extras_require={
         "dev": ["tox==4.12.1"],

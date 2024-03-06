@@ -21,7 +21,7 @@ def test_read_xdf_register_ethernet():
 
 @pytest.mark.parametrize(
     "reg_id,subnode,address",
-    [("DRV_DIAG_ERROR_LAST_COM", 0, 0x400F), ("COMMU_ANGLE_SENSOR", 1, 0x151)],
+    [("DRV_DIAG_ERROR_LAST_COM", 0, 0xF), ("COMMU_ANGLE_SENSOR", 1, 0x151)],
 )
 @pytest.mark.no_connection
 def test_read_xdf_register_canopen(reg_id, subnode, address):

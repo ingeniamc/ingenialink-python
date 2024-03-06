@@ -26,6 +26,8 @@ class REG_DTYPE(Enum):
     """String."""
     DOMAIN = 15
     """Domain."""
+    BOOL = 99
+    """Boolean."""
 
 
 class REG_ACCESS(Enum):
