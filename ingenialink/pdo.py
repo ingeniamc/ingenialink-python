@@ -38,7 +38,7 @@ class PDOMapItem:
 
     def __init__(
         self,
-        register: Optional[Union[EthercatRegister, CanopenRegister]] = None,
+        register: Union[None, EthercatRegister, CanopenRegister] = None,
         size_bits: Optional[int] = None,
     ) -> None:
         if register is None:
@@ -162,7 +162,7 @@ class RPDOMapItem(PDOMapItem):
 
     def __init__(
         self,
-        register: Optional[Union[EthercatRegister, CanopenRegister]] = None,
+        register: Union[None, EthercatRegister, CanopenRegister] = None,
         size_bits: Optional[int] = None,
     ) -> None:
         super().__init__(register, size_bits)
