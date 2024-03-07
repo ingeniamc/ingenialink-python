@@ -296,7 +296,6 @@ def test_start_stop_pdo(connect_to_all_slave):
             rpdo_map.add_registers(register)
         for item in rpdo_map.items:
             item.value = new_operation_mode[index]
-        servo.reset_pdo_mapping()
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
         net._ecat_master.read_state()
         assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
@@ -321,6 +320,12 @@ def test_start_stop_pdo(connect_to_all_slave):
         assert pytest.approx(servo._tpdo_maps[0].items[0].value, abs=2) == servo.read(
             TPDO_REGISTERS[0]
         )
+    # Check that PDOs can be re-started with the same configuration
+    net.start_pdos()
+    start_time = time.time()
+    while time.time() < start_time + timeout:
+        net.send_receive_processdata()
+    net.stop_pdos()
 
 
 @pytest.mark.ethercat

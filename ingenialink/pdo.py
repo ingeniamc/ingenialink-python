@@ -370,6 +370,7 @@ class PDOServo(Servo):
         servo_status_listener: bool = False,
     ):
         super().__init__(target, dictionary_path, servo_status_listener)
+        self.reset_pdo_mapping()
         self._rpdo_maps: List[RPDOMap] = []
         self._tpdo_maps: List[TPDOMap] = []
 
