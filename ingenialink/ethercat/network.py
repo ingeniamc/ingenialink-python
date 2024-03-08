@@ -223,8 +223,19 @@ class EthercatNetwork(Network):
             self.__is_master_running = False
             self.__last_init_nodes = []
 
+    def config_pdo_maps(self) -> None:
+        """Configure the PDO maps.
+
+        It maps the PDO maps of each slave and sets its state to SafeOP.
+
+        """
+        if self._overlapping_io_map:
+            self._ecat_master.config_overlap_map()
+        else:
+            self._ecat_master.config_map()
+
     def start_pdos(self, timeout: float = 1.0) -> None:
-        """Configure the PDOs and set slave state to OP for all slaves with mapped PDOs
+        """Set all slaves with mapped PDOs to Operational State.
 
         Args:
             timeout: timeout in seconds to reach Op state, 1.0 seconds by default.
@@ -245,10 +256,6 @@ class EthercatNetwork(Network):
             raise ILError(
                 "The RPDO values should be set before starting the PDO exchange process."
             ) from e
-        if self._overlapping_io_map:
-            self._ecat_master.config_overlap_map()
-        else:
-            self._ecat_master.config_map()
         self._ecat_master.state = pysoem.SAFEOP_STATE
         if not self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE):
             raise ILStateError("Drives can not reach SafeOp state")

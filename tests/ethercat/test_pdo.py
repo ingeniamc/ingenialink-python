@@ -299,6 +299,7 @@ def test_start_stop_pdo(connect_to_all_slave):
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
         net._ecat_master.read_state()
         assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+    net.config_pdo_map()
     net.start_pdos()
     net._ecat_master.read_state()
     start_time = time.time()
