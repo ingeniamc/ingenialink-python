@@ -110,6 +110,7 @@ class ProcessDataExample:
 
     def run(self) -> None:
         """Main loop of the program."""
+        self.net.config_pdo_maps()
         self.net.start_pdos()
         print("Process data started")
         proc_thread = threading.Thread(target=self._processdata_thread)
