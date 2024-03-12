@@ -1,9 +1,9 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict
 
 import bitarray
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import REG_DTYPE
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILError
 from ingenialink.servo import Servo
@@ -16,13 +16,20 @@ from ingenialink.utils._utils import (
 BIT_ENDIAN = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
 
+PADDING_REGISTER_IDENTIFIER = "PADDING"
+
 
 class PDOMapItem:
     """Abstract class to represent a register in the PDO mapping.
 
     Attributes:
-        register: mapped register object.
+        register: mapped register object. If None the item will padding.
         size_bits: custom register size in bits.
+
+    Raises:
+        ValueError: If the register and size_bits are not provided.
+        ValueError: If the size_bits value is invalid. Only when the register
+        is set to None.
 
     """
 
@@ -30,8 +37,23 @@ class PDOMapItem:
     """Accepted cyclic: CYCLIC_TX or CYCLIC_RX."""
 
     def __init__(
-        self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
+        self,
+        register: Union[None, EthercatRegister, CanopenRegister] = None,
+        size_bits: Optional[int] = None,
     ) -> None:
+        if register is None:
+            if size_bits is None:
+                raise ValueError("The size bits must be set when creating padding items.")
+            register = EthercatRegister(
+                identifier=PADDING_REGISTER_IDENTIFIER,
+                units="",
+                subnode=0,
+                idx=0x0000,
+                subidx=0x00,
+                cyclic=self.ACCEPTED_CYCLIC,
+                dtype=REG_DTYPE.STR,
+                access=REG_ACCESS.RW,
+            )
         self.register = register
         self.size_bits = size_bits or dtype_length_bits[register.dtype]
         self._raw_data_bits: Optional[bitarray.bitarray] = None
@@ -43,7 +65,7 @@ class PDOMapItem:
         Raises:
             ILError: Tf the register is not mappable.
         """
-        if not self.register.cyclic == self.ACCEPTED_CYCLIC:
+        if self.register.cyclic != self.ACCEPTED_CYCLIC:
             raise ILError(
                 f"Incorrect cyclic. It should be {self.ACCEPTED_CYCLIC}, obtained:"
                 f" {self.register.cyclic}"
@@ -91,6 +113,8 @@ class PDOMapItem:
     def raw_data_bytes(self, data: bytes) -> None:
         data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
         data_bits.frombytes(data)
+        if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
+            data_bits = data_bits[: self.size_bits]
         self.raw_data_bits = data_bits
 
     @property
@@ -105,6 +129,10 @@ class PDOMapItem:
             Register value.
         """
         value: Union[bool, int, float, str]
+        if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
+            raise NotImplementedError(
+                "The register value must be read by the raw_data_bytes attribute."
+            )
         if self.register.dtype == REG_DTYPE.BOOL:
             value = self.raw_data_bits.any()
         else:
@@ -133,7 +161,9 @@ class RPDOMapItem(PDOMapItem):
     ACCEPTED_CYCLIC = "CYCLIC_RX"
 
     def __init__(
-        self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
+        self,
+        register: Union[None, EthercatRegister, CanopenRegister] = None,
+        size_bits: Optional[int] = None,
     ) -> None:
         super().__init__(register, size_bits)
 
@@ -143,6 +173,10 @@ class RPDOMapItem(PDOMapItem):
 
     @value.setter
     def value(self, value: Union[int, float, bool]) -> None:
+        if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
+            raise NotImplementedError(
+                "The register value must be set by the raw_data_bytes attribute."
+            )
         if isinstance(value, bool):
             raw_data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
             raw_data_bits.append(value)
@@ -479,6 +513,55 @@ class PDOServo(Servo):
         """
         self.map_tpdos()
         self.map_rpdos()
+
+    def reset_pdo_mapping(self) -> None:
+        """Reset the RPDO and TPDO mapping in the slave."""
+        self.reset_rpdo_mapping()
+        self.reset_tpdo_mapping()
+
+    def remove_rpdo_map(
+        self, rpdo_map: Optional[RPDOMap] = None, rpdo_map_index: Optional[int] = None
+    ) -> None:
+        """Remove a RPDOMap from the RPDOMap list.
+
+        Args:
+            rpdo_map: The RPDOMap instance to be removed.
+            rpdo_map_index: The index of the RPDOMap list to be removed.
+
+        Raises:
+            ValueError: If the RPDOMap instance is not in the RPDOMap list.
+            IndexError: If the index is out of range.
+
+        """
+        if rpdo_map_index is None and rpdo_map is None:
+            raise ValueError("The RPDOMap instance or the index should be provided.")
+        if rpdo_map is not None:
+            self._rpdo_maps.remove(rpdo_map)
+            return
+        if rpdo_map_index is not None:
+            self._rpdo_maps.pop(rpdo_map_index)
+
+    def remove_tpdo_map(
+        self, tpdo_map: Optional[TPDOMap] = None, tpdo_map_index: Optional[int] = None
+    ) -> None:
+        """Remove a TPDOMap from the TPDOMap list.
+
+        Args:
+            tpdo_map: The TPDOMap instance to be removed.
+            tpdo_map_index: The index of the TPDOMap list to be removed.
+
+        Raises:
+            ValueError: If the TPDOMap instance is not in the TPDOMap list.
+            IndexError: If the index is out of range.
+
+        """
+        if tpdo_map_index is None and tpdo_map is None:
+            raise ValueError("The TPDOMap instance or the index should be provided.")
+        if tpdo_map is not None:
+            self._tpdo_maps.remove(tpdo_map)
+            return
+        if tpdo_map_index is not None:
+            self._tpdo_maps.pop(tpdo_map_index)
 
     def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
         """Callback called by the slave to configure the map.
