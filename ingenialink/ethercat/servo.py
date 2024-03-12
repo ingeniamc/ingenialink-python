@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, List, Optional, Dict
 
 import ingenialogger
 
-
 try:
     import pysoem
 except ImportError as ex:
@@ -15,7 +14,6 @@ if TYPE_CHECKING:
     from pysoem import CdefSlave
 
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
-from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILIOError, ILTimeoutError, ILError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap

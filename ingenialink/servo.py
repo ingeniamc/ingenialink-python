@@ -48,8 +48,8 @@ OPERATION_TIME_OUT = -3
 
 
 class DictionaryFactory:
-    """Dictionary factory, creates a dictionary instance depends on the file version
-    and connection interface"""
+    """Dictionary factory, creates the appropriate dictionary instance according to
+    the file version and connection interface"""
 
     _VERSION_ABSOLUTE_PATH = "Header/Version"
     _VERSION_REGEX = r"(\d+)\.*(\d*)"
@@ -110,22 +110,22 @@ class DictionaryFactory:
                 try:
                     tree = ET.parse(xdf_file)
                 except ET.ParseError:
-                    raise ILDictionaryParseError("File is not a xdf")
-                version_element = tree.find(cls._VERSION_ABSOLUTE_PATH)
-                if version_element is None or version_element.text is None:
-                    raise ILDictionaryParseError("Version not found")
-                version_str = version_element.text.strip()
-                version_match = re.match(cls._VERSION_REGEX, version_str)
-                if version_match is None:
-                    raise ILDictionaryParseError("Version has a wrong format")
-                major_version = int(version_match.group(cls._MAJOR_VERSION_GROUP))
-                if version_match.group(cls._MINOR_VERSION_GROUP):
-                    minor_version = int(version_match.group(cls._MINOR_VERSION_GROUP))
-                else:
-                    minor_version = 0
-                return major_version, minor_version
+                    raise ILDictionaryParseError(f"File is not a xdf: {dictionary_path}")
         except FileNotFoundError:
             raise FileNotFoundError(f"There is not any xdf file in the path: {dictionary_path}")
+        version_element = tree.find(cls._VERSION_ABSOLUTE_PATH)
+        if version_element is None or version_element.text is None:
+            raise ILDictionaryParseError("Version not found")
+        version_str = version_element.text.strip()
+        version_match = re.match(cls._VERSION_REGEX, version_str)
+        if version_match is None:
+            raise ILDictionaryParseError("Version has a wrong format")
+        major_version = int(version_match.group(cls._MAJOR_VERSION_GROUP))
+        if version_match.group(cls._MINOR_VERSION_GROUP):
+            minor_version = int(version_match.group(cls._MINOR_VERSION_GROUP))
+        else:
+            minor_version = 0
+        return major_version, minor_version
 
 
 class ServoStatusListener(threading.Thread):
@@ -1236,7 +1236,7 @@ class Servo:
 
     @property
     def subnodes(self) -> Dict[int, SubnodeType]:
-        """Dictionary of subnodes and their type"""
+        """Dictionary of subnode ids and their type"""
         return self.dictionary.subnodes
 
     @property

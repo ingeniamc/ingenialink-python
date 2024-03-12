@@ -236,7 +236,7 @@ class Dictionary(ABC):
         try:
             self.read_dictionary()
         except KeyError as e:
-            raise ILDictionaryParseError("Dictionary not well-formed.") from e
+            raise ILDictionaryParseError("The dictionary is not well-formed.") from e
 
     def registers(self, subnode: int) -> Dict[str, Register]:
         """Gets the register dictionary to the targeted subnode.
