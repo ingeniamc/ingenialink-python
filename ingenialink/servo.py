@@ -1,39 +1,40 @@
 import os
-import time
 import threading
+import time
 import xml.etree.ElementTree as ET
-from xml.dom import minidom
 from abc import abstractmethod
-from typing import Union, List, Dict, Optional, Tuple, Callable, Any
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from xml.dom import minidom
 
+import ingenialogger
+
+from ingenialink.constants import (
+    DEFAULT_DRIVE_NAME,
+    DEFAULT_PDS_TIMEOUT,
+    MONITORING_BUFFER_SIZE,
+    PASSWORD_RESTORE_ALL,
+    PASSWORD_STORE_ALL,
+    PASSWORD_STORE_RESTORE_SUB_0,
+)
+from ingenialink.dictionary import Dictionary
+from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
+from ingenialink.enums.servo import SERVO_STATE
 from ingenialink.exceptions import (
+    ILAccessError,
+    ILError,
     ILIOError,
     ILRegisterNotFoundError,
-    ILError,
     ILStateError,
-    ILAccessError,
     ILTimeoutError,
     ILValueError,
 )
 from ingenialink.register import Register
+from ingenialink.utils import constants
 from ingenialink.utils._utils import (
-    get_drive_identification,
     convert_bytes_to_dtype,
     convert_dtype_to_bytes,
+    get_drive_identification,
 )
-from ingenialink.constants import (
-    PASSWORD_RESTORE_ALL,
-    PASSWORD_STORE_ALL,
-    DEFAULT_PDS_TIMEOUT,
-    MONITORING_BUFFER_SIZE,
-    DEFAULT_DRIVE_NAME,
-)
-from ingenialink.utils import constants
-from ingenialink.enums.register import REG_DTYPE, REG_ADDRESS_TYPE, REG_ACCESS
-from ingenialink.enums.servo import SERVO_STATE
-from ingenialink.dictionary import Dictionary
-
-import ingenialogger
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -124,7 +125,6 @@ class Servo:
         servo_status_listener: bool = False,
     ):
         self._dictionary = self.DICTIONARY_CLASS(dictionary_path)
-        self.subnodes
         self.target = target
         prod_name = ""
         if self.dictionary.part_number is not None:
@@ -336,7 +336,7 @@ class Servo:
             logger.info("Restore all successfully done.")
         elif subnode == 0:
             # Restore subnode 0
-            raise ILError("The current firmware version does not have this feature implemented.")
+            self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
         elif subnode > 0:
             # Restore axis
             self.write(
@@ -344,7 +344,10 @@ class Servo:
             )
             logger.info(f"Restore subnode {subnode} successfully done.")
         else:
-            raise ILError("Invalid subnode {subnode}.")
+            raise ILError(
+                f"The drive's configuration cannot be restored. The subnode value: {subnode} is"
+                " invalid."
+            )
         time.sleep(1.5)
 
     def store_parameters(self, subnode: Optional[int] = None) -> None:
@@ -379,9 +382,7 @@ class Servo:
                         logger.info(f"Store axis {dict_subnode} successfully done.")
             elif subnode == 0:
                 # Store subnode 0
-                raise ILError(
-                    "The current firmware version does not have this feature implemented."
-                )
+                self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
             elif subnode > 0:
                 # Store axis
                 self.write(
@@ -389,7 +390,10 @@ class Servo:
                 )
                 logger.info(f"Store axis {subnode} successfully done.")
             else:
-                raise ILError("Invalid subnode.")
+                raise ILError(
+                    f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
+                    " invalid."
+                )
         finally:
             time.sleep(1.5)
 
@@ -1002,6 +1006,7 @@ class Servo:
         Raises:
             ILAccessError: Wrong access to the register.
             ILIOError: Error writing the register.
+            ILTimeoutError: Write timeout.
 
         """
         _reg = self._get_reg(reg, subnode)
@@ -1027,6 +1032,7 @@ class Servo:
         Raises:
             ILAccessError: Wrong access to the register.
             ILIOError: Error reading the register.
+            ILTimeoutError: Read timeout.
 
         """
         _reg = self._get_reg(reg, subnode)

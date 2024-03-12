@@ -1,26 +1,28 @@
+import inspect
 import os
-import sys
 import platform
 import subprocess
-import inspect
+import sys
 import time
-from collections import defaultdict
-from typing import Optional, Any, Callable, List, Dict
+from collections import OrderedDict, defaultdict
 from threading import Thread
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 import ingenialogger
 
 try:
-    import pysoem  # type: ignore
+    import pysoem
 except ImportError as ex:
     pysoem = None
     pysoem_import_error = ex
 
-from ingenialink.network import Network, NET_PROT, NET_STATE, NET_DEV_EVT
-from ingenialink.exceptions import ILFirmwareLoadError, ILError
+if TYPE_CHECKING:
+    from pysoem import CdefSlave
+
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.constants import DEFAULT_ECAT_CONNECTION_TIMEOUT
+from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILTimeoutError
+from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -65,6 +67,7 @@ class EthercatNetwork(Network):
     Args:
         interface_name: Interface name to be targeted.
         connection_timeout: Time in seconds of the connection timeout.
+        overlapping_io_map: Map PDOs to overlapping IO map.
 
     Raises:
         ImportError: WinPcap is not installed
@@ -80,9 +83,17 @@ class EthercatNetwork(Network):
         5: "Drive can't init. Ensure the FW file is right",
     }
     UNKNOWN_FOE_ERROR = "Unknown error"
+    MANUAL_STATE_CHANGE = 1
+
+    DEFAULT_ECAT_CONNECTION_TIMEOUT_S = 1
+    ECAT_STATE_CHANGE_TIMEOUT_NS = 50_000
+    ECAT_PROCESSDATA_TIMEOUT_S = 0.1
 
     def __init__(
-        self, interface_name: str, connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT
+        self,
+        interface_name: str,
+        connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT_S,
+        overlapping_io_map: bool = True,
     ):
         if not pysoem:
             raise pysoem_import_error
@@ -92,21 +103,62 @@ class EthercatNetwork(Network):
         self.__servos_state: Dict[int, NET_STATE] = {}
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: Dict[int, List[Any]] = defaultdict(list)
+        self._connection_timeout: float = connection_timeout
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
-        self._ecat_master.sdo_read_timeout = int(1_000_000 * connection_timeout)
-        self._ecat_master.sdo_write_timeout = int(1_000_000 * connection_timeout)
+        self._ecat_master.sdo_read_timeout = int(1_000_000 * self._connection_timeout)
+        self._ecat_master.sdo_write_timeout = int(1_000_000 * self._connection_timeout)
+        self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
+        self._overlapping_io_map = overlapping_io_map
         self.__is_master_running = False
+        self.__last_init_nodes: List[int] = []
 
     def scan_slaves(self) -> List[int]:
-        """Scans for nodes in the network.
+        """Scans for slaves in the network. Scanning of slaves cannot be done if a slave is already
+        connected to the network.
 
         Returns:
-            List containing all the detected node IDs.
+            List containing all the detected slaves.
+
+        Raises:
+            ILError: If any slaves is already connected.
 
         """
-        self._start_master()
+        if self.servos:
+            raise ILError("Some slaves are already connected")
+        if not self.__is_master_running:
+            self._start_master()
+        self.__init_nodes()
+        return self.__last_init_nodes
+
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
+        """Scans for slaves in the network and return an ordered dict with the slave information.
+
+        Returns:
+            Ordered dict with the slave information.
+
+        Raises:
+            ILError: If any slave is already connected.
+
+        """
+        slave_info: OrderedDict[int, SlaveInfo] = OrderedDict()
+        try:
+            slaves = self.scan_slaves()
+        except ILError:
+            return slave_info
+        for slave_id in slaves:
+            slave = self._ecat_master.slaves[slave_id - 1]
+            slave_info[slave_id] = SlaveInfo(slave.id, slave.rev)
+        return slave_info
+
+    def __init_nodes(self) -> None:
+        """Init all the nodes and set already connected nodes to PreOp state.
+        Also fill `__last_init_nodes` attribute.
+        """
+        self._ecat_master.slaves = []  # That is because of a bug of pysoem
         nodes = self._ecat_master.config_init()
-        return list(range(1, nodes + 1))
+        if self.servos:
+            self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
+        self.__last_init_nodes = list(range(1, nodes + 1))
 
     def connect_to_slave(  # type: ignore [override]
         self,
@@ -128,17 +180,25 @@ class EthercatNetwork(Network):
         Raises:
             ValueError: If the slave ID is not valid.
             ILError: If no slaves are found.
+            ILStateError: If slave can not reach PreOp state
 
         """
         if not isinstance(slave_id, int) or slave_id < 0:
             raise ValueError("Invalid slave ID value")
-        slaves = self.scan_slaves()
-        if len(slaves) == 0:
+        if not self.__is_master_running:
+            self._start_master()
+        if slave_id not in self.__last_init_nodes:
+            self.__init_nodes()
+        if len(self.__last_init_nodes) == 0:
             raise ILError("Could not find any slaves in the network.")
-        if slave_id not in slaves:
-            raise (ILError(f"Slave {slave_id} was not found."))
+        if slave_id not in self.__last_init_nodes:
+            raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
-        servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
+        servo = EthercatServo(
+            slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
+        )
+        if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
+            raise ILStateError("Slave can not reach PreOp state")
         self.servos.append(servo)
         self._set_servo_state(slave_id, NET_STATE.CONNECTED)
         if net_status_listener:
@@ -153,11 +213,124 @@ class EthercatNetwork(Network):
 
         """
         servo.stop_status_listener()
+        if not self._change_nodes_state(servo, pysoem.INIT_STATE):
+            logger.warning("Drive can not reach Init state")
         self.servos.remove(servo)
         if not self.servos:
             self.stop_status_listener()
             self._ecat_master.close()
             self.__is_master_running = False
+            self.__last_init_nodes = []
+
+    def start_pdos(self, timeout: float = 1.0) -> None:
+        """Configure the PDOs and set slave state to OP for all slaves with mapped PDOs
+
+        Args:
+            timeout: timeout in seconds to reach Op state, 1.0 seconds by default.
+
+        Raises:
+            ILStateError: If slaves can not reach SafeOp or Op state
+
+        """
+        op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
+        if not op_servo_list:
+            logger.warning("There are no PDOs assigned to any connected slave.")
+            return
+        try:
+            for servo in op_servo_list:
+                for rpdo_map in servo._rpdo_maps:
+                    rpdo_map.get_item_bytes()
+        except ILError as e:
+            raise ILError(
+                "The RPDO values should be set before starting the PDO exchange process."
+            ) from e
+        if self._overlapping_io_map:
+            self._ecat_master.config_overlap_map()
+        else:
+            self._ecat_master.config_map()
+        self._ecat_master.state = pysoem.SAFEOP_STATE
+        if not self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE):
+            raise ILStateError("Drives can not reach SafeOp state")
+        self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
+        init_time = time.time()
+        while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
+            self.send_receive_processdata()
+            if timeout < time.time() - init_time:
+                raise ILStateError("Drives can not reach Op state")
+
+    def stop_pdos(self) -> None:
+        """For all slaves in OP or SafeOp state, set state to PreOp"""
+        self._ecat_master.read_state()
+        op_servo_list = [
+            servo
+            for servo in self.servos
+            if servo.slave.state in [pysoem.OP_STATE, pysoem.SAFEOP_STATE]
+        ]
+        if not self._change_nodes_state(op_servo_list, pysoem.PREOP_STATE):
+            logger.warning("Drive can not reach PreOp state")
+
+    def send_receive_processdata(self, timeout: float = ECAT_PROCESSDATA_TIMEOUT_S) -> None:
+        """Send and receive PDOs
+
+        Args:
+            timeout: receive processdata timeout in seconds, 0.1 seconds by default.
+
+        Raises:
+            ILError: If processdata working count is wrong
+
+        """
+        for servo in self.servos:
+            servo.process_pdo_inputs()
+        if self._overlapping_io_map:
+            self._ecat_master.send_overlap_processdata()
+        else:
+            self._ecat_master.send_processdata()
+        processdata_wkc = self._ecat_master.receive_processdata(timeout=int(timeout * 1_000_000))
+        if processdata_wkc != self._ecat_master.expected_wkc:
+            raise ILError(
+                f"Processdata working count is wrong, expected: {self._ecat_master.expected_wkc},"
+                f" real: {processdata_wkc}"
+            )
+        for servo in self.servos:
+            servo.generate_pdo_outputs()
+
+    def _change_nodes_state(
+        self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int
+    ) -> bool:
+        """Set ECAT state to target state for all nodes in list
+
+        Args:
+            nodes: target node or list of nodes
+            target_state: target ECAT state
+
+        Returns:
+            True if all nodes reached the target state, else False.
+        """
+        node_list = nodes if isinstance(nodes, list) else [nodes]
+        for drive in node_list:
+            drive.slave.state = target_state
+            drive.slave.write_state()
+        return self._check_node_state(nodes, target_state)
+
+    def _check_node_state(
+        self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int
+    ) -> bool:
+        """Check ECAT state for all nodes in list
+
+        Args:
+            nodes: target node or list of nodes
+            target_state: target ECAT state
+
+        Returns:
+            True if all nodes reached the target state, else False.
+        """
+        node_list = nodes if isinstance(nodes, list) else [nodes]
+        self._ecat_master.read_state()
+
+        return all(
+            target_state == drive.slave.state_check(target_state, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
+            for drive in node_list
+        )
 
     def subscribe_to_status(  # type: ignore [override]
         self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None]
@@ -245,10 +418,9 @@ class EthercatNetwork(Network):
         logger.info("Firmware updated successfully")
 
     def _start_master(self) -> None:
-        """Start the EtherCAT master if it has not been already started."""
-        if not self.__is_master_running:
-            self._ecat_master.open(self.interface_name)
-            self.__is_master_running = True
+        """Start the EtherCAT master"""
+        self._ecat_master.open(self.interface_name)
+        self.__is_master_running = True
 
     @property
     def protocol(self) -> NET_PROT:

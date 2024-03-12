@@ -1,14 +1,13 @@
-from typing import List, Dict, Optional, Union, Tuple
-from abc import ABC, abstractmethod
-
 import xml.etree.ElementTree as ET
+from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union
 
 import ingenialogger
 
-from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
-from ingenialink.register import Register, REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
 from ingenialink import exceptions as exc
+from ingenialink.constants import SINGLE_AXIS_MINIMUM_SUBNODES
+from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, Register
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -363,13 +362,7 @@ class Dictionary(ABC):
 
             # Enumerations
             enums_elem = register.findall(self.DICT_ENUMERATIONS_ENUMERATION)
-            enums = []
-            for enum in enums_elem:
-                dictionary: Dict[str, Union[str, int]] = {
-                    "label": str(enum.text),
-                    "value": int(enum.attrib["value"]),
-                }
-                enums.append(dictionary)
+            enums = {str(enum.text): int(enum.attrib["value"]) for enum in enums_elem}
 
             current_read_register = Register(
                 dtype,

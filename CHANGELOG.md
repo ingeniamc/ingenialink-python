@@ -1,5 +1,28 @@
 # Changelog
 
+## [7.2.0] - 2024-03-13
+
+### Add
+- Motor enable and disable features in the virtual drive.
+- Emulate control loops in the virtual drive.
+- Support to Python 3.9 to 3.12.
+- EtherCAT PDO module.
+- Store and restore functionalities for subnode 0.
+- Add functionalities to update ECAT state machine
+- Add send_receive_processdata function
+- Add scan_slaves_info method
+
+### Fixed
+- Raise exception when ECAT SDO write/read is wrong
+
+### Deprecated
+- Support to Python 3.6 to 3.8.
+
+### Changed
+- The PCAN transceiver bus is automatically reset when the bus-off state is reached.
+- Emergency (EMCY) messages are discarded when using the CoE protocol.
+- The enums are represented using dicts in the Register class.
+
 ## [7.1.1] - 2024-01-03
 
 ### Added

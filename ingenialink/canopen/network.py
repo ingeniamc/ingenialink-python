@@ -2,7 +2,7 @@ import contextlib
 import os
 import re
 import tempfile
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
 from time import sleep
@@ -22,7 +22,8 @@ from ingenialink.canopen.servo import (
     CanopenServo,
 )
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
-from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network
+from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
+from ingenialink.utils._utils import convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 
 logger = ingenialogger.get_logger(__name__)
@@ -173,6 +174,10 @@ class CanopenNetwork(Network):
 
     """
 
+    DRIVE_INFO_INDEX = 0x1018
+    PRODUCT_CODE_SUB_IX = 2
+    REVISION_NUMBER_SUB_IX = 3
+
     def __init__(
         self,
         device: CAN_DEVICE,
@@ -238,6 +243,49 @@ class CanopenNetwork(Network):
             self._teardown_connection()
 
         return nodes  # type: ignore [no-any-return]
+
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
+        """Scans for nodes in the network and return an ordered dict with the slave information.
+
+        Returns:
+            Ordered dict with the slave information.
+
+        """
+        connected_slaves = {servo.target: servo.node for servo in self.servos}
+        slave_info: OrderedDict[int, SlaveInfo] = OrderedDict()
+        try:
+            slaves = self.scan_slaves()
+        except ILError:
+            return slave_info
+
+        is_connection_created = False
+        if self._connection is None:
+            is_connection_created = True
+            try:
+                self._setup_connection()
+            except ILError:
+                self._teardown_connection()
+                return slave_info
+
+        if self._connection is None:
+            return slave_info
+
+        for slave_id in slaves:
+            if slave_id not in connected_slaves:
+                node = self._connection.add_node(slave_id)
+            else:
+                node = connected_slaves[slave_id]
+            product_code = convert_bytes_to_dtype(
+                node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), REG_DTYPE.U32
+            )
+            revision_number = convert_bytes_to_dtype(
+                node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX), REG_DTYPE.U32
+            )
+            slave_info[slave_id] = SlaveInfo(int(product_code), int(revision_number))
+
+        if is_connection_created:
+            self._teardown_connection()
+        return slave_info
 
     def connect_to_slave(  # type: ignore [override]
         self,
@@ -307,11 +355,15 @@ class CanopenNetwork(Network):
         with all the network attributes already specified."""
         if self._connection is None:
             self._connection = canopen.Network()
-
+            connection_args = {
+                "bustype": self.__device,
+                "channel": self.__channel,
+                "bitrate": self.__baudrate,
+            }
+            if self.__device == CAN_DEVICE.PCAN.value:
+                connection_args["auto_reset"] = True
             try:
-                self._connection.connect(
-                    bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate
-                )
+                self._connection.connect(**connection_args)
             except CanError as e:
                 logger.error("Transceiver not found in network. Exception: %s", e)
                 raise ILError(

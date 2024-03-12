@@ -1,15 +1,17 @@
 import ipaddress
 import socket
 import time
+from collections import OrderedDict
 from enum import Enum
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 import ingenialogger
 
 from ingenialink import constants
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethernet.servo import EthernetServo
-from ingenialink.exceptions import ILTimeoutError, ILIOError, ILError
+from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError
+from ingenialink.network import SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -190,6 +192,9 @@ class EoENetwork(EthernetNetwork):
                 "Failed to perform a network scan. Please verify the EoE service is running."
             ) from e
         return list(range(1, r + 1))
+
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
+        raise NotImplementedError
 
     @staticmethod
     def _build_eoe_command_msg(cmd: int, data: Optional[bytes] = None) -> bytes:

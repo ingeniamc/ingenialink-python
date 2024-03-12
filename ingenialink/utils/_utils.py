@@ -1,24 +1,24 @@
+import functools
 import struct
+import warnings
+import xml.etree.ElementTree as ET
 from enum import Enum
-from typing import Union, Callable, Any, Dict, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Union
 
-from ingenialink.exceptions import ILValueError
+import ingenialogger
+
 from ingenialink.enums.register import REG_DTYPE
+from ingenialink.exceptions import ILValueError
 
 if TYPE_CHECKING:
     from ingenialink.servo import Servo
-
-import warnings
-import functools
-import ingenialogger
-import xml.etree.ElementTree as ET
 
 
 logger = ingenialogger.get_logger(__name__)
 
 POLLING_MAX_TRIES = 5  # Seconds
 
-__dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
+dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
     REG_DTYPE.U8: (1, False),
     REG_DTYPE.S8: (1, True),
     REG_DTYPE.U16: (2, False),
@@ -28,6 +28,19 @@ __dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
     REG_DTYPE.U64: (8, False),
     REG_DTYPE.S64: (8, True),
     REG_DTYPE.FLOAT: (4, True),
+}
+
+dtype_length_bits: Dict[REG_DTYPE, int] = {
+    REG_DTYPE.U8: 8,
+    REG_DTYPE.S8: 8,
+    REG_DTYPE.U16: 16,
+    REG_DTYPE.S16: 16,
+    REG_DTYPE.U32: 32,
+    REG_DTYPE.S32: 32,
+    REG_DTYPE.U64: 64,
+    REG_DTYPE.S64: 64,
+    REG_DTYPE.FLOAT: 32,
+    REG_DTYPE.BOOL: 1,
 }
 
 
@@ -206,8 +219,8 @@ def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, s
         ILValueError: If data can't be decoded in utf-8
     """
     signed = False
-    if dtype in __dtype_value:
-        bytes_length, signed = __dtype_value[dtype]
+    if dtype in dtype_value:
+        bytes_length, signed = dtype_value[dtype]
         data = data[:bytes_length]
 
     if dtype == REG_DTYPE.FLOAT:
@@ -246,6 +259,6 @@ def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: REG_DTYPE
         return data.encode("utf_8")
     if not isinstance(data, int):
         raise ValueError(f"Expected data of type int, but {type(data)}")
-    bytes_length, signed = __dtype_value[dtype]
+    bytes_length, signed = dtype_value[dtype]
     data_bytes = data.to_bytes(bytes_length, byteorder="little", signed=signed)
     return data_bytes

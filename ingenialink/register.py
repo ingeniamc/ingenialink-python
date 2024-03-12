@@ -1,8 +1,8 @@
 from abc import ABC
-from typing import Optional, Any, Tuple, Union, Dict, List
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ingenialink import exceptions as exc
-from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY, REG_ADDRESS_TYPE
+from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY
 
 # CANOPEN DTYPES
 IL_REG_DTYPE_DOMAIN = 15
@@ -61,7 +61,7 @@ class Register(ABC):
             Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]
         ] = (None, None),
         labels: Optional[Dict[str, str]] = None,
-        enums: Optional[List[Dict[str, Union[str, int]]]] = None,
+        enums: Optional[Dict[str, int]] = None,
         cat_id: Optional[str] = None,
         scat_id: Optional[str] = None,
         internal_use: int = 0,
@@ -70,7 +70,7 @@ class Register(ABC):
         if labels is None:
             labels = {}
         if enums is None:
-            enums = []
+            enums = {}
 
         self.__type_errors(dtype, access, phy)
 
@@ -84,7 +84,6 @@ class Register(ABC):
         self._storage = storage
         self._range = (None, None) if not reg_range else reg_range
         self._labels = labels
-        self._enums_count = len(enums)
         self._cat_id = cat_id
         self._scat_id = scat_id
         self._internal_use = internal_use
@@ -212,14 +211,14 @@ class Register(ABC):
         return self._labels
 
     @property
-    def enums(self) -> List[Dict[str, Union[str, int]]]:
+    def enums(self) -> Dict[str, int]:
         """Containing all the enums for the register."""
         return self._enums
 
     @property
     def enums_count(self) -> int:
         """The number of the enums in the register."""
-        return self._enums_count
+        return len(self._enums)
 
     @property
     def cat_id(self) -> Optional[str]:

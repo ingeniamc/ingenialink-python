@@ -1,7 +1,12 @@
+try:
+    import pysoem
+except ImportError:
+    pass
 import pytest
 
+from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.network import EthercatNetwork
-from ingenialink.exceptions import ILFirmwareLoadError, ILError
+from ingenialink.exceptions import ILError, ILFirmwareLoadError
 
 
 @pytest.mark.docker
@@ -70,3 +75,27 @@ def test_connect_to_slave_no_slaves_detected(mocker, read_config):
     mocker.patch.object(net, "scan_slaves", scan_slaves)
     with pytest.raises(ILError):
         net.connect_to_slave(1)
+
+
+@pytest.mark.ethercat
+def test_scan_slaves_raises_exception_if_drive_is_already_connected(connect_to_slave):
+    servo, net = connect_to_slave
+    net._ecat_master.read_state()
+    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+    with pytest.raises(ILError):
+        net.scan_slaves()
+    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+
+
+@pytest.mark.ethercat
+def test_scan_slaves_info(read_config):
+    net = EthercatNetwork(read_config["ethercat"]["ifname"])
+    slaves_info = net.scan_slaves_info()
+    dictionary = EthercatDictionary(read_config["ethercat"]["dictionary"])
+
+    assert len(slaves_info) > 0
+    assert read_config["ethercat"]["slave"] in slaves_info
+    assert slaves_info[read_config["ethercat"]["slave"]].product_code == dictionary.product_code
+    assert (
+        slaves_info[read_config["ethercat"]["slave"]].revision_number == dictionary.revision_number
+    )
