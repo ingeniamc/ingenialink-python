@@ -182,6 +182,7 @@ class EthercatServo(PDOServo):
             start_time = time.time()
         self._lock.acquire()
         try:
+            time.sleep(0.0001)  # Unlock threads before SDO read
             value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
         except (
             pysoem.SdoError,
@@ -213,6 +214,7 @@ class EthercatServo(PDOServo):
             start_time = time.time()
         self._lock.acquire()
         try:
+            time.sleep(0.0001)  # Unlock threads before SDO write
             self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
         except (
             pysoem.SdoError,
