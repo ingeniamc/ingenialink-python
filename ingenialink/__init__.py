@@ -54,4 +54,4 @@ __all__ = [
     "CanopenDictionaryV2",
 ]
 
-__version__ = "7.1.1"
+__version__ = "7.2.0"
