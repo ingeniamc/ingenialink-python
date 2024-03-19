@@ -330,6 +330,8 @@ def test_start_stop_pdo(connect_to_all_slave):
         assert pytest.approx(servo._tpdo_maps[0].items[0].value, abs=2) == servo.read(
             TPDO_REGISTERS[0]
         )
+    # Check that PDOs can be re-started with the same configuration
+    start_stop_pdos(net)
     # Re-configure the PDOs and re-start the PDO exchange
     for servo in servos:
         servo.remove_rpdo_map(rpdo_map_index=0)
