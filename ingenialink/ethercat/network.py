@@ -256,6 +256,7 @@ class EthercatNetwork(Network):
             raise ILError(
                 "The RPDO values should be set before starting the PDO exchange process."
             ) from e
+        self.config_pdo_maps()
         self._ecat_master.state = pysoem.SAFEOP_STATE
         if not self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE):
             raise ILStateError("Drives can not reach SafeOp state")
@@ -274,8 +275,9 @@ class EthercatNetwork(Network):
             for servo in self.servos
             if servo.slave.state in [pysoem.OP_STATE, pysoem.SAFEOP_STATE]
         ]
-        if not self._change_nodes_state(op_servo_list, pysoem.PREOP_STATE):
-            logger.warning("Drive can not reach PreOp state")
+        if not self._change_nodes_state(op_servo_list, pysoem.INIT_STATE):
+            logger.warning("Not all drives could reach the Init state")
+        self.__init_nodes()
 
     def send_receive_processdata(self, timeout: float = ECAT_PROCESSDATA_TIMEOUT_S) -> None:
         """Send and receive PDOs
