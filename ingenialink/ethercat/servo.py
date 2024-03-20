@@ -14,11 +14,11 @@ if TYPE_CHECKING:
     from pysoem import CdefSlave
 
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
-from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILIOError, ILTimeoutError, ILError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 from ingenialink.register import REG_ACCESS, REG_DTYPE
+from ingenialink.dictionary import Interface
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -46,7 +46,6 @@ class EthercatServo(PDOServo):
 
     """
 
-    DICTIONARY_CLASS = EthercatDictionary
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
 
     NO_RESPONSE_WORKING_COUNTER = 0
@@ -154,6 +153,8 @@ class EthercatServo(PDOServo):
             access=REG_ACCESS.RW,
         )
     ]
+
+    interface = Interface.ECAT
 
     def __init__(
         self,

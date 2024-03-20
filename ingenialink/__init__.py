@@ -18,7 +18,7 @@ from .ethercat.network import EthercatNetwork
 from .canopen.servo import CanopenServo
 from .canopen.network import CanopenNetwork, CAN_DEVICE, CAN_DEVICE, CAN_BAUDRATE
 from .canopen.register import CanopenRegister
-from .canopen.dictionary import CanopenDictionary
+from .canopen.dictionary import CanopenDictionaryV2
 
 from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_PHY
 
@@ -51,7 +51,7 @@ __all__ = [
     "CanopenServo",
     "CanopenRegister",
     "Poller",
-    "CanopenDictionary",
+    "CanopenDictionaryV2",
 ]
 
 __version__ = "7.2.0"

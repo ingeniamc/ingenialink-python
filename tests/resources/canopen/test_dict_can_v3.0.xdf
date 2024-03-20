@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<IngeniaDictionary>
+	<Header>
+		<Version>3.0</Version>
+		<DefaultLanguage>en_US</DefaultLanguage>
+	</Header>
+	<Body>
+		<Categories>
+			<Category id="OTHERS">
+				<Labels>
+					<Label lang="en_US">Others</Label>
+				</Labels>
+			</Category>
+			<Category id="IDENTIFICATION">
+				<Labels>
+					<Label lang="en_US">Product Identification</Label>
+				</Labels>
+			</Category>
+		</Categories>
+		<Devices>
+			<CANDevice firmwareVersion="2.4.1" ProductCode="61939713" PartNumber="EVS-NET-C" RevisionNumber="196617">
+				<Subnodes>
+					<Subnode index="0">Communication</Subnode>
+					<Subnode index="1">Motion</Subnode>
+				</Subnodes>
+				<CANopenObjects>
+					<CANopenObject index="0x580F" subnode="0">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" cyclic="CYCLIC_TX" desc="Contains the last generated error" default="00000000" cat_id="REPORTING">
+								<Labels>
+									<Label lang="en_US">Last error</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x58A0" subnode="0">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" units="cnt" cyclic="CONFIG" desc="" default="0100" cat_id="IDENTIFICATION">
+								<Labels>
+									<Label lang="en_US">Number of axes</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject >
+					<CANopenObject index="0x1600" subnode="0" id="CIA301_COMMS_RPDO1_MAP">
+						<Labels>
+							<Label lang="en_US">RPDO 1 mapping parameter</Label>
+						</Labels>
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM" access="rw" dtype="u8" id="CIA301_COMMS_RPDO1_MAP" cyclic="CONFIG" desc="" default="01" cat_id="COMMUNICATIONS">
+								<Labels>
+									<Label lang="en_US">Number of mapped objects</Label>
+								</Labels>
+							</Subitem>
+							<Subitem subindex="1" address_type="NVM" access="rw" dtype="u32" id="CIA301_COMMS_RPDO1_MAP_1" cyclic="CONFIG" desc="" default="01100000010000000000000000010000" cat_id="COMMUNICATIONS">
+								<Labels>
+									<Label lang="en_US">RPDO 1 mapping parameter Element 1</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject >
+					<CANopenObject index="0x2151" subnode="1">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" cyclic="CONFIG" desc="Indicates the sensor used for angle readings" default="1100" cat_id="COMMUTATION">
+								<Labels>
+									<Label lang="en_US">Commutation feedback sensor</Label>
+								</Labels>
+								<Enumerations>
+									<Enum value="1">BiSS-C / SSI - slave 1</Enum>
+									<Enum value="3">Internal generator</Enum>
+									<Enum value="4">Incremental encoder 1</Enum>
+									<Enum value="5">Digital halls</Enum>
+									<Enum value="6">Secondary BiSS-C / SSI slave 1</Enum>
+									<Enum value="7">BiSS-C slave 2</Enum>
+									<Enum value="8">Incremental encoder 2</Enum>
+								</Enumerations>
+							</Subitem>
+						</Subitems>
+					</CANopenObject >
+				</CANopenObjects>
+				<Errors>
+					<Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
+						<Labels>
+							<Label lang="en_US">STO is active and could have disabled the power stage disabled</Label>
+						</Labels>
+					</Error>
+					<Error id="0x00002280" affected_module="Power stage" error_type="cyclic">
+						<Labels>
+							<Label lang="en_US">HW over current</Label>
+						</Labels>
+					</Error>
+				</Errors>
+			</CANDevice>
+		</Devices>
+	</Body>
+	<DriveImage encoding="xs:base64Binary">
+	</DriveImage>
+</IngeniaDictionary>

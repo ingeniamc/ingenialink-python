@@ -1374,7 +1374,7 @@ class VirtualDrive(Thread):
                 cast_data.get(reg_dtype, int)(reg_data),
             )
         value: Union[str, int]
-        for subnode in range(self.__dictionary.subnodes):
+        for subnode in self.__dictionary.subnodes:
             for reg_id, reg in self.__dictionary.registers(subnode).items():
                 if reg._storage is not None:
                     continue
@@ -1388,9 +1388,11 @@ class VirtualDrive(Thread):
 
     def _update_registers(self) -> None:
         """Force storage_valid at each register and add registers that are not in the dictionary."""
-        for subnode in range(self.__dictionary.subnodes):
+        for subnode in self.__dictionary.subnodes:
             self.__reg_address_to_id[subnode] = {}
             for reg_id, reg in self.__dictionary.registers(subnode).items():
+                if not isinstance(reg, EthernetRegister):
+                    raise ValueError(f"Register {reg_id} is not an EthernetRegister")
                 self.__reg_address_to_id[subnode][reg.address] = reg_id
                 self.__dictionary.registers(subnode)[reg_id].storage_valid = True
 
@@ -1409,7 +1411,7 @@ class VirtualDrive(Thread):
 
     def _init_register_signals(self) -> None:
         """Init signals, vector time and noise amplitude for each register."""
-        for subnode in range(self.__dictionary.subnodes):
+        for subnode in self.__dictionary.subnodes:
             for reg_id in self.__dictionary.registers(subnode).keys():
                 self.reg_signals[reg_id] = np.array([])
                 self.reg_time[reg_id] = np.array([])
@@ -1571,17 +1573,19 @@ class VirtualDrive(Thread):
         """
         return self.__reg_address_to_id[subnode][address]
 
-    def id_to_address(self, subnode: int, id: str) -> int:
-        """Converts a register address into an ID.
+    def id_to_address(self, subnode: int, uid: str) -> int:
+        """Return address of Register with the target subnode and UID
 
         Args:
             subnode: Subnode.
-            id: Register ID.
+            uid: Register UID.
 
         Returns:
             Register address.
         """
-        register = self.__dictionary.registers(subnode)[id]
+        register = self.__dictionary.registers(subnode)[uid]
+        if not isinstance(register, EthernetRegister):
+            raise ValueError(f"Register {uid} is not an EthernetRegister")
         return register.address
 
     def get_value_by_id(self, subnode: int, id: str) -> Union[int, float, str, bytes]:
@@ -1637,7 +1641,7 @@ class VirtualDrive(Thread):
         Returns:
             Register value.
         """
-        return subnode < self.__dictionary.subnodes and id in self.__dictionary.registers(subnode)
+        return subnode in self.__dictionary.subnodes and id in self.__dictionary.registers(subnode)
 
     def get_register(
         self, subnode: int, address: Optional[int] = None, id: Optional[str] = None
@@ -1660,7 +1664,10 @@ class VirtualDrive(Thread):
         else:
             if id is None:
                 raise ValueError("Register address or id should be passed")
-        return self.__dictionary.registers(subnode)[id]
+        register = self.__dictionary.registers(subnode)[id]
+        if not isinstance(register, EthernetRegister):
+            raise ValueError(f"Register {id} is not an EthernetRegister")
+        return register
 
     def __set_motor_enable(self) -> None:
         """Set the enabled state."""
