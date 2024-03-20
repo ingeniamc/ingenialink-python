@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+### Add
+- Dictionary V3 support
+
+### Changed
+- Dictionary class properties, such as subnodes and interface.
+
+### Fixed
+- Bug that prevented the slaves to reach Operational state after the PDO exchange is re-started.
+
 ## [7.2.0] - 2024-03-13
 
 ### Add
