@@ -273,6 +273,35 @@ def connect_to_all_slave(pytestconfig):
         net.disconnect_from_slave(servo)
 
 
+def create_pdo_maps(servo, rpdo_registers, tpdo_registers):
+    rpdo_map = RPDOMap()
+    tpdo_map = TPDOMap()
+    for tpdo_register in tpdo_registers:
+        register = servo.dictionary.registers(SUBNODE)[tpdo_register]
+        tpdo_map.add_registers(register)
+    for rpdo_register in rpdo_registers:
+        register = servo.dictionary.registers(SUBNODE)[rpdo_register]
+        rpdo_map.add_registers(register)
+    return rpdo_map, tpdo_map
+
+
+def start_stop_pdos(net):
+    net._ecat_master.read_state()
+    for servo in net.servos:
+        assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+    net.start_pdos()
+    net._ecat_master.read_state()
+    start_time = time.time()
+    timeout = 1
+    while time.time() < start_time + timeout:
+        net.send_receive_processdata()
+    for servo in net.servos:
+        assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+    net.stop_pdos()
+    for servo in net.servos:
+        assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+
+
 @pytest.mark.ethercat
 def test_start_stop_pdo(connect_to_all_slave):
     servos, net = connect_to_all_slave
@@ -286,32 +315,12 @@ def test_start_stop_pdo(connect_to_all_slave):
         new_operation_mode[index] = default_operation_mode
         if current_operation_mode[index] == default_operation_mode:
             new_operation_mode[index] += 1
-        rpdo_map = RPDOMap()
-        tpdo_map = TPDOMap()
-        for tpdo_register in TPDO_REGISTERS:
-            register = servo.dictionary.registers(SUBNODE)[tpdo_register]
-            tpdo_map.add_registers(register)
-        for rpdo_register in rpdo_registers:
-            register = servo.dictionary.registers(SUBNODE)[rpdo_register]
-            rpdo_map.add_registers(register)
+        rpdo_map, tpdo_map = create_pdo_maps(servo, rpdo_registers, TPDO_REGISTERS)
         for item in rpdo_map.items:
             item.value = new_operation_mode[index]
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
-        net._ecat_master.read_state()
-        assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
-    net.config_pdo_maps()
-    net.start_pdos()
-    net._ecat_master.read_state()
-    start_time = time.time()
-    timeout = 1
-    while time.time() < start_time + timeout:
-        net.send_receive_processdata()
-    for servo in servos:
-        assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
-    net.stop_pdos()
-    net._ecat_master.read_state()
+    start_stop_pdos(net)
     for index, servo in enumerate(servos):
-        assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
         # Check that RPDOs are being received by the slave
         assert servo._rpdo_maps[0].items[0].value == servo.read(operation_mode_uid)
         # Restore the previous operation mode
@@ -322,11 +331,16 @@ def test_start_stop_pdo(connect_to_all_slave):
             TPDO_REGISTERS[0]
         )
     # Check that PDOs can be re-started with the same configuration
-    net.start_pdos()
-    start_time = time.time()
-    while time.time() < start_time + timeout:
-        net.send_receive_processdata()
-    net.stop_pdos()
+    start_stop_pdos(net)
+    # Re-configure the PDOs and re-start the PDO exchange
+    for servo in servos:
+        servo.remove_rpdo_map(rpdo_map_index=0)
+        servo.remove_tpdo_map(tpdo_map_index=0)
+        rpdo_map, tpdo_map = create_pdo_maps(servo, RPDO_REGISTERS, TPDO_REGISTERS)
+        for item in rpdo_map.items:
+            item.value = 0
+        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+    start_stop_pdos(net)
 
 
 @pytest.mark.ethercat
