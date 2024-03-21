@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILTimeoutError
+from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILWrongWorkingCount
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
@@ -286,7 +286,7 @@ class EthercatNetwork(Network):
             timeout: receive processdata timeout in seconds, 0.1 seconds by default.
 
         Raises:
-            ILError: If processdata working count is wrong
+            ILWrongWorkingCount: If processdata working count is wrong
 
         """
         for servo in self.servos:
@@ -297,9 +297,17 @@ class EthercatNetwork(Network):
             self._ecat_master.send_processdata()
         processdata_wkc = self._ecat_master.receive_processdata(timeout=int(timeout * 1_000_000))
         if processdata_wkc != self._ecat_master.expected_wkc:
-            raise ILError(
+            al_status_msg = ""
+            for servo in self.servos:
+                if servo.slave.al_status == 0:
+                    # No error
+                    continue
+                al_status = pysoem.al_status_code_to_string(servo.slave.al_status)
+                al_status_msg = "AL Status: " if al_status_msg == "" else al_status_msg
+                al_status_msg += f"Slave {servo.slave_id}: {al_status}. "
+            raise ILWrongWorkingCount(
                 f"Processdata working count is wrong, expected: {self._ecat_master.expected_wkc},"
-                f" real: {processdata_wkc}"
+                f" real: {processdata_wkc}. {al_status_msg}"
             )
         for servo in self.servos:
             servo.generate_pdo_outputs()
