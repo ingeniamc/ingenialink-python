@@ -5,6 +5,7 @@ import subprocess
 import sys
 import time
 from collections import OrderedDict, defaultdict
+from enum import Enum
 from threading import Thread
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
@@ -25,6 +26,16 @@ from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, I
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
+
+
+class SlaveState(Enum):
+    INIT_STATE = 1
+    NONE_STATE = 0
+    OP_STATE = 8
+    PREOP_STATE = 2
+    SAFEOP_STATE = 4
+    STATE_ERROR = 16
+    SAFEOP_ERROR_STATE = SAFEOP_STATE + STATE_ERROR
 
 
 class NetStatusListener(Thread):
@@ -297,17 +308,20 @@ class EthercatNetwork(Network):
             self._ecat_master.send_processdata()
         processdata_wkc = self._ecat_master.receive_processdata(timeout=int(timeout * 1_000_000))
         if processdata_wkc != self._ecat_master.expected_wkc:
-            al_status_msg = ""
+            self._ecat_master.read_state()
+            servos_state_msg = ""
             for servo in self.servos:
-                if servo.slave.al_status == 0:
-                    # No error
-                    continue
-                al_status = pysoem.al_status_code_to_string(servo.slave.al_status)
-                al_status_msg = "AL Status: " if al_status_msg == "" else al_status_msg
-                al_status_msg += f"Slave {servo.slave_id}: {al_status}. "
+                servos_state_msg += (
+                    f"Slave {servo.slave_id}: state {SlaveState(servo.slave.state).name}"
+                )
+                if servo.slave.al_status != 0:
+                    al_status = pysoem.al_status_code_to_string(servo.slave.al_status)
+                    servos_state_msg += f", AL status {al_status}."
+                else:
+                    servos_state_msg += ". "
             raise ILWrongWorkingCount(
                 f"Processdata working count is wrong, expected: {self._ecat_master.expected_wkc},"
-                f" real: {processdata_wkc}. {al_status_msg}"
+                f" real: {processdata_wkc}. {servos_state_msg}"
             )
         for servo in self.servos:
             servo.generate_pdo_outputs()
