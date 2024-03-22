@@ -966,6 +966,83 @@ class DictionaryV2(Dictionary):
         ],
     }
 
+    pdo_registers = {
+        Interface.ECAT: [
+            EthercatRegister(
+                identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_0",
+                units="",
+                subnode=0,
+                idx=0x1C12,
+                subidx=0x00,
+                dtype=REG_DTYPE.S32,
+                access=REG_ACCESS.RW,
+            ),
+            EthercatRegister(
+                identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_1",
+                units="",
+                subnode=0,
+                idx=0x1C12,
+                subidx=0x01,
+                dtype=REG_DTYPE.S32,
+                access=REG_ACCESS.RW,
+            ),
+            EthercatRegister(
+                identifier="RPDO_MAP_REGISTER_SUB_IDX_0",
+                units="",
+                subnode=0,
+                idx=0x1600,
+                subidx=0x00,
+                dtype=REG_DTYPE.S32,
+                access=REG_ACCESS.RW,
+            ),
+            EthercatRegister(
+                identifier="RPDO_MAP_REGISTER_SUB_IDX_1",
+                units="",
+                subnode=0,
+                idx=0x1600,
+                subidx=0x01,
+                dtype=REG_DTYPE.STR,
+                access=REG_ACCESS.RW,
+            ),
+            EthercatRegister(
+                identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_0",
+                units="",
+                subnode=0,
+                idx=0x1C13,
+                subidx=0x00,
+                dtype=REG_DTYPE.S32,
+                access=REG_ACCESS.RW,
+            ),
+            EthercatRegister(
+                identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_1",
+                units="",
+                subnode=0,
+                idx=0x1C13,
+                subidx=0x01,
+                dtype=REG_DTYPE.S32,
+                access=REG_ACCESS.RW,
+            ),
+            EthercatRegister(
+                identifier="TPDO_MAP_REGISTER_SUB_IDX_0",
+                units="",
+                subnode=0,
+                idx=0x1A00,
+                subidx=0x00,
+                dtype=REG_DTYPE.S32,
+                access=REG_ACCESS.RW,
+            ),
+            EthercatRegister(
+                identifier="TPDO_MAP_REGISTER_SUB_IDX_1",
+                units="",
+                subnode=0,
+                idx=0x1A00,
+                subidx=0x01,
+                dtype=REG_DTYPE.STR,
+                access=REG_ACCESS.RW,
+            ),
+        ]
+    }
+
     def read_dictionary(self) -> None:
         try:
             with open(self.path, "r", encoding="utf-8") as xdf_file:
@@ -1167,3 +1244,7 @@ class DictionaryV2(Dictionary):
         for register in self.monitoring_disturbance_registers[self.interface]:
             if register.identifier is not None:
                 self._registers[register.subnode][register.identifier] = register
+        if self.interface in self.pdo_registers:
+            for register in self.pdo_registers[self.interface]:
+                if register.identifier is not None:
+                    self._registers[register.subnode][register.identifier] = register
