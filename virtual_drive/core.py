@@ -1113,7 +1113,7 @@ class VirtualMonitoring(VirtualMonDistBase):
                 if len(sample_bytes) < size:
                     sample_bytes += b"0" * (size - len(sample_bytes))
                 byte_array += sample_bytes
-        self.drive.set_value_by_id(0, "MON_DATA", byte_array)
+        self.drive.set_value_by_id(0, "MONITORING_DATA", byte_array)
 
     @property
     def trigger_type(self) -> int:
@@ -1335,7 +1335,7 @@ class VirtualDrive(Thread):
         """
         value = self.get_value_by_id(register.subnode, str(register.identifier))
         if (
-            register.address == self.id_to_address(0, "MON_DATA")
+            register.address == self.id_to_address(0, "MONITORING_DATA")
             and isinstance(value, bytes)
             and self._monitoring
         ):
@@ -1441,11 +1441,11 @@ class VirtualDrive(Thread):
         if not self._monitoring:
             return bytes(1)
         sent_cmd = self.ACK_CMD
-        reg_add = self.id_to_address(0, "MON_DATA")
+        reg_add = self.id_to_address(0, "MONITORING_DATA")
         limit = min(len(data), MONITORING_BUFFER_SIZE)
         response = MCB.build_mcb_frame(sent_cmd, 0, reg_add, data[:limit])
         data_left = data[limit:]
-        self.set_value_by_id(0, "MON_DATA", data_left)
+        self.set_value_by_id(0, "MONITORING_DATA", data_left)
         self._monitoring.available_bytes = len(data_left)
         return response
 
@@ -1506,7 +1506,7 @@ class VirtualDrive(Thread):
             self.__clean_plant_signals()
         if reg_id == "DIST_REMOVE_DATA" and subnode == 0 and value == 1 and self._disturbance:
             self._disturbance.remove_data()
-        if reg_id == "DIST_DATA" and subnode == 0 and self._disturbance:
+        if reg_id == "DISTURBANCE_DATA" and subnode == 0 and self._disturbance:
             self._disturbance.append_data(data)
         if reg_id == "DRV_OP_CMD":
             self.operation_mode = int(value)

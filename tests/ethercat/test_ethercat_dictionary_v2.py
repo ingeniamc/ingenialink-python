@@ -49,6 +49,14 @@ def test_read_dictionary_registers():
             "COMMS_ETH_NET_MASK",
             "DRV_BOOT_COCO_VERSION",
             "MON_CFG_EOC_TYPE",
+            "RPDO_ASSIGN_REGISTER_SUB_IDX_0",
+            "RPDO_ASSIGN_REGISTER_SUB_IDX_1",
+            "RPDO_MAP_REGISTER_SUB_IDX_0",
+            "RPDO_MAP_REGISTER_SUB_IDX_1",
+            "TPDO_ASSIGN_REGISTER_SUB_IDX_0",
+            "TPDO_ASSIGN_REGISTER_SUB_IDX_1",
+            "TPDO_MAP_REGISTER_SUB_IDX_0",
+            "TPDO_MAP_REGISTER_SUB_IDX_1",
         ],
         1: ["COMMU_ANGLE_SENSOR"],
     }
@@ -63,7 +71,7 @@ def test_read_dictionary_registers():
 
 @pytest.mark.no_connection
 def test_read_dictionary_registers_multiaxis():
-    expected_num_registers_per_subnode = {0: 2, 1: 2, 2: 2}
+    expected_num_registers_per_subnode = {0: 10, 1: 2, 2: 2}
     dictionary_path = join_path(path_resources, "test_dict_ethercat_axis.xdf")
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
