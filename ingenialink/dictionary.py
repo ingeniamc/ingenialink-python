@@ -899,6 +899,8 @@ class DictionaryV2(Dictionary):
 
     dict_interface: Optional[str]
 
+    MON_DIST_STATUS_REGISTER = "MON_DIST_STATUS"
+
     monitoring_disturbance_registers: Dict[
         Interface, List[Union[EthercatRegister, EthernetRegister, CanopenRegister]]
     ] = {
@@ -1241,9 +1243,15 @@ class DictionaryV2(Dictionary):
     def _append_missing_registers(
         self,
     ) -> None:
-        for register in self.monitoring_disturbance_registers[self.interface]:
-            if register.identifier is not None:
-                self._registers[register.subnode][register.identifier] = register
+        """Append missing registers to the dictionary.
+
+        Mainly registers needed for Monitoring/Disturbance and PDOs.
+
+        """
+        if self.MON_DIST_STATUS_REGISTER in self._registers[0]:
+            for register in self.monitoring_disturbance_registers[self.interface]:
+                if register.identifier is not None:
+                    self._registers[register.subnode][register.identifier] = register
         if self.interface in self.pdo_registers:
             for register in self.pdo_registers[self.interface]:
                 if register.identifier is not None:
