@@ -1169,13 +1169,29 @@ class Servo:
         self.disturbance_data = data
 
     def _monitoring_read_data(self) -> bytearray:
-        """Read monitoring data frame."""
-        monitoring_data_register = self.dictionary.registers(0)[self.MONITORING_DATA]
+        """Read monitoring data frame.
+
+        Raises:
+            NotImplementedError: If monitoring is not supported by the device.
+
+        """
+        try:
+            monitoring_data_register = self.dictionary.registers(0)[self.MONITORING_DATA]
+        except KeyError:
+            raise NotImplementedError("Monitoring is not supported by this device.")
         return self._read_raw(monitoring_data_register)
 
     def _disturbance_write_data(self, data: bytes) -> None:
-        """Write disturbance data."""
-        disturbance_data_register = self.dictionary.registers(0)[self.DIST_DATA]
+        """Write disturbance data.
+
+        Raises:
+            NotImplementedError: If disturbance is not supported by the device.
+
+        """
+        try:
+            disturbance_data_register = self.dictionary.registers(0)[self.DIST_DATA]
+        except KeyError:
+            raise NotImplementedError("Disturbance is not supported by this device.")
         return self._write_raw(disturbance_data_register, data=data)
 
     @abstractmethod
