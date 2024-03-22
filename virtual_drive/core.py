@@ -1025,7 +1025,7 @@ class VirtualMonitoring(VirtualMonDistBase):
     NUMBER_MAP_REGS = "MON_CFG_TOTAL_MAP"
     MAP_REG_CFG = "MON_CFG_REG{}_MAP"
     BYTES_PER_BLOCK_REG = "MON_CFG_BYTES_PER_BLOCK"
-    DATA_REG = "MON_DATA"
+    DATA_REG = "MONITORING_DATA"
     TRIGGER_TYPE_REG = "MON_CFG_SOC_TYPE"
     AVAILABLE_BYTES_REG = "MON_CFG_BYTES_VALUE"
     STATUS_REGISTER = "MON_DIST_STATUS"
@@ -1139,7 +1139,7 @@ class VirtualDisturbance(VirtualMonDistBase):
     MAP_REG_CFG = "DIST_CFG_REG{}_MAP"
     BYTES_PER_BLOCK_REG = "DIST_CFG_BYTES_PER_BLOCK"
     AVAILABLE_BYTES_REG = "DIST_CFG_BYTES"
-    DATA_REG = "DIST_DATA"
+    DATA_REG = "DISTURBANCE_DATA"
     STATUS_REGISTER = "DIST_STATUS"
 
     def __init__(self, drive: "VirtualDrive") -> None:
@@ -1397,10 +1397,12 @@ class VirtualDrive(Thread):
                 self.__dictionary.registers(subnode)[reg_id].storage_valid = True
 
         custom_regs = {
-            "MON_DATA": EthernetServo.MONITORING_DATA,
-            "DIST_DATA": EthernetServo.DIST_DATA,
+            "MONITORING_DATA": self.__dictionary.registers(0)[EthernetServo.MONITORING_DATA],
+            "DISTURBANCE_DATA": self.__dictionary.registers(0)[EthernetServo.DIST_DATA],
         }
         for id, reg in custom_regs.items():
+            if not isinstance(reg, EthernetRegister):
+                raise ValueError
             register = EthernetRegister(
                 reg.address, REG_DTYPE.DOMAIN, reg.access, identifier=id, subnode=reg.subnode
             )
