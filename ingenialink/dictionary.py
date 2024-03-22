@@ -11,6 +11,7 @@ from ingenialink.exceptions import ILDictionaryParseError
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, Register
+from ingenialink.ethercat.register import EthercatRegister
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -898,6 +899,73 @@ class DictionaryV2(Dictionary):
 
     dict_interface: Optional[str]
 
+    monitoring_disturbance_registers: Dict[
+        Interface, List[Union[EthercatRegister, EthernetRegister, CanopenRegister]]
+    ] = {
+        Interface.ECAT: [
+            EthercatRegister(
+                identifier="MONITORING_DATA",
+                units="",
+                subnode=0,
+                idx=0x58B2,
+                subidx=0x01,
+                cyclic="CONFIG",
+                dtype=REG_DTYPE.U16,
+                access=REG_ACCESS.RO,
+            ),
+            EthercatRegister(
+                identifier="DISTURBANCE_DATA",
+                units="",
+                subnode=0,
+                idx=0x58B4,
+                subidx=0x01,
+                cyclic="CONFIG",
+                dtype=REG_DTYPE.U16,
+                access=REG_ACCESS.WO,
+            ),
+        ],
+        Interface.ETH: [
+            EthernetRegister(
+                identifier="MONITORING_DATA",
+                units="",
+                subnode=0,
+                address=0x00B2,
+                cyclic="CONFIG",
+                dtype=REG_DTYPE.U16,
+                access=REG_ACCESS.RO,
+            ),
+            EthernetRegister(
+                identifier="DISTURBANCE_DATA",
+                units="",
+                subnode=0,
+                address=0x00B4,
+                cyclic="CONFIG",
+                dtype=REG_DTYPE.U16,
+                access=REG_ACCESS.WO,
+            ),
+        ],
+        Interface.CAN: [
+            CanopenRegister(
+                identifier="MONITORING_DATA",
+                idx=0x58B2,
+                subidx=0x00,
+                cyclic="CONFIG",
+                dtype=REG_DTYPE.U16,
+                access=REG_ACCESS.RO,
+                subnode=0,
+            ),
+            CanopenRegister(
+                identifier="DISTURBANCE_DATA",
+                idx=0x58B4,
+                subidx=0x00,
+                cyclic="CONFIG",
+                dtype=REG_DTYPE.U16,
+                access=REG_ACCESS.RW,
+                subnode=0,
+            ),
+        ],
+    }
+
     def read_dictionary(self) -> None:
         try:
             with open(self.path, "r", encoding="utf-8") as xdf_file:
@@ -974,6 +1042,7 @@ class DictionaryV2(Dictionary):
             logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
         xdf_file.close()
+        self._append_missing_registers()
 
     def _read_xdf_register(self, register: ET.Element) -> Optional[Register]:
         """Reads a register from the dictionary and creates a Register instance.
@@ -1091,3 +1160,10 @@ class DictionaryV2(Dictionary):
         if identifier is None:
             return
         self._registers[subnode][identifier] = register
+
+    def _append_missing_registers(
+        self,
+    ) -> None:
+        for register in self.monitoring_disturbance_registers[self.interface]:
+            if register.identifier is not None:
+                self._registers[register.subnode][register.identifier] = register
