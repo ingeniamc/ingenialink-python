@@ -187,15 +187,11 @@ class EthercatServo(PDOServo):
             )
         return data
 
-    def _disturbance_write_data(self, data: bytearray) -> None:  # type: ignore [override]
+    def _disturbance_write_data(self, data: bytes) -> None:
         """Write disturbance data."""
-        disturbance_data_register = self.dictionary.registers(0)[self.DIST_DATA]
-        if not isinstance(disturbance_data_register, EthercatRegister):
-            raise ValueError(
-                "Error retrieving the Disturbance data register. Expected EthercatRegister, got:"
-                f" {type(disturbance_data_register)}"
-            )
-        return self._write_raw(disturbance_data_register, bytes(data), complete_access=True)
+        if self.DIST_DATA not in self.dictionary.registers(0):
+            raise NotImplementedError("Disturbance is not supported by this device.")
+        return self.write(self.DIST_DATA, subnode=0, data=data, complete_access=True)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
