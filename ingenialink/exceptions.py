@@ -190,3 +190,9 @@ class ILCOMKITTimeout(ILConfigurationError):
     """COMKIT Timeout. CORE device is not properly connected configuration error."""
 
     pass
+
+
+class ILWrongWorkingCount(ILError):
+    """PDOs process data working count expected and received differ."""
+
+    pass
