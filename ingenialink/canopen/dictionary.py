@@ -26,7 +26,6 @@ class CanopenDictionaryV2(DictionaryV2):
             dtype=REG_DTYPE.U16,
             access=REG_ACCESS.RO,
             subnode=0,
-            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         CanopenRegister(
             identifier="DISTURBANCE_DATA",
@@ -34,9 +33,8 @@ class CanopenDictionaryV2(DictionaryV2):
             subidx=0x00,
             cyclic="CONFIG",
             dtype=REG_DTYPE.U16,
-            access=REG_ACCESS.RW,
+            access=REG_ACCESS.WO,
             subnode=0,
-            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
     ]
 

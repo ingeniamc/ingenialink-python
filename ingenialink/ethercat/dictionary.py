@@ -32,7 +32,6 @@ class EthercatDictionaryV2(DictionaryV2):
             cyclic="CONFIG",
             dtype=REG_DTYPE.U16,
             access=REG_ACCESS.RO,
-            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         EthercatRegister(
             identifier="DISTURBANCE_DATA",
@@ -43,7 +42,6 @@ class EthercatDictionaryV2(DictionaryV2):
             cyclic="CONFIG",
             dtype=REG_DTYPE.U16,
             access=REG_ACCESS.WO,
-            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
     ]
 

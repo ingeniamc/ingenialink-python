@@ -355,8 +355,8 @@ class Servo:
         for subnode in subnodes:
             registers_dict = self.dictionary.registers(subnode=subnode)
             for reg_id, register in registers_dict.items():
-                if (register.address_type == REG_ADDRESS_TYPE.NVM_NONE) or (
-                    register.access != REG_ACCESS.RW
+                if (register.access != REG_ACCESS.RW) or (
+                    register.address_type == REG_ADDRESS_TYPE.NVM_NONE
                 ):
                     continue
                 register_xml = ET.SubElement(registers, "Register")

@@ -26,7 +26,6 @@ class EthernetDictionaryV2(DictionaryV2):
             cyclic="CONFIG",
             dtype=REG_DTYPE.U16,
             access=REG_ACCESS.RO,
-            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         EthernetRegister(
             identifier="DISTURBANCE_DATA",
@@ -36,7 +35,6 @@ class EthernetDictionaryV2(DictionaryV2):
             cyclic="CONFIG",
             dtype=REG_DTYPE.U16,
             access=REG_ACCESS.WO,
-            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
     ]
 
