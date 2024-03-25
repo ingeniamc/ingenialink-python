@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
+from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS
 
 import ingenialogger
 import xml.etree.ElementTree as ET

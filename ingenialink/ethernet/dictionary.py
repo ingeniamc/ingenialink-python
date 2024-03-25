@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import ingenialogger
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
+from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
 
 logger = ingenialogger.get_logger(__name__)
 
