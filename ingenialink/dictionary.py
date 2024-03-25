@@ -901,149 +901,9 @@ class DictionaryV2(Dictionary):
 
     MON_DIST_STATUS_REGISTER = "MON_DIST_STATUS"
 
-    monitoring_disturbance_registers: Dict[
-        Interface, List[Union[EthercatRegister, EthernetRegister, CanopenRegister]]
-    ] = {
-        Interface.ECAT: [
-            EthercatRegister(
-                identifier="MONITORING_DATA",
-                units="",
-                subnode=0,
-                idx=0x58B2,
-                subidx=0x01,
-                cyclic="CONFIG",
-                dtype=REG_DTYPE.U16,
-                access=REG_ACCESS.RO,
-            ),
-            EthercatRegister(
-                identifier="DISTURBANCE_DATA",
-                units="",
-                subnode=0,
-                idx=0x58B4,
-                subidx=0x01,
-                cyclic="CONFIG",
-                dtype=REG_DTYPE.U16,
-                access=REG_ACCESS.WO,
-            ),
-        ],
-        Interface.ETH: [
-            EthernetRegister(
-                identifier="MONITORING_DATA",
-                units="",
-                subnode=0,
-                address=0x00B2,
-                cyclic="CONFIG",
-                dtype=REG_DTYPE.U16,
-                access=REG_ACCESS.RO,
-            ),
-            EthernetRegister(
-                identifier="DISTURBANCE_DATA",
-                units="",
-                subnode=0,
-                address=0x00B4,
-                cyclic="CONFIG",
-                dtype=REG_DTYPE.U16,
-                access=REG_ACCESS.WO,
-            ),
-        ],
-        Interface.CAN: [
-            CanopenRegister(
-                identifier="MONITORING_DATA",
-                idx=0x58B2,
-                subidx=0x00,
-                cyclic="CONFIG",
-                dtype=REG_DTYPE.U16,
-                access=REG_ACCESS.RO,
-                subnode=0,
-            ),
-            CanopenRegister(
-                identifier="DISTURBANCE_DATA",
-                idx=0x58B4,
-                subidx=0x00,
-                cyclic="CONFIG",
-                dtype=REG_DTYPE.U16,
-                access=REG_ACCESS.RW,
-                subnode=0,
-            ),
-        ],
-    }
-
-    pdo_registers = {
-        Interface.ECAT: [
-            EthercatRegister(
-                identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_0",
-                units="",
-                subnode=0,
-                idx=0x1C12,
-                subidx=0x00,
-                dtype=REG_DTYPE.S32,
-                access=REG_ACCESS.RW,
-            ),
-            EthercatRegister(
-                identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_1",
-                units="",
-                subnode=0,
-                idx=0x1C12,
-                subidx=0x01,
-                dtype=REG_DTYPE.S32,
-                access=REG_ACCESS.RW,
-            ),
-            EthercatRegister(
-                identifier="RPDO_MAP_REGISTER_SUB_IDX_0",
-                units="",
-                subnode=0,
-                idx=0x1600,
-                subidx=0x00,
-                dtype=REG_DTYPE.S32,
-                access=REG_ACCESS.RW,
-            ),
-            EthercatRegister(
-                identifier="RPDO_MAP_REGISTER_SUB_IDX_1",
-                units="",
-                subnode=0,
-                idx=0x1600,
-                subidx=0x01,
-                dtype=REG_DTYPE.STR,
-                access=REG_ACCESS.RW,
-            ),
-            EthercatRegister(
-                identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_0",
-                units="",
-                subnode=0,
-                idx=0x1C13,
-                subidx=0x00,
-                dtype=REG_DTYPE.S32,
-                access=REG_ACCESS.RW,
-            ),
-            EthercatRegister(
-                identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_1",
-                units="",
-                subnode=0,
-                idx=0x1C13,
-                subidx=0x01,
-                dtype=REG_DTYPE.S32,
-                access=REG_ACCESS.RW,
-            ),
-            EthercatRegister(
-                identifier="TPDO_MAP_REGISTER_SUB_IDX_0",
-                units="",
-                subnode=0,
-                idx=0x1A00,
-                subidx=0x00,
-                dtype=REG_DTYPE.S32,
-                access=REG_ACCESS.RW,
-            ),
-            EthercatRegister(
-                identifier="TPDO_MAP_REGISTER_SUB_IDX_1",
-                units="",
-                subnode=0,
-                idx=0x1A00,
-                subidx=0x01,
-                dtype=REG_DTYPE.STR,
-                access=REG_ACCESS.RW,
-            ),
-        ]
-    }
+    MONITORING_DISTURBANCE_REGISTERS: Union[
+        List[EthercatRegister], List[EthernetRegister], List[CanopenRegister]
+    ]
 
     def read_dictionary(self) -> None:
         try:
@@ -1249,10 +1109,6 @@ class DictionaryV2(Dictionary):
 
         """
         if self.MON_DIST_STATUS_REGISTER in self._registers[0]:
-            for register in self.monitoring_disturbance_registers[self.interface]:
-                if register.identifier is not None:
-                    self._registers[register.subnode][register.identifier] = register
-        if self.interface in self.pdo_registers:
-            for register in self.pdo_registers[self.interface]:
+            for register in self.MONITORING_DISTURBANCE_REGISTERS:
                 if register.identifier is not None:
                     self._registers[register.subnode][register.identifier] = register
