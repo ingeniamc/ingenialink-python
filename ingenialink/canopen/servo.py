@@ -35,22 +35,6 @@ class CanopenServo(Servo):
     STATUS_WORD_REGISTERS = "CIA402_DRV_STATE_STATUS"
     RESTORE_COCO_ALL = "CIA301_COMMS_RESTORE_ALL"
     STORE_COCO_ALL = "CIA301_COMMS_STORE_ALL"
-    MONITORING_DATA = CanopenRegister(
-        idx=0x58B2,
-        subidx=0x00,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.RO,
-        subnode=0,
-    )
-    DIST_DATA = CanopenRegister(
-        idx=0x58B4,
-        subidx=0x00,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.RW,
-        subnode=0,
-    )
 
     interface = Interface.CAN
 

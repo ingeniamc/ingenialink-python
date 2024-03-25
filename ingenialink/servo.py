@@ -193,13 +193,13 @@ class Servo:
     MONITORING_NUMBER_MAPPED_REGISTERS = "MON_CFG_TOTAL_MAP"
     MONITORING_BYTES_PER_BLOCK = "MON_CFG_BYTES_PER_BLOCK"
     MONITORING_ACTUAL_NUMBER_BYTES = "MON_CFG_BYTES_VALUE"
-    MONITORING_DATA: Optional[Register] = None
+    MONITORING_DATA = "MONITORING_DATA"
     MONITORING_DISTURBANCE_VERSION = "MON_DIST_VERSION"
     DISTURBANCE_ENABLE = "DIST_ENABLE"
     DISTURBANCE_REMOVE_DATA = "DIST_REMOVE_DATA"
     DISTURBANCE_NUMBER_MAPPED_REGISTERS = "DIST_CFG_MAP_REGS"
     DIST_NUMBER_SAMPLES = "DIST_CFG_SAMPLES"
-    DIST_DATA: Register
+    DIST_DATA = "DISTURBANCE_DATA"
     MONITORING_ACTUAL_NUMBER_SAMPLES = "MON_CFG_CYCLES_VALUE"
     DISTURBANCE_REMOVE_REGISTERS_OLD = "DIST_CMD_RM_REGS"
     MONITORING_REMOVE_REGISTERS_OLD = "MON_CMD_RM_REG"
@@ -1158,8 +1158,6 @@ class Servo:
             data_arr: Data array.
 
         """
-        if self.DIST_DATA is None:
-            return
         try:
             data, chunks = self._disturbance_create_data_chunks(
                 channels, dtypes, data_arr, self.MAX_WRITE_SIZE
@@ -1171,14 +1169,30 @@ class Servo:
         self.disturbance_data = data
 
     def _monitoring_read_data(self) -> bytearray:
-        """Read monitoring data frame."""
-        if self.MONITORING_DATA is None:
-            return bytearray()
-        return self._read_raw(self.MONITORING_DATA)
+        """Read monitoring data frame.
+
+        Raises:
+            NotImplementedError: If monitoring is not supported by the device.
+
+        """
+        try:
+            monitoring_data_register = self.dictionary.registers(0)[self.MONITORING_DATA]
+        except KeyError:
+            raise NotImplementedError("Monitoring is not supported by this device.")
+        return self._read_raw(monitoring_data_register)
 
     def _disturbance_write_data(self, data: bytes) -> None:
-        """Write disturbance data."""
-        return self._write_raw(self.DIST_DATA, data=data)
+        """Write disturbance data.
+
+        Raises:
+            NotImplementedError: If disturbance is not supported by the device.
+
+        """
+        try:
+            disturbance_data_register = self.dictionary.registers(0)[self.DIST_DATA]
+        except KeyError:
+            raise NotImplementedError("Disturbance is not supported by this device.")
+        return self._write_raw(disturbance_data_register, data=data)
 
     @abstractmethod
     def _write_raw(self, reg: Register, data: bytes) -> None:

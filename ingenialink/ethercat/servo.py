@@ -52,108 +52,6 @@ class EthercatServo(PDOServo):
     TIMEOUT_WORKING_COUNTER = -5
     NOFRAME_WORKING_COUNTER = -1
 
-    MONITORING_DATA = EthercatRegister(
-        identifier="MONITORING_DATA",
-        units="",
-        subnode=0,
-        idx=0x58B2,
-        subidx=0x01,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.RO,
-    )
-    DIST_DATA = EthercatRegister(
-        identifier="DISTURBANCE_DATA",
-        units="",
-        subnode=0,
-        idx=0x58B4,
-        subidx=0x01,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.WO,
-    )
-
-    RPDO_ASSIGN_REGISTER_SUB_IDX_0 = EthercatRegister(
-        identifier="RPDO_ASSIGN_REGISTER",
-        units="",
-        subnode=0,
-        idx=0x1C12,
-        subidx=0x00,
-        dtype=REG_DTYPE.S32,
-        access=REG_ACCESS.RW,
-    )
-    RPDO_ASSIGN_REGISTER_SUB_IDX_1 = EthercatRegister(
-        identifier="RPDO_ASSIGN_REGISTER",
-        units="",
-        subnode=0,
-        idx=0x1C12,
-        subidx=0x01,
-        dtype=REG_DTYPE.S32,
-        access=REG_ACCESS.RW,
-    )
-    RPDO_MAP_REGISTER_SUB_IDX_0 = [
-        EthercatRegister(
-            identifier="RPDO_MAP_REGISTER",
-            units="",
-            subnode=0,
-            idx=0x1600,
-            subidx=0x00,
-            dtype=REG_DTYPE.S32,
-            access=REG_ACCESS.RW,
-        )
-    ]
-    RPDO_MAP_REGISTER_SUB_IDX_1 = [
-        EthercatRegister(
-            identifier="RPDO_MAP_REGISTER",
-            units="",
-            subnode=0,
-            idx=0x1600,
-            subidx=0x01,
-            dtype=REG_DTYPE.STR,
-            access=REG_ACCESS.RW,
-        )
-    ]
-    TPDO_ASSIGN_REGISTER_SUB_IDX_0 = EthercatRegister(
-        identifier="TPDO_ASSIGN_REGISTER",
-        units="",
-        subnode=0,
-        idx=0x1C13,
-        subidx=0x00,
-        dtype=REG_DTYPE.S32,
-        access=REG_ACCESS.RW,
-    )
-    TPDO_ASSIGN_REGISTER_SUB_IDX_1 = EthercatRegister(
-        identifier="TPDO_ASSIGN_REGISTER",
-        units="",
-        subnode=0,
-        idx=0x1C13,
-        subidx=0x01,
-        dtype=REG_DTYPE.S32,
-        access=REG_ACCESS.RW,
-    )
-    TPDO_MAP_REGISTER_SUB_IDX_0 = [
-        EthercatRegister(
-            identifier="TPDO_MAP_REGISTER",
-            units="",
-            subnode=0,
-            idx=0x1A00,
-            subidx=0x00,
-            dtype=REG_DTYPE.S32,
-            access=REG_ACCESS.RW,
-        )
-    ]
-    TPDO_MAP_REGISTER_SUB_IDX_1 = [
-        EthercatRegister(
-            identifier="TPDO_MAP_REGISTER",
-            units="",
-            subnode=0,
-            idx=0x1A00,
-            subidx=0x01,
-            dtype=REG_DTYPE.STR,
-            access=REG_ACCESS.RW,
-        )
-    ]
-
     interface = Interface.ECAT
 
     def __init__(
@@ -278,11 +176,23 @@ class EthercatServo(PDOServo):
 
     def _monitoring_read_data(self) -> bytes:  # type: ignore [override]
         """Read monitoring data frame."""
-        return self._read_raw(self.MONITORING_DATA, buffer_size=1024, complete_access=True)
+        monitoring_data_register = self.dictionary.registers(0)[self.MONITORING_DATA]
+        if not isinstance(monitoring_data_register, EthercatRegister):
+            raise ValueError(
+                "Error retrieving the Monitoring data register. Expected EthercatRegister, got:"
+                f" {type(monitoring_data_register)}"
+            )
+        return self._read_raw(monitoring_data_register, buffer_size=1024, complete_access=True)
 
     def _disturbance_write_data(self, data: bytearray) -> None:  # type: ignore [override]
         """Write disturbance data."""
-        return self._write_raw(self.DIST_DATA, bytes(data), complete_access=True)
+        disturbance_data_register = self.dictionary.registers(0)[self.DIST_DATA]
+        if not isinstance(disturbance_data_register, EthercatRegister):
+            raise ValueError(
+                "Error retrieving the Disturbance data register. Expected EthercatRegister, got:"
+                f" {type(disturbance_data_register)}"
+            )
+        return self._write_raw(disturbance_data_register, bytes(data), complete_access=True)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:

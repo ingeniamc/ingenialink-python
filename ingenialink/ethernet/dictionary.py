@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import ingenialogger
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -16,6 +16,27 @@ class EthernetDictionaryV2(DictionaryV2):
         dictionary_path: Path to the Ingenia dictionary.
 
     """
+
+    MONITORING_DISTURBANCE_REGISTERS: List[EthernetRegister] = [
+        EthernetRegister(
+            identifier="MONITORING_DATA",
+            units="",
+            subnode=0,
+            address=0x00B2,
+            cyclic="CONFIG",
+            dtype=REG_DTYPE.U16,
+            access=REG_ACCESS.RO,
+        ),
+        EthernetRegister(
+            identifier="DISTURBANCE_DATA",
+            units="",
+            subnode=0,
+            address=0x00B4,
+            cyclic="CONFIG",
+            dtype=REG_DTYPE.U16,
+            access=REG_ACCESS.WO,
+        ),
+    ]
 
     def __init__(self, dictionary_path: str) -> None:
         super().__init__(dictionary_path, Interface.ETH)

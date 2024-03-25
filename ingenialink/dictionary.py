@@ -11,6 +11,7 @@ from ingenialink.exceptions import ILDictionaryParseError
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, Register
+from ingenialink.ethercat.register import EthercatRegister
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -898,6 +899,12 @@ class DictionaryV2(Dictionary):
 
     dict_interface: Optional[str]
 
+    MON_DIST_STATUS_REGISTER = "MON_DIST_STATUS"
+
+    MONITORING_DISTURBANCE_REGISTERS: Union[
+        List[EthercatRegister], List[EthernetRegister], List[CanopenRegister]
+    ]
+
     def read_dictionary(self) -> None:
         try:
             with open(self.path, "r", encoding="utf-8") as xdf_file:
@@ -974,6 +981,7 @@ class DictionaryV2(Dictionary):
             logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
         xdf_file.close()
+        self._append_missing_registers()
 
     def _read_xdf_register(self, register: ET.Element) -> Optional[Register]:
         """Reads a register from the dictionary and creates a Register instance.
@@ -1091,3 +1099,16 @@ class DictionaryV2(Dictionary):
         if identifier is None:
             return
         self._registers[subnode][identifier] = register
+
+    def _append_missing_registers(
+        self,
+    ) -> None:
+        """Append missing registers to the dictionary.
+
+        Mainly registers needed for Monitoring/Disturbance and PDOs.
+
+        """
+        if self.MON_DIST_STATUS_REGISTER in self._registers[0]:
+            for register in self.MONITORING_DISTURBANCE_REGISTERS:
+                if register.identifier is not None:
+                    self._registers[register.subnode][register.identifier] = register

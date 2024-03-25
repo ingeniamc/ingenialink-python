@@ -36,24 +36,6 @@ class EthernetServo(Servo):
     COMMS_ETH_IP = "COMMS_ETH_IP"
     COMMS_ETH_NET_MASK = "COMMS_ETH_NET_MASK"
     COMMS_ETH_NET_GATEWAY = "COMMS_ETH_GW"
-    MONITORING_DATA = EthernetRegister(
-        identifier="",
-        units="",
-        subnode=0,
-        address=0x00B2,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.RO,
-    )
-    DIST_DATA = EthernetRegister(
-        identifier="",
-        units="",
-        subnode=0,
-        address=0x00B4,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.WO,
-    )
 
     interface = Interface.ETH
 

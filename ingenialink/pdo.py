@@ -387,15 +387,15 @@ class PDOServo(Servo):
 
     AVAILABLE_PDOS = 1
 
-    RPDO_ASSIGN_REGISTER_SUB_IDX_0: Union[EthercatRegister, CanopenRegister]
-    RPDO_ASSIGN_REGISTER_SUB_IDX_1: Union[EthercatRegister, CanopenRegister]
-    RPDO_MAP_REGISTER_SUB_IDX_0: List[Union[EthercatRegister, CanopenRegister]]
-    RPDO_MAP_REGISTER_SUB_IDX_1: List[Union[EthercatRegister, CanopenRegister]]
+    RPDO_ASSIGN_REGISTER_SUB_IDX_0 = "RPDO_ASSIGN_REGISTER_SUB_IDX_0"
+    RPDO_ASSIGN_REGISTER_SUB_IDX_1 = "RPDO_ASSIGN_REGISTER_SUB_IDX_1"
+    RPDO_MAP_REGISTER_SUB_IDX_0 = ["RPDO_MAP_REGISTER_SUB_IDX_0"]
+    RPDO_MAP_REGISTER_SUB_IDX_1 = ["RPDO_MAP_REGISTER_SUB_IDX_1"]
 
-    TPDO_ASSIGN_REGISTER_SUB_IDX_0: Union[EthercatRegister, CanopenRegister]
-    TPDO_ASSIGN_REGISTER_SUB_IDX_1: Union[EthercatRegister, CanopenRegister]
-    TPDO_MAP_REGISTER_SUB_IDX_0: List[Union[EthercatRegister, CanopenRegister]]
-    TPDO_MAP_REGISTER_SUB_IDX_1: List[Union[EthercatRegister, CanopenRegister]]
+    TPDO_ASSIGN_REGISTER_SUB_IDX_0 = "TPDO_ASSIGN_REGISTER_SUB_IDX_0"
+    TPDO_ASSIGN_REGISTER_SUB_IDX_1 = "TPDO_ASSIGN_REGISTER_SUB_IDX_1"
+    TPDO_MAP_REGISTER_SUB_IDX_0 = ["TPDO_MAP_REGISTER_SUB_IDX_0"]
+    TPDO_MAP_REGISTER_SUB_IDX_1 = ["TPDO_MAP_REGISTER_SUB_IDX_1"]
 
     def __init__(
         self,
@@ -409,16 +409,16 @@ class PDOServo(Servo):
 
     def reset_rpdo_mapping(self) -> None:
         """Delete the RPDO mapping stored in the servo slave."""
-        self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, 0)
+        self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, 0, subnode=0)
         for map_register in self.RPDO_MAP_REGISTER_SUB_IDX_0:
-            self.write(map_register, 0)
+            self.write(map_register, 0, subnode=0)
         self._rpdo_maps.clear()
 
     def reset_tpdo_mapping(self) -> None:
         """Delete the TPDO mapping stored in the servo slave."""
-        self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, 0)
+        self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, 0, subnode=0)
         for map_register in self.TPDO_MAP_REGISTER_SUB_IDX_0:
-            self.write(map_register, 0)
+            self.write(map_register, 0, subnode=0)
         self._tpdo_maps.clear()
 
     def map_rpdos(self) -> None:
@@ -433,7 +433,7 @@ class PDOServo(Servo):
                 f"Could not map the RPDO maps, received {len(self._rpdo_maps)} PDOs and only"
                 f" {self.AVAILABLE_PDOS} are available"
             )
-        self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._rpdo_maps))
+        self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._rpdo_maps), subnode=0)
         custom_map_index = 0
         rpdo_assigns = b""
         for rpdo_map in self._rpdo_maps:
@@ -442,9 +442,7 @@ class PDOServo(Servo):
                 custom_map_index += 1
             rpdo_assigns += rpdo_map.map_register_index_bytes
         self.write(
-            self.RPDO_ASSIGN_REGISTER_SUB_IDX_1,
-            rpdo_assigns,
-            complete_access=True,
+            self.RPDO_ASSIGN_REGISTER_SUB_IDX_1, rpdo_assigns, complete_access=True, subnode=0
         )
 
     def _set_rpdo_map_register(self, rpdo_map_register_index: int, rpdo_map: RPDOMap) -> None:
@@ -455,13 +453,26 @@ class PDOServo(Servo):
             rpdo_map: custom rpdo data
 
         """
-        self.write(self.RPDO_MAP_REGISTER_SUB_IDX_0[rpdo_map_register_index], len(rpdo_map.items))
+        self.write(
+            self.RPDO_MAP_REGISTER_SUB_IDX_0[rpdo_map_register_index],
+            len(rpdo_map.items),
+            subnode=0,
+        )
         self.write(
             self.RPDO_MAP_REGISTER_SUB_IDX_1[rpdo_map_register_index],
             rpdo_map.items_mapping.decode("utf-8"),
             complete_access=True,
+            subnode=0,
         )
-        rpdo_map.map_register_index = self.RPDO_MAP_REGISTER_SUB_IDX_0[rpdo_map_register_index].idx
+        rpdo_map_register = self.dictionary.registers(0)[
+            self.RPDO_MAP_REGISTER_SUB_IDX_0[rpdo_map_register_index]
+        ]
+        if not isinstance(rpdo_map_register, EthercatRegister):
+            raise ValueError(
+                "Error retrieving the RPDO Map register. Expected EthercatRegister, got:"
+                f" {type(rpdo_map_register)}"
+            )
+        rpdo_map.map_register_index = rpdo_map_register.idx
 
     def map_tpdos(self) -> None:
         """Map the TPDO registers into the servo slave.
@@ -475,7 +486,7 @@ class PDOServo(Servo):
                 f"Could not map the TPDO maps, received {len(self._tpdo_maps)} PDOs and only"
                 f" {self.AVAILABLE_PDOS} are available"
             )
-        self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._tpdo_maps))
+        self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._tpdo_maps), subnode=0)
         custom_map_index = 0
         tpdo_assigns = b""
         for tpdo_map in self._tpdo_maps:
@@ -484,9 +495,7 @@ class PDOServo(Servo):
                 custom_map_index += 1
             tpdo_assigns += tpdo_map.map_register_index_bytes
         self.write(
-            self.TPDO_ASSIGN_REGISTER_SUB_IDX_1,
-            tpdo_assigns,
-            complete_access=True,
+            self.TPDO_ASSIGN_REGISTER_SUB_IDX_1, tpdo_assigns, complete_access=True, subnode=0
         )
 
     def _set_tpdo_map_register(self, tpdo_map_register_index: int, tpdo_map: TPDOMap) -> None:
@@ -497,13 +506,26 @@ class PDOServo(Servo):
             tpdo_map: custom tpdo data
 
         """
-        self.write(self.TPDO_MAP_REGISTER_SUB_IDX_0[tpdo_map_register_index], len(tpdo_map.items))
+        self.write(
+            self.TPDO_MAP_REGISTER_SUB_IDX_0[tpdo_map_register_index],
+            len(tpdo_map.items),
+            subnode=0,
+        )
         self.write(
             self.TPDO_MAP_REGISTER_SUB_IDX_1[tpdo_map_register_index],
             tpdo_map.items_mapping.decode("utf-8"),
             complete_access=True,
+            subnode=0,
         )
-        tpdo_map.map_register_index = self.TPDO_MAP_REGISTER_SUB_IDX_0[tpdo_map_register_index].idx
+        tpdo_map_register = self.dictionary.registers(0)[
+            self.TPDO_MAP_REGISTER_SUB_IDX_0[tpdo_map_register_index]
+        ]
+        if not isinstance(tpdo_map_register, EthercatRegister):
+            raise ValueError(
+                "Error retrieving the TPDO Map register. Expected EthercatRegister, got:"
+                f" {type(tpdo_map_register)}"
+            )
+        tpdo_map.map_register_index = tpdo_map_register.idx
 
     def map_pdos(self, slave_index: int) -> None:
         """Map RPDO and TPDO register into the slave.
