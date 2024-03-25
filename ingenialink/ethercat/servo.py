@@ -1,6 +1,6 @@
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional, Dict
+from typing import TYPE_CHECKING, List, Optional, Dict, Any
 
 import ingenialogger
 
@@ -47,6 +47,7 @@ class EthercatServo(PDOServo):
     """
 
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
+    MONITORING_DATA_BUFFER_SIZE = 1024
 
     NO_RESPONSE_WORKING_COUNTER = 0
     TIMEOUT_WORKING_COUNTER = -5
@@ -174,24 +175,15 @@ class EthercatServo(PDOServo):
             )
             raise exc from exception
 
-    def _monitoring_read_data(self) -> bytes:
+    def _monitoring_read_data(self, **kwargs: Any) -> bytes:
         """Read monitoring data frame."""
-        if not isinstance(
-            data := self.read(
-                self.MONITORING_DATA, subnode=0, buffer_size=1024, complete_access=True
-            ),
-            bytes,
-        ):
-            raise ValueError(
-                f"Error reading monitoring data. Expected type bytes, got {type(data)}"
-            )
-        return data
+        return super()._monitoring_read_data(
+            buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True
+        )
 
-    def _disturbance_write_data(self, data: bytes) -> None:
+    def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
         """Write disturbance data."""
-        if self.DIST_DATA not in self.dictionary.registers(0):
-            raise NotImplementedError("Disturbance is not supported by this device.")
-        return self.write(self.DIST_DATA, subnode=0, data=data, complete_access=True)
+        super()._disturbance_write_data(data, complete_access=True)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
