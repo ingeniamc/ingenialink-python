@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Optional, List
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.canopen.register import CanopenRegister
+from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS
 
 import ingenialogger
 import xml.etree.ElementTree as ET
@@ -16,6 +16,27 @@ class CanopenDictionaryV2(DictionaryV2):
         dictionary_path: Path to the Ingenia dictionary.
 
     """
+
+    MONITORING_DISTURBANCE_REGISTERS: List[CanopenRegister] = [
+        CanopenRegister(
+            identifier="MONITORING_DATA",
+            idx=0x58B2,
+            subidx=0x00,
+            cyclic="CONFIG",
+            dtype=REG_DTYPE.U16,
+            access=REG_ACCESS.RO,
+            subnode=0,
+        ),
+        CanopenRegister(
+            identifier="DISTURBANCE_DATA",
+            idx=0x58B4,
+            subidx=0x00,
+            cyclic="CONFIG",
+            dtype=REG_DTYPE.U16,
+            access=REG_ACCESS.RW,
+            subnode=0,
+        ),
+    ]
 
     def __init__(self, dictionary_path: str):
         super().__init__(dictionary_path, Interface.CAN)
