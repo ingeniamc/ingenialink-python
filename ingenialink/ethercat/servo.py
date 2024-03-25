@@ -174,15 +174,18 @@ class EthercatServo(PDOServo):
             )
             raise exc from exception
 
-    def _monitoring_read_data(self) -> bytes:  # type: ignore [override]
+    def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame."""
-        monitoring_data_register = self.dictionary.registers(0)[self.MONITORING_DATA]
-        if not isinstance(monitoring_data_register, EthercatRegister):
+        if not isinstance(
+            data := self.read(
+                self.MONITORING_DATA, subnode=0, buffer_size=1024, complete_access=True
+            ),
+            bytes,
+        ):
             raise ValueError(
-                "Error retrieving the Monitoring data register. Expected EthercatRegister, got:"
-                f" {type(monitoring_data_register)}"
+                f"Error reading monitoring data. Expected type bytes, got {type(data)}"
             )
-        return self._read_raw(monitoring_data_register, buffer_size=1024, complete_access=True)
+        return data
 
     def _disturbance_write_data(self, data: bytearray) -> None:  # type: ignore [override]
         """Write disturbance data."""

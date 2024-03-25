@@ -604,6 +604,11 @@ class CanopenNetwork(Network):
         while num_tries < POLLING_MAX_TRIES:
             with contextlib.suppress(ILError):
                 value = servo.read(register, subnode=subnode)
+            if isinstance(value, bytes):
+                raise ValueError(
+                    f"Error reading register {register.identifier}. Expected data type"
+                    f" {register.dtype}, got bytes."
+                )
             if value == expected_value:
                 logger.debug(f"Success. Read value {value}. Num tries {num_tries}")
                 return True

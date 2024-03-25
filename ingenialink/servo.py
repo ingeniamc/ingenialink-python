@@ -1001,7 +1001,7 @@ class Servo:
             subnode=0,
         )
 
-    def __monitoring_process_data(self, monitoring_data: List[bytearray]) -> None:
+    def __monitoring_process_data(self, monitoring_data: List[bytes]) -> None:
         """Arrange monitoring data."""
         data_bytes = bytearray()
         for i in range(len(monitoring_data)):
@@ -1110,7 +1110,9 @@ class Servo:
             value = data
         self._write_raw(_reg, value, **kwargs)
 
-    def read(self, reg: Union[str, Register], subnode: int = 1) -> Union[int, float, str]:
+    def read(
+        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
+    ) -> Union[int, float, str, bytes]:
         """Read a register value from servo.
 
         Args:
@@ -1131,7 +1133,9 @@ class Servo:
         if access == REG_ACCESS.WO:
             raise ILAccessError("Register is Write-only")
 
-        raw_read = self._read_raw(_reg)
+        raw_read = self._read_raw(_reg, **kwargs)
+        if _reg.dtype == REG_DTYPE.BYTE_ARRAY_512:
+            return raw_read
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
         return value
 
@@ -1168,18 +1172,20 @@ class Servo:
             self._disturbance_write_data(chunk)
         self.disturbance_data = data
 
-    def _monitoring_read_data(self) -> bytearray:
+    def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame.
 
         Raises:
             NotImplementedError: If monitoring is not supported by the device.
 
         """
-        try:
-            monitoring_data_register = self.dictionary.registers(0)[self.MONITORING_DATA]
-        except KeyError:
+        if self.MONITORING_DATA not in self.dictionary.registers(0):
             raise NotImplementedError("Monitoring is not supported by this device.")
-        return self._read_raw(monitoring_data_register)
+        if not isinstance(data := self.read(self.MONITORING_DATA, subnode=0), bytes):
+            raise ValueError(
+                f"Error reading monitoring data. Expected type bytes, got {type(data)}"
+            )
+        return data
 
     def _disturbance_write_data(self, data: bytes) -> None:
         """Write disturbance data.
@@ -1209,7 +1215,7 @@ class Servo:
         raise NotImplementedError
 
     @abstractmethod
-    def _read_raw(self, reg: Register) -> bytearray:
+    def _read_raw(self, reg: Register) -> bytes:
         """Read raw bytes from a target register.
 
         Args:
