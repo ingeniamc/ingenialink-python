@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import ingenialogger
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.ethercat.register import EthercatRegister, REG_DTYPE, REG_ACCESS
+from ingenialink.ethercat.register import EthercatRegister, REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
 from ingenialink.constants import (
     CANOPEN_ADDRESS_OFFSET,
     CANOPEN_SUBNODE_0_ADDRESS_OFFSET,
@@ -32,6 +32,7 @@ class EthercatDictionaryV2(DictionaryV2):
             cyclic="CONFIG",
             dtype=REG_DTYPE.U16,
             access=REG_ACCESS.RO,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         EthercatRegister(
             identifier="DISTURBANCE_DATA",
@@ -42,6 +43,7 @@ class EthercatDictionaryV2(DictionaryV2):
             cyclic="CONFIG",
             dtype=REG_DTYPE.U16,
             access=REG_ACCESS.WO,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
     ]
 
@@ -54,6 +56,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subidx=0x00,
             dtype=REG_DTYPE.S32,
             access=REG_ACCESS.RW,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         EthercatRegister(
             identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_1",
@@ -63,6 +66,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subidx=0x01,
             dtype=REG_DTYPE.S32,
             access=REG_ACCESS.RW,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         EthercatRegister(
             identifier="RPDO_MAP_REGISTER_SUB_IDX_0",
@@ -72,6 +76,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subidx=0x00,
             dtype=REG_DTYPE.S32,
             access=REG_ACCESS.RW,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         EthercatRegister(
             identifier="RPDO_MAP_REGISTER_SUB_IDX_1",
@@ -81,6 +86,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subidx=0x01,
             dtype=REG_DTYPE.STR,
             access=REG_ACCESS.RW,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         EthercatRegister(
             identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_0",
@@ -90,6 +96,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subidx=0x00,
             dtype=REG_DTYPE.S32,
             access=REG_ACCESS.RW,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         EthercatRegister(
             identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_1",
@@ -99,6 +106,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subidx=0x01,
             dtype=REG_DTYPE.S32,
             access=REG_ACCESS.RW,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         EthercatRegister(
             identifier="TPDO_MAP_REGISTER_SUB_IDX_0",
@@ -108,6 +116,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subidx=0x00,
             dtype=REG_DTYPE.S32,
             access=REG_ACCESS.RW,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         EthercatRegister(
             identifier="TPDO_MAP_REGISTER_SUB_IDX_1",
@@ -117,6 +126,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subidx=0x01,
             dtype=REG_DTYPE.STR,
             access=REG_ACCESS.RW,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
     ]
 

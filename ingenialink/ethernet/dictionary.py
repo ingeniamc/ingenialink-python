@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import ingenialogger
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS
+from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -26,6 +26,7 @@ class EthernetDictionaryV2(DictionaryV2):
             cyclic="CONFIG",
             dtype=REG_DTYPE.U16,
             access=REG_ACCESS.RO,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         EthernetRegister(
             identifier="DISTURBANCE_DATA",
@@ -35,6 +36,7 @@ class EthernetDictionaryV2(DictionaryV2):
             cyclic="CONFIG",
             dtype=REG_DTYPE.U16,
             access=REG_ACCESS.WO,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
     ]
 

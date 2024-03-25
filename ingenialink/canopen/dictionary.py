@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS
+from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
 
 import ingenialogger
 import xml.etree.ElementTree as ET
@@ -26,6 +26,7 @@ class CanopenDictionaryV2(DictionaryV2):
             dtype=REG_DTYPE.U16,
             access=REG_ACCESS.RO,
             subnode=0,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
         CanopenRegister(
             identifier="DISTURBANCE_DATA",
@@ -35,6 +36,7 @@ class CanopenDictionaryV2(DictionaryV2):
             dtype=REG_DTYPE.U16,
             access=REG_ACCESS.RW,
             subnode=0,
+            address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
     ]
 
