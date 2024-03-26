@@ -246,7 +246,7 @@ class Dictionary(ABC):
     def __add__(self, other_dict: "Dictionary") -> "Dictionary":
         """Merge two dictionary instances.
 
-        It should only be used for merging COM-KIT and MoCo dictionaries.
+        It can only be used for merging COM-KIT and CORE dictionaries.
 
         """
         if not isinstance(other_dict, type(self)):
@@ -366,8 +366,8 @@ class Dictionary(ABC):
             other_dict: The other dictionary instance.
 
         """
-        moco_dict = self if self._is_coco_dictionary(other_dict) else other_dict
-        self.image = moco_dict.image
+        core_dict = self if self._is_coco_dictionary(other_dict) else other_dict
+        self.image = core_dict.image
 
     def _merge_attributes(self, other_dict: "Dictionary") -> None:
         """Add the revision number, product code and firmware version from another

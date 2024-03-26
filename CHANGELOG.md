@@ -4,6 +4,7 @@
 ### Add
 - Dictionary V3 support
 - ILWrongWorkingCount exception raised when the working count in PDO is not the expected one.
+- Support for merging dictionary instances. (It can only be used for merging COM-KIT and CORE dictionaries.)
 
 ### Changed
 - Dictionary class properties, such as subnodes and interface.
