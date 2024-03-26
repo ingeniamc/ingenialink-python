@@ -33,7 +33,7 @@ class CanopenDictionaryV2(DictionaryV2):
             subidx=0x00,
             cyclic="CONFIG",
             dtype=REG_DTYPE.BYTE_ARRAY_512,
-            access=REG_ACCESS.RW,
+            access=REG_ACCESS.WO,
             subnode=0,
         ),
     ]
