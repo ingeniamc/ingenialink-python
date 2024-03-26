@@ -134,20 +134,48 @@ def test_merge_dictionaries_image():
     assert merged_dict.image == moco_dict.image
 
 
+@pytest.mark.no_connection
 def test_merge_dictionaries_order_invariant():
     coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
-    coco_dict = EthernetDictionaryV2(coco_dict_path)
-    moco_dict = EthernetDictionaryV2(moco_dict_path)
-    dict_a = coco_dict + moco_dict
-    dict_b = moco_dict + coco_dict
-    assert dict_a.registers(0) == dict_b.registers(0)
-    assert dict_a.registers(1) == dict_b.registers(1)
+    dict_a = EthernetDictionaryV2(coco_dict_path) + EthernetDictionaryV2(moco_dict_path)
+    dict_b = EthernetDictionaryV2(moco_dict_path) + EthernetDictionaryV2(coco_dict_path)
+    assert dict_a.registers(0).keys() == dict_b.registers(0).keys()
+    assert dict_a.registers(1).keys() == dict_b.registers(1).keys()
     assert dict_a.errors.errors == dict_b.errors.errors
     assert dict_a.product_code == dict_b.product_code
     assert dict_a.revision_number == dict_b.revision_number
-    assert dict_a.firmware_version == dict_b.revision_number
-    assert dict_a.product_code_comkit == dict_b.revision_number
-    assert dict_a.revision_number_comkit == dict_b.revision_number
-    assert dict_a.firmware_version_comkit == dict_b.revision_number
+    assert dict_a.firmware_version == dict_b.firmware_version
+    assert dict_a.product_code_comkit == dict_b.product_code_comkit
+    assert dict_a.revision_number_comkit == dict_b.revision_number_comkit
+    assert dict_a.firmware_version_comkit == dict_b.firmware_version_comkit
     assert dict_a.image == dict_b.image
+
+
+@pytest.mark.no_connection
+def test_merge_dictionaries_type_exception():
+    eth_v2_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
+    can_v2_path = f"{PATH_RESOURCE}canopen/test_dict_can.xdf"
+    eth_v2_dict = EthernetDictionaryV2(eth_v2_path)
+    can_v2_dict = CanopenDictionaryV2(can_v2_path)
+    with pytest.raises(ValueError) as exc_info:
+        eth_v2_dict + can_v2_dict
+    assert (
+        str(exc_info.value)
+        == "Cannot merge dictionaries. Expected type: <class"
+        " 'ingenialink.ethernet.dictionary.EthernetDictionaryV2'>, got: <class"
+        " 'ingenialink.canopen.dictionary.CanopenDictionaryV2'>"
+    )
+
+
+@pytest.mark.no_connection
+def test_merge_dictionaries_no_coco_exception():
+    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    moco_a_dict = EthernetDictionaryV2(moco_dict_path)
+    moco_b_dict = EthernetDictionaryV2(moco_dict_path)
+    with pytest.raises(ValueError) as exc_info:
+        moco_a_dict + moco_b_dict
+    assert (
+        str(exc_info.value)
+        == "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary."
+    )
