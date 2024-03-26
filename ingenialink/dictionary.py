@@ -239,6 +239,16 @@ class Dictionary(ABC):
         except KeyError as e:
             raise ILDictionaryParseError("The dictionary is not well-formed.") from e
 
+    def __add__(self, other_dict: "Dictionary") -> "Dictionary":
+        if not isinstance(other_dict, type(self)):
+            raise ValueError(
+                f"Cannot merge dictionaries. Expected type: {type(self)}, got: {type(other_dict)}"
+            )
+        self._merge_registers(other_dict)
+        self._merge_errors(other_dict)
+        self._merge_images(other_dict)
+        return self
+
     def registers(self, subnode: int) -> Dict[str, Register]:
         """Gets the register dictionary to the targeted subnode.
 
@@ -313,6 +323,41 @@ class Dictionary(ABC):
         if uid in self.safety_tpdos:
             return self.safety_tpdos[uid]
         raise KeyError(f"Safe TPDO {uid} not exist")
+
+    def _merge_registers(self, other_dict: "Dictionary") -> None:
+        """Add the registers from another dictionary to the dictionary instance.
+
+        Args:
+            other_dict: The other dictionary instance.
+
+        """
+        for subnode, registers in other_dict._registers.items():
+            self._registers[subnode].update(registers)
+
+    def _merge_errors(self, other_dict: "Dictionary") -> None:
+        """Add the errors from another dictionary to the dictionary instance.
+
+        Args:
+            other_dict: The other dictionary instance.
+
+        """
+        self.errors.errors.update(other_dict.errors.errors)
+
+    def _merge_images(self, other_dict: "Dictionary") -> None:
+        """Set the moco image attribute.
+
+        Choose the image from the dictionary that has one. (COM-KIT case).
+        If both dictionaries have images, no changes are done.
+
+        Args:
+            other_dict: The other dictionary instance.
+
+        """
+        images = [self.image, other_dict.image]
+        if all(images):
+            return
+        self.moco_image = next(image for image in images if image is not None)
+        self.image = None
 
 
 class DictionaryV3(Dictionary):
