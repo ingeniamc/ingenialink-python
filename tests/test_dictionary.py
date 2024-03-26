@@ -21,7 +21,6 @@ PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
 def test_dictionary_v2_image(dictionary_class):
     dictionary = dictionary_class(PATH_TO_DICTIONARY)
     assert isinstance(dictionary.image, str)
-    assert dictionary.moco_image is None
 
 
 @pytest.mark.parametrize("dictionary_class", [CanopenDictionaryV2, EthernetDictionaryV2])
@@ -41,28 +40,6 @@ def test_dictionary_v2_image_none(dictionary_class):
     dictionary = dictionary_class(temp_file)
     os.remove(temp_file)
     assert dictionary.image is None
-    assert dictionary.moco_image is None
-
-
-@pytest.mark.parametrize("dictionary_class", [CanopenDictionaryV2, EthernetDictionaryV2])
-@pytest.mark.no_connection
-def test_dictionary_v2_moco_image(dictionary_class):
-    with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
-        tree = ET.parse(xdf_file)
-    root = tree.getroot()
-    image_section = root.find(dictionary_class.DICT_IMAGE)
-    image_section.set("type", "moco")
-    xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
-        indent="  ", newl="", encoding="UTF-8"
-    )
-    temp_file = join_path(PATH_RESOURCE, "temp.xdf")
-    merged_file = io.open(temp_file, "wb")
-    merged_file.write(xml_str)
-    merged_file.close()
-    dictionary = dictionary_class(temp_file)
-    os.remove(temp_file)
-    assert dictionary.image is None
-    assert isinstance(dictionary.moco_image, str)
 
 
 @pytest.mark.parametrize(
@@ -80,3 +57,97 @@ def test_dictionary_v2_moco_image(dictionary_class):
 def test_dictionary_factory(dict_path, interface, dict_class):
     test_dict = DictionaryFactory.create_dictionary(dict_path, interface)
     assert isinstance(test_dict, dict_class)
+
+
+@pytest.mark.no_connection
+def test_merge_dictionaries_registers():
+    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
+    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    coco_dict = EthernetDictionaryV2(coco_dict_path)
+    moco_dict = EthernetDictionaryV2(moco_dict_path)
+    coco_subnode_0_num_regs = len(coco_dict.registers(0))
+    assert coco_subnode_0_num_regs == 1
+    coco_subnode_1_num_regs = len(coco_dict.registers(1))
+    assert coco_subnode_1_num_regs == 0
+    moco_subnode_0_num_regs = len(moco_dict.registers(0))
+    assert moco_subnode_0_num_regs == 0
+    moco_subnode_1_num_regs = len(moco_dict.registers(1))
+    assert moco_subnode_1_num_regs == 1
+    merged_dict = coco_dict + moco_dict
+    merged_dict_subnode_0_num_regs = len(merged_dict.registers(0))
+    assert merged_dict_subnode_0_num_regs == coco_subnode_0_num_regs + moco_subnode_0_num_regs
+    merged_dict_subnode_1_num_regs = len(merged_dict.registers(1))
+    assert merged_dict_subnode_1_num_regs == coco_subnode_1_num_regs + moco_subnode_1_num_regs
+
+
+@pytest.mark.no_connection
+def test_merge_dictionaries_errors():
+    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
+    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    coco_dict = EthernetDictionaryV2(coco_dict_path)
+    moco_dict = EthernetDictionaryV2(moco_dict_path)
+    coco_num_errors = len(coco_dict.errors.errors)
+    assert coco_num_errors == 1
+    moco_num_errors = len(moco_dict.errors.errors)
+    assert moco_num_errors == 1
+    merged_dict = coco_dict + moco_dict
+    merged_dict_num_errors = len(merged_dict.errors.errors)
+    assert merged_dict_num_errors == coco_num_errors + moco_num_errors
+
+
+@pytest.mark.no_connection
+def test_merge_dictionaries_attributes():
+    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
+    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    coco_dict = EthernetDictionaryV2(coco_dict_path)
+    assert coco_dict.product_code == 123456789
+    assert coco_dict.revision_number == 12345
+    assert coco_dict.firmware_version == "1.4.7"
+    assert coco_dict.product_code_comkit is None
+    assert coco_dict.revision_number_comkit is None
+    assert coco_dict.firmware_version_comkit is None
+    moco_dict = EthernetDictionaryV2(moco_dict_path)
+    assert moco_dict.product_code == 987654321
+    assert moco_dict.revision_number == 31
+    assert moco_dict.firmware_version == "2.4.0"
+    assert moco_dict.product_code_comkit is None
+    assert moco_dict.revision_number_comkit is None
+    assert moco_dict.firmware_version_comkit is None
+    merged_dict = coco_dict + moco_dict
+    assert merged_dict.product_code == 987654321
+    assert merged_dict.revision_number == 31
+    assert merged_dict.firmware_version == "2.4.0"
+    assert merged_dict.product_code_comkit == 123456789
+    assert merged_dict.revision_number_comkit == 12345
+    assert merged_dict.firmware_version_comkit == "1.4.7"
+
+
+@pytest.mark.no_connection
+def test_merge_dictionaries_image():
+    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
+    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    coco_dict = EthernetDictionaryV2(coco_dict_path)
+    moco_dict = EthernetDictionaryV2(moco_dict_path)
+    assert coco_dict.image is None
+    assert isinstance(moco_dict.image, str)
+    merged_dict = coco_dict + moco_dict
+    assert merged_dict.image == moco_dict.image
+
+
+def test_merge_dictionaries_order_invariant():
+    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
+    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    coco_dict = EthernetDictionaryV2(coco_dict_path)
+    moco_dict = EthernetDictionaryV2(moco_dict_path)
+    dict_a = coco_dict + moco_dict
+    dict_b = moco_dict + coco_dict
+    assert dict_a.registers(0) == dict_b.registers(0)
+    assert dict_a.registers(1) == dict_b.registers(1)
+    assert dict_a.errors.errors == dict_b.errors.errors
+    assert dict_a.product_code == dict_b.product_code
+    assert dict_a.revision_number == dict_b.revision_number
+    assert dict_a.firmware_version == dict_b.revision_number
+    assert dict_a.product_code_comkit == dict_b.revision_number
+    assert dict_a.revision_number_comkit == dict_b.revision_number
+    assert dict_a.firmware_version_comkit == dict_b.revision_number
+    assert dict_a.image == dict_b.image

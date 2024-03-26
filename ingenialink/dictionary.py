@@ -196,7 +196,7 @@ class Dictionary(ABC):
     """Version of the dictionary."""
     firmware_version: Optional[str]
     """Firmware version declared in the dictionary."""
-    firmware_version_comkit: Optional[str]
+    firmware_version_comkit: Optional[str] = None
     """COM-KIT firmware version declared in the dictionary."""
     product_code: int
     """Product code declared in the dictionary."""
