@@ -196,12 +196,18 @@ class Dictionary(ABC):
     """Version of the dictionary."""
     firmware_version: Optional[str]
     """Firmware version declared in the dictionary."""
+    firmware_version_comkit: Optional[str]
+    """COM-KIT firmware version declared in the dictionary."""
     product_code: int
     """Product code declared in the dictionary."""
+    product_code_comkit: Optional[int] = None
+    """COM-KIT product code declared in the dictionary."""
     part_number: Optional[str]
     """Part number declared in the dictionary."""
     revision_number: int
     """Revision number declared in the dictionary."""
+    revision_number_comkit: Optional[int] = None
+    """COM-KIT revision number declared in the dictionary."""
     interface: Interface
     """Interface declared in the dictionary."""
     subnodes: Dict[int, SubnodeType]
@@ -212,7 +218,7 @@ class Dictionary(ABC):
     """Instance of all the errors in the dictionary."""
     image: Optional[str] = None
     """Drive's encoded image."""
-    moco_image: Optional[str] = None  # TODO study COM-KIT case
+    moco_image: Optional[str] = None
     """Motion CORE encoded image. Only available when using a COM-KIT."""
     is_safe: bool = False
     """True if has SafetyPDOs element, else False"""
@@ -240,13 +246,23 @@ class Dictionary(ABC):
             raise ILDictionaryParseError("The dictionary is not well-formed.") from e
 
     def __add__(self, other_dict: "Dictionary") -> "Dictionary":
+        """Merge two dictionary instances.
+
+        It should only be used for merging COM-KIT and MoCo dictionaries.
+
+        """
         if not isinstance(other_dict, type(self)):
             raise ValueError(
                 f"Cannot merge dictionaries. Expected type: {type(self)}, got: {type(other_dict)}"
             )
+        if not self._is_coco_dictionary(other_dict) and not self._is_coco_dictionary(self):
+            raise ValueError(
+                "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary."
+            )
         self._merge_registers(other_dict)
         self._merge_errors(other_dict)
         self._merge_images(other_dict)
+        self._merge_attributes(other_dict)
         return self
 
     def registers(self, subnode: int) -> Dict[str, Register]:
@@ -353,11 +369,34 @@ class Dictionary(ABC):
             other_dict: The other dictionary instance.
 
         """
-        images = [self.image, other_dict.image]
-        if all(images):
-            return
-        self.moco_image = next(image for image in images if image is not None)
+        moco_dict = self if self._is_coco_dictionary(other_dict) else other_dict
+        self.moco_image = moco_dict.image
         self.image = None
+
+    def _merge_attributes(self, other_dict: "Dictionary") -> None:
+        """Add the revision number, product code and firmware version from another
+         dictionary to the dictionary instance.
+
+        Args:
+            other_dict: The other dictionary instance.
+
+        """
+        if self._is_coco_dictionary(other_dict):
+            self.product_code_comkit = other_dict.product_code
+            self.revision_number_comkit = other_dict.revision_number
+            self.firmware_version_comkit = other_dict.firmware_version
+        else:
+            self.product_code_comkit = self.product_code
+            self.revision_number_comkit = self.revision_number
+            self.firmware_version_comkit = self.firmware_version
+            self.product_code = other_dict.product_code
+            self.revision_number = other_dict.revision_number
+            self.firmware_version = other_dict.firmware_version
+
+    @staticmethod
+    def _is_coco_dictionary(dictionary: "Dictionary") -> bool:
+        """Check if dictionary is a CoCo dictionary"""
+        return len(dictionary.registers(1)) == 0
 
 
 class DictionaryV3(Dictionary):
