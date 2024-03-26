@@ -4,9 +4,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 from ingenialink import exceptions as exc
 from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY
 
-# CANOPEN DTYPES
-IL_REG_DTYPE_DOMAIN = 15
-
 dtypes_ranges: Dict[REG_DTYPE, Dict[str, Union[int, float]]] = {
     REG_DTYPE.U8: {"max": 255, "min": 0},
     REG_DTYPE.S8: {"max": 127, "min": -128},
