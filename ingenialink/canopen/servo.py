@@ -49,7 +49,9 @@ class CanopenServo(Servo):
         self.__emcy_consumer = EmcyConsumer()
         super(CanopenServo, self).__init__(target, dictionary_path, servo_status_listener)
 
-    def read(self, reg: Union[str, Register], subnode: int = 1) -> Union[int, float, str]:
+    def read(
+        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
+    ) -> Union[int, float, str, bytes]:
         value = super().read(reg, subnode=subnode)
         if isinstance(value, str):
             value = value.replace("\x00", "")

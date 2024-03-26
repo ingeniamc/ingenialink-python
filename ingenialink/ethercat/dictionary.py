@@ -30,7 +30,7 @@ class EthercatDictionaryV2(DictionaryV2):
             idx=0x58B2,
             subidx=0x01,
             cyclic="CONFIG",
-            dtype=REG_DTYPE.U16,
+            dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.RO,
         ),
         EthercatRegister(
@@ -40,7 +40,7 @@ class EthercatDictionaryV2(DictionaryV2):
             idx=0x58B4,
             subidx=0x01,
             cyclic="CONFIG",
-            dtype=REG_DTYPE.U16,
+            dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.WO,
         ),
     ]

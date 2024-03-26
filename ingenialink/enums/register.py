@@ -24,8 +24,8 @@ class REG_DTYPE(Enum):
     """Float."""
     STR = 10
     """String."""
-    DOMAIN = 15
-    """Domain."""
+    BYTE_ARRAY_512 = 15
+    """Buffer with size of 512 bytes."""
     BOOL = 99
     """Boolean."""
 

@@ -245,7 +245,7 @@ def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: REG_DTYPE
         data: Data to convert.
         dtype: Data type.
     """
-    if dtype == REG_DTYPE.DOMAIN:
+    if dtype == REG_DTYPE.BYTE_ARRAY_512:
         if not isinstance(data, bytes):
             raise ValueError(f"Expected data of type bytes, but got {type(data)}")
         return data

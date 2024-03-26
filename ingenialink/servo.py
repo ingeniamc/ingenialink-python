@@ -237,7 +237,7 @@ class Servo:
         self.__monitoring_data: Dict[int, List[Union[int, float]]] = {}
         self.__monitoring_size: Dict[int, int] = {}
         self.__monitoring_dtype: Dict[int, REG_DTYPE] = {}
-        self.__disturbance_data = bytearray()
+        self.__disturbance_data = bytes()
         self.__disturbance_size: Dict[int, int] = {}
         self.__disturbance_dtype: Dict[int, str] = {}
         if servo_status_listener:
@@ -788,7 +788,7 @@ class Servo:
     def disturbance_remove_data(self) -> None:
         """Remove disturbance data."""
         self.write(self.DISTURBANCE_REMOVE_DATA, data=1, subnode=0)
-        self.disturbance_data = bytearray()
+        self.disturbance_data = bytes()
 
     def disturbance_set_mapped_register(
         self, channel: int, address: int, subnode: int, dtype: int, size: int
@@ -827,7 +827,7 @@ class Servo:
             self.write(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
         except ILAccessError:
             self.write(self.DISTURBANCE_REMOVE_REGISTERS_OLD, data=1, subnode=0)
-        self.__disturbance_data = bytearray()
+        self.__disturbance_data = bytes()
         self.__disturbance_size = {}
         self.__disturbance_dtype = {}
 
@@ -1001,9 +1001,9 @@ class Servo:
             subnode=0,
         )
 
-    def __monitoring_process_data(self, monitoring_data: List[bytearray]) -> None:
+    def __monitoring_process_data(self, monitoring_data: List[bytes]) -> None:
         """Arrange monitoring data."""
-        data_bytes = bytearray()
+        data_bytes = bytes()
         for i in range(len(monitoring_data)):
             data_bytes += monitoring_data[i]
         bytes_per_block = self.monitoring_get_bytes_per_block()
@@ -1048,7 +1048,7 @@ class Servo:
         dtypes: Union[REG_DTYPE, List[REG_DTYPE]],
         data_arr: Union[List[Union[int, float]], List[List[Union[int, float]]]],
         max_size: int,
-    ) -> Tuple[bytearray, List[bytearray]]:
+    ) -> Tuple[bytes, List[bytes]]:
         """Divide disturbance data into chunks.
 
         Args:
@@ -1072,7 +1072,7 @@ class Servo:
             num_samples = len(data_arr[0])
             data_arr_aux = data_arr  # type: ignore [assignment]
         self.write(self.DIST_NUMBER_SAMPLES, num_samples, subnode=0)
-        data = bytearray()
+        data = bytes()
         for sample_idx in range(num_samples):
             for channel in range(len(data_arr_aux)):
                 val = convert_dtype_to_bytes(data_arr_aux[channel][sample_idx], dtypes[channel])
@@ -1110,7 +1110,9 @@ class Servo:
             value = data
         self._write_raw(_reg, value, **kwargs)
 
-    def read(self, reg: Union[str, Register], subnode: int = 1) -> Union[int, float, str]:
+    def read(
+        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
+    ) -> Union[int, float, str, bytes]:
         """Read a register value from servo.
 
         Args:
@@ -1131,7 +1133,9 @@ class Servo:
         if access == REG_ACCESS.WO:
             raise ILAccessError("Register is Write-only")
 
-        raw_read = self._read_raw(_reg)
+        raw_read = self._read_raw(_reg, **kwargs)
+        if _reg.dtype == REG_DTYPE.BYTE_ARRAY_512:
+            return raw_read
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
         return value
 
@@ -1168,31 +1172,31 @@ class Servo:
             self._disturbance_write_data(chunk)
         self.disturbance_data = data
 
-    def _monitoring_read_data(self) -> bytearray:
+    def _monitoring_read_data(self, **kwargs: Any) -> bytes:
         """Read monitoring data frame.
 
         Raises:
             NotImplementedError: If monitoring is not supported by the device.
 
         """
-        try:
-            monitoring_data_register = self.dictionary.registers(0)[self.MONITORING_DATA]
-        except KeyError:
+        if self.MONITORING_DATA not in self.dictionary.registers(0):
             raise NotImplementedError("Monitoring is not supported by this device.")
-        return self._read_raw(monitoring_data_register)
+        if not isinstance(data := self.read(self.MONITORING_DATA, subnode=0, **kwargs), bytes):
+            raise ValueError(
+                f"Error reading monitoring data. Expected type bytes, got {type(data)}"
+            )
+        return data
 
-    def _disturbance_write_data(self, data: bytes) -> None:
+    def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
         """Write disturbance data.
 
         Raises:
             NotImplementedError: If disturbance is not supported by the device.
 
         """
-        try:
-            disturbance_data_register = self.dictionary.registers(0)[self.DIST_DATA]
-        except KeyError:
+        if self.DIST_DATA not in self.dictionary.registers(0):
             raise NotImplementedError("Disturbance is not supported by this device.")
-        return self._write_raw(disturbance_data_register, data=data)
+        return self.write(self.DIST_DATA, subnode=0, data=data, **kwargs)
 
     @abstractmethod
     def _write_raw(self, reg: Register, data: bytes) -> None:
@@ -1209,7 +1213,7 @@ class Servo:
         raise NotImplementedError
 
     @abstractmethod
-    def _read_raw(self, reg: Register) -> bytearray:
+    def _read_raw(self, reg: Register) -> bytes:
         """Read raw bytes from a target register.
 
         Args:
@@ -1304,7 +1308,7 @@ class Servo:
         return self.monitoring_get_bytes_per_block() * number_of_samples
 
     @property
-    def disturbance_data(self) -> bytearray:
+    def disturbance_data(self) -> bytes:
         """Obtain disturbance data.
 
         Returns:
@@ -1314,7 +1318,7 @@ class Servo:
         return self.__disturbance_data
 
     @disturbance_data.setter
-    def disturbance_data(self, value: bytearray) -> None:
+    def disturbance_data(self, value: bytes) -> None:
         """Set disturbance data.
 
         Args:

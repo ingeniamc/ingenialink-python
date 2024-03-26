@@ -24,7 +24,7 @@ class EthernetDictionaryV2(DictionaryV2):
             subnode=0,
             address=0x00B2,
             cyclic="CONFIG",
-            dtype=REG_DTYPE.U16,
+            dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.RO,
         ),
         EthernetRegister(
@@ -33,7 +33,7 @@ class EthernetDictionaryV2(DictionaryV2):
             subnode=0,
             address=0x00B4,
             cyclic="CONFIG",
-            dtype=REG_DTYPE.U16,
+            dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.WO,
         ),
     ]
