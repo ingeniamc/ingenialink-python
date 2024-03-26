@@ -218,8 +218,6 @@ class Dictionary(ABC):
     """Instance of all the errors in the dictionary."""
     image: Optional[str] = None
     """Drive's encoded image."""
-    moco_image: Optional[str] = None
-    """Motion CORE encoded image. Only available when using a COM-KIT."""
     is_safe: bool = False
     """True if has SafetyPDOs element, else False"""
     _registers: Dict[int, Dict[str, Register]]
@@ -261,8 +259,8 @@ class Dictionary(ABC):
             )
         self._merge_registers(other_dict)
         self._merge_errors(other_dict)
-        self._merge_images(other_dict)
         self._merge_attributes(other_dict)
+        self._set_image(other_dict)
         return self
 
     def registers(self, subnode: int) -> Dict[str, Register]:
@@ -359,19 +357,17 @@ class Dictionary(ABC):
         """
         self.errors.errors.update(other_dict.errors.errors)
 
-    def _merge_images(self, other_dict: "Dictionary") -> None:
-        """Set the moco image attribute.
+    def _set_image(self, other_dict: "Dictionary") -> None:
+        """Set the image attribute.
 
-        Choose the image from the dictionary that has one. (COM-KIT case).
-        If both dictionaries have images, no changes are done.
+        Choose the image from the dictionary that has one.
 
         Args:
             other_dict: The other dictionary instance.
 
         """
         moco_dict = self if self._is_coco_dictionary(other_dict) else other_dict
-        self.moco_image = moco_dict.image
-        self.image = None
+        self.image = moco_dict.image
 
     def _merge_attributes(self, other_dict: "Dictionary") -> None:
         """Add the revision number, product code and firmware version from another
@@ -979,7 +975,6 @@ class DictionaryV2(Dictionary):
     DICT_ENUMERATIONS = "./Enumerations"
     DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
     DICT_IMAGE = "DriveImage"
-    DICT_MOCO_IMAGE_ATTRIB = "moco"
 
     dict_interface: Optional[str]
 
@@ -1051,16 +1046,9 @@ class DictionaryV2(Dictionary):
                 if current_read_register:
                     self._add_register_list(current_read_register)
         try:
-            images = root.findall(self.DICT_IMAGE)
-            for image in images:
-                if image.text is not None and image.text.strip():
-                    if (
-                        "type" in image.attrib
-                        and image.attrib["type"] == self.DICT_MOCO_IMAGE_ATTRIB
-                    ):
-                        self.moco_image = image.text
-                    else:
-                        self.image = image.text
+            image = root.find(self.DICT_IMAGE)
+            if image is not None and image.text is not None and image.text.strip():
+                self.image = image.text
         except AttributeError:
             logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
