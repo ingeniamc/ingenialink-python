@@ -1229,6 +1229,11 @@ class Servo:
         """Returns dictionary object"""
         return self._dictionary
 
+    @dictionary.setter
+    def dictionary(self, dictionary: Dictionary) -> None:
+        """Sets the dictionary object"""
+        self._dictionary = dictionary
+
     @property
     def full_name(self) -> str:
         """Drive full name."""
