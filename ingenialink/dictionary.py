@@ -196,18 +196,12 @@ class Dictionary(ABC):
     """Version of the dictionary."""
     firmware_version: Optional[str]
     """Firmware version declared in the dictionary."""
-    firmware_version_comkit: Optional[str] = None
-    """COM-KIT firmware version declared in the dictionary."""
     product_code: int
     """Product code declared in the dictionary."""
-    product_code_comkit: Optional[int] = None
-    """COM-KIT product code declared in the dictionary."""
     part_number: Optional[str]
     """Part number declared in the dictionary."""
     revision_number: int
     """Revision number declared in the dictionary."""
-    revision_number_comkit: Optional[int] = None
-    """COM-KIT revision number declared in the dictionary."""
     interface: Interface
     """Interface declared in the dictionary."""
     subnodes: Dict[int, SubnodeType]
@@ -370,24 +364,18 @@ class Dictionary(ABC):
         self.image = core_dict.image
 
     def _merge_attributes(self, other_dict: "Dictionary") -> None:
-        """Add the revision number, product code and firmware version from another
-         dictionary to the dictionary instance.
+        """Add the revision number, product code, firmware version and part number
+        from the other dictionary to the dictionary instance.
 
         Args:
             other_dict: The other dictionary instance.
 
         """
-        if self._is_coco_dictionary(other_dict):
-            self.product_code_comkit = other_dict.product_code
-            self.revision_number_comkit = other_dict.revision_number
-            self.firmware_version_comkit = other_dict.firmware_version
-        else:
-            self.product_code_comkit = self.product_code
-            self.revision_number_comkit = self.revision_number
-            self.firmware_version_comkit = self.firmware_version
+        if not self._is_coco_dictionary(other_dict):
             self.product_code = other_dict.product_code
             self.revision_number = other_dict.revision_number
             self.firmware_version = other_dict.firmware_version
+            self.part_number = other_dict.part_number
 
     @staticmethod
     def _is_coco_dictionary(dictionary: "Dictionary") -> bool:

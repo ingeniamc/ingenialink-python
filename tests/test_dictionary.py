@@ -103,23 +103,17 @@ def test_merge_dictionaries_attributes():
     assert coco_dict.product_code == 123456789
     assert coco_dict.revision_number == 12345
     assert coco_dict.firmware_version == "1.4.7"
-    assert coco_dict.product_code_comkit is None
-    assert coco_dict.revision_number_comkit is None
-    assert coco_dict.firmware_version_comkit is None
+    assert coco_dict.part_number is None
     moco_dict = EthernetDictionaryV2(moco_dict_path)
     assert moco_dict.product_code == 987654321
     assert moco_dict.revision_number == 31
     assert moco_dict.firmware_version == "2.4.0"
-    assert moco_dict.product_code_comkit is None
-    assert moco_dict.revision_number_comkit is None
-    assert moco_dict.firmware_version_comkit is None
+    assert moco_dict.part_number == "CORE"
     merged_dict = coco_dict + moco_dict
     assert merged_dict.product_code == 987654321
     assert merged_dict.revision_number == 31
     assert merged_dict.firmware_version == "2.4.0"
-    assert merged_dict.product_code_comkit == 123456789
-    assert merged_dict.revision_number_comkit == 12345
-    assert merged_dict.firmware_version_comkit == "1.4.7"
+    assert merged_dict.part_number == "CORE"
 
 
 @pytest.mark.no_connection
@@ -146,9 +140,7 @@ def test_merge_dictionaries_order_invariant():
     assert dict_a.product_code == dict_b.product_code
     assert dict_a.revision_number == dict_b.revision_number
     assert dict_a.firmware_version == dict_b.firmware_version
-    assert dict_a.product_code_comkit == dict_b.product_code_comkit
-    assert dict_a.revision_number_comkit == dict_b.revision_number_comkit
-    assert dict_a.firmware_version_comkit == dict_b.firmware_version_comkit
+    assert dict_a.part_number == dict_b.part_number
     assert dict_a.image == dict_b.image
 
 
