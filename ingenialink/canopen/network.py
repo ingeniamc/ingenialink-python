@@ -13,6 +13,7 @@ RUNNING_ON_WINDOWS = os.name == "nt"
 import canopen
 import ingenialogger
 from can import CanError
+
 if RUNNING_ON_WINDOWS:
     from can.interfaces.ixxat.exceptions import VCIError
 else:
@@ -89,7 +90,7 @@ CAN_CHANNELS: Dict[str, Union[Tuple[int, int], Tuple[str, str]]] = {
     "pcan": ("PCAN_USBBUS1", "PCAN_USBBUS2"),
     "ixxat": (0, 1),
     "virtual": (0, 1),
-    "socketcan": ("can0", "can1")
+    "socketcan": ("can0", "can1"),
 }
 
 
@@ -645,7 +646,9 @@ class CanopenNetwork(Network):
                 servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
             except VCIError as e:
                 # This error is a specific error for ixxat transceivers
-                raise ILFirmwareLoadError("An error occurred when starting the node guarding.") from e
+                raise ILFirmwareLoadError(
+                    "An error occurred when starting the node guarding."
+                ) from e
         else:
             servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
         try:
