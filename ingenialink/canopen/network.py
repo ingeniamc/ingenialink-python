@@ -8,10 +8,15 @@ from threading import Thread
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+RUNNING_ON_WINDOWS = os.name == "nt"
+
 import canopen
 import ingenialogger
 from can import CanError
-from can.interfaces.ixxat.exceptions import VCIError
+if RUNNING_ON_WINDOWS:
+    from can.interfaces.ixxat.exceptions import VCIError
+else:
+    VCIError = None
 from canopen import Network as NetworkLib
 
 from ingenialink.canopen.register import CanopenRegister
@@ -84,6 +89,7 @@ CAN_CHANNELS: Dict[str, Union[Tuple[int, int], Tuple[str, str]]] = {
     "pcan": ("PCAN_USBBUS1", "PCAN_USBBUS2"),
     "ixxat": (0, 1),
     "virtual": (0, 1),
+    "socketcan": ("can0", "can1")
 }
 
 
@@ -94,6 +100,7 @@ class CAN_DEVICE(Enum):
     PCAN = "pcan"
     IXXAT = "ixxat"
     VIRTUAL = "virtual"
+    SOCKETCAN = "socketcan"
 
 
 class CAN_BAUDRATE(Enum):
@@ -354,6 +361,8 @@ class CanopenNetwork(Network):
         """Creates a network interface object establishing an empty connection
         with all the network attributes already specified."""
         if self._connection is None:
+            if not RUNNING_ON_WINDOWS and self.__device != CAN_DEVICE.SOCKETCAN.value:
+                raise ILError("In Linux machines, only the SOCKETCAN device can be used.")
             self._connection = canopen.Network()
             connection_args = {
                 "bustype": self.__device,
@@ -631,11 +640,14 @@ class CanopenNetwork(Network):
         logger.info("Flashing firmware")
         with contextlib.suppress(ILError):
             servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
-        try:
+        if RUNNING_ON_WINDOWS:
+            try:
+                servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
+            except VCIError as e:
+                # This error is a specific error for ixxat transceivers
+                raise ILFirmwareLoadError("An error occurred when starting the node guarding.") from e
+        else:
             servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
-        except VCIError as e:
-            # This error is a specific error for ixxat transceivers
-            raise ILFirmwareLoadError("An error occurred when starting the node guarding.") from e
         try:
             servo.node.nmt.wait_for_heartbeat(timeout=RECONNECTION_TIMEOUT)
         except canopen.nmt.NmtError as e:
