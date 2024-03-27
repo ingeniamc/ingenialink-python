@@ -1281,6 +1281,9 @@ class VirtualDrive(Thread):
         self.internal_generator = VirtualInternalGenerator(self)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if os.name != "nt":
+            # On Linux, the SO_REUSEADDR should be set to avoid letting the socket opened.
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     def run(self) -> None:
         """Open socket, listen and decode messages."""
