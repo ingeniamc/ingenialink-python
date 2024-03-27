@@ -348,6 +348,7 @@ class DictionaryV3(Dictionary):
     DTYPE_ATTR = "dtype"
     UID_ATTR = "id"
     CYCLIC_ATTR = "cyclic"
+    DESCRIPTION_ATTR = "desc"
     DEFAULT_ATTR = "default"
     CAT_ID_ATTR = "cat_id"
     UNITS_ATTR = "units"
@@ -708,7 +709,7 @@ class DictionaryV3(Dictionary):
         dtype = self.dtype_xdf_options[register.attrib[self.DTYPE_ATTR]]
         identifier = register.attrib[self.UID_ATTR]
         cyclic = register.attrib[self.CYCLIC_ATTR]  # TODO use enums
-        # TODO use desc
+        description = register.attrib[self.DESCRIPTION_ATTR]
         default = bytes.fromhex(register.attrib[self.DEFAULT_ATTR])
         cat_id = register.attrib[self.CAT_ID_ATTR]
         units = register.attrib.get(self.UNITS_ATTR)
@@ -735,6 +736,8 @@ class DictionaryV3(Dictionary):
             enums=enums,
             cat_id=cat_id,
             address_type=address_type,
+            description=description,
+            default=default,
         )
         if subnode not in self._registers:
             self._registers[subnode] = {}
@@ -781,7 +784,7 @@ class DictionaryV3(Dictionary):
         dtype = self.dtype_xdf_options[subitem.attrib[self.DTYPE_ATTR]]
         identifier = subitem.attrib[self.UID_ATTR]
         cyclic = subitem.attrib[self.CYCLIC_ATTR]  # TODO use enums
-        # TODO use desc
+        description = subitem.attrib[self.DESCRIPTION_ATTR]
         default = bytes.fromhex(subitem.attrib[self.DEFAULT_ATTR])
         cat_id = subitem.attrib[self.CAT_ID_ATTR]
         units = subitem.attrib.get(self.UNITS_ATTR)
@@ -809,6 +812,8 @@ class DictionaryV3(Dictionary):
             enums=enums,
             cat_id=cat_id,
             address_type=address_type,
+            description=description,
+            default=default,
         )
         if subnode not in self._registers:
             self._registers[subnode] = {}

@@ -24,6 +24,8 @@ class EthernetRegister(Register):
         scat_id: Sub-category ID.
         internal_use: Internal use.
         address_type: Address Type.
+        description: Register description.
+        default: Register default value.
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -54,6 +56,8 @@ class EthernetRegister(Register):
         scat_id: Optional[str] = None,
         internal_use: int = 0,
         address_type: Optional[REG_ADDRESS_TYPE] = None,
+        description: Optional[str] = None,
+        default: Optional[bytes] = None,
     ):
         super().__init__(
             dtype,
@@ -71,6 +75,8 @@ class EthernetRegister(Register):
             scat_id,
             internal_use,
             address_type,
+            description,
+            default,
         )
 
         self.__address = address

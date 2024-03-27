@@ -5,7 +5,6 @@ from ingenialink.exceptions import ILDictionaryParseError
 from ingenialink import CanopenRegister
 from ingenialink.dictionary import Interface, SubnodeType, DictionaryV3
 
-
 path_resources = "./tests/resources/canopen/"
 dict_can_v3 = "test_dict_can_v3.0.xdf"
 dict_can_v3_axis = "test_dict_can_v3.0_axis.xdf"
@@ -160,3 +159,54 @@ def test_wrong_dictionary():
         ILDictionaryParseError, match="Dictionary can not be used for the chose communication"
     ):
         DictionaryV3("./tests/resources/test_dict_ecat_eoe_v3.0.xdf", Interface.CAN)
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize("dictionary_path", [dict_can_v3, dict_can_v3_axis])
+def test_register_default_values(dictionary_path):
+    dictionary_path = join_path(path_resources, dictionary_path)
+    expected_defaults_per_subnode = {
+        0: {
+            "DRV_DIAG_ERROR_LAST_COM": 0,
+            "DRV_AXIS_NUMBER": 1,
+            "CIA301_COMMS_RPDO1_MAP": 1,
+            "CIA301_COMMS_RPDO1_MAP_1": 268451936,
+        },
+        1: {
+            "COMMU_ANGLE_SENSOR": 4,
+        },
+        2: {
+            "COMMU_ANGLE_SENSOR": 4,
+        },
+    }
+    canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
+    for subnode, registers in canopen_dict._registers.items():
+        for register in registers.values():
+            assert register.default == expected_defaults_per_subnode[subnode][register.identifier]
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize("dictionary_path", [dict_can_v3, dict_can_v3_axis])
+def test_register_description(dictionary_path):
+    dictionary_path = join_path(path_resources, dictionary_path)
+    expected_description_per_subnode = {
+        0: {
+            "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
+            "DRV_AXIS_NUMBER": "",
+            "CIA301_COMMS_RPDO1_MAP": "",
+            "CIA301_COMMS_RPDO1_MAP_1": "",
+        },
+        1: {
+            "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
+        },
+        2: {
+            "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
+        },
+    }
+    canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
+    for subnode, registers in canopen_dict._registers.items():
+        for register in registers.values():
+            assert (
+                register.description
+                == expected_description_per_subnode[subnode][register.identifier]
+            )
