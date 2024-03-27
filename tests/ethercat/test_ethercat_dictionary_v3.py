@@ -199,7 +199,7 @@ def test_wrong_dictionary():
 
 
 @pytest.mark.no_connection
-def test_default_values():
+def test_register_default_values():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     expected_defaults_per_subnode = {
         0: {
@@ -216,3 +216,26 @@ def test_default_values():
     for subnode, registers in ethercat_dict._registers.items():
         for register in registers.values():
             assert register.default == expected_defaults_per_subnode[subnode][register.identifier]
+
+
+@pytest.mark.no_connection
+def test_register_description():
+    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    expected_description_per_subnode = {
+        0: {
+            "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
+            "DRV_AXIS_NUMBER": "",
+            "CIA301_COMMS_RPDO1_MAP": "",
+            "CIA301_COMMS_RPDO1_MAP_1": "",
+        },
+        1: {
+            "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
+        },
+    }
+    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    for subnode, registers in ethercat_dict._registers.items():
+        for register in registers.values():
+            assert (
+                register.description
+                == expected_description_per_subnode[subnode][register.identifier]
+            )

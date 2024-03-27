@@ -163,7 +163,7 @@ def test_wrong_dictionary():
 
 @pytest.mark.no_connection
 @pytest.mark.parametrize("dictionary_path", [dict_can_v3, dict_can_v3_axis])
-def test_default_values(dictionary_path):
+def test_register_default_values(dictionary_path):
     dictionary_path = join_path(path_resources, dictionary_path)
     expected_defaults_per_subnode = {
         0: {
@@ -183,3 +183,30 @@ def test_default_values(dictionary_path):
     for subnode, registers in canopen_dict._registers.items():
         for register in registers.values():
             assert register.default == expected_defaults_per_subnode[subnode][register.identifier]
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize("dictionary_path", [dict_can_v3, dict_can_v3_axis])
+def test_register_description(dictionary_path):
+    dictionary_path = join_path(path_resources, dictionary_path)
+    expected_description_per_subnode = {
+        0: {
+            "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
+            "DRV_AXIS_NUMBER": "",
+            "CIA301_COMMS_RPDO1_MAP": "",
+            "CIA301_COMMS_RPDO1_MAP_1": "",
+        },
+        1: {
+            "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
+        },
+        2: {
+            "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
+        },
+    }
+    canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
+    for subnode, registers in canopen_dict._registers.items():
+        for register in registers.values():
+            assert (
+                register.description
+                == expected_description_per_subnode[subnode][register.identifier]
+            )
