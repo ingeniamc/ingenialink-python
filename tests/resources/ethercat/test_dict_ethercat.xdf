@@ -69,6 +69,26 @@
             <Enum value="2">TRIGGER_CONFIG_FALLING</Enum>
           </Enumerations>
         </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x0020" dtype="s32" id="CL_POS_SET_POINT_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_RX" desc="User position set-point in counts" cat_id="TARGET">
+          <Labels>
+            <Label lang="en_US">Position set-point</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0030" dtype="s32" id="CL_POS_FBK_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Position obtained from position feedback sensor in counts" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Actual position</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x0021" dtype="float" id="CL_VEL_SET_POINT_VALUE" units="rev/s" subnode="1" cyclic="CYCLIC_RX" desc="User velocity set-point for velocity modes" cat_id="TARGET">
+          <Labels>
+            <Label lang="en_US">Velocity set-point</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0031" dtype="float" id="CL_VEL_FBK_VALUE" units="rev/s" subnode="1" cyclic="CYCLIC_TX" desc="Velocity obtained from velocity feedback sensor in revolution per second" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Actual velocity</Label>
+          </Labels>
+        </Register>
                 <Register access="rw" address_type="NVM_CFG" address="0x0151" dtype="u16" id="COMMU_ANGLE_SENSOR" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the sensor used for angle readings" cat_id="COMMUTATION">
                     <Labels>
                         <Label lang="en_US">Commutation feedback sensor</Label>

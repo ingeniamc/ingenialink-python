@@ -26,8 +26,8 @@ SUBNODE = 1
 
 
 @pytest.fixture()
-def open_dictionary(read_config):
-    dictionary = read_config["ethercat"]["dictionary"]
+def open_dictionary():
+    dictionary = "./tests/resources/ethercat/test_dict_ethercat.xdf"
     ethercat_dictionary = DictionaryFactory.create_dictionary(dictionary, Interface.ECAT)
     return ethercat_dictionary
 
@@ -110,9 +110,8 @@ def test_tpdo_item(open_dictionary):
     "uid, expected_value",
     [("CL_POS_FBK_VALUE", 0x20300020), ("CL_VEL_FBK_VALUE", 0x20310020)],
 )
-def test_pdo_item_register_mapping(read_config, uid, expected_value):
-    dictionary = read_config["ethercat"]["dictionary"]
-    ethercat_dictionary = DictionaryFactory.create_dictionary(dictionary, Interface.ECAT)
+def test_pdo_item_register_mapping(open_dictionary, uid, expected_value):
+    ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(1)[uid]
     tpdo_item = TPDOMapItem(register)
     assert expected_value.to_bytes(4, "little") == tpdo_item.register_mapping
