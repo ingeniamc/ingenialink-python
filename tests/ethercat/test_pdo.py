@@ -51,7 +51,6 @@ def create_pdo_map(open_dictionary):
 @pytest.mark.no_connection
 def test_rpdo_item(open_dictionary):
     ethercat_dictionary = open_dictionary
-    print(ethercat_dictionary.registers(SUBNODE))
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
     rpdo_item = RPDOMapItem(register)
 
