@@ -4,6 +4,7 @@
 ### Add
 - Dictionary V3 support
 - ILWrongWorkingCount exception raised when the working count in PDO is not the expected one.
+- Support to socketcan so the canopen communication can be used in Linux.
 
 ### Changed
 - Dictionary class properties, such as subnodes and interface.
