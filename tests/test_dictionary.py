@@ -65,6 +65,7 @@ def test_dictionary_v2_moco_image(dictionary_class):
     assert isinstance(dictionary.moco_image, str)
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "dict_path, interface, dict_class",
     [
