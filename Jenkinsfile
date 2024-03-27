@@ -52,13 +52,6 @@ pipeline {
                         """
                     }
                 }
-                stage('Run ') {
-                    steps {
-                        sh """
-                            python${DEFAULT_PYTHON_VERSION} -m pip install tox==${TOX_VERSION}
-                        """
-                    }
-                }
                 stage('Run no-connection tests') {
                     steps {
                         sh """
