@@ -1,9 +1,12 @@
+import os
+
 import pytest
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
 from ingenialink.register import REG_ACCESS, REG_DTYPE, REG_PHY, Register, dtypes_ranges
+from tests.virtual.test_virtual_network import connect_virtual_drive, stop_virtual_drive
 
 
 @pytest.mark.no_connection
@@ -168,3 +171,36 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
     assert mapped_address_eth == register.mapped_address
     register = CanopenRegister(**canopen_param_dict)
     assert mapped_address_can == register.mapped_address
+
+
+@pytest.mark.parametrize(
+    "write_value, expected_read_value,",
+    [
+        (0, False),
+        (1, True),
+        (False, False),
+        (True, True),
+    ],
+)
+@pytest.mark.no_connection
+def test_bit_register(connect_virtual_drive, stop_virtual_drive, write_value, expected_read_value):
+    dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
+    servo, _ = connect_virtual_drive(dictionary)
+    servo.write("TEST_BIT_REGISTER", write_value)
+    assert expected_read_value == servo.read("TEST_BIT_REGISTER")
+
+
+@pytest.mark.parametrize(
+    "write_value",
+    [2, "one"],
+)
+@pytest.mark.no_connection
+def test_bit_register_write_invalid_value(connect_virtual_drive, stop_virtual_drive, write_value):
+    dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
+    servo, _ = connect_virtual_drive(dictionary)
+    with pytest.raises(ValueError) as exc_info:
+        servo.write("TEST_BIT_REGISTER", write_value)
+    assert (
+        str(exc_info.value)
+        == f"Invalid value. Expected values: [0, 1, True, False], got {write_value}"
+    )
