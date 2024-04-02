@@ -4,6 +4,7 @@
 ### Add
 - Dictionary V3 support
 - ILWrongWorkingCount exception raised when the working count in PDO is not the expected one.
+- Read/write functionalities for bit register type.
 
 ### Changed
 - Dictionary class properties, such as subnodes and interface.
