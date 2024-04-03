@@ -215,6 +215,7 @@ class EthercatNetwork(Network):
         self._set_servo_state(slave_id, NET_STATE.CONNECTED)
         if net_status_listener:
             self.start_status_listener()
+        servo.slave.add_emergency_callback(self._emcy_callback)
         return servo
 
     def disconnect_from_slave(self, servo: EthercatServo) -> None:  # type: ignore [override]
@@ -469,3 +470,11 @@ class EthercatNetwork(Network):
         """Notify subscribers of a network state change."""
         for callback in self.__observers_net_state[slave_id]:
             callback(status)
+
+    @staticmethod
+    def _emcy_callback(emergency_msg: pysoem.Emergency) -> None:
+        """Log the emergency messages"""
+        logger.warning(
+            f"Emergency message received from slave {emergency_msg.slave_pos}, error code:"
+            f" {hex(emergency_msg.error_code)}"
+        )
