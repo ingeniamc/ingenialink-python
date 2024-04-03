@@ -471,7 +471,7 @@ class EthercatNetwork(Network):
         for callback in self.__observers_net_state[slave_id]:
             callback(status)
 
-    def _emcy_callback(self, emergency_msg: pysoem.Emergency) -> None:
+    def _emcy_callback(self, emergency_msg: "pysoem.Emergency") -> None:
         """Log the emergency messages"""
         slave_id = emergency_msg.slave_pos
         if servo := next((servo for servo in self.servos if servo.slave_id == slave_id), None):
