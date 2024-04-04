@@ -1,5 +1,6 @@
 import os
 import pathlib
+import platform
 import socket
 import time
 from enum import Enum, IntEnum
@@ -1281,6 +1282,9 @@ class VirtualDrive(Thread):
         self.internal_generator = VirtualInternalGenerator(self)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if platform.system() != "Windows":
+            # On Linux, the SO_REUSEADDR should be set to avoid keeping the socket opened.
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     def run(self) -> None:
         """Open socket, listen and decode messages."""
