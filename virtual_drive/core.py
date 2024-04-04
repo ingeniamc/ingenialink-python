@@ -1404,7 +1404,7 @@ class VirtualDrive(Thread):
             if not isinstance(reg, EthernetRegister):
                 raise ValueError
             register = EthernetRegister(
-                reg.address, REG_DTYPE.DOMAIN, reg.access, identifier=id, subnode=reg.subnode
+                reg.address, REG_DTYPE.BYTE_ARRAY_512, reg.access, identifier=id, subnode=reg.subnode
             )
             self.__dictionary._add_register_list(register)
             self.__dictionary.registers(reg.subnode)[id].storage_valid = True
