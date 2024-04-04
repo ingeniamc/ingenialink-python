@@ -194,8 +194,6 @@ class CanopenNetwork(Network):
         baudrate: CAN_BAUDRATE = CAN_BAUDRATE.Baudrate_1M,
     ):
         super(CanopenNetwork, self).__init__()
-        if not platform.system() == "Linux" and device != CAN_DEVICE.SOCKETCAN.value:
-            raise ILError("In Linux machines, only the SOCKETCAN device can be used.")
         self.servos: List[CanopenServo] = []
         self.__device = device.value
         self.__channel: Union[int, str] = CAN_CHANNELS[self.__device][channel]
