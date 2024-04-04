@@ -4,6 +4,7 @@
 ### Add
 - Dictionary V3 support
 - ILWrongWorkingCount exception raised when the working count in PDO is not the expected one.
+- Register type for monitoring/disturbance data.
 - Default value and description attributes to registers.
 
 ### Changed
