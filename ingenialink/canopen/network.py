@@ -640,16 +640,11 @@ class CanopenNetwork(Network):
         logger.info("Flashing firmware")
         with contextlib.suppress(ILError):
             servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
-        if RUNNING_ON_WINDOWS:
-            try:
-                servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
-            except VCIError as e:
-                # This error is a specific error for ixxat transceivers
-                raise ILFirmwareLoadError(
-                    "An error occurred when starting the node guarding."
-                ) from e
-        else:
+        try:
             servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
+        except VCIError as e:
+            # This error is a specific error for ixxat transceivers
+            raise ILFirmwareLoadError("An error occurred when starting the node guarding.") from e
         try:
             servo.node.nmt.wait_for_heartbeat(timeout=RECONNECTION_TIMEOUT)
         except canopen.nmt.NmtError as e:
