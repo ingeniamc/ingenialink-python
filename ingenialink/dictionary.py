@@ -244,7 +244,7 @@ class Dictionary(ABC):
 
         """
         if not isinstance(other_dict, type(self)):
-            raise ValueError(
+            raise TypeError(
                 f"Cannot merge dictionaries. Expected type: {type(self)}, got: {type(other_dict)}"
             )
         if not other_dict.is_coco_dictionary and not self.is_coco_dictionary:

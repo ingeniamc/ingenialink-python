@@ -150,7 +150,7 @@ def test_merge_dictionaries_type_exception():
     can_v2_path = f"{PATH_RESOURCE}canopen/test_dict_can.xdf"
     eth_v2_dict = EthernetDictionaryV2(eth_v2_path)
     can_v2_dict = CanopenDictionaryV2(can_v2_path)
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(TypeError) as exc_info:
         eth_v2_dict + can_v2_dict
     assert (
         str(exc_info.value)
