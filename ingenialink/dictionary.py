@@ -247,7 +247,7 @@ class Dictionary(ABC):
             raise ValueError(
                 f"Cannot merge dictionaries. Expected type: {type(self)}, got: {type(other_dict)}"
             )
-        if not self._is_coco_dictionary(other_dict) and not self._is_coco_dictionary(self):
+        if not other_dict.is_coco_dictionary and not self.is_coco_dictionary:
             raise ValueError(
                 "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary."
             )
@@ -360,7 +360,7 @@ class Dictionary(ABC):
             other_dict: The other dictionary instance.
 
         """
-        core_dict = self if self._is_coco_dictionary(other_dict) else other_dict
+        core_dict = self if other_dict.is_coco_dictionary else other_dict
         self.image = core_dict.image
 
     def _merge_attributes(self, other_dict: "Dictionary") -> None:
@@ -371,16 +371,21 @@ class Dictionary(ABC):
             other_dict: The other dictionary instance.
 
         """
-        if not self._is_coco_dictionary(other_dict):
+        if not other_dict.is_coco_dictionary:
             self.product_code = other_dict.product_code
             self.revision_number = other_dict.revision_number
             self.firmware_version = other_dict.firmware_version
             self.part_number = other_dict.part_number
 
-    @staticmethod
-    def _is_coco_dictionary(dictionary: "Dictionary") -> bool:
-        """Check if dictionary is a CoCo dictionary"""
-        return len(dictionary.registers(1)) == 0
+    @property
+    def is_coco_dictionary(self) -> bool:
+        """Check if dictionary is a CoCo dictionary
+
+        Returns:
+            True if the dictionary is a CoCo dictionary. False otherwise.
+
+        """
+        return len(self.registers(1)) == 0
 
 
 class DictionaryV3(Dictionary):
