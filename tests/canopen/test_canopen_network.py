@@ -1,4 +1,4 @@
-import os
+import platform
 
 import pytest
 
@@ -117,7 +117,7 @@ def test_disconnect_from_slave(read_config):
 
 @pytest.mark.no_connection
 def test_setup_and_teardown_connection(virtual_network):
-    if os.name != "nt":
+    if platform.system() != "Windows":
         pytest.skip("Only for window machines")
     assert virtual_network._connection is None
     virtual_network._setup_connection()
