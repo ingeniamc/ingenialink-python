@@ -1,5 +1,6 @@
 import contextlib
 import os
+import platform
 import re
 import tempfile
 from collections import OrderedDict, defaultdict
@@ -8,10 +9,16 @@ from threading import Thread
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+RUNNING_ON_WINDOWS = platform.system() == "Windows"
+
 import canopen
 import ingenialogger
 from can import CanError
-from can.interfaces.ixxat.exceptions import VCIError
+
+if RUNNING_ON_WINDOWS:
+    from can.interfaces.ixxat.exceptions import VCIError
+else:
+    VCIError = None
 from canopen import Network as NetworkLib
 
 from ingenialink.canopen.register import CanopenRegister
@@ -84,6 +91,7 @@ CAN_CHANNELS: Dict[str, Union[Tuple[int, int], Tuple[str, str]]] = {
     "pcan": ("PCAN_USBBUS1", "PCAN_USBBUS2"),
     "ixxat": (0, 1),
     "virtual": (0, 1),
+    "socketcan": ("can0", "can1"),
 }
 
 
@@ -94,6 +102,7 @@ class CAN_DEVICE(Enum):
     PCAN = "pcan"
     IXXAT = "ixxat"
     VIRTUAL = "virtual"
+    SOCKETCAN = "socketcan"
 
 
 class CAN_BAUDRATE(Enum):
