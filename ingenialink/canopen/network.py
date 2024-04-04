@@ -1,5 +1,6 @@
 import contextlib
 import os
+import platform
 import re
 import tempfile
 from collections import OrderedDict, defaultdict
@@ -8,7 +9,7 @@ from threading import Thread
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-RUNNING_ON_WINDOWS = os.name == "nt"
+RUNNING_ON_WINDOWS = platform.system() == "Windows"
 
 import canopen
 import ingenialogger
@@ -193,6 +194,8 @@ class CanopenNetwork(Network):
         baudrate: CAN_BAUDRATE = CAN_BAUDRATE.Baudrate_1M,
     ):
         super(CanopenNetwork, self).__init__()
+        if not platform.system() == "Linux" and device != CAN_DEVICE.SOCKETCAN.value:
+            raise ILError("In Linux machines, only the SOCKETCAN device can be used.")
         self.servos: List[CanopenServo] = []
         self.__device = device.value
         self.__channel: Union[int, str] = CAN_CHANNELS[self.__device][channel]
@@ -362,8 +365,6 @@ class CanopenNetwork(Network):
         """Creates a network interface object establishing an empty connection
         with all the network attributes already specified."""
         if self._connection is None:
-            if not RUNNING_ON_WINDOWS and self.__device != CAN_DEVICE.SOCKETCAN.value:
-                raise ILError("In Linux machines, only the SOCKETCAN device can be used.")
             self._connection = canopen.Network()
             connection_args = {
                 "bustype": self.__device,
