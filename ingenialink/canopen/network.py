@@ -1,5 +1,6 @@
 import contextlib
 import os
+import platform
 import re
 import tempfile
 from collections import OrderedDict, defaultdict
@@ -8,7 +9,7 @@ from threading import Thread
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-RUNNING_ON_WINDOWS = os.name == "nt"
+RUNNING_ON_WINDOWS = platform.system() == "Windows"
 
 import canopen
 import ingenialogger
@@ -47,7 +48,7 @@ PROG_DL_1 = CanopenRegister(
     idx=0x1F50,
     subidx=0x01,
     cyclic="CONFIG",
-    dtype=REG_DTYPE.DOMAIN,
+    dtype=REG_DTYPE.BYTE_ARRAY_512,
     access=REG_ACCESS.RW,
     identifier="CIA302_BL_PROGRAM_DATA",
     subnode=0,
@@ -362,8 +363,6 @@ class CanopenNetwork(Network):
         """Creates a network interface object establishing an empty connection
         with all the network attributes already specified."""
         if self._connection is None:
-            if not RUNNING_ON_WINDOWS and self.__device != CAN_DEVICE.SOCKETCAN.value:
-                raise ILError("In Linux machines, only the SOCKETCAN device can be used.")
             self._connection = canopen.Network()
             connection_args = {
                 "bustype": self.__device,
@@ -614,6 +613,11 @@ class CanopenNetwork(Network):
         while num_tries < POLLING_MAX_TRIES:
             with contextlib.suppress(ILError):
                 value = servo.read(register, subnode=subnode)
+            if isinstance(value, bytes):
+                raise ValueError(
+                    f"Error reading register {register.identifier}. Expected data type"
+                    f" {register.dtype}, got bytes."
+                )
             if value == expected_value:
                 logger.debug(f"Success. Read value {value}. Num tries {num_tries}")
                 return True
@@ -641,16 +645,11 @@ class CanopenNetwork(Network):
         logger.info("Flashing firmware")
         with contextlib.suppress(ILError):
             servo.write(PROG_STAT_1, PROG_CTRL_STATE_STOP, subnode=0)
-        if RUNNING_ON_WINDOWS:
-            try:
-                servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
-            except VCIError as e:
-                # This error is a specific error for ixxat transceivers
-                raise ILFirmwareLoadError(
-                    "An error occurred when starting the node guarding."
-                ) from e
-        else:
+        try:
             servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
+        except VCIError as e:
+            # This error is a specific error for ixxat transceivers
+            raise ILFirmwareLoadError("An error occurred when starting the node guarding.") from e
         try:
             servo.node.nmt.wait_for_heartbeat(timeout=RECONNECTION_TIMEOUT)
         except canopen.nmt.NmtError as e:
