@@ -42,6 +42,7 @@ def test_dictionary_v2_image_none(dictionary_class):
     assert dictionary.image is None
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "dict_path, interface, dict_class",
     [

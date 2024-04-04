@@ -7,6 +7,7 @@
 - Register type for monitoring/disturbance data.
 - Support for merging dictionary instances. (It can only be used for merging COM-KIT and CORE dictionaries.)
 - Support to socketcan so the canopen communication can be used in Linux.
+- Default value and description attributes to registers.
 
 ### Changed
 - Dictionary class properties, such as subnodes and interface.
