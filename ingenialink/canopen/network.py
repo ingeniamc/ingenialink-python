@@ -1,5 +1,6 @@
 import contextlib
 import os
+import platform
 import re
 import tempfile
 from collections import OrderedDict, defaultdict
@@ -8,10 +9,16 @@ from threading import Thread
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+RUNNING_ON_WINDOWS = platform.system() == "Windows"
+
 import canopen
 import ingenialogger
 from can import CanError
-from can.interfaces.ixxat.exceptions import VCIError
+
+if RUNNING_ON_WINDOWS:
+    from can.interfaces.ixxat.exceptions import VCIError
+else:
+    VCIError = None
 from canopen import Network as NetworkLib
 
 from ingenialink.canopen.register import CanopenRegister
@@ -41,7 +48,7 @@ PROG_DL_1 = CanopenRegister(
     idx=0x1F50,
     subidx=0x01,
     cyclic="CONFIG",
-    dtype=REG_DTYPE.DOMAIN,
+    dtype=REG_DTYPE.BYTE_ARRAY_512,
     access=REG_ACCESS.RW,
     identifier="CIA302_BL_PROGRAM_DATA",
     subnode=0,
@@ -84,6 +91,7 @@ CAN_CHANNELS: Dict[str, Union[Tuple[int, int], Tuple[str, str]]] = {
     "pcan": ("PCAN_USBBUS1", "PCAN_USBBUS2"),
     "ixxat": (0, 1),
     "virtual": (0, 1),
+    "socketcan": ("can0", "can1"),
 }
 
 
@@ -94,6 +102,7 @@ class CAN_DEVICE(Enum):
     PCAN = "pcan"
     IXXAT = "ixxat"
     VIRTUAL = "virtual"
+    SOCKETCAN = "socketcan"
 
 
 class CAN_BAUDRATE(Enum):
@@ -604,6 +613,11 @@ class CanopenNetwork(Network):
         while num_tries < POLLING_MAX_TRIES:
             with contextlib.suppress(ILError):
                 value = servo.read(register, subnode=subnode)
+            if isinstance(value, bytes):
+                raise ValueError(
+                    f"Error reading register {register.identifier}. Expected data type"
+                    f" {register.dtype}, got bytes."
+                )
             if value == expected_value:
                 logger.debug(f"Success. Read value {value}. Num tries {num_tries}")
                 return True

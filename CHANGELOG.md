@@ -4,6 +4,10 @@
 ### Add
 - Dictionary V3 support
 - ILWrongWorkingCount exception raised when the working count in PDO is not the expected one.
+- Register type for monitoring/disturbance data.
+- Support for merging dictionary instances. (It can only be used for merging COM-KIT and CORE dictionaries.)
+- Support to socketcan so the canopen communication can be used in Linux.
+- Default value and description attributes to registers.
 - Read/write functionalities for bit register type.
 
 ### Changed

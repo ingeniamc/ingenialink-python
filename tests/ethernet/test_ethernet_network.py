@@ -1,3 +1,4 @@
+import os
 import socket
 import time
 
@@ -75,12 +76,13 @@ def test_load_firmware_file_not_found():
 
 @pytest.mark.no_connection
 def test_load_firmware_no_connection(read_config):
-    protocol_contents = read_config["ethernet"]
+    fw_file = "temp_file.lfu"
+    with open(fw_file, "w"):
+        pass
     virtual_net = EthernetNetwork()
     with pytest.raises(ILFirmwareLoadError):
-        virtual_net.load_firmware(
-            protocol_contents["fw_file"], target="127.0.0.1", ftp_user="", ftp_pwd=""
-        )
+        virtual_net.load_firmware(fw_file, target="127.0.0.1", ftp_user="", ftp_pwd="")
+    os.remove(fw_file)
 
 
 @pytest.mark.skip
@@ -98,12 +100,11 @@ def test_load_firmware_error_during_loading():
 
 
 @pytest.mark.no_connection
-def test_net_status_listener_connection(virtual_drive, read_config):
+def test_net_status_listener_connection(virtual_drive):
     server, _ = virtual_drive
     net = EthernetNetwork()
-    protocol_contents = read_config["ethernet"]
     status_list = []
-    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"], port=server.port)
+    net.connect_to_slave(server.ip, dictionary=server.dictionary_path, port=server.port)
 
     status_list = []
     net.subscribe_to_status(server.ip, status_list.append)
@@ -125,13 +126,12 @@ def test_net_status_listener_disconnection():
 
 
 @pytest.mark.no_connection
-def test_unsubscribe_from_status(virtual_drive, read_config):
+def test_unsubscribe_from_status(virtual_drive):
     server, _ = virtual_drive
     net = EthernetNetwork()
-    protocol_contents = read_config["ethernet"]
 
     status_list = []
-    net.connect_to_slave(server.ip, dictionary=protocol_contents["dictionary"], port=server.port)
+    net.connect_to_slave(server.ip, server.dictionary_path, port=server.port)
 
     status_list = []
     net.subscribe_to_status(server.ip, status_list.append)

@@ -1,9 +1,9 @@
-import pytest
 from os.path import join as join_path
+
+import pytest
 
 from ingenialink.dictionary import Interface, SubnodeType
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
-
 
 path_resources = "./tests/resources/ethercat/"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
@@ -58,7 +58,13 @@ def test_read_dictionary_registers():
             "TPDO_MAP_REGISTER_SUB_IDX_0",
             "TPDO_MAP_REGISTER_SUB_IDX_1",
         ],
-        1: ["COMMU_ANGLE_SENSOR"],
+        1: [
+            "CL_POS_SET_POINT_VALUE",
+            "CL_POS_FBK_VALUE",
+            "CL_VEL_SET_POINT_VALUE",
+            "CL_VEL_FBK_VALUE",
+            "COMMU_ANGLE_SENSOR",
+        ],
     }
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
