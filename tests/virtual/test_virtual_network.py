@@ -60,6 +60,8 @@ def test_connect_virtual_custom_dictionaries(connect_virtual_drive, read_config)
     config = read_config
     for protocol in ["ethernet", "canopen"]:
         dictionary = config[protocol]["dictionary"]
+        if not os.path.exists(dictionary):
+            continue
         servo, net = connect_virtual_drive(dictionary)
         assert servo is not None and net is not None
         assert len(net.servos) == 1

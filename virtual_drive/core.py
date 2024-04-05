@@ -1,5 +1,6 @@
 import os
 import pathlib
+import platform
 import socket
 import time
 from enum import Enum, IntEnum
@@ -1281,6 +1282,9 @@ class VirtualDrive(Thread):
         self.internal_generator = VirtualInternalGenerator(self)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if platform.system() != "Windows":
+            # On Linux, the SO_REUSEADDR should be set to avoid keeping the socket opened.
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     def run(self) -> None:
         """Open socket, listen and decode messages."""
@@ -1404,7 +1408,7 @@ class VirtualDrive(Thread):
             if not isinstance(reg, EthernetRegister):
                 raise ValueError
             register = EthernetRegister(
-                reg.address, REG_DTYPE.DOMAIN, reg.access, identifier=id, subnode=reg.subnode
+                reg.address, REG_DTYPE.BYTE_ARRAY_512, reg.access, identifier=id, subnode=reg.subnode
             )
             self.__dictionary._add_register_list(register)
             self.__dictionary.registers(reg.subnode)[id].storage_valid = True
