@@ -213,6 +213,7 @@ class EthercatNetwork(Network):
         servo.reset_pdo_mapping()
         self.servos.append(servo)
         self._set_servo_state(slave_id, NET_STATE.CONNECTED)
+        self.subscribe_to_status(slave_id, self._recover_from_power_cycle)
         if net_status_listener:
             self.start_status_listener()
         return servo
@@ -365,7 +366,7 @@ class EthercatNetwork(Network):
         )
 
     def subscribe_to_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None]
+        self, slave_id: int, callback: Callable[[NET_DEV_EVT], None]
     ) -> None:
         """Subscribe to network state changes.
 
@@ -469,3 +470,14 @@ class EthercatNetwork(Network):
         """Notify subscribers of a network state change."""
         for callback in self.__observers_net_state[slave_id]:
             callback(status)
+
+    def _recover_from_power_cycle(self, status: NET_DEV_EVT) -> None:
+        """Transition the slaves to Pre-Op state after a power cycle.
+
+        Args:
+            status: The network status.
+
+        """
+        self._ecat_master.read_state()
+        if status == NET_DEV_EVT.ADDED and self._ecat_master.state == pysoem.INIT_STATE:
+            self.__init_nodes()

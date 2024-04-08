@@ -16,6 +16,7 @@
 
 ### Fixed
 - Bug that prevented the slaves to reach Operational state after the PDO exchange is re-started.
+- Recover the CoE communication after a power-cycle. The network status listener must be turned on in order for it to work.
 
 ## [7.2.0] - 2024-03-13
 
