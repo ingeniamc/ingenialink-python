@@ -481,3 +481,7 @@ class EthercatNetwork(Network):
         self._ecat_master.read_state()
         if status == NET_DEV_EVT.ADDED and self._ecat_master.state == pysoem.INIT_STATE:
             self.__init_nodes()
+            if not self._check_node_state(self.servos, pysoem.PREOP_STATE):
+                raise ILStateError(
+                    "The communication cannot be recovered. Not all slaves reached PreOp state"
+                )
