@@ -477,6 +477,9 @@ class EthercatNetwork(Network):
         Args:
             status: The network status.
 
+        Raises:
+            ILStateError: If not all slaves reach PreOp state.
+
         """
         self._ecat_master.read_state()
         if status == NET_DEV_EVT.ADDED and self._ecat_master.state == pysoem.INIT_STATE:
