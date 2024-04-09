@@ -185,9 +185,10 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
 @pytest.mark.no_connection
 def test_bit_register(connect_virtual_drive, stop_virtual_drive, write_value, expected_read_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
+    boolean_reg_uid = "TEST_BOOLEAN"
     servo, _ = connect_virtual_drive(dictionary)
-    servo.write("TEST_BIT_REGISTER", write_value)
-    assert expected_read_value == servo.read("TEST_BIT_REGISTER")
+    servo.write(boolean_reg_uid, write_value)
+    assert expected_read_value == servo.read(boolean_reg_uid)
 
 
 @pytest.mark.parametrize(
@@ -199,7 +200,7 @@ def test_bit_register_write_invalid_value(connect_virtual_drive, stop_virtual_dr
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
     servo, _ = connect_virtual_drive(dictionary)
     with pytest.raises(ValueError) as exc_info:
-        servo.write("TEST_BIT_REGISTER", write_value)
+        servo.write("TEST_BOOLEAN", write_value)
     assert (
         str(exc_info.value)
         == f"Invalid value. Expected values: [0, 1, True, False], got {write_value}"
