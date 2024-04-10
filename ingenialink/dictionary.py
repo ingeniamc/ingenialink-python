@@ -174,6 +174,7 @@ class Dictionary(ABC):
         "s64": REG_DTYPE.S64,
         "u64": REG_DTYPE.U64,
         "str": REG_DTYPE.STR,
+        "bool": REG_DTYPE.BOOL,
     }
 
     access_xdf_options = {"r": REG_ACCESS.RO, "w": REG_ACCESS.WO, "rw": REG_ACCESS.RW}
