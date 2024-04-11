@@ -3,7 +3,7 @@ from typing import List, Optional, Union, Dict
 import bitarray
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, REG_CYCLIC_TYPE
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILError
 from ingenialink.servo import Servo
@@ -33,7 +33,7 @@ class PDOMapItem:
 
     """
 
-    ACCEPTED_CYCLIC = ""
+    ACCEPTED_CYCLIC: Optional[REG_CYCLIC_TYPE] = None
     """Accepted cyclic: CYCLIC_TX or CYCLIC_RX."""
 
     def __init__(
@@ -50,7 +50,7 @@ class PDOMapItem:
                 subnode=0,
                 idx=0x0000,
                 subidx=0x00,
-                cyclic=self.ACCEPTED_CYCLIC,
+                cyclic=REG_CYCLIC_TYPE(self.ACCEPTED_CYCLIC),
                 dtype=REG_DTYPE.STR,
                 access=REG_ACCESS.RW,
             )
@@ -158,7 +158,7 @@ class PDOMapItem:
 class RPDOMapItem(PDOMapItem):
     """Class to represent RPDO mapping items."""
 
-    ACCEPTED_CYCLIC = "CYCLIC_RX"
+    ACCEPTED_CYCLIC = REG_CYCLIC_TYPE.RX
 
     def __init__(
         self,
@@ -189,7 +189,7 @@ class RPDOMapItem(PDOMapItem):
 class TPDOMapItem(PDOMapItem):
     """Class to represent TPDO mapping items."""
 
-    ACCEPTED_CYCLIC = "CYCLIC_TX"
+    ACCEPTED_CYCLIC = REG_CYCLIC_TYPE.TX
 
 
 class PDOMap:

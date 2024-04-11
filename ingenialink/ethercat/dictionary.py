@@ -4,7 +4,13 @@ import xml.etree.ElementTree as ET
 import ingenialogger
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.ethercat.register import EthercatRegister, REG_DTYPE, REG_ACCESS, REG_ADDRESS_TYPE
+from ingenialink.ethercat.register import (
+    EthercatRegister,
+    REG_DTYPE,
+    REG_ACCESS,
+    REG_ADDRESS_TYPE,
+    REG_CYCLIC_TYPE,
+)
 from ingenialink.constants import (
     CANOPEN_ADDRESS_OFFSET,
     CANOPEN_SUBNODE_0_ADDRESS_OFFSET,
@@ -29,7 +35,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x58B2,
             subidx=0x01,
-            cyclic="CONFIG",
+            cyclic=REG_CYCLIC_TYPE.CONFIG,
             dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.RO,
         ),
@@ -39,7 +45,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x58B4,
             subidx=0x01,
-            cyclic="CONFIG",
+            cyclic=REG_CYCLIC_TYPE.CONFIG,
             dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.WO,
         ),

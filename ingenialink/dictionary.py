@@ -10,7 +10,7 @@ import ingenialogger
 from ingenialink.exceptions import ILDictionaryParseError
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, Register
+from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, Register, REG_CYCLIC_TYPE
 from ingenialink.ethercat.register import EthercatRegister
 
 logger = ingenialogger.get_logger(__name__)
@@ -782,7 +782,7 @@ class DictionaryV3(Dictionary):
         access = self.access_xdf_options[register.attrib[self.ACCESS_ATTR]]
         dtype = self.dtype_xdf_options[register.attrib[self.DTYPE_ATTR]]
         identifier = register.attrib[self.UID_ATTR]
-        cyclic = register.attrib[self.CYCLIC_ATTR]  # TODO use enums
+        cyclic = REG_CYCLIC_TYPE(register.attrib[self.CYCLIC_ATTR])
         description = register.attrib[self.DESCRIPTION_ATTR]
         default = bytes.fromhex(register.attrib[self.DEFAULT_ATTR])
         cat_id = register.attrib[self.CAT_ID_ATTR]
@@ -857,7 +857,7 @@ class DictionaryV3(Dictionary):
         access = self.access_xdf_options[subitem.attrib[self.ACCESS_ATTR]]
         dtype = self.dtype_xdf_options[subitem.attrib[self.DTYPE_ATTR]]
         identifier = subitem.attrib[self.UID_ATTR]
-        cyclic = subitem.attrib[self.CYCLIC_ATTR]  # TODO use enums
+        cyclic = REG_CYCLIC_TYPE(subitem.attrib[self.CYCLIC_ATTR])
         description = subitem.attrib[self.DESCRIPTION_ATTR]
         default = bytes.fromhex(subitem.attrib[self.DEFAULT_ATTR])
         cat_id = subitem.attrib[self.CAT_ID_ATTR]
@@ -1079,7 +1079,7 @@ class DictionaryV2(Dictionary):
 
         try:
             units = register.attrib["units"]
-            cyclic = register.attrib.get("cyclic", "CONFIG")
+            cyclic = REG_CYCLIC_TYPE(register.attrib.get("cyclic", "CONFIG"))
 
             # Data type
             dtype_aux = register.attrib["dtype"]
