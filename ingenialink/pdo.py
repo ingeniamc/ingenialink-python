@@ -33,8 +33,8 @@ class PDOMapItem:
 
     """
 
-    ACCEPTED_CYCLIC: Optional[REG_CYCLIC_TYPE] = None
-    """Accepted cyclic: CYCLIC_TX or CYCLIC_RX."""
+    ACCEPTED_CYCLIC: REG_CYCLIC_TYPE
+    """Accepted cyclic: CYCLIC_TX, CYCLIC_RX or CYCLIC_TXRX."""
 
     def __init__(
         self,
@@ -50,7 +50,7 @@ class PDOMapItem:
                 subnode=0,
                 idx=0x0000,
                 subidx=0x00,
-                cyclic=REG_CYCLIC_TYPE(self.ACCEPTED_CYCLIC),
+                cyclic=self.ACCEPTED_CYCLIC,
                 dtype=REG_DTYPE.STR,
                 access=REG_ACCESS.RW,
             )
@@ -65,10 +65,10 @@ class PDOMapItem:
         Raises:
             ILError: Tf the register is not mappable.
         """
-        if self.register.cyclic != self.ACCEPTED_CYCLIC:
+        if self.register.cyclic not in [self.ACCEPTED_CYCLIC, REG_CYCLIC_TYPE.TXRX]:
             raise ILError(
-                f"Incorrect cyclic. It should be {self.ACCEPTED_CYCLIC}, obtained:"
-                f" {self.register.cyclic}"
+                f"Incorrect cyclic. It should be {self.ACCEPTED_CYCLIC} or {REG_CYCLIC_TYPE.TXRX},"
+                f" obtained: {self.register.cyclic}"
             )
 
     @property
