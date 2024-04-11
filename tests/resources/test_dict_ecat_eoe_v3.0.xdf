@@ -34,6 +34,15 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject>
+					<CANopenObject index="0x5E49" subnode="0">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="s32" id="TEST_TXRX_REGISTER" cyclic="CYCLIC_TXRX" desc="Test TXRX register" default="00000000" cat_id="OTHERS">
+								<Labels>
+									<Label lang="en_US">Test TXRX register</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
 					<CANopenObject index="0x58A0" subnode="0">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" units="cnt" cyclic="CONFIG" desc="" default="0100" cat_id="IDENTIFICATION">
