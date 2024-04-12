@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS, REG_CYCLIC_TYPE
+from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS, RegCyclicType
 
 import ingenialogger
 import xml.etree.ElementTree as ET
@@ -22,7 +22,7 @@ class CanopenDictionaryV2(DictionaryV2):
             identifier="MONITORING_DATA",
             idx=0x58B2,
             subidx=0x00,
-            cyclic=REG_CYCLIC_TYPE.CONFIG,
+            cyclic=RegCyclicType.CONFIG,
             dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.RO,
             subnode=0,
@@ -31,7 +31,7 @@ class CanopenDictionaryV2(DictionaryV2):
             identifier="DISTURBANCE_DATA",
             idx=0x58B4,
             subidx=0x00,
-            cyclic=REG_CYCLIC_TYPE.CONFIG,
+            cyclic=RegCyclicType.CONFIG,
             dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.WO,
             subnode=0,

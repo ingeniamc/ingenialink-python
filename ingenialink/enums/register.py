@@ -70,7 +70,7 @@ class REG_ADDRESS_TYPE(Enum):
     NVM_HW = 4
 
 
-class REG_CYCLIC_TYPE(Enum):
+class RegCyclicType(Enum):
     """Cyclic Type."""
 
     RX = "CYCLIC_RX"

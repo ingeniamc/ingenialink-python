@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import ingenialogger
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS, REG_CYCLIC_TYPE
+from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS, RegCyclicType
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -23,7 +23,7 @@ class EthernetDictionaryV2(DictionaryV2):
             units="",
             subnode=0,
             address=0x00B2,
-            cyclic=REG_CYCLIC_TYPE.CONFIG,
+            cyclic=RegCyclicType.CONFIG,
             dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.RO,
         ),
@@ -32,7 +32,7 @@ class EthernetDictionaryV2(DictionaryV2):
             units="",
             subnode=0,
             address=0x00B4,
-            cyclic=REG_CYCLIC_TYPE.CONFIG,
+            cyclic=RegCyclicType.CONFIG,
             dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.WO,
         ),

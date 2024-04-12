@@ -9,7 +9,7 @@ from ingenialink.ethercat.register import (
     REG_DTYPE,
     REG_ACCESS,
     REG_ADDRESS_TYPE,
-    REG_CYCLIC_TYPE,
+    RegCyclicType,
 )
 from ingenialink.constants import (
     CANOPEN_ADDRESS_OFFSET,
@@ -35,7 +35,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x58B2,
             subidx=0x01,
-            cyclic=REG_CYCLIC_TYPE.CONFIG,
+            cyclic=RegCyclicType.CONFIG,
             dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.RO,
         ),
@@ -45,7 +45,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x58B4,
             subidx=0x01,
-            cyclic=REG_CYCLIC_TYPE.CONFIG,
+            cyclic=RegCyclicType.CONFIG,
             dtype=REG_DTYPE.BYTE_ARRAY_512,
             access=REG_ACCESS.WO,
         ),

@@ -4,7 +4,7 @@ from ingenialink.enums.register import (
     REG_ADDRESS_TYPE,
     REG_DTYPE,
     REG_PHY,
-    REG_CYCLIC_TYPE,
+    RegCyclicType,
 )
 
 

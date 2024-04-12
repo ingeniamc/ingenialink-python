@@ -7,7 +7,7 @@ from ingenialink.enums.register import (
     REG_ADDRESS_TYPE,
     REG_DTYPE,
     REG_PHY,
-    REG_CYCLIC_TYPE,
+    RegCyclicType,
 )
 from ingenialink.utils._utils import convert_bytes_to_dtype
 
@@ -59,7 +59,7 @@ class Register(ABC):
         access: REG_ACCESS,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
-        cyclic: REG_CYCLIC_TYPE = REG_CYCLIC_TYPE.CONFIG,
+        cyclic: RegCyclicType = RegCyclicType.CONFIG,
         phy: REG_PHY = REG_PHY.NONE,
         subnode: int = 1,
         storage: Any = None,
@@ -156,7 +156,7 @@ class Register(ABC):
         return self._units
 
     @property
-    def cyclic(self) -> REG_CYCLIC_TYPE:
+    def cyclic(self) -> RegCyclicType:
         """Defines if the register is cyclic."""
         return self._cyclic
 
