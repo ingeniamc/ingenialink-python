@@ -75,8 +75,8 @@ def test_rpdo_item_wrong_cyclic(open_dictionary):
         RPDOMapItem(register)
     assert (
         str(exc_info.value)
-        == "Incorrect cyclic. It should be REG_CYCLIC_TYPE.RX or REG_CYCLIC_TYPE.TXRX, obtained:"
-        " REG_CYCLIC_TYPE.TX"
+        == "Incorrect cyclic. It should be RegCyclicType.RX or RegCyclicType.TXRX, obtained:"
+        " RegCyclicType.TX"
     )
 
 
@@ -88,8 +88,8 @@ def test_tpdo_item_wrong_cyclic(open_dictionary):
         TPDOMapItem(register)
     assert (
         str(exc_info.value)
-        == "Incorrect cyclic. It should be REG_CYCLIC_TYPE.TX or REG_CYCLIC_TYPE.TXRX, obtained:"
-        " REG_CYCLIC_TYPE.RX"
+        == "Incorrect cyclic. It should be RegCyclicType.TX or RegCyclicType.TXRX, obtained:"
+        " RegCyclicType.RX"
     )
 
 
