@@ -28,6 +28,7 @@ from ingenialink.canopen.servo import (
     REG_DTYPE,
     CanopenServo,
 )
+from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
 from ingenialink.utils._utils import convert_bytes_to_dtype
@@ -38,7 +39,7 @@ logger = ingenialogger.get_logger(__name__)
 PROG_STAT_1 = CanopenRegister(
     idx=0x1F51,
     subidx=0x01,
-    cyclic="CONFIG",
+    cyclic=RegCyclicType.CONFIG,
     dtype=REG_DTYPE.U8,
     access=REG_ACCESS.RW,
     identifier="CIA302_BL_PROGRAM_CONTROL_1",
@@ -47,7 +48,7 @@ PROG_STAT_1 = CanopenRegister(
 PROG_DL_1 = CanopenRegister(
     idx=0x1F50,
     subidx=0x01,
-    cyclic="CONFIG",
+    cyclic=RegCyclicType.CONFIG,
     dtype=REG_DTYPE.BYTE_ARRAY_512,
     access=REG_ACCESS.RW,
     identifier="CIA302_BL_PROGRAM_DATA",
@@ -56,7 +57,7 @@ PROG_DL_1 = CanopenRegister(
 FORCE_BOOT = CanopenRegister(
     idx=0x5EDE,
     subidx=0x00,
-    cyclic="CONFIG",
+    cyclic=RegCyclicType.CONFIG,
     dtype=REG_DTYPE.U32,
     access=REG_ACCESS.WO,
     identifier="DRV_BOOT_COCO_FORCE",
@@ -66,7 +67,7 @@ FORCE_BOOT = CanopenRegister(
 CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
     idx=0x1000,
     subidx=0x00,
-    cyclic="CONFIG",
+    cyclic=RegCyclicType.CONFIG,
     dtype=REG_DTYPE.U32,
     access=REG_ACCESS.RO,
     identifier="",

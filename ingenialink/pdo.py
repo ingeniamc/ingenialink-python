@@ -3,7 +3,7 @@ from typing import List, Optional, Union, Dict
 import bitarray
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
+from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, RegCyclicType
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILError
 from ingenialink.servo import Servo
@@ -33,8 +33,8 @@ class PDOMapItem:
 
     """
 
-    ACCEPTED_CYCLIC = ""
-    """Accepted cyclic: CYCLIC_TX or CYCLIC_RX."""
+    ACCEPTED_CYCLIC: RegCyclicType
+    """Accepted cyclic: CYCLIC_TX, CYCLIC_RX or CYCLIC_TXRX."""
 
     def __init__(
         self,
@@ -65,10 +65,10 @@ class PDOMapItem:
         Raises:
             ILError: Tf the register is not mappable.
         """
-        if self.register.cyclic != self.ACCEPTED_CYCLIC:
+        if self.register.cyclic not in [self.ACCEPTED_CYCLIC, RegCyclicType.TXRX]:
             raise ILError(
-                f"Incorrect cyclic. It should be {self.ACCEPTED_CYCLIC}, obtained:"
-                f" {self.register.cyclic}"
+                f"Incorrect cyclic. It should be {self.ACCEPTED_CYCLIC} or {RegCyclicType.TXRX},"
+                f" obtained: {self.register.cyclic}"
             )
 
     @property
@@ -158,7 +158,7 @@ class PDOMapItem:
 class RPDOMapItem(PDOMapItem):
     """Class to represent RPDO mapping items."""
 
-    ACCEPTED_CYCLIC = "CYCLIC_RX"
+    ACCEPTED_CYCLIC = RegCyclicType.RX
 
     def __init__(
         self,
@@ -189,7 +189,7 @@ class RPDOMapItem(PDOMapItem):
 class TPDOMapItem(PDOMapItem):
     """Class to represent TPDO mapping items."""
 
-    ACCEPTED_CYCLIC = "CYCLIC_TX"
+    ACCEPTED_CYCLIC = RegCyclicType.TX
 
 
 class PDOMap:

@@ -68,3 +68,12 @@ class REG_ADDRESS_TYPE(Enum):
     NVM_CFG = 2
     NVM_LOCK = 3
     NVM_HW = 4
+
+
+class RegCyclicType(Enum):
+    """Cyclic Type."""
+
+    RX = "CYCLIC_RX"
+    TX = "CYCLIC_TX"
+    TXRX = "CYCLIC_TXRX"
+    CONFIG = "CONFIG"

@@ -11,7 +11,7 @@ import pytest
 
 from ingenialink import EthercatNetwork
 from ingenialink.dictionary import Interface
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
+from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, RegCyclicType
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError
@@ -73,7 +73,11 @@ def test_rpdo_item_wrong_cyclic(open_dictionary):
     register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
     with pytest.raises(ILError) as exc_info:
         RPDOMapItem(register)
-    assert str(exc_info.value) == "Incorrect cyclic. It should be CYCLIC_RX, obtained: CYCLIC_TX"
+    assert (
+        str(exc_info.value)
+        == "Incorrect cyclic. It should be RegCyclicType.RX or RegCyclicType.TXRX, obtained:"
+        " RegCyclicType.TX"
+    )
 
 
 @pytest.mark.no_connection
@@ -82,7 +86,11 @@ def test_tpdo_item_wrong_cyclic(open_dictionary):
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
     with pytest.raises(ILError) as exc_info:
         TPDOMapItem(register)
-    assert str(exc_info.value) == "Incorrect cyclic. It should be CYCLIC_TX, obtained: CYCLIC_RX"
+    assert (
+        str(exc_info.value)
+        == "Incorrect cyclic. It should be RegCyclicType.TX or RegCyclicType.TXRX, obtained:"
+        " RegCyclicType.RX"
+    )
 
 
 @pytest.mark.no_connection
@@ -396,7 +404,7 @@ def test_set_pdo_map_to_slave(connect_to_slave, create_pdo_map):
 
 @pytest.mark.no_connection
 def test_pdo_item_bool():
-    register = EthercatRegister(0, 1, REG_DTYPE.BOOL, REG_ACCESS.RW, cyclic="CYCLIC_RX")
+    register = EthercatRegister(0, 1, REG_DTYPE.BOOL, REG_ACCESS.RW, cyclic=RegCyclicType.RX)
     rpdo_item = RPDOMapItem(register)
 
     assert rpdo_item.register == register
@@ -450,7 +458,7 @@ def test_rpdo_padding():
     size_bits = 3
     rpdo_item = RPDOMapItem(size_bits=size_bits)
     assert rpdo_item.size_bits == size_bits
-    assert rpdo_item.ACCEPTED_CYCLIC == "CYCLIC_RX"
+    assert rpdo_item.ACCEPTED_CYCLIC == RegCyclicType.RX
     padding_register = rpdo_item.register
     assert isinstance(padding_register, EthercatRegister)
     assert padding_register.idx == 0x0000
@@ -465,7 +473,7 @@ def test_tpdo_padding():
     size_bits = 4
     tpdo_item = TPDOMapItem(size_bits=size_bits)
     assert tpdo_item.size_bits == size_bits
-    assert tpdo_item.ACCEPTED_CYCLIC == "CYCLIC_TX"
+    assert tpdo_item.ACCEPTED_CYCLIC == RegCyclicType.TX
     padding_register = tpdo_item.register
     assert isinstance(padding_register, EthercatRegister)
     assert padding_register.idx == 0x0000
@@ -497,7 +505,7 @@ def test_map_pdo_with_bools(open_dictionary):
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
     item1 = RPDOMapItem(register)
     item2 = RPDOMapItem(register, size_bits=4)
-    register = EthercatRegister(0, 1, REG_DTYPE.BOOL, REG_ACCESS.RW, cyclic="CYCLIC_RX")
+    register = EthercatRegister(0, 1, REG_DTYPE.BOOL, REG_ACCESS.RW, cyclic=RegCyclicType.RX)
     item3 = RPDOMapItem(register)
     item4 = RPDOMapItem(register)
 

@@ -1,6 +1,12 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY
+from ingenialink.enums.register import (
+    REG_ACCESS,
+    REG_ADDRESS_TYPE,
+    REG_DTYPE,
+    REG_PHY,
+    RegCyclicType,
+)
 from ingenialink.register import Register
 
 
@@ -43,7 +49,7 @@ class EthernetRegister(Register):
         access: REG_ACCESS,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
-        cyclic: str = "CONFIG",
+        cyclic: RegCyclicType = RegCyclicType.CONFIG,
         phy: REG_PHY = REG_PHY.NONE,
         subnode: int = 1,
         storage: Any = None,
