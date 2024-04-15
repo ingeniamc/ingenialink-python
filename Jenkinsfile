@@ -32,8 +32,7 @@ pipeline {
                         script {
                             FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FoE; print(FoE.__version__)"', returnStdout: true).trim()
                         }
-                        //copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
-                        copyFromDist(".", "$DIST_FOE_APP_PATH/release_candidate/0.2.3.1")
+                        copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
                         sh "mv FoEUpdateFirmwareLinux $FOE_APP_NAME_LINUX"
                         stash includes: "$FOE_APP_NAME,$FOE_APP_NAME_LINUX", name: 'foe_app'
                     }
