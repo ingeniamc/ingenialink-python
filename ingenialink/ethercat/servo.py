@@ -53,6 +53,9 @@ class EthercatServo(PDOServo):
     TIMEOUT_WORKING_COUNTER = -5
     NOFRAME_WORKING_COUNTER = -1
 
+    ETHERCAT_PDO_WATCHDOG = "processdata"
+    SECONDS_TO_MS_CONVERSION_FACTOR = 1000
+
     interface = Interface.ECAT
 
     def __init__(
@@ -244,6 +247,17 @@ class EthercatServo(PDOServo):
         if output is None:
             return
         self.__slave.output = self._process_rpdo()
+
+    def set_pdo_watchdog_time(self, timeout: float) -> None:
+        """Set the process data watchdog time.
+
+        Args:
+            timeout: Time in seconds.
+
+        """
+        self.slave.set_watchdog(
+            self.ETHERCAT_PDO_WATCHDOG, self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout
+        )
 
     @property
     def slave(self) -> "CdefSlave":
