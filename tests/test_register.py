@@ -6,7 +6,46 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
 from ingenialink.register import REG_ACCESS, REG_DTYPE, REG_PHY, Register, dtypes_ranges
-from tests.virtual.test_virtual_network import connect_virtual_drive, stop_virtual_drive
+from ingenialink.virtual.network import VirtualNetwork
+from virtual_drive.core import VirtualDrive
+
+TEST_PORT = 82
+server = VirtualDrive(TEST_PORT)
+
+
+@pytest.fixture(autouse=True, scope="function")
+def stop_virtual_drive():
+    yield
+    server.stop()
+
+
+@pytest.fixture
+def connect_virtual_drive_with_bool_register():
+    def connect(dictionary):
+        global server
+        server.stop()
+        server = VirtualDrive(TEST_PORT, dictionary)
+        server.start()
+        net = VirtualNetwork()
+        servo = net.connect_to_slave(dictionary, TEST_PORT)
+
+        boolean_reg_uid = "TEST_BOOLEAN"
+        bool_register = EthernetRegister(
+            0x0200, REG_DTYPE.BOOL, REG_ACCESS.RW, identifier=boolean_reg_uid
+        )
+        server._VirtualDrive__dictionary._add_register_list(bool_register)
+        server._VirtualDrive__dictionary.registers(bool_register.subnode)[
+            boolean_reg_uid
+        ].storage_valid = True
+        server._VirtualDrive__reg_address_to_id[bool_register.subnode][
+            bool_register.address
+        ] = boolean_reg_uid
+        server.reg_signals[boolean_reg_uid] = []
+        servo.dictionary.registers(1)[boolean_reg_uid] = bool_register
+
+        return servo, net
+
+    return connect
 
 
 @pytest.mark.no_connection
@@ -183,10 +222,11 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
     ],
 )
 @pytest.mark.no_connection
-def test_bit_register(connect_virtual_drive, stop_virtual_drive, write_value, expected_read_value):
+def test_bit_register(connect_virtual_drive_with_bool_register, write_value, expected_read_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
     boolean_reg_uid = "TEST_BOOLEAN"
-    servo, _ = connect_virtual_drive(dictionary)
+    servo, _ = connect_virtual_drive_with_bool_register(dictionary)
+
     servo.write(boolean_reg_uid, write_value)
     assert expected_read_value == servo.read(boolean_reg_uid)
 
@@ -196,9 +236,9 @@ def test_bit_register(connect_virtual_drive, stop_virtual_drive, write_value, ex
     [2, "one"],
 )
 @pytest.mark.no_connection
-def test_bit_register_write_invalid_value(connect_virtual_drive, stop_virtual_drive, write_value):
+def test_bit_register_write_invalid_value(connect_virtual_drive_with_bool_register, write_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
-    servo, _ = connect_virtual_drive(dictionary)
+    servo, _ = connect_virtual_drive_with_bool_register(dictionary)
     with pytest.raises(ValueError) as exc_info:
         servo.write("TEST_BOOLEAN", write_value)
     assert (
