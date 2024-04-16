@@ -13,7 +13,7 @@ TEST_PORT = 82
 server = VirtualDrive(TEST_PORT)
 
 
-@pytest.fixture(autouse=True, scope="function")
+@pytest.fixture(scope="function")
 def stop_virtual_drive():
     yield
     server.stop()
@@ -221,6 +221,7 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
         (True, True),
     ],
 )
+@pytest.mark.usefixtures("stop_virtual_drive")
 @pytest.mark.no_connection
 def test_bit_register(connect_virtual_drive_with_bool_register, write_value, expected_read_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
@@ -236,6 +237,7 @@ def test_bit_register(connect_virtual_drive_with_bool_register, write_value, exp
     [2, "one"],
 )
 @pytest.mark.no_connection
+@pytest.mark.usefixtures("stop_virtual_drive")
 def test_bit_register_write_invalid_value(connect_virtual_drive_with_bool_register, write_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
     servo, _ = connect_virtual_drive_with_bool_register(dictionary)
