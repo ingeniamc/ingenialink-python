@@ -9,6 +9,9 @@ Load firmware through CANopen Example
 Load firmware through EtherCAT Example
 ----------------------------------------
 
+.. note::
+    In Linux administrator privileges are needed.
+
 .. literalinclude:: ../../examples/ethercat/ecat_load_firmware.py
 
 Load firmware through Ethernet Example
