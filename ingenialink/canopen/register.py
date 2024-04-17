@@ -1,6 +1,12 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY
+from ingenialink.enums.register import (
+    REG_ACCESS,
+    REG_ADDRESS_TYPE,
+    REG_DTYPE,
+    REG_PHY,
+    RegCyclicType,
+)
 from ingenialink.register import Register
 
 
@@ -25,6 +31,8 @@ class CanopenRegister(Register):
         scat_id: Sub-category ID.
         internal_use: Internal use.
         address_type: Address Type.
+        description: Register description.
+        default: Register default value.
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -41,7 +49,7 @@ class CanopenRegister(Register):
         access: REG_ACCESS,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
-        cyclic: str = "CONFIG",
+        cyclic: RegCyclicType = RegCyclicType.CONFIG,
         phy: REG_PHY = REG_PHY.NONE,
         subnode: int = 1,
         storage: Any = None,
@@ -54,6 +62,8 @@ class CanopenRegister(Register):
         scat_id: Optional[str] = None,
         internal_use: int = 0,
         address_type: Optional[REG_ADDRESS_TYPE] = None,
+        description: Optional[str] = None,
+        default: Optional[bytes] = None,
     ):
         super().__init__(
             dtype,
@@ -71,6 +81,8 @@ class CanopenRegister(Register):
             scat_id,
             internal_use,
             address_type,
+            description,
+            default,
         )
 
         self.__idx = idx

@@ -24,8 +24,8 @@ class REG_DTYPE(Enum):
     """Float."""
     STR = 10
     """String."""
-    DOMAIN = 15
-    """Domain."""
+    BYTE_ARRAY_512 = 15
+    """Buffer with size of 512 bytes."""
     BOOL = 99
     """Boolean."""
 
@@ -68,3 +68,12 @@ class REG_ADDRESS_TYPE(Enum):
     NVM_CFG = 2
     NVM_LOCK = 3
     NVM_HW = 4
+
+
+class RegCyclicType(Enum):
+    """Cyclic Type."""
+
+    RX = "CYCLIC_RX"
+    TX = "CYCLIC_TX"
+    TXRX = "CYCLIC_TXRX"
+    CONFIG = "CONFIG"

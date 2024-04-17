@@ -1,6 +1,6 @@
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional, Dict
+from typing import TYPE_CHECKING, List, Optional, Dict, Any
 
 import ingenialogger
 
@@ -46,6 +46,7 @@ class EthercatServo(PDOServo):
     """
 
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
+    MONITORING_DATA_BUFFER_SIZE = 1024
 
     NO_RESPONSE_WORKING_COUNTER = 0
     TIMEOUT_WORKING_COUNTER = -5
@@ -155,25 +156,15 @@ class EthercatServo(PDOServo):
             )
             raise exc from exception
 
-    def _monitoring_read_data(self) -> bytes:  # type: ignore [override]
+    def _monitoring_read_data(self, **kwargs: Any) -> bytes:
         """Read monitoring data frame."""
-        monitoring_data_register = self.dictionary.registers(0)[self.MONITORING_DATA]
-        if not isinstance(monitoring_data_register, EthercatRegister):
-            raise ValueError(
-                "Error retrieving the Monitoring data register. Expected EthercatRegister, got:"
-                f" {type(monitoring_data_register)}"
-            )
-        return self._read_raw(monitoring_data_register, buffer_size=1024, complete_access=True)
+        return super()._monitoring_read_data(
+            buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True
+        )
 
-    def _disturbance_write_data(self, data: bytearray) -> None:  # type: ignore [override]
+    def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
         """Write disturbance data."""
-        disturbance_data_register = self.dictionary.registers(0)[self.DIST_DATA]
-        if not isinstance(disturbance_data_register, EthercatRegister):
-            raise ValueError(
-                "Error retrieving the Disturbance data register. Expected EthercatRegister, got:"
-                f" {type(disturbance_data_register)}"
-            )
-        return self._write_raw(disturbance_data_register, bytes(data), complete_access=True)
+        super()._disturbance_write_data(data, complete_access=True)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:

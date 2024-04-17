@@ -7,6 +7,7 @@ from ingenialink.canopen.register import (
     REG_DTYPE,
     REG_PHY,
     CanopenRegister,
+    RegCyclicType,
 )
 
 
@@ -20,7 +21,7 @@ def test_getters_canopen_register():
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
         "units": "none",
-        "cyclic": "CONFIG",
+        "cyclic": RegCyclicType.CONFIG,
         "phy": REG_PHY.NONE,
         "subnode": 0,
         "storage": 1,
@@ -79,7 +80,7 @@ def test_canopen_connection_register(connect_to_slave):
 
     assert register.identifier == "DRV_OP_CMD"
     assert register.units == "-"
-    assert register.cyclic == "CYCLIC_RX"
+    assert register.cyclic == RegCyclicType.RX
     assert register.dtype == REG_DTYPE.U16
     assert register.access, REG_ACCESS.RW
     assert register.idx == 0x2014

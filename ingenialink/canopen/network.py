@@ -1,5 +1,6 @@
 import contextlib
 import os
+import platform
 import re
 import tempfile
 from collections import OrderedDict, defaultdict
@@ -8,10 +9,16 @@ from threading import Thread
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+RUNNING_ON_WINDOWS = platform.system() == "Windows"
+
 import canopen
 import ingenialogger
 from can import CanError
-from can.interfaces.ixxat.exceptions import VCIError
+
+if RUNNING_ON_WINDOWS:
+    from can.interfaces.ixxat.exceptions import VCIError
+else:
+    VCIError = None
 from canopen import Network as NetworkLib
 
 from ingenialink.canopen.register import CanopenRegister
@@ -21,6 +28,7 @@ from ingenialink.canopen.servo import (
     REG_DTYPE,
     CanopenServo,
 )
+from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
 from ingenialink.utils._utils import convert_bytes_to_dtype
@@ -31,7 +39,7 @@ logger = ingenialogger.get_logger(__name__)
 PROG_STAT_1 = CanopenRegister(
     idx=0x1F51,
     subidx=0x01,
-    cyclic="CONFIG",
+    cyclic=RegCyclicType.CONFIG,
     dtype=REG_DTYPE.U8,
     access=REG_ACCESS.RW,
     identifier="CIA302_BL_PROGRAM_CONTROL_1",
@@ -40,8 +48,8 @@ PROG_STAT_1 = CanopenRegister(
 PROG_DL_1 = CanopenRegister(
     idx=0x1F50,
     subidx=0x01,
-    cyclic="CONFIG",
-    dtype=REG_DTYPE.DOMAIN,
+    cyclic=RegCyclicType.CONFIG,
+    dtype=REG_DTYPE.BYTE_ARRAY_512,
     access=REG_ACCESS.RW,
     identifier="CIA302_BL_PROGRAM_DATA",
     subnode=0,
@@ -49,7 +57,7 @@ PROG_DL_1 = CanopenRegister(
 FORCE_BOOT = CanopenRegister(
     idx=0x5EDE,
     subidx=0x00,
-    cyclic="CONFIG",
+    cyclic=RegCyclicType.CONFIG,
     dtype=REG_DTYPE.U32,
     access=REG_ACCESS.WO,
     identifier="DRV_BOOT_COCO_FORCE",
@@ -59,7 +67,7 @@ FORCE_BOOT = CanopenRegister(
 CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
     idx=0x1000,
     subidx=0x00,
-    cyclic="CONFIG",
+    cyclic=RegCyclicType.CONFIG,
     dtype=REG_DTYPE.U32,
     access=REG_ACCESS.RO,
     identifier="",
@@ -84,6 +92,7 @@ CAN_CHANNELS: Dict[str, Union[Tuple[int, int], Tuple[str, str]]] = {
     "pcan": ("PCAN_USBBUS1", "PCAN_USBBUS2"),
     "ixxat": (0, 1),
     "virtual": (0, 1),
+    "socketcan": ("can0", "can1"),
 }
 
 
@@ -94,6 +103,7 @@ class CAN_DEVICE(Enum):
     PCAN = "pcan"
     IXXAT = "ixxat"
     VIRTUAL = "virtual"
+    SOCKETCAN = "socketcan"
 
 
 class CAN_BAUDRATE(Enum):
@@ -604,6 +614,11 @@ class CanopenNetwork(Network):
         while num_tries < POLLING_MAX_TRIES:
             with contextlib.suppress(ILError):
                 value = servo.read(register, subnode=subnode)
+            if isinstance(value, bytes):
+                raise ValueError(
+                    f"Error reading register {register.identifier}. Expected data type"
+                    f" {register.dtype}, got bytes."
+                )
             if value == expected_value:
                 logger.debug(f"Success. Read value {value}. Num tries {num_tries}")
                 return True

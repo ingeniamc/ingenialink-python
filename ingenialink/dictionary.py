@@ -10,7 +10,7 @@ import ingenialogger
 from ingenialink.exceptions import ILDictionaryParseError
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, Register
+from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, Register, RegCyclicType
 from ingenialink.ethercat.register import EthercatRegister
 
 logger = ingenialogger.get_logger(__name__)
@@ -174,6 +174,7 @@ class Dictionary(ABC):
         "s64": REG_DTYPE.S64,
         "u64": REG_DTYPE.U64,
         "str": REG_DTYPE.STR,
+        "bool": REG_DTYPE.BOOL,
     }
 
     access_xdf_options = {"r": REG_ACCESS.RO, "w": REG_ACCESS.WO, "rw": REG_ACCESS.RW}
@@ -212,8 +213,6 @@ class Dictionary(ABC):
     """Instance of all the errors in the dictionary."""
     image: Optional[str] = None
     """Drive's encoded image."""
-    moco_image: Optional[str] = None  # TODO study COM-KIT case
-    """Motion CORE encoded image. Only available when using a COM-KIT."""
     is_safe: bool = False
     """True if has SafetyPDOs element, else False"""
     _registers: Dict[int, Dict[str, Register]]
@@ -238,6 +237,26 @@ class Dictionary(ABC):
             self.read_dictionary()
         except KeyError as e:
             raise ILDictionaryParseError("The dictionary is not well-formed.") from e
+
+    def __add__(self, other_dict: "Dictionary") -> "Dictionary":
+        """Merge two dictionary instances.
+
+        It can only be used for merging COM-KIT and CORE dictionaries.
+
+        """
+        if not isinstance(other_dict, type(self)):
+            raise TypeError(
+                f"Cannot merge dictionaries. Expected type: {type(self)}, got: {type(other_dict)}"
+            )
+        if not other_dict.is_coco_dictionary and not self.is_coco_dictionary:
+            raise ValueError(
+                "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary."
+            )
+        self._merge_registers(other_dict)
+        self._merge_errors(other_dict)
+        self._merge_attributes(other_dict)
+        self._set_image(other_dict)
+        return self
 
     def registers(self, subnode: int) -> Dict[str, Register]:
         """Gets the register dictionary to the targeted subnode.
@@ -314,6 +333,61 @@ class Dictionary(ABC):
             return self.safety_tpdos[uid]
         raise KeyError(f"Safe TPDO {uid} not exist")
 
+    def _merge_registers(self, other_dict: "Dictionary") -> None:
+        """Add the registers from another dictionary to the dictionary instance.
+
+        Args:
+            other_dict: The other dictionary instance.
+
+        """
+        for subnode, registers in other_dict._registers.items():
+            self._registers[subnode].update(registers)
+
+    def _merge_errors(self, other_dict: "Dictionary") -> None:
+        """Add the errors from another dictionary to the dictionary instance.
+
+        Args:
+            other_dict: The other dictionary instance.
+
+        """
+        self.errors.errors.update(other_dict.errors.errors)
+
+    def _set_image(self, other_dict: "Dictionary") -> None:
+        """Set the image attribute.
+
+        Choose the image from the dictionary that has one.
+
+        Args:
+            other_dict: The other dictionary instance.
+
+        """
+        core_dict = self if other_dict.is_coco_dictionary else other_dict
+        self.image = core_dict.image
+
+    def _merge_attributes(self, other_dict: "Dictionary") -> None:
+        """Add the revision number, product code, firmware version and part number
+        from the other dictionary to the dictionary instance.
+
+        Args:
+            other_dict: The other dictionary instance.
+
+        """
+        if not other_dict.is_coco_dictionary:
+            self.product_code = other_dict.product_code
+            self.revision_number = other_dict.revision_number
+            self.firmware_version = other_dict.firmware_version
+            self.part_number = other_dict.part_number
+
+    @property
+    def is_coco_dictionary(self) -> bool:
+        """Check if dictionary is a CoCo dictionary
+
+        Returns:
+            True if the dictionary is a CoCo dictionary. False otherwise.
+
+        """
+        return len(self.registers(1)) == 0
+
 
 class DictionaryV3(Dictionary):
     DRIVE_IMAGE_ELEMENT = "DriveImage"
@@ -348,6 +422,7 @@ class DictionaryV3(Dictionary):
     DTYPE_ATTR = "dtype"
     UID_ATTR = "id"
     CYCLIC_ATTR = "cyclic"
+    DESCRIPTION_ATTR = "desc"
     DEFAULT_ATTR = "default"
     CAT_ID_ATTR = "cat_id"
     UNITS_ATTR = "units"
@@ -707,8 +782,8 @@ class DictionaryV3(Dictionary):
         access = self.access_xdf_options[register.attrib[self.ACCESS_ATTR]]
         dtype = self.dtype_xdf_options[register.attrib[self.DTYPE_ATTR]]
         identifier = register.attrib[self.UID_ATTR]
-        cyclic = register.attrib[self.CYCLIC_ATTR]  # TODO use enums
-        # TODO use desc
+        cyclic = RegCyclicType(register.attrib[self.CYCLIC_ATTR])
+        description = register.attrib[self.DESCRIPTION_ATTR]
         default = bytes.fromhex(register.attrib[self.DEFAULT_ATTR])
         cat_id = register.attrib[self.CAT_ID_ATTR]
         units = register.attrib.get(self.UNITS_ATTR)
@@ -735,6 +810,8 @@ class DictionaryV3(Dictionary):
             enums=enums,
             cat_id=cat_id,
             address_type=address_type,
+            description=description,
+            default=default,
         )
         if subnode not in self._registers:
             self._registers[subnode] = {}
@@ -780,8 +857,8 @@ class DictionaryV3(Dictionary):
         access = self.access_xdf_options[subitem.attrib[self.ACCESS_ATTR]]
         dtype = self.dtype_xdf_options[subitem.attrib[self.DTYPE_ATTR]]
         identifier = subitem.attrib[self.UID_ATTR]
-        cyclic = subitem.attrib[self.CYCLIC_ATTR]  # TODO use enums
-        # TODO use desc
+        cyclic = RegCyclicType(subitem.attrib[self.CYCLIC_ATTR])
+        description = subitem.attrib[self.DESCRIPTION_ATTR]
         default = bytes.fromhex(subitem.attrib[self.DEFAULT_ATTR])
         cat_id = subitem.attrib[self.CAT_ID_ATTR]
         units = subitem.attrib.get(self.UNITS_ATTR)
@@ -809,6 +886,8 @@ class DictionaryV3(Dictionary):
             enums=enums,
             cat_id=cat_id,
             address_type=address_type,
+            description=description,
+            default=default,
         )
         if subnode not in self._registers:
             self._registers[subnode] = {}
@@ -895,7 +974,6 @@ class DictionaryV2(Dictionary):
     DICT_ENUMERATIONS = "./Enumerations"
     DICT_ENUMERATIONS_ENUMERATION = f"{DICT_ENUMERATIONS}/Enum"
     DICT_IMAGE = "DriveImage"
-    DICT_MOCO_IMAGE_ATTRIB = "moco"
 
     dict_interface: Optional[str]
 
@@ -967,16 +1045,9 @@ class DictionaryV2(Dictionary):
                 if current_read_register:
                     self._add_register_list(current_read_register)
         try:
-            images = root.findall(self.DICT_IMAGE)
-            for image in images:
-                if image.text is not None and image.text.strip():
-                    if (
-                        "type" in image.attrib
-                        and image.attrib["type"] == self.DICT_MOCO_IMAGE_ATTRIB
-                    ):
-                        self.moco_image = image.text
-                    else:
-                        self.image = image.text
+            image = root.find(self.DICT_IMAGE)
+            if image is not None and image.text is not None and image.text.strip():
+                self.image = image.text
         except AttributeError:
             logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
@@ -1008,7 +1079,7 @@ class DictionaryV2(Dictionary):
 
         try:
             units = register.attrib["units"]
-            cyclic = register.attrib.get("cyclic", "CONFIG")
+            cyclic = RegCyclicType(register.attrib.get("cyclic", "CONFIG"))
 
             # Data type
             dtype_aux = register.attrib["dtype"]

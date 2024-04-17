@@ -4,6 +4,11 @@
 ### Add
 - Dictionary V3 support
 - ILWrongWorkingCount exception raised when the working count in PDO is not the expected one.
+- Register type for monitoring/disturbance data.
+- Support for merging dictionary instances. (It can only be used for merging COM-KIT and CORE dictionaries.)
+- Support to socketcan so the canopen communication can be used in Linux.
+- Default value and description attributes to registers.
+- Read/write functionalities for bit register type.
 
 ### Changed
 - Dictionary class properties, such as subnodes and interface.
@@ -12,6 +17,7 @@
 
 ### Fixed
 - Bug that prevented the slaves to reach Operational state after the PDO exchange is re-started.
+- Recover the CoE communication after a power-cycle. The network status listener must be turned on in order for it to work.
 
 ## [7.2.0] - 2024-03-13
 
