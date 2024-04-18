@@ -14,6 +14,7 @@
 - Dictionary class properties, such as subnodes and interface.
 - Add monitoring/disturbance registers to the dictionary if monitoring/disturbance is supported.
 - Add PDO registers to the dictionary for EtherCAT drives.
+- IXXAT missing DLLs logs are ignored.
 
 ### Fixed
 - Bug that prevented the slaves to reach Operational state after the PDO exchange is re-started.
