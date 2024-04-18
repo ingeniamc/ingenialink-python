@@ -9,6 +9,7 @@
 - Support to socketcan so the canopen communication can be used in Linux.
 - Default value and description attributes to registers.
 - Read/write functionalities for bit register type.
+- Method to set the PDO watchdog time.
 
 ### Changed
 - Dictionary class properties, such as subnodes and interface.
