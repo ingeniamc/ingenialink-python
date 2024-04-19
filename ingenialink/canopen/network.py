@@ -9,17 +9,10 @@ from threading import Thread
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-RUNNING_ON_WINDOWS = platform.system() == "Windows"
-
 import canopen
 import ingenialogger
 from can import CanError
 
-if RUNNING_ON_WINDOWS:
-    from can.interfaces.ixxat.exceptions import VCIError
-else:
-    VCIError = None
-from canopen import Network as NetworkLib
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import (
@@ -31,8 +24,15 @@ from ingenialink.canopen.servo import (
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
-from ingenialink.utils._utils import convert_bytes_to_dtype
+from ingenialink.utils._utils import convert_bytes_to_dtype, DisableLogger
 from ingenialink.utils.mcb import MCB
+
+if platform.system() == "Windows":
+    with DisableLogger():
+        from can.interfaces.ixxat.exceptions import VCIError
+else:
+    VCIError = None
+from canopen import Network as NetworkLib
 
 logger = ingenialogger.get_logger(__name__)
 

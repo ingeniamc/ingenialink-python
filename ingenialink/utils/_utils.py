@@ -1,4 +1,5 @@
 import functools
+import logging
 import struct
 import warnings
 import xml.etree.ElementTree as ET
@@ -73,6 +74,16 @@ def deprecated(
         return wrapped_method
 
     return wrap
+
+
+class DisableLogger:
+    """Context manager to disable all logs."""
+
+    def __enter__(self) -> None:
+        logging.disable(logging.CRITICAL)
+
+    def __exit__(self, *args: Any) -> None:
+        logging.disable(logging.NOTSET)
 
 
 def to_ms(s: Union[int, float]) -> int:

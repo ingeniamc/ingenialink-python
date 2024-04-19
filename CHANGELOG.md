@@ -9,12 +9,14 @@
 - Support to socketcan so the canopen communication can be used in Linux.
 - Default value and description attributes to registers.
 - Read/write functionalities for bit register type.
+- Method to set the PDO watchdog time.
 - FoE binary compiled for Linux machines.
 
 ### Changed
 - Dictionary class properties, such as subnodes and interface.
 - Add monitoring/disturbance registers to the dictionary if monitoring/disturbance is supported.
 - Add PDO registers to the dictionary for EtherCAT drives.
+- IXXAT missing DLLs logs are ignored.
 
 ### Fixed
 - Bug that prevented the slaves to reach Operational state after the PDO exchange is re-started.
