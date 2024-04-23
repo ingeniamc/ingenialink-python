@@ -10,6 +10,7 @@
 - Default value and description attributes to registers.
 - Read/write functionalities for bit register type.
 - Method to set the PDO watchdog time.
+- FoE binary compiled for Linux machines.
 
 ### Changed
 - Dictionary class properties, such as subnodes and interface.

@@ -85,7 +85,10 @@ class EthercatNetwork(Network):
 
     """
 
-    FOE_APPLICATION = {"win32": {"64bit": "FoE/win_64x/FoEUpdateFirmware.exe"}}
+    FOE_APPLICATION = {
+        "win32": {"64bit": "FoE/win_64x/FoEUpdateFirmware.exe"},
+        "linux": {"64bit": "FoE/linux/FoEUpdateFirmware"},
+    }
     FOE_ERRORS = {
         1: "Can’t read the input file.",
         2: "ECAT slave can’t reach the BOOT mode.",
@@ -436,9 +439,19 @@ class EthercatNetwork(Network):
             )
         exec_path = os.path.join(os.path.dirname(inspect.getfile(bin_module)), app_path)
         logger.debug(f"Call FoE application for {sys_name}-{arch}")
+        if sys_name == "linux":
+            try:
+                subprocess.run(
+                    f"chmod 777 {exec_path}",
+                    check=True,
+                    shell=True,
+                    encoding="utf-8",
+                )
+            except subprocess.CalledProcessError as e:
+                raise ILFirmwareLoadError("Could not change the FoE binary permissions.") from e
         try:
             subprocess.run(
-                [exec_path, self.interface_name, f"{slave_id}", fw_file],
+                f"{exec_path} {self.interface_name} {slave_id} {fw_file}",
                 check=True,
                 shell=True,
                 encoding="utf-8",
