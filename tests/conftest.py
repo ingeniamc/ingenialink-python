@@ -108,12 +108,11 @@ def connect_to_slave(pytestconfig, read_config):
 
 
 @pytest.fixture()
-def virtual_drive(read_config):
+def virtual_drive():
     test_port = 81
     server = VirtualDrive(test_port)
     server.start()
     net = EthernetNetwork()
-    protocol_contents = read_config["ethernet"]
-    virtual_servo = net.connect_to_slave(server.ip, protocol_contents["dictionary"], server.port)
+    virtual_servo = net.connect_to_slave(server.ip, server.dictionary_path, server.port)
     yield server, virtual_servo
     server.stop()

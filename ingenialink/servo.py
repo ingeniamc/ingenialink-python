@@ -1,4 +1,5 @@
 import os
+import re
 import threading
 import time
 import xml.etree.ElementTree as ET
@@ -8,6 +9,10 @@ from xml.dom import minidom
 
 import ingenialogger
 
+from ingenialink.ethernet.dictionary import EthernetDictionaryV2
+from ingenialink.ethercat.dictionary import EthercatDictionaryV2
+from ingenialink.canopen.dictionary import CanopenDictionaryV2
+from ingenialink.virtual.dictionary import VirtualDictionary
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
     DEFAULT_PDS_TIMEOUT,
@@ -16,7 +21,7 @@ from ingenialink.constants import (
     PASSWORD_STORE_ALL,
     PASSWORD_STORE_RESTORE_SUB_0,
 )
-from ingenialink.dictionary import Dictionary
+from ingenialink.dictionary import Dictionary, SubnodeType, Interface, DictionaryV3
 from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
 from ingenialink.enums.servo import SERVO_STATE
 from ingenialink.exceptions import (
@@ -27,6 +32,7 @@ from ingenialink.exceptions import (
     ILStateError,
     ILTimeoutError,
     ILValueError,
+    ILDictionaryParseError,
 )
 from ingenialink.register import Register
 from ingenialink.utils import constants
@@ -39,6 +45,87 @@ from ingenialink.utils._utils import (
 logger = ingenialogger.get_logger(__name__)
 
 OPERATION_TIME_OUT = -3
+
+
+class DictionaryFactory:
+    """Dictionary factory, creates the appropriate dictionary instance according to
+    the file version and connection interface"""
+
+    _VERSION_ABSOLUTE_PATH = "Header/Version"
+    _VERSION_REGEX = r"(\d+)\.*(\d*)"
+    _MAJOR_VERSION_GROUP = 1
+    _MINOR_VERSION_GROUP = 2
+
+    @classmethod
+    def create_dictionary(cls, dictionary_path: str, interface: Interface) -> Dictionary:
+        """Creates a dictionary instance choosing the class depending on dictionary version and
+         connection interface.
+
+        Args:
+            dictionary_path: target dictionary path
+            interface: connection interface
+
+        Returns:
+            Dictionary instance
+
+        Raises:
+            FileNotFoundError: dictionary path does not exist.
+            ILDictionaryParseError: xdf is not well-formed.
+            ILDictionaryParseError: File is not a xdf.
+            NotImplementedError: Dictionary version is not supported.
+
+        """
+        major_version, minor_version = cls.__get_dictionary_version(dictionary_path)
+        if major_version == 3:
+            return DictionaryV3(dictionary_path, interface)
+        if major_version == 2:
+            if interface == Interface.CAN:
+                return CanopenDictionaryV2(dictionary_path)
+            if interface == Interface.ECAT:
+                return EthercatDictionaryV2(dictionary_path)
+            if interface in [Interface.ETH, Interface.EoE]:
+                return EthernetDictionaryV2(dictionary_path)
+            if interface == Interface.VIRTUAL:
+                return VirtualDictionary(dictionary_path)
+        raise NotImplementedError(f"Dictionary version {major_version} is not supported")
+
+    @classmethod
+    def __get_dictionary_version(cls, dictionary_path: str) -> Tuple[int, int]:
+        """Return dictionary version, major and minor version.
+
+        Args:
+            dictionary_path: dictionary path
+
+        Returns:
+            Major and minor version
+
+        Raises:
+            FileNotFoundError: dictionary path does not exist.
+            ILDictionaryParseError: xdf is not well-formed
+            ILDictionaryParseError: File is not a xdf
+
+        """
+        try:
+            with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+                try:
+                    tree = ET.parse(xdf_file)
+                except ET.ParseError:
+                    raise ILDictionaryParseError(f"File is not a xdf: {dictionary_path}")
+        except FileNotFoundError:
+            raise FileNotFoundError(f"There is not any xdf file in the path: {dictionary_path}")
+        version_element = tree.find(cls._VERSION_ABSOLUTE_PATH)
+        if version_element is None or version_element.text is None:
+            raise ILDictionaryParseError("Version not found")
+        version_str = version_element.text.strip()
+        version_match = re.match(cls._VERSION_REGEX, version_str)
+        if version_match is None:
+            raise ILDictionaryParseError("Version has a wrong format")
+        major_version = int(version_match.group(cls._MAJOR_VERSION_GROUP))
+        if version_match.group(cls._MINOR_VERSION_GROUP):
+            minor_version = int(version_match.group(cls._MINOR_VERSION_GROUP))
+        else:
+            minor_version = 0
+        return major_version, minor_version
 
 
 class ServoStatusListener(threading.Thread):
@@ -58,7 +145,9 @@ class ServoStatusListener(threading.Thread):
         """Checks if the drive is alive by reading the status word register"""
         previous_states: Dict[int, SERVO_STATE] = {}
         while not self.__stop:
-            for subnode in range(1, self.__servo.subnodes):
+            for subnode in self.__servo.subnodes:
+                if self.__servo.subnodes[subnode] != SubnodeType.MOTION:
+                    continue
                 try:
                     current_state = self.__servo.get_state(subnode)
                     if subnode not in previous_states or previous_states[subnode] != current_state:
@@ -83,11 +172,10 @@ class Servo:
             its status, errors, faults, etc.
 
     Raises:
-        ILCreationError: If the servo cannot be created.
+        ILDictionaryParseError: If dictionary can not be parsed.
 
     """
 
-    DICTIONARY_CLASS = Dictionary
     MAX_WRITE_SIZE = 1
 
     STATUS_WORD_REGISTERS = "DRV_STATE_STATUS"
@@ -105,18 +193,20 @@ class Servo:
     MONITORING_NUMBER_MAPPED_REGISTERS = "MON_CFG_TOTAL_MAP"
     MONITORING_BYTES_PER_BLOCK = "MON_CFG_BYTES_PER_BLOCK"
     MONITORING_ACTUAL_NUMBER_BYTES = "MON_CFG_BYTES_VALUE"
-    MONITORING_DATA: Optional[Register] = None
+    MONITORING_DATA = "MONITORING_DATA"
     MONITORING_DISTURBANCE_VERSION = "MON_DIST_VERSION"
     DISTURBANCE_ENABLE = "DIST_ENABLE"
     DISTURBANCE_REMOVE_DATA = "DIST_REMOVE_DATA"
     DISTURBANCE_NUMBER_MAPPED_REGISTERS = "DIST_CFG_MAP_REGS"
     DIST_NUMBER_SAMPLES = "DIST_CFG_SAMPLES"
-    DIST_DATA: Register
+    DIST_DATA = "DISTURBANCE_DATA"
     MONITORING_ACTUAL_NUMBER_SAMPLES = "MON_CFG_CYCLES_VALUE"
     DISTURBANCE_REMOVE_REGISTERS_OLD = "DIST_CMD_RM_REGS"
     MONITORING_REMOVE_REGISTERS_OLD = "MON_CMD_RM_REG"
     DISTURBANCE_ADD_REGISTERS_OLD = "DIST_CMD_ADD_REG"
     MONITORING_ADD_REGISTERS_OLD = "MON_OP_ADD_REG"
+
+    interface: Interface
 
     def __init__(
         self,
@@ -124,7 +214,7 @@ class Servo:
         dictionary_path: str,
         servo_status_listener: bool = False,
     ):
-        self._dictionary = self.DICTIONARY_CLASS(dictionary_path)
+        self._dictionary = DictionaryFactory.create_dictionary(dictionary_path, self.interface)
         self.target = target
         prod_name = ""
         if self.dictionary.part_number is not None:
@@ -147,7 +237,7 @@ class Servo:
         self.__monitoring_data: Dict[int, List[Union[int, float]]] = {}
         self.__monitoring_size: Dict[int, int] = {}
         self.__monitoring_dtype: Dict[int, REG_DTYPE] = {}
-        self.__disturbance_data = bytearray()
+        self.__disturbance_data = bytes()
         self.__disturbance_size: Dict[int, int] = {}
         self.__disturbance_dtype: Dict[int, str] = {}
         if servo_status_listener:
@@ -190,7 +280,7 @@ class Servo:
         Raises:
             FileNotFoundError: If the configuration file cannot be found.
             ValueError: If a configuration file from a subnode different from 0
-            is attempted to be loaded to subnode 0.
+                is attempted to be loaded to subnode 0.
             ValueError: If an invalid subnode is provided.
 
         """
@@ -258,15 +348,15 @@ class Servo:
         dtype_ops = {value: key for key, value in self.dictionary.dtype_xdf_options.items()}
 
         if subnode is None:
-            subnodes = list(range(self.dictionary.subnodes))
+            subnodes = list(self.dictionary.subnodes)
         else:
             subnodes = [subnode]
 
         for subnode in subnodes:
             registers_dict = self.dictionary.registers(subnode=subnode)
             for reg_id, register in registers_dict.items():
-                if (register.address_type == REG_ADDRESS_TYPE.NVM_NONE) or (
-                    register.access != REG_ACCESS.RW
+                if (register.access != REG_ACCESS.RW) or (
+                    register.address_type == REG_ADDRESS_TYPE.NVM_NONE
                 ):
                     continue
                 register_xml = ET.SubElement(registers, "Register")
@@ -323,7 +413,7 @@ class Servo:
 
         Args:
             subnode: Subnode of the axis. `None` by default which restores
-            all the parameters.
+                all the parameters.
 
         Raises:
             ILError: Invalid subnode.
@@ -373,13 +463,14 @@ class Servo:
                     logger.warning(f"Store all COCO failed. Reason: {e}. Trying MOCO...")
                     r = -1
                 if r < 0:
-                    for dict_subnode in range(1, self.dictionary.subnodes):
-                        self.write(
-                            reg=self.STORE_MOCO_ALL_REGISTERS,
-                            data=PASSWORD_STORE_ALL,
-                            subnode=dict_subnode,
-                        )
-                        logger.info(f"Store axis {dict_subnode} successfully done.")
+                    for dict_subnode in self.dictionary.subnodes:
+                        if self.dictionary.subnodes[dict_subnode] == SubnodeType.MOTION:
+                            self.write(
+                                reg=self.STORE_MOCO_ALL_REGISTERS,
+                                data=PASSWORD_STORE_ALL,
+                                subnode=dict_subnode,
+                            )
+                            logger.info(f"Store axis {dict_subnode} successfully done.")
             elif subnode == 0:
                 # Store subnode 0
                 self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
@@ -697,7 +788,7 @@ class Servo:
     def disturbance_remove_data(self) -> None:
         """Remove disturbance data."""
         self.write(self.DISTURBANCE_REMOVE_DATA, data=1, subnode=0)
-        self.disturbance_data = bytearray()
+        self.disturbance_data = bytes()
 
     def disturbance_set_mapped_register(
         self, channel: int, address: int, subnode: int, dtype: int, size: int
@@ -736,7 +827,7 @@ class Servo:
             self.write(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
         except ILAccessError:
             self.write(self.DISTURBANCE_REMOVE_REGISTERS_OLD, data=1, subnode=0)
-        self.__disturbance_data = bytearray()
+        self.__disturbance_data = bytes()
         self.__disturbance_size = {}
         self.__disturbance_dtype = {}
 
@@ -910,9 +1001,9 @@ class Servo:
             subnode=0,
         )
 
-    def __monitoring_process_data(self, monitoring_data: List[bytearray]) -> None:
+    def __monitoring_process_data(self, monitoring_data: List[bytes]) -> None:
         """Arrange monitoring data."""
-        data_bytes = bytearray()
+        data_bytes = bytes()
         for i in range(len(monitoring_data)):
             data_bytes += monitoring_data[i]
         bytes_per_block = self.monitoring_get_bytes_per_block()
@@ -957,7 +1048,7 @@ class Servo:
         dtypes: Union[REG_DTYPE, List[REG_DTYPE]],
         data_arr: Union[List[Union[int, float]], List[List[Union[int, float]]]],
         max_size: int,
-    ) -> Tuple[bytearray, List[bytearray]]:
+    ) -> Tuple[bytes, List[bytes]]:
         """Divide disturbance data into chunks.
 
         Args:
@@ -981,7 +1072,7 @@ class Servo:
             num_samples = len(data_arr[0])
             data_arr_aux = data_arr  # type: ignore [assignment]
         self.write(self.DIST_NUMBER_SAMPLES, num_samples, subnode=0)
-        data = bytearray()
+        data = bytes()
         for sample_idx in range(num_samples):
             for channel in range(len(data_arr_aux)):
                 val = convert_dtype_to_bytes(data_arr_aux[channel][sample_idx], dtypes[channel])
@@ -1019,7 +1110,9 @@ class Servo:
             value = data
         self._write_raw(_reg, value, **kwargs)
 
-    def read(self, reg: Union[str, Register], subnode: int = 1) -> Union[int, float, str]:
+    def read(
+        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
+    ) -> Union[int, float, str, bytes]:
         """Read a register value from servo.
 
         Args:
@@ -1040,7 +1133,9 @@ class Servo:
         if access == REG_ACCESS.WO:
             raise ILAccessError("Register is Write-only")
 
-        raw_read = self._read_raw(_reg)
+        raw_read = self._read_raw(_reg, **kwargs)
+        if _reg.dtype == REG_DTYPE.BYTE_ARRAY_512:
+            return raw_read
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
         return value
 
@@ -1051,7 +1146,7 @@ class Servo:
             dictionary: Path to the dictionary.
 
         """
-        self._dictionary = self.DICTIONARY_CLASS(dictionary)
+        self._dictionary = DictionaryFactory.create_dictionary(dictionary, self.interface)
 
     def disturbance_write_data(
         self,
@@ -1067,8 +1162,6 @@ class Servo:
             data_arr: Data array.
 
         """
-        if self.DIST_DATA is None:
-            return
         try:
             data, chunks = self._disturbance_create_data_chunks(
                 channels, dtypes, data_arr, self.MAX_WRITE_SIZE
@@ -1079,15 +1172,31 @@ class Servo:
             self._disturbance_write_data(chunk)
         self.disturbance_data = data
 
-    def _monitoring_read_data(self) -> bytearray:
-        """Read monitoring data frame."""
-        if self.MONITORING_DATA is None:
-            return bytearray()
-        return self._read_raw(self.MONITORING_DATA)
+    def _monitoring_read_data(self, **kwargs: Any) -> bytes:
+        """Read monitoring data frame.
 
-    def _disturbance_write_data(self, data: bytes) -> None:
-        """Write disturbance data."""
-        return self._write_raw(self.DIST_DATA, data=data)
+        Raises:
+            NotImplementedError: If monitoring is not supported by the device.
+
+        """
+        if self.MONITORING_DATA not in self.dictionary.registers(0):
+            raise NotImplementedError("Monitoring is not supported by this device.")
+        if not isinstance(data := self.read(self.MONITORING_DATA, subnode=0, **kwargs), bytes):
+            raise ValueError(
+                f"Error reading monitoring data. Expected type bytes, got {type(data)}"
+            )
+        return data
+
+    def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
+        """Write disturbance data.
+
+        Raises:
+            NotImplementedError: If disturbance is not supported by the device.
+
+        """
+        if self.DIST_DATA not in self.dictionary.registers(0):
+            raise NotImplementedError("Disturbance is not supported by this device.")
+        return self.write(self.DIST_DATA, subnode=0, data=data, **kwargs)
 
     @abstractmethod
     def _write_raw(self, reg: Register, data: bytes) -> None:
@@ -1104,7 +1213,7 @@ class Servo:
         raise NotImplementedError
 
     @abstractmethod
-    def _read_raw(self, reg: Register) -> bytearray:
+    def _read_raw(self, reg: Register) -> bytes:
         """Read raw bytes from a target register.
 
         Args:
@@ -1124,6 +1233,11 @@ class Servo:
         """Returns dictionary object"""
         return self._dictionary
 
+    @dictionary.setter
+    def dictionary(self, dictionary: Dictionary) -> None:
+        """Sets the dictionary object"""
+        self._dictionary = dictionary
+
     @property
     def full_name(self) -> str:
         """Drive full name."""
@@ -1136,12 +1250,16 @@ class Servo:
     @property
     def status(self) -> Dict[int, SERVO_STATE]:
         """Servo status."""
-        status = {subnode: self.get_state(subnode) for subnode in range(1, self.subnodes)}
+        status = {
+            subnode: self.get_state(subnode)
+            for subnode in self.subnodes
+            if self.subnodes[subnode] == SubnodeType.MOTION
+        }
         return status
 
     @property
-    def subnodes(self) -> int:
-        """Number of subnodes."""
+    def subnodes(self) -> Dict[int, SubnodeType]:
+        """Dictionary of subnode ids and their type"""
         return self.dictionary.subnodes
 
     @property
@@ -1195,7 +1313,7 @@ class Servo:
         return self.monitoring_get_bytes_per_block() * number_of_samples
 
     @property
-    def disturbance_data(self) -> bytearray:
+    def disturbance_data(self) -> bytes:
         """Obtain disturbance data.
 
         Returns:
@@ -1205,7 +1323,7 @@ class Servo:
         return self.__disturbance_data
 
     @disturbance_data.setter
-    def disturbance_data(self, value: bytearray) -> None:
+    def disturbance_data(self, value: bytes) -> None:
         """Set disturbance data.
 
         Args:

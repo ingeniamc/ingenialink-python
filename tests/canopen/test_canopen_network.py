@@ -1,9 +1,11 @@
-import pytest
-from canopen import Network
+import platform
 
-from ingenialink.canopen.dictionary import CanopenDictionary
+import pytest
+
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, NET_STATE, CanopenNetwork
+from ingenialink.dictionary import Interface
 from ingenialink.exceptions import ILError
+from ingenialink.servo import DictionaryFactory
 
 test_bus = "virtual"
 test_baudrate = 1000000
@@ -82,7 +84,9 @@ def test_scan_slaves_info(read_config):
         baudrate=CAN_BAUDRATE(read_config["canopen"]["baudrate"]),
     )
     slaves_info = net.scan_slaves_info()
-    dictionary = CanopenDictionary(read_config["canopen"]["dictionary"])
+    dictionary = DictionaryFactory.create_dictionary(
+        read_config["canopen"]["dictionary"], Interface.CAN
+    )
 
     assert len(slaves_info) > 0
     assert read_config["canopen"]["node_id"] in slaves_info
@@ -113,6 +117,8 @@ def test_disconnect_from_slave(read_config):
 
 @pytest.mark.no_connection
 def test_setup_and_teardown_connection(virtual_network):
+    if platform.system() != "Windows":
+        pytest.skip("Only for window machines")
     assert virtual_network._connection is None
     virtual_network._setup_connection()
     assert virtual_network._connection is not None

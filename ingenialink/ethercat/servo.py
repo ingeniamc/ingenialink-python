@@ -1,6 +1,6 @@
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional, Dict
+from typing import TYPE_CHECKING, List, Optional, Dict, Any
 
 import ingenialogger
 
@@ -14,11 +14,11 @@ if TYPE_CHECKING:
     from pysoem import CdefSlave
 
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
-from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILIOError, ILTimeoutError, ILError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 from ingenialink.register import REG_ACCESS, REG_DTYPE
+from ingenialink.dictionary import Interface
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -46,114 +46,17 @@ class EthercatServo(PDOServo):
 
     """
 
-    DICTIONARY_CLASS = EthercatDictionary
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
+    MONITORING_DATA_BUFFER_SIZE = 1024
 
     NO_RESPONSE_WORKING_COUNTER = 0
     TIMEOUT_WORKING_COUNTER = -5
     NOFRAME_WORKING_COUNTER = -1
 
-    MONITORING_DATA = EthercatRegister(
-        identifier="MONITORING_DATA",
-        units="",
-        subnode=0,
-        idx=0x58B2,
-        subidx=0x01,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.RO,
-    )
-    DIST_DATA = EthercatRegister(
-        identifier="DISTURBANCE_DATA",
-        units="",
-        subnode=0,
-        idx=0x58B4,
-        subidx=0x01,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.WO,
-    )
+    ETHERCAT_PDO_WATCHDOG = "processdata"
+    SECONDS_TO_MS_CONVERSION_FACTOR = 1000
 
-    RPDO_ASSIGN_REGISTER_SUB_IDX_0 = EthercatRegister(
-        identifier="RPDO_ASSIGN_REGISTER",
-        units="",
-        subnode=0,
-        idx=0x1C12,
-        subidx=0x00,
-        dtype=REG_DTYPE.S32,
-        access=REG_ACCESS.RW,
-    )
-    RPDO_ASSIGN_REGISTER_SUB_IDX_1 = EthercatRegister(
-        identifier="RPDO_ASSIGN_REGISTER",
-        units="",
-        subnode=0,
-        idx=0x1C12,
-        subidx=0x01,
-        dtype=REG_DTYPE.S32,
-        access=REG_ACCESS.RW,
-    )
-    RPDO_MAP_REGISTER_SUB_IDX_0 = [
-        EthercatRegister(
-            identifier="RPDO_MAP_REGISTER",
-            units="",
-            subnode=0,
-            idx=0x1600,
-            subidx=0x00,
-            dtype=REG_DTYPE.S32,
-            access=REG_ACCESS.RW,
-        )
-    ]
-    RPDO_MAP_REGISTER_SUB_IDX_1 = [
-        EthercatRegister(
-            identifier="RPDO_MAP_REGISTER",
-            units="",
-            subnode=0,
-            idx=0x1600,
-            subidx=0x01,
-            dtype=REG_DTYPE.STR,
-            access=REG_ACCESS.RW,
-        )
-    ]
-    TPDO_ASSIGN_REGISTER_SUB_IDX_0 = EthercatRegister(
-        identifier="TPDO_ASSIGN_REGISTER",
-        units="",
-        subnode=0,
-        idx=0x1C13,
-        subidx=0x00,
-        dtype=REG_DTYPE.S32,
-        access=REG_ACCESS.RW,
-    )
-    TPDO_ASSIGN_REGISTER_SUB_IDX_1 = EthercatRegister(
-        identifier="TPDO_ASSIGN_REGISTER",
-        units="",
-        subnode=0,
-        idx=0x1C13,
-        subidx=0x01,
-        dtype=REG_DTYPE.S32,
-        access=REG_ACCESS.RW,
-    )
-    TPDO_MAP_REGISTER_SUB_IDX_0 = [
-        EthercatRegister(
-            identifier="TPDO_MAP_REGISTER",
-            units="",
-            subnode=0,
-            idx=0x1A00,
-            subidx=0x00,
-            dtype=REG_DTYPE.S32,
-            access=REG_ACCESS.RW,
-        )
-    ]
-    TPDO_MAP_REGISTER_SUB_IDX_1 = [
-        EthercatRegister(
-            identifier="TPDO_MAP_REGISTER",
-            units="",
-            subnode=0,
-            idx=0x1A00,
-            subidx=0x01,
-            dtype=REG_DTYPE.STR,
-            access=REG_ACCESS.RW,
-        )
-    ]
+    interface = Interface.ECAT
 
     def __init__(
         self,
@@ -275,13 +178,15 @@ class EthercatServo(PDOServo):
             )
             raise exc from exception
 
-    def _monitoring_read_data(self) -> bytes:  # type: ignore [override]
+    def _monitoring_read_data(self, **kwargs: Any) -> bytes:
         """Read monitoring data frame."""
-        return self._read_raw(self.MONITORING_DATA, buffer_size=1024, complete_access=True)
+        return super()._monitoring_read_data(
+            buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True
+        )
 
-    def _disturbance_write_data(self, data: bytearray) -> None:  # type: ignore [override]
+    def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
         """Write disturbance data."""
-        return self._write_raw(self.DIST_DATA, bytes(data), complete_access=True)
+        super()._disturbance_write_data(data, complete_access=True)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
@@ -330,10 +235,8 @@ class EthercatServo(PDOServo):
         return error_description
 
     def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
-        self.reset_rpdo_mapping()
-        self.reset_tpdo_mapping()
-        self._rpdo_maps = rpdo_maps
-        self._tpdo_maps = tpdo_maps
+        self._rpdo_maps.extend(rpdo_maps)
+        self._tpdo_maps.extend(tpdo_maps)
         self.slave.config_func = self.map_pdos
 
     def process_pdo_inputs(self) -> None:
@@ -344,6 +247,17 @@ class EthercatServo(PDOServo):
         if output is None:
             return
         self.__slave.output = self._process_rpdo()
+
+    def set_pdo_watchdog_time(self, timeout: float) -> None:
+        """Set the process data watchdog time.
+
+        Args:
+            timeout: Time in seconds.
+
+        """
+        self.slave.set_watchdog(
+            self.ETHERCAT_PDO_WATCHDOG, self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout
+        )
 
     @property
     def slave(self) -> "CdefSlave":

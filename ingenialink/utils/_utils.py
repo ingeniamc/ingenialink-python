@@ -1,4 +1,5 @@
 import functools
+import logging
 import struct
 import warnings
 import xml.etree.ElementTree as ET
@@ -28,6 +29,7 @@ dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
     REG_DTYPE.U64: (8, False),
     REG_DTYPE.S64: (8, True),
     REG_DTYPE.FLOAT: (4, True),
+    REG_DTYPE.BOOL: (1, False),
 }
 
 dtype_length_bits: Dict[REG_DTYPE, int] = {
@@ -42,6 +44,8 @@ dtype_length_bits: Dict[REG_DTYPE, int] = {
     REG_DTYPE.FLOAT: 32,
     REG_DTYPE.BOOL: 1,
 }
+
+VALID_BIT_REGISTER_VALUES = [0, 1, True, False]
 
 
 def deprecated(
@@ -70,6 +74,16 @@ def deprecated(
         return wrapped_method
 
     return wrap
+
+
+class DisableLogger:
+    """Context manager to disable all logs."""
+
+    def __enter__(self) -> None:
+        logging.disable(logging.CRITICAL)
+
+    def __exit__(self, *args: Any) -> None:
+        logging.disable(logging.NOTSET)
 
 
 def to_ms(s: Union[int, float]) -> int:
@@ -234,6 +248,8 @@ def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, s
             raise ILValueError(f"Can't decode {e.object!r} to utf-8 string") from e
     else:
         value = int.from_bytes(data, "little", signed=signed)
+    if dtype == REG_DTYPE.BOOL:
+        value = bool(value)
     if not isinstance(value, (int, float, str)):
         raise ILValueError(f"Bad data type: {type(value)}")
     return value
@@ -245,7 +261,13 @@ def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: REG_DTYPE
         data: Data to convert.
         dtype: Data type.
     """
-    if dtype == REG_DTYPE.DOMAIN:
+    if (
+        dtype == REG_DTYPE.BOOL
+        and data not in VALID_BIT_REGISTER_VALUES
+        and not isinstance(data, bytes)
+    ):
+        raise ValueError(f"Invalid value. Expected values: {VALID_BIT_REGISTER_VALUES}, got {data}")
+    if dtype == REG_DTYPE.BYTE_ARRAY_512:
         if not isinstance(data, bytes):
             raise ValueError(f"Expected data of type bytes, but got {type(data)}")
         return data

@@ -1,5 +1,6 @@
 import os
 import pathlib
+import platform
 import socket
 import time
 from enum import Enum, IntEnum
@@ -1025,7 +1026,7 @@ class VirtualMonitoring(VirtualMonDistBase):
     NUMBER_MAP_REGS = "MON_CFG_TOTAL_MAP"
     MAP_REG_CFG = "MON_CFG_REG{}_MAP"
     BYTES_PER_BLOCK_REG = "MON_CFG_BYTES_PER_BLOCK"
-    DATA_REG = "MON_DATA"
+    DATA_REG = "MONITORING_DATA"
     TRIGGER_TYPE_REG = "MON_CFG_SOC_TYPE"
     AVAILABLE_BYTES_REG = "MON_CFG_BYTES_VALUE"
     STATUS_REGISTER = "MON_DIST_STATUS"
@@ -1113,7 +1114,7 @@ class VirtualMonitoring(VirtualMonDistBase):
                 if len(sample_bytes) < size:
                     sample_bytes += b"0" * (size - len(sample_bytes))
                 byte_array += sample_bytes
-        self.drive.set_value_by_id(0, "MON_DATA", byte_array)
+        self.drive.set_value_by_id(0, "MONITORING_DATA", byte_array)
 
     @property
     def trigger_type(self) -> int:
@@ -1139,7 +1140,7 @@ class VirtualDisturbance(VirtualMonDistBase):
     MAP_REG_CFG = "DIST_CFG_REG{}_MAP"
     BYTES_PER_BLOCK_REG = "DIST_CFG_BYTES_PER_BLOCK"
     AVAILABLE_BYTES_REG = "DIST_CFG_BYTES"
-    DATA_REG = "DIST_DATA"
+    DATA_REG = "DISTURBANCE_DATA"
     STATUS_REGISTER = "DIST_STATUS"
 
     def __init__(self, drive: "VirtualDrive") -> None:
@@ -1281,6 +1282,9 @@ class VirtualDrive(Thread):
         self.internal_generator = VirtualInternalGenerator(self)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if platform.system() != "Windows":
+            # On Linux, the SO_REUSEADDR should be set to avoid keeping the socket opened.
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     def run(self) -> None:
         """Open socket, listen and decode messages."""
@@ -1335,7 +1339,7 @@ class VirtualDrive(Thread):
         """
         value = self.get_value_by_id(register.subnode, str(register.identifier))
         if (
-            register.address == self.id_to_address(0, "MON_DATA")
+            register.address == self.id_to_address(0, "MONITORING_DATA")
             and isinstance(value, bytes)
             and self._monitoring
         ):
@@ -1374,7 +1378,7 @@ class VirtualDrive(Thread):
                 cast_data.get(reg_dtype, int)(reg_data),
             )
         value: Union[str, int]
-        for subnode in range(self.__dictionary.subnodes):
+        for subnode in self.__dictionary.subnodes:
             for reg_id, reg in self.__dictionary.registers(subnode).items():
                 if reg._storage is not None:
                     continue
@@ -1388,19 +1392,23 @@ class VirtualDrive(Thread):
 
     def _update_registers(self) -> None:
         """Force storage_valid at each register and add registers that are not in the dictionary."""
-        for subnode in range(self.__dictionary.subnodes):
+        for subnode in self.__dictionary.subnodes:
             self.__reg_address_to_id[subnode] = {}
             for reg_id, reg in self.__dictionary.registers(subnode).items():
+                if not isinstance(reg, EthernetRegister):
+                    raise ValueError(f"Register {reg_id} is not an EthernetRegister")
                 self.__reg_address_to_id[subnode][reg.address] = reg_id
                 self.__dictionary.registers(subnode)[reg_id].storage_valid = True
 
         custom_regs = {
-            "MON_DATA": EthernetServo.MONITORING_DATA,
-            "DIST_DATA": EthernetServo.DIST_DATA,
+            "MONITORING_DATA": self.__dictionary.registers(0)[EthernetServo.MONITORING_DATA],
+            "DISTURBANCE_DATA": self.__dictionary.registers(0)[EthernetServo.DIST_DATA],
         }
         for id, reg in custom_regs.items():
+            if not isinstance(reg, EthernetRegister):
+                raise ValueError
             register = EthernetRegister(
-                reg.address, REG_DTYPE.DOMAIN, reg.access, identifier=id, subnode=reg.subnode
+                reg.address, REG_DTYPE.BYTE_ARRAY_512, reg.access, identifier=id, subnode=reg.subnode
             )
             self.__dictionary._add_register_list(register)
             self.__dictionary.registers(reg.subnode)[id].storage_valid = True
@@ -1409,7 +1417,7 @@ class VirtualDrive(Thread):
 
     def _init_register_signals(self) -> None:
         """Init signals, vector time and noise amplitude for each register."""
-        for subnode in range(self.__dictionary.subnodes):
+        for subnode in self.__dictionary.subnodes:
             for reg_id in self.__dictionary.registers(subnode).keys():
                 self.reg_signals[reg_id] = np.array([])
                 self.reg_time[reg_id] = np.array([])
@@ -1437,11 +1445,11 @@ class VirtualDrive(Thread):
         if not self._monitoring:
             return bytes(1)
         sent_cmd = self.ACK_CMD
-        reg_add = self.id_to_address(0, "MON_DATA")
+        reg_add = self.id_to_address(0, "MONITORING_DATA")
         limit = min(len(data), MONITORING_BUFFER_SIZE)
         response = MCB.build_mcb_frame(sent_cmd, 0, reg_add, data[:limit])
         data_left = data[limit:]
-        self.set_value_by_id(0, "MON_DATA", data_left)
+        self.set_value_by_id(0, "MONITORING_DATA", data_left)
         self._monitoring.available_bytes = len(data_left)
         return response
 
@@ -1502,7 +1510,7 @@ class VirtualDrive(Thread):
             self.__clean_plant_signals()
         if reg_id == "DIST_REMOVE_DATA" and subnode == 0 and value == 1 and self._disturbance:
             self._disturbance.remove_data()
-        if reg_id == "DIST_DATA" and subnode == 0 and self._disturbance:
+        if reg_id == "DISTURBANCE_DATA" and subnode == 0 and self._disturbance:
             self._disturbance.append_data(data)
         if reg_id == "DRV_OP_CMD":
             self.operation_mode = int(value)
@@ -1571,17 +1579,19 @@ class VirtualDrive(Thread):
         """
         return self.__reg_address_to_id[subnode][address]
 
-    def id_to_address(self, subnode: int, id: str) -> int:
-        """Converts a register address into an ID.
+    def id_to_address(self, subnode: int, uid: str) -> int:
+        """Return address of Register with the target subnode and UID
 
         Args:
             subnode: Subnode.
-            id: Register ID.
+            uid: Register UID.
 
         Returns:
             Register address.
         """
-        register = self.__dictionary.registers(subnode)[id]
+        register = self.__dictionary.registers(subnode)[uid]
+        if not isinstance(register, EthernetRegister):
+            raise ValueError(f"Register {uid} is not an EthernetRegister")
         return register.address
 
     def get_value_by_id(self, subnode: int, id: str) -> Union[int, float, str, bytes]:
@@ -1637,7 +1647,7 @@ class VirtualDrive(Thread):
         Returns:
             Register value.
         """
-        return subnode < self.__dictionary.subnodes and id in self.__dictionary.registers(subnode)
+        return subnode in self.__dictionary.subnodes and id in self.__dictionary.registers(subnode)
 
     def get_register(
         self, subnode: int, address: Optional[int] = None, id: Optional[str] = None
@@ -1660,7 +1670,10 @@ class VirtualDrive(Thread):
         else:
             if id is None:
                 raise ValueError("Register address or id should be passed")
-        return self.__dictionary.registers(subnode)[id]
+        register = self.__dictionary.registers(subnode)[id]
+        if not isinstance(register, EthernetRegister):
+            raise ValueError(f"Register {id} is not an EthernetRegister")
+        return register
 
     def __set_motor_enable(self) -> None:
         """Set the enabled state."""

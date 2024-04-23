@@ -120,6 +120,7 @@ class EoENetwork(EthernetNetwork):
             connection_timeout,
             servo_status_listener,
             net_status_listener,
+            True,
         )
 
     def __wait_eoe_starts(self) -> None:

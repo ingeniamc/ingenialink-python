@@ -22,12 +22,6 @@ class ILFirmwareLoadError(ILError):
     pass
 
 
-class ILCreationError(ILError):
-    """IngeniaLink creation error."""
-
-    pass
-
-
 class ILValueError(ILError):
     """IngeniaLink value error."""
 
@@ -102,6 +96,14 @@ class ILWrongCRCError(ILError):
 
 class ILNACKError(ILError):
     """IngeniaLink NACK error."""
+
+    pass
+
+
+class ILDictionaryParseError(ILError):
+    """IngeniaLink dictionary parse error."""
+
+    pass
 
 
 # Configuration error
@@ -186,5 +188,11 @@ class ILActiveFeedbacksHigherThanAllowed(ILConfigurationError):
 
 class ILCOMKITTimeout(ILConfigurationError):
     """COMKIT Timeout. CORE device is not properly connected configuration error."""
+
+    pass
+
+
+class ILWrongWorkingCount(ILError):
+    """PDOs process data working count expected and received differ."""
 
     pass

@@ -4,7 +4,8 @@ import canopen
 import ingenialogger
 from canopen.emcy import EmcyConsumer
 
-from ingenialink.canopen.dictionary import CanopenDictionary
+from ingenialink.dictionary import Interface
+from ingenialink.canopen.dictionary import CanopenDictionaryV2
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.constants import CAN_MAX_WRITE_SIZE
 from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
@@ -29,28 +30,13 @@ class CanopenServo(Servo):
 
     """
 
-    DICTIONARY_CLASS = CanopenDictionary
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
 
     STATUS_WORD_REGISTERS = "CIA402_DRV_STATE_STATUS"
     RESTORE_COCO_ALL = "CIA301_COMMS_RESTORE_ALL"
     STORE_COCO_ALL = "CIA301_COMMS_STORE_ALL"
-    MONITORING_DATA = CanopenRegister(
-        idx=0x58B2,
-        subidx=0x00,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.RO,
-        subnode=0,
-    )
-    DIST_DATA = CanopenRegister(
-        idx=0x58B4,
-        subidx=0x00,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.RW,
-        subnode=0,
-    )
+
+    interface = Interface.CAN
 
     def __init__(
         self,
@@ -63,7 +49,9 @@ class CanopenServo(Servo):
         self.__emcy_consumer = EmcyConsumer()
         super(CanopenServo, self).__init__(target, dictionary_path, servo_status_listener)
 
-    def read(self, reg: Union[str, Register], subnode: int = 1) -> Union[int, float, str]:
+    def read(
+        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
+    ) -> Union[int, float, str, bytes]:
         value = super().read(reg, subnode=subnode)
         if isinstance(value, str):
             value = value.replace("\x00", "")

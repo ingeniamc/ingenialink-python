@@ -2,10 +2,14 @@ from abc import ABC
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ingenialink import exceptions as exc
-from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY
-
-# CANOPEN DTYPES
-IL_REG_DTYPE_DOMAIN = 15
+from ingenialink.enums.register import (
+    REG_ACCESS,
+    REG_ADDRESS_TYPE,
+    REG_DTYPE,
+    REG_PHY,
+    RegCyclicType,
+)
+from ingenialink.utils._utils import convert_bytes_to_dtype
 
 dtypes_ranges: Dict[REG_DTYPE, Dict[str, Union[int, float]]] = {
     REG_DTYPE.U8: {"max": 255, "min": 0},
@@ -39,6 +43,8 @@ class Register(ABC):
         scat_id: Sub-category ID.
         internal_use: Internal use.
         address_type: Address tpye.
+        description: Register description.
+        default: Register default value.
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -53,7 +59,7 @@ class Register(ABC):
         access: REG_ACCESS,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
-        cyclic: str = "CONFIG",
+        cyclic: RegCyclicType = RegCyclicType.CONFIG,
         phy: REG_PHY = REG_PHY.NONE,
         subnode: int = 1,
         storage: Any = None,
@@ -66,6 +72,8 @@ class Register(ABC):
         scat_id: Optional[str] = None,
         internal_use: int = 0,
         address_type: Optional[REG_ADDRESS_TYPE] = None,
+        description: Optional[str] = None,
+        default: Optional[bytes] = None,
     ) -> None:
         if labels is None:
             labels = {}
@@ -89,6 +97,8 @@ class Register(ABC):
         self._internal_use = internal_use
         self._storage_valid = False if not storage else True
         self._address_type = address_type
+        self._description = description
+        self._default = default
         self._enums = enums
         self.__config_range(reg_range)
 
@@ -146,7 +156,7 @@ class Register(ABC):
         return self._units
 
     @property
-    def cyclic(self) -> str:
+    def cyclic(self) -> RegCyclicType:
         """Defines if the register is cyclic."""
         return self._cyclic
 
@@ -239,6 +249,18 @@ class Register(ABC):
     def address_type(self) -> Optional[REG_ADDRESS_TYPE]:
         """Address type of the register."""
         return REG_ADDRESS_TYPE(self._address_type)
+
+    @property
+    def description(self) -> Optional[str]:
+        """Register description."""
+        return self._description
+
+    @property
+    def default(self) -> Union[None, int, float, str]:
+        """Register default value"""
+        if self._default is None:
+            return self._default
+        return convert_bytes_to_dtype(self._default, self.dtype)
 
     @property
     def mapped_address(self) -> int:

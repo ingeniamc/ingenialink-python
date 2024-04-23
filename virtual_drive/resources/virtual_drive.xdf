@@ -2868,7 +2868,7 @@
             <Label lang="en_US">User over voltage level</Label>
           </Labels>
         </Register>
-        <Register access="rw" address_type="NVM_CFG" address="0x0631" dtype="float" id="DRV_PROT_USER_UNDER_VOLT" units="V" subnode="1" cyclic="CONFIG" desc="Indicates the minimum voltage required by the user for a proper operation" cat_id="PROTECTIONS">
+		<Register access="rw" address_type="NVM_CFG" address="0x0631" dtype="float" id="DRV_PROT_USER_UNDER_VOLT" units="V" subnode="1" cyclic="CONFIG" desc="Indicates the minimum voltage required by the user for a proper operation" cat_id="PROTECTIONS">
           <Labels>
             <Label lang="en_US">User under voltage level</Label>
           </Labels>

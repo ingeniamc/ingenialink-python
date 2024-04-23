@@ -3,14 +3,13 @@ from typing import Optional
 
 import ingenialogger
 
-from ingenialink.canopen.servo import CanopenServo
-from ingenialink.ethernet.dictionary import EthernetDictionary
+from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.ethernet.register import EthernetRegister
 
 logger = ingenialogger.get_logger(__name__)
 
 
-class VirtualDictionary(EthernetDictionary):
+class VirtualDictionary(EthernetDictionaryV2):
     """Contains all registers and information of a dictionary compatible with the virtual drive.
 
     It adapts a canopen dictionary to work in the ethernet communication used for the virtual drive.
@@ -20,13 +19,27 @@ class VirtualDictionary(EthernetDictionary):
 
     """
 
+    def _transform_canopen_index_to_mcb_address(self, index: int, subnode: int) -> int:
+        """CANopen index is an uint16 but MCB address only has 12 bits, so,
+        some index makes overflow in MCB frame.
+
+        Args:
+            index: CANopen index
+            subnode: register subnode
+
+        Returns:
+            MCB address
+
+        """
+        return index - (0x2000 + (0x800 * (subnode - 1)))
+
     def _read_xdf_register(self, register: ET.Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)
 
         if current_read_register is None:
             return None
 
-        if self.interface == "CAN" and (
+        if self.dict_interface == "CAN" and (
             register.attrib["cat_id"] == "CIA402" or register.attrib["id"].startswith("CIA402_")
         ):
             return None
@@ -35,10 +48,10 @@ class VirtualDictionary(EthernetDictionary):
             return None
 
         try:
-            if self.interface == "CAN":
+            if self.dict_interface == "CAN":
                 reg_address = int(register.attrib["address"][:6], 16)
                 if current_read_register.subnode > 0:
-                    reg_address = CanopenServo._monitoring_disturbance_map_can_address(
+                    reg_address = self._transform_canopen_index_to_mcb_address(
                         reg_address, current_read_register.subnode
                     )
                 else:

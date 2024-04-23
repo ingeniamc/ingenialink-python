@@ -5,6 +5,7 @@ import subprocess
 import sys
 import time
 from collections import OrderedDict, defaultdict
+from enum import Enum
 from threading import Thread
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
@@ -21,10 +22,20 @@ if TYPE_CHECKING:
 
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILTimeoutError
+from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILWrongWorkingCount
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
+
+
+class SlaveState(Enum):
+    INIT_STATE = 1
+    NONE_STATE = 0
+    OP_STATE = 8
+    PREOP_STATE = 2
+    SAFEOP_STATE = 4
+    STATE_ERROR = 16
+    SAFEOP_ERROR_STATE = SAFEOP_STATE + STATE_ERROR
 
 
 class NetStatusListener(Thread):
@@ -74,7 +85,10 @@ class EthercatNetwork(Network):
 
     """
 
-    FOE_APPLICATION = {"win32": {"64bit": "FoE/win_64x/FoEUpdateFirmware.exe"}}
+    FOE_APPLICATION = {
+        "win32": {"64bit": "FoE/win_64x/FoEUpdateFirmware.exe"},
+        "linux": {"64bit": "FoE/linux/FoEUpdateFirmware"},
+    }
     FOE_ERRORS = {
         1: "Can’t read the input file.",
         2: "ECAT slave can’t reach the BOOT mode.",
@@ -199,8 +213,10 @@ class EthercatNetwork(Network):
         )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             raise ILStateError("Slave can not reach PreOp state")
+        servo.reset_pdo_mapping()
         self.servos.append(servo)
         self._set_servo_state(slave_id, NET_STATE.CONNECTED)
+        self.subscribe_to_status(slave_id, self._recover_from_power_cycle)
         if net_status_listener:
             self.start_status_listener()
         return servo
@@ -222,8 +238,19 @@ class EthercatNetwork(Network):
             self.__is_master_running = False
             self.__last_init_nodes = []
 
+    def config_pdo_maps(self) -> None:
+        """Configure the PDO maps.
+
+        It maps the PDO maps of each slave and sets its state to SafeOP.
+
+        """
+        if self._overlapping_io_map:
+            self._ecat_master.config_overlap_map()
+        else:
+            self._ecat_master.config_map()
+
     def start_pdos(self, timeout: float = 1.0) -> None:
-        """Configure the PDOs and set slave state to OP for all slaves with mapped PDOs
+        """Set all slaves with mapped PDOs to Operational State.
 
         Args:
             timeout: timeout in seconds to reach Op state, 1.0 seconds by default.
@@ -244,10 +271,7 @@ class EthercatNetwork(Network):
             raise ILError(
                 "The RPDO values should be set before starting the PDO exchange process."
             ) from e
-        if self._overlapping_io_map:
-            self._ecat_master.config_overlap_map()
-        else:
-            self._ecat_master.config_map()
+        self.config_pdo_maps()
         self._ecat_master.state = pysoem.SAFEOP_STATE
         if not self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE):
             raise ILStateError("Drives can not reach SafeOp state")
@@ -266,8 +290,9 @@ class EthercatNetwork(Network):
             for servo in self.servos
             if servo.slave.state in [pysoem.OP_STATE, pysoem.SAFEOP_STATE]
         ]
-        if not self._change_nodes_state(op_servo_list, pysoem.PREOP_STATE):
-            logger.warning("Drive can not reach PreOp state")
+        if not self._change_nodes_state(op_servo_list, pysoem.INIT_STATE):
+            logger.warning("Not all drives could reach the Init state")
+        self.__init_nodes()
 
     def send_receive_processdata(self, timeout: float = ECAT_PROCESSDATA_TIMEOUT_S) -> None:
         """Send and receive PDOs
@@ -276,7 +301,7 @@ class EthercatNetwork(Network):
             timeout: receive processdata timeout in seconds, 0.1 seconds by default.
 
         Raises:
-            ILError: If processdata working count is wrong
+            ILWrongWorkingCount: If processdata working count is wrong
 
         """
         for servo in self.servos:
@@ -287,9 +312,20 @@ class EthercatNetwork(Network):
             self._ecat_master.send_processdata()
         processdata_wkc = self._ecat_master.receive_processdata(timeout=int(timeout * 1_000_000))
         if processdata_wkc != self._ecat_master.expected_wkc:
-            raise ILError(
+            self._ecat_master.read_state()
+            servos_state_msg = ""
+            for servo in self.servos:
+                servos_state_msg += (
+                    f"Slave {servo.slave_id}: state {SlaveState(servo.slave.state).name}"
+                )
+                if servo.slave.al_status != 0:
+                    al_status = pysoem.al_status_code_to_string(servo.slave.al_status)
+                    servos_state_msg += f", AL status {al_status}."
+                else:
+                    servos_state_msg += ". "
+            raise ILWrongWorkingCount(
                 f"Processdata working count is wrong, expected: {self._ecat_master.expected_wkc},"
-                f" real: {processdata_wkc}"
+                f" real: {processdata_wkc}. {servos_state_msg}"
             )
         for servo in self.servos:
             servo.generate_pdo_outputs()
@@ -333,7 +369,7 @@ class EthercatNetwork(Network):
         )
 
     def subscribe_to_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None]
+        self, slave_id: int, callback: Callable[[NET_DEV_EVT], None]
     ) -> None:
         """Subscribe to network state changes.
 
@@ -403,9 +439,19 @@ class EthercatNetwork(Network):
             )
         exec_path = os.path.join(os.path.dirname(inspect.getfile(bin_module)), app_path)
         logger.debug(f"Call FoE application for {sys_name}-{arch}")
+        if sys_name == "linux":
+            try:
+                subprocess.run(
+                    f"chmod 777 {exec_path}",
+                    check=True,
+                    shell=True,
+                    encoding="utf-8",
+                )
+            except subprocess.CalledProcessError as e:
+                raise ILFirmwareLoadError("Could not change the FoE binary permissions.") from e
         try:
             subprocess.run(
-                [exec_path, self.interface_name, f"{slave_id}", fw_file],
+                f"{exec_path} {self.interface_name} {slave_id} {fw_file}",
                 check=True,
                 shell=True,
                 encoding="utf-8",
@@ -437,3 +483,21 @@ class EthercatNetwork(Network):
         """Notify subscribers of a network state change."""
         for callback in self.__observers_net_state[slave_id]:
             callback(status)
+
+    def _recover_from_power_cycle(self, status: NET_DEV_EVT) -> None:
+        """Transition the slaves to Pre-Op state after a power cycle.
+
+        Args:
+            status: The network status.
+
+        Raises:
+            ILStateError: If not all slaves reach PreOp state.
+
+        """
+        self._ecat_master.read_state()
+        if status == NET_DEV_EVT.ADDED and self._ecat_master.state == pysoem.INIT_STATE:
+            self.__init_nodes()
+            if not self._check_node_state(self.servos, pysoem.PREOP_STATE):
+                raise ILStateError(
+                    "The communication cannot be recovered. Not all slaves reached PreOp state"
+                )

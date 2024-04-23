@@ -9,6 +9,7 @@ def CAN_NODE_LOCK = "test_execution_lock_can"
 def DIST_FOE_APP_PATH = "ECAT-tools"
 def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
 def FOE_APP_NAME = "FoEUpdateFirmware.exe"
+def FOE_APP_NAME_LINUX = "FoEUpdateFirmware"
 def FOE_APP_VERSION = ""
 
 def PYTHON_VERSIONS = "py39,py310,py311,py312"
@@ -32,7 +33,33 @@ pipeline {
                             FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FoE; print(FoE.__version__)"', returnStdout: true).trim()
                         }
                         copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
-                        stash includes: "$FOE_APP_NAME", name: 'foe_app'
+                        sh "mv FoEUpdateFirmwareLinux $FOE_APP_NAME_LINUX"
+                        stash includes: "$FOE_APP_NAME,$FOE_APP_NAME_LINUX", name: 'foe_app'
+                    }
+                }
+            }
+        }
+        stage('Run tests on Linux') {
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/docker-python:1.4"
+                }
+            }
+            stages {
+                stage('Install deps') {
+                    steps {
+                        sh """
+                            python${DEFAULT_PYTHON_VERSION} -m pip install tox==${TOX_VERSION}
+                        """
+                    }
+                }
+                stage('Run no-connection tests') {
+                    steps {
+                        sh """
+                            python${DEFAULT_PYTHON_VERSION} -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
+                        """
+                        junit 'pytest_no_connection_report.xml'
                     }
                 }
             }
@@ -60,6 +87,7 @@ pipeline {
                         unstash 'foe_app'
                         bat """
                             XCOPY $FOE_APP_NAME C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\win_64x\\
+                            XCOPY $FOE_APP_NAME_LINUX C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\linux\\
                         """
                     }
                 }

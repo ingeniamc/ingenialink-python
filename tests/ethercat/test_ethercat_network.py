@@ -4,7 +4,8 @@ except ImportError:
     pass
 import pytest
 
-from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.dictionary import Interface
+from ingenialink.servo import DictionaryFactory
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 
@@ -91,7 +92,9 @@ def test_scan_slaves_raises_exception_if_drive_is_already_connected(connect_to_s
 def test_scan_slaves_info(read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     slaves_info = net.scan_slaves_info()
-    dictionary = EthercatDictionary(read_config["ethercat"]["dictionary"])
+    dictionary = DictionaryFactory.create_dictionary(
+        read_config["ethercat"]["dictionary"], Interface.ECAT
+    )
 
     assert len(slaves_info) > 0
     assert read_config["ethercat"]["slave"] in slaves_info

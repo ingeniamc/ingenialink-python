@@ -2,6 +2,7 @@ import ipaddress
 import socket
 from typing import Optional
 
+from ingenialink.dictionary import Interface
 from ingenialink.exceptions import ILError, ILTimeoutError, ILIOError, ILWrongRegisterError
 from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
 from ingenialink.ethernet.register import EthernetRegister
@@ -11,7 +12,7 @@ from ingenialink.servo import Servo
 from ingenialink.utils.mcb import MCB
 from ingenialink.utils._utils import convert_ip_to_int
 
-from ingenialink.ethernet.dictionary import EthernetDictionary
+from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 
 import ingenialogger
 
@@ -26,37 +27,27 @@ class EthernetServo(Servo):
         dictionary_path: Path to the dictionary.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
+        is_eoe: True if communication is EoE. ``False`` by default.
 
     """
 
-    DICTIONARY_CLASS = EthernetDictionary
     MAX_WRITE_SIZE = ETH_MAX_WRITE_SIZE
 
     COMMS_ETH_IP = "COMMS_ETH_IP"
     COMMS_ETH_NET_MASK = "COMMS_ETH_NET_MASK"
     COMMS_ETH_NET_GATEWAY = "COMMS_ETH_GW"
-    MONITORING_DATA = EthernetRegister(
-        identifier="",
-        units="",
-        subnode=0,
-        address=0x00B2,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.RO,
-    )
-    DIST_DATA = EthernetRegister(
-        identifier="",
-        units="",
-        subnode=0,
-        address=0x00B4,
-        cyclic="CONFIG",
-        dtype=REG_DTYPE.U16,
-        access=REG_ACCESS.WO,
-    )
+
+    interface = Interface.ETH
 
     def __init__(
-        self, socket: socket.socket, dictionary_path: str, servo_status_listener: bool = False
+        self,
+        socket: socket.socket,
+        dictionary_path: str,
+        servo_status_listener: bool = False,
+        is_eoe: bool = False,
     ) -> None:
+        if is_eoe:
+            self.interface = Interface.EoE
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
         super(EthernetServo, self).__init__(self.ip_address, dictionary_path, servo_status_listener)
@@ -88,11 +79,11 @@ class EthernetServo(Servo):
 
         Raises:
             ValueError: If the drive or gateway IP is not a
-            valid IP address.
+                valid IP address.
             ValueError: If the drive IP and gateway IP are not
-            on the same network.
+                on the same network.
             NetmaskValueError: If the subnet_mask is not a valid
-            netmask.
+                netmask.
 
         """
         drive_ip = ipaddress.ip_address(ip_address)

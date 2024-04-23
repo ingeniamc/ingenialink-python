@@ -3,13 +3,13 @@ import xml.etree.ElementTree as ET
 
 import ingenialogger
 
-from ingenialink.dictionary import Dictionary
-from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.dictionary import DictionaryV2, Interface
+from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS, RegCyclicType
 
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthernetDictionary(Dictionary):
+class EthernetDictionaryV2(DictionaryV2):
     """Contains all registers and information of a Ethernet dictionary.
 
     Args:
@@ -17,9 +17,29 @@ class EthernetDictionary(Dictionary):
 
     """
 
+    MONITORING_DISTURBANCE_REGISTERS: List[EthernetRegister] = [
+        EthernetRegister(
+            identifier="MONITORING_DATA",
+            units="",
+            subnode=0,
+            address=0x00B2,
+            cyclic=RegCyclicType.CONFIG,
+            dtype=REG_DTYPE.BYTE_ARRAY_512,
+            access=REG_ACCESS.RO,
+        ),
+        EthernetRegister(
+            identifier="DISTURBANCE_DATA",
+            units="",
+            subnode=0,
+            address=0x00B4,
+            cyclic=RegCyclicType.CONFIG,
+            dtype=REG_DTYPE.BYTE_ARRAY_512,
+            access=REG_ACCESS.WO,
+        ),
+    ]
+
     def __init__(self, dictionary_path: str) -> None:
-        self._registers: List[Dict[str, EthernetRegister]] = []  # type: ignore [assignment]
-        super().__init__(dictionary_path)
+        super().__init__(dictionary_path, Interface.ETH)
 
     def _read_xdf_register(self, register: ET.Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)
@@ -54,15 +74,3 @@ class EthernetDictionary(Dictionary):
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}"
             )
             return None
-
-    def registers(self, subnode: int) -> Dict[str, EthernetRegister]:  # type: ignore [override]
-        """Gets the register dictionary to the targeted subnode.
-
-        Args:
-            subnode: Identifier for the subnode.
-
-        Returns:
-            Dictionary of all the registers for a subnode.
-
-        """
-        return self._registers[subnode]
