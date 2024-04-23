@@ -1,6 +1,7 @@
 # Changelog
 
-## [Unreleased]
+## [7.3.0] - 2024-04-23
+
 ### Add
 - Dictionary V3 support
 - ILWrongWorkingCount exception raised when the working count in PDO is not the expected one.
