@@ -311,10 +311,10 @@ class PDOMap:
         return map_bytes
 
     def set_item_bytes(self, data_bytes: bytes) -> None:
-        """Set the items raw data from a byte array received from the slave.
+        """Set the items raw data from a byte array.
 
         Args:
-            data_bytes: Byte array received from the slave.
+            data_bytes: Byte array.
 
         Raises:
             ILError: If the length of the received data does not coincide.
@@ -332,14 +332,8 @@ class PDOMap:
             item.raw_data_bits = data_bits[offset : item.size_bits + offset]
             offset += item.size_bits
 
-
-class RPDOMap(PDOMap):
-    """Class to store RPDO mapping information."""
-
-    _PDO_MAP_ITEM_CLASS = RPDOMapItem
-
     def get_item_bits(self) -> bitarray.bitarray:
-        """Return the concatenated items raw data to be sent to the slave (in bits).
+        """Return the concatenated items raw data (in bits).
 
         Raises:
             ILError: Raw data is empty.
@@ -363,7 +357,7 @@ class RPDOMap(PDOMap):
         return data_bits
 
     def get_item_bytes(self) -> bytes:
-        """Return the concatenated items raw data to be sent to the slave (in bytes).
+        """Return the concatenated items raw data (in bytes).
 
         Raises:
             ILError: Raw data is empty.
@@ -374,6 +368,12 @@ class RPDOMap(PDOMap):
         """
         item_bits = self.get_item_bits()
         return item_bits.tobytes()
+
+
+class RPDOMap(PDOMap):
+    """Class to store RPDO mapping information."""
+
+    _PDO_MAP_ITEM_CLASS = RPDOMapItem
 
 
 class TPDOMap(PDOMap):
