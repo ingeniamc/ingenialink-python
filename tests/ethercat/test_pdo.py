@@ -578,3 +578,25 @@ def test_remove_tpdo_map_exceptions(connect_to_slave, create_pdo_map):
         servo.remove_tpdo_map(rpdo_map)
     with pytest.raises(IndexError):
         servo.remove_tpdo_map(tpdo_map_index=1)
+
+
+@pytest.mark.no_connection
+def test_rpdo_map_set_items_bytes(create_pdo_map):
+    _, rpdo_map = create_pdo_map
+    data_bytes = bytes()
+    for idx, item in enumerate(rpdo_map.items):
+        data_bytes += convert_dtype_to_bytes(idx, item.register.dtype)
+    rpdo_map.set_item_bytes(data_bytes)
+    for idx, item in enumerate(rpdo_map.items):
+        assert item.value == idx
+
+
+@pytest.mark.no_connection
+def test_tpdo_map_set_items_bytes(create_pdo_map):
+    tpdo_map, _ = create_pdo_map
+    data_bytes = bytes()
+    for idx, item in enumerate(tpdo_map.items):
+        data_bytes += convert_dtype_to_bytes(idx, item.register.dtype)
+    tpdo_map.set_item_bytes(data_bytes)
+    for idx, item in enumerate(tpdo_map.items):
+        assert item.value == idx
