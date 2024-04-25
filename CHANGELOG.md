@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Set RPDOMap values by byte string.
+
 ## [7.3.0] - 2024-04-23
 
 ### Add

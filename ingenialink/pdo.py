@@ -310,6 +310,28 @@ class PDOMap:
             map_bytes += pdo_map_item.register_mapping
         return map_bytes
 
+    def set_item_bytes(self, data_bytes: bytes) -> None:
+        """Set the items raw data from a byte array received from the slave.
+
+        Args:
+            data_bytes: Byte array received from the slave.
+
+        Raises:
+            ILError: If the length of the received data does not coincide.
+        """
+        if len(data_bytes) != self.data_length_bytes:
+            raise ILError(
+                f"The length of the data array is incorrect. Expected {self.data_length_bytes},"
+                f" obtained {len(data_bytes)}"
+            )
+        data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
+        data_bits.frombytes(data_bytes)
+
+        offset = 0
+        for item in self.items:
+            item.raw_data_bits = data_bits[offset : item.size_bits + offset]
+            offset += item.size_bits
+
 
 class RPDOMap(PDOMap):
     """Class to store RPDO mapping information."""
@@ -358,28 +380,6 @@ class TPDOMap(PDOMap):
     """Class to store TPDO mapping information."""
 
     _PDO_MAP_ITEM_CLASS = TPDOMapItem
-
-    def set_item_bytes(self, data_bytes: bytes) -> None:
-        """Set the items raw data from a byte array received from the slave.
-
-        Args:
-            data_bytes: Byte array received from the slave.
-
-        Raises:
-            ILError: If the length of the received data does not coincide.
-        """
-        if len(data_bytes) != self.data_length_bytes:
-            raise ILError(
-                f"The length of the data array is incorrect. Expected {self.data_length_bytes},"
-                f" obtained {len(data_bytes)}"
-            )
-        data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
-        data_bits.frombytes(data_bytes)
-
-        offset = 0
-        for item in self.items:
-            item.raw_data_bits = data_bits[offset : item.size_bits + offset]
-            offset += item.size_bits
 
 
 class PDOServo(Servo):
