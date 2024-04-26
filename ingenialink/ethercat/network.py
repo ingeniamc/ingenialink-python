@@ -455,12 +455,20 @@ class EthercatNetwork(Network):
             except subprocess.CalledProcessError as e:
                 raise ILFirmwareLoadError("Could not change the FoE binary permissions.") from e
         try:
-            subprocess.run(
-                f"{exec_path} {self.interface_name} {slave_id} {fw_file}",
-                check=True,
-                shell=True,
-                encoding="utf-8",
-            )
+            if sys_name == "linux":
+                subprocess.run(
+                    f"{exec_path} {self.interface_name} {slave_id} {fw_file}",
+                    check=True,
+                    shell=True,
+                    encoding="utf-8",
+                )
+            else:
+                subprocess.run(
+                    [exec_path, self.interface_name, f"{slave_id}", fw_file],
+                    check=True,
+                    shell=True,
+                    encoding="utf-8",
+                )
         except subprocess.CalledProcessError as e:
             foe_return_error = self.FOE_ERRORS.get(e.returncode, self.UNKNOWN_FOE_ERROR)
             raise ILFirmwareLoadError(

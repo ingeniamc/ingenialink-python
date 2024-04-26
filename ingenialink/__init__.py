@@ -18,14 +18,7 @@ from .canopen.servo import CanopenServo
 from .ethercat.network import EthercatNetwork
 from .ethernet.network import EthernetNetwork
 from .ethernet.servo import EthernetServo
-from .network import (
-    EEPROM_FILE_FORMAT,
-    NET_DEV_EVT,
-    NET_PROT,
-    NET_STATE,
-    NET_TRANS_PROT,
-    Network,
-)
+from .network import EEPROM_FILE_FORMAT, NET_DEV_EVT, NET_PROT, NET_STATE, NET_TRANS_PROT, Network
 
 __all__ = [
     "EEPROM_FILE_FORMAT",
@@ -57,4 +50,4 @@ __all__ = [
     "CanopenDictionaryV2",
 ]
 
-__version__ = "7.3.0"
+__version__ = "7.3.1"
