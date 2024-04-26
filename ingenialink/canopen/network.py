@@ -13,7 +13,6 @@ import canopen
 import ingenialogger
 from can import CanError
 
-
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import (
     CANOPEN_SDO_RESPONSE_TIMEOUT,
@@ -24,7 +23,7 @@ from ingenialink.canopen.servo import (
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
-from ingenialink.utils._utils import convert_bytes_to_dtype, DisableLogger
+from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 
 if platform.system() == "Windows":

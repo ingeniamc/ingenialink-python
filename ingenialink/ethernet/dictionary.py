@@ -1,10 +1,15 @@
-from typing import Optional, Dict, List
 import xml.etree.ElementTree as ET
+from typing import Dict, List, Optional
 
 import ingenialogger
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.ethernet.register import EthernetRegister, REG_DTYPE, REG_ACCESS, RegCyclicType
+from ingenialink.ethernet.register import (
+    REG_ACCESS,
+    REG_DTYPE,
+    EthernetRegister,
+    RegCyclicType,
+)
 
 logger = ingenialogger.get_logger(__name__)
 

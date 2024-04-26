@@ -1,10 +1,10 @@
+import binascii
 import socket
 import struct
-import binascii
-
-from ..exceptions import *
 
 import ingenialogger
+
+from ..exceptions import *
 
 logger = ingenialogger.get_logger(__name__)
 

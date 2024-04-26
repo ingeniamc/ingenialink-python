@@ -22,7 +22,12 @@ if TYPE_CHECKING:
 
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILWrongWorkingCount
+from ingenialink.exceptions import (
+    ILError,
+    ILFirmwareLoadError,
+    ILStateError,
+    ILWrongWorkingCount,
+)
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)

@@ -1,18 +1,18 @@
 from datetime import datetime
-from threading import Timer, Lock
-from typing import List, Dict, Tuple, Union, Callable, Optional, Any
+from threading import Lock, Timer
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+import ingenialogger
 
 from ingenialink.exceptions import (
     ILAlreadyInitializedError,
     ILIOError,
     ILStateError,
-    ILValueError,
     ILTimeoutError,
+    ILValueError,
 )
-from ingenialink.servo import Servo
 from ingenialink.register import Register
-
-import ingenialogger
+from ingenialink.servo import Servo
 
 logger = ingenialogger.get_logger(__name__)
 

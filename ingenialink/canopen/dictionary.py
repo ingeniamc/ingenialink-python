@@ -1,10 +1,15 @@
-from typing import Optional, List
-
-from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.canopen.register import CanopenRegister, REG_DTYPE, REG_ACCESS, RegCyclicType
+import xml.etree.ElementTree as ET
+from typing import List, Optional
 
 import ingenialogger
-import xml.etree.ElementTree as ET
+
+from ingenialink.canopen.register import (
+    REG_ACCESS,
+    REG_DTYPE,
+    CanopenRegister,
+    RegCyclicType,
+)
+from ingenialink.dictionary import DictionaryV2, Interface
 
 logger = ingenialogger.get_logger(__name__)
 

@@ -1,10 +1,10 @@
+import io
 import struct
 from binascii import crc_hqx
-import io
 from typing import Optional, Tuple, Type, TypeVar
 
-from ingenialink.exceptions import ILWrongCRCError, ILNACKError, ILWrongRegisterError
 from ingenialink.constants import MCB_CMD_ACK
+from ingenialink.exceptions import ILNACKError, ILWrongCRCError, ILWrongRegisterError
 
 T = TypeVar("T", bound="MCB")
 
