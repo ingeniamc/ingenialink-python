@@ -1,7 +1,13 @@
 import pytest
 
 from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY, dtypes_ranges
+from ingenialink.register import (
+    REG_ACCESS,
+    REG_ADDRESS_TYPE,
+    REG_DTYPE,
+    REG_PHY,
+    dtypes_ranges,
+)
 
 
 @pytest.mark.no_connection

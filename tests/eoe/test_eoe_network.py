@@ -1,10 +1,11 @@
-import pytest
-import socket
 import ipaddress
+import socket
 
-from ingenialink.ethernet.servo import EthernetServo
+import pytest
+
+from ingenialink.eoe.network import EoECommand, EoENetwork
 from ingenialink.ethernet.network import NET_PROT
-from ingenialink.eoe.network import EoENetwork, EoECommand
+from ingenialink.ethernet.servo import EthernetServo
 
 
 @pytest.fixture()

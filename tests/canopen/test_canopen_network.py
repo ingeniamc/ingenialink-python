@@ -2,7 +2,12 @@ import platform
 
 import pytest
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, NET_STATE, CanopenNetwork
+from ingenialink.canopen.network import (
+    CAN_BAUDRATE,
+    CAN_DEVICE,
+    NET_STATE,
+    CanopenNetwork,
+)
 from ingenialink.dictionary import Interface
 from ingenialink.exceptions import ILError
 from ingenialink.servo import DictionaryFactory

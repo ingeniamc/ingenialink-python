@@ -5,9 +5,9 @@ except ImportError:
 import pytest
 
 from ingenialink.dictionary import Interface
-from ingenialink.servo import DictionaryFactory
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from ingenialink.servo import DictionaryFactory
 
 
 @pytest.mark.docker

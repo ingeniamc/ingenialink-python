@@ -1,16 +1,16 @@
+import argparse
+import json
 import os
 import time
-import json
-import argparse
-import ingenialogger
-from ping3 import ping
 from functools import partial
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE
-from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.canopen.network import CanopenNetwork
+import ingenialogger
+from ping3 import ping
+
+from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethernet.network import EthernetNetwork
+from ingenialink.exceptions import ILError, ILFirmwareLoadError
 
 logger = ingenialogger.get_logger("load_FWs")
 ingenialogger.configure_logger(level=ingenialogger.LoggingLevel.INFO)

@@ -4,7 +4,12 @@ import time
 
 import pytest
 
-from ingenialink.ethernet.network import NET_DEV_EVT, NET_PROT, NET_STATE, EthernetNetwork
+from ingenialink.ethernet.network import (
+    NET_DEV_EVT,
+    NET_PROT,
+    NET_STATE,
+    EthernetNetwork,
+)
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 
 

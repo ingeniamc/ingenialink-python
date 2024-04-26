@@ -1,7 +1,8 @@
-import pytest
 from os.path import join as join_path
 
-from ingenialink.dictionary import Interface, SubnodeType, DictionaryV3
+import pytest
+
+from ingenialink.dictionary import DictionaryV3, Interface, SubnodeType
 
 path_resources = "./tests/resources/"
 dict_eoe_v3 = "test_dict_ecat_eoe_v3.0.xdf"

@@ -1,6 +1,5 @@
 import pytest
 
-from ingenialink.dictionary import Dictionary
 from ingenialink.canopen.register import (
     REG_ACCESS,
     REG_ADDRESS_TYPE,
@@ -9,6 +8,7 @@ from ingenialink.canopen.register import (
     CanopenRegister,
     RegCyclicType,
 )
+from ingenialink.dictionary import Dictionary
 
 
 @pytest.mark.no_connection

@@ -1,9 +1,10 @@
-import pytest
 from os.path import join as join_path
 
-from ingenialink.exceptions import ILDictionaryParseError
+import pytest
+
 from ingenialink import CanopenRegister
-from ingenialink.dictionary import Interface, SubnodeType, DictionaryV3
+from ingenialink.dictionary import DictionaryV3, Interface, SubnodeType
+from ingenialink.exceptions import ILDictionaryParseError
 
 path_resources = "./tests/resources/canopen/"
 dict_can_v3 = "test_dict_can_v3.0.xdf"

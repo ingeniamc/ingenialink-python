@@ -1,9 +1,9 @@
-import pytest
 from os.path import join as join_path
+
+import pytest
 
 from ingenialink.dictionary import Interface, SubnodeType
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
-
 
 path_resources = "./tests/resources/ethernet/"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
