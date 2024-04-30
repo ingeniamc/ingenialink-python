@@ -4,6 +4,7 @@
 
 ### Fixed
 - Bug that when the path to the FoE binary has blank spaces.
+- The Interface attribute format in the configuration file.
 
 ## [7.3.0] - 2024-04-23
 

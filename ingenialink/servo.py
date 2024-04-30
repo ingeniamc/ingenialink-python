@@ -206,6 +206,9 @@ class Servo:
     DISTURBANCE_ADD_REGISTERS_OLD = "DIST_CMD_ADD_REG"
     MONITORING_ADD_REGISTERS_OLD = "MON_OP_ADD_REG"
 
+    DICTIONARY_INTERFACE_ATTR_CAN = "CAN"
+    DICTIONARY_INTERFACE_ATTR_ETH = "ETH"
+
     interface: Interface
 
     def __init__(
@@ -336,8 +339,12 @@ class Servo:
         body = ET.SubElement(tree, "Body")
         device = ET.SubElement(body, "Device")
         registers = ET.SubElement(device, "Registers")
-
-        device.set("Interface", str(self.dictionary.interface))
+        interface = (
+            self.DICTIONARY_INTERFACE_ATTR_CAN
+            if self.dictionary.interface == Interface.CAN
+            else self.DICTIONARY_INTERFACE_ATTR_ETH
+        )
+        device.set("Interface", interface)
         if self.dictionary.part_number is not None:
             device.set("PartNumber", self.dictionary.part_number)
         device.set("ProductCode", str(prod_code))
