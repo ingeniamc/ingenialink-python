@@ -429,8 +429,8 @@ class CanopenNetwork(Network):
                 bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate
             )
             for servo in self.servos:
-                node = self._connection.add_node(servo.target)
-                node.nmt.start_node_guarding(1)
+                servo.node = self._connection.add_node(servo.target)
+                servo.node.nmt.start_node_guarding(1)
         except BaseException as e:
             logger.error("Connection failed. Exception: %s", e)
 
