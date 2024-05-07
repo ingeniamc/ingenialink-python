@@ -168,7 +168,7 @@ def get_drive_identification(
         else:
             prod_code = int(servo.read("DRV_ID_PRODUCT_CODE", subnode=subnode))
             re_number = int(servo.read("DRV_ID_REVISION_NUMBER", subnode))
-    except Exception as e:
+    except Exception:
         pass
 
     return prod_code, re_number

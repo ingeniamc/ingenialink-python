@@ -2,19 +2,21 @@ import ipaddress
 import socket
 from typing import Optional
 
-from ingenialink.dictionary import Interface
-from ingenialink.exceptions import ILError, ILTimeoutError, ILIOError, ILWrongRegisterError
-from ingenialink.constants import PASSWORD_STORE_RESTORE_TCP_IP
-from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.constants import MCB_CMD_READ, MCB_CMD_WRITE, ETH_MAX_WRITE_SIZE, ETH_BUF_SIZE
-from ingenialink.enums.register import REG_DTYPE, REG_ACCESS
-from ingenialink.servo import Servo
-from ingenialink.utils.mcb import MCB
-from ingenialink.utils._utils import convert_ip_to_int
-
-from ingenialink.ethernet.dictionary import EthernetDictionaryV2
-
 import ingenialogger
+
+from ingenialink.constants import (
+    ETH_BUF_SIZE,
+    ETH_MAX_WRITE_SIZE,
+    MCB_CMD_READ,
+    MCB_CMD_WRITE,
+    PASSWORD_STORE_RESTORE_TCP_IP,
+)
+from ingenialink.dictionary import Interface
+from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError, ILWrongRegisterError
+from ingenialink.servo import Servo
+from ingenialink.utils._utils import convert_ip_to_int
+from ingenialink.utils.mcb import MCB
 
 logger = ingenialogger.get_logger(__name__)
 

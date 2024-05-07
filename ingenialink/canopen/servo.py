@@ -4,11 +4,9 @@ import canopen
 import ingenialogger
 from canopen.emcy import EmcyConsumer
 
-from ingenialink.dictionary import Interface
-from ingenialink.canopen.dictionary import CanopenDictionaryV2
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.constants import CAN_MAX_WRITE_SIZE
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
+from ingenialink.dictionary import Interface
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import Servo

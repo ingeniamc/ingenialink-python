@@ -9,10 +9,7 @@ from xml.dom import minidom
 
 import ingenialogger
 
-from ingenialink.ethernet.dictionary import EthernetDictionaryV2
-from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
-from ingenialink.virtual.dictionary import VirtualDictionary
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
     DEFAULT_PDS_TIMEOUT,
@@ -21,18 +18,20 @@ from ingenialink.constants import (
     PASSWORD_STORE_ALL,
     PASSWORD_STORE_RESTORE_SUB_0,
 )
-from ingenialink.dictionary import Dictionary, SubnodeType, Interface, DictionaryV3
+from ingenialink.dictionary import Dictionary, DictionaryV3, Interface, SubnodeType
 from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
 from ingenialink.enums.servo import SERVO_STATE
+from ingenialink.ethercat.dictionary import EthercatDictionaryV2
+from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.exceptions import (
     ILAccessError,
+    ILDictionaryParseError,
     ILError,
     ILIOError,
     ILRegisterNotFoundError,
     ILStateError,
     ILTimeoutError,
     ILValueError,
-    ILDictionaryParseError,
 )
 from ingenialink.register import Register
 from ingenialink.utils import constants
@@ -41,6 +40,7 @@ from ingenialink.utils._utils import (
     convert_dtype_to_bytes,
     get_drive_identification,
 )
+from ingenialink.virtual.dictionary import VirtualDictionary
 
 logger = ingenialogger.get_logger(__name__)
 

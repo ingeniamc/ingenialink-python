@@ -18,7 +18,7 @@ except ImportError as ex:
     pysoem_import_error = ex
 
 if TYPE_CHECKING:
-    from pysoem import CdefSlave
+    pass
 
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
