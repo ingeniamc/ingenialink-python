@@ -945,7 +945,7 @@ class CanopenNetwork(Network):
 
         for servo in self.servos:
             logger.info("Node connected: %i", servo.target)
-            node = self._connection.add_node(servo.target)
+            self._connection.add_node(servo.target)
 
         # Reset all nodes to default state
         self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)

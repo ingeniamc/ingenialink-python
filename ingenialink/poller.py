@@ -177,7 +177,7 @@ class Poller:
 
         """
         for channel in range(self.num_channels):
-            r = self.ch_disable(channel)
+            self.ch_disable(channel)
         return 0
 
     def _reset_acq(self) -> None:
@@ -230,13 +230,6 @@ class Poller:
         """Time vector, array of data vectors and a flag indicating if data was lost."""
         t = list(self.__acq_time[0 : self.__samples_count])
         d = []
-
-        # Acquire enabled channels, comprehension list indexes obtained
-        enabled_channel_indexes = [
-            channel_idx
-            for channel_idx, is_enabled in enumerate(self.__mappings_enabled)
-            if is_enabled
-        ]
 
         for channel in range(self.num_channels):
             if self.__mappings_enabled[channel]:

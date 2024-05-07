@@ -4,7 +4,7 @@ import struct
 
 import ingenialogger
 
-from ..exceptions import *
+from ingenialink.exceptions import ILUDPException
 
 logger = ingenialogger.get_logger(__name__)
 
