@@ -10,12 +10,9 @@ from ingenialink.constants import (
 )
 from ingenialink.dictionary import DictionaryV2, Interface
 from ingenialink.ethercat.register import (
-    REG_ACCESS,
-    REG_ADDRESS_TYPE,
-    REG_DTYPE,
     EthercatRegister,
-    RegCyclicType,
 )
+from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, RegCyclicType
 
 logger = ingenialogger.get_logger(__name__)
 
