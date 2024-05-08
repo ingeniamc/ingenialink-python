@@ -187,6 +187,7 @@ class CanopenNetwork(Network):
     DRIVE_INFO_INDEX = 0x1018
     PRODUCT_CODE_SUB_IX = 2
     REVISION_NUMBER_SUB_IX = 3
+    NODE_GUARDING_PERIOD_S = 1
 
     def __init__(
         self,
@@ -326,7 +327,7 @@ class CanopenNetwork(Network):
             try:
                 node = self._connection.add_node(target)
 
-                node.nmt.start_node_guarding(1)
+                node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
                 servo = CanopenServo(
                     target, node, dictionary, servo_status_listener=servo_status_listener
@@ -439,7 +440,7 @@ class CanopenNetwork(Network):
             self._connection.connect(**connection_args)
             for servo in self.servos:
                 servo.node = self._connection.add_node(servo.target)
-                servo.node.nmt.start_node_guarding(1)
+                servo.node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
         except BaseException as e:
             logger.error(f"Connection failed. Exception: {e}")
 
@@ -960,7 +961,7 @@ class CanopenNetwork(Network):
         # Reset all nodes to default state
         self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
 
-        self._connection.nodes[target_node].nmt.start_node_guarding(1)
+        self._connection.nodes[target_node].nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
     def subscribe_to_status(self, node_id: int, callback: Callable[[NET_DEV_EVT], Any]) -> None:  # type: ignore [override]
         """Subscribe to network state changes.
