@@ -380,20 +380,21 @@ class CanopenNetwork(Network):
             try:
                 self._connection.connect(**self.__connection_args)
             except CanError as e:
-                logger.error("Transceiver not found in network. Exception: %s", e)
+                logger.error(f"Transceiver not found in network. Exception: {e}")
                 raise ILError(
                     "Error connecting to the transceiver. "
                     "Please verify the transceiver "
                     "is properly connected."
                 )
             except OSError as e:
-                logger.error("Transceiver drivers not properly installed. Exception: %s", e)
+                logger.error(f"Transceiver drivers not properly installed. Exception: {e}")
                 if hasattr(e, "winerror") and e.winerror == 126:
                     e.strerror = "Driver module not found. Drivers might not be properly installed."
                 raise ILError(e)
             except Exception as e:
-                logger.error("Failed trying to connect. Exception: %s", e)
-                raise ILError("Failed trying to connect. {}".format(e))
+                error_message = f"Failed trying to connect. Exception: {e}"
+                logger.error(error_message)
+                raise ILError(error_message)
         else:
             logger.info("Connection already established")
 
@@ -418,7 +419,7 @@ class CanopenNetwork(Network):
         try:
             self._connection.disconnect()
         except BaseException as e:
-            logger.error("Disconnection failed. Exception: %", e)
+            logger.error(f"Disconnection failed. Exception: {e}")
 
         try:
             for node in self._connection.scanner.nodes:
@@ -434,7 +435,7 @@ class CanopenNetwork(Network):
                 servo.node = self._connection.add_node(servo.target)
                 servo.node.nmt.start_node_guarding(1)
         except BaseException as e:
-            logger.error("Connection failed. Exception: %s", e)
+            logger.error(f"Connection failed. Exception: {e}")
 
     def load_firmware(  # type: ignore [override]
         self,
