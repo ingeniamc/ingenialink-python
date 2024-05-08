@@ -214,6 +214,16 @@ class CanopenNetwork(Network):
         self.__fw_load_progress = 0
         self.__fw_load_errors_enabled = True
 
+        self.__connection_args = {
+            "bustype": self.__device,
+            "channel": self.__channel,
+            "bitrate": self.__baudrate,
+        }
+        if self.__device == CAN_DEVICE.PCAN.value:
+            self.__connection_args["auto_reset"] = True
+        if self.__device == CAN_DEVICE.IXXAT.value:
+            self.__connection_args["fd"] = True
+
     def scan_slaves(self) -> List[int]:
         """Scans for nodes in the network.
 
@@ -367,17 +377,8 @@ class CanopenNetwork(Network):
         """
         if self._connection is None:
             self._connection = canopen.Network()
-            connection_args = {
-                "bustype": self.__device,
-                "channel": self.__channel,
-                "bitrate": self.__baudrate,
-            }
-            if self.__device == CAN_DEVICE.PCAN.value:
-                connection_args["auto_reset"] = True
-            if self.__device == CAN_DEVICE.IXXAT.value:
-                connection_args["fd"] = True
             try:
-                self._connection.connect(**connection_args)
+                self._connection.connect(**self.__connection_args)
             except CanError as e:
                 logger.error("Transceiver not found in network. Exception: %s", e)
                 raise ILError(
@@ -427,15 +428,8 @@ class CanopenNetwork(Network):
                 logger.info("Bus flushed")
         except Exception as e:
             logger.error(f"Could not stop guarding. Exception: {e}")
-        connection_args = {
-            "bustype": self.__device,
-            "channel": self.__channel,
-            "bitrate": self.__baudrate,
-        }
-        if self.__device == CAN_DEVICE.IXXAT.value:
-            connection_args["fd"] = True
         try:
-            self._connection.connect(**connection_args)
+            self._connection.connect(**self.__connection_args)
             for servo in self.servos:
                 servo.node = self._connection.add_node(servo.target)
                 servo.node.nmt.start_node_guarding(1)
