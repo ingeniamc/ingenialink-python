@@ -224,8 +224,9 @@ class CanopenNetwork(Network):
         is_connection_created = False
         if self._connection is None:
             is_connection_created = True
+            scan_with_ixxat = self.__device == CAN_DEVICE.IXXAT.value
             try:
-                self._setup_connection()
+                self._setup_connection(scan_with_ixxat)
             except ILError:
                 self._teardown_connection()
                 return []
@@ -360,9 +361,15 @@ class CanopenNetwork(Network):
         if not self.servos:
             self._teardown_connection()
 
-    def _setup_connection(self) -> None:
+    def _setup_connection(self, scan_with_ixxat: bool = False) -> None:
         """Creates a network interface object establishing an empty connection
-        with all the network attributes already specified."""
+        with all the network attributes already specified.
+
+        Args:
+            scan_with_ixxat: If the connection will only be used to scan drives using
+             an IXXAT tranceiver.
+
+        """
         if self._connection is None:
             self._connection = canopen.Network()
             connection_args = {
@@ -372,6 +379,8 @@ class CanopenNetwork(Network):
             }
             if self.__device == CAN_DEVICE.PCAN.value:
                 connection_args["auto_reset"] = True
+            if scan_with_ixxat:
+                connection_args["fd"] = True
             try:
                 self._connection.connect(**connection_args)
             except CanError as e:
