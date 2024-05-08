@@ -224,9 +224,8 @@ class CanopenNetwork(Network):
         is_connection_created = False
         if self._connection is None:
             is_connection_created = True
-            scan_with_ixxat = self.__device == CAN_DEVICE.IXXAT.value
             try:
-                self._setup_connection(scan_with_ixxat)
+                self._setup_connection()
             except ILError:
                 self._teardown_connection()
                 return []
@@ -361,13 +360,9 @@ class CanopenNetwork(Network):
         if not self.servos:
             self._teardown_connection()
 
-    def _setup_connection(self, scan_with_ixxat: bool = False) -> None:
+    def _setup_connection(self) -> None:
         """Creates a network interface object establishing an empty connection
         with all the network attributes already specified.
-
-        Args:
-            scan_with_ixxat: If the connection will only be used to scan drives using
-             an IXXAT tranceiver.
 
         """
         if self._connection is None:
@@ -379,7 +374,7 @@ class CanopenNetwork(Network):
             }
             if self.__device == CAN_DEVICE.PCAN.value:
                 connection_args["auto_reset"] = True
-            if scan_with_ixxat:
+            if self.__device == CAN_DEVICE.IXXAT.value:
                 connection_args["fd"] = True
             try:
                 self._connection.connect(**connection_args)
@@ -431,12 +426,16 @@ class CanopenNetwork(Network):
                 self._connection.bus.flush_tx_buffer()
                 logger.info("Bus flushed")
         except Exception as e:
-            logger.error("Could not stop guarding. Exception: %", e)
-
+            logger.error(f"Could not stop guarding. Exception: {e}")
+        connection_args = {
+            "bustype": self.__device,
+            "channel": self.__channel,
+            "bitrate": self.__baudrate,
+        }
+        if self.__device == CAN_DEVICE.IXXAT.value:
+            connection_args["fd"] = True
         try:
-            self._connection.connect(
-                bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate
-            )
+            self._connection.connect(**connection_args)
             for servo in self.servos:
                 servo.node = self._connection.add_node(servo.target)
                 servo.node.nmt.start_node_guarding(1)
