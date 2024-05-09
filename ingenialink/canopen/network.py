@@ -9,6 +9,7 @@ from threading import Thread
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+import can
 import canopen
 import ingenialogger
 from can import CanError
@@ -133,6 +134,22 @@ CAN_BIT_TIMMING = {
 }
 
 
+class CustomIXXATListener(can.Listener):
+    """Custom listener for IXXAT connection.
+    It is used to ignore the exceptions that occur when
+    the error limit is reached.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def on_message_received(self, msg: can.Message) -> None:
+        pass
+
+    def on_error(self, exc: Exception) -> None:
+        logger.error(f"An exception occurred with the IXXAT connection. Exception: {exc}")
+
+
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
@@ -187,6 +204,7 @@ class CanopenNetwork(Network):
     DRIVE_INFO_INDEX = 0x1018
     PRODUCT_CODE_SUB_IX = 2
     REVISION_NUMBER_SUB_IX = 3
+    NODE_GUARDING_PERIOD_S = 1
 
     def __init__(
         self,
@@ -221,8 +239,6 @@ class CanopenNetwork(Network):
         }
         if self.__device == CAN_DEVICE.PCAN.value:
             self.__connection_args["auto_reset"] = True
-        if self.__device == CAN_DEVICE.IXXAT.value:
-            self.__connection_args["fd"] = True
 
     def scan_slaves(self) -> List[int]:
         """Scans for nodes in the network.
@@ -336,7 +352,7 @@ class CanopenNetwork(Network):
             try:
                 node = self._connection.add_node(target)
 
-                node.nmt.start_node_guarding(1)
+                node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
                 servo = CanopenServo(
                     target, node, dictionary, servo_status_listener=servo_status_listener
@@ -377,6 +393,8 @@ class CanopenNetwork(Network):
         """
         if self._connection is None:
             self._connection = canopen.Network()
+            if self.__device == CAN_DEVICE.IXXAT.value:
+                self._connection.listeners.append(CustomIXXATListener())
             try:
                 self._connection.connect(**self.__connection_args)
             except CanError as e:
@@ -404,7 +422,10 @@ class CanopenNetwork(Network):
         if self._connection is None:
             logger.warning("Can not disconnect. The connection is not established yet.")
             return
-        self._connection.disconnect()
+        try:
+            self._connection.disconnect()
+        except VCIError as e:
+            logger.error(f"An exception occurred during the teardown connection. Exception: {e}")
         self._connection = None
         logger.info("Tear down connection.")
 
@@ -429,11 +450,13 @@ class CanopenNetwork(Network):
                 logger.info("Bus flushed")
         except Exception as e:
             logger.error(f"Could not stop guarding. Exception: {e}")
+        if self.__device == CAN_DEVICE.IXXAT.value:
+            self._connection.listeners.append(CustomIXXATListener())
         try:
             self._connection.connect(**self.__connection_args)
             for servo in self.servos:
                 servo.node = self._connection.add_node(servo.target)
-                servo.node.nmt.start_node_guarding(1)
+                servo.node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
         except BaseException as e:
             logger.error(f"Connection failed. Exception: {e}")
 
@@ -954,7 +977,7 @@ class CanopenNetwork(Network):
         # Reset all nodes to default state
         self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
 
-        self._connection.nodes[target_node].nmt.start_node_guarding(1)
+        self._connection.nodes[target_node].nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
     def subscribe_to_status(self, node_id: int, callback: Callable[[NET_DEV_EVT], Any]) -> None:  # type: ignore [override]
         """Subscribe to network state changes.
