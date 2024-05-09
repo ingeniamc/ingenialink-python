@@ -7,7 +7,7 @@ import time
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import ingenialogger
 
@@ -16,9 +16,6 @@ try:
 except ImportError as ex:
     pysoem = None
     pysoem_import_error = ex
-
-if TYPE_CHECKING:
-    pass
 
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
