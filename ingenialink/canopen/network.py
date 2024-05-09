@@ -9,6 +9,7 @@ from threading import Thread
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+import can
 import canopen
 import ingenialogger
 from can import CanError
@@ -131,6 +132,22 @@ CAN_BIT_TIMMING = {
     CAN_BAUDRATE.Baudrate_100K: 5,
     CAN_BAUDRATE.Baudrate_50K: 6,
 }
+
+
+class CustomIXXATListener(can.Listener):
+    """Custom listener for IXXAT connection.
+    It is used to ignore the exceptions that occur when
+    the error limit is reached.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def on_message_received(self, msg: can.Message) -> None:
+        pass
+
+    def on_error(self, exc: Exception) -> None:
+        logger.error(f"An exception occurred with the IXXAT connection. Exception: {exc}")
 
 
 class NetStatusListener(Thread):
@@ -376,7 +393,7 @@ class CanopenNetwork(Network):
             if self.__device == CAN_DEVICE.PCAN.value:
                 connection_args["auto_reset"] = True
             if self.__device == CAN_DEVICE.IXXAT.value:
-                connection_args["fd"] = True
+                self._connection.listeners.append(CustomIXXATListener())
             try:
                 self._connection.connect(**connection_args)
             except CanError as e:
@@ -404,7 +421,10 @@ class CanopenNetwork(Network):
         if self._connection is None:
             logger.warning("Can not disconnect. The connection is not established yet.")
             return
-        self._connection.disconnect()
+        try:
+            self._connection.disconnect()
+        except VCIError as e:
+            logger.error(f"An exception occurred during the teardown connection. Exception: {e}")
         self._connection = None
         logger.info("Tear down connection.")
 
