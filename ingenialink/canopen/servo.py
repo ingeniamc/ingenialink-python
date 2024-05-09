@@ -151,3 +151,8 @@ class CanopenServo(Servo):
     def node(self) -> canopen.RemoteNode:
         """Remote node of the servo."""
         return self.__node
+
+    @node.setter
+    def node(self, node: canopen.RemoteNode) -> None:
+        """Remote node of the servo."""
+        self.__node = node
