@@ -1,6 +1,6 @@
 # Changelog
 
-## [7.3.1]
+## [7.3.1] - 2024-05-10
 
 ### Fixed
 - Bug that when the path to the FoE binary has blank spaces.
