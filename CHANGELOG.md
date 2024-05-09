@@ -6,6 +6,7 @@
 - Bug that when the path to the FoE binary has blank spaces.
 - The Interface attribute format in the configuration file.
 - CANopen communication re-establishment after a power cycle.
+- Exception when scanning drives using an IXXAT tranceiver.
 
 ## [7.3.0] - 2024-04-23
 
