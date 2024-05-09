@@ -455,7 +455,7 @@ class CanopenNetwork(Network):
             "bitrate": self.__baudrate,
         }
         if self.__device == CAN_DEVICE.IXXAT.value:
-            connection_args["fd"] = True
+            self._connection.listeners.append(CustomIXXATListener())
         try:
             self._connection.connect(**connection_args)
             for servo in self.servos:
