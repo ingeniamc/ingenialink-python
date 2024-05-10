@@ -1,6 +1,5 @@
 from ingenialink.register import REG_DTYPE
 
-
 DIST_FRAME_SIZE_BYTES = 128
 DIST_FRAME_SIZE = 512
 

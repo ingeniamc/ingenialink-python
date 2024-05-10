@@ -154,8 +154,7 @@ def test_merge_dictionaries_type_exception():
     with pytest.raises(TypeError) as exc_info:
         eth_v2_dict + can_v2_dict
     assert (
-        str(exc_info.value)
-        == "Cannot merge dictionaries. Expected type: <class"
+        str(exc_info.value) == "Cannot merge dictionaries. Expected type: <class"
         " 'ingenialink.ethernet.dictionary.EthernetDictionaryV2'>, got: <class"
         " 'ingenialink.canopen.dictionary.CanopenDictionaryV2'>"
     )

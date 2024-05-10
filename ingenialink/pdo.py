@@ -1,9 +1,9 @@
-from typing import List, Optional, Union, Dict
+from typing import List, Optional, Union
 
 import bitarray
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import REG_DTYPE, REG_ACCESS, RegCyclicType
+from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, RegCyclicType
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILError
 from ingenialink.servo import Servo

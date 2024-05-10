@@ -14,18 +14,16 @@ import canopen
 import ingenialogger
 from can import CanError
 
-
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import (
     CANOPEN_SDO_RESPONSE_TIMEOUT,
-    REG_ACCESS,
-    REG_DTYPE,
     CanopenServo,
 )
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
-from ingenialink.utils._utils import convert_bytes_to_dtype, DisableLogger
+from ingenialink.register import REG_ACCESS, REG_DTYPE
+from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 
 if platform.system() == "Windows":
@@ -972,7 +970,7 @@ class CanopenNetwork(Network):
 
         for servo in self.servos:
             logger.info("Node connected: %i", servo.target)
-            node = self._connection.add_node(servo.target)
+            self._connection.add_node(servo.target)
 
         # Reset all nodes to default state
         self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
