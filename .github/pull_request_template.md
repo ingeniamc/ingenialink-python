@@ -30,9 +30,10 @@ Please update the documentation.
 - [ ] Build documentation locally to verify changes.
 - [ ] Add the changes at the `[Unreleased]` section of the [CHANGELOG](CHANGELOG.md).
 
-### Code formatting
+### Code formatting and linting
 
-- [ ] Use black package to format the code: `black -l 100 ingenialink tests`. It is recommended to configure the code editor to automatically format the code using black with a max length line of 100.
+- [ ] Use the ruff package to format the code: `ruff format ingenialink tests`.
+- [ ] Use the ruff package to lint the code: `ruff check ingenialink`.
 
 ### Others
 
