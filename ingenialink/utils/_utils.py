@@ -1,4 +1,5 @@
 import functools
+import logging
 import struct
 import warnings
 import xml.etree.ElementTree as ET
@@ -73,6 +74,16 @@ def deprecated(
         return wrapped_method
 
     return wrap
+
+
+class DisableLogger:
+    """Context manager to disable all logs."""
+
+    def __enter__(self) -> None:
+        logging.disable(logging.CRITICAL)
+
+    def __exit__(self, *args: Any) -> None:
+        logging.disable(logging.NOTSET)
 
 
 def to_ms(s: Union[int, float]) -> int:
@@ -157,7 +168,7 @@ def get_drive_identification(
         else:
             prod_code = int(servo.read("DRV_ID_PRODUCT_CODE", subnode=subnode))
             re_number = int(servo.read("DRV_ID_REVISION_NUMBER", subnode))
-    except Exception as e:
+    except Exception:
         pass
 
     return prod_code, re_number

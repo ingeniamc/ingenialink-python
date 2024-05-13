@@ -1,6 +1,20 @@
 # Changelog
 
 ## [Unreleased]
+
+### Added
+- Set RPDOMap values by byte string.
+
+## [7.3.1] - 2024-05-10
+
+### Fixed
+- Bug that when the path to the FoE binary has blank spaces.
+- The Interface attribute format in the configuration file.
+- CANopen communication re-establishment after a power cycle.
+- Exception when scanning drives using an IXXAT tranceiver.
+
+## [7.3.0] - 2024-04-23
+
 ### Add
 - Dictionary V3 support
 - ILWrongWorkingCount exception raised when the working count in PDO is not the expected one.
@@ -9,11 +23,14 @@
 - Support to socketcan so the canopen communication can be used in Linux.
 - Default value and description attributes to registers.
 - Read/write functionalities for bit register type.
+- Method to set the PDO watchdog time.
+- FoE binary compiled for Linux machines.
 
 ### Changed
 - Dictionary class properties, such as subnodes and interface.
 - Add monitoring/disturbance registers to the dictionary if monitoring/disturbance is supported.
 - Add PDO registers to the dictionary for EtherCAT drives.
+- IXXAT missing DLLs logs are ignored.
 
 ### Fixed
 - Bug that prevented the slaves to reach Operational state after the PDO exchange is re-started.

@@ -1,10 +1,10 @@
+import binascii
 import socket
 import struct
-import binascii
-
-from ..exceptions import *
 
 import ingenialogger
+
+from ingenialink.exceptions import ILUDPException
 
 logger = ingenialogger.get_logger(__name__)
 

@@ -94,7 +94,12 @@ def test_save_configuration(connect_to_slave):
         assert "PartNumber" not in device.attrib
     else:
         assert device.attrib["PartNumber"] == servo.dictionary.part_number
-    assert device.attrib.get("Interface") == servo.dictionary.interface
+    interface = (
+        servo.DICTIONARY_INTERFACE_ATTR_CAN
+        if isinstance(servo, CanopenServo)
+        else servo.DICTIONARY_INTERFACE_ATTR_ETH
+    )
+    assert device.attrib.get("Interface") == interface
     assert device.attrib.get("firmwareVersion") == servo.dictionary.firmware_version
     # TODO: check name and family? These are not stored at the dictionary
 

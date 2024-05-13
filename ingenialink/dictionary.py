@@ -7,11 +7,11 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import ingenialogger
 
-from ingenialink.exceptions import ILDictionaryParseError
-from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, Register, RegCyclicType
 from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.exceptions import ILDictionaryParseError
+from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, RegCyclicType, Register
 
 logger = ingenialogger.get_logger(__name__)
 

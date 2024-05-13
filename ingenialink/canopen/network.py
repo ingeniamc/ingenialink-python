@@ -9,30 +9,29 @@ from threading import Thread
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-RUNNING_ON_WINDOWS = platform.system() == "Windows"
-
+import can
 import canopen
 import ingenialogger
 from can import CanError
 
-if RUNNING_ON_WINDOWS:
-    from can.interfaces.ixxat.exceptions import VCIError
-else:
-    VCIError = None
-from canopen import Network as NetworkLib
-
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import (
     CANOPEN_SDO_RESPONSE_TIMEOUT,
-    REG_ACCESS,
-    REG_DTYPE,
     CanopenServo,
 )
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
-from ingenialink.utils._utils import convert_bytes_to_dtype
+from ingenialink.register import REG_ACCESS, REG_DTYPE
+from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
+
+if platform.system() == "Windows":
+    with DisableLogger():
+        from can.interfaces.ixxat.exceptions import VCIError
+else:
+    VCIError = None
+from canopen import Network as NetworkLib
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -133,6 +132,22 @@ CAN_BIT_TIMMING = {
 }
 
 
+class CustomIXXATListener(can.Listener):
+    """Custom listener for IXXAT connection.
+    It is used to ignore the exceptions that occur when
+    the error limit is reached.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def on_message_received(self, msg: can.Message) -> None:
+        pass
+
+    def on_error(self, exc: Exception) -> None:
+        logger.error(f"An exception occurred with the IXXAT connection. Exception: {exc}")
+
+
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
@@ -187,6 +202,7 @@ class CanopenNetwork(Network):
     DRIVE_INFO_INDEX = 0x1018
     PRODUCT_CODE_SUB_IX = 2
     REVISION_NUMBER_SUB_IX = 3
+    NODE_GUARDING_PERIOD_S = 1
 
     def __init__(
         self,
@@ -213,6 +229,14 @@ class CanopenNetwork(Network):
         self.__fw_load_status_msg = ""
         self.__fw_load_progress = 0
         self.__fw_load_errors_enabled = True
+
+        self.__connection_args = {
+            "bustype": self.__device,
+            "channel": self.__channel,
+            "bitrate": self.__baudrate,
+        }
+        if self.__device == CAN_DEVICE.PCAN.value:
+            self.__connection_args["auto_reset"] = True
 
     def scan_slaves(self) -> List[int]:
         """Scans for nodes in the network.
@@ -326,7 +350,7 @@ class CanopenNetwork(Network):
             try:
                 node = self._connection.add_node(target)
 
-                node.nmt.start_node_guarding(1)
+                node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
                 servo = CanopenServo(
                     target, node, dictionary, servo_status_listener=servo_status_listener
@@ -362,33 +386,31 @@ class CanopenNetwork(Network):
 
     def _setup_connection(self) -> None:
         """Creates a network interface object establishing an empty connection
-        with all the network attributes already specified."""
+        with all the network attributes already specified.
+
+        """
         if self._connection is None:
             self._connection = canopen.Network()
-            connection_args = {
-                "bustype": self.__device,
-                "channel": self.__channel,
-                "bitrate": self.__baudrate,
-            }
-            if self.__device == CAN_DEVICE.PCAN.value:
-                connection_args["auto_reset"] = True
+            if self.__device == CAN_DEVICE.IXXAT.value:
+                self._connection.listeners.append(CustomIXXATListener())
             try:
-                self._connection.connect(**connection_args)
+                self._connection.connect(**self.__connection_args)
             except CanError as e:
-                logger.error("Transceiver not found in network. Exception: %s", e)
+                logger.error(f"Transceiver not found in network. Exception: {e}")
                 raise ILError(
                     "Error connecting to the transceiver. "
                     "Please verify the transceiver "
                     "is properly connected."
                 )
             except OSError as e:
-                logger.error("Transceiver drivers not properly installed. Exception: %s", e)
+                logger.error(f"Transceiver drivers not properly installed. Exception: {e}")
                 if hasattr(e, "winerror") and e.winerror == 126:
                     e.strerror = "Driver module not found. Drivers might not be properly installed."
                 raise ILError(e)
             except Exception as e:
-                logger.error("Failed trying to connect. Exception: %s", e)
-                raise ILError("Failed trying to connect. {}".format(e))
+                error_message = f"Failed trying to connect. Exception: {e}"
+                logger.error(error_message)
+                raise ILError(error_message)
         else:
             logger.info("Connection already established")
 
@@ -398,7 +420,10 @@ class CanopenNetwork(Network):
         if self._connection is None:
             logger.warning("Can not disconnect. The connection is not established yet.")
             return
-        self._connection.disconnect()
+        try:
+            self._connection.disconnect()
+        except VCIError as e:
+            logger.error(f"An exception occurred during the teardown connection. Exception: {e}")
         self._connection = None
         logger.info("Tear down connection.")
 
@@ -413,7 +438,7 @@ class CanopenNetwork(Network):
         try:
             self._connection.disconnect()
         except BaseException as e:
-            logger.error("Disconnection failed. Exception: %", e)
+            logger.error(f"Disconnection failed. Exception: {e}")
 
         try:
             for node in self._connection.scanner.nodes:
@@ -422,17 +447,16 @@ class CanopenNetwork(Network):
                 self._connection.bus.flush_tx_buffer()
                 logger.info("Bus flushed")
         except Exception as e:
-            logger.error("Could not stop guarding. Exception: %", e)
-
+            logger.error(f"Could not stop guarding. Exception: {e}")
+        if self.__device == CAN_DEVICE.IXXAT.value:
+            self._connection.listeners.append(CustomIXXATListener())
         try:
-            self._connection.connect(
-                bustype=self.__device, channel=self.__channel, bitrate=self.__baudrate
-            )
+            self._connection.connect(**self.__connection_args)
             for servo in self.servos:
-                node = self._connection.add_node(servo.target)
-                node.nmt.start_node_guarding(1)
+                servo.node = self._connection.add_node(servo.target)
+                servo.node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
         except BaseException as e:
-            logger.error("Connection failed. Exception: %s", e)
+            logger.error(f"Connection failed. Exception: {e}")
 
     def load_firmware(  # type: ignore [override]
         self,
@@ -946,12 +970,12 @@ class CanopenNetwork(Network):
 
         for servo in self.servos:
             logger.info("Node connected: %i", servo.target)
-            node = self._connection.add_node(servo.target)
+            self._connection.add_node(servo.target)
 
         # Reset all nodes to default state
         self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
 
-        self._connection.nodes[target_node].nmt.start_node_guarding(1)
+        self._connection.nodes[target_node].nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
     def subscribe_to_status(self, node_id: int, callback: Callable[[NET_DEV_EVT], Any]) -> None:  # type: ignore [override]
         """Subscribe to network state changes.

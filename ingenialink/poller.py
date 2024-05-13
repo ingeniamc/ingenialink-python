@@ -1,18 +1,18 @@
 from datetime import datetime
-from threading import Timer, Lock
-from typing import List, Dict, Tuple, Union, Callable, Optional, Any
+from threading import Lock, Timer
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+import ingenialogger
 
 from ingenialink.exceptions import (
     ILAlreadyInitializedError,
     ILIOError,
     ILStateError,
-    ILValueError,
     ILTimeoutError,
+    ILValueError,
 )
-from ingenialink.servo import Servo
 from ingenialink.register import Register
-
-import ingenialogger
+from ingenialink.servo import Servo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -177,7 +177,7 @@ class Poller:
 
         """
         for channel in range(self.num_channels):
-            r = self.ch_disable(channel)
+            self.ch_disable(channel)
         return 0
 
     def _reset_acq(self) -> None:
@@ -230,13 +230,6 @@ class Poller:
         """Time vector, array of data vectors and a flag indicating if data was lost."""
         t = list(self.__acq_time[0 : self.__samples_count])
         d = []
-
-        # Acquire enabled channels, comprehension list indexes obtained
-        enabled_channel_indexes = [
-            channel_idx
-            for channel_idx, is_enabled in enumerate(self.__mappings_enabled)
-            if is_enabled
-        ]
 
         for channel in range(self.num_channels):
             if self.__mappings_enabled[channel]:
