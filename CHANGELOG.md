@@ -5,6 +5,9 @@
 ### Added
 - Set RPDOMap values by byte string.
 
+### Fixed
+- Issue when connecting to the virtual drive using an EVE CANopen dictionary.
+
 ## [7.3.1] - 2024-05-10
 
 ### Fixed
