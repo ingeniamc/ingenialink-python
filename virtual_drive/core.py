@@ -1249,6 +1249,9 @@ class VirtualDrive(Thread):
         self.reg_signals: Dict[str, NDArray[np.float_]] = {}
         self.reg_time: Dict[str, NDArray[np.float_]] = {}
         self.reg_noise_amplitude: Dict[str, float] = {}
+        self.is_monitoring_available = EthernetServo.MONITORING_DATA in self.__dictionary.registers(
+            0
+        )
 
         self._init_registers()
         self._update_registers()
@@ -1339,7 +1342,8 @@ class VirtualDrive(Thread):
         """
         value = self.get_value_by_id(register.subnode, str(register.identifier))
         if (
-            register.address == self.id_to_address(0, "MONITORING_DATA")
+            self.is_monitoring_available
+            and register.address == self.id_to_address(0, "MONITORING_DATA")
             and isinstance(value, bytes)
             and self._monitoring
         ):
@@ -1400,6 +1404,9 @@ class VirtualDrive(Thread):
                 self.__reg_address_to_id[subnode][reg.address] = reg_id
                 self.__dictionary.registers(subnode)[reg_id].storage_valid = True
 
+        if not self.is_monitoring_available:
+            return
+
         custom_regs = {
             "MONITORING_DATA": self.__dictionary.registers(0)[EthernetServo.MONITORING_DATA],
             "DISTURBANCE_DATA": self.__dictionary.registers(0)[EthernetServo.DIST_DATA],
@@ -1408,7 +1415,11 @@ class VirtualDrive(Thread):
             if not isinstance(reg, EthernetRegister):
                 raise ValueError
             register = EthernetRegister(
-                reg.address, REG_DTYPE.BYTE_ARRAY_512, reg.access, identifier=id, subnode=reg.subnode
+                reg.address,
+                REG_DTYPE.BYTE_ARRAY_512,
+                reg.access,
+                identifier=id,
+                subnode=reg.subnode,
             )
             self.__dictionary._add_register_list(register)
             self.__dictionary.registers(reg.subnode)[id].storage_valid = True
