@@ -1255,6 +1255,8 @@ class VirtualDrive(Thread):
 
         self._init_registers()
         self._update_registers()
+        if self.is_monitoring_available:
+            self._create_monitoring_disturbance_registers()
         self._init_register_signals()
         self.__set_motor_ready_to_switch_on()
 
@@ -1404,9 +1406,8 @@ class VirtualDrive(Thread):
                 self.__reg_address_to_id[subnode][reg.address] = reg_id
                 self.__dictionary.registers(subnode)[reg_id].storage_valid = True
 
-        if not self.is_monitoring_available:
-            return
-
+    def _create_monitoring_disturbance_registers(self) -> None:
+        """Create the monitoring and disturbance data registers."""
         custom_regs = {
             "MONITORING_DATA": self.__dictionary.registers(0)[EthernetServo.MONITORING_DATA],
             "DISTURBANCE_DATA": self.__dictionary.registers(0)[EthernetServo.DIST_DATA],
