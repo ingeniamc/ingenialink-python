@@ -501,6 +501,12 @@ class CanopenNetwork(Network):
         self.__program_control_to_flash(int(initial_status), servo, callback_status_msg)
         try:
             self.__send_fw_file(fw_file, servo, callback_status_msg, callback_progress)
+        except ILError as e:
+            self.__send_fw_file_failure(servo)
+            raise ILFirmwareLoadError(
+                "An error occurred while downloading. Check firmware file is correct."
+            ) from e
+        else:
             self.__program_control_to_stop(servo, callback_status_msg)
             self.__program_control_to_start(servo, callback_status_msg)
         finally:
@@ -581,6 +587,17 @@ class CanopenNetwork(Network):
             # The drive will unlock the clear program command
             password = 0x70636675
             servo.write(FORCE_BOOT, password, subnode=0)
+
+    @staticmethod
+    def __send_fw_file_failure(servo: CanopenServo) -> None:
+        """Move the Program state machine from Flash to Start.
+
+        Args:
+            servo: target drive.
+
+        """
+        for target_status in [PROG_CTRL_STATE_STOP, PROG_CTRL_STATE_START]:
+            servo.write(PROG_STAT_1, target_status, subnode=0)
 
     def __program_control_to_flash(
         self,
@@ -790,12 +807,7 @@ class CanopenNetwork(Network):
         with open(fw_file, "rb") as image:
             byte = image.read(BOOTLOADER_MSG_SIZE)
             while byte:
-                try:
-                    servo.write(PROG_DL_1, byte, subnode=0)
-                except ILError as e:
-                    raise ILFirmwareLoadError(
-                        "An error occurred while downloading. Check firmware file is correct."
-                    ) from e
+                servo.write(PROG_DL_1, byte, subnode=0)
                 counter += 1
                 new_progress = int(counter * 100 / total_file_size)
                 if progress != new_progress:
