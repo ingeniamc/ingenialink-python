@@ -409,21 +409,24 @@ class EthercatNetwork(Network):
             self.__listener_net_status.join()
         self.__listener_net_status = None
 
-    def load_firmware(self, fw_file: str, slave_id: int = 1, boot_in_app: bool = False) -> None:  # type: ignore [override]
+    def load_firmware(self, fw_file: str, boot_in_app: bool, slave_id: int = 1) -> None:  # type: ignore [override]
         """Loads a given firmware file to a target slave.
 
         Args:
             fw_file: Path to the firmware file.
-            slave_id: Slave ID to which load the firmware file.
             boot_in_app: True if the application includes FoE (i.e, ``fw_file`` extension is .sfu), False otherwise.
+            slave_id: Slave ID to which load the firmware file.
 
         Raises:
             FileNotFoundError: If the firmware file cannot be found.
             ILFirmwareLoadError: If no slave is detected.
             ILFirmwareLoadError: If the FoE write operation is not successful.
             NotImplementedError: If FoE is not implemented for the current OS and architecture
-
+            AttributeError: If the boot_in_app argument is not a boolean.
         """
+        if not isinstance(boot_in_app, bool):
+            raise AttributeError("The boot_in_app argument should be a boolean.")
+
         if not os.path.isfile(fw_file):
             raise FileNotFoundError(f"Could not find {fw_file}.")
 
