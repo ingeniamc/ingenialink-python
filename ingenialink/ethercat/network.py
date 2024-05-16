@@ -457,7 +457,7 @@ class EthercatNetwork(Network):
                 )
             else:
                 subprocess.run(
-                    [exec_path, self.interface_name, f"{slave_id}", fw_file, int(boot_in_app)],
+                    [exec_path, self.interface_name, f"{slave_id}", fw_file, f"{int(boot_in_app)}"],
                     check=True,
                     shell=True,
                     encoding="utf-8",
