@@ -201,7 +201,7 @@ class EthercatServo(PDOServo):
         )
         return mapped_address
 
-    def _get_emergency_description(self, error_code: int) -> Optional[str]:
+    def get_emergency_description(self, error_code: int) -> Optional[str]:
         """Get the error description from the error code.
         Args:
             error_code: Error code received.
@@ -244,17 +244,3 @@ class EthercatServo(PDOServo):
     def slave(self) -> "CdefSlave":
         """Ethercat slave"""
         return self.__slave
-
-    def get_emergency_description(self, error_code: int) -> Optional[str]:
-        """Get the error description from the error code.
-        Args:
-            error_code: Error code received.
-        Returns:
-            The error description corresponding to the error code.
-        """
-        error_description = None
-        if self.dictionary.errors is not None:
-            error_code &= 0xFFFF
-            if error_code in self.dictionary.errors.errors:
-                error_description = self.dictionary.errors.errors[error_code][-1]
-        return error_description
