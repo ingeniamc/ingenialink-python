@@ -1,16 +1,16 @@
+import argparse
+import json
 import os
 import time
-import json
-import argparse
-import ingenialogger
-from ping3 import ping
 from functools import partial
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE
-from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.canopen.network import CanopenNetwork
+import ingenialogger
+from ping3 import ping
+
+from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethernet.network import EthernetNetwork
+from ingenialink.exceptions import ILError, ILFirmwareLoadError
 
 logger = ingenialogger.get_logger("load_FWs")
 ingenialogger.configure_logger(level=ingenialogger.LoggingLevel.INFO)
@@ -113,7 +113,8 @@ def load_can(drive_conf):
 
 def load_ecat(drive_conf):
     net = EthercatNetwork(drive_conf["ifname"])
-    net.load_firmware(drive_conf["fw_file"], drive_conf["slave"])
+    boot_in_app = drive_conf["fw_file"].endswith(".sfu")
+    net.load_firmware(drive_conf["fw_file"], boot_in_app, drive_conf["slave"])
     logger.info("FW updated. ifname: %s, slave: %d", drive_conf["ifname"], drive_conf["slave"])
 
 
