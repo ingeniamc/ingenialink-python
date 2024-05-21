@@ -58,24 +58,23 @@ def test_load_firmware_not_implemented_error(mocker, read_config):
         net.load_firmware("dummy_file.lfu", False)
 
 
-@pytest.mark.eoe
+@pytest.mark.ethercat
 @pytest.mark.parametrize("slave_id", [-1, "one", None])
 def test_connect_to_slave_invalid_id(read_config, slave_id):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     with pytest.raises(ValueError):
-        net.connect_to_slave(slave_id)
+        net.connect_to_slave(slave_id, read_config["ethercat"]["dictionary"])
 
 
-@pytest.mark.eoe
-def test_connect_to_slave_no_slaves_detected(mocker, read_config):
+@pytest.mark.ethercat
+def test_connect_to_slave_no_slaves_detected(read_config):
+
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
+    slaves = net.scan_slaves()
+    slave_id = slaves[-1] + 1
 
-    def scan_slaves():
-        return []
-
-    mocker.patch.object(net, "scan_slaves", scan_slaves)
     with pytest.raises(ILError):
-        net.connect_to_slave(1)
+        net.connect_to_slave(slave_id, read_config["ethercat"]["dictionary"])
 
 
 @pytest.mark.ethercat
