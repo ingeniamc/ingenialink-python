@@ -1,1 +1,2 @@
-__version__ = "0.2.3"
+# TODO: Put the correct version when FoE is released (ST-268)
+__version__ = "develop"
