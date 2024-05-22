@@ -4,6 +4,7 @@
 
 ### Added
 - Set RPDOMap values by byte string.
+- EtherCAT connection example script.
 
 ### Changed
 - The signature of the load_firmware method of EthercatNetwork is changed to add the boot_in_app argument.
