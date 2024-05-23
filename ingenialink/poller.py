@@ -1,5 +1,4 @@
 import time
-from datetime import datetime
 from threading import Lock, Thread
 from typing import Dict, List, Tuple, Union
 
@@ -27,7 +26,6 @@ class Poller(Thread):
         self.__num_channels = num_channels
         self.__sz = 0
         self.__refresh_time = 0.0
-        self.__time_start = datetime.now()
         self.__samples_count = 0
         self.__samples_lost = False
         self.__running = False
@@ -40,6 +38,7 @@ class Poller(Thread):
 
     def run(self) -> None:
         self.__running = True
+        self.__time_start = time.time()
         while self.__running:
             time_start = time.perf_counter()
             self._acquire_callback_poller_data()
@@ -162,11 +161,10 @@ class Poller(Thread):
 
     def _acquire_callback_poller_data(self) -> None:
         """Acquire callback for poller data."""
-        time_diff = datetime.now()
-        delta = time_diff - self.__time_start
+        time_diff = time.time()
 
         # Obtain current time
-        t = delta.total_seconds()
+        t = time_diff - self.__time_start
 
         self.__lock.acquire()
         # Acquire all configured channels
