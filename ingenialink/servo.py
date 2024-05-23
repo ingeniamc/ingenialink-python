@@ -25,6 +25,7 @@ from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.exceptions import (
     ILAccessError,
+    ILConfigurationError,
     ILDictionaryParseError,
     ILError,
     ILIOError,
@@ -39,6 +40,7 @@ from ingenialink.utils._utils import (
     convert_bytes_to_dtype,
     convert_dtype_to_bytes,
     get_drive_identification,
+    round_register_value,
 )
 from ingenialink.virtual.dictionary import VirtualDictionary
 
@@ -272,6 +274,60 @@ class Servo:
 
         """
         return self.__listener_servo_status is not None
+
+    def check_configuration(self, config_file, subnode: Optional[int] = None) -> None:
+        """Check if the drive is configured in the same way as the given configuration file.
+        Compares the value of each register in the given file with the corresponding value in the
+        drive.
+
+        Args:
+            config_file: the configuration to check
+            subnode: Subnode of the axis. Defaults to None.
+
+        Raises:
+            FileNotFoundError: If the configuration file cannot be found.
+            ValueError: If a configuration file from a subnode different from 0
+                is attempted to be loaded to subnode 0.
+            ValueError: If an invalid subnode is provided.
+            ILConfigurationError: If the configuration file differs from the drive state.
+
+        """
+        if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
+            raise ValueError("Invalid subnode")
+        _, registers = self._read_configuration_file(config_file)
+
+        dest_subnodes = [int(element.attrib["subnode"]) for element in registers]
+        if subnode == 0 and subnode not in dest_subnodes:
+            raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
+        cast_data = {"float": float, "str": str}
+        mismatched_registers = []
+        for element in registers:
+            try:
+                if "storage" in element.attrib:
+                    if subnode is None:
+                        element_subnode = int(element.attrib["subnode"])
+                    else:
+                        element_subnode = subnode
+                    reg_dtype = element.attrib["dtype"]
+                    reg_data = element.attrib["storage"]
+                    reg_id = element.attrib["id"]
+                    stored_data = round_register_value(self.read(reg_id, element_subnode))
+                    reg_data = round_register_value(cast_data.get(reg_dtype, int)(reg_data))
+                    if reg_data != stored_data:
+                        mismatched_registers.append(
+                            f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"
+                        )
+            except ILError as e:
+                logger.error(
+                    "Exception during load_configuration, register %s: %s",
+                    str(element.attrib["id"]),
+                    e,
+                )
+        if len(mismatched_registers) > 0:
+            error_message = "Configuration check failed for the following registers:\n"
+            for mismatched_register in mismatched_registers:
+                error_message += mismatched_register
+            raise ILConfigurationError(error_message)
 
     def load_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
         """Write current dictionary storage to the servo drive.

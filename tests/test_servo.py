@@ -8,7 +8,7 @@ import pytest
 
 from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.register import REG_DTYPE
-from ingenialink.exceptions import ILStateError, ILTimeoutError, ILValueError
+from ingenialink.exceptions import ILConfigurationError, ILStateError, ILTimeoutError, ILValueError
 from ingenialink.register import REG_ADDRESS_TYPE
 from ingenialink.servo import SERVO_STATE
 from ingenialink.utils._utils import get_drive_identification
@@ -128,6 +128,30 @@ def test_save_configuration(connect_to_slave):
         assert registers[reg_id].address_type != REG_ADDRESS_TYPE.NVM_NONE
 
     _clean(filename)
+
+
+@pytest.mark.canopen
+@pytest.mark.ethernet
+def test_check_configuration(connect_to_slave, read_config, pytestconfig):
+    servo, net = connect_to_slave
+
+    assert servo is not None and net is not None
+
+    protocol = pytestconfig.getoption("--protocol")
+
+    filename = read_config[protocol]["load_config_file"]
+
+    assert os.path.isfile(filename)
+
+    # Configuration was not loaded yet, we expect the servo state to be different.
+    with pytest.raises(
+        ILConfigurationError, match=r"Configuration check failed for the following registers:.*"
+    ):
+        servo.check_configuration(filename)
+
+    # Load the configuration, the subsequent check should no longer raise an error.
+    servo.load_configuration(filename)
+    servo.check_configuration(filename)
 
 
 @pytest.mark.canopen

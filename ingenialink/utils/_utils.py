@@ -284,3 +284,18 @@ def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: REG_DTYPE
     bytes_length, signed = dtype_value[dtype]
     data_bytes = data.to_bytes(bytes_length, byteorder="little", signed=signed)
     return data_bytes
+
+
+def round_register_value(value: Union[int, float, str, bytes]) -> Union[int, float, str, bytes]:
+    """Round register value to 4 decimals if it is a float. Otherwise, the value itself is returned.
+
+    Args:
+        value: the value to potentially round
+
+    Returns:
+        Union[int, float, str, bytes]: the potentially rounded value
+
+    """
+    if isinstance(value, float):
+        return round(value, 4)
+    return value
