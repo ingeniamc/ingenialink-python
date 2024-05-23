@@ -67,7 +67,7 @@ def test_connect_to_slave_invalid_id(read_config, slave_id):
 
 
 @pytest.mark.ethercat
-def test_connect_to_slave_no_slaves_detected(read_config):
+def test_connect_to_no_detected_slave(read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     slaves = net.scan_slaves()
     slave_id = slaves[-1] + 1
