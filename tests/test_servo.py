@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import time
 import xml.etree.ElementTree as ET
@@ -143,15 +144,31 @@ def test_check_configuration(connect_to_slave, read_config, pytestconfig):
 
     assert os.path.isfile(filename)
 
+    check_failed_message = re.escape("Configuration check failed for the following registers:")
+
     # Configuration was not loaded yet, we expect the servo state to be different.
-    with pytest.raises(
-        ILConfigurationError, match=r"Configuration check failed for the following registers:.*"
-    ):
+    with pytest.raises(ILConfigurationError, match=check_failed_message + r".*"):
         servo.check_configuration(filename)
 
     # Load the configuration, the subsequent check should no longer raise an error.
     servo.load_configuration(filename)
     servo.check_configuration(filename)
+
+    # Change a random register
+    register = "DRV_PROT_USER_OVER_VOLT"
+    new_value = 10.0
+    servo.write(register, data=new_value, subnode=1)
+
+    # The check should fail for this register
+    with pytest.raises(
+        ILConfigurationError,
+        match=check_failed_message
+        + r"\n"
+        + register
+        + r" --- Expected: \d*\.\d+ | Found: "
+        + str(new_value),
+    ):
+        servo.check_configuration(filename)
 
 
 @pytest.mark.canopen

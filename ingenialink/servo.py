@@ -296,11 +296,11 @@ class Servo:
             raise ValueError("Invalid subnode")
         _, registers = self._read_configuration_file(config_file)
 
-        dest_subnodes = [int(element.attrib["subnode"]) for element in registers]
+        dest_subnodes = set(int(element.attrib["subnode"]) for element in registers)
         if subnode == 0 and subnode not in dest_subnodes:
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
         cast_data = {"float": float, "str": str}
-        mismatched_registers = []
+        registers_errored = []
         for element in registers:
             try:
                 if "storage" in element.attrib:
@@ -314,19 +314,23 @@ class Servo:
                     stored_data = round_register_value(self.read(reg_id, element_subnode))
                     reg_data = round_register_value(cast_data.get(reg_dtype, int)(reg_data))
                     if reg_data != stored_data:
-                        mismatched_registers.append(
+                        registers_errored.append(
                             f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"
                         )
             except ILError as e:
+                reg_id = element.attrib["id"]
+                il_error = (f"{reg_id} -- {e}",)
                 logger.error(
-                    "Exception during load_configuration, register %s: %s",
+                    il_error,
                     str(element.attrib["id"]),
                     e,
                 )
-        if len(mismatched_registers) > 0:
+                registers_errored.append(il_error)
+
+        if len(registers_errored) > 0:
             error_message = "Configuration check failed for the following registers:\n"
-            for mismatched_register in mismatched_registers:
-                error_message += mismatched_register
+            for register_error in registers_errored:
+                error_message += register_error
             raise ILConfigurationError(error_message)
 
     def load_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
@@ -347,7 +351,7 @@ class Servo:
             raise ValueError("Invalid subnode")
         _, registers = self._read_configuration_file(config_file)
 
-        dest_subnodes = [int(element.attrib["subnode"]) for element in registers]
+        dest_subnodes = set(int(element.attrib["subnode"]) for element in registers)
         if subnode == 0 and subnode not in dest_subnodes:
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
         cast_data = {"float": float, "str": str}
