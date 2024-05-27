@@ -26,3 +26,14 @@ Slave connection through Ethernet Example
 -----------------------------------------
 
 .. literalinclude:: ../../examples/ethernet/eth_connection.py
+
+Slave connection through EtherCAT Example
+-----------------------------------------
+
+.. literalinclude:: ../../examples/ethercat/ecat_connection.py
+
+In Linux, administrator privileges are needed to establish the EtherCAT connection.
+
+.. code-block:: console
+
+    sudo python3 examples/ethercat/ecat_connection.py
