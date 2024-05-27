@@ -13,12 +13,10 @@ import can
 import canopen
 import ingenialogger
 from can import CanError
+from can.interfaces.kvaser.canlib import CANLIBOperationError
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.canopen.servo import (
-    CANOPEN_SDO_RESPONSE_TIMEOUT,
-    CanopenServo,
-)
+from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
@@ -132,8 +130,8 @@ CAN_BIT_TIMMING = {
 }
 
 
-class CustomIXXATListener(can.Listener):
-    """Custom listener for IXXAT connection.
+class CustomListener(can.Listener):
+    """Custom listener for IXXAT and KVASER connection.
     It is used to ignore the exceptions that occur when
     the error limit is reached.
     """
@@ -145,7 +143,7 @@ class CustomIXXATListener(can.Listener):
         pass
 
     def on_error(self, exc: Exception) -> None:
-        logger.error(f"An exception occurred with the IXXAT connection. Exception: {exc}")
+        logger.error(f"An exception occurred with the IXXAT or KVASER connection. Exception: {exc}")
 
 
 class NetStatusListener(Thread):
@@ -391,8 +389,8 @@ class CanopenNetwork(Network):
         """
         if self._connection is None:
             self._connection = canopen.Network()
-            if self.__device == CAN_DEVICE.IXXAT.value:
-                self._connection.listeners.append(CustomIXXATListener())
+            if self.__device in [CAN_DEVICE.IXXAT.value, CAN_DEVICE.KVASER.value]:
+                self._connection.listeners.append(CustomListener())
             try:
                 self._connection.connect(**self.__connection_args)
             except CanError as e:
@@ -422,7 +420,7 @@ class CanopenNetwork(Network):
             return
         try:
             self._connection.disconnect()
-        except VCIError as e:
+        except (VCIError, CANLIBOperationError) as e:
             logger.error(f"An exception occurred during the teardown connection. Exception: {e}")
         self._connection = None
         logger.info("Tear down connection.")
@@ -448,8 +446,8 @@ class CanopenNetwork(Network):
                 logger.info("Bus flushed")
         except Exception as e:
             logger.error(f"Could not stop guarding. Exception: {e}")
-        if self.__device == CAN_DEVICE.IXXAT.value:
-            self._connection.listeners.append(CustomIXXATListener())
+        if self.__device in [CAN_DEVICE.IXXAT.value, CAN_DEVICE.KVASER.value]:
+            self._connection.listeners.append(CustomListener())
         try:
             self._connection.connect(**self.__connection_args)
             for servo in self.servos:
