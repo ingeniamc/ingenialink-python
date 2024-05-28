@@ -5,9 +5,11 @@
 ### Added
 - Set RPDOMap values by byte string.
 - Function to check if a configuration has been applied to the drive.
+- EtherCAT connection example script.
 
 ### Changed
 - The signature of the load_firmware method of EthercatNetwork is changed to add the boot_in_app argument.
+- The polling sampling precision of the Poller is improved.
 
 ### Fixed
 - Issue when connecting to the virtual drive using an EVE CANopen dictionary.
