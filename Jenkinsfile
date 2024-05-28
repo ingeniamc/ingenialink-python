@@ -156,6 +156,7 @@ pipeline {
                             XCOPY docs.zip ${env.WORKSPACE}
                         """
                         stash includes: '.coverage_docker', name: 'coverage_docker'
+                        stash includes: 'dist\\*, docs.zip', name: 'publish_files'
                         archiveArtifacts artifacts: 'pytest_docker_report.xml'
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
                     }
@@ -176,8 +177,7 @@ pipeline {
                 }
             }
             steps {
-                copyArtifacts filter: 'docs.zip', projectName: env.JOB_NAME, selector: specific(env.BUILD_NUMBER)
-                copyArtifacts filter: 'ingenialink-*', target: "dist/", projectName: env.JOB_NAME, selector: specific(env.BUILD_NUMBER)
+                unstash 'publish_files'
                 unzip zipFile: 'docs.zip', dir: '.'
                 copyToSharedFS("_docs", "test/1.2.3", "distext")
                 copyToSharedFS("dist", "test/dist", "distext")
