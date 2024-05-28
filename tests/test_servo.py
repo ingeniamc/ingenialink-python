@@ -170,6 +170,11 @@ def test_check_configuration(connect_to_slave, read_config, pytestconfig):
     ):
         servo.check_configuration(filename)
 
+    # Load the configuration again to reset the changes we just made
+    # The subsequent check should no longer raise an error.
+    servo.load_configuration(filename)
+    servo.check_configuration(filename)
+
 
 @pytest.mark.canopen
 @pytest.mark.ethernet

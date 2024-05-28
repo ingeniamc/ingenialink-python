@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from xml.dom import minidom
 
 import ingenialogger
+import numpy as np
 
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
 from ingenialink.constants import (
@@ -40,7 +41,6 @@ from ingenialink.utils._utils import (
     convert_bytes_to_dtype,
     convert_dtype_to_bytes,
     get_drive_identification,
-    round_register_value,
 )
 from ingenialink.virtual.dictionary import VirtualDictionary
 
@@ -275,7 +275,7 @@ class Servo:
         """
         return self.__listener_servo_status is not None
 
-    def check_configuration(self, config_file, subnode: Optional[int] = None) -> None:
+    def check_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
         """Check if the drive is configured in the same way as the given configuration file.
         Compares the value of each register in the given file with the corresponding value in the
         drive.
@@ -302,32 +302,33 @@ class Servo:
         cast_data = {"float": float, "str": str}
         registers_errored = []
         for element in registers:
-            try:
-                if "storage" in element.attrib:
-                    if subnode is None:
-                        element_subnode = int(element.attrib["subnode"])
-                    else:
-                        element_subnode = subnode
-                    reg_dtype = element.attrib["dtype"]
-                    reg_data = element.attrib["storage"]
-                    reg_id = element.attrib["id"]
-                    stored_data = round_register_value(self.read(reg_id, element_subnode))
-                    reg_data = round_register_value(cast_data.get(reg_dtype, int)(reg_data))
-                    if reg_data != stored_data:
+            if "storage" in element.attrib:
+                if subnode is None:
+                    element_subnode = int(element.attrib["subnode"])
+                else:
+                    element_subnode = subnode
+                reg_dtype = element.attrib["dtype"]
+                reg_data = element.attrib["storage"]
+                reg_id = element.attrib["id"]
+                try:
+                    stored_data = self.read(reg_id, element_subnode)
+                    reg_data = cast_data.get(reg_dtype, int)(reg_data)
+                    # Precision is set so at least the first four decimals have to be equal
+                    if not np.isclose(reg_data, stored_data, rtol=1e-6):
                         registers_errored.append(
                             f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"
                         )
-            except ILError as e:
-                reg_id = element.attrib["id"]
-                il_error = (f"{reg_id} -- {e}",)
-                logger.error(
-                    il_error,
-                    str(element.attrib["id"]),
-                    e,
-                )
-                registers_errored.append(il_error)
+                except ILError as e:
+                    reg_id = element.attrib["id"]
+                    il_error = (f"{reg_id} -- {e}",)
+                    logger.error(
+                        il_error,
+                        str(element.attrib["id"]),
+                        e,
+                    )
+                    registers_errored.append(il_error)
 
-        if len(registers_errored) > 0:
+        if registers_errored:
             error_message = "Configuration check failed for the following registers:\n"
             for register_error in registers_errored:
                 error_message += register_error
