@@ -298,9 +298,9 @@ class Servo:
 
         dest_subnodes = set(int(element.attrib["subnode"]) for element in registers)
         if subnode == 0 and subnode not in dest_subnodes:
-            raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
+            raise ValueError(f"Cannot check {config_file} at subnode {subnode}")
         cast_data = {"float": float, "str": str}
-        registers_errored = []
+        registers_errored: list[str] = []
         for element in registers:
             if "storage" in element.attrib:
                 if subnode is None:
@@ -320,7 +320,7 @@ class Servo:
                         )
                 except ILError as e:
                     reg_id = element.attrib["id"]
-                    il_error = (f"{reg_id} -- {e}",)
+                    il_error = f"{reg_id} -- {e}"
                     logger.error(
                         il_error,
                         str(element.attrib["id"]),
