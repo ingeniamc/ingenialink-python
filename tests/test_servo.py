@@ -68,8 +68,6 @@ def create_disturbance(connect_to_slave, pytestconfig):
     servo.disturbance_disable()
 
 
-# TODO: INGK-803 Remove the skip after fixing the test.
-@pytest.mark.skip
 @pytest.mark.canopen
 @pytest.mark.ethernet
 def test_save_configuration(connect_to_slave):
