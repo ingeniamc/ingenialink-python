@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.3') _
+@Library('cicd-lib@0.10') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -16,6 +16,8 @@ def PYTHON_VERSIONS = "py39,py310,py311,py312"
 def DEFAULT_PYTHON_VERSION = "3.9"
 def TOX_VERSION = "4.12.1"
 
+def BRANCH_NAME_MASTER = "master"
+
 pipeline {
     agent none
     stages {
@@ -23,7 +25,7 @@ pipeline {
             agent {
                 docker {
                     label "worker"
-                    image "ingeniacontainers.azurecr.io/publisher:1.4"
+                    image "ingeniacontainers.azurecr.io/publisher:1.8"
                 }
             }
             stages {
@@ -158,6 +160,27 @@ pipeline {
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
                     }
                 }
+            }
+        }
+        stage('Publish Ingenialink'){
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/publisher:1.8"
+                }
+            }
+            when {
+                anyOf{
+                    branch BRANCH_NAME_MASTER;
+                    expression { true }
+                }
+            }
+            steps {
+                copyArtifacts filter: 'docs.zip', projectName: env.JOB_NAME, selector: specific(env.BUILD_NUMBER)
+                copyArtifacts filter: 'ingenialink-*', target: "dist/", projectName: env.JOB_NAME, selector: specific(env.BUILD_NUMBER)
+                unzip zipFile: 'docs.zip', dir: '.'
+                copyToSharedFS("_docs", "test/1.2.3", "distext")
+                copyToSharedFS("dist", "test/dist", "distext")
             }
         }
         stage('EtherCAT and no-connection tests') {
