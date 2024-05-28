@@ -4,7 +4,7 @@
 
 ### Added
 - Set RPDOMap values by byte string.
-- Function to check if a configuration had been applied to the drive.
+- Function to check if a configuration has been applied to the drive.
 
 ### Changed
 - The signature of the load_firmware method of EthercatNetwork is changed to add the boot_in_app argument.
