@@ -180,7 +180,7 @@ pipeline {
             steps {
                 unstash 'publish_files'
                 sh """
-                    pip install dist/*.whl
+                    python3.9 -m pip install dist/*.whl
                 """
                 script {
                     LIB_VERSION = sh(script: 'python3.9 -c "import ingenialink; print(ingenialink.__version__)"', returnStdout: true).trim()
