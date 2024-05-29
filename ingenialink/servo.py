@@ -299,7 +299,7 @@ class Servo:
         dest_subnodes = set(int(element.attrib["subnode"]) for element in registers)
         if subnode == 0 and subnode not in dest_subnodes:
             raise ValueError(f"Cannot check {config_file} at subnode {subnode}")
-        cast_data = {"float": float, "str": str}
+        cast_data = {"float": np.float32, "str": str}
         registers_errored: list[str] = []
         for element in registers:
             if "storage" in element.attrib:
@@ -312,12 +312,6 @@ class Servo:
                 reg_id = element.attrib["id"]
                 try:
                     stored_data = self.read(reg_id, element_subnode)
-                    reg_data = cast_data.get(reg_dtype, int)(reg_data)
-                    # Precision is set so at least the first four decimals have to be equal
-                    if not np.isclose(reg_data, stored_data, rtol=1e-6):
-                        registers_errored.append(
-                            f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"
-                        )
                 except ILError as e:
                     reg_id = element.attrib["id"]
                     il_error = f"{reg_id} -- {e}"
@@ -327,6 +321,15 @@ class Servo:
                         e,
                     )
                     registers_errored.append(il_error)
+                else:
+                    if isinstance(stored_data, float):
+                        stored_data = np.float32(stored_data)
+                    reg_data = cast_data.get(reg_dtype, int)(reg_data)
+                    # Precision is set so at least the first four decimals have to be equal
+                    if reg_data != stored_data:
+                        registers_errored.append(
+                            f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"
+                        )
 
         if registers_errored:
             error_message = "Configuration check failed for the following registers:\n"
@@ -987,6 +990,8 @@ class Servo:
         """
         try:
             storage = self.read(register.attrib["id"], subnode=subnode)
+            if isinstance(storage, float):
+                storage = np.float32(storage)
             register.set("storage", str(storage))
 
             # Update register object
