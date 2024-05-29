@@ -11,7 +11,6 @@ from ingenialink.ethernet.register import REG_DTYPE
 from ingenialink.exceptions import ILStateError, ILTimeoutError, ILValueError
 from ingenialink.register import REG_ADDRESS_TYPE
 from ingenialink.servo import SERVO_STATE
-from ingenialink.utils._utils import get_drive_identification
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -82,7 +81,7 @@ def test_save_configuration(connect_to_slave):
 
     device, saved_registers = servo._read_configuration_file(filename)
 
-    prod_code, rev_number = get_drive_identification(servo)
+    prod_code, rev_number = servo._get_drive_identification()
     if "ProductCode" in device.attrib and prod_code is not None:
         assert int(device.attrib.get("ProductCode")) == prod_code
     if "RevisionNumber" in device.attrib and rev_number is not None:
