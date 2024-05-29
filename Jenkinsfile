@@ -11,6 +11,7 @@ def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
 def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_NAME_LINUX = "FoEUpdateFirmware"
 def FOE_APP_VERSION = ""
+def LIB_VERSION = ""
 
 def PYTHON_VERSIONS = "py39,py310,py311,py312"
 def DEFAULT_PYTHON_VERSION = "3.9"
@@ -177,10 +178,15 @@ pipeline {
                 }
             }
             steps {
+                script {
+                    LIB_VERSION = sh(script: 'python3.9 -c "import ingenialink; print(ingenialink.__version__)"', returnStdout: true).trim()
+                }
                 unstash 'publish_files'
                 unzip zipFile: 'docs.zip', dir: '.'
-                copyToSharedFS("_docs", "test/1.2.3", "distext")
-                copyToSharedFS("dist", "test/dist", "distext")
+                copyToSharedFS("_docs", "test/$LIB_VERSION/", "distext")
+                withCredentials([usernamePassword(credentialsId: 'test-pypi', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh "tox -e pypi -- --username=$USERNAME --password=$PASSWORD"
+                }
             }
         }
         stage('EtherCAT and no-connection tests') {
