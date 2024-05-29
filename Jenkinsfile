@@ -94,6 +94,17 @@ pipeline {
                         """
                     }
                 }
+                stage('Save version') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            py -${DEFAULT_PYTHON_VERSION} setup.py install
+                        """
+                        script {
+                            LIB_VERSION = sh(script: "py -${DEFAULT_PYTHON_VERSION} -c 'import ingenialink; print(ingenialink.__version__)'", returnStdout: true).trim()
+                        }
+                    }
+                }
                 stage('Install deps') {
                     steps {
                         bat """
@@ -146,17 +157,6 @@ pipeline {
                             move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
                         """
                         junit 'pytest_docker_report.xml'
-                    }
-                }
-                stage('Save version') {
-                    steps {
-                        bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            py -${DEFAULT_PYTHON_VERSION} -m pip install dist/*.whl
-                        """
-                        script {
-                            LIB_VERSION = sh(script: "py -${DEFAULT_PYTHON_VERSION} -c 'import ingenialink; print(ingenialink.__version__)'", returnStdout: true).trim()
-                        }
                     }
                 }
                 stage('Archive') {
