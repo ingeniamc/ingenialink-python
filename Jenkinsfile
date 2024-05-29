@@ -151,6 +151,7 @@ pipeline {
                 stage('Save version') {
                     steps {
                         bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             py -${DEFAULT_PYTHON_VERSION} -m pip install dist/*.whl
                         """
                         script {
