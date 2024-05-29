@@ -101,7 +101,7 @@ pipeline {
                             py -${DEFAULT_PYTHON_VERSION} setup.py install
                         """
                         script {
-                            LIB_VERSION = bat(script: "cd C:\\Users\\ContainerAdministrator\\ingenialink-python && py -${DEFAULT_PYTHON_VERSION} -c 'import ingenialink; print(ingenialink.__version__)'", returnStdout: true).trim()
+                            LIB_VERSION = bat(script: "py -${DEFAULT_PYTHON_VERSION} -c \"import ingenialink; print(ingenialink.__version__)\"", returnStdout: true).trim()
                         }
                     }
                 }
