@@ -150,7 +150,7 @@ pipeline {
                 }
                 stage('Save version') {
                     steps {
-                        sh """
+                        bat """
                             py -${DEFAULT_PYTHON_VERSION} -m pip install dist/*.whl
                         """
                         script {
