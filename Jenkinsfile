@@ -148,6 +148,16 @@ pipeline {
                         junit 'pytest_docker_report.xml'
                     }
                 }
+                stage('Save version') {
+                    steps {
+                        sh """
+                            py -${DEFAULT_PYTHON_VERSION} -m pip install dist/*.whl
+                        """
+                        script {
+                            LIB_VERSION = sh(script: "py -${DEFAULT_PYTHON_VERSION} -c 'import ingenialink; print(ingenialink.__version__)'", returnStdout: true).trim()
+                        }
+                    }
+                }
                 stage('Archive') {
                     steps {
                         bat """
@@ -179,12 +189,6 @@ pipeline {
             }
             steps {
                 unstash 'publish_files'
-                sh """
-                    python3.9 -m pip install dist/*.whl
-                """
-                script {
-                    LIB_VERSION = sh(script: 'python3.9 -c "import ingenialink; print(ingenialink.__version__)"', returnStdout: true).trim()
-                }
                 unzip zipFile: 'docs.zip', dir: '.'
                 copyToSharedFS("_docs", "test/$LIB_VERSION/", "distext")
                 withCredentials([usernamePassword(credentialsId: 'test-pypi', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
