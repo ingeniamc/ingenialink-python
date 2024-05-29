@@ -504,17 +504,18 @@ class Servo:
             Product code. None if the corresponding register does not exist.
             Revision number. None if the corresponding register does not exist.
         """
-        prod_code = None
-        re_number = None
+        subnode = 0 if subnode is None else subnode
+        reg_index = 0 if subnode == 0 else 1
+        try:
+            prod_code = int(self.read(self.PRODUCT_ID_REGISTERS[reg_index], subnode=subnode))
+        except ILRegisterNotFoundError:
+            prod_code = None
+        try:
+            rev_number = int(self.read(self.REVISION_NUMBER_REGISTERS[reg_index], subnode=subnode))
+        except ILRegisterNotFoundError:
+            rev_number = None
 
-        if subnode is None or subnode == 0:
-            prod_code = int(self.read(self.PRODUCT_ID_REGISTERS[0], 0))
-            re_number = int(self.read(self.REVISION_NUMBER_REGISTERS[0], 0))
-        else:
-            prod_code = int(self.read(self.PRODUCT_ID_REGISTERS[1], subnode=subnode))
-            re_number = int(self.read(self.REVISION_NUMBER_REGISTERS[1], subnode))
-
-        return prod_code, re_number
+        return prod_code, rev_number
 
     def enable(self, subnode: int = 1, timeout: int = DEFAULT_PDS_TIMEOUT) -> None:
         """Enable PDS.
