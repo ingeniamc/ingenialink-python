@@ -35,11 +35,7 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import Register
 from ingenialink.utils import constants
-from ingenialink.utils._utils import (
-    convert_bytes_to_dtype,
-    convert_dtype_to_bytes,
-    get_drive_identification,
-)
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.virtual.dictionary import VirtualDictionary
 
 logger = ingenialogger.get_logger(__name__)
@@ -327,7 +323,7 @@ class Servo:
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ILError("Invalid subnode")
-        prod_code, rev_number = get_drive_identification(self, subnode)
+        prod_code, rev_number = self._get_drive_identification(subnode)
 
         tree = ET.Element("IngeniaDictionary")
         header = ET.SubElement(tree, "Header")
@@ -494,6 +490,32 @@ class Servo:
                 )
         finally:
             time.sleep(1.5)
+
+    def _get_drive_identification(
+        self,
+        subnode: Optional[int] = None,
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """Gets the identification information of a given subnode.
+
+        Args:
+            subnode: subnode to be targeted.
+
+        Returns:
+            Product code. None if the corresponding register does not exist.
+            Revision number. None if the corresponding register does not exist.
+        """
+        subnode = 0 if subnode is None else subnode
+        reg_index = 0 if subnode == 0 else 1
+        try:
+            prod_code = int(self.read(self.PRODUCT_ID_REGISTERS[reg_index], subnode=subnode))
+        except ILRegisterNotFoundError:
+            prod_code = None
+        try:
+            rev_number = int(self.read(self.REVISION_NUMBER_REGISTERS[reg_index], subnode=subnode))
+        except ILRegisterNotFoundError:
+            rev_number = None
+
+        return prod_code, rev_number
 
     def enable(self, subnode: int = 1, timeout: int = DEFAULT_PDS_TIMEOUT) -> None:
         """Enable PDS.
