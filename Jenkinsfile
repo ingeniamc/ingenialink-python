@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.10') _
+@Library('cicd-lib@feature/INGK-885-automate-the-release-process') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -11,13 +11,13 @@ def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
 def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_NAME_LINUX = "FoEUpdateFirmware"
 def FOE_APP_VERSION = ""
-def LIB_VERSION = ""
 
 def PYTHON_VERSIONS = "py39,py310,py311,py312"
 def DEFAULT_PYTHON_VERSION = "3.9"
 def TOX_VERSION = "4.12.1"
 
 def BRANCH_NAME_MASTER = "master"
+def DISTEXT_PROJECT_DIR = "test/doc/ingenialink-python"
 
 pipeline {
     agent none
@@ -92,18 +92,6 @@ pipeline {
                             XCOPY $FOE_APP_NAME C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\win_64x\\
                             XCOPY $FOE_APP_NAME_LINUX C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\linux\\
                         """
-                    }
-                }
-                stage('Save version') {
-                    steps {
-                        bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            py -${DEFAULT_PYTHON_VERSION} setup.py install
-                            del dist\\*.egg
-                        """
-                        script {
-                            LIB_VERSION = bat(script: "@py -${DEFAULT_PYTHON_VERSION} -c \"import ingenialink; print(ingenialink.__version__)\"", returnStdout: true).trim()
-                        }
                     }
                 }
                 stage('Install deps') {
@@ -192,10 +180,8 @@ pipeline {
             steps {
                 unstash 'publish_files'
                 unzip zipFile: 'docs.zip', dir: '.'
-                copyToSharedFS("_docs", "test/$LIB_VERSION/", "distext")
-                withCredentials([usernamePassword(credentialsId: 'test-pypi', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh "twine upload dist/* --repository testpypi --username=$USERNAME --password=$PASSWORD --skip-existing"
-                }
+                publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
+                publishPyPi("dist/*")
             }
         }
         stage('EtherCAT and no-connection tests') {
