@@ -99,6 +99,7 @@ pipeline {
                         bat """
                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             py -${DEFAULT_PYTHON_VERSION} setup.py install
+                            del dist\\*.egg
                         """
                         script {
                             LIB_VERSION = bat(script: "@py -${DEFAULT_PYTHON_VERSION} -c \"import ingenialink; print(ingenialink.__version__)\"", returnStdout: true).trim()
@@ -193,7 +194,7 @@ pipeline {
                 unzip zipFile: 'docs.zip', dir: '.'
                 copyToSharedFS("_docs", "test/$LIB_VERSION/", "distext")
                 withCredentials([usernamePassword(credentialsId: 'test-pypi', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh "twine upload dist/* --repository testpypi --username=$USERNAME --password=$PASSWORD"
+                    sh "twine upload dist/* --repository testpypi --username=$USERNAME --password=$PASSWORD --skip-existing"
                 }
             }
         }
