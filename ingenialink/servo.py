@@ -300,7 +300,7 @@ class Servo:
         if subnode == 0 and subnode not in dest_subnodes:
             raise ValueError(f"Cannot check {config_file} at subnode {subnode}")
         cast_data = {"float": np.float32, "str": str}
-        registers_errored: list[str] = []
+        registers_errored: List[str] = []
         for element in registers:
             if "storage" in element.attrib:
                 if subnode is None:
@@ -311,7 +311,9 @@ class Servo:
                 reg_data = element.attrib["storage"]
                 reg_id = element.attrib["id"]
                 try:
-                    stored_data = self.read(reg_id, element_subnode)
+                    stored_data: Union[str, int, float, bytes, np.float32] = self.read(
+                        reg_id, element_subnode
+                    )
                 except ILError as e:
                     reg_id = element.attrib["id"]
                     il_error = f"{reg_id} -- {e}"
@@ -328,7 +330,7 @@ class Servo:
                     # Precision is set so at least the first four decimals have to be equal
                     if reg_data != stored_data:
                         registers_errored.append(
-                            f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"
+                            f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"  # type: ignore
                         )
 
         if registers_errored:
@@ -989,7 +991,9 @@ class Servo:
 
         """
         try:
-            storage = self.read(register.attrib["id"], subnode=subnode)
+            storage: Union[str, int, float, bytes, np.float32] = self.read(
+                register.attrib["id"], subnode=subnode
+            )
             if isinstance(storage, float):
                 storage = np.float32(storage)
             register.set("storage", str(storage))
