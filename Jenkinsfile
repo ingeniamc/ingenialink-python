@@ -193,7 +193,7 @@ pipeline {
                 unzip zipFile: 'docs.zip', dir: '.'
                 copyToSharedFS("_docs", "test/$LIB_VERSION/", "distext")
                 withCredentials([usernamePassword(credentialsId: 'test-pypi', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh "tox -e pypi -- --username=$USERNAME --password=$PASSWORD"
+                    sh "twine upload dist/* --repository testpypi --username=$USERNAME --password=$PASSWORD"
                 }
             }
         }
