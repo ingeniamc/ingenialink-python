@@ -103,10 +103,6 @@ pipeline {
                         script {
                             LIB_VERSION = bat(script: "@py -${DEFAULT_PYTHON_VERSION} -c \"import ingenialink; print(ingenialink.__version__)\"", returnStdout: true).trim()
                         }
-                        echo "test/$LIB_VERSION/"
-                        echo "test/"
-                        echo "$LIB_VERSION"
-                        echo "test/$LIB_VERSION/"
                     }
                 }
                 stage('Install deps') {
@@ -189,7 +185,7 @@ pipeline {
             when {
                 anyOf{
                     branch BRANCH_NAME_MASTER;
-                    expression { false }
+                    expression { true }
                 }
             }
             steps {
