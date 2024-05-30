@@ -156,9 +156,9 @@ pipeline {
                             XCOPY dist ${env.WORKSPACE}\\dist /i
                             XCOPY docs.zip ${env.WORKSPACE}
                         """
-                        stash includes: '.coverage_docker', name: 'coverage_docker'
+//                         stash includes: '.coverage_docker', name: 'coverage_docker'
                         stash includes: 'dist\\*, docs.zip', name: 'publish_files'
-                        archiveArtifacts artifacts: 'pytest_docker_report.xml'
+//                         archiveArtifacts artifacts: 'pytest_docker_report.xml'
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
                     }
                 }
