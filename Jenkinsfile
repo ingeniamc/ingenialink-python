@@ -17,7 +17,7 @@ def DEFAULT_PYTHON_VERSION = "3.9"
 def TOX_VERSION = "4.12.1"
 
 def BRANCH_NAME_MASTER = "master"
-def DISTEXT_PROJECT_DIR = "test/doc/ingenialink-python"
+def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 pipeline {
     agent none
@@ -42,31 +42,31 @@ pipeline {
                 }
             }
         }
-//         stage('Run tests on Linux') {
-//             agent {
-//                 docker {
-//                     label "worker"
-//                     image "ingeniacontainers.azurecr.io/docker-python:1.4"
-//                 }
-//             }
-//             stages {
-//                 stage('Install deps') {
-//                     steps {
-//                         sh """
-//                             python${DEFAULT_PYTHON_VERSION} -m pip install tox==${TOX_VERSION}
-//                         """
-//                     }
-//                 }
-//                 stage('Run no-connection tests') {
-//                     steps {
-//                         sh """
-//                             python${DEFAULT_PYTHON_VERSION} -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
-//                         """
-//                         junit 'pytest_no_connection_report.xml'
-//                     }
-//                 }
-//             }
-//         }
+        stage('Run tests on Linux') {
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/docker-python:1.4"
+                }
+            }
+            stages {
+                stage('Install deps') {
+                    steps {
+                        sh """
+                            python${DEFAULT_PYTHON_VERSION} -m pip install tox==${TOX_VERSION}
+                        """
+                    }
+                }
+                stage('Run no-connection tests') {
+                    steps {
+                        sh """
+                            python${DEFAULT_PYTHON_VERSION} -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
+                        """
+                        junit 'pytest_no_connection_report.xml'
+                    }
+                }
+            }
+        }
         stage('Build wheels and documentation') {
             agent {
                 docker {
@@ -110,22 +110,22 @@ pipeline {
                         '''
                     }
                 }
-//                 stage('Check formatting') {
-//                     steps {
-//                         bat """
-//                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-//                             tox -e format
-//                         """
-//                     }
-//                 }
-//                 stage('Type checking') {
-//                     steps {
-//                         bat """
-//                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-//                             tox -e type
-//                         """
-//                     }
-//                 }
+                stage('Check formatting') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            tox -e format
+                        """
+                    }
+                }
+                stage('Type checking') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            tox -e type
+                        """
+                    }
+                }
                 stage('Generate documentation') {
                     steps {
                         bat """
@@ -134,20 +134,20 @@ pipeline {
                         """
                     }
                 }
-//                 stage('Run docker tests') {
-//                     steps {
-//                         bat """
-//                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-//                             tox -e ${PYTHON_VERSIONS} -- -m docker --junitxml=pytest_docker_report.xml
-//                         """
-//                         bat """
-//                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-//                             move .coverage ${env.WORKSPACE}\\.coverage_docker
-//                             move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
-//                         """
-//                         junit 'pytest_docker_report.xml'
-//                     }
-//                 }
+                stage('Run docker tests') {
+                    steps {
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            tox -e ${PYTHON_VERSIONS} -- -m docker --junitxml=pytest_docker_report.xml
+                        """
+                        bat """
+                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
+                            move .coverage ${env.WORKSPACE}\\.coverage_docker
+                            move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
+                        """
+                        junit 'pytest_docker_report.xml'
+                    }
+                }
                 stage('Archive') {
                     steps {
                         bat """
@@ -156,32 +156,12 @@ pipeline {
                             XCOPY dist ${env.WORKSPACE}\\dist /i
                             XCOPY docs.zip ${env.WORKSPACE}
                         """
-//                         stash includes: '.coverage_docker', name: 'coverage_docker'
+                        stash includes: '.coverage_docker', name: 'coverage_docker'
                         stash includes: 'dist\\*, docs.zip', name: 'publish_files'
-//                         archiveArtifacts artifacts: 'pytest_docker_report.xml'
+                        archiveArtifacts artifacts: 'pytest_docker_report.xml'
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
                     }
                 }
-            }
-        }
-        stage('Publish Ingenialink'){
-            agent {
-                docker {
-                    label "worker"
-                    image "ingeniacontainers.azurecr.io/publisher:1.8"
-                }
-            }
-            when {
-                anyOf{
-                    branch BRANCH_NAME_MASTER;
-                    expression { true }
-                }
-            }
-            steps {
-                unstash 'publish_files'
-                unzip zipFile: 'docs.zip', dir: '.'
-                publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
-                publishPyPi("dist/*")
             }
         }
         stage('EtherCAT and no-connection tests') {
@@ -319,6 +299,23 @@ pipeline {
                         archiveArtifacts artifacts: '*.xml'
                     }
                 }
+            }
+        }
+        stage('Publish Ingenialink'){
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/publisher:1.8"
+                }
+            }
+            when {
+                branch BRANCH_NAME_MASTER
+            }
+            steps {
+                unstash 'publish_files'
+                unzip zipFile: 'docs.zip', dir: '.'
+                publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
+                publishPyPi("dist/*")
             }
         }
     }
