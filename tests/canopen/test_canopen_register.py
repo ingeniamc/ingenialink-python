@@ -1,6 +1,5 @@
 import pytest
 
-from ingenialink.dictionary import Dictionary
 from ingenialink.canopen.register import (
     REG_ACCESS,
     REG_ADDRESS_TYPE,
@@ -9,10 +8,10 @@ from ingenialink.canopen.register import (
     CanopenRegister,
     RegCyclicType,
 )
+from ingenialink.dictionary import Dictionary
 
 
 @pytest.mark.no_connection
-@pytest.mark.smoke
 def test_getters_canopen_register():
     reg_idx = 0x58F0
     reg_subidx = 0x00
