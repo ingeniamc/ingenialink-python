@@ -327,7 +327,6 @@ class Servo:
                     if isinstance(stored_data, float):
                         stored_data = np.float32(stored_data)
                     reg_data = cast_data.get(reg_dtype, int)(reg_data)
-                    # Precision is set so at least the first four decimals have to be equal
                     if reg_data != stored_data:
                         registers_errored.append(
                             f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"  # type: ignore
