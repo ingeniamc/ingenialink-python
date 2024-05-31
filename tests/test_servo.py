@@ -34,7 +34,7 @@ def create_monitoring(connect_to_slave, pytestconfig):
     servo, net = connect_to_slave
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
-    registers_key = ["CL_POS_SET_POINT_VALUE"]
+    registers_key = ["CL_CUR_D_REF_VALUE"]
     subnode = 1
     for idx, key in enumerate(registers_key):
         reg = servo._get_reg(key, subnode=1)
@@ -314,6 +314,7 @@ def test_monitoring_remove_data(create_monitoring):
     servo, net = create_monitoring
     servo.monitoring_enable()
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
+    time.sleep(1)
     assert servo.read("MON_CFG_BYTES_VALUE", subnode=0) > 0
     servo.monitoring_remove_data()
     assert servo.read("MON_CFG_BYTES_VALUE", subnode=0) == 0
@@ -351,6 +352,7 @@ def test_monitoring_data_size(create_monitoring):
     servo, net = create_monitoring
     servo.monitoring_enable()
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
+    time.sleep(1)
     assert servo.monitoring_get_bytes_per_block() == MONITORING_CH_DATA_SIZE
     assert servo.monitoring_actual_number_bytes() > 0
     assert servo.monitoring_data_size == MONITORING_CH_DATA_SIZE * MONITORING_NUM_SAMPLES
@@ -368,9 +370,9 @@ def test_monitoring_read_data(create_monitoring):
     servo.monitoring_disable()
     data = servo.monitoring_channel_data(0)
 
-    assert type(data) is list
+    assert isinstance(data, list)
     assert len(data) == pytest.approx(MONITORING_NUM_SAMPLES, 1)
-    assert type(data[0]) == int
+    assert isinstance(data[0], float)
     servo.monitoring_remove_data()
 
 
