@@ -231,7 +231,7 @@ class CanopenNetwork(Network):
         self.__fw_load_errors_enabled = True
 
         self.__connection_args = {
-            "bustype": self.__device,
+            "interface": self.__device,
             "channel": self.__channel,
             "bitrate": self.__baudrate,
         }
