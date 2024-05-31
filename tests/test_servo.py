@@ -314,7 +314,6 @@ def test_monitoring_remove_data(create_monitoring):
     servo, net = create_monitoring
     servo.monitoring_enable()
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
-    time.sleep(1)
     assert servo.read("MON_CFG_BYTES_VALUE", subnode=0) > 0
     servo.monitoring_remove_data()
     assert servo.read("MON_CFG_BYTES_VALUE", subnode=0) == 0
@@ -352,7 +351,6 @@ def test_monitoring_data_size(create_monitoring):
     servo, net = create_monitoring
     servo.monitoring_enable()
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
-    time.sleep(1)
     assert servo.monitoring_get_bytes_per_block() == MONITORING_CH_DATA_SIZE
     assert servo.monitoring_actual_number_bytes() > 0
     assert servo.monitoring_data_size == MONITORING_CH_DATA_SIZE * MONITORING_NUM_SAMPLES
