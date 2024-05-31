@@ -6,7 +6,7 @@
     "port": 1061,
     "save_config_file": "ethernet-config.xcf",
     "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_eve_can/1.2.0/config.xml",
-    "fw_file": "//awe-srv-max-prd/distext/products/EVE-XCR/firmware/2.0.0/eve-xcr-c_2.4.0.sfu"
+    "fw_file": "//awe-srv-max-prd/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-c_2.4.0.sfu"
   }
   ],
   "ethercat": [
