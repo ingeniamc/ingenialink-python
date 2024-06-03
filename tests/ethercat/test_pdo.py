@@ -328,8 +328,8 @@ def test_start_stop_pdo(connect_to_all_slave):
     servos, net = connect_to_all_slave
     operation_mode_uid = "DRV_OP_CMD"
     rpdo_registers = [operation_mode_uid]
-    status_word_uid = "DRV_STATE_STATUS"
-    tpdo_registers = [status_word_uid]
+    operation_mode_display_uid = "DRV_OP_VALUE"
+    tpdo_registers = [operation_mode_display_uid]
     default_operation_mode = 1
     current_operation_mode = {}
     new_operation_mode = {}
@@ -346,10 +346,10 @@ def test_start_stop_pdo(connect_to_all_slave):
     for index, servo in enumerate(servos):
         # Check that RPDOs are being received by the slave
         assert servo._rpdo_maps[0].items[0].value == servo.read(operation_mode_uid)
-        # Restore the previous operation mode
-        servo.write(operation_mode_uid, current_operation_mode[index])
         # Check that TPDOs are being sent by the slave
         assert servo._tpdo_maps[0].items[0].value == servo.read(tpdo_registers[0])
+        # Restore the previous operation mode
+        servo.write(operation_mode_uid, current_operation_mode[index])
     # Check that PDOs can be re-started with the same configuration
     start_stop_pdos(net)
     # Re-configure the PDOs and re-start the PDO exchange
