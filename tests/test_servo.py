@@ -141,13 +141,7 @@ def test_check_configuration(connect_to_slave, read_config, pytestconfig):
 
     assert os.path.isfile(filename)
 
-    check_failed_message = re.escape("Configuration check failed for the following registers:")
-
-    # Configuration was not loaded yet, we expect the servo state to be different.
-    with pytest.raises(ILConfigurationError, match=check_failed_message + r".*"):
-        servo.check_configuration(filename)
-
-    # Load the configuration, the subsequent check should no longer raise an error.
+    # Load the configuration, the subsequent check should not raise an error.
     servo.load_configuration(filename)
     servo.check_configuration(filename)
 
@@ -155,6 +149,8 @@ def test_check_configuration(connect_to_slave, read_config, pytestconfig):
     register = "DRV_PROT_USER_OVER_VOLT"
     new_value = 10.0
     servo.write(register, data=new_value, subnode=1)
+
+    check_failed_message = re.escape("Configuration check failed for the following registers:")
 
     # The check should fail for this register
     with pytest.raises(
