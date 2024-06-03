@@ -1,29 +1,29 @@
-from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
-
 import sys
 
+from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 
-def print_status_message(msg):
+
+def print_status_message(msg: str) -> None:
     """Example of a callback function."""
     print('Current status message: {}'.format(msg))
 
 
-def print_progress(value):
+def print_progress(value: int) -> None:
     """Example of a callback function."""
     print('Progress: {}'.format(value))
 
 
-def print_progress_total(value):
+def print_progress_total(value: str) -> None:
     """Example of a callback function."""
     print('Total progress to be done: {}'.format(value))
 
 
-def print_errors_enabled(value):
+def print_errors_enabled(value: int) -> None:
     """Example of a callback function."""
     print('Errors enabled: {}'.format(value))
 
 
-def load_firmware_example_connected():
+def load_firmware_example_connected() -> None:
     """Loads a firmware to an already connected drive."""
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,
@@ -51,7 +51,7 @@ def load_firmware_example_connected():
         print('Could not find any nodes')
 
 
-def load_firmware_example_disconnected():
+def load_firmware_example_disconnected() -> None:
     """Loads a firmware to a disconnected drive."""
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,

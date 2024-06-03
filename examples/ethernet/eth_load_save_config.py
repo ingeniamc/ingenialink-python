@@ -1,9 +1,10 @@
 import sys
 
 from ingenialink.ethernet.network import EthernetNetwork
+from ingenialink.ethernet.servo import EthernetServo
 
 
-def connect_slave():
+def connect_slave() -> tuple[EthernetServo, EthernetNetwork]:
     net = EthernetNetwork()
     servo = net.connect_to_slave("192.168.2.22",
                                  "../../resources/dictionaries/eve-net-c_eth_1.8.1.xdf",
@@ -11,7 +12,7 @@ def connect_slave():
     return servo, net
 
 
-def load_config_example():
+def load_config_example() -> None:
     """Loads a given configuration file into the drive."""
     servo, net = connect_slave()
     servo.load_configuration(
@@ -26,7 +27,7 @@ def load_config_example():
     net.disconnect_from_slave(servo)
 
 
-def save_config_example():
+def save_config_example() -> None:
     """Saves the drive configuration into a file."""
     servo, net = connect_slave()
     servo.save_configuration(

@@ -1,9 +1,9 @@
 import sys
 
-from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
+from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 
 
-def connection_example():
+def connection_example() -> None:
     """Scans for nodes in a network, connects to the first found node, reads
     a register and disconnects the found servo from the network."""
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,

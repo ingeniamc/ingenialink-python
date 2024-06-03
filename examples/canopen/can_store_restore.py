@@ -1,9 +1,9 @@
 import sys
 
-from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
+from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 
 
-def store_restore_example():
+def store_restore_example() -> None:
     """Connects to the first scanned drive and store and restores the
     current configuration."""
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,

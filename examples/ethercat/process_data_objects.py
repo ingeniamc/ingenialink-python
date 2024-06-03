@@ -5,8 +5,11 @@ import time
 from enum import Enum
 from typing import Tuple
 
+from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethercat.network import EthercatNetwork
-from ingenialink.pdo import RPDOMap, TPDOMap
+from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.ethercat.servo import EthercatServo
+from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap
 
 
 class SlaveState(Enum):
@@ -42,8 +45,8 @@ class ProcessDataExample:
         """
         self.net = EthercatNetwork(interface_name)
         self.servos = []
-        self.rpdo_maps = []
-        self.tpdo_maps = []
+        self.rpdo_maps: list[RPDOMap] = []
+        self.tpdo_maps: list[TPDOMap] = []
         slaves = self.net.scan_slaves()
         for slave in slaves:
             servo = self.net.connect_to_slave(slave, dictionary_path)
@@ -57,7 +60,7 @@ class ProcessDataExample:
             threading.Timer(5, self._stop_process_data).start()
 
     @staticmethod
-    def create_pdo_maps(servo) -> Tuple[RPDOMap, TPDOMap]:
+    def create_pdo_maps(servo: EthercatServo) -> Tuple[RPDOMap, TPDOMap]:
         """Create a PDO Map with the RPDO and TPDO registers.
 
         Returns:
@@ -67,12 +70,19 @@ class ProcessDataExample:
         tpdo_map = TPDOMap()
         for tpdo_register in TPDO_REGISTERS:
             register = servo.dictionary.registers(1)[tpdo_register]
+            if not isinstance(register, (EthercatRegister, CanopenRegister)):
+                raise TypeError("Expected register type to be EthercatRegister or CanopenRegister.")
             tpdo_map.add_registers(register)
         for rpdo_register in RPDO_REGISTERS:
             register = servo.dictionary.registers(1)[rpdo_register]
+            if not isinstance(register, (EthercatRegister, CanopenRegister)):
+                raise TypeError("Expected register type to be EthercatRegister or CanopenRegister.")
             rpdo_map.add_registers(register)
         for item in rpdo_map.items:
-            item.value = RPDO_REGISTERS[item.register.identifier]
+            if not isinstance(item, RPDOMapItem):
+                raise TypeError("Expected item type to be RPDOMapItem.")
+            if item.register.identifier is not None:
+                item.value = RPDO_REGISTERS[item.register.identifier]
         return rpdo_map, tpdo_map
 
     def process_data_loop(self) -> None:
@@ -80,10 +90,12 @@ class ProcessDataExample:
         while not self._pd_thread_stop_event.is_set():
             for index, _ in enumerate(self.servos):
                 for item in self.tpdo_maps[index].items:
-                    TPDO_REGISTERS[item.register.identifier] = item.value
+                    if item.register.identifier is not None and isinstance(item.value, int):
+                        TPDO_REGISTERS[item.register.identifier] = item.value
                 RPDO_REGISTERS["CL_POS_SET_POINT_VALUE"] += 100
                 for item in self.rpdo_maps[index].items:
-                    item.value = RPDO_REGISTERS[item.register.identifier]
+                    if item.register.identifier is not None and isinstance(item, RPDOMapItem):
+                        item.value = RPDO_REGISTERS[item.register.identifier]
             time.sleep(0.1)
 
     def _processdata_thread(self) -> None:

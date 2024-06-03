@@ -1,11 +1,12 @@
-import sys
 import math
+import sys
+from typing import List, Union, cast
 
-from ingenialink.canopen.network import CanopenNetwork, CAN_DEVICE, CAN_BAUDRATE
+from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.register import REG_DTYPE
 
 
-def disturbance_example():
+def disturbance_example() -> None:
     # Frequency divider to set disturbance frequency
     divider = 100
     # Calculate time between disturbance samples
@@ -19,11 +20,44 @@ def disturbance_example():
     # A = signal_amplitude (Amplitude)
     # t = sample_period*i (time)
     # w = signal_frequency*2*math.pi (angular frequency)
-    data_pos = [int(1000*signal_amplitude * math.sin(sample_period*i * signal_frequency * 2*math.pi)) for i in range(n_samples)]
-    data_vel = [signal_amplitude * math.sin(sample_period*i * signal_frequency * 2*math.pi) for i in range(n_samples)]
-    data_curr_q = [signal_amplitude * math.sin(sample_period*i * signal_frequency * 2*math.pi - math.pi/2) for i in range(n_samples)]
-    data_curr_d = [signal_amplitude * math.sin(sample_period*i * signal_frequency * 2*math.pi + math.pi/2) for i in range(n_samples)]
-    data_positioning_opt = [int(abs(500*signal_amplitude * math.sin(sample_period*i * signal_frequency * 2*math.pi + math.pi))) for i in range(n_samples)]
+    data_pos = cast(
+        List[Union[int, float]],
+        [
+            int(
+                1000
+                * signal_amplitude
+                * math.sin(sample_period * i * signal_frequency * 2 * math.pi)
+            )
+            for i in range(n_samples)
+        ],
+    )
+    data_vel = [
+        signal_amplitude * math.sin(sample_period * i * signal_frequency * 2 * math.pi)
+        for i in range(n_samples)
+    ]
+    data_curr_q = [
+        signal_amplitude
+        * math.sin(sample_period * i * signal_frequency * 2 * math.pi - math.pi / 2)
+        for i in range(n_samples)
+    ]
+    data_curr_d = [
+        signal_amplitude
+        * math.sin(sample_period * i * signal_frequency * 2 * math.pi + math.pi / 2)
+        for i in range(n_samples)
+    ]
+    data_positioning_opt = cast(
+        List[Union[int, float]],
+        [
+            int(
+                abs(
+                    500
+                    * signal_amplitude
+                    * math.sin(sample_period * i * signal_frequency * 2 * math.pi + math.pi)
+                )
+            )
+            for i in range(n_samples)
+        ],
+    )
 
     net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
                          channel=0,

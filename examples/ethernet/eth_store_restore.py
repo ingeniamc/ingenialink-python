@@ -3,7 +3,7 @@ import sys
 from ingenialink.ethernet.network import EthernetNetwork
 
 
-def eth_store_parameters():
+def eth_store_parameters() -> None:
     net = EthernetNetwork()
     servo = net.connect_to_slave("192.168.2.22",
                                  "../../resources/dictionaries/eve-net-c_eth_1.8.1.xdf",
@@ -20,7 +20,7 @@ def eth_store_parameters():
     net.disconnect_from_slave(servo)
 
 
-def eth_restore_parameters():
+def eth_restore_parameters() -> None:
     net = EthernetNetwork()
     servo = net.connect_to_slave("192.168.2.22",
                                  "../../resources/dictionaries/eve-net-c_eth_1.8.1.xdf",

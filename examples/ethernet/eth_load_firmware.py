@@ -1,8 +1,9 @@
 import sys
+
 from ingenialink.ethernet.network import EthernetNetwork
 
 
-def eth_load_fw():
+def eth_load_fw() -> None:
     net = EthernetNetwork()
 
     net.load_firmware(fw_file='../../resources/firmware/eve-net-c_1.8.1.sfu',

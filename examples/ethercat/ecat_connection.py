@@ -3,7 +3,7 @@ import platform
 from ingenialink.ethercat.network import EthercatNetwork
 
 
-def main():
+def main() -> None:
     # To find the network interface ID
     # On Windows, run the command: wmic nic get name, guid
     # On linux, run the command: ip link show
