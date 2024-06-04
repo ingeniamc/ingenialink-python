@@ -134,7 +134,7 @@ def test_check_configuration(virtual_drive, read_config, pytestconfig):
 
     assert servo is not None and net is not None
 
-    filename = read_config["ethernet"]["load_config_file"]
+    filename = read_config["canopen"]["load_config_file"]
 
     assert os.path.isfile(filename)
 
