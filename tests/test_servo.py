@@ -130,16 +130,14 @@ def test_save_configuration(connect_to_slave):
 
 @pytest.mark.no_connection
 def test_check_configuration(virtual_drive, read_config, pytestconfig):
-    net, servo = virtual_drive
+    server, servo = virtual_drive
 
-    assert servo is not None and net is not None
+    assert servo is not None and server is not None
 
-    filename = read_config["canopen"]["load_config_file"]
-
-    assert os.path.isfile(filename)
+    filename = "temp_config"
 
     # Load the configuration, the subsequent check should not raise an error.
-    servo.load_configuration(filename)
+    servo.save_configuration(filename)
     servo.check_configuration(filename)
 
     # Change a random register
