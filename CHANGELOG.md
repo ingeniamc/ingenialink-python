@@ -4,6 +4,7 @@
 
 ### Added
 - Set RPDOMap values by byte string.
+- Function to check if a configuration has been applied to the drive.
 - EtherCAT connection example script.
 
 ### Changed

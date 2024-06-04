@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import time
 import xml.etree.ElementTree as ET
@@ -8,7 +9,7 @@ import pytest
 
 from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.register import REG_DTYPE
-from ingenialink.exceptions import ILStateError, ILTimeoutError, ILValueError
+from ingenialink.exceptions import ILConfigurationError, ILStateError, ILTimeoutError, ILValueError
 from ingenialink.register import REG_ADDRESS_TYPE
 from ingenialink.servo import SERVO_STATE
 
@@ -125,6 +126,42 @@ def test_save_configuration(connect_to_slave):
         assert registers[reg_id].address_type != REG_ADDRESS_TYPE.NVM_NONE
 
     _clean(filename)
+
+
+@pytest.mark.no_connection
+def test_check_configuration(virtual_drive, read_config, pytestconfig):
+    server, servo = virtual_drive
+
+    assert servo is not None and server is not None
+
+    filename = "temp_config"
+
+    # Load the configuration, the subsequent check should not raise an error.
+    servo.save_configuration(filename)
+    servo.check_configuration(filename)
+
+    # Change a random register
+    register = "DRV_PROT_USER_OVER_VOLT"
+    new_value = 10.0
+    servo.write(register, data=new_value, subnode=1)
+
+    check_failed_message = re.escape("Configuration check failed for the following registers:")
+
+    # The check should fail for this register
+    with pytest.raises(
+        ILConfigurationError,
+        match=check_failed_message
+        + r"\n"
+        + register
+        + r" --- Expected: \d*\.\d+ | Found: "
+        + str(new_value),
+    ):
+        servo.check_configuration(filename)
+
+    # Load the configuration again to reset the changes we just made
+    # The subsequent check should no longer raise an error.
+    servo.load_configuration(filename)
+    servo.check_configuration(filename)
 
 
 @pytest.mark.canopen
