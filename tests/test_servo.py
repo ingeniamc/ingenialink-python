@@ -128,16 +128,13 @@ def test_save_configuration(connect_to_slave):
     _clean(filename)
 
 
-@pytest.mark.canopen
-@pytest.mark.ethernet
-def test_check_configuration(connect_to_slave, read_config, pytestconfig):
-    servo, net = connect_to_slave
+@pytest.mark.no_connection
+def test_check_configuration(virtual_drive, read_config, pytestconfig):
+    net, servo = virtual_drive
 
     assert servo is not None and net is not None
 
-    protocol = pytestconfig.getoption("--protocol")
-
-    filename = read_config[protocol]["load_config_file"]
+    filename = read_config["ethernet"]["load_config_file"]
 
     assert os.path.isfile(filename)
 
