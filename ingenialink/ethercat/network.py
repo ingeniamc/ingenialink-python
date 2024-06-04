@@ -26,13 +26,14 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class SlaveState(Enum):
-    INIT_STATE = 1
     NONE_STATE = 0
-    OP_STATE = 8
+    INIT_STATE = 1
     PREOP_STATE = 2
     SAFEOP_STATE = 4
-    STATE_ERROR = 16
-    SAFEOP_ERROR_STATE = SAFEOP_STATE + STATE_ERROR
+    OP_STATE = 8
+    ERROR_STATE = 16
+    PREOP_ERROR_STATE = PREOP_STATE + ERROR_STATE
+    SAFEOP_ERROR_STATE = SAFEOP_STATE + ERROR_STATE
 
 
 class NetStatusListener(Thread):
