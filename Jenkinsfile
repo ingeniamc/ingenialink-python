@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.3') _
+@Library('cicd-lib@0.11') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -16,6 +16,9 @@ def PYTHON_VERSIONS = "py39,py310,py311,py312"
 def DEFAULT_PYTHON_VERSION = "3.9"
 def TOX_VERSION = "4.12.1"
 
+def BRANCH_NAME_MASTER = "master"
+def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
+
 pipeline {
     agent none
     stages {
@@ -23,7 +26,7 @@ pipeline {
             agent {
                 docker {
                     label "worker"
-                    image "ingeniacontainers.azurecr.io/publisher:1.4"
+                    image "ingeniacontainers.azurecr.io/publisher:1.8"
                 }
             }
             stages {
@@ -154,6 +157,7 @@ pipeline {
                             XCOPY docs.zip ${env.WORKSPACE}
                         """
                         stash includes: '.coverage_docker', name: 'coverage_docker'
+                        stash includes: 'dist\\*, docs.zip', name: 'publish_files'
                         archiveArtifacts artifacts: 'pytest_docker_report.xml'
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
                     }
@@ -295,6 +299,23 @@ pipeline {
                         archiveArtifacts artifacts: '*.xml'
                     }
                 }
+            }
+        }
+        stage('Publish Ingenialink'){
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/publisher:1.8"
+                }
+            }
+            when {
+                branch BRANCH_NAME_MASTER
+            }
+            steps {
+                unstash 'publish_files'
+                unzip zipFile: 'docs.zip', dir: '.'
+                publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
+                publishPyPi("dist/*")
             }
         }
     }
