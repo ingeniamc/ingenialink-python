@@ -314,8 +314,8 @@ class Servo:
                     reg_id = element.attrib["id"]
                     il_error = f"{reg_id} -- {e}"
                     logger.error(
-                        il_error,
-                        str(element.attrib["id"]),
+                        "Exception during check_configuration, register %s: %s",
+                        str(reg_id),
                         e,
                     )
                     registers_errored.append(il_error)
