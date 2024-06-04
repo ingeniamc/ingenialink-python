@@ -34,7 +34,7 @@ def create_monitoring(connect_to_slave, pytestconfig):
     servo, net = connect_to_slave
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
-    registers_key = ["CL_POS_SET_POINT_VALUE"]
+    registers_key = ["CL_CUR_D_REF_VALUE"]
     subnode = 1
     for idx, key in enumerate(registers_key):
         reg = servo._get_reg(key, subnode=1)
@@ -368,9 +368,9 @@ def test_monitoring_read_data(create_monitoring):
     servo.monitoring_disable()
     data = servo.monitoring_channel_data(0)
 
-    assert type(data) is list
+    assert isinstance(data, list)
     assert len(data) == pytest.approx(MONITORING_NUM_SAMPLES, 1)
-    assert type(data[0]) == int
+    assert isinstance(data[0], float)
     servo.monitoring_remove_data()
 
 
