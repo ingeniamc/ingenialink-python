@@ -135,8 +135,6 @@ pipeline {
                     steps {
                         bat """
                             "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
-                            XCOPY dist ${env.WORKSPACE}\\dist /i
-                            XCOPY docs.zip ${env.WORKSPACE}
                         """
                         stash includes: '.coverage_docker', name: 'coverage_docker'
                         stash includes: 'dist\\*, docs.zip', name: 'publish_files'
