@@ -75,29 +75,18 @@ pipeline {
                 }
             }
             stages {
-                stage('Clone repository') {
-                    steps {
-                        bat """
-                            cd C:\\Users\\ContainerAdministrator
-                            git clone https://github.com/ingeniamc/ingenialink-python.git
-                            cd ingenialink-python
-                            git checkout ${env.GIT_COMMIT}
-                        """
-                    }
-                }
                 stage('Get FoE application') {
                     steps {
                         unstash 'foe_app'
                         bat """
-                            XCOPY $FOE_APP_NAME C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\win_64x\\
-                            XCOPY $FOE_APP_NAME_LINUX C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\linux\\
+                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                            XCOPY $FOE_APP_NAME_LINUX $LIB_FOE_APP_PATH\\linux\\
                         """
                     }
                 }
                 stage('Install deps') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             py -${DEFAULT_PYTHON_VERSION} -m pip install tox==${TOX_VERSION}
                         """
                     }
@@ -105,7 +94,6 @@ pipeline {
                 stage('Build wheels') {
                     steps {
                         bat '''
-                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                              tox -e build
                         '''
                     }
@@ -113,7 +101,6 @@ pipeline {
                 stage('Check formatting') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             tox -e format
                         """
                     }
@@ -121,7 +108,6 @@ pipeline {
                 stage('Type checking') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             tox -e type
                         """
                     }
@@ -129,7 +115,6 @@ pipeline {
                 stage('Generate documentation') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             tox -e docs
                         """
                     }
@@ -137,11 +122,9 @@ pipeline {
                 stage('Run docker tests') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             tox -e ${PYTHON_VERSIONS} -- -m docker --junitxml=pytest_docker_report.xml
                         """
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             move .coverage ${env.WORKSPACE}\\.coverage_docker
                             move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
                         """
@@ -151,7 +134,6 @@ pipeline {
                 stage('Archive') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
                             XCOPY dist ${env.WORKSPACE}\\dist /i
                             XCOPY docs.zip ${env.WORKSPACE}
