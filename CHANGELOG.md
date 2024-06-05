@@ -13,6 +13,7 @@
 
 ### Fixed
 - Issue when connecting to the virtual drive using an EVE CANopen dictionary.
+- Issue when the KVASER transceiver was disconnected.
 
 ## [7.3.1] - 2024-05-10
 
