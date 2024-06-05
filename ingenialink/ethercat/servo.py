@@ -1,6 +1,6 @@
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, List, Optional, Dict, Any
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import ingenialogger
 
@@ -14,11 +14,10 @@ if TYPE_CHECKING:
     from pysoem import CdefSlave
 
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
-from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILIOError, ILTimeoutError, ILError
-from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
-from ingenialink.register import REG_ACCESS, REG_DTYPE
 from ingenialink.dictionary import Interface
+from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError
+from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
 

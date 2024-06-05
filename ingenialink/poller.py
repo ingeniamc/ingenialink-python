@@ -1,34 +1,17 @@
-from datetime import datetime
-from threading import Timer, Lock
-from typing import List, Dict, Tuple, Union, Callable, Optional, Any
-
-from ingenialink.exceptions import (
-    ILAlreadyInitializedError,
-    ILIOError,
-    ILStateError,
-    ILValueError,
-    ILTimeoutError,
-)
-from ingenialink.servo import Servo
-from ingenialink.register import Register
+import time
+from threading import Lock, Thread
+from typing import Dict, List, Tuple, Union
 
 import ingenialogger
+
+from ingenialink.exceptions import ILIOError, ILStateError, ILTimeoutError, ILValueError
+from ingenialink.register import Register
+from ingenialink.servo import Servo
 
 logger = ingenialogger.get_logger(__name__)
 
 
-class PollerTimer(Timer):
-    def __init__(self, interval: float, function: Callable[..., Any]) -> None:
-        super().__init__(interval, function)
-        self.cb = function
-        self.time = interval
-
-    def run(self) -> None:
-        while not self.finished.wait(self.time):
-            self.cb(*self.args, **self.kwargs)
-
-
-class Poller:
+class Poller(Thread):
     """Register poller for CANOpen/Ethernet communications.
 
     Args:
@@ -38,14 +21,13 @@ class Poller:
     """
 
     def __init__(self, servo: Servo, num_channels: int) -> None:
+        super().__init__()
         self.__servo = servo
         self.__num_channels = num_channels
         self.__sz = 0
         self.__refresh_time = 0.0
-        self.__time_start = datetime.now()
         self.__samples_count = 0
         self.__samples_lost = False
-        self.__timer: Optional[PollerTimer] = None
         self.__running = False
         self.__mappings: Dict[int, Register] = {}
         self.__mappings_enabled: List[bool] = []
@@ -54,28 +36,20 @@ class Poller:
         self.__acq_data: List[Union[List[float], List[int]]] = []
         self._reset_acq()
 
-    def start(self) -> int:
-        """Start the poller."""
-
-        if self.__running:
-            raise ILAlreadyInitializedError("Poller already running")
-
-        # Activate timer
-        self.__timer = PollerTimer(self.__refresh_time, self._acquire_callback_poller_data)
-        self.__timer.start()
-        self.__time_start = datetime.now()
-
+    def run(self) -> None:
         self.__running = True
-
-        return 0
+        self.__time_start = time.time()
+        while self.__running:
+            time_start = time.perf_counter()
+            self._acquire_callback_poller_data()
+            remaining_loop_time = self.__refresh_time - (time.perf_counter() - time_start)
+            if remaining_loop_time > 0:
+                time.sleep(remaining_loop_time)
 
     def stop(self) -> None:
         """Stop poller."""
-
-        if self.__running and self.__timer:
-            self.__timer.cancel()
-
         self.__running = False
+        self.join()
 
     def configure(self, t_s: float, sz: int) -> int:
         """Configure data.
@@ -177,7 +151,7 @@ class Poller:
 
         """
         for channel in range(self.num_channels):
-            r = self.ch_disable(channel)
+            self.ch_disable(channel)
         return 0
 
     def _reset_acq(self) -> None:
@@ -187,11 +161,10 @@ class Poller:
 
     def _acquire_callback_poller_data(self) -> None:
         """Acquire callback for poller data."""
-        time_diff = datetime.now()
-        delta = time_diff - self.__time_start
+        time_diff = time.time()
 
         # Obtain current time
-        t = delta.total_seconds()
+        t = time_diff - self.__time_start
 
         self.__lock.acquire()
         # Acquire all configured channels
@@ -228,15 +201,9 @@ class Poller:
     @property
     def data(self) -> Tuple[List[float], List[List[float]], bool]:
         """Time vector, array of data vectors and a flag indicating if data was lost."""
+        self.__lock.acquire()
         t = list(self.__acq_time[0 : self.__samples_count])
         d = []
-
-        # Acquire enabled channels, comprehension list indexes obtained
-        enabled_channel_indexes = [
-            channel_idx
-            for channel_idx, is_enabled in enumerate(self.__mappings_enabled)
-            if is_enabled
-        ]
 
         for channel in range(self.num_channels):
             if self.__mappings_enabled[channel]:
@@ -244,7 +211,6 @@ class Poller:
             else:
                 d.append([0.0])
 
-        self.__lock.acquire()
         self.__samples_count = 0
         self.__samples_lost = False
         self.__lock.release()

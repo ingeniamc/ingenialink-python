@@ -8,11 +8,9 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from xml.dom import minidom
 
 import ingenialogger
+import numpy as np
 
-from ingenialink.ethernet.dictionary import EthernetDictionaryV2
-from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
-from ingenialink.virtual.dictionary import VirtualDictionary
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
     DEFAULT_PDS_TIMEOUT,
@@ -21,26 +19,26 @@ from ingenialink.constants import (
     PASSWORD_STORE_ALL,
     PASSWORD_STORE_RESTORE_SUB_0,
 )
-from ingenialink.dictionary import Dictionary, SubnodeType, Interface, DictionaryV3
+from ingenialink.dictionary import Dictionary, DictionaryV3, Interface, SubnodeType
 from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
 from ingenialink.enums.servo import SERVO_STATE
+from ingenialink.ethercat.dictionary import EthercatDictionaryV2
+from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.exceptions import (
     ILAccessError,
+    ILConfigurationError,
+    ILDictionaryParseError,
     ILError,
     ILIOError,
     ILRegisterNotFoundError,
     ILStateError,
     ILTimeoutError,
     ILValueError,
-    ILDictionaryParseError,
 )
 from ingenialink.register import Register
 from ingenialink.utils import constants
-from ingenialink.utils._utils import (
-    convert_bytes_to_dtype,
-    convert_dtype_to_bytes,
-    get_drive_identification,
-)
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.virtual.dictionary import VirtualDictionary
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -273,6 +271,69 @@ class Servo:
         """
         return self.__listener_servo_status is not None
 
+    def check_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
+        """Check if the drive is configured in the same way as the given configuration file.
+        Compares the value of each register in the given file with the corresponding value in the
+        drive.
+
+        Args:
+            config_file: the configuration to check
+            subnode: Subnode of the axis. Defaults to None.
+
+        Raises:
+            FileNotFoundError: If the configuration file cannot be found.
+            ValueError: If a configuration file from a subnode different from 0
+                is attempted to be loaded to subnode 0.
+            ValueError: If an invalid subnode is provided.
+            ILConfigurationError: If the configuration file differs from the drive state.
+
+        """
+        if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
+            raise ValueError("Invalid subnode")
+        _, registers = self._read_configuration_file(config_file)
+
+        dest_subnodes = set(int(element.attrib["subnode"]) for element in registers)
+        if subnode == 0 and subnode not in dest_subnodes:
+            raise ValueError(f"Cannot check {config_file} at subnode {subnode}")
+        cast_data = {"float": np.float32, "str": str}
+        registers_errored: List[str] = []
+        for element in registers:
+            if "storage" in element.attrib:
+                if subnode is None:
+                    element_subnode = int(element.attrib["subnode"])
+                else:
+                    element_subnode = subnode
+                reg_dtype = element.attrib["dtype"]
+                reg_data = element.attrib["storage"]
+                reg_id = element.attrib["id"]
+                try:
+                    stored_data: Union[str, int, float, bytes, np.float32] = self.read(
+                        reg_id, element_subnode
+                    )
+                except ILError as e:
+                    reg_id = element.attrib["id"]
+                    il_error = f"{reg_id} -- {e}"
+                    logger.error(
+                        "Exception during check_configuration, register %s: %s",
+                        str(reg_id),
+                        e,
+                    )
+                    registers_errored.append(il_error)
+                else:
+                    if isinstance(stored_data, float):
+                        stored_data = np.float32(stored_data)
+                    reg_data = cast_data.get(reg_dtype, int)(reg_data)
+                    if reg_data != stored_data:
+                        registers_errored.append(
+                            f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"  # type: ignore
+                        )
+
+        if registers_errored:
+            error_message = "Configuration check failed for the following registers:\n"
+            for register_error in registers_errored:
+                error_message += register_error
+            raise ILConfigurationError(error_message)
+
     def load_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
         """Write current dictionary storage to the servo drive.
 
@@ -291,7 +352,7 @@ class Servo:
             raise ValueError("Invalid subnode")
         _, registers = self._read_configuration_file(config_file)
 
-        dest_subnodes = [int(element.attrib["subnode"]) for element in registers]
+        dest_subnodes = set(int(element.attrib["subnode"]) for element in registers)
         if subnode == 0 and subnode not in dest_subnodes:
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
         cast_data = {"float": float, "str": str}
@@ -327,7 +388,7 @@ class Servo:
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ILError("Invalid subnode")
-        prod_code, rev_number = get_drive_identification(self, subnode)
+        prod_code, rev_number = self._get_drive_identification(subnode)
 
         tree = ET.Element("IngeniaDictionary")
         header = ET.SubElement(tree, "Header")
@@ -494,6 +555,32 @@ class Servo:
                 )
         finally:
             time.sleep(1.5)
+
+    def _get_drive_identification(
+        self,
+        subnode: Optional[int] = None,
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """Gets the identification information of a given subnode.
+
+        Args:
+            subnode: subnode to be targeted.
+
+        Returns:
+            Product code. None if the corresponding register does not exist.
+            Revision number. None if the corresponding register does not exist.
+        """
+        subnode = 0 if subnode is None else subnode
+        reg_index = 0 if subnode == 0 else 1
+        try:
+            prod_code = int(self.read(self.PRODUCT_ID_REGISTERS[reg_index], subnode=subnode))
+        except ILRegisterNotFoundError:
+            prod_code = None
+        try:
+            rev_number = int(self.read(self.REVISION_NUMBER_REGISTERS[reg_index], subnode=subnode))
+        except ILRegisterNotFoundError:
+            rev_number = None
+
+        return prod_code, rev_number
 
     def enable(self, subnode: int = 1, timeout: int = DEFAULT_PDS_TIMEOUT) -> None:
         """Enable PDS.
@@ -925,7 +1012,11 @@ class Servo:
 
         """
         try:
-            storage = self.read(register.attrib["id"], subnode=subnode)
+            storage: Union[str, int, float, bytes, np.float32] = self.read(
+                register.attrib["id"], subnode=subnode
+            )
+            if isinstance(storage, float):
+                storage = np.float32(storage)
             register.set("storage", str(storage))
 
             # Update register object

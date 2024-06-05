@@ -14,18 +14,16 @@ import canopen
 import ingenialogger
 from can import CanError
 
-
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import (
     CANOPEN_SDO_RESPONSE_TIMEOUT,
-    REG_ACCESS,
-    REG_DTYPE,
     CanopenServo,
 )
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
-from ingenialink.utils._utils import convert_bytes_to_dtype, DisableLogger
+from ingenialink.register import REG_ACCESS, REG_DTYPE
+from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 
 if platform.system() == "Windows":
@@ -233,7 +231,7 @@ class CanopenNetwork(Network):
         self.__fw_load_errors_enabled = True
 
         self.__connection_args = {
-            "bustype": self.__device,
+            "interface": self.__device,
             "channel": self.__channel,
             "bitrate": self.__baudrate,
         }
@@ -503,6 +501,12 @@ class CanopenNetwork(Network):
         self.__program_control_to_flash(int(initial_status), servo, callback_status_msg)
         try:
             self.__send_fw_file(fw_file, servo, callback_status_msg, callback_progress)
+        except ILError as e:
+            self.__send_fw_file_failure(servo)
+            raise ILFirmwareLoadError(
+                "An error occurred while downloading. Check firmware file is correct."
+            ) from e
+        else:
             self.__program_control_to_stop(servo, callback_status_msg)
             self.__program_control_to_start(servo, callback_status_msg)
         finally:
@@ -583,6 +587,17 @@ class CanopenNetwork(Network):
             # The drive will unlock the clear program command
             password = 0x70636675
             servo.write(FORCE_BOOT, password, subnode=0)
+
+    @staticmethod
+    def __send_fw_file_failure(servo: CanopenServo) -> None:
+        """Move the Program state machine from Flash to Start.
+
+        Args:
+            servo: target drive.
+
+        """
+        for target_status in [PROG_CTRL_STATE_STOP, PROG_CTRL_STATE_START]:
+            servo.write(PROG_STAT_1, target_status, subnode=0)
 
     def __program_control_to_flash(
         self,
@@ -792,12 +807,7 @@ class CanopenNetwork(Network):
         with open(fw_file, "rb") as image:
             byte = image.read(BOOTLOADER_MSG_SIZE)
             while byte:
-                try:
-                    servo.write(PROG_DL_1, byte, subnode=0)
-                except ILError as e:
-                    raise ILFirmwareLoadError(
-                        "An error occurred while downloading. Check firmware file is correct."
-                    ) from e
+                servo.write(PROG_DL_1, byte, subnode=0)
                 counter += 1
                 new_progress = int(counter * 100 / total_file_size)
                 if progress != new_progress:
@@ -972,7 +982,7 @@ class CanopenNetwork(Network):
 
         for servo in self.servos:
             logger.info("Node connected: %i", servo.target)
-            node = self._connection.add_node(servo.target)
+            self._connection.add_node(servo.target)
 
         # Reset all nodes to default state
         self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)

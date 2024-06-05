@@ -7,7 +7,7 @@ import time
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import ingenialogger
 
@@ -16,9 +16,6 @@ try:
 except ImportError as ex:
     pysoem = None
     pysoem_import_error = ex
-
-if TYPE_CHECKING:
-    from pysoem import CdefSlave
 
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
@@ -29,13 +26,14 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class SlaveState(Enum):
-    INIT_STATE = 1
     NONE_STATE = 0
-    OP_STATE = 8
+    INIT_STATE = 1
     PREOP_STATE = 2
     SAFEOP_STATE = 4
-    STATE_ERROR = 16
-    SAFEOP_ERROR_STATE = SAFEOP_STATE + STATE_ERROR
+    OP_STATE = 8
+    ERROR_STATE = 16
+    PREOP_ERROR_STATE = PREOP_STATE + ERROR_STATE
+    SAFEOP_ERROR_STATE = SAFEOP_STATE + ERROR_STATE
 
 
 class NetStatusListener(Thread):
@@ -412,11 +410,13 @@ class EthercatNetwork(Network):
             self.__listener_net_status.join()
         self.__listener_net_status = None
 
-    def load_firmware(self, fw_file: str, slave_id: int = 1) -> None:  # type: ignore [override]
+    def load_firmware(self, fw_file: str, boot_in_app: bool, slave_id: int = 1) -> None:  # type: ignore [override]
         """Loads a given firmware file to a target slave.
 
         Args:
             fw_file: Path to the firmware file.
+            boot_in_app: True if the application includes FoE (i.e, ``fw_file`` extension is .sfu),
+                False otherwise.
             slave_id: Slave ID to which load the firmware file.
 
         Raises:
@@ -424,8 +424,11 @@ class EthercatNetwork(Network):
             ILFirmwareLoadError: If no slave is detected.
             ILFirmwareLoadError: If the FoE write operation is not successful.
             NotImplementedError: If FoE is not implemented for the current OS and architecture
-
+            AttributeError: If the boot_in_app argument is not a boolean.
         """
+        if not isinstance(boot_in_app, bool):
+            raise AttributeError("The boot_in_app argument should be a boolean.")
+
         if not os.path.isfile(fw_file):
             raise FileNotFoundError(f"Could not find {fw_file}.")
 
@@ -452,14 +455,14 @@ class EthercatNetwork(Network):
         try:
             if sys_name == "linux":
                 subprocess.run(
-                    f"{exec_path} {self.interface_name} {slave_id} {fw_file}",
+                    f"{exec_path} {self.interface_name} {slave_id} {fw_file} {int(boot_in_app)}",
                     check=True,
                     shell=True,
                     encoding="utf-8",
                 )
             else:
                 subprocess.run(
-                    [exec_path, self.interface_name, f"{slave_id}", fw_file],
+                    [exec_path, self.interface_name, f"{slave_id}", fw_file, f"{int(boot_in_app)}"],
                     check=True,
                     shell=True,
                     encoding="utf-8",

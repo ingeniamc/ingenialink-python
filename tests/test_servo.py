@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import time
 import xml.etree.ElementTree as ET
@@ -8,10 +9,9 @@ import pytest
 
 from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.register import REG_DTYPE
-from ingenialink.exceptions import ILStateError, ILTimeoutError, ILValueError
+from ingenialink.exceptions import ILConfigurationError, ILStateError, ILTimeoutError, ILValueError
 from ingenialink.register import REG_ADDRESS_TYPE
 from ingenialink.servo import SERVO_STATE
-from ingenialink.utils._utils import get_drive_identification
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -35,7 +35,7 @@ def create_monitoring(connect_to_slave, pytestconfig):
     servo, net = connect_to_slave
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
-    registers_key = ["CL_POS_SET_POINT_VALUE"]
+    registers_key = ["CL_CUR_D_REF_VALUE"]
     subnode = 1
     for idx, key in enumerate(registers_key):
         reg = servo._get_reg(key, subnode=1)
@@ -68,8 +68,6 @@ def create_disturbance(connect_to_slave, pytestconfig):
     servo.disturbance_disable()
 
 
-# TODO: INGK-803 Remove the skip after fixing the test.
-@pytest.mark.skip
 @pytest.mark.canopen
 @pytest.mark.ethernet
 def test_save_configuration(connect_to_slave):
@@ -84,7 +82,7 @@ def test_save_configuration(connect_to_slave):
 
     device, saved_registers = servo._read_configuration_file(filename)
 
-    prod_code, rev_number = get_drive_identification(servo)
+    prod_code, rev_number = servo._get_drive_identification()
     if "ProductCode" in device.attrib and prod_code is not None:
         assert int(device.attrib.get("ProductCode")) == prod_code
     if "RevisionNumber" in device.attrib and rev_number is not None:
@@ -128,6 +126,42 @@ def test_save_configuration(connect_to_slave):
         assert registers[reg_id].address_type != REG_ADDRESS_TYPE.NVM_NONE
 
     _clean(filename)
+
+
+@pytest.mark.no_connection
+def test_check_configuration(virtual_drive, read_config, pytestconfig):
+    server, servo = virtual_drive
+
+    assert servo is not None and server is not None
+
+    filename = "temp_config"
+
+    # Load the configuration, the subsequent check should not raise an error.
+    servo.save_configuration(filename)
+    servo.check_configuration(filename)
+
+    # Change a random register
+    register = "DRV_PROT_USER_OVER_VOLT"
+    new_value = 10.0
+    servo.write(register, data=new_value, subnode=1)
+
+    check_failed_message = re.escape("Configuration check failed for the following registers:")
+
+    # The check should fail for this register
+    with pytest.raises(
+        ILConfigurationError,
+        match=check_failed_message
+        + r"\n"
+        + register
+        + r" --- Expected: \d*\.\d+ | Found: "
+        + str(new_value),
+    ):
+        servo.check_configuration(filename)
+
+    # Load the configuration again to reset the changes we just made
+    # The subsequent check should no longer raise an error.
+    servo.load_configuration(filename)
+    servo.check_configuration(filename)
 
 
 @pytest.mark.canopen
@@ -371,9 +405,9 @@ def test_monitoring_read_data(create_monitoring):
     servo.monitoring_disable()
     data = servo.monitoring_channel_data(0)
 
-    assert type(data) is list
+    assert isinstance(data, list)
     assert len(data) == pytest.approx(MONITORING_NUM_SAMPLES, 1)
-    assert type(data[0]) == int
+    assert isinstance(data[0], float)
     servo.monitoring_remove_data()
 
 

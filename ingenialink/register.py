@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 from ingenialink import exceptions as exc
 from ingenialink.enums.register import (
