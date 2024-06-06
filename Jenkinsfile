@@ -62,7 +62,11 @@ pipeline {
                         sh """
                             python${DEFAULT_PYTHON_VERSION} -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
                         """
-                        junit 'pytest_no_connection_report.xml'
+                    }
+                    post {
+                        always {
+                            junit "pytest_no_connection_report.xml"
+                        }
                     }
                 }
             }
@@ -124,11 +128,15 @@ pipeline {
                         bat """
                             tox -e ${PYTHON_VERSIONS} -- -m docker --junitxml=pytest_docker_report.xml
                         """
-                        bat """
-                            move .coverage ${env.WORKSPACE}\\.coverage_docker
-                            move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
-                        """
-                        junit 'pytest_docker_report.xml'
+                    }
+                    post {
+                        always {
+                            bat """
+                                move .coverage ${env.WORKSPACE}\\.coverage_docker
+                                move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
+                            """
+                            junit 'pytest_docker_report.xml'
+                        }
                     }
                 }
                 stage('Archive') {
@@ -185,10 +193,14 @@ pipeline {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethercat --junitxml=pytest_ethercat_report.xml
                         """
-                        bat """
-                            move .coverage .coverage_ethercat
-                        """
-                        junit 'pytest_ethercat_report.xml'
+                    }
+                    post {
+                        always {
+                            bat """
+                                move .coverage .coverage_ethercat
+                            """
+                            junit 'pytest_ethercat_report.xml'
+                        }
                     }
                 }
                 stage('Run no-connection tests') {
@@ -196,10 +208,14 @@ pipeline {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
                         """
-                        bat """
-                            move .coverage .coverage_no_connection
-                        """
-                        junit 'pytest_no_connection_report.xml'
+                    }
+                    post {
+                        always {
+                            bat """
+                                move .coverage .coverage_no_connection
+                            """
+                            junit 'pytest_no_connection_report.xml'
+                        }
                     }
                 }
                 stage('Archive') {
@@ -251,10 +267,14 @@ pipeline {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol canopen --junitxml=pytest_canopen_report.xml
                         """
-                        bat """
-                            move .coverage .coverage_canopen
-                        """
-                        junit 'pytest_canopen_report.xml'
+                    }
+                    post {
+                        always {
+                            bat """
+                                move .coverage .coverage_canopen
+                            """
+                            junit 'pytest_canopen_report.xml'
+                        }
                     }
                 }
                 stage('Run Ethernet tests') {
@@ -262,10 +282,14 @@ pipeline {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
                         """
-                        bat """
-                            move .coverage .coverage_ethernet
-                        """
-                        junit 'pytest_ethernet_report.xml'
+                    }
+                    post {
+                        always {
+                            bat """
+                                move .coverage .coverage_ethernet
+                            """
+                            junit 'pytest_ethernet_report.xml'
+                        }
                     }
                 }
                 stage('Save test results') {
