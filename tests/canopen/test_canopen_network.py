@@ -76,6 +76,23 @@ def test_scan_slaves_none_nodes(virtual_network):
     assert len(nodes) == 0
 
 
+@pytest.mark.no_connection
+@pytest.mark.parametrize("can_device", [CAN_DEVICE.PCAN, CAN_DEVICE.KVASER, CAN_DEVICE.IXXAT])
+def test_scan_slaves_missing_drivers(can_device):
+    net = CanopenNetwork(
+        device=can_device,
+        channel=0,
+        baudrate=CAN_BAUDRATE.Baudrate_1M,
+    )
+    with pytest.raises(ILError) as exc_info:
+        net.scan_slaves()
+    assert (
+        str(exc_info.value)
+        == f"The {can_device.value.upper()} transceiver is not detected. Make sure that it's connected and"
+        " its drivers are installed."
+    )
+
+
 @pytest.mark.canopen
 def test_scan_slaves_info(read_config):
     net = CanopenNetwork(
