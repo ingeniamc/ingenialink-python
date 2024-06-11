@@ -57,6 +57,8 @@ class EthercatServo(PDOServo):
 
     interface = Interface.ECAT
 
+    DEFAULT_STORE_RECOVERY_TIMEOUT = 1
+
     def __init__(
         self,
         slave: "CdefSlave",
@@ -71,6 +73,30 @@ class EthercatServo(PDOServo):
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
+
+    def store_parameters(
+        self,
+        subnode: Optional[int] = None,
+        timeout: Optional[float] = DEFAULT_STORE_RECOVERY_TIMEOUT,
+    ) -> None:
+        """Store all the current parameters of the target subnode.
+
+        Args:
+            subnode: Subnode of the axis. `None` by default which stores
+            all the parameters.
+            timeout : how many seconds to wait for the drive to become responsive
+            after the store operation. If ``None`` it will wait forever.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        super().store_parameters(subnode)
+        init_time = time.time()
+        while not self.is_alive():
+            if timeout and (init_time + timeout) < time.time():
+                logger.info("The drive is unresponsive after the recovery timeout.")
 
     def _read_raw(  # type: ignore [override]
         self,
