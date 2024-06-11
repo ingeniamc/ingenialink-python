@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 ### Fix
-- SDO Error after a store parameters operation.
+- SDO Error after a store/restore parameters operation.
 
 ## [7.3.2] - 2024-06-05
 
