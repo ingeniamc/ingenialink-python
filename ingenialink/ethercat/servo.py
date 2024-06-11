@@ -93,6 +93,41 @@ class EthercatServo(PDOServo):
 
         """
         super().store_parameters(subnode)
+        self._wait_until_alive(timeout)
+
+    def restore_parameters(
+        self,
+        subnode: Optional[int] = None,
+        timeout: Optional[float] = DEFAULT_STORE_RECOVERY_TIMEOUT,
+    ) -> None:
+        """Restore all the current parameters of all the slave to default.
+
+        .. note::
+            The drive needs a power cycle after this
+            in order for the changes to be properly applied.
+
+        Args:
+            subnode: Subnode of the axis. `None` by default which restores
+                all the parameters.
+            timeout : how many seconds to wait for the drive to become responsive
+            after the restore operation. If ``None`` it will wait forever.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        super().restore_parameters(subnode)
+        self._wait_until_alive(timeout)
+
+    def _wait_until_alive(self, timeout: Optional[float]) -> None:
+        """Wait until the drive becomes responsive.
+
+        Args:
+            timeout : how many seconds to wait for the drive to become responsive.
+            If ``None`` it will wait forever.
+
+        """
         init_time = time.time()
         while not self.is_alive():
             if timeout and (init_time + timeout) < time.time():
