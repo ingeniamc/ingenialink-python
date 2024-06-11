@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+- Raise an exception when a CAN transceiver's driver is not installed.
+
 ## [7.3.2] - 2024-06-05
 
 ### Added
