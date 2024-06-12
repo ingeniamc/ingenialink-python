@@ -19,7 +19,7 @@ class CanopenDictionaryV2(DictionaryV2):
 
     MONITORING_DISTURBANCE_REGISTERS: List[CanopenRegister] = [
         CanopenRegister(
-            identifier="MONITORING_DATA",
+            identifier="MON_DATA_VALUE",
             idx=0x58B2,
             subidx=0x00,
             cyclic=RegCyclicType.CONFIG,
@@ -28,7 +28,7 @@ class CanopenDictionaryV2(DictionaryV2):
             subnode=0,
         ),
         CanopenRegister(
-            identifier="DISTURBANCE_DATA",
+            identifier="MON_DATA_VALUE",
             idx=0x58B4,
             subidx=0x00,
             cyclic=RegCyclicType.CONFIG,
