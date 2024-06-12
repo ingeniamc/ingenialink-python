@@ -49,7 +49,10 @@ class EoENetwork(EthernetNetwork):
 
     ECAT_SERVICE_NETWORK = ipaddress.ip_network("192.168.3.0/24")
 
-    EOE_GATEWAY_STATE_CHANGE_TIMEOUT = 9.0
+    # The timeout used by the EoE Service is 4 times the EC_TIMEOUTSTATE
+    # https://github.com/OpenEtherCATsociety/SOEM/blob/v1.4.0/soem/ethercattype.h#L76
+    # An extra second is added to compensate for the communication delays.
+    EOE_SERVICE_STATE_CHANGE_TIMEOUT = 9.0
 
     def __init__(
         self, ifname: str, connection_timeout: float = constants.DEFAULT_ETH_CONNECTION_TIMEOUT
@@ -269,7 +272,7 @@ class EoENetwork(EthernetNetwork):
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.INIT.value, data=data.encode("utf-8"))
         self._eoe_socket.settimeout(
-            max(self.EOE_GATEWAY_STATE_CHANGE_TIMEOUT, self.__connection_timeout)
+            max(self.EOE_SERVICE_STATE_CHANGE_TIMEOUT, self.__connection_timeout)
         )
         try:
             r = self._send_command(msg)
