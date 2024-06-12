@@ -130,8 +130,9 @@ class EthercatServo(PDOServo):
         """
         init_time = time.time()
         while not self.is_alive():
-            if timeout and (init_time + timeout) < time.time():
+            if timeout is not None and (init_time + timeout) < time.time():
                 logger.info("The drive is unresponsive after the recovery timeout.")
+                break
 
     def _read_raw(  # type: ignore [override]
         self,
