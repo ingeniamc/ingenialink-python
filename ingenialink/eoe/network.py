@@ -49,13 +49,16 @@ class EoENetwork(EthernetNetwork):
 
     ECAT_SERVICE_NETWORK = ipaddress.ip_network("192.168.3.0/24")
 
+    EOE_GATEWAY_STATE_CHANGE_TIMEOUT = 9.0
+
     def __init__(
         self, ifname: str, connection_timeout: float = constants.DEFAULT_ETH_CONNECTION_TIMEOUT
     ) -> None:
         super().__init__()
         self.ifname = ifname
+        self.__connection_timeout = connection_timeout
         self._eoe_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._eoe_socket.settimeout(connection_timeout)
+        self._eoe_socket.settimeout(self.__connection_timeout)
         self._connect_to_eoe_service()
         status = self._get_status_eoe_service()
         if status & self.STATUS_EOE_BIT:
@@ -265,6 +268,9 @@ class EoENetwork(EthernetNetwork):
         self._eoe_service_init = True
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.INIT.value, data=data.encode("utf-8"))
+        self._eoe_socket.settimeout(
+            max(self.EOE_GATEWAY_STATE_CHANGE_TIMEOUT, self.__connection_timeout)
+        )
         try:
             r = self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
@@ -273,6 +279,7 @@ class EoENetwork(EthernetNetwork):
             ) from e
         if r < 0:
             raise ILError(f"Failed to initialize the EoE service using interface {self.ifname}.")
+        self._eoe_socket.settimeout(self.__connection_timeout)
 
     def _deinitialize_eoe_service(self) -> None:
         """Deinitialize the virtual network interface and the packet forwarder.
