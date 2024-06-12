@@ -1,8 +1,10 @@
+import contextlib
 import ipaddress
 import socket
 import time
 from collections import OrderedDict
 from enum import Enum
+from threading import Thread
 from typing import Dict, List, Optional
 
 import ingenialogger
@@ -11,7 +13,7 @@ from ingenialink import constants
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError
-from ingenialink.network import SlaveInfo
+from ingenialink.network import SlaveInfo, NET_DEV_EVT
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -113,6 +115,7 @@ class EoENetwork(EthernetNetwork):
             self._start_eoe_service()
         self.__wait_eoe_starts()
         self._configured_slaves[ip_address] = slave_id
+        self.subscribe_to_status(ip_address, self._recover_from_power_cycle)
         return super().connect_to_slave(
             ip_address,
             dictionary,
@@ -385,3 +388,25 @@ class EoENetwork(EthernetNetwork):
 
     def load_firmware(self) -> None:  # type: ignore [override]
         raise NotImplementedError
+
+    def _recover_from_power_cycle(self, status: NET_DEV_EVT) -> None:
+        """Recover the connection after a power cycle.
+
+        Args:
+            status: The network status.
+
+        """
+        if status == NET_DEV_EVT.REMOVED:
+            connection_recovery_thread = Thread(target=self._connection_recovery)
+            connection_recovery_thread.start()
+
+    def _connection_recovery(self) -> None:
+        """Restart the EoE service until all slaves are detected."""
+        while not all(servo.is_alive() for servo in self.servos):
+            with contextlib.suppress(ILError):
+                self._stop_eoe_service()
+                self._deinitialize_eoe_service()
+                self._eoe_service_init = False
+                self._initialize_eoe_service()
+                self.__reconfigure_drives()
+                self._start_eoe_service()
