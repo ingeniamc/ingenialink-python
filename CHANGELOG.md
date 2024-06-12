@@ -6,7 +6,7 @@
 - Set RPDOMap values by byte string.
 - Function to check if a configuration has been applied to the drive.
 - EtherCAT connection example script.
-- Attributes in examples and tests.
+- Arguments in examples and tests.
 
 ### Changed
 - The signature of the load_firmware method of EthercatNetwork is changed to add the boot_in_app argument.
