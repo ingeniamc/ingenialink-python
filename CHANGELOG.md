@@ -4,6 +4,7 @@
 
 ### Fix
 - SDO Error after a store/restore parameters operation.
+- EoE connection recovery after a power cycle.
 
 ## [7.3.2] - 2024-06-05
 
