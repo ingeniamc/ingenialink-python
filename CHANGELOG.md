@@ -3,8 +3,8 @@
 ## [Unreleased]
 
 ### Fixed
+- SDO Error after a store/restore parameters operation.
 - EoE service initialization error when a slave cannot reach the PreOp state. 
-
 
 ## [7.3.2] - 2024-06-05
 
