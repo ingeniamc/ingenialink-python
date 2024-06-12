@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.fixture
-def attributes(read_config):
+def arguments(read_config):
     protocol_contents = read_config["ethernet"]
     dictionary = protocol_contents["dictionary"]
     ip_address = protocol_contents["ip"]

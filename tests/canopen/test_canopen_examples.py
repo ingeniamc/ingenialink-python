@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.fixture
-def attributes(read_config):
+def arguments(read_config):
     protocol_contents = read_config["canopen"]
     dictionary = protocol_contents["dictionary"]
     node_id = protocol_contents["node_id"]

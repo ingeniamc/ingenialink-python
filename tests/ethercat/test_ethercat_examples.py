@@ -2,7 +2,7 @@ import pytest
 
 
 @pytest.fixture
-def attributes(read_config):
+def arguments(read_config):
     protocol_contents = read_config["ethercat"]
     ifname = protocol_contents["ifname"]
     slave_id = protocol_contents["slave"]
