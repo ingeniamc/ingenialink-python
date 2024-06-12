@@ -12,19 +12,19 @@ def arguments(read_config):
 
 
 @pytest.mark.ethercat
-def test_connection_example(attributes, script_runner):
+def test_connection_example(arguments, script_runner):
     script_path = "examples/ethercat/ecat_connection.py"
-    result = script_runner.run(script_path, *attributes)
+    result = script_runner.run(script_path, *arguments)
     assert result.returncode == 0
 
 
 @pytest.mark.ethercat
-def test_load_firmware_example(attributes, script_runner, mocker, read_config):
+def test_load_firmware_example(arguments, script_runner, mocker, read_config):
     slave_id = read_config["ethercat"]["slave"]
     mock = mocker.patch("ingenialink.ethercat.network.EthercatNetwork.load_firmware")
-    attributes[0] = "--firmware_path=dummy_file.lfu"
+    arguments[0] = "--firmware_path=dummy_file.lfu"
     script_path = "examples/ethercat/ecat_load_firmware.py"
-    result = script_runner.run(script_path, *attributes)
+    result = script_runner.run(script_path, *arguments)
     assert result.returncode == 0
     mock.assert_called_once_with("dummy_file.lfu", False, slave_id=slave_id)
 
