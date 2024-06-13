@@ -640,7 +640,7 @@ class Servo:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
                 state = self.get_state(subnode)
-            elif state != SERVO_STATE.DISABLED:
+            else:
                 # Check state and command action to reach disabled
                 self.write(self.CONTROL_WORD_REGISTERS, constants.IL_MC_PDS_CMD_DV, subnode=subnode)
 
