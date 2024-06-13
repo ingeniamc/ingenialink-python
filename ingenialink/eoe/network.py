@@ -13,7 +13,7 @@ from ingenialink import constants
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError
-from ingenialink.network import SlaveInfo, NET_DEV_EVT
+from ingenialink.network import NET_DEV_EVT, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
