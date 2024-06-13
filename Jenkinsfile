@@ -153,9 +153,10 @@ pipeline {
             }
         }
         stage('EtherCAT and no-connection tests') {
+            // TODO: Remove the skip once the ECAT machine is operational
             when {
                 expression {
-                    true
+                    false
                 }
             }
             options {
