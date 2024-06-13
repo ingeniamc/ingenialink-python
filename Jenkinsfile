@@ -153,6 +153,11 @@ pipeline {
             }
         }
         stage('EtherCAT and no-connection tests') {
+            when {
+                expression {
+                    true
+                }
+            }
             options {
                 lock(ECAT_NODE_LOCK)
             }
