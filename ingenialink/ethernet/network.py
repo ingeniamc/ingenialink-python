@@ -82,7 +82,7 @@ class EthernetNetwork(Network):
         )
 
     @staticmethod
-    def load_firmware(  # type: ignore [override]
+    def load_firmware(
         fw_file: str, target: str = "192.168.2.22", ftp_user: str = "", ftp_pwd: str = ""
     ) -> None:
         """Loads a given firmware file to the target slave.
@@ -189,7 +189,7 @@ class EthernetNetwork(Network):
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         raise NotImplementedError
 
-    def connect_to_slave(  # type: ignore [override]
+    def connect_to_slave(
         self,
         target: str,
         dictionary: str,
@@ -255,14 +255,14 @@ class EthernetNetwork(Network):
         sock.shutdown(socket.SHUT_RDWR)
         sock.close()
 
-    def start_status_listener(self) -> None:  # type: ignore [override]
+    def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
             listener = NetStatusListener(self)
             listener.start()
             self.__listener_net_status = listener
 
-    def stop_status_listener(self) -> None:  # type: ignore [override]
+    def stop_status_listener(self) -> None:
         """Stops the NetStatusListener from listening to the drive."""
         if self.__listener_net_status is not None:
             self.__listener_net_status.stop()
