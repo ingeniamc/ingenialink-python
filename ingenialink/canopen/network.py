@@ -245,8 +245,8 @@ class CanopenNetwork(Network):
         """
         if self.__device not in self._get_available_devices():
             raise ILError(
-                f"The {self.__device.upper()} transceiver is not detected. Make sure that it's connected "
-                "and its drivers are installed."
+                f"The {self.__device.upper()} transceiver is not detected. "
+                "Make sure that it's connected and its drivers are installed."
             )
         is_connection_created = False
         if self._connection is None:
