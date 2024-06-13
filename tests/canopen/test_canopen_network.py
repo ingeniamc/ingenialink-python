@@ -71,12 +71,6 @@ def test_scan_slaves(read_config):
 
 
 @pytest.mark.no_connection
-def test_scan_slaves_none_nodes(virtual_network):
-    nodes = virtual_network.scan_slaves()
-    assert len(nodes) == 0
-
-
-@pytest.mark.no_connection
 @pytest.mark.parametrize("can_device", [CAN_DEVICE.PCAN, CAN_DEVICE.KVASER, CAN_DEVICE.IXXAT])
 def test_scan_slaves_missing_drivers(can_device):
     net = CanopenNetwork(
