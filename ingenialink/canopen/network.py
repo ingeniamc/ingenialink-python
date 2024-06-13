@@ -319,7 +319,7 @@ class CanopenNetwork(Network):
             self._teardown_connection()
         return slave_info
 
-    def connect_to_slave(  # type: ignore [override]
+    def connect_to_slave(
         self,
         target: int,
         dictionary: str,
@@ -456,7 +456,7 @@ class CanopenNetwork(Network):
         except BaseException as e:
             logger.error(f"Connection failed. Exception: {e}")
 
-    def load_firmware(  # type: ignore [override]
+    def load_firmware(
         self,
         target: int,
         fw_file: str,
@@ -1021,14 +1021,14 @@ class CanopenNetwork(Network):
     def is_listener_started(self) -> bool:
         return self.__listener_net_status is not None
 
-    def start_status_listener(self) -> None:  # type: ignore [override]
+    def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
             listener = NetStatusListener(self)
             listener.start()
             self.__listener_net_status = listener
 
-    def stop_status_listener(self) -> None:  # type: ignore [override]
+    def stop_status_listener(self) -> None:
         """Stops the NetStatusListener from listening to the drive."""
         if self._connection is None:
             return
