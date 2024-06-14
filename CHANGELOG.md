@@ -7,6 +7,10 @@
 - EoE service initialization error when a slave cannot reach the PreOp state. 
 - EoE connection recovery after a power cycle.
 
+### Added 
+- Support to dictionaries V3 in the virtual drive.
+
+
 ## [7.3.2] - 2024-06-05
 
 ### Added
