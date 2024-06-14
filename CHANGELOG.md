@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+- SDO Error after a store/restore parameters operation.
+- EoE service initialization error when a slave cannot reach the PreOp state. 
+
 ### Added 
 - Support to dictionaries V3 in the virtual drive.
 

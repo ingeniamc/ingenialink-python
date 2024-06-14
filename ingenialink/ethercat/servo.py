@@ -57,6 +57,8 @@ class EthercatServo(PDOServo):
 
     interface = Interface.ECAT
 
+    DEFAULT_STORE_RECOVERY_TIMEOUT = 1
+
     def __init__(
         self,
         slave: "CdefSlave",
@@ -71,6 +73,66 @@ class EthercatServo(PDOServo):
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
+
+    def store_parameters(
+        self,
+        subnode: Optional[int] = None,
+        timeout: Optional[float] = DEFAULT_STORE_RECOVERY_TIMEOUT,
+    ) -> None:
+        """Store all the current parameters of the target subnode.
+
+        Args:
+            subnode: Subnode of the axis. `None` by default which stores
+            all the parameters.
+            timeout : how many seconds to wait for the drive to become responsive
+            after the store operation. If ``None`` it will wait forever.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        super().store_parameters(subnode)
+        self._wait_until_alive(timeout)
+
+    def restore_parameters(
+        self,
+        subnode: Optional[int] = None,
+        timeout: Optional[float] = DEFAULT_STORE_RECOVERY_TIMEOUT,
+    ) -> None:
+        """Restore all the current parameters of all the slave to default.
+
+        .. note::
+            The drive needs a power cycle after this
+            in order for the changes to be properly applied.
+
+        Args:
+            subnode: Subnode of the axis. `None` by default which restores
+                all the parameters.
+            timeout : how many seconds to wait for the drive to become responsive
+            after the restore operation. If ``None`` it will wait forever.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        super().restore_parameters(subnode)
+        self._wait_until_alive(timeout)
+
+    def _wait_until_alive(self, timeout: Optional[float]) -> None:
+        """Wait until the drive becomes responsive.
+
+        Args:
+            timeout : how many seconds to wait for the drive to become responsive.
+            If ``None`` it will wait forever.
+
+        """
+        init_time = time.time()
+        while not self.is_alive():
+            if timeout is not None and (init_time + timeout) < time.time():
+                logger.info("The drive is unresponsive after the recovery timeout.")
+                break
 
     def _read_raw(  # type: ignore [override]
         self,
