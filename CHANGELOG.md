@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- Raise an exception when a CAN transceiver's driver is not installed.
+
 ### Fixed
 - SDO Error after a store/restore parameters operation.
 - EoE service initialization error when a slave cannot reach the PreOp state. 

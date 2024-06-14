@@ -243,6 +243,11 @@ class CanopenNetwork(Network):
             Containing all the detected node IDs.
 
         """
+        if (self.__device, self.__channel) not in self.get_available_devices():
+            raise ILError(
+                f"The {self.__device.upper()} transceiver is not detected. "
+                "Make sure that it's connected and its drivers are installed."
+            )
         is_connection_created = False
         if self._connection is None:
             is_connection_created = True
@@ -1072,3 +1077,16 @@ class CanopenNetwork(Network):
 
     def _set_servo_state(self, node_id: int, state: NET_STATE) -> None:
         self.__servos_state[node_id] = state
+
+    @staticmethod
+    def get_available_devices() -> List[Tuple[str, Union[str, int]]]:
+        """Get the available CAN devices and their channels"""
+        unavailable_devices = [CAN_DEVICE.VIRTUAL]
+        if platform.system() == "Windows":
+            unavailable_devices.append(CAN_DEVICE.SOCKETCAN)
+        return [
+            (available_device["interface"], available_device["channel"])
+            for available_device in can.detect_available_configs(
+                [device.value for device in CAN_DEVICE if device not in unavailable_devices]
+            )
+        ]
