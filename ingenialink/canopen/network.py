@@ -243,6 +243,11 @@ class CanopenNetwork(Network):
             Containing all the detected node IDs.
 
         """
+        if (self.__device, self.__channel) not in self.get_available_devices():
+            raise ILError(
+                f"The {self.__device.upper()} transceiver is not detected. "
+                "Make sure that it's connected and its drivers are installed."
+            )
         is_connection_created = False
         if self._connection is None:
             is_connection_created = True
@@ -319,7 +324,7 @@ class CanopenNetwork(Network):
             self._teardown_connection()
         return slave_info
 
-    def connect_to_slave(  # type: ignore [override]
+    def connect_to_slave(
         self,
         target: int,
         dictionary: str,
@@ -456,7 +461,7 @@ class CanopenNetwork(Network):
         except BaseException as e:
             logger.error(f"Connection failed. Exception: {e}")
 
-    def load_firmware(  # type: ignore [override]
+    def load_firmware(
         self,
         target: int,
         fw_file: str,
@@ -1021,14 +1026,14 @@ class CanopenNetwork(Network):
     def is_listener_started(self) -> bool:
         return self.__listener_net_status is not None
 
-    def start_status_listener(self) -> None:  # type: ignore [override]
+    def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
             listener = NetStatusListener(self)
             listener.start()
             self.__listener_net_status = listener
 
-    def stop_status_listener(self) -> None:  # type: ignore [override]
+    def stop_status_listener(self) -> None:
         """Stops the NetStatusListener from listening to the drive."""
         if self._connection is None:
             return
@@ -1072,3 +1077,16 @@ class CanopenNetwork(Network):
 
     def _set_servo_state(self, node_id: int, state: NET_STATE) -> None:
         self.__servos_state[node_id] = state
+
+    @staticmethod
+    def get_available_devices() -> List[Tuple[str, Union[str, int]]]:
+        """Get the available CAN devices and their channels"""
+        unavailable_devices = [CAN_DEVICE.VIRTUAL]
+        if platform.system() == "Windows":
+            unavailable_devices.append(CAN_DEVICE.SOCKETCAN)
+        return [
+            (available_device["interface"], available_device["channel"])
+            for available_device in can.detect_available_configs(
+                [device.value for device in CAN_DEVICE if device not in unavailable_devices]
+            )
+        ]

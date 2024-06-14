@@ -191,13 +191,13 @@ class Servo:
     MONITORING_NUMBER_MAPPED_REGISTERS = "MON_CFG_TOTAL_MAP"
     MONITORING_BYTES_PER_BLOCK = "MON_CFG_BYTES_PER_BLOCK"
     MONITORING_ACTUAL_NUMBER_BYTES = "MON_CFG_BYTES_VALUE"
-    MONITORING_DATA = "MONITORING_DATA"
+    MONITORING_DATA = "MON_DATA_VALUE"
     MONITORING_DISTURBANCE_VERSION = "MON_DIST_VERSION"
     DISTURBANCE_ENABLE = "DIST_ENABLE"
     DISTURBANCE_REMOVE_DATA = "DIST_REMOVE_DATA"
     DISTURBANCE_NUMBER_MAPPED_REGISTERS = "DIST_CFG_MAP_REGS"
     DIST_NUMBER_SAMPLES = "DIST_CFG_SAMPLES"
-    DIST_DATA = "DISTURBANCE_DATA"
+    DIST_DATA = "DIST_DATA_VALUE"
     MONITORING_ACTUAL_NUMBER_SAMPLES = "MON_CFG_CYCLES_VALUE"
     DISTURBANCE_REMOVE_REGISTERS_OLD = "DIST_CMD_RM_REGS"
     MONITORING_REMOVE_REGISTERS_OLD = "MON_CMD_RM_REG"
@@ -640,7 +640,7 @@ class Servo:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
                 state = self.get_state(subnode)
-            elif state != SERVO_STATE.DISABLED:
+            else:
                 # Check state and command action to reach disabled
                 self.write(self.CONTROL_WORD_REGISTERS, constants.IL_MC_PDS_CMD_DV, subnode=subnode)
 

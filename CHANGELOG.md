@@ -2,9 +2,17 @@
 
 ## [Unreleased]
 
-### Added
-- Arguments in examples and tests.
+### Changed
+- Raise an exception when a CAN transceiver's driver is not installed.
 
+### Fixed
+- SDO Error after a store/restore parameters operation.
+- EoE service initialization error when a slave cannot reach the PreOp state. 
+- EoE connection recovery after a power cycle.
+
+### Added 
+- Support to dictionaries V3 in the virtual drive.
+- Arguments in examples and tests.
 
 ## [7.3.2] - 2024-06-05
 
