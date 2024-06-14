@@ -28,7 +28,7 @@ class CanopenDictionaryV2(DictionaryV2):
             subnode=0,
         ),
         CanopenRegister(
-            identifier="MON_DATA_VALUE",
+            identifier="DIST_DATA_VALUE",
             idx=0x58B4,
             subidx=0x00,
             cyclic=RegCyclicType.CONFIG,
