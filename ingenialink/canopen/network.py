@@ -243,7 +243,7 @@ class CanopenNetwork(Network):
             Containing all the detected node IDs.
 
         """
-        if self.__device not in self.get_available_devices():
+        if (self.__device, self.__channel) not in self.get_available_devices():
             raise ILError(
                 f"The {self.__device.upper()} transceiver is not detected. "
                 "Make sure that it's connected and its drivers are installed."
@@ -1079,15 +1079,14 @@ class CanopenNetwork(Network):
         self.__servos_state[node_id] = state
 
     @staticmethod
-    def get_available_devices() -> List[str]:
+    def get_available_devices() -> List[Tuple[str, Union[str, int]]]:
+        """Get the available CAN devices and their channels"""
         unavailable_devices = [CAN_DEVICE.VIRTUAL]
         if platform.system() == "Windows":
             unavailable_devices.append(CAN_DEVICE.SOCKETCAN)
-        return list(
-            {
-                available_device["interface"]
-                for available_device in can.detect_available_configs(
-                    [device.value for device in CAN_DEVICE if device not in unavailable_devices]
-                )
-            }
-        )
+        return [
+            (available_device["interface"], available_device["channel"])
+            for available_device in can.detect_available_configs(
+                [device.value for device in CAN_DEVICE if device not in unavailable_devices]
+            )
+        ]
