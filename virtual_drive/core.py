@@ -1105,9 +1105,6 @@ class VirtualMonitoring(VirtualMonDistBase):
     def _store_data_bytes(self) -> None:
         """Convert signals into a bytes and store it at MON_DATA register."""
         byte_array = bytes()
-        if len(self.channels_data) == 0:
-            self.drive.set_value_by_id(0, self.DATA_REG, b"0")
-            return
         n_samples = len(self.channels_data[0])
         for sample in range(n_samples):
             for channel in range(self.number_mapped_registers):
@@ -1531,7 +1528,7 @@ class VirtualDrive(Thread):
             self.__clean_plant_signals()
         if reg_id == "DIST_REMOVE_DATA" and subnode == 0 and value == 1 and self._disturbance:
             self._disturbance.remove_data()
-        if reg_id == "DISTURBANCE_DATA" and subnode == 0 and self._disturbance:
+        if reg_id == VirtualDisturbance.DATA_REG and subnode == 0 and self._disturbance:
             self._disturbance.append_data(data)
         if reg_id == "DRV_OP_CMD":
             self.operation_mode = int(value)
