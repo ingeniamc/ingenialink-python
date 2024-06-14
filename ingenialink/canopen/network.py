@@ -1082,9 +1082,15 @@ class CanopenNetwork(Network):
     def get_available_devices() -> List[str]:
         if platform.system() == "Linux":
             return [CAN_DEVICE.SOCKETCAN.name]
-        return [
-            available_device["interface"]
-            for available_device in can.detect_available_configs(
-                [device.value for device in CAN_DEVICE if device not in [CAN_DEVICE.SOCKETCAN]]
-            )
-        ]
+        return list(
+            {
+                available_device["interface"]
+                for available_device in can.detect_available_configs(
+                    [
+                        device.value
+                        for device in CAN_DEVICE
+                        if device not in [CAN_DEVICE.SOCKETCAN, CAN_DEVICE.VIRTUAL]
+                    ]
+                )
+            }
+        )
