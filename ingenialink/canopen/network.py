@@ -243,7 +243,7 @@ class CanopenNetwork(Network):
             Containing all the detected node IDs.
 
         """
-        if self.__device not in self._get_available_devices():
+        if self.__device not in self.get_available_devices():
             raise ILError(
                 f"The {self.__device.upper()} transceiver is not detected. "
                 "Make sure that it's connected and its drivers are installed."
@@ -1079,7 +1079,7 @@ class CanopenNetwork(Network):
         self.__servos_state[node_id] = state
 
     @staticmethod
-    def _get_available_devices() -> List[str]:
+    def get_available_devices() -> List[str]:
         if platform.system() == "Linux":
             return [CAN_DEVICE.SOCKETCAN.name]
         return [
