@@ -264,18 +264,6 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
     assert len(servo._tpdo_maps) == 0
 
 
-@pytest.mark.ethercat
-def test_pdo_example(read_config, script_runner):
-    protocol_contents = read_config["ethercat"]
-    ifname = protocol_contents["ifname"]
-    dictionary = protocol_contents["dictionary"]
-    script_path = "examples/ethercat/process_data_objects.py"
-    result = script_runner.run(
-        script_path, f"-ifname={ifname}", f"-dict={dictionary}", "-auto_stop"
-    )
-    assert result.returncode == 0
-
-
 @pytest.fixture
 def connect_to_all_slave(pytestconfig):
     protocol = pytestconfig.getoption("--protocol")

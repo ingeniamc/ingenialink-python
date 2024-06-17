@@ -128,14 +128,26 @@ class ProcessDataExample:
             self.net.disconnect_from_slave(servo)
 
 
-if __name__ == "__main__":
+def setup_command():
     parser = argparse.ArgumentParser(description="EtherCAT PDOs example script.")
-    parser.add_argument("-ifname", type=str, help="Network adapter interface name.")
-    parser.add_argument("-dict", type=str, help="Drive's dictionary.")
+    interface_help = """Network adapter interface name. To find it: \n
+    - On Windows, \\Device\\NPF_{id}. To get the id, run the command: wmic nic get name, guid \n
+    - On linux, run the command: ip link show
+    """
+    parser.add_argument("-i", "--interface", type=str, help=interface_help, required=True)
     parser.add_argument(
-        "-auto_stop",
+        "-d", "--dictionary_path", type=str, help="Path to the drive's dictionary.", required=True
+    )
+    parser.add_argument(
+        "--auto_stop",
         help="Automatically stop the PDO process after 5 seconds.",
         action="store_true",
     )
     args = parser.parse_args()
-    ProcessDataExample(args.ifname, args.dict, args.auto_stop).run()
+    return args
+
+
+if __name__ == "__main__":
+
+    args = setup_command()
+    ProcessDataExample(args.interface, args.dictionary_path, args.auto_stop).run()

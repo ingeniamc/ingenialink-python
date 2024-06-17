@@ -1,21 +1,22 @@
-import sys
+import argparse
 
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 
 
-def connection_example(dict_path: str) -> None:
+def connection_example(args) -> None:
     """Scans for nodes in a network, connects to the first found node, reads
     a register and disconnects the found servo from the network.
 
     Args:
         dict_path: Path to the dictionary
     """
-    net = CanopenNetwork(device=CAN_DEVICE.SOCKETCAN, channel=0, baudrate=CAN_BAUDRATE.Baudrate_1M)
+    can_baudrate = CAN_BAUDRATE(args.baudrate)
+    net = CanopenNetwork(device=CAN_DEVICE.SOCKETCAN, channel=args.channel, baudrate=can_baudrate)
     nodes = net.scan_slaves()
     print(nodes)
 
     if len(nodes) > 0:
-        servo = net.connect_to_slave(target=nodes[0], dictionary=dict_path)
+        servo = net.connect_to_slave(target=args.node_id, dictionary=args.dictionary_path)
 
         fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
         print(fw_version)
@@ -25,7 +26,22 @@ def connection_example(dict_path: str) -> None:
         print("Could not find any nodes")
 
 
+def setup_command():
+    parser = argparse.ArgumentParser(description="Canopen example")
+    parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
+    parser.add_argument("-n", "--node_id", default=32, type=int, help="Node ID")
+    parser.add_argument(
+        "-b",
+        "--baudrate",
+        default=1000000,
+        type=int,
+        choices=[50000, 100000, 125000, 250000, 500000, 1000000],
+        help="CAN baudrate",
+    )
+    parser.add_argument("-c", "--channel", default=0, type=int, help="CAN transceiver channel")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    dict_path = "../../resources/dictionaries/eve-net-c_can_1.8.1.xdf"
-    connection_example(dict_path)
-    sys.exit()
+    args = setup_command()
+    connection_example(args)

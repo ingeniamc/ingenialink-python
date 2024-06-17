@@ -12,7 +12,7 @@
 
 ### Added 
 - Support to dictionaries V3 in the virtual drive.
-
+- Arguments in examples and tests.
 
 ## [7.3.2] - 2024-06-05
 
