@@ -210,6 +210,8 @@ class EthercatNetwork(Network):
             slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
         )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
+            if servo_status_listener:
+                servo.stop_status_listener()
             raise ILStateError("Slave can not reach PreOp state")
         servo.reset_pdo_mapping()
         self.servos.append(servo)
