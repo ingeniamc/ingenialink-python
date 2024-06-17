@@ -409,7 +409,7 @@ class EthercatNetwork(Network):
             self.__listener_net_status.join()
         self.__listener_net_status = None
 
-    def load_firmware(self, fw_file: str, boot_in_app: bool, slave_id: int = 1) -> None:  # type: ignore [override]
+    def load_firmware(self, fw_file: str, boot_in_app: bool = False, slave_id: int = 1) -> None:  # type: ignore [override]
         """Loads a given firmware file to a target slave.
 
         Args:
