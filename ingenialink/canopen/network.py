@@ -1088,10 +1088,10 @@ class CanopenNetwork(Network):
         for available_device in can.detect_available_configs(
             [device.value for device in CAN_DEVICE if device not in unavailable_devices]
         ):
-            if available_device[
-                "interface"
-            ] == CAN_DEVICE.KVASER.value and "Kvaser Virtual CAN Driver" in can.interfaces.kvaser.get_channel_info(
-                available_device["channel"]
+            if (
+                available_device["interface"] == CAN_DEVICE.KVASER.value
+                and "Kvaser Virtual CAN Driver"
+                in can.interfaces.kvaser.get_channel_info(available_device["channel"])
             ):
                 continue
             available_devices.append((available_device["interface"], available_device["channel"]))
