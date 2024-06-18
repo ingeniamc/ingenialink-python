@@ -18,7 +18,6 @@ from can.interfaces.kvaser.canlib import (
     CANLIBOperationError,
     canGetNumberOfChannels,
     CANLIBError,
-    CANLIBInitializationError,
 )
 from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
 
