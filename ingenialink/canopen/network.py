@@ -1096,13 +1096,14 @@ class CanopenNetwork(Network):
                 can.detect_available_configs(
                     [device.value for device in CAN_DEVICE if device not in unavailable_devices]
                 )
-                + self._get_available_kvaser_devices()
+                + CanopenNetwork._get_available_kvaser_devices()
             )
         ]
 
-    def _get_available_kvaser_devices(self) -> List[Dict[str, Any]]:
+    @staticmethod
+    def _get_available_kvaser_devices() -> List[Dict[str, Any]]:
         """Get the available Kvaser devices and their channels"""
-        self._reload_kvaser_lib()
+        CanopenNetwork._reload_kvaser_lib()
         num_channels = ctypes.c_int(0)
         with contextlib.suppress(CANLIBError, NameError):
             canGetNumberOfChannels(ctypes.byref(num_channels))
