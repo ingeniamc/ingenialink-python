@@ -14,11 +14,17 @@ import can
 import canopen
 import ingenialogger
 from can import CanError
-from can.interfaces.kvaser.canlib import (
-    CANLIBOperationError,
-    canGetNumberOfChannels,
-    CANLIBError,
-)
+
+KVASER_DRIVER_INSTALLED = True
+try:
+    from can.interfaces.kvaser.canlib import (
+        CANLIBOperationError,
+        canGetNumberOfChannels,
+        CANLIBError,
+    )
+except ImportError:
+    KVASER_DRIVER_INSTALLED = False
+
 from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
 
 from ingenialink.canopen.register import CanopenRegister
@@ -1103,6 +1109,8 @@ class CanopenNetwork(Network):
     @staticmethod
     def _get_available_kvaser_devices() -> List[Dict[str, Any]]:
         """Get the available Kvaser devices and their channels"""
+        if not KVASER_DRIVER_INSTALLED:
+            return []
         CanopenNetwork._reload_kvaser_lib()
         num_channels = ctypes.c_int(0)
         with contextlib.suppress(CANLIBError, NameError):
