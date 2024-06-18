@@ -1085,7 +1085,8 @@ class CanopenNetwork(Network):
     def _set_servo_state(self, node_id: int, state: NET_STATE) -> None:
         self.__servos_state[node_id] = state
 
-    def get_available_devices(self) -> List[Tuple[str, Union[str, int]]]:
+    @staticmethod
+    def get_available_devices() -> List[Tuple[str, Union[str, int]]]:
         """Get the available CAN devices and their channels"""
         unavailable_devices = [CAN_DEVICE.KVASER, CAN_DEVICE.VIRTUAL]
         if platform.system() == "Windows":
