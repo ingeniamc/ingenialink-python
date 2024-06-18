@@ -14,17 +14,6 @@ import can
 import canopen
 import ingenialogger
 from can import CanError
-
-KVASER_DRIVER_INSTALLED = True
-try:
-    from can.interfaces.kvaser.canlib import (
-        CANLIBOperationError,
-        canGetNumberOfChannels,
-        CANLIBError,
-    )
-except ImportError:
-    KVASER_DRIVER_INSTALLED = False
-
 from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
 
 from ingenialink.canopen.register import CanopenRegister
@@ -42,6 +31,16 @@ if platform.system() == "Windows":
 else:
     VCIError = None
 from canopen import Network as NetworkLib
+
+KVASER_DRIVER_INSTALLED = True
+try:
+    from can.interfaces.kvaser.canlib import (
+        CANLIBError,
+        CANLIBOperationError,
+        canGetNumberOfChannels,
+    )
+except ImportError:
+    KVASER_DRIVER_INSTALLED = False
 
 logger = ingenialogger.get_logger(__name__)
 
