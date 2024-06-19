@@ -60,6 +60,7 @@ class EthercatServo(PDOServo):
     DEFAULT_STORE_RECOVERY_TIMEOUT = 1
 
     DEFAULT_EEPROM_OPERATION_TIMEOUT_uS = 200_000
+    DEFAULT_EEPROM_READ_BYTES_LENGTH = 2
 
     def __init__(
         self,
@@ -323,23 +324,29 @@ class EthercatServo(PDOServo):
         )
 
     def read_eeprom(
-        self, address: int, timeout: int = DEFAULT_EEPROM_OPERATION_TIMEOUT_uS
+        self,
+        address: int,
+        length: int = DEFAULT_EEPROM_READ_BYTES_LENGTH,
+        timeout: int = DEFAULT_EEPROM_OPERATION_TIMEOUT_uS,
     ) -> bytes:
         """Read from the ESC EEPROM.
 
         Args:
             address: EEPROM address to be read.
+            length: Length of data to be read. By default, 2 bytes are read.
             timeout: Operation timeout (microseconds). By default, 200.000 us.
 
         Returns:
-            EEPROM data. The read data is 2 words (4 bytes).
+            EEPROM data. The read data.
 
         """
-        data = self.slave.eeprom_read(address, timeout)
-        if not isinstance(data, bytes):
-            raise ValueError(
-                f"Error reading EEPROM. Expected the data to be of type bytes, got {type(data)}"
-            )
+        data = bytes()
+        start_address = address
+        while len(data) < length:
+            data += self.slave.eeprom_read(start_address, timeout)
+            start_address += 2
+        if len(data) > length:
+            data = data[:length]
         return data
 
     def write_eeprom(
@@ -349,11 +356,15 @@ class EthercatServo(PDOServo):
 
         Args:
             address: EEPROM address to be written.
-            data: Data to be written. The data must be a word (2 bytes).
+            data: Data to be written. The data length must be a multiple of 2 bytes.
             timeout: Operation timeout (microseconds). By default, 200.000 us.
 
         """
-        self.slave.eeprom_write(address, data, timeout)
+        start_address = address
+        while data:
+            self.slave.eeprom_write(start_address, data[:2], timeout)
+            data = data[2:]
+            start_address += 1
 
     @property
     def slave(self) -> "CdefSlave":
