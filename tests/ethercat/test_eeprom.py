@@ -4,10 +4,10 @@ import pytest
 @pytest.mark.ethercat
 def test_eeprom_read(connect_to_slave):
     servo, _ = connect_to_slave
+    product_code_bytes = servo.read("DRV_ID_PRODUCT_CODE").to_bytes(4, "little")
     product_code_address = 10
-    assert servo.read_eeprom(product_code_address, length=4) == servo.read(
-        "DRV_ID_PRODUCT_CODE"
-    ).to_bytes(4, "little")
+    for length in range(1, 5):
+        assert product_code_bytes[:length] == servo.read_eeprom(product_code_address, length=length)
 
 
 @pytest.mark.ethercat
@@ -20,3 +20,11 @@ def test_eeprom_write(connect_to_slave):
     servo.write_eeprom(serial_number_address, new_serial_number_bytes)
     assert new_serial_number == int.from_bytes(servo.read_eeprom(serial_number_address), "little")
     servo.write_eeprom(serial_number_address, serial_number.to_bytes(4, "little"))
+
+
+@pytest.mark.ethercat
+def test_eeprom_wrong_size(connect_to_slave):
+    servo, _ = connect_to_slave
+    serial_number_address = 14
+    with pytest.raises(AttributeError):
+        servo.write_eeprom(serial_number_address, int(0).to_bytes(3, "little"))
