@@ -339,7 +339,12 @@ class EthercatServo(PDOServo):
         Returns:
             EEPROM data. The read data.
 
+        Raises:
+            ValueError: If the length to be read has an invalid value.
+
         """
+        if length < 1:
+            raise ValueError("The minimum length is 1 byte.")
         data = bytes()
         start_address = address
         while len(data) < length:
@@ -359,7 +364,12 @@ class EthercatServo(PDOServo):
             data: Data to be written. The data length must be a multiple of 2 bytes.
             timeout: Operation timeout (microseconds). By default, 200.000 us.
 
+        Raises:
+            ValueError: If the data has the wrong size.
+
         """
+        if len(data) % 2 != 0:
+            raise ValueError("The data length must be a multiple of 2 bytes.")
         start_address = address
         while data:
             self.slave.eeprom_write(start_address, data[:2], timeout)

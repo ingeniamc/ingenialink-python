@@ -11,6 +11,14 @@ def test_eeprom_read(connect_to_slave):
 
 
 @pytest.mark.ethercat
+def test_eeprom_read_wrong_size(connect_to_slave):
+    servo, _ = connect_to_slave
+    product_code_address = 10
+    with pytest.raises(ValueError):
+        servo.read_eeprom(product_code_address, length=0)
+
+
+@pytest.mark.ethercat
 def test_eeprom_write(connect_to_slave):
     servo, _ = connect_to_slave
     serial_number_address = 14
@@ -26,5 +34,5 @@ def test_eeprom_write(connect_to_slave):
 def test_eeprom_wrong_size(connect_to_slave):
     servo, _ = connect_to_slave
     serial_number_address = 14
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         servo.write_eeprom(serial_number_address, int(0).to_bytes(3, "little"))
