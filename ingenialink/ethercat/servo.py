@@ -1,3 +1,4 @@
+import os
 import time
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -375,6 +376,22 @@ class EthercatServo(PDOServo):
             self.slave.eeprom_write(start_address, data[:2], timeout)
             data = data[2:]
             start_address += 1
+
+    def _write_esc_eeprom_from_file(self, file_path: str) -> None:
+        """Load a binary file to the ESC EEPROM.
+
+        Args:
+            file_path: Path to the binary file to be loaded.
+
+        Raises:
+            FileNotFoundError: If the binary file cannot be found.
+
+        """
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError(f"Could not find {file_path}.")
+        with open(file_path, "rb") as file:
+            data = file.read()
+        self._write_esc_eeprom(address=0, data=data)
 
     @property
     def slave(self) -> "CdefSlave":
