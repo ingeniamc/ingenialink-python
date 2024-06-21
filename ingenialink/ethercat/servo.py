@@ -323,7 +323,7 @@ class EthercatServo(PDOServo):
             self.ETHERCAT_PDO_WATCHDOG, self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout
         )
 
-    def read_eeprom(
+    def _read_esc_eeprom(
         self,
         address: int,
         length: int = DEFAULT_EEPROM_READ_BYTES_LENGTH,
@@ -354,7 +354,7 @@ class EthercatServo(PDOServo):
             data = data[:length]
         return data
 
-    def write_eeprom(
+    def _write_esc_eeprom(
         self, address: int, data: bytes, timeout: int = DEFAULT_EEPROM_OPERATION_TIMEOUT_uS
     ) -> None:
         """Write to the ESC EEPROM.
