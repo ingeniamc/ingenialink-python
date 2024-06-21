@@ -347,10 +347,9 @@ class EthercatServo(PDOServo):
         if length < 1:
             raise ValueError("The minimum length is 1 byte.")
         data = bytes()
-        start_address = address
         while len(data) < length:
-            data += self.slave.eeprom_read(start_address, timeout)
-            start_address += 2
+            data += self.slave.eeprom_read(address, timeout)
+            address += 2
         if len(data) > length:
             data = data[:length]
         return data
