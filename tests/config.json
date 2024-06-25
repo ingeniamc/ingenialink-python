@@ -20,7 +20,7 @@
   {
     "ifname": "\\Device\\NPF_{B24AA996-414A-4F95-95E6-2828D346209A}",
     "slave": 1,
-    "dictionary": "C:\\Users\\martin.acosta\\OneDrive - Novanta\\Documents\\issues\\INGK-767\\cap-net-e_eoe_2.4.1.xdf",
+    "dictionary": "//awe-srv-max-prd/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-e_eoe_2.4.0.xdf",
     "fw_file": "//awe-srv-max-prd/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-e_2.4.0.sfu",
     "boot_in_app": true
   }
