@@ -101,6 +101,8 @@ class EthercatNetwork(Network):
     ECAT_STATE_CHANGE_TIMEOUT_NS = 50_000
     ECAT_PROCESSDATA_TIMEOUT_S = 0.1
 
+    EXPECTED_WKC_PROCESS_DATA = 3
+
     def __init__(
         self,
         interface_name: str,
@@ -311,7 +313,7 @@ class EthercatNetwork(Network):
         else:
             self._ecat_master.send_processdata()
         processdata_wkc = self._ecat_master.receive_processdata(timeout=int(timeout * 1_000_000))
-        if processdata_wkc != self._ecat_master.expected_wkc:
+        if processdata_wkc != self.EXPECTED_WKC_PROCESS_DATA * (len(self.servos)):
             self._ecat_master.read_state()
             servos_state_msg = ""
             for servo in self.servos:
