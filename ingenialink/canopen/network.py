@@ -214,19 +214,11 @@ class CanopenNetwork(Network):
         self.__channel: Union[int, str] = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
         self._connection: Optional[NetworkLib] = None
-        self.__net_state = NET_STATE.DISCONNECTED
         self.__servos_state: Dict[int, NET_STATE] = {}
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: Dict[int, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
             list
         )
-        self.__observers_fw_load_status_msg: List[Callable[[str], Any]] = []
-        self.__observers_fw_load_progress: List[Callable[[int], Any]] = []
-        self.__observers_fw_load_errors_enabled: List[Callable[[bool], Any]] = []
-
-        self.__fw_load_status_msg = ""
-        self.__fw_load_progress = 0
-        self.__fw_load_errors_enabled = True
 
         self.__connection_args = {
             "interface": self.__device,
@@ -821,42 +813,6 @@ class CanopenNetwork(Network):
                 byte = image.read(BOOTLOADER_MSG_SIZE)
         logger.info("Download Finished!")
         servo._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
-
-    def __set_fw_load_status_msg(self, new_value: str) -> None:
-        """Updates the fw_load_status_msg value and triggers
-        all the callbacks associated.
-
-        Args:
-            new_value: New value for the variable.
-
-        """
-        self.__fw_load_status_msg = new_value
-        for callback in self.__observers_fw_load_status_msg:
-            callback(new_value)
-
-    def __set_fw_load_progress(self, new_value: int) -> None:
-        """Updates the fw_load_progress value and triggers
-        all the callbacks associated.
-
-        Args:
-            new_value: New value for the variable.
-
-        """
-        self.__fw_load_progress = new_value
-        for callback in self.__observers_fw_load_progress:
-            callback(new_value)
-
-    def __set_fw_load_errors_enabled(self, new_value: bool) -> None:
-        """Updates the fw_load_errors_enabled value and triggers
-        all the callbacks associated.
-
-        Args:
-            new_value: New value for the variable.
-
-        """
-        self.__fw_load_errors_enabled = new_value
-        for callback in self.__observers_fw_load_errors_enabled:
-            callback(new_value)
 
     def change_baudrate(
         self,
