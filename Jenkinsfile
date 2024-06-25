@@ -153,14 +153,6 @@ pipeline {
             }
         }
         stage('EtherCAT and no-connection tests') {
-            // TODO: Remove the skip once the ECAT machine is operational
-            when {
-                beforeOptions true
-                beforeAgent true
-                expression {
-                    false
-                }
-            }
             options {
                 lock(ECAT_NODE_LOCK)
             }
@@ -303,11 +295,9 @@ pipeline {
                 stage('Save test results') {
                     steps {
                         unstash 'coverage_docker'
-                        // TODO: Remove the comment once the ECAT machine is operational
-                        // unstash 'coverage_reports'
-                        // And add .coverage_no_connection .coverage_ethercat in the command below
+                        unstash 'coverage_reports'
                         bat '''
-                            venv\\Scripts\\python.exe -m tox -e coverage -- .coverage_docker .coverage_ethernet .coverage_canopen
+                            venv\\Scripts\\python.exe -m tox -e coverage -- .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
                         '''
                         publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
                         archiveArtifacts artifacts: '*.xml'
