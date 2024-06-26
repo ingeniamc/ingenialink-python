@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Methods to read/write to the ESC EEPROM.
+
 ### Changed
 - Raise an exception when a CAN transceiver's driver is not installed.
 
