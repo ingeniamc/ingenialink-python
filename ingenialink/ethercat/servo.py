@@ -145,9 +145,6 @@ class EthercatServo(PDOServo):
         complete_access: bool = False,
         start_time: Optional[float] = None,
     ) -> bytes:
-        retry = False
-        if start_time is None:
-            start_time = time.time()
         self._lock.acquire()
         try:
             time.sleep(0.0001)  # Unlock threads before SDO read
@@ -160,14 +157,8 @@ class EthercatServo(PDOServo):
             ILIOError,
         ) as e:
             self._handle_sdo_exception(reg, SDO_OPERATION_MSG.READ, e)
-        except pysoem.Emergency as e:
-            if time.time() > start_time + self._connection_timeout:
-                raise ILTimeoutError("Emergency messages could not be cleared.") from e
-            retry = True
         finally:
             self._lock.release()
-        if retry:
-            return self._read_raw(reg, buffer_size, complete_access, start_time)
         return value
 
     def _write_raw(  # type: ignore [override]
@@ -177,9 +168,6 @@ class EthercatServo(PDOServo):
         complete_access: bool = False,
         start_time: Optional[float] = None,
     ) -> None:
-        retry = False
-        if start_time is None:
-            start_time = time.time()
         self._lock.acquire()
         try:
             time.sleep(0.0001)  # Unlock threads before SDO write
@@ -192,14 +180,8 @@ class EthercatServo(PDOServo):
             ILIOError,
         ) as e:
             self._handle_sdo_exception(reg, SDO_OPERATION_MSG.WRITE, e)
-        except pysoem.Emergency as e:
-            if time.time() > start_time + self._connection_timeout:
-                raise ILTimeoutError("Emergency messages could not be cleared.") from e
-            retry = True
         finally:
             self._lock.release()
-        if retry:
-            return self._write_raw(reg, data, complete_access, start_time)
 
     def _handle_sdo_exception(
         self, reg: EthercatRegister, operation_msg: SDO_OPERATION_MSG, exception: Exception
@@ -285,7 +267,7 @@ class EthercatServo(PDOServo):
         )
         return mapped_address
 
-    def _get_emergency_description(self, error_code: int) -> Optional[str]:
+    def get_emergency_description(self, error_code: int) -> Optional[str]:
         """Get the error description from the error code.
         Args:
             error_code: Error code received.
