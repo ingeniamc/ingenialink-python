@@ -1,15 +1,16 @@
 import argparse
 
 from ingenialink.ethernet.network import EthernetNetwork
+from ingenialink.ethernet.servo import EthernetServo
 
 
-def connect_slave(args):
+def connect_slave(args: argparse.Namespace) -> tuple[EthernetServo, EthernetNetwork]:
     net = EthernetNetwork()
     servo = net.connect_to_slave(args.ip_address, args.dictionary_path, args.port)
     return servo, net
 
 
-def load_config_example(args):
+def load_config_example(args: argparse.Namespace) -> None:
     """Loads a given configuration file into the drive."""
     servo, net = connect_slave(args)
     servo.load_configuration("eth_config.xcf")
@@ -19,7 +20,7 @@ def load_config_example(args):
     net.disconnect_from_slave(servo)
 
 
-def save_config_example(args):
+def save_config_example(args: argparse.Namespace) -> None:
     """Saves the drive configuration into a file."""
     servo, net = connect_slave(args)
     servo.save_configuration("eth_config.xcf")
@@ -29,7 +30,7 @@ def save_config_example(args):
     net.disconnect_from_slave(servo)
 
 
-def setup_command():
+def setup_command() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Ethernet connection example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-ip", "--ip_address", help="IP address", type=str, required=True)

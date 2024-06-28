@@ -3,7 +3,7 @@ import argparse
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 
 
-def connection_example(args) -> None:
+def connection_example(args: argparse.Namespace) -> None:
     """Scans for nodes in a network, connects to the first found node, reads
     a register and disconnects the found servo from the network.
 
@@ -26,7 +26,7 @@ def connection_example(args) -> None:
         print("Could not find any nodes")
 
 
-def setup_command():
+def setup_command() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-n", "--node_id", default=32, type=int, help="Node ID")

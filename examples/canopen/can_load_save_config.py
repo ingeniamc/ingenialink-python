@@ -1,9 +1,10 @@
 import argparse
 
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from ingenialink.canopen.servo import CanopenServo
 
 
-def connect_slave(args):
+def connect_slave(args: argparse.Namespace) -> tuple[CanopenServo, CanopenNetwork]:
     can_device = CAN_DEVICE(args.transceiver)
     can_baudrate = CAN_BAUDRATE(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
@@ -13,7 +14,7 @@ def connect_slave(args):
     return servo, net
 
 
-def load_config_example(args):
+def load_config_example(args: argparse.Namespace) -> None:
     """Loads a given configuration file into the drive."""
     servo, net = connect_slave(args)
     servo.load_configuration("can_config.xcf")
@@ -23,7 +24,7 @@ def load_config_example(args):
     net.disconnect_from_slave(servo)
 
 
-def save_config_example(args):
+def save_config_example(args: argparse.Namespace) -> None:
     """Saves the drive configuration into a file."""
 
     servo, net = connect_slave(args)
@@ -34,7 +35,7 @@ def save_config_example(args):
     net.disconnect_from_slave(servo)
 
 
-def setup_command():
+def setup_command() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-n", "--node_id", default=32, type=int, help="Node ID")
