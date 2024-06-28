@@ -26,13 +26,14 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class SlaveState(Enum):
-    INIT_STATE = 1
     NONE_STATE = 0
-    OP_STATE = 8
+    INIT_STATE = 1
     PREOP_STATE = 2
     SAFEOP_STATE = 4
-    STATE_ERROR = 16
-    SAFEOP_ERROR_STATE = SAFEOP_STATE + STATE_ERROR
+    OP_STATE = 8
+    ERROR_STATE = 16
+    PREOP_ERROR_STATE = PREOP_STATE + ERROR_STATE
+    SAFEOP_ERROR_STATE = SAFEOP_STATE + ERROR_STATE
 
 
 class NetStatusListener(Thread):
@@ -171,7 +172,7 @@ class EthercatNetwork(Network):
             self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
         self.__last_init_nodes = list(range(1, nodes + 1))
 
-    def connect_to_slave(  # type: ignore [override]
+    def connect_to_slave(
         self,
         slave_id: int,
         dictionary: str,
@@ -395,21 +396,21 @@ class EthercatNetwork(Network):
             return
         self.__observers_net_state[slave_id].remove(callback)
 
-    def start_status_listener(self) -> None:  # type: ignore [override]
+    def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
             listener = NetStatusListener(self)
             listener.start()
             self.__listener_net_status = listener
 
-    def stop_status_listener(self) -> None:  # type: ignore [override]
+    def stop_status_listener(self) -> None:
         """Stops the NetStatusListener from listening to the drive."""
         if self.__listener_net_status is not None:
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
         self.__listener_net_status = None
 
-    def load_firmware(self, fw_file: str, boot_in_app: bool, slave_id: int = 1) -> None:  # type: ignore [override]
+    def load_firmware(self, fw_file: str, boot_in_app: bool, slave_id: int = 1) -> None:
         """Loads a given firmware file to a target slave.
 
         Args:

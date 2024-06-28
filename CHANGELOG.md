@@ -2,8 +2,23 @@
 
 ## [Unreleased]
 
+### Changed
+- Raise an exception when a CAN transceiver's driver is not installed.
+
+### Fixed
+- SDO Error after a store/restore parameters operation.
+- EoE service initialization error when a slave cannot reach the PreOp state. 
+- EoE connection recovery after a power cycle.
+
+### Added 
+- Support to dictionaries V3 in the virtual drive.
+
+
+## [7.3.2] - 2024-06-05
+
 ### Added
 - Set RPDOMap values by byte string.
+- Function to check if a configuration has been applied to the drive.
 - EtherCAT connection example script.
 - Typing in examples.
 
@@ -13,6 +28,7 @@
 
 ### Fixed
 - Issue when connecting to the virtual drive using an EVE CANopen dictionary.
+- Issue when the KVASER transceiver was disconnected.
 
 ## [7.3.1] - 2024-05-10
 
