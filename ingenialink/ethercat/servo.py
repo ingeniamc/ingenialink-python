@@ -1,3 +1,4 @@
+import os
 import time
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -58,6 +59,9 @@ class EthercatServo(PDOServo):
     interface = Interface.ECAT
 
     DEFAULT_STORE_RECOVERY_TIMEOUT = 1
+
+    DEFAULT_EEPROM_OPERATION_TIMEOUT_uS = 200_000
+    DEFAULT_EEPROM_READ_BYTES_LENGTH = 2
 
     def __init__(
         self,
@@ -319,6 +323,74 @@ class EthercatServo(PDOServo):
         self.slave.set_watchdog(
             self.ETHERCAT_PDO_WATCHDOG, self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout
         )
+
+    def _read_esc_eeprom(
+        self,
+        address: int,
+        length: int = DEFAULT_EEPROM_READ_BYTES_LENGTH,
+        timeout: int = DEFAULT_EEPROM_OPERATION_TIMEOUT_uS,
+    ) -> bytes:
+        """Read from the ESC EEPROM.
+
+        Args:
+            address: EEPROM address to be read.
+            length: Length of data to be read. By default, 2 bytes are read.
+            timeout: Operation timeout (microseconds). By default, 200.000 us.
+
+        Returns:
+            EEPROM data. The read data.
+
+        Raises:
+            ValueError: If the length to be read has an invalid value.
+
+        """
+        if length < 1:
+            raise ValueError("The minimum length is 1 byte.")
+        data = bytes()
+        while len(data) < length:
+            data += self.slave.eeprom_read(address, timeout)
+            address += 2
+        if len(data) > length:
+            data = data[:length]
+        return data
+
+    def _write_esc_eeprom(
+        self, address: int, data: bytes, timeout: int = DEFAULT_EEPROM_OPERATION_TIMEOUT_uS
+    ) -> None:
+        """Write to the ESC EEPROM.
+
+        Args:
+            address: EEPROM address to be written.
+            data: Data to be written. The data length must be a multiple of 2 bytes.
+            timeout: Operation timeout (microseconds). By default, 200.000 us.
+
+        Raises:
+            ValueError: If the data has the wrong size.
+
+        """
+        if len(data) % 2 != 0:
+            raise ValueError("The data length must be a multiple of 2 bytes.")
+        start_address = address
+        while data:
+            self.slave.eeprom_write(start_address, data[:2], timeout)
+            data = data[2:]
+            start_address += 1
+
+    def _write_esc_eeprom_from_file(self, file_path: str) -> None:
+        """Load a binary file to the ESC EEPROM.
+
+        Args:
+            file_path: Path to the binary file to be loaded.
+
+        Raises:
+            FileNotFoundError: If the binary file cannot be found.
+
+        """
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError(f"Could not find {file_path}.")
+        with open(file_path, "rb") as file:
+            data = file.read()
+        self._write_esc_eeprom(address=0, data=data)
 
     @property
     def slave(self) -> "CdefSlave":

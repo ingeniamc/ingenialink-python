@@ -142,6 +142,10 @@ class EthernetServo(Servo):
             except ILWrongRegisterError as e:
                 logger.error(e)
                 return self.__receive_mcb_frame(reg)
+            except ILTimeoutError as e:
+                logger.error(f"{e}. Retrying..")
+                self.socket.sendall(frame)
+                return self.__receive_mcb_frame(reg)
         finally:
             self._lock.release()
 

@@ -1,4 +1,5 @@
 import contextlib
+import ctypes
 import os
 import platform
 import re
@@ -13,7 +14,7 @@ import can
 import canopen
 import ingenialogger
 from can import CanError
-from can.interfaces.kvaser.canlib import CANLIBOperationError
+from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
@@ -30,6 +31,16 @@ if platform.system() == "Windows":
 else:
     VCIError = None
 from canopen import Network as NetworkLib
+
+KVASER_DRIVER_INSTALLED = True
+try:
+    from can.interfaces.kvaser.canlib import (
+        CANLIBError,
+        CANLIBOperationError,
+        canGetNumberOfChannels,
+    )
+except ImportError:
+    KVASER_DRIVER_INSTALLED = False
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -214,19 +225,11 @@ class CanopenNetwork(Network):
         self.__channel: Union[int, str] = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
         self._connection: Optional[NetworkLib] = None
-        self.__net_state = NET_STATE.DISCONNECTED
         self.__servos_state: Dict[int, NET_STATE] = {}
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: Dict[int, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
             list
         )
-        self.__observers_fw_load_status_msg: List[Callable[[str], Any]] = []
-        self.__observers_fw_load_progress: List[Callable[[int], Any]] = []
-        self.__observers_fw_load_errors_enabled: List[Callable[[bool], Any]] = []
-
-        self.__fw_load_status_msg = ""
-        self.__fw_load_progress = 0
-        self.__fw_load_errors_enabled = True
 
         self.__connection_args = {
             "interface": self.__device,
@@ -822,42 +825,6 @@ class CanopenNetwork(Network):
         logger.info("Download Finished!")
         servo._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
 
-    def __set_fw_load_status_msg(self, new_value: str) -> None:
-        """Updates the fw_load_status_msg value and triggers
-        all the callbacks associated.
-
-        Args:
-            new_value: New value for the variable.
-
-        """
-        self.__fw_load_status_msg = new_value
-        for callback in self.__observers_fw_load_status_msg:
-            callback(new_value)
-
-    def __set_fw_load_progress(self, new_value: int) -> None:
-        """Updates the fw_load_progress value and triggers
-        all the callbacks associated.
-
-        Args:
-            new_value: New value for the variable.
-
-        """
-        self.__fw_load_progress = new_value
-        for callback in self.__observers_fw_load_progress:
-            callback(new_value)
-
-    def __set_fw_load_errors_enabled(self, new_value: bool) -> None:
-        """Updates the fw_load_errors_enabled value and triggers
-        all the callbacks associated.
-
-        Args:
-            new_value: New value for the variable.
-
-        """
-        self.__fw_load_errors_enabled = new_value
-        for callback in self.__observers_fw_load_errors_enabled:
-            callback(new_value)
-
     def change_baudrate(
         self,
         target_node: int,
@@ -1081,12 +1048,38 @@ class CanopenNetwork(Network):
     @staticmethod
     def get_available_devices() -> List[Tuple[str, Union[str, int]]]:
         """Get the available CAN devices and their channels"""
-        unavailable_devices = [CAN_DEVICE.VIRTUAL]
+        unavailable_devices = [CAN_DEVICE.KVASER, CAN_DEVICE.VIRTUAL]
         if platform.system() == "Windows":
             unavailable_devices.append(CAN_DEVICE.SOCKETCAN)
         return [
             (available_device["interface"], available_device["channel"])
-            for available_device in can.detect_available_configs(
-                [device.value for device in CAN_DEVICE if device not in unavailable_devices]
+            for available_device in (
+                can.detect_available_configs(
+                    [device.value for device in CAN_DEVICE if device not in unavailable_devices]
+                )
+                + CanopenNetwork._get_available_kvaser_devices()
             )
         ]
+
+    @staticmethod
+    def _get_available_kvaser_devices() -> List[Dict[str, Any]]:
+        """Get the available Kvaser devices and their channels"""
+        if not KVASER_DRIVER_INSTALLED:
+            return []
+        CanopenNetwork._reload_kvaser_lib()
+        num_channels = ctypes.c_int(0)
+        with contextlib.suppress(CANLIBError, NameError):
+            canGetNumberOfChannels(ctypes.byref(num_channels))
+        return [
+            {"interface": "kvaser", "channel": channel}
+            for channel in range(num_channels.value)
+            if "Virtual" not in can.interfaces.kvaser.get_channel_info(channel)
+        ]
+
+    @staticmethod
+    def _reload_kvaser_lib() -> None:
+        """Reload the Kvaser library to refresh the connected transceivers."""
+        canInitializeLibrary = get_canlib_function("canInitializeLibrary")
+        canUnLoadLibrary = get_canlib_function("canUnloadLibrary")
+        canUnLoadLibrary()
+        canInitializeLibrary()

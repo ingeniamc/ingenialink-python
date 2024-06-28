@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Methods to read/write to the ESC EEPROM.
+
 ### Changed
 - Raise an exception when a CAN transceiver's driver is not installed.
 
@@ -9,10 +12,12 @@
 - SDO Error after a store/restore parameters operation.
 - EoE service initialization error when a slave cannot reach the PreOp state. 
 - EoE connection recovery after a power cycle.
+- Stop the servo status listener when a EtherCAT drive cannot reach the PreOp state.
 
 ### Added 
 - Support to dictionaries V3 in the virtual drive.
-
+- Arguments in examples and tests.
+- Retry sending an Ethernet request after a communication timeout.
 
 ## [7.3.2] - 2024-06-05
 

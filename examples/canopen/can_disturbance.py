@@ -1,16 +1,17 @@
+import argparse
 import math
-import sys
 from typing import List, Union, cast
 
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from ingenialink.exceptions import ILRegisterNotFoundError
 from ingenialink.register import REG_DTYPE
 
 
-def disturbance_example() -> None:
+def disturbance_example(args: argparse.Namespace) -> None:
     # Frequency divider to set disturbance frequency
     divider = 100
     # Calculate time between disturbance samples
-    sample_period = divider/20000
+    sample_period = divider / 20000
     # The disturbance signal will be a simple harmonic motion (SHM) with frequency 0.5Hz and 2000 counts of amplitude
     signal_frequency = 0.5
     signal_amplitude = 1
@@ -59,34 +60,57 @@ def disturbance_example() -> None:
         ],
     )
 
-    net = CanopenNetwork(device=CAN_DEVICE.IXXAT,
-                         channel=0,
-                         baudrate=CAN_BAUDRATE.Baudrate_1M)
-    nodes = net.scan_slaves()
-    servo = net.connect_to_slave(
-        target=nodes[0],
-        dictionary='../../resources/dictionaries/eve-net-c_can_1.8.1.xdf')
+    can_device = CAN_DEVICE(args.transceiver)
+    can_baudrate = CAN_BAUDRATE(args.baudrate)
+    net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
+    servo = net.connect_to_slave(target=args.node_id, dictionary=args.dictionary_path)
 
-    servo.disturbance_disable()
-    servo.disturbance_remove_all_mapped_registers()
-    servo.disturbance_set_mapped_register(0, 0x2021, 1, REG_DTYPE.FLOAT.value, 4)
-    servo.disturbance_set_mapped_register(1, 0x2020, 1, REG_DTYPE.S32.value, 4)
-    servo.disturbance_set_mapped_register(2, 0x201A, 1, REG_DTYPE.FLOAT.value, 4)
-    servo.disturbance_set_mapped_register(3, 0x201B, 1, REG_DTYPE.FLOAT.value, 4)
-    servo.disturbance_set_mapped_register(4, 0x2024, 1, REG_DTYPE.U16.value, 2)
+    try:
+        servo.disturbance_disable()
+    except ILRegisterNotFoundError:
+        print("Disturbance is not available for this drive")
+    else:
+        servo.disturbance_remove_all_mapped_registers()
+        servo.disturbance_set_mapped_register(0, 0x2021, 1, REG_DTYPE.FLOAT.value, 4)
+        servo.disturbance_set_mapped_register(1, 0x2020, 1, REG_DTYPE.S32.value, 4)
+        servo.disturbance_set_mapped_register(2, 0x201A, 1, REG_DTYPE.FLOAT.value, 4)
+        servo.disturbance_set_mapped_register(3, 0x201B, 1, REG_DTYPE.FLOAT.value, 4)
+        servo.disturbance_set_mapped_register(4, 0x2024, 1, REG_DTYPE.U16.value, 2)
 
-    servo.disturbance_write_data([0,1,2,3,4],
-                                 [REG_DTYPE.FLOAT,
-                                  REG_DTYPE.S32,
-                                  REG_DTYPE.FLOAT,
-                                  REG_DTYPE.FLOAT,
-                                  REG_DTYPE.U16],
-                                 [data_vel, data_pos, data_curr_q, data_curr_d, data_positioning_opt])
-    servo.disturbance_enable()
-    servo.disturbance_disable()
-    net.disconnect_from_slave(servo)
+        servo.disturbance_write_data(
+            [0, 1, 2, 3, 4],
+            [REG_DTYPE.FLOAT, REG_DTYPE.S32, REG_DTYPE.FLOAT, REG_DTYPE.FLOAT, REG_DTYPE.U16],
+            [data_vel, data_pos, data_curr_q, data_curr_d, data_positioning_opt],
+        )
+        servo.disturbance_enable()
+        servo.disturbance_disable()
+    finally:
+        net.disconnect_from_slave(servo)
 
 
-if __name__ == '__main__':
-    disturbance_example()
-    sys.exit(0)
+def setup_command() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Canopen example")
+    parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
+    parser.add_argument("-n", "--node_id", default=32, type=int, help="Node ID")
+    parser.add_argument(
+        "-t",
+        "--transceiver",
+        default="ixxat",
+        choices=["pcan", "kvaser", "ixxat"],
+        help="CAN transceiver",
+    )
+    parser.add_argument(
+        "-b",
+        "--baudrate",
+        default=1000000,
+        type=int,
+        choices=[50000, 100000, 125000, 250000, 500000, 1000000],
+        help="CAN baudrate",
+    )
+    parser.add_argument("-c", "--channel", default=0, type=int, help="CAN transceiver channel")
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = setup_command()
+    disturbance_example(args)

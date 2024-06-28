@@ -1,4 +1,4 @@
-import sys
+import argparse
 from typing import List
 
 import numpy as np
@@ -8,15 +8,13 @@ from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethernet.register import EthernetRegister
 
 
-def monitoring_example() -> List[NDArray[np.float_]]:
+def monitoring_example(args: argparse.Namespace) -> List[NDArray[np.float_]]:
     registers_key = [
         "DRV_PROT_TEMP_VALUE",
     ]
 
     net = EthernetNetwork()
-    servo = net.connect_to_slave("192.168.2.22",
-                                 "../../resources/dictionaries/eve-net-c_eth_1.8.1.xdf",
-                                 1061)
+    servo = net.connect_to_slave(args.ip_address, args.dictionary_path, args.port)
     # Monitoring
     # Remove all mapped registers
     servo.monitoring_disable()
@@ -47,13 +45,13 @@ def monitoring_example() -> List[NDArray[np.float_]]:
         tmp_mon_data.append([])
         monitor_data.append([])
     # Configure monitoring SOC as forced
-    servo.write('MON_CFG_SOC_TYPE', 0, subnode=0)
+    servo.write("MON_CFG_SOC_TYPE", 0, subnode=0)
     # Configure monitoring EoC as number of samples
-    servo.write('MON_CFG_EOC_TYPE', 3, subnode=0)
+    servo.write("MON_CFG_EOC_TYPE", 3, subnode=0)
     # Configure number of samples
     window_samples = 599
     total_num_samples = window_samples
-    servo.write('MON_CFG_WINDOW_SAMP', window_samples, subnode=0)
+    servo.write("MON_CFG_WINDOW_SAMP", window_samples, subnode=0)
     # Enable monitoring
     servo.monitoring_enable()
     # Check monitoring status
@@ -63,7 +61,7 @@ def monitoring_example() -> List[NDArray[np.float_]]:
     if (monitor_status & 0x1) != 1:
         raise ValueError(f"ERROR MONITOR STATUS: {monitor_status}")
     # Force Trigger
-    servo.write('MON_CMD_FORCE_TRIGGER', 1, subnode=0)
+    servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
     sampling_time_s = 1 / sampling_freq
     data_obtained = False
 
@@ -81,23 +79,14 @@ def monitoring_example() -> List[NDArray[np.float_]]:
                 for idx, key in enumerate(registers_key):
                     index = idx
                     dtype = servo.dictionary.registers(1)[key].dtype
-                    tmp_monitor_data = servo. \
-                        monitoring_channel_data(index, dtype)
-                    tmp_mon_data[index] = \
-                        tmp_mon_data[index] + tmp_monitor_data
+                    tmp_monitor_data = servo.monitoring_channel_data(index, dtype)
+                    tmp_mon_data[index] = tmp_mon_data[index] + tmp_monitor_data
                     if len(tmp_mon_data[index]) >= total_num_samples:
-                        tmp_mon_data[index] = np.resize(
-                            tmp_mon_data[index], total_num_samples
-                        )
-                        data_x = np.arange(
-                            (window_samples) * sampling_time_s,
-                            sampling_time_s
-                        )
+                        tmp_mon_data[index] = np.resize(tmp_mon_data[index], total_num_samples)
+                        data_x = np.arange((window_samples) * sampling_time_s, sampling_time_s)
 
                         if data_x.size > len(tmp_mon_data[index]):
-                            data_x = np.resize(
-                                data_x, len(tmp_mon_data[index])
-                            )
+                            data_x = np.resize(data_x, len(tmp_mon_data[index]))
                         data_y = tmp_mon_data[index]
                         monitor_data[index] = np.round(data_y, decimals=2)
                         data_obtained = True
@@ -105,7 +94,7 @@ def monitoring_example() -> List[NDArray[np.float_]]:
                     # Single-shot mode
                     read_process_finished = True
         except Exception as e:
-            print('Exception monitoring: {}'.format(e))
+            print("Exception monitoring: {}".format(e))
             break
     print("Finished")
 
@@ -113,6 +102,14 @@ def monitoring_example() -> List[NDArray[np.float_]]:
     return monitor_data
 
 
-if __name__ == '__main__':
-    monitoring_example()
-    sys.exit(0)
+def setup_command() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Ethernet connection example")
+    parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
+    parser.add_argument("-ip", "--ip_address", help="IP address", type=str, required=True)
+    parser.add_argument("-p", "--port", help="TCP port", type=int, default=1061)
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = setup_command()
+    monitoring_example(args)
