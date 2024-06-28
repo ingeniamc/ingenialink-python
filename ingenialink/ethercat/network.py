@@ -468,7 +468,8 @@ class EthercatNetwork(Network):
         try:
             if sys_name == "linux":
                 subprocess.run(
-                    f"{exec_path} {self.interface_name} {slave_id} {fw_file} {int(boot_in_app)} {password}",
+                    f"{exec_path} {self.interface_name} {slave_id} {fw_file} "
+                    f"{int(boot_in_app)} {password}",
                     check=True,
                     shell=True,
                     encoding="utf-8",
