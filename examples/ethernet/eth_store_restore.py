@@ -3,7 +3,7 @@ import argparse
 from ingenialink.ethernet.network import EthernetNetwork
 
 
-def eth_store_parameters(args):
+def eth_store_parameters(args: argparse.Namespace) -> None:
     net = EthernetNetwork()
     servo = net.connect_to_slave(args.ip_address, args.dictionary_path, args.port)
 
@@ -18,7 +18,7 @@ def eth_store_parameters(args):
     net.disconnect_from_slave(servo)
 
 
-def eth_restore_parameters(args):
+def eth_restore_parameters(args: argparse.Namespace) -> None:
     net = EthernetNetwork()
     servo = net.connect_to_slave(args.ip_address, args.dictionary_path, args.port)
 
@@ -33,7 +33,7 @@ def eth_restore_parameters(args):
     net.disconnect_from_slave(servo)
 
 
-def setup_command():
+def setup_command() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Ethernet connection example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-ip", "--ip_address", help="IP address", type=str, required=True)

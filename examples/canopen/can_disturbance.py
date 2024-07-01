@@ -1,12 +1,13 @@
 import argparse
 import math
+from typing import List, Union, cast
 
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.exceptions import ILRegisterNotFoundError
 from ingenialink.register import REG_DTYPE
 
 
-def disturbance_example(args):
+def disturbance_example(args: argparse.Namespace) -> None:
     # Frequency divider to set disturbance frequency
     divider = 100
     # Calculate time between disturbance samples
@@ -20,10 +21,17 @@ def disturbance_example(args):
     # A = signal_amplitude (Amplitude)
     # t = sample_period*i (time)
     # w = signal_frequency*2*math.pi (angular frequency)
-    data_pos = [
-        int(1000 * signal_amplitude * math.sin(sample_period * i * signal_frequency * 2 * math.pi))
-        for i in range(n_samples)
-    ]
+    data_pos = cast(
+        List[Union[int, float]],
+        [
+            int(
+                1000
+                * signal_amplitude
+                * math.sin(sample_period * i * signal_frequency * 2 * math.pi)
+            )
+            for i in range(n_samples)
+        ],
+    )
     data_vel = [
         signal_amplitude * math.sin(sample_period * i * signal_frequency * 2 * math.pi)
         for i in range(n_samples)
@@ -38,16 +46,19 @@ def disturbance_example(args):
         * math.sin(sample_period * i * signal_frequency * 2 * math.pi + math.pi / 2)
         for i in range(n_samples)
     ]
-    data_positioning_opt = [
-        int(
-            abs(
-                500
-                * signal_amplitude
-                * math.sin(sample_period * i * signal_frequency * 2 * math.pi + math.pi)
+    data_positioning_opt = cast(
+        List[Union[int, float]],
+        [
+            int(
+                abs(
+                    500
+                    * signal_amplitude
+                    * math.sin(sample_period * i * signal_frequency * 2 * math.pi + math.pi)
+                )
             )
-        )
-        for i in range(n_samples)
-    ]
+            for i in range(n_samples)
+        ],
+    )
 
     can_device = CAN_DEVICE(args.transceiver)
     can_baudrate = CAN_BAUDRATE(args.baudrate)
@@ -77,7 +88,7 @@ def disturbance_example(args):
         net.disconnect_from_slave(servo)
 
 
-def setup_command():
+def setup_command() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-n", "--node_id", default=32, type=int, help="Node ID")

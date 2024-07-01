@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Methods to read/write to the ESC EEPROM.
+
 ### Changed
 - Raise an exception when a CAN transceiver's driver is not installed.
 - Add optional password for the FOE bootloader.
@@ -23,6 +26,7 @@
 - Set RPDOMap values by byte string.
 - Function to check if a configuration has been applied to the drive.
 - EtherCAT connection example script.
+- Typing in examples.
 
 ### Changed
 - The signature of the load_firmware method of EthercatNetwork is changed to add the boot_in_app argument.

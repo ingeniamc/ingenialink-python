@@ -1,4 +1,5 @@
 import contextlib
+import ctypes
 import os
 import platform
 import re
@@ -13,7 +14,7 @@ import can
 import canopen
 import ingenialogger
 from can import CanError
-from can.interfaces.kvaser.canlib import CANLIBOperationError
+from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
@@ -30,6 +31,16 @@ if platform.system() == "Windows":
 else:
     VCIError = None
 from canopen import Network as NetworkLib
+
+KVASER_DRIVER_INSTALLED = True
+try:
+    from can.interfaces.kvaser.canlib import (
+        CANLIBError,
+        CANLIBOperationError,
+        canGetNumberOfChannels,
+    )
+except ImportError:
+    KVASER_DRIVER_INSTALLED = False
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -1037,12 +1048,38 @@ class CanopenNetwork(Network):
     @staticmethod
     def get_available_devices() -> List[Tuple[str, Union[str, int]]]:
         """Get the available CAN devices and their channels"""
-        unavailable_devices = [CAN_DEVICE.VIRTUAL]
+        unavailable_devices = [CAN_DEVICE.KVASER, CAN_DEVICE.VIRTUAL]
         if platform.system() == "Windows":
             unavailable_devices.append(CAN_DEVICE.SOCKETCAN)
         return [
             (available_device["interface"], available_device["channel"])
-            for available_device in can.detect_available_configs(
-                [device.value for device in CAN_DEVICE if device not in unavailable_devices]
+            for available_device in (
+                can.detect_available_configs(
+                    [device.value for device in CAN_DEVICE if device not in unavailable_devices]
+                )
+                + CanopenNetwork._get_available_kvaser_devices()
             )
         ]
+
+    @staticmethod
+    def _get_available_kvaser_devices() -> List[Dict[str, Any]]:
+        """Get the available Kvaser devices and their channels"""
+        if not KVASER_DRIVER_INSTALLED:
+            return []
+        CanopenNetwork._reload_kvaser_lib()
+        num_channels = ctypes.c_int(0)
+        with contextlib.suppress(CANLIBError, NameError):
+            canGetNumberOfChannels(ctypes.byref(num_channels))
+        return [
+            {"interface": "kvaser", "channel": channel}
+            for channel in range(num_channels.value)
+            if "Virtual" not in can.interfaces.kvaser.get_channel_info(channel)
+        ]
+
+    @staticmethod
+    def _reload_kvaser_lib() -> None:
+        """Reload the Kvaser library to refresh the connected transceivers."""
+        canInitializeLibrary = get_canlib_function("canInitializeLibrary")
+        canUnLoadLibrary = get_canlib_function("canUnloadLibrary")
+        canUnLoadLibrary()
+        canInitializeLibrary()

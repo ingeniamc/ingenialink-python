@@ -3,7 +3,7 @@ import argparse
 from ingenialink.ethercat.network import EthercatNetwork
 
 
-def main(args):
+def main(args: argparse.Namespace) -> None:
     net = EthercatNetwork(args.interface)
     servo = net.connect_to_slave(args.slave_id, args.dictionary_path)
     firmware_version = servo.read("DRV_ID_SOFTWARE_VERSION")
@@ -11,7 +11,7 @@ def main(args):
     net.disconnect_from_slave(servo)
 
 
-def setup_command():
+def setup_command() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="EtherCAT connection example script.")
     interface_help = """Network adapter interface name. To find it: \n
     - On Windows, \\Device\\NPF_{id}. To get the id, run the command: wmic nic get name, guid \n

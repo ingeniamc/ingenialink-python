@@ -3,27 +3,27 @@ import argparse
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 
 
-def print_status_message(msg):
+def print_status_message(msg: str) -> None:
     """Example of a callback function."""
     print(f"Current status message: {msg}")
 
 
-def print_progress(value):
+def print_progress(value: int) -> None:
     """Example of a callback function."""
     print(f"Progress: {value}")
 
 
-def print_progress_total(value):
+def print_progress_total(value: str) -> None:
     """Example of a callback function."""
     print(f"Total progress to be done: {value}")
 
 
-def print_errors_enabled(value):
+def print_errors_enabled(value: int) -> None:
     """Example of a callback function."""
     print(f"Errors enabled: {value}")
 
 
-def load_firmware_example(args):
+def load_firmware_example(args: argparse.Namespace) -> None:
     """Loads a firmware to an already connected drive."""
     can_device = CAN_DEVICE(args.transceiver)
     can_baudrate = CAN_BAUDRATE(args.baudrate)
@@ -54,7 +54,19 @@ def load_firmware_example(args):
         print("Could not find any nodes")
 
 
-def setup_command():
+def load_firmware_example_disconnected() -> None:
+    """Loads a firmware to a disconnected drive."""
+    net = CanopenNetwork(device=CAN_DEVICE.IXXAT, channel=0, baudrate=CAN_BAUDRATE.Baudrate_1M)
+    net.load_firmware(
+        32,
+        "../../resources/firmware/eve-net-c_1.8.1.sfu",
+        print_status_message,
+        print_progress,
+        print_errors_enabled,
+    )
+
+
+def setup_command() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-f", "--firmware_path", help="Path to the firmware file", required=True)

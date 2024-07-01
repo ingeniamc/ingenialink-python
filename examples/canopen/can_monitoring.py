@@ -1,12 +1,15 @@
 import argparse
+from typing import List
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from ingenialink.canopen.register import CanopenRegister
 from ingenialink.exceptions import ILRegisterNotFoundError
 
 
-def monitoring_example(args):
+def monitoring_example(args: argparse.Namespace) -> List[NDArray[np.float_]]:
     registers_key = [
         "DRV_PROT_TEMP_VALUE",
     ]
@@ -22,24 +25,31 @@ def monitoring_example(args):
     except ILRegisterNotFoundError:
         print("Monitoring is not available for this drive")
         net.disconnect_from_slave(servo)
-        return
+        return []
 
     servo.monitoring_remove_all_mapped_registers()
 
     # Calculate the monitoring frequency
-    ccp_value = 12
+    ccp_value = 12.5
     servo.write("MON_DIST_FREQ_DIV", ccp_value, subnode=0)
     position_velocity_loop_rate = servo.read("DRV_POS_VEL_RATE")
+    if not isinstance(position_velocity_loop_rate, (float, int)):
+        raise TypeError(
+            "Read register expected numeric value, but received string or byte",
+            position_velocity_loop_rate,
+        )
     sampling_freq = round(position_velocity_loop_rate / ccp_value, 2)
-
     read_process_finished = False
-    tmp_mon_data = []
-    monitor_data = []
+    tmp_mon_data: List[NDArray[np.float_]] = []
+    monitor_data: List[NDArray[np.float_]] = []
 
     for idx, key in enumerate(registers_key):
-        mapped_reg = servo.dictionary.registers(1)[key].idx
-        dtype = servo.dictionary.registers(1)[key].dtype.value
-        servo.monitoring_set_mapped_register(idx, mapped_reg, 1, dtype, 4)
+        reg = servo.dictionary.registers(1)[key]
+        if not isinstance(reg, CanopenRegister):
+            raise TypeError("Expected register type to be CanopenRegister.")
+        mapped_reg = reg.idx
+        dtype_value = servo.dictionary.registers(1)[key].dtype.value
+        servo.monitoring_set_mapped_register(idx, mapped_reg, 1, dtype_value, 4)
         tmp_mon_data.append([])
         monitor_data.append([])
     # Configure monitoring SOC as forced
@@ -54,9 +64,10 @@ def monitoring_example(args):
     servo.monitoring_enable()
     # Check monitoring status
     monitor_status = servo.read("MON_DIST_STATUS", subnode=0)
+    if not isinstance(monitor_status, int):
+        raise TypeError("Expected monitor status to be of type int.")
     if (monitor_status & 0x1) != 1:
-        print("ERROR MONITOR STATUS: ", monitor_status)
-        return -1
+        raise ValueError(f"ERROR MONITOR STATUS: {monitor_status}")
     # Force Trigger
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
     sampling_time_s = 1 / sampling_freq
@@ -66,11 +77,15 @@ def monitoring_example(args):
     while not read_process_finished:
         try:
             monit_nmb_blocks = servo.read("MON_CFG_CYCLES_VALUE", subnode=0)
+            if not isinstance(monit_nmb_blocks, (float, int)):
+                raise TypeError(
+                    "Read register expected numeric value, but received string or byte",
+                    position_velocity_loop_rate,
+                )
             if monit_nmb_blocks > 0:
                 servo.monitoring_read_data()
                 for idx, key in enumerate(registers_key):
                     index = idx
-                    dtype = servo.dictionary.registers(1)[key].dtype
                     tmp_monitor_data = servo.monitoring_channel_data(index)
                     tmp_mon_data[index] = tmp_mon_data[index] + tmp_monitor_data
                     if len(tmp_mon_data[index]) >= total_num_samples:
@@ -94,7 +109,7 @@ def monitoring_example(args):
     return monitor_data
 
 
-def setup_command():
+def setup_command() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-n", "--node_id", default=32, type=int, help="Node ID")

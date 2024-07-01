@@ -423,8 +423,8 @@ class EthercatNetwork(Network):
 
         Args:
             fw_file: Path to the firmware file.
-            boot_in_app: True if the application includes FoE (i.e, ``fw_file`` extension is .sfu),
-                False otherwise.
+            boot_in_app: True if the application includes the bootloader (i.e, ``fw_file`` extension
+                is .sfu), False otherwise.
             slave_id: Slave ID to which load the firmware file.
             password: Password to load the firmware file. If ``None`` the default password will be
                 used.
