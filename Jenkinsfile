@@ -43,9 +43,6 @@ pipeline {
                     }
                     post {
                         always {
-                            bat """
-                                move .coverage .coverage_canopen
-                            """
                             junit 'pytest_canopen_report.xml'
                         }
                     }
@@ -58,22 +55,8 @@ pipeline {
                     }
                     post {
                         always {
-                            bat """
-                                move .coverage .coverage_ethernet
-                            """
                             junit 'pytest_ethernet_report.xml'
                         }
-                    }
-                }
-                stage('Save test results') {
-                    steps {
-                        unstash 'coverage_docker'
-                        unstash 'coverage_reports'
-                        bat '''
-                            venv\\Scripts\\python.exe -m tox -e coverage -- .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
-                        '''
-                        publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
-                        archiveArtifacts artifacts: '*.xml'
                     }
                 }
             }
