@@ -38,25 +38,15 @@ pipeline {
                 stage('Run CANopen tests') {
                     steps {
                         bat """
-                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol canopen --junitxml=pytest_canopen_report.xml
+                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol canopen
                         """
-                    }
-                    post {
-                        always {
-                            junit 'pytest_canopen_report.xml'
-                        }
                     }
                 }
                 stage('Run Ethernet tests') {
                     steps {
                         bat """
-                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
+                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethernet
                         """
-                    }
-                    post {
-                        always {
-                            junit 'pytest_ethernet_report.xml'
-                        }
                     }
                 }
             }
