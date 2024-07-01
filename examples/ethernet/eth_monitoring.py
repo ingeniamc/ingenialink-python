@@ -10,7 +10,7 @@ from ingenialink.ethernet.register import EthernetRegister
 
 def monitoring_example(args: argparse.Namespace) -> List[NDArray[np.float_]]:
     registers_key = [
-        "DRV_PROT_TEMP_VALUE",
+        "FBK_VOL_C_VALUE",
     ]
 
     net = EthernetNetwork()
