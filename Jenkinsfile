@@ -35,18 +35,36 @@ pipeline {
                         checkout scm
                     }
                 }
+                stage('Install deps') {
+                    steps {
+                        bat """
+                            py -${DEFAULT_PYTHON_VERSION} -m venv venv
+                            venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
+                        """
+                    }
+                }
                 stage('Run CANopen tests') {
                     steps {
                         bat """
-                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol canopen
+                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol canopen --junitxml=pytest_canopen_report.xml
                         """
+                    }
+                    post {
+                        always {
+                            junit 'pytest_canopen_report.xml'
+                        }
                     }
                 }
                 stage('Run Ethernet tests') {
                     steps {
                         bat """
-                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethernet
+                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
                         """
+                    }
+                    post {
+                        always {
+                            junit 'pytest_ethernet_report.xml'
+                        }
                     }
                 }
             }
