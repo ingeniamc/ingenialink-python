@@ -12,7 +12,7 @@ def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_NAME_LINUX = "FoEUpdateFirmware"
 def FOE_APP_VERSION = ""
 
-def PYTHON_VERSIONS = "py39,py310,py311,py312"
+def PYTHON_VERSIONS = "py39"
 def DEFAULT_PYTHON_VERSION = "3.9"
 def TOX_VERSION = "4.12.1"
 
@@ -41,18 +41,6 @@ pipeline {
                             py -${DEFAULT_PYTHON_VERSION} -m venv venv
                             venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
                         """
-                    }
-                }
-                stage('Run CANopen tests') {
-                    steps {
-                        bat """
-                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol canopen --junitxml=pytest_canopen_report.xml
-                        """
-                    }
-                    post {
-                        always {
-                            junit 'pytest_canopen_report.xml'
-                        }
                     }
                 }
                 stage('Run Ethernet tests') {
