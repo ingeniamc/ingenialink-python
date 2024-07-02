@@ -7,6 +7,7 @@
 
 ### Changed
 - Raise an exception when a CAN transceiver's driver is not installed.
+- Store nack error code on NACK exceptions
 
 ### Fixed
 - SDO Error after a store/restore parameters operation.

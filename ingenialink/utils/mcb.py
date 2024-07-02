@@ -149,8 +149,7 @@ class MCB:
 
         if cmd != MCB_CMD_ACK:
             err_code_little = int.from_bytes(data[: cls.ERR_CODE_SIZE], byteorder="little")
-            err_code_big = err_code_little.to_bytes(cls.ERR_CODE_SIZE, byteorder="big")
-            raise ILNACKError(f"Communications error (NACK -> 0x{err_code_big.hex().upper()})")
+            raise ILNACKError(err_code_little)
         if expected_address != recv_add:
             raise ILWrongRegisterError(
                 f"Received address: {hex(recv_add)} does "
