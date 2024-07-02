@@ -68,8 +68,8 @@ def test_read_mcb_frame_wrong_crc(expected_address, frame):
 @pytest.mark.parametrize(
     "expected_address, frame, nack_error_code",
     [
-        (0x11, "a1001c0100000106000000009ad7", "0x06010000"),
-        (0x11, "a1001c01772f2f3a00004650608b", "0x3A2F2F77"),
+        (0x11, "a1001c0100000106000000009ad7", 0x06010000),
+        (0x11, "a1001c01772f2f3a00004650608b", 0x3A2F2F77),
     ],
 )
 def test_read_mcb_frame_nack(expected_address, frame, nack_error_code):
@@ -77,7 +77,8 @@ def test_read_mcb_frame_nack(expected_address, frame, nack_error_code):
     with pytest.raises(ILNACKError) as e_info:
         MCB.read_mcb_data(expected_address, frame_byte_arr)
 
-    assert e_info.value.message == f"Communications error (NACK -> {nack_error_code})"
+    assert e_info.value.error_code == nack_error_code
+    assert e_info.value.message == f"Communications error (NACK -> 0x{nack_error_code:08X})"
 
 
 @pytest.mark.no_connection
