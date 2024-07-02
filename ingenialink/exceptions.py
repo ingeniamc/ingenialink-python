@@ -97,7 +97,8 @@ class ILWrongCRCError(ILError):
 class ILNACKError(ILError):
     """IngeniaLink NACK error."""
 
-    pass
+    def __init__(self, message: str):
+        self.message = message
 
 
 class ILDictionaryParseError(ILError):
