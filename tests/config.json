@@ -1,12 +1,12 @@
 {
   "ethernet": [
   {
-    "dictionary": "//awe-srv-max-prd/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-c_eth_2.4.0.xdf",
-    "ip": "192.168.2.10",
+    "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_eth_2.4.0.xdf",
+    "ip": "192.168.2.11",
     "port": 1061,
     "save_config_file": "ethernet-config.xcf",
-    "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_eve_can/1.2.0/config.xml",
-    "fw_file": "//awe-srv-max-prd/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-c_2.4.0.sfu"
+    "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml",
+    "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_2.4.0.lfu"
   }
   ],
   "ethercat": [

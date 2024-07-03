@@ -30,7 +30,7 @@ def monitoring_example(args: argparse.Namespace) -> List[NDArray[np.float_]]:
     servo.monitoring_remove_all_mapped_registers()
 
     # Calculate the monitoring frequency
-    ccp_value = 12.5
+    ccp_value = 12
     servo.write("MON_DIST_FREQ_DIV", ccp_value, subnode=0)
     position_velocity_loop_rate = servo.read("DRV_POS_VEL_RATE")
     if not isinstance(position_velocity_loop_rate, (float, int)):
