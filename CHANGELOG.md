@@ -7,6 +7,7 @@
 
 ### Changed
 - Raise an exception when a CAN transceiver's driver is not installed.
+- Add optional password for the FOE bootloader.
 - Store nack error code on NACK exceptions
 
 ### Fixed
