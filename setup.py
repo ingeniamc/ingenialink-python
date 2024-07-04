@@ -45,7 +45,7 @@ setuptools.setup(
         "ingenialogger>=0.2.1",
         "ping3==4.0.3",
         "pysoem>=1.1.6, <1.2.0",
-        "numpy==1.26.3",
+        "numpy>=1.26.0",
         "scipy==1.12.0",
         "bitarray==2.9.2",
     ],
