@@ -14,13 +14,13 @@ from ingenialink.exceptions import ILWrongCRCError, ILNACKError, ILWrongRegister
         (MCB_CMD_READ, 1, 0x630, None, REG_DTYPE.FLOAT, False, "a100026300000000000000009fcc"),
         (MCB_CMD_WRITE, 1, 0x630, 25.5, REG_DTYPE.FLOAT, False, "a10004630000cc4100000000cab1"),
         (
-            MCB_CMD_WRITE,
-            1,
-            0x6E5,
-            "http://www.ingeniamc.com",
-            REG_DTYPE.STR,
-            True,
-            "a100556e1800000000000000b44b687474703a2f2f7777772e696e67656e69616d632e636f6d",
+                MCB_CMD_WRITE,
+                1,
+                0x6E5,
+                "http://www.ingeniamc.com",
+                REG_DTYPE.STR,
+                True,
+                "a100556e1800000000000000b44b687474703a2f2f7777772e696e67656e69616d632e636f6d",
         ),
     ],
 )
@@ -41,10 +41,10 @@ def test_build_mcb_frame(cmd, subnode, address, data, reg_dtype, extended, resul
     "expected_address, data, reg_dtype, frame",
     [
         (
-            0x6E5,
-            "http://www.ingeniamc.com",
-            REG_DTYPE.STR,
-            "a100576e18000000000000003e95687474703a2f2f7777772e696e67656e69616d632e636f6d",
+                0x6E5,
+                "http://www.ingeniamc.com",
+                REG_DTYPE.STR,
+                "a100576e18000000000000003e95687474703a2f2f7777772e696e67656e69616d632e636f6d",
         )
     ],
 )
@@ -78,7 +78,7 @@ def test_read_mcb_frame_nack(expected_address, frame, nack_error_code):
         MCB.read_mcb_data(expected_address, frame_byte_arr)
 
     assert e_info.value.error_code == nack_error_code
-    assert e_info.value.message == f"Communications error (NACK -> 0x{nack_error_code:08X})"
+    assert e_info.value.args[0] == f"Communications error (NACK -> 0x{nack_error_code:08X})"
 
 
 @pytest.mark.no_connection

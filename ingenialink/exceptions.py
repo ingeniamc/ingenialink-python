@@ -99,7 +99,7 @@ class ILNACKError(ILError):
 
     def __init__(self, err_code: int):
         self.error_code = err_code
-        self.message = f"Communications error (NACK -> 0x{err_code:08X})"
+        super().__init__(f"Communications error (NACK -> 0x{err_code:08X})")
 
 
 class ILDictionaryParseError(ILError):
