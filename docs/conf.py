@@ -23,9 +23,9 @@ _version = re.search(r'__version__\s+=\s+\"(.*)\"',
 project = 'ingenialink'
 version = _version
 release = version
-author = 'Ingenia Motion Control'
+author = 'Novanta'
 year = datetime.now().year
-copyright = '{}, Ingenia-CAT S.L.'.format(year)
+copyright = '{}, Novanta Technologies Spain S.L.'.format(year)
 source_suffix = '.rst'
 master_doc = 'index'
 
