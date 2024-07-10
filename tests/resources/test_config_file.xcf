@@ -9,7 +9,7 @@
         <Register access="r" address="0x580F00" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" subnode="0" />
         <Register access="r" address="0x58AA00" dtype="str" id="DRV_BOOT_COCO_VERSION" subnode="0" />
         <Register access="r" address="0x5E4900" dtype="s32" id="DRV_DIAG_SYS_ERROR_LAST" subnode="0" />
-        <Register access="r" address="0x5E4A00" dtype="u16" id="DRV_DIAG_SYS_ERROR_TOTAL_COM" subnode="0" />
+        <Register access="rw" address="0x5E4A00" dtype="u16" id="DRV_DIAG_SYS_ERROR_TOTAL_COM" subnode="0" storage="0"/>
       </Registers>
     </Device>
   </Body>

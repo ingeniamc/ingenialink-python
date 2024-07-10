@@ -375,11 +375,10 @@ class Servo:
                     subnode=element_subnode,
                 )
             except ILError as e:
+                exception_message = f"Exception during load_configuration, register {str(element.attrib['id'])}: {e}"
                 if strict:
-                    raise e
-                logger.error(
-                    f"Exception during load_configuration, register {str(element.attrib['id']): {e}}"
-                )
+                    raise ILError(exception_message)
+                logger.error(exception_message)
 
     def save_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
         """Read all dictionary registers content and put it to the dictionary
