@@ -334,18 +334,23 @@ class Servo:
                 error_message += register_error
             raise ILConfigurationError(error_message)
 
-    def load_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
+    def load_configuration(
+        self, config_file: str, subnode: Optional[int] = None, strict: bool = False
+    ) -> None:
         """Write current dictionary storage to the servo drive.
 
         Args:
             config_file: Path to the dictionary.
             subnode: Subnode of the axis.
+            strict: Whether to raise an exception if any error occurs during the loading configuration process.
+            If false, all errors will only be ignored. `False` by default.
 
         Raises:
             FileNotFoundError: If the configuration file cannot be found.
             ValueError: If a configuration file from a subnode different from 0
                 is attempted to be loaded to subnode 0.
             ValueError: If an invalid subnode is provided.
+            ILError: If strict is set to True and any error occurs during the loading configuration process.
 
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
@@ -356,25 +361,24 @@ class Servo:
         if subnode == 0 and subnode not in dest_subnodes:
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
         cast_data = {"float": float, "str": str}
-        for element in registers:
+        writable_registers = [
+            reg for reg in registers if "storage" in reg.attrib and reg.attrib["access"] == "rw"
+        ]
+        for element in writable_registers:
+            element_subnode = int(element.attrib["subnode"]) if subnode is None else subnode
+            reg_dtype = element.attrib["dtype"]
+            reg_data = element.attrib["storage"]
             try:
-                if "storage" in element.attrib and element.attrib["access"] == "rw":
-                    if subnode is None:
-                        element_subnode = int(element.attrib["subnode"])
-                    else:
-                        element_subnode = subnode
-                    reg_dtype = element.attrib["dtype"]
-                    reg_data = element.attrib["storage"]
-                    self.write(
-                        element.attrib["id"],
-                        cast_data.get(reg_dtype, int)(reg_data),
-                        subnode=element_subnode,
-                    )
+                self.write(
+                    element.attrib["id"],
+                    cast_data.get(reg_dtype, int)(reg_data),
+                    subnode=element_subnode,
+                )
             except ILError as e:
+                if strict:
+                    raise e
                 logger.error(
-                    "Exception during load_configuration, register %s: %s",
-                    str(element.attrib["id"]),
-                    e,
+                    f"Exception during load_configuration, register {str(element.attrib['id']): {e}}"
                 )
 
     def save_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
