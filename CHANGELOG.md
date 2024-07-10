@@ -8,6 +8,7 @@
 ### Changed
 - Raise an exception when a CAN transceiver's driver is not installed.
 - Add optional password for the FOE bootloader.
+- Add strict mode to the load configuration method.
 
 ### Fixed
 - SDO Error after a store/restore parameters operation.
