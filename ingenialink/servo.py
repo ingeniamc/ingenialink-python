@@ -342,15 +342,17 @@ class Servo:
         Args:
             config_file: Path to the dictionary.
             subnode: Subnode of the axis.
-            strict: Whether to raise an exception if any error occurs during the loading configuration process.
-            If false, all errors will only be ignored. `False` by default.
+            strict: Whether to raise an exception if any error occurs during the loading
+            configuration process. If false, all errors will only be ignored.
+            `False` by default.
 
         Raises:
             FileNotFoundError: If the configuration file cannot be found.
             ValueError: If a configuration file from a subnode different from 0
                 is attempted to be loaded to subnode 0.
             ValueError: If an invalid subnode is provided.
-            ILError: If strict is set to True and any error occurs during the loading configuration process.
+            ILError: If strict is set to True and any error occurs during the loading
+            configuration process.
 
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
@@ -375,7 +377,10 @@ class Servo:
                     subnode=element_subnode,
                 )
             except ILError as e:
-                exception_message = f"Exception during load_configuration, register {str(element.attrib['id'])}: {e}"
+                exception_message = (
+                    "Exception during load_configuration, "
+                    f"register {str(element.attrib['id'])}: {e}"
+                )
                 if strict:
                     raise ILError(exception_message)
                 logger.error(exception_message)
