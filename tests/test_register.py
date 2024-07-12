@@ -184,6 +184,7 @@ def test_register_range():
 @pytest.mark.parametrize(
     "subnode, address, mapped_address_eth, mapped_address_can",
     [
+        (0, 0x0000, 0x0000, 0x0000),
         (1, 0x0010, 0x0010, 0x0010),
         (2, 0x0020, 0x0820, 0x0020),
         (3, 0x0030, 0x1030, 0x0030),
