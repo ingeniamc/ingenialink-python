@@ -9,9 +9,7 @@ from ingenialink.constants import (
     MAP_ADDRESS_OFFSET,
 )
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.ethercat.register import (
-    EthercatRegister,
-)
+from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, RegCyclicType
 
 logger = ingenialogger.get_logger(__name__)
@@ -27,7 +25,7 @@ class EthercatDictionaryV2(DictionaryV2):
 
     MONITORING_DISTURBANCE_REGISTERS: List[EthercatRegister] = [
         EthercatRegister(
-            identifier="MONITORING_DATA",
+            identifier="MON_DATA_VALUE",
             units="",
             subnode=0,
             idx=0x58B2,
@@ -37,7 +35,7 @@ class EthercatDictionaryV2(DictionaryV2):
             access=REG_ACCESS.RO,
         ),
         EthercatRegister(
-            identifier="DISTURBANCE_DATA",
+            identifier="DIST_DATA_VALUE",
             units="",
             subnode=0,
             idx=0x58B4,

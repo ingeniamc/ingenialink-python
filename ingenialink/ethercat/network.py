@@ -101,6 +101,10 @@ class EthercatNetwork(Network):
     ECAT_STATE_CHANGE_TIMEOUT_NS = 50_000
     ECAT_PROCESSDATA_TIMEOUT_S = 0.1
 
+    EXPECTED_WKC_PROCESS_DATA = 3
+
+    DEFAULT_FOE_PASSWORD = 0x70636675
+
     def __init__(
         self,
         interface_name: str,
@@ -172,7 +176,7 @@ class EthercatNetwork(Network):
             self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
         self.__last_init_nodes = list(range(1, nodes + 1))
 
-    def connect_to_slave(  # type: ignore [override]
+    def connect_to_slave(
         self,
         slave_id: int,
         dictionary: str,
@@ -210,6 +214,8 @@ class EthercatNetwork(Network):
             slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
         )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
+            if servo_status_listener:
+                servo.stop_status_listener()
             raise ILStateError("Slave can not reach PreOp state")
         servo.reset_pdo_mapping()
         self.servos.append(servo)
@@ -309,7 +315,7 @@ class EthercatNetwork(Network):
         else:
             self._ecat_master.send_processdata()
         processdata_wkc = self._ecat_master.receive_processdata(timeout=int(timeout * 1_000_000))
-        if processdata_wkc != self._ecat_master.expected_wkc:
+        if processdata_wkc != self.EXPECTED_WKC_PROCESS_DATA * (len(self.servos)):
             self._ecat_master.read_state()
             servos_state_msg = ""
             for servo in self.servos:
@@ -396,28 +402,32 @@ class EthercatNetwork(Network):
             return
         self.__observers_net_state[slave_id].remove(callback)
 
-    def start_status_listener(self) -> None:  # type: ignore [override]
+    def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
             listener = NetStatusListener(self)
             listener.start()
             self.__listener_net_status = listener
 
-    def stop_status_listener(self) -> None:  # type: ignore [override]
+    def stop_status_listener(self) -> None:
         """Stops the NetStatusListener from listening to the drive."""
         if self.__listener_net_status is not None:
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
         self.__listener_net_status = None
 
-    def load_firmware(self, fw_file: str, boot_in_app: bool, slave_id: int = 1) -> None:  # type: ignore [override]
+    def load_firmware(
+        self, fw_file: str, boot_in_app: bool, slave_id: int = 1, password: Optional[int] = None
+    ) -> None:
         """Loads a given firmware file to a target slave.
 
         Args:
             fw_file: Path to the firmware file.
-            boot_in_app: True if the application includes FoE (i.e, ``fw_file`` extension is .sfu),
-                False otherwise.
+            boot_in_app: True if the application includes the bootloader (i.e, ``fw_file`` extension
+                is .sfu), False otherwise.
             slave_id: Slave ID to which load the firmware file.
+            password: Password to load the firmware file. If ``None`` the default password will be
+                used.
 
         Raises:
             FileNotFoundError: If the firmware file cannot be found.
@@ -431,6 +441,9 @@ class EthercatNetwork(Network):
 
         if not os.path.isfile(fw_file):
             raise FileNotFoundError(f"Could not find {fw_file}.")
+
+        if password is None:
+            password = self.DEFAULT_FOE_PASSWORD
 
         arch = platform.architecture()[0]
         sys_name = sys.platform
@@ -455,14 +468,22 @@ class EthercatNetwork(Network):
         try:
             if sys_name == "linux":
                 subprocess.run(
-                    f"{exec_path} {self.interface_name} {slave_id} {fw_file} {int(boot_in_app)}",
+                    f"{exec_path} {self.interface_name} {slave_id} {fw_file} "
+                    f"{int(boot_in_app)} {password}",
                     check=True,
                     shell=True,
                     encoding="utf-8",
                 )
             else:
                 subprocess.run(
-                    [exec_path, self.interface_name, f"{slave_id}", fw_file, f"{int(boot_in_app)}"],
+                    [
+                        exec_path,
+                        self.interface_name,
+                        f"{slave_id}",
+                        fw_file,
+                        f"{int(boot_in_app)}",
+                        f"{password}",
+                    ],
                     check=True,
                     shell=True,
                     encoding="utf-8",

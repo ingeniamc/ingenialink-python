@@ -19,7 +19,7 @@ class EthernetDictionaryV2(DictionaryV2):
 
     MONITORING_DISTURBANCE_REGISTERS: List[EthernetRegister] = [
         EthernetRegister(
-            identifier="MONITORING_DATA",
+            identifier="MON_DATA_VALUE",
             units="",
             subnode=0,
             address=0x00B2,
@@ -28,7 +28,7 @@ class EthernetDictionaryV2(DictionaryV2):
             access=REG_ACCESS.RO,
         ),
         EthernetRegister(
-            identifier="DISTURBANCE_DATA",
+            identifier="DIST_DATA_VALUE",
             units="",
             subnode=0,
             address=0x00B4,

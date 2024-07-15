@@ -175,6 +175,7 @@ class Dictionary(ABC):
         "u64": REG_DTYPE.U64,
         "str": REG_DTYPE.STR,
         "bool": REG_DTYPE.BOOL,
+        "byteArray512": REG_DTYPE.BYTE_ARRAY_512,
     }
 
     access_xdf_options = {"r": REG_ACCESS.RO, "w": REG_ACCESS.WO, "rw": REG_ACCESS.RW}
@@ -582,7 +583,15 @@ class DictionaryV3(Dictionary):
             root: Devices element
 
         """
-        device_element = root.find(self.DEVICE_ELEMENT[self.interface])
+        if self.interface == Interface.VIRTUAL:
+            device_element = root.find(self.DEVICE_ELEMENT[Interface.ETH])
+            if device_element is None:
+                device_element = root.find(self.DEVICE_ELEMENT[Interface.EoE])
+                self.interface = Interface.EoE
+            else:
+                self.interface = Interface.ETH
+        else:
+            device_element = root.find(self.DEVICE_ELEMENT[self.interface])
         if device_element is None:
             raise ILDictionaryParseError("Dictionary can not be used for the chose communication")
         self.__read_device_attributes(device_element)

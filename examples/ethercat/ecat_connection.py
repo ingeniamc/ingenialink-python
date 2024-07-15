@@ -1,25 +1,31 @@
-import platform
+import argparse
 
 from ingenialink.ethercat.network import EthercatNetwork
 
 
-def main():
-    # To find the network interface ID
-    # On Windows, run the command: wmic nic get name, guid
-    # On linux, run the command: ip link show
-    interface_id = ""
-    if platform.system() == "Windows":
-        interface_name = "\\Device\\NPF_" + interface_id
-    else:
-        interface_name = interface_id
-    dictionary_path = "cap-net-e_eoe_2.5.0.xdf"
-    ethercat_slave_id = 1
-    net = EthercatNetwork(interface_name)
-    servo = net.connect_to_slave(ethercat_slave_id, dictionary_path)
-    firmware_version = servo.read('DRV_ID_SOFTWARE_VERSION')
+def main(args: argparse.Namespace) -> None:
+    net = EthercatNetwork(args.interface)
+    servo = net.connect_to_slave(args.slave_id, args.dictionary_path)
+    firmware_version = servo.read("DRV_ID_SOFTWARE_VERSION")
     print(firmware_version)
     net.disconnect_from_slave(servo)
 
 
-if __name__ == '__main__':
-    main()
+def setup_command() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="EtherCAT connection example script.")
+    interface_help = """Network adapter interface name. To find it: \n
+    - On Windows, \\Device\\NPF_{id}. To get the id, run the command: wmic nic get name, guid \n
+    - On linux, run the command: ip link show
+    """
+    parser.add_argument("-i", "--interface", type=str, help=interface_help, required=True)
+    parser.add_argument(
+        "-d", "--dictionary_path", type=str, help="Path to the drive's dictionary.", required=True
+    )
+    parser.add_argument("-s", "--slave_id", type=int, help="Slave ID.", default=1)
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == "__main__":
+    args = setup_command()
+    main(args)
