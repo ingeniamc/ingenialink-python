@@ -223,6 +223,7 @@ class EthercatNetwork(Network):
         self.subscribe_to_status(slave_id, self._recover_from_power_cycle)
         if net_status_listener:
             self.start_status_listener()
+        servo.slave.add_emergency_callback(self._emcy_callback)
         return servo
 
     def disconnect_from_slave(self, servo: EthercatServo) -> None:  # type: ignore [override]
@@ -533,3 +534,10 @@ class EthercatNetwork(Network):
                 raise ILStateError(
                     "The communication cannot be recovered. Not all slaves reached PreOp state"
                 )
+
+    def _emcy_callback(self, emergency_msg: "pysoem.Emergency") -> None:
+        """Log the emergency messages"""
+        slave_id = emergency_msg.slave_pos
+        if servo := next((servo for servo in self.servos if servo.slave_id == slave_id), None):
+            error_description = servo.get_emergency_description(emergency_msg.error_code)
+            logger.warning(f"Emergency message received from slave {slave_id}: {error_description}")
