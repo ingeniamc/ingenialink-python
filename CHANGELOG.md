@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+# [7.3.3] - 2024-07-15
 
 ### Added
 - Methods to read/write to the ESC EEPROM.

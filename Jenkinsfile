@@ -152,6 +152,23 @@ pipeline {
                 }
             }
         }
+        stage('Publish Ingenialink'){
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/publisher:1.8"
+                }
+            }
+            when {
+                branch BRANCH_NAME_MASTER
+            }
+            steps {
+                unstash 'publish_files'
+                unzip zipFile: 'docs.zip', dir: '.'
+                publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
+                publishPyPi("dist/*")
+            }
+        }
         stage('EtherCAT and no-connection tests') {
             options {
                 lock(ECAT_NODE_LOCK)
@@ -303,23 +320,6 @@ pipeline {
                         archiveArtifacts artifacts: '*.xml'
                     }
                 }
-            }
-        }
-        stage('Publish Ingenialink'){
-            agent {
-                docker {
-                    label "worker"
-                    image "ingeniacontainers.azurecr.io/publisher:1.8"
-                }
-            }
-            when {
-                branch BRANCH_NAME_MASTER
-            }
-            steps {
-                unstash 'publish_files'
-                unzip zipFile: 'docs.zip', dir: '.'
-                publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
-                publishPyPi("dist/*")
             }
         }
     }
