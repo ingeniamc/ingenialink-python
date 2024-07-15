@@ -3,10 +3,12 @@ import argparse
 from ingenialink.ethercat.network import EthercatNetwork
 
 
-def ecat_load_fw(args: argparse.Namespace) -> None:
+def main(args: argparse.Namespace) -> None:
     net = EthercatNetwork(args.interface)
-    boot_in_app = args.firmware_path.endswith(".sfu")
-    net.load_firmware(args.firmware_path, boot_in_app, slave_id=args.slave_id)
+    servo = net.connect_to_slave(args.slave_id, args.dictionary_path)
+    firmware_version = servo.read("DRV_ID_SOFTWARE_VERSION")
+    print(firmware_version)
+    net.disconnect_from_slave(servo)
 
 
 def setup_command() -> argparse.Namespace:
@@ -17,7 +19,7 @@ def setup_command() -> argparse.Namespace:
     """
     parser.add_argument("-i", "--interface", type=str, help=interface_help, required=True)
     parser.add_argument(
-        "-f", "--firmware_path", type=str, help="Path to the firmware file.", required=True
+        "-d", "--dictionary_path", type=str, help="Path to the drive's dictionary.", required=True
     )
     parser.add_argument("-s", "--slave_id", type=int, help="Slave ID.", default=1)
     args = parser.parse_args()
@@ -26,4 +28,4 @@ def setup_command() -> argparse.Namespace:
 
 if __name__ == "__main__":
     args = setup_command()
-    ecat_load_fw(args)
+    main(args)

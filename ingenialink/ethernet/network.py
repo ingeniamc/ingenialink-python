@@ -82,7 +82,7 @@ class EthernetNetwork(Network):
         )
 
     @staticmethod
-    def load_firmware(  # type: ignore [override]
+    def load_firmware(
         fw_file: str, target: str = "192.168.2.22", ftp_user: str = "", ftp_pwd: str = ""
     ) -> None:
         """Loads a given firmware file to the target slave.
@@ -105,43 +105,31 @@ class EthernetNetwork(Network):
         if not os.path.isfile(fw_file):
             raise FileNotFoundError(f"Could not find {fw_file}.")
 
-        try:
-            file = open(fw_file, "rb")
-            ftp_output = None
-            ftp = FTP()
-
-            # Start a FTP session. Drive must be in BOOT mode.
-            logger.info("Starting FTP session...")
-            ftp_output = ftp.connect(target)
+        # Start a FTP session. Drive must be in BOOT mode.
+        logger.info("Starting FTP session...")
+        with FTP() as ftp:
+            try:
+                ftp_output = ftp.connect(target)
+            except ConnectionError as e:
+                raise ILFirmwareLoadError("Unable to create the FTP session") from e
             logger.info(ftp_output)
             if FTP_SESSION_OK_CODE not in ftp_output:
-                raise ILError("Unable to open FTP session")
-
+                raise ILFirmwareLoadError("Unable to open the FTP session")
             # Login into FTP session.
             logger.info("Logging into FTP session...")
             ftp_output = ftp.login(ftp_user, ftp_pwd)
             logger.info(ftp_output)
             if FTP_LOGIN_OK_CODE not in ftp_output:
-                raise ILError("Unable to login the FTP session")
-
+                raise ILFirmwareLoadError("Unable to login the FTP session")
             # Load file through FTP.
             logger.info("Uploading firmware file...")
             ftp.set_pasv(False)
-            ftp_output = ftp.storbinary(f"STOR {os.path.basename(file.name)}", file)
+            with open(fw_file, "rb") as file:
+                ftp_output = ftp.storbinary(f"STOR {os.path.basename(file.name)}", file)
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
-                raise ILError("Unable to load the FW file through FTP")
-
-            # Close FTP session.
-            logger.info("Closing FTP session...")
-            ftp.close()
-
-            # Close the temporal file
-            file.close()
-
-        except Exception as e:
-            logger.error(e)
-            raise ILFirmwareLoadError("Error during bootloader process.")
+                raise ILFirmwareLoadError("Unable to load the FW file through FTP")
+        logger.info("FTP session closed.")
 
     @staticmethod
     def load_firmware_moco(node: int, subnode: int, ip: str, port: int, moco_file: str) -> None:
@@ -201,7 +189,7 @@ class EthernetNetwork(Network):
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         raise NotImplementedError
 
-    def connect_to_slave(  # type: ignore [override]
+    def connect_to_slave(
         self,
         target: str,
         dictionary: str,
@@ -267,14 +255,14 @@ class EthernetNetwork(Network):
         sock.shutdown(socket.SHUT_RDWR)
         sock.close()
 
-    def start_status_listener(self) -> None:  # type: ignore [override]
+    def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
             listener = NetStatusListener(self)
             listener.start()
             self.__listener_net_status = listener
 
-    def stop_status_listener(self) -> None:  # type: ignore [override]
+    def stop_status_listener(self) -> None:
         """Stops the NetStatusListener from listening to the drive."""
         if self.__listener_net_status is not None:
             self.__listener_net_status.stop()

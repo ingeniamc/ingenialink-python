@@ -3,10 +3,39 @@
 ## [Unreleased]
 
 ### Added
+- Methods to read/write to the ESC EEPROM.
+
+### Changed
+- Raise an exception when a CAN transceiver's driver is not installed.
+- Add optional password for the FOE bootloader.
+- Add strict mode to the load configuration method.
+
+### Fixed
+- SDO Error after a store/restore parameters operation.
+- EoE service initialization error when a slave cannot reach the PreOp state. 
+- EoE connection recovery after a power cycle.
+- Stop the servo status listener when a EtherCAT drive cannot reach the PreOp state.
+
+### Added 
+- Support to dictionaries V3 in the virtual drive.
+- Arguments in examples and tests.
+- Retry sending an Ethernet request after a communication timeout.
+
+## [7.3.2] - 2024-06-05
+
+### Added
 - Set RPDOMap values by byte string.
+- Function to check if a configuration has been applied to the drive.
+- EtherCAT connection example script.
+- Typing in examples.
+
+### Changed
+- The signature of the load_firmware method of EthercatNetwork is changed to add the boot_in_app argument.
+- The polling sampling precision of the Poller is improved.
 
 ### Fixed
 - Issue when connecting to the virtual drive using an EVE CANopen dictionary.
+- Issue when the KVASER transceiver was disconnected.
 
 ## [7.3.1] - 2024-05-10
 

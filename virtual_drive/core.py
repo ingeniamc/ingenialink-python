@@ -12,9 +12,11 @@ from numpy.typing import NDArray
 from scipy import signal
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
+from ingenialink.dictionary import Interface
 from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.ethernet.servo import EthernetServo
+from ingenialink.servo import DictionaryFactory
 from ingenialink.utils import constants
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.utils.constants import IL_MC_CW_EO
@@ -1026,7 +1028,7 @@ class VirtualMonitoring(VirtualMonDistBase):
     NUMBER_MAP_REGS = "MON_CFG_TOTAL_MAP"
     MAP_REG_CFG = "MON_CFG_REG{}_MAP"
     BYTES_PER_BLOCK_REG = "MON_CFG_BYTES_PER_BLOCK"
-    DATA_REG = "MONITORING_DATA"
+    DATA_REG = "MON_DATA_VALUE"
     TRIGGER_TYPE_REG = "MON_CFG_SOC_TYPE"
     AVAILABLE_BYTES_REG = "MON_CFG_BYTES_VALUE"
     STATUS_REGISTER = "MON_DIST_STATUS"
@@ -1114,7 +1116,7 @@ class VirtualMonitoring(VirtualMonDistBase):
                 if len(sample_bytes) < size:
                     sample_bytes += b"0" * (size - len(sample_bytes))
                 byte_array += sample_bytes
-        self.drive.set_value_by_id(0, "MONITORING_DATA", byte_array)
+        self.drive.set_value_by_id(0, self.DATA_REG, byte_array)
 
     @property
     def trigger_type(self) -> int:
@@ -1140,7 +1142,7 @@ class VirtualDisturbance(VirtualMonDistBase):
     MAP_REG_CFG = "DIST_CFG_REG{}_MAP"
     BYTES_PER_BLOCK_REG = "DIST_CFG_BYTES_PER_BLOCK"
     AVAILABLE_BYTES_REG = "DIST_CFG_BYTES"
-    DATA_REG = "DISTURBANCE_DATA"
+    DATA_REG = "DIST_DATA_VALUE"
     STATUS_REGISTER = "DIST_STATUS"
 
     def __init__(self, drive: "VirtualDrive") -> None:
@@ -1245,7 +1247,9 @@ class VirtualDrive(Thread):
         self.device_info = None
         self.__logger: List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]] = []
         self.__reg_address_to_id: Dict[int, Dict[int, str]] = {}
-        self.__dictionary = VirtualDictionary(self.dictionary_path)
+        self.__dictionary = DictionaryFactory.create_dictionary(
+            self.dictionary_path, Interface.VIRTUAL
+        )
         self.reg_signals: Dict[str, NDArray[np.float_]] = {}
         self.reg_time: Dict[str, NDArray[np.float_]] = {}
         self.reg_noise_amplitude: Dict[str, float] = {}
@@ -1255,7 +1259,7 @@ class VirtualDrive(Thread):
 
         self._init_registers()
         self._update_registers()
-        if self.is_monitoring_available:
+        if self.is_monitoring_available and isinstance(self.__dictionary, VirtualDictionary):
             self._create_monitoring_disturbance_registers()
         self._init_register_signals()
         self.__set_motor_ready_to_switch_on()
@@ -1345,7 +1349,7 @@ class VirtualDrive(Thread):
         value = self.get_value_by_id(register.subnode, str(register.identifier))
         if (
             self.is_monitoring_available
-            and register.address == self.id_to_address(0, "MONITORING_DATA")
+            and register.address == self.id_to_address(0, EthernetServo.MONITORING_DATA)
             and isinstance(value, bytes)
             and self._monitoring
         ):
@@ -1407,10 +1411,17 @@ class VirtualDrive(Thread):
                 self.__dictionary.registers(subnode)[reg_id].storage_valid = True
 
     def _create_monitoring_disturbance_registers(self) -> None:
-        """Create the monitoring and disturbance data registers."""
+        """Create the monitoring and disturbance data registers.
+        Only used for dictionaries V2 because V3 includes these registers.
+
+        """
+        if not isinstance(self.__dictionary, VirtualDictionary):
+            return
         custom_regs = {
-            "MONITORING_DATA": self.__dictionary.registers(0)[EthernetServo.MONITORING_DATA],
-            "DISTURBANCE_DATA": self.__dictionary.registers(0)[EthernetServo.DIST_DATA],
+            EthernetServo.MONITORING_DATA: self.__dictionary.registers(0)[
+                EthernetServo.MONITORING_DATA
+            ],
+            EthernetServo.DIST_DATA: self.__dictionary.registers(0)[EthernetServo.DIST_DATA],
         }
         for id, reg in custom_regs.items():
             if not isinstance(reg, EthernetRegister):
@@ -1457,11 +1468,11 @@ class VirtualDrive(Thread):
         if not self._monitoring:
             return bytes(1)
         sent_cmd = self.ACK_CMD
-        reg_add = self.id_to_address(0, "MONITORING_DATA")
+        reg_add = self.id_to_address(0, EthernetServo.MONITORING_DATA)
         limit = min(len(data), MONITORING_BUFFER_SIZE)
         response = MCB.build_mcb_frame(sent_cmd, 0, reg_add, data[:limit])
         data_left = data[limit:]
-        self.set_value_by_id(0, "MONITORING_DATA", data_left)
+        self.set_value_by_id(0, EthernetServo.MONITORING_DATA, data_left)
         self._monitoring.available_bytes = len(data_left)
         return response
 
@@ -1522,7 +1533,7 @@ class VirtualDrive(Thread):
             self.__clean_plant_signals()
         if reg_id == "DIST_REMOVE_DATA" and subnode == 0 and value == 1 and self._disturbance:
             self._disturbance.remove_data()
-        if reg_id == "DISTURBANCE_DATA" and subnode == 0 and self._disturbance:
+        if reg_id == VirtualDisturbance.DATA_REG and subnode == 0 and self._disturbance:
             self._disturbance.append_data(data)
         if reg_id == "DRV_OP_CMD":
             self.operation_mode = int(value)

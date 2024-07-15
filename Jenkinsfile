@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.3') _
+@Library('cicd-lib@0.11') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -16,6 +16,9 @@ def PYTHON_VERSIONS = "py39,py310,py311,py312"
 def DEFAULT_PYTHON_VERSION = "3.9"
 def TOX_VERSION = "4.12.1"
 
+def BRANCH_NAME_MASTER = "master"
+def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
+
 pipeline {
     agent none
     stages {
@@ -23,7 +26,7 @@ pipeline {
             agent {
                 docker {
                     label "worker"
-                    image "ingeniacontainers.azurecr.io/publisher:1.4"
+                    image "ingeniacontainers.azurecr.io/publisher:1.8"
                 }
             }
             stages {
@@ -59,7 +62,11 @@ pipeline {
                         sh """
                             python${DEFAULT_PYTHON_VERSION} -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
                         """
-                        junit 'pytest_no_connection_report.xml'
+                    }
+                    post {
+                        always {
+                            junit "pytest_no_connection_report.xml"
+                        }
                     }
                 }
             }
@@ -72,29 +79,18 @@ pipeline {
                 }
             }
             stages {
-                stage('Clone repository') {
-                    steps {
-                        bat """
-                            cd C:\\Users\\ContainerAdministrator
-                            git clone https://github.com/ingeniamc/ingenialink-python.git
-                            cd ingenialink-python
-                            git checkout ${env.GIT_COMMIT}
-                        """
-                    }
-                }
                 stage('Get FoE application') {
                     steps {
                         unstash 'foe_app'
                         bat """
-                            XCOPY $FOE_APP_NAME C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\win_64x\\
-                            XCOPY $FOE_APP_NAME_LINUX C:\\Users\\ContainerAdministrator\\ingenialink-python\\$LIB_FOE_APP_PATH\\linux\\
+                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                            XCOPY $FOE_APP_NAME_LINUX $LIB_FOE_APP_PATH\\linux\\
                         """
                     }
                 }
                 stage('Install deps') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             py -${DEFAULT_PYTHON_VERSION} -m pip install tox==${TOX_VERSION}
                         """
                     }
@@ -102,7 +98,6 @@ pipeline {
                 stage('Build wheels') {
                     steps {
                         bat '''
-                             cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                              tox -e build
                         '''
                     }
@@ -110,7 +105,6 @@ pipeline {
                 stage('Check formatting') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             tox -e format
                         """
                     }
@@ -118,7 +112,6 @@ pipeline {
                 stage('Type checking') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             tox -e type
                         """
                     }
@@ -126,7 +119,6 @@ pipeline {
                 stage('Generate documentation') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             tox -e docs
                         """
                     }
@@ -134,26 +126,26 @@ pipeline {
                 stage('Run docker tests') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             tox -e ${PYTHON_VERSIONS} -- -m docker --junitxml=pytest_docker_report.xml
                         """
-                        bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
-                            move .coverage ${env.WORKSPACE}\\.coverage_docker
-                            move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
-                        """
-                        junit 'pytest_docker_report.xml'
+                    }
+                    post {
+                        always {
+                            bat """
+                                move .coverage ${env.WORKSPACE}\\.coverage_docker
+                                move pytest_docker_report.xml ${env.WORKSPACE}\\pytest_docker_report.xml
+                            """
+                            junit 'pytest_docker_report.xml'
+                        }
                     }
                 }
                 stage('Archive') {
                     steps {
                         bat """
-                            cd C:\\Users\\ContainerAdministrator\\ingenialink-python
                             "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
-                            XCOPY dist ${env.WORKSPACE}\\dist /i
-                            XCOPY docs.zip ${env.WORKSPACE}
                         """
                         stash includes: '.coverage_docker', name: 'coverage_docker'
+                        stash includes: 'dist\\*, docs.zip', name: 'publish_files'
                         archiveArtifacts artifacts: 'pytest_docker_report.xml'
                         archiveArtifacts artifacts: "dist\\*, docs.zip"
                     }
@@ -201,10 +193,14 @@ pipeline {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethercat --junitxml=pytest_ethercat_report.xml
                         """
-                        bat """
-                            move .coverage .coverage_ethercat
-                        """
-                        junit 'pytest_ethercat_report.xml'
+                    }
+                    post {
+                        always {
+                            bat """
+                                move .coverage .coverage_ethercat
+                            """
+                            junit 'pytest_ethercat_report.xml'
+                        }
                     }
                 }
                 stage('Run no-connection tests') {
@@ -212,10 +208,14 @@ pipeline {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
                         """
-                        bat """
-                            move .coverage .coverage_no_connection
-                        """
-                        junit 'pytest_no_connection_report.xml'
+                    }
+                    post {
+                        always {
+                            bat """
+                                move .coverage .coverage_no_connection
+                            """
+                            junit 'pytest_no_connection_report.xml'
+                        }
                     }
                 }
                 stage('Archive') {
@@ -267,10 +267,14 @@ pipeline {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol canopen --junitxml=pytest_canopen_report.xml
                         """
-                        bat """
-                            move .coverage .coverage_canopen
-                        """
-                        junit 'pytest_canopen_report.xml'
+                    }
+                    post {
+                        always {
+                            bat """
+                                move .coverage .coverage_canopen
+                            """
+                            junit 'pytest_canopen_report.xml'
+                        }
                     }
                 }
                 stage('Run Ethernet tests') {
@@ -278,10 +282,14 @@ pipeline {
                         bat """
                             venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
                         """
-                        bat """
-                            move .coverage .coverage_ethernet
-                        """
-                        junit 'pytest_ethernet_report.xml'
+                    }
+                    post {
+                        always {
+                            bat """
+                                move .coverage .coverage_ethernet
+                            """
+                            junit 'pytest_ethernet_report.xml'
+                        }
                     }
                 }
                 stage('Save test results') {
@@ -295,6 +303,23 @@ pipeline {
                         archiveArtifacts artifacts: '*.xml'
                     }
                 }
+            }
+        }
+        stage('Publish Ingenialink'){
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/publisher:1.8"
+                }
+            }
+            when {
+                branch BRANCH_NAME_MASTER
+            }
+            steps {
+                unstash 'publish_files'
+                unzip zipFile: 'docs.zip', dir: '.'
+                publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
+                publishPyPi("dist/*")
             }
         }
     }

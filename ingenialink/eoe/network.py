@@ -1,8 +1,10 @@
+import contextlib
 import ipaddress
 import socket
 import time
 from collections import OrderedDict
 from enum import Enum
+from threading import Thread
 from typing import Dict, List, Optional
 
 import ingenialogger
@@ -11,7 +13,7 @@ from ingenialink import constants
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError
-from ingenialink.network import SlaveInfo
+from ingenialink.network import NET_DEV_EVT, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -49,13 +51,19 @@ class EoENetwork(EthernetNetwork):
 
     ECAT_SERVICE_NETWORK = ipaddress.ip_network("192.168.3.0/24")
 
+    # The timeout used by the EoE Service is 4 times the EC_TIMEOUTSTATE
+    # https://github.com/OpenEtherCATsociety/SOEM/blob/v1.4.0/soem/ethercattype.h#L76
+    # An extra second is added to compensate for the communication delays.
+    EOE_SERVICE_STATE_CHANGE_TIMEOUT = 9.0
+
     def __init__(
         self, ifname: str, connection_timeout: float = constants.DEFAULT_ETH_CONNECTION_TIMEOUT
     ) -> None:
         super().__init__()
         self.ifname = ifname
+        self.__connection_timeout = connection_timeout
         self._eoe_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._eoe_socket.settimeout(connection_timeout)
+        self._eoe_socket.settimeout(self.__connection_timeout)
         self._connect_to_eoe_service()
         status = self._get_status_eoe_service()
         if status & self.STATUS_EOE_BIT:
@@ -113,6 +121,7 @@ class EoENetwork(EthernetNetwork):
             self._start_eoe_service()
         self.__wait_eoe_starts()
         self._configured_slaves[ip_address] = slave_id
+        self.subscribe_to_status(ip_address, self._recover_from_power_cycle)
         return super().connect_to_slave(
             ip_address,
             dictionary,
@@ -265,6 +274,9 @@ class EoENetwork(EthernetNetwork):
         self._eoe_service_init = True
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.INIT.value, data=data.encode("utf-8"))
+        self._eoe_socket.settimeout(
+            max(self.EOE_SERVICE_STATE_CHANGE_TIMEOUT, self.__connection_timeout)
+        )
         try:
             r = self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
@@ -273,6 +285,7 @@ class EoENetwork(EthernetNetwork):
             ) from e
         if r < 0:
             raise ILError(f"Failed to initialize the EoE service using interface {self.ifname}.")
+        self._eoe_socket.settimeout(self.__connection_timeout)
 
     def _deinitialize_eoe_service(self) -> None:
         """Deinitialize the virtual network interface and the packet forwarder.
@@ -385,3 +398,25 @@ class EoENetwork(EthernetNetwork):
 
     def load_firmware(self) -> None:  # type: ignore [override]
         raise NotImplementedError
+
+    def _recover_from_power_cycle(self, status: NET_DEV_EVT) -> None:
+        """Recover the connection after a power cycle.
+
+        Args:
+            status: The network status.
+
+        """
+        if status == NET_DEV_EVT.REMOVED:
+            connection_recovery_thread = Thread(target=self._connection_recovery)
+            connection_recovery_thread.start()
+
+    def _connection_recovery(self) -> None:
+        """Restart the EoE service until all slaves are detected."""
+        while not all(servo.is_alive() for servo in self.servos):
+            with contextlib.suppress(ILError):
+                self._stop_eoe_service()
+                self._deinitialize_eoe_service()
+                self._eoe_service_init = False
+                self._initialize_eoe_service()
+                self.__reconfigure_drives()
+                self._start_eoe_service()

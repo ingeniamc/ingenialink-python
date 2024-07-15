@@ -4,16 +4,12 @@ import struct
 import warnings
 import xml.etree.ElementTree as ET
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import ingenialogger
 
 from ingenialink.enums.register import REG_DTYPE
 from ingenialink.exceptions import ILValueError
-
-if TYPE_CHECKING:
-    from ingenialink.servo import Servo
-
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -145,33 +141,6 @@ def cleanup_register(register: ET.Element) -> None:
     pop_element(register.attrib, "address_type")
 
     register.text = ""
-
-
-def get_drive_identification(
-    servo: "Servo", subnode: Optional[int] = None
-) -> Tuple[Optional[int], Optional[int]]:
-    """Gets the identification information of a given subnode.
-
-    Args:
-        servo: Instance of the servo Class.
-        subnode: subnode to be targeted.
-
-    Returns:
-        int, Product code and revision number of the targeted subnode.
-    """
-    prod_code = None
-    re_number = None
-    try:
-        if subnode is None or subnode == 0:
-            prod_code = int(servo.read("DRV_ID_PRODUCT_CODE_COCO", 0))
-            re_number = int(servo.read("DRV_ID_REVISION_NUMBER_COCO", 0))
-        else:
-            prod_code = int(servo.read("DRV_ID_PRODUCT_CODE", subnode=subnode))
-            re_number = int(servo.read("DRV_ID_REVISION_NUMBER", subnode))
-    except Exception:
-        pass
-
-    return prod_code, re_number
 
 
 def convert_ip_to_int(ip: str) -> int:

@@ -5,9 +5,9 @@ except ImportError:
 import pytest
 
 from ingenialink.dictionary import Interface
-from ingenialink.servo import DictionaryFactory
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from ingenialink.servo import DictionaryFactory
 
 
 @pytest.mark.docker
@@ -26,7 +26,7 @@ def test_raise_exception_if_not_winpcap():
 def test_load_firmware_file_not_found_error(read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     with pytest.raises(FileNotFoundError):
-        net.load_firmware(fw_file="ethercat.sfu")
+        net.load_firmware("ethercat.sfu", True)
 
 
 @pytest.mark.ethercat
@@ -37,7 +37,7 @@ def test_load_firmware_no_slave_detected_error(mocker, read_config):
         ILFirmwareLoadError,
         match="The firmware file could not be loaded correctly. No ECAT slave detected",
     ):
-        net.load_firmware(fw_file="dummy_file.lfu", slave_id=23)
+        net.load_firmware("dummy_file.lfu", False, slave_id=23)
 
 
 @pytest.mark.ethercat
@@ -55,27 +55,25 @@ def test_load_firmware_not_implemented_error(mocker, read_config):
     mocker.patch("os.path.isfile", return_value=True)
     mocker.patch("sys.platform", return_value="linux")
     with pytest.raises(NotImplementedError):
-        net.load_firmware(fw_file="dummy_file.lfu")
+        net.load_firmware("dummy_file.lfu", False)
 
 
-@pytest.mark.eoe
+@pytest.mark.ethercat
 @pytest.mark.parametrize("slave_id", [-1, "one", None])
 def test_connect_to_slave_invalid_id(read_config, slave_id):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     with pytest.raises(ValueError):
-        net.connect_to_slave(slave_id)
+        net.connect_to_slave(slave_id, read_config["ethercat"]["dictionary"])
 
 
-@pytest.mark.eoe
-def test_connect_to_slave_no_slaves_detected(mocker, read_config):
+@pytest.mark.ethercat
+def test_connect_to_no_detected_slave(read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
+    slaves = net.scan_slaves()
+    slave_id = slaves[-1] + 1
 
-    def scan_slaves():
-        return []
-
-    mocker.patch.object(net, "scan_slaves", scan_slaves)
     with pytest.raises(ILError):
-        net.connect_to_slave(1)
+        net.connect_to_slave(slave_id, read_config["ethercat"]["dictionary"])
 
 
 @pytest.mark.ethercat

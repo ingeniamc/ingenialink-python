@@ -1,3 +1,4 @@
+import os
 import time
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -57,6 +58,11 @@ class EthercatServo(PDOServo):
 
     interface = Interface.ECAT
 
+    DEFAULT_STORE_RECOVERY_TIMEOUT = 1
+
+    DEFAULT_EEPROM_OPERATION_TIMEOUT_uS = 200_000
+    DEFAULT_EEPROM_READ_BYTES_LENGTH = 2
+
     def __init__(
         self,
         slave: "CdefSlave",
@@ -71,6 +77,66 @@ class EthercatServo(PDOServo):
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
+
+    def store_parameters(
+        self,
+        subnode: Optional[int] = None,
+        timeout: Optional[float] = DEFAULT_STORE_RECOVERY_TIMEOUT,
+    ) -> None:
+        """Store all the current parameters of the target subnode.
+
+        Args:
+            subnode: Subnode of the axis. `None` by default which stores
+            all the parameters.
+            timeout : how many seconds to wait for the drive to become responsive
+            after the store operation. If ``None`` it will wait forever.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        super().store_parameters(subnode)
+        self._wait_until_alive(timeout)
+
+    def restore_parameters(
+        self,
+        subnode: Optional[int] = None,
+        timeout: Optional[float] = DEFAULT_STORE_RECOVERY_TIMEOUT,
+    ) -> None:
+        """Restore all the current parameters of all the slave to default.
+
+        .. note::
+            The drive needs a power cycle after this
+            in order for the changes to be properly applied.
+
+        Args:
+            subnode: Subnode of the axis. `None` by default which restores
+                all the parameters.
+            timeout : how many seconds to wait for the drive to become responsive
+            after the restore operation. If ``None`` it will wait forever.
+
+        Raises:
+            ILError: Invalid subnode.
+            ILObjectNotExist: Failed to write to the registers.
+
+        """
+        super().restore_parameters(subnode)
+        self._wait_until_alive(timeout)
+
+    def _wait_until_alive(self, timeout: Optional[float]) -> None:
+        """Wait until the drive becomes responsive.
+
+        Args:
+            timeout : how many seconds to wait for the drive to become responsive.
+            If ``None`` it will wait forever.
+
+        """
+        init_time = time.time()
+        while not self.is_alive():
+            if timeout is not None and (init_time + timeout) < time.time():
+                logger.info("The drive is unresponsive after the recovery timeout.")
+                break
 
     def _read_raw(  # type: ignore [override]
         self,
@@ -239,6 +305,74 @@ class EthercatServo(PDOServo):
         self.slave.set_watchdog(
             self.ETHERCAT_PDO_WATCHDOG, self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout
         )
+
+    def _read_esc_eeprom(
+        self,
+        address: int,
+        length: int = DEFAULT_EEPROM_READ_BYTES_LENGTH,
+        timeout: int = DEFAULT_EEPROM_OPERATION_TIMEOUT_uS,
+    ) -> bytes:
+        """Read from the ESC EEPROM.
+
+        Args:
+            address: EEPROM address to be read.
+            length: Length of data to be read. By default, 2 bytes are read.
+            timeout: Operation timeout (microseconds). By default, 200.000 us.
+
+        Returns:
+            EEPROM data. The read data.
+
+        Raises:
+            ValueError: If the length to be read has an invalid value.
+
+        """
+        if length < 1:
+            raise ValueError("The minimum length is 1 byte.")
+        data = bytes()
+        while len(data) < length:
+            data += self.slave.eeprom_read(address, timeout)
+            address += 2
+        if len(data) > length:
+            data = data[:length]
+        return data
+
+    def _write_esc_eeprom(
+        self, address: int, data: bytes, timeout: int = DEFAULT_EEPROM_OPERATION_TIMEOUT_uS
+    ) -> None:
+        """Write to the ESC EEPROM.
+
+        Args:
+            address: EEPROM address to be written.
+            data: Data to be written. The data length must be a multiple of 2 bytes.
+            timeout: Operation timeout (microseconds). By default, 200.000 us.
+
+        Raises:
+            ValueError: If the data has the wrong size.
+
+        """
+        if len(data) % 2 != 0:
+            raise ValueError("The data length must be a multiple of 2 bytes.")
+        start_address = address
+        while data:
+            self.slave.eeprom_write(start_address, data[:2], timeout)
+            data = data[2:]
+            start_address += 1
+
+    def _write_esc_eeprom_from_file(self, file_path: str) -> None:
+        """Load a binary file to the ESC EEPROM.
+
+        Args:
+            file_path: Path to the binary file to be loaded.
+
+        Raises:
+            FileNotFoundError: If the binary file cannot be found.
+
+        """
+        if not os.path.isfile(file_path):
+            raise FileNotFoundError(f"Could not find {file_path}.")
+        with open(file_path, "rb") as file:
+            data = file.read()
+        self._write_esc_eeprom(address=0, data=data)
 
     @property
     def slave(self) -> "CdefSlave":

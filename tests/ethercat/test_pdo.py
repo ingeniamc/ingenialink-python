@@ -264,18 +264,6 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
     assert len(servo._tpdo_maps) == 0
 
 
-@pytest.mark.ethercat
-def test_pdo_example(read_config, script_runner):
-    protocol_contents = read_config["ethercat"]
-    ifname = protocol_contents["ifname"]
-    dictionary = protocol_contents["dictionary"]
-    script_path = "examples/ethercat/process_data_objects.py"
-    result = script_runner.run(
-        script_path, f"-ifname={ifname}", f"-dict={dictionary}", "-auto_stop"
-    )
-    assert result.returncode == 0
-
-
 @pytest.fixture
 def connect_to_all_slave(pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
@@ -328,6 +316,8 @@ def test_start_stop_pdo(connect_to_all_slave):
     servos, net = connect_to_all_slave
     operation_mode_uid = "DRV_OP_CMD"
     rpdo_registers = [operation_mode_uid]
+    operation_mode_display_uid = "DRV_OP_VALUE"
+    tpdo_registers = [operation_mode_display_uid]
     default_operation_mode = 1
     current_operation_mode = {}
     new_operation_mode = {}
@@ -336,7 +326,7 @@ def test_start_stop_pdo(connect_to_all_slave):
         new_operation_mode[index] = default_operation_mode
         if current_operation_mode[index] == default_operation_mode:
             new_operation_mode[index] += 1
-        rpdo_map, tpdo_map = create_pdo_maps(servo, rpdo_registers, TPDO_REGISTERS)
+        rpdo_map, tpdo_map = create_pdo_maps(servo, rpdo_registers, tpdo_registers)
         for item in rpdo_map.items:
             item.value = new_operation_mode[index]
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
@@ -344,13 +334,10 @@ def test_start_stop_pdo(connect_to_all_slave):
     for index, servo in enumerate(servos):
         # Check that RPDOs are being received by the slave
         assert servo._rpdo_maps[0].items[0].value == servo.read(operation_mode_uid)
+        # Check that TPDOs are being sent by the slave
+        assert servo._tpdo_maps[0].items[0].value == servo.read(tpdo_registers[0])
         # Restore the previous operation mode
         servo.write(operation_mode_uid, current_operation_mode[index])
-        # Check that TPDOs are being sent by the slave
-        # TODO: Confirm this approx is needed in INGK-839
-        assert pytest.approx(servo._tpdo_maps[0].items[0].value, abs=2) == servo.read(
-            TPDO_REGISTERS[0]
-        )
     # Check that PDOs can be re-started with the same configuration
     start_stop_pdos(net)
     # Re-configure the PDOs and re-start the PDO exchange
