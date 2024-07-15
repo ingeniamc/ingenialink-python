@@ -9,9 +9,20 @@ import pytest
 
 from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.register import REG_DTYPE
-from ingenialink.exceptions import ILConfigurationError, ILStateError, ILTimeoutError, ILValueError
+from ingenialink.exceptions import (
+    ILConfigurationError,
+    ILStateError,
+    ILTimeoutError,
+    ILValueError,
+    ILError,
+)
 from ingenialink.register import REG_ADDRESS_TYPE
 from ingenialink.servo import SERVO_STATE
+from tests.virtual.test_virtual_network import (
+    RESOURCES_FOLDER,
+    connect_virtual_drive,
+    stop_virtual_drive,
+)
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -202,6 +213,21 @@ def test_load_configuration(connect_to_slave, read_config, pytestconfig):
                 assert value == pytest.approx(float(storage), 0.0001)
             else:
                 assert value == int(storage)
+
+
+@pytest.mark.no_connection
+@pytest.mark.usefixtures("stop_virtual_drive")
+def test_load_configuration_strict(mocker, connect_virtual_drive):
+    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+    servo, net = connect_virtual_drive(dictionary)
+    test_file = "./tests/resources/test_config_file.xcf"
+    mocker.patch("ingenialink.servo.Servo.write", side_effect=ILError("Error writing"))
+    with pytest.raises(ILError) as exc_info:
+        servo.load_configuration(test_file, strict=True)
+    assert (
+        str(exc_info.value)
+        == "Exception during load_configuration, register DRV_DIAG_SYS_ERROR_TOTAL_COM: Error writing"
+    )
 
 
 @pytest.mark.no_connection
