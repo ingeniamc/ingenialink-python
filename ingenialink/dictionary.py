@@ -200,6 +200,8 @@ class Dictionary(ABC):
     """Firmware version declared in the dictionary."""
     product_code: int
     """Product code declared in the dictionary."""
+    coco_product_code: Optional[int] = None
+    """CoCo product code declared in the dictionary."""
     part_number: Optional[str]
     """Part number declared in the dictionary."""
     revision_number: int
@@ -374,10 +376,13 @@ class Dictionary(ABC):
 
         """
         if not other_dict.is_coco_dictionary:
+            self.coco_product_code = self.product_code
             self.product_code = other_dict.product_code
             self.revision_number = other_dict.revision_number
             self.firmware_version = other_dict.firmware_version
             self.part_number = other_dict.part_number
+        else:
+            self.coco_product_code = other_dict.product_code
 
     @property
     def is_coco_dictionary(self) -> bool:
