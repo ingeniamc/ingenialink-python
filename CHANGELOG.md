@@ -4,6 +4,7 @@
 
 ### Added
 - Coco product code attribute to the Dictionary class.
+- Enable working with FSoE PDOs and regular PDOs at the same time.
 
 ## [7.3.3] - 2024-07-15
 
