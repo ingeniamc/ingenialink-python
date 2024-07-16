@@ -201,7 +201,8 @@ class Dictionary(ABC):
     product_code: int
     """Product code declared in the dictionary."""
     coco_product_code: Optional[int] = None
-    """CoCo product code declared in the dictionary."""
+    """CoCo product code declared in the dictionary.
+    Only used when a COM-KIT and a CORE dictionary are merged."""
     part_number: Optional[str]
     """Part number declared in the dictionary."""
     revision_number: int
