@@ -115,6 +115,7 @@ def test_merge_dictionaries_attributes():
     assert merged_dict.revision_number == 31
     assert merged_dict.firmware_version == "2.4.0"
     assert merged_dict.part_number == "CORE"
+    assert merged_dict.coco_product_code == 123456789
 
 
 @pytest.mark.no_connection
@@ -143,6 +144,7 @@ def test_merge_dictionaries_order_invariant():
     assert dict_a.firmware_version == dict_b.firmware_version
     assert dict_a.part_number == dict_b.part_number
     assert dict_a.image == dict_b.image
+    assert dict_a.coco_product_code == dict_b.coco_product_code
 
 
 @pytest.mark.no_connection
