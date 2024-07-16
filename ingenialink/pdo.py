@@ -265,7 +265,7 @@ class PDOMap:
         if self.map_register_index is None:
             raise ValueError("map_register_index is None")
         else:
-            return self.map_register_index.to_bytes(4, "little")
+            return self.map_register_index.to_bytes(2, "little")
 
     @property
     def map_register_index(self) -> Optional[int]:
@@ -385,7 +385,7 @@ class TPDOMap(PDOMap):
 class PDOServo(Servo):
     """Abstract class to implement PDOs in a Servo class."""
 
-    AVAILABLE_PDOS = 1
+    AVAILABLE_PDOS = 2
 
     RPDO_ASSIGN_REGISTER_SUB_IDX_0 = "RPDO_ASSIGN_REGISTER_SUB_IDX_0"
     RPDO_ASSIGN_REGISTER_SUB_IDX_1 = "RPDO_ASSIGN_REGISTER_SUB_IDX_1"
