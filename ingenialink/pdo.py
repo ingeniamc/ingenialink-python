@@ -620,6 +620,7 @@ class PDOServo(Servo):
         for tpdo_map in self._tpdo_maps:
             map_bytes = input_data[: tpdo_map.data_length_bytes]
             tpdo_map.set_item_bytes(map_bytes)
+            input_data = input_data[tpdo_map.data_length_bytes :]
 
     def _process_rpdo(self) -> Optional[bytes]:
         """Retrieve the RPDO raw data from each map.
