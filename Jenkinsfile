@@ -12,7 +12,10 @@ def FOE_APP_NAME = "FoEUpdateFirmware.exe"
 def FOE_APP_NAME_LINUX = "FoEUpdateFirmware"
 def FOE_APP_VERSION = ""
 
-def PYTHON_VERSIONS = "py39,py310,py311,py312"
+def ALL_PYTHON_VERSIONS = "py39,py310,py311,py312"
+def RUN_PYTHON_VERSIONS = ""
+def PYTHON_VERSION_MIN = "py39"
+def PYTHON_VERSION_MAX = "py312"
 def DEFAULT_PYTHON_VERSION = "3.9"
 def TOX_VERSION = "4.12.1"
 
@@ -22,6 +25,23 @@ def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 pipeline {
     agent none
     stages {
+        stage("Set run python versions") {
+            steps {
+                script {
+                    if (env.BRANCH_NAME == 'master') {
+                        RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
+                    } else if (env.BRANCH_NAME == 'develop') {
+                        RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
+                    } else if (env.BRANCH_NAME.startsWith('release/')) {
+                        RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
+                    } else {
+                        RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
+                        RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
+                    }
+                }
+            }
+        }
+
         stage('Get FoE application') {
             agent {
                 docker {
@@ -42,7 +62,7 @@ pipeline {
                 }
             }
         }
-        stage('Run tests on Linux') {
+        stage('Run tests on linux docker') {
             agent {
                 docker {
                     label "worker"
@@ -60,7 +80,7 @@ pipeline {
                 stage('Run no-connection tests') {
                     steps {
                         sh """
-                            python${DEFAULT_PYTHON_VERSION} -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
+                            python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
                         """
                     }
                     post {
@@ -123,10 +143,10 @@ pipeline {
                         """
                     }
                 }
-                stage('Run docker tests') {
+                stage('Run docker tests on windows') {
                     steps {
                         bat """
-                            tox -e ${PYTHON_VERSIONS} -- -m docker --junitxml=pytest_docker_report.xml
+                            tox -e ${RUN_PYTHON_VERSIONS} -- -m docker --junitxml=pytest_docker_report.xml
                         """
                     }
                     post {
@@ -160,6 +180,7 @@ pipeline {
                 }
             }
             when {
+                beforeAgent true
                 branch BRANCH_NAME_MASTER
             }
             steps {
@@ -208,7 +229,7 @@ pipeline {
                 stage('Run EtherCAT tests') {
                     steps {
                         bat """
-                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethercat --junitxml=pytest_ethercat_report.xml
+                            venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --protocol ethercat --junitxml=pytest_ethercat_report.xml
                         """
                     }
                     post {
@@ -223,7 +244,7 @@ pipeline {
                 stage('Run no-connection tests') {
                     steps {
                         bat """
-                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
+                            venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
                         """
                     }
                     post {
@@ -282,7 +303,7 @@ pipeline {
                 stage('Run CANopen tests') {
                     steps {
                         bat """
-                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol canopen --junitxml=pytest_canopen_report.xml
+                            venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --protocol canopen --junitxml=pytest_canopen_report.xml
                         """
                     }
                     post {
@@ -297,7 +318,7 @@ pipeline {
                 stage('Run Ethernet tests') {
                     steps {
                         bat """
-                            venv\\Scripts\\python.exe -m tox -e ${PYTHON_VERSIONS} -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
+                            venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
                         """
                     }
                     post {
