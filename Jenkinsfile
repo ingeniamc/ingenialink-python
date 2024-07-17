@@ -190,155 +190,159 @@ pipeline {
                 publishPyPi("dist/*")
             }
         }
-        stage('EtherCAT and no-connection tests') {
-            options {
-                lock(ECAT_NODE_LOCK)
-            }
-            agent {
-                label ECAT_NODE
-            }
-            stages {
-                stage('Checkout') {
-                    steps {
-                        checkout scm
+        stage('Run tests with HW') {
+            parallel {
+                stage('EtherCAT and no-connection tests') {
+                    options {
+                        lock(ECAT_NODE_LOCK)
                     }
-                }
-                stage('Get FoE application') {
-                    steps {
-                        unstash 'foe_app'
-                        bat """
-                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
-                        """
+                    agent {
+                        label ECAT_NODE
                     }
-                }
-                stage('Install deps') {
-                    steps {
-                        bat """
-                            py -${DEFAULT_PYTHON_VERSION} -m venv venv
-                            venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
-                        """
-                    }
-                }
-                stage('Update drives FW') {
-                    steps {
-                        bat '''
-                            venv\\Scripts\\python.exe -m tox -e firmware -- ethercat
-                        '''
-                    }
-                }
-                stage('Run EtherCAT tests') {
-                    steps {
-                        bat """
-                            venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --protocol ethercat --junitxml=pytest_ethercat_report.xml
-                        """
-                    }
-                    post {
-                        always {
-                            bat """
-                                move .coverage .coverage_ethercat
-                            """
-                            junit 'pytest_ethercat_report.xml'
+                    stages {
+                        stage('Checkout') {
+                            steps {
+                                checkout scm
+                            }
+                        }
+                        stage('Get FoE application') {
+                            steps {
+                                unstash 'foe_app'
+                                bat """
+                                    XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                                """
+                            }
+                        }
+                        stage('Install deps') {
+                            steps {
+                                bat """
+                                    py -${DEFAULT_PYTHON_VERSION} -m venv venv
+                                    venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
+                                """
+                            }
+                        }
+                        stage('Update drives FW') {
+                            steps {
+                                bat '''
+                                    venv\\Scripts\\python.exe -m tox -e firmware -- ethercat
+                                '''
+                            }
+                        }
+                        stage('Run EtherCAT tests') {
+                            steps {
+                                bat """
+                                    venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --protocol ethercat --junitxml=pytest_ethercat_report.xml
+                                """
+                            }
+                            post {
+                                always {
+                                    bat """
+                                        move .coverage .coverage_ethercat
+                                    """
+                                    junit 'pytest_ethercat_report.xml'
+                                }
+                            }
+                        }
+                        stage('Run no-connection tests') {
+                            steps {
+                                bat """
+                                    venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
+                                """
+                            }
+                            post {
+                                always {
+                                    bat """
+                                        move .coverage .coverage_no_connection
+                                    """
+                                    junit 'pytest_no_connection_report.xml'
+                                }
+                            }
+                        }
+                        stage('Archive') {
+                            steps {
+                                stash includes: '.coverage_ethercat, .coverage_no_connection', name: 'coverage_reports'
+                                archiveArtifacts artifacts: '*.xml'
+                            }
                         }
                     }
                 }
-                stage('Run no-connection tests') {
-                    steps {
-                        bat """
-                            venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --junitxml=pytest_no_connection_report.xml
-                        """
+                stage('CANopen and Ethernet tests') {
+                    options {
+                        lock(CAN_NODE_LOCK)
                     }
-                    post {
-                        always {
-                            bat """
-                                move .coverage .coverage_no_connection
-                            """
-                            junit 'pytest_no_connection_report.xml'
+                    agent {
+                        label CAN_NODE
+                    }
+                    stages {
+                        stage('Checkout') {
+                            steps {
+                                checkout scm
+                            }
                         }
-                    }
-                }
-                stage('Archive') {
-                    steps {
-                        stash includes: '.coverage_ethercat, .coverage_no_connection', name: 'coverage_reports'
-                        archiveArtifacts artifacts: '*.xml'
-                    }
-                }
-            }
-        }
-        stage('CANopen and Ethernet tests') {
-            options {
-                lock(CAN_NODE_LOCK)
-            }
-            agent {
-                label CAN_NODE
-            }
-            stages {
-                stage('Checkout') {
-                    steps {
-                        checkout scm
-                    }
-                }
-                stage('Get FoE application') {
-                    steps {
-                        unstash 'foe_app'
-                        bat """
-                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
-                        """
-                    }
-                }
-                stage('Install deps') {
-                    steps {
-                        bat """
-                            py -${DEFAULT_PYTHON_VERSION} -m venv venv
-                            venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
-                        """
-                    }
-                }
-                stage('Update drives FW') {
-                    steps {
-                        bat '''
-                             venv\\Scripts\\python.exe -m tox -e firmware -- canopen
-                        '''
-                    }
-                }
-                stage('Run CANopen tests') {
-                    steps {
-                        bat """
-                            venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --protocol canopen --junitxml=pytest_canopen_report.xml
-                        """
-                    }
-                    post {
-                        always {
-                            bat """
-                                move .coverage .coverage_canopen
-                            """
-                            junit 'pytest_canopen_report.xml'
+                        stage('Get FoE application') {
+                            steps {
+                                unstash 'foe_app'
+                                bat """
+                                    XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                                """
+                            }
                         }
-                    }
-                }
-                stage('Run Ethernet tests') {
-                    steps {
-                        bat """
-                            venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
-                        """
-                    }
-                    post {
-                        always {
-                            bat """
-                                move .coverage .coverage_ethernet
-                            """
-                            junit 'pytest_ethernet_report.xml'
+                        stage('Install deps') {
+                            steps {
+                                bat """
+                                    py -${DEFAULT_PYTHON_VERSION} -m venv venv
+                                    venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
+                                """
+                            }
                         }
-                    }
-                }
-                stage('Save test results') {
-                    steps {
-                        unstash 'coverage_docker'
-                        unstash 'coverage_reports'
-                        bat '''
-                            venv\\Scripts\\python.exe -m tox -e coverage -- .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
-                        '''
-                        publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
-                        archiveArtifacts artifacts: '*.xml'
+                        stage('Update drives FW') {
+                            steps {
+                                bat '''
+                                     venv\\Scripts\\python.exe -m tox -e firmware -- canopen
+                                '''
+                            }
+                        }
+                        stage('Run CANopen tests') {
+                            steps {
+                                bat """
+                                    venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --protocol canopen --junitxml=pytest_canopen_report.xml
+                                """
+                            }
+                            post {
+                                always {
+                                    bat """
+                                        move .coverage .coverage_canopen
+                                    """
+                                    junit 'pytest_canopen_report.xml'
+                                }
+                            }
+                        }
+                        stage('Run Ethernet tests') {
+                            steps {
+                                bat """
+                                    venv\\Scripts\\python.exe -m tox -e ${RUN_PYTHON_VERSIONS} -- --protocol ethernet --junitxml=pytest_ethernet_report.xml
+                                """
+                            }
+                            post {
+                                always {
+                                    bat """
+                                        move .coverage .coverage_ethernet
+                                    """
+                                    junit 'pytest_ethernet_report.xml'
+                                }
+                            }
+                        }
+                        stage('Save test results') {
+                            steps {
+                                unstash 'coverage_docker'
+                                unstash 'coverage_reports'
+                                bat '''
+                                    venv\\Scripts\\python.exe -m tox -e coverage -- .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
+                                '''
+                                publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
+                                archiveArtifacts artifacts: '*.xml'
+                            }
+                        }
                     }
                 }
             }
