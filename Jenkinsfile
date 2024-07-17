@@ -172,7 +172,7 @@ pipeline {
                 }
             }
         }
-        stage('Publish Ingenialink'){
+        stage('Publish Ingenialink') {
             agent {
                 docker {
                     label "worker"
@@ -332,19 +332,28 @@ pipeline {
                                 }
                             }
                         }
-                        stage('Save test results') {
-                            steps {
-                                unstash 'coverage_docker'
-                                unstash 'coverage_reports'
-                                bat '''
-                                    venv\\Scripts\\python.exe -m tox -e coverage -- .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
-                                '''
-                                publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
-                                archiveArtifacts artifacts: '*.xml'
-                            }
-                        }
                     }
                 }
+            }
+        }
+        stage('Publish test results') {
+            agent {
+                docker {
+                    label "worker"
+                    image "ingeniacontainers.azurecr.io/docker-python:1.4"
+                }
+            }
+            steps {
+                sh """
+                    python${DEFAULT_PYTHON_VERSION} -m pip install tox==${TOX_VERSION}
+                """
+                unstash 'coverage_docker'
+                unstash 'coverage_reports'
+                bat '''
+                            venv\\Scripts\\python.exe -m tox -e coverage -- .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
+                    '''
+                publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
+                archiveArtifacts artifacts: '*.xml'
             }
         }
     }
