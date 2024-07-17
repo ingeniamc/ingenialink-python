@@ -349,9 +349,9 @@ pipeline {
                 """
                 unstash 'coverage_docker'
                 unstash 'coverage_reports'
-                bat '''
-                            venv\\Scripts\\python.exe -m tox -e coverage -- .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
-                    '''
+                sh """
+                    python${DEFAULT_PYTHON_VERSION} -m tox -e coverage -- .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
+                   """
                 publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
                 archiveArtifacts artifacts: '*.xml'
             }
