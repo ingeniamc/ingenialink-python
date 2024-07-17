@@ -35,7 +35,6 @@ pipeline {
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                     } else {
-                        RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                         RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
                     }
                 }
