@@ -130,14 +130,14 @@ def connect_to_rack_service():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def load_firmware(pytestconfig, read_config, connect_to_rack_service):
+def load_firmware(pytestconfig, read_config, request):
     protocol = pytestconfig.getoption("--protocol")
     if protocol == DEFAULT_PROTOCOL:
         return
     protocol_contents = read_config[protocol]
     drive_identifier = protocol_contents["identifier"]
     drive_idx = None
-    client = connect_to_rack_service
+    client = request.getfixturevalue("connect_to_rack_service")
     config = client.exposed_get_configuration()
     for idx, drive in enumerate(config.drives):
         if drive_identifier == drive.identifier:
