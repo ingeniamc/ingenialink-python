@@ -259,7 +259,7 @@ pipeline {
                         }
                         stage('Archive') {
                             steps {
-                                stash includes: '.coverage_ethercat, .coverage_no_connection', name: 'coverage_reports'
+                                stash includes: '.coverage_ethercat, .coverage_no_connection', name: 'coverage_reports_ecat'
                                 archiveArtifacts artifacts: '*.xml'
                             }
                         }
@@ -331,6 +331,12 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Archive') {
+                            steps {
+                                stash includes: 'coverage_ethernet, .coverage_canopen', name: 'coverage_reports_canopen'
+                                archiveArtifacts artifacts: '*.xml'
+                            }
+                        }
                     }
                 }
             }
@@ -347,7 +353,8 @@ pipeline {
                     python${DEFAULT_PYTHON_VERSION} -m pip install tox==${TOX_VERSION}
                 """
                 unstash 'coverage_docker'
-                unstash 'coverage_reports'
+                unstash 'coverage_reports_ecat'
+                unstash 'coverage_reports_canopen'
                 sh """
                     python${DEFAULT_PYTHON_VERSION} -m tox -e coverage -- .coverage_docker .coverage_no_connection .coverage_ethercat .coverage_ethernet .coverage_canopen
                    """
