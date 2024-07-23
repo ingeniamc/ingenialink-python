@@ -333,7 +333,7 @@ pipeline {
                         }
                         stage('Archive') {
                             steps {
-                                stash includes: 'coverage_ethernet, .coverage_canopen', name: 'coverage_reports_canopen'
+                                stash includes: '.coverage_ethernet, .coverage_canopen', name: 'coverage_reports_canopen'
                                 archiveArtifacts artifacts: '*.xml'
                             }
                         }
