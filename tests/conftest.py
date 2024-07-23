@@ -149,3 +149,10 @@ def load_firmware(pytestconfig, read_config, request):
     client.exposed_firmware_load(
         drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
     )
+
+
+@pytest.fixture()
+def perform_power_cycle(connect_to_rack_service):
+    client = connect_to_rack_service
+    client.exposed_turn_off_ps()
+    client.exposed_turn_on_ps()

@@ -307,11 +307,14 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-def test_store_parameters(connect_to_slave):
+@pytest.mark.ethercat
+def test_store_parameters(connect_to_slave, request):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
 
     servo.store_parameters()
+
+    request.getfixturevalue("perform_power_cycle")
 
     value = servo.read("DRV_STATE_STATUS")
     assert value is not None
@@ -321,11 +324,14 @@ def test_store_parameters(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-def test_restore_parameters(connect_to_slave):
+@pytest.mark.ethercat
+def test_restore_parameters(connect_to_slave, request):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
 
     servo.restore_parameters()
+
+    request.getfixturevalue("perform_power_cycle")
 
     value = servo.read("DRV_STATE_STATUS")
     assert value is not None
