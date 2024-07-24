@@ -1,4 +1,5 @@
 import json
+import time
 
 import pytest
 import rpyc
@@ -76,7 +77,9 @@ def connect_ethernet(protocol_contents):
 def connect_ethercat(protocol_contents):
     net = EthercatNetwork(protocol_contents["ifname"])
 
-    servo = net.connect_to_slave(protocol_contents["slave"], protocol_contents["dictionary"])
+    servo = net.connect_to_slave(
+        protocol_contents["slave"], protocol_contents["dictionary"], net_status_listener=True
+    )
     return servo, net
 
 
@@ -155,4 +158,5 @@ def load_firmware(pytestconfig, read_config, request):
 def perform_power_cycle(connect_to_rack_service):
     client = connect_to_rack_service
     client.exposed_turn_off_ps()
+    time.sleep(1)
     client.exposed_turn_on_ps()

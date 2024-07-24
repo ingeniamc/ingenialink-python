@@ -40,6 +40,14 @@ def _get_reg_address(register, protocol):
     return getattr(register, attr_dict[protocol])
 
 
+def wait_until_alive(servo, timeout=None):
+    init_time = time.time()
+    while not servo.is_alive():
+        if timeout is not None and (init_time + timeout) < time.time():
+            pytest.fail("The drive is unresponsive after the recovery timeout.")
+        time.sleep(1)
+
+
 @pytest.fixture()
 def create_monitoring(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
@@ -309,34 +317,57 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 def test_store_parameters(connect_to_slave, request):
+    user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
+
     servo, net = connect_to_slave
-    assert servo is not None and net is not None
+
+    initial_user_over_voltage_value = servo.read(user_over_voltage_register)
+    new_user_over_voltage_value = initial_user_over_voltage_value + 5
+
+    servo.write(user_over_voltage_register, new_user_over_voltage_value)
+
+    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
     servo.store_parameters()
 
+    time.sleep(5)
+
     request.getfixturevalue("perform_power_cycle")
 
-    value = servo.read("DRV_STATE_STATUS")
-    assert value is not None
+    wait_until_alive(servo, timeout=10)
 
-    # TODO: add a power cycle if possible to check the NVM
+    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
+
+    # Restore previous value
+    servo.write(user_over_voltage_register, initial_user_over_voltage_value)
 
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_restore_parameters(connect_to_slave, request):
+def test_restore_parameters(connect_to_slave, request, read_config, pytestconfig):
+    user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
+
     servo, net = connect_to_slave
-    assert servo is not None and net is not None
+
+    new_user_over_voltage_value = servo.read(user_over_voltage_register) + 5
+
+    servo.write(user_over_voltage_register, new_user_over_voltage_value)
+
+    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
     servo.restore_parameters()
 
     request.getfixturevalue("perform_power_cycle")
 
-    value = servo.read("DRV_STATE_STATUS")
-    assert value is not None
+    wait_until_alive(servo, timeout=10)
 
-    # TODO: add a power cycle if possible to check the NVM
+    assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
+
+    # Restore configuration
+    protocol = pytestconfig.getoption("--protocol")
+    filename = read_config[protocol]["load_config_file"]
+    servo.load_configuration(filename)
 
 
 @pytest.mark.canopen
