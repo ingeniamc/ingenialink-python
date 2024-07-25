@@ -316,7 +316,7 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_store_parameters(connect_to_slave, request):
+def test_store_parameters(connect_to_slave, connect_to_rack_service):
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     servo, net = connect_to_slave
@@ -332,7 +332,10 @@ def test_store_parameters(connect_to_slave, request):
 
     time.sleep(5)
 
-    request.getfixturevalue("perform_power_cycle")
+    client = connect_to_rack_service
+    client.exposed_turn_off_ps()
+    time.sleep(1)
+    client.exposed_turn_on_ps()
 
     wait_until_alive(servo, timeout=10)
 
@@ -342,7 +345,7 @@ def test_store_parameters(connect_to_slave, request):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_restore_parameters(connect_to_slave, request, read_config, pytestconfig):
+def test_restore_parameters(connect_to_slave, connect_to_rack_service):
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     servo, net = connect_to_slave
@@ -355,7 +358,10 @@ def test_restore_parameters(connect_to_slave, request, read_config, pytestconfig
 
     servo.restore_parameters()
 
-    request.getfixturevalue("perform_power_cycle")
+    client = connect_to_rack_service
+    client.exposed_turn_off_ps()
+    time.sleep(1)
+    client.exposed_turn_on_ps()
 
     wait_until_alive(servo, timeout=10)
 
