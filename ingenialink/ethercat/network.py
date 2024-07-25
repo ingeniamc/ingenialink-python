@@ -210,6 +210,7 @@ class EthercatNetwork(Network):
         if slave_id not in self.__last_init_nodes:
             raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
+        slave.add_emergency_callback(self._emcy_callback)
         servo = EthercatServo(
             slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
         )
@@ -223,7 +224,6 @@ class EthercatNetwork(Network):
         self.subscribe_to_status(slave_id, self._recover_from_power_cycle)
         if net_status_listener:
             self.start_status_listener()
-        servo.slave.add_emergency_callback(self._emcy_callback)
         return servo
 
     def disconnect_from_slave(self, servo: EthercatServo) -> None:  # type: ignore [override]
