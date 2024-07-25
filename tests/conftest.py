@@ -109,6 +109,9 @@ def connect_to_slave(pytestconfig, read_config):
     elif protocol == "ethercat":
         servo, net = connect_ethercat(protocol_contents)
 
+    filename = read_config[protocol]["load_config_file"]
+    servo.load_configuration(filename)
+
     yield servo, net
     net.disconnect_from_slave(servo)
 

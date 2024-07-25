@@ -338,9 +338,6 @@ def test_store_parameters(connect_to_slave, request):
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-    # Restore previous value
-    servo.write(user_over_voltage_register, initial_user_over_voltage_value)
-
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
@@ -363,11 +360,6 @@ def test_restore_parameters(connect_to_slave, request, read_config, pytestconfig
     wait_until_alive(servo, timeout=10)
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
-
-    # Restore configuration
-    protocol = pytestconfig.getoption("--protocol")
-    filename = read_config[protocol]["load_config_file"]
-    servo.load_configuration(filename)
 
 
 @pytest.mark.canopen
