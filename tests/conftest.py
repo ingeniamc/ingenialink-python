@@ -1,4 +1,5 @@
 import json
+import time
 
 import pytest
 import rpyc
@@ -76,7 +77,9 @@ def connect_ethernet(protocol_contents):
 def connect_ethercat(protocol_contents):
     net = EthercatNetwork(protocol_contents["ifname"])
 
-    servo = net.connect_to_slave(protocol_contents["slave"], protocol_contents["dictionary"])
+    servo = net.connect_to_slave(
+        protocol_contents["slave"], protocol_contents["dictionary"], net_status_listener=True
+    )
     return servo, net
 
 
@@ -105,6 +108,9 @@ def connect_to_slave(pytestconfig, read_config):
         servo, net = connect_eoe(protocol_contents)
     elif protocol == "ethercat":
         servo, net = connect_ethercat(protocol_contents)
+
+    filename = read_config[protocol]["load_config_file"]
+    servo.load_configuration(filename)
 
     yield servo, net
     net.disconnect_from_slave(servo)

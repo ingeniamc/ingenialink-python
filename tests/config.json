@@ -16,6 +16,7 @@
     "ifname": "\\Device\\NPF_{B24AA996-414A-4F95-95E6-2828D346209A}",
     "slave": 2,
     "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_eoe_2.4.0.xdf",
+    "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_cap_ecat/1.1.0/config.xml",
     "fw_file": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_2.4.0.lfu",
     "boot_in_app": false
   },
@@ -24,6 +25,7 @@
     "ifname": "\\Device\\NPF_{B24AA996-414A-4F95-95E6-2828D346209A}",
     "slave": 1,
     "dictionary": "//awe-srv-max-prd/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-e_eoe_2.4.0.xdf",
+    "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_eve_ecat/1.2.0/config.xml",
     "fw_file": "//awe-srv-max-prd/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-e_2.4.0.sfu",
     "boot_in_app": true
   }
