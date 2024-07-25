@@ -1,6 +1,7 @@
 {
   "ethernet": [
   {
+    "identifier": "cap-xcr-c",
     "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_eth_2.4.0.xdf",
     "ip": "192.168.2.11",
     "port": 1061,
@@ -11,6 +12,7 @@
   ],
   "ethercat": [
   {
+    "identifier": "cap-xcr-e",
     "ifname": "\\Device\\NPF_{B24AA996-414A-4F95-95E6-2828D346209A}",
     "slave": 2,
     "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_eoe_2.4.0.xdf",
@@ -18,6 +20,7 @@
     "boot_in_app": false
   },
   {
+    "identifier": "eve-xcr-e",
     "ifname": "\\Device\\NPF_{B24AA996-414A-4F95-95E6-2828D346209A}",
     "slave": 1,
     "dictionary": "//awe-srv-max-prd/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-e_eoe_2.4.0.xdf",
@@ -27,6 +30,7 @@
   ],
   "canopen": [
   {
+    "identifier": "cap-xcr-c",
     "dictionary": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_can_2.4.0.xdf",
     "eds": "//awe-srv-max-prd/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_2.4.0.eds",
     "node_id": 21,
@@ -40,6 +44,7 @@
   ],
   "eoe": [
   {
+    "identifier": "eve-xcr-e",
     "ifname": "\\Device\\NPF_{192D1D2F-C684-467D-A637-EC07BD434A63}",
     "slave": 1,
     "ip": "192.168.3.22",

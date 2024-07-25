@@ -220,13 +220,6 @@ pipeline {
                                 """
                             }
                         }
-                        stage('Update drives FW') {
-                            steps {
-                                bat '''
-                                    venv\\Scripts\\python.exe -m tox -e firmware -- ethercat
-                                '''
-                            }
-                        }
                         stage('Run EtherCAT tests') {
                             steps {
                                 bat """
@@ -292,13 +285,6 @@ pipeline {
                                     py -${DEFAULT_PYTHON_VERSION} -m venv venv
                                     venv\\Scripts\\python.exe -m pip install tox==${TOX_VERSION}
                                 """
-                            }
-                        }
-                        stage('Update drives FW') {
-                            steps {
-                                bat '''
-                                     venv\\Scripts\\python.exe -m tox -e firmware -- canopen
-                                '''
                             }
                         }
                         stage('Run CANopen tests') {

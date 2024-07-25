@@ -1,6 +1,7 @@
 import json
 
 import pytest
+import rpyc
 
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.eoe.network import EoENetwork
@@ -8,21 +9,23 @@ from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethernet.network import EthernetNetwork
 from virtual_drive.core import VirtualDrive
 
-ALLOW_PROTOCOLS = ["no_connection", "ethernet", "ethercat", "canopen", "eoe"]
+DEFAULT_PROTOCOL = "no_connection"
+
+ALLOW_PROTOCOLS = [DEFAULT_PROTOCOL, "ethernet", "ethercat", "canopen", "eoe"]
 
 
 def pytest_addoption(parser):
     parser.addoption(
         "--protocol",
         action="store",
-        default="no_connection",
+        default=DEFAULT_PROTOCOL,
         help=",".join(ALLOW_PROTOCOLS),
         choices=ALLOW_PROTOCOLS,
     )
     parser.addoption("--slave", type=int, default=0, help="Slave index in config.json")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def read_config(request):
     config = "tests/config.json"
     print("current config file:", config)
@@ -116,3 +119,33 @@ def virtual_drive():
     virtual_servo = net.connect_to_slave(server.ip, server.dictionary_path, server.port)
     yield server, virtual_servo
     server.stop()
+
+
+@pytest.fixture(scope="session")
+def connect_to_rack_service():
+    rack_service_port = 33810
+    client = rpyc.connect("localhost", rack_service_port, config={"sync_request_timeout": None})
+    yield client.root
+    client.close()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def load_firmware(pytestconfig, read_config, request):
+    protocol = pytestconfig.getoption("--protocol")
+    if protocol == DEFAULT_PROTOCOL:
+        return
+    protocol_contents = read_config[protocol]
+    drive_identifier = protocol_contents["identifier"]
+    drive_idx = None
+    client = request.getfixturevalue("connect_to_rack_service")
+    config = client.exposed_get_configuration()
+    for idx, drive in enumerate(config.drives):
+        if drive_identifier == drive.identifier:
+            drive_idx = idx
+            break
+    if drive_idx is None:
+        pytest.fail(f"The drive {drive_identifier} cannot be found on the rack's configuration.")
+    drive = config.drives[drive_idx]
+    client.exposed_firmware_load(
+        drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
+    )
