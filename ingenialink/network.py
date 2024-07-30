@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, List, Union
+from typing import Any, Callable, List, Optional, Union
 
 import ingenialogger
 
@@ -52,8 +52,8 @@ class NET_TRANS_PROT(Enum):
 
 @dataclass
 class SlaveInfo:
-    product_code: int
-    revision_number: int
+    product_code: Optional[int] = None
+    revision_number: Optional[int] = None
 
 
 class Network(ABC):
