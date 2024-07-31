@@ -396,7 +396,6 @@ class Servo:
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ILError("Invalid subnode")
-        prod_code, rev_number = self._get_drive_identification(subnode)
 
         tree = ET.Element("IngeniaDictionary")
         header = ET.SubElement(tree, "Header")
@@ -416,9 +415,12 @@ class Servo:
         device.set("Interface", interface)
         if self.dictionary.part_number is not None:
             device.set("PartNumber", self.dictionary.part_number)
-        device.set("ProductCode", str(prod_code))
-        device.set("RevisionNumber", str(rev_number))
-        device.set("firmwareVersion", str(self.dictionary.firmware_version))
+        if self.dictionary.product_code is not None:
+            device.set("ProductCode", str(self.dictionary.product_code))
+        if self.dictionary.revision_number is not None:
+            device.set("RevisionNumber", str(self.dictionary.revision_number))
+        if self.dictionary.firmware_version is not None:
+            device.set("firmwareVersion", self.dictionary.firmware_version)
 
         access_ops = {value: key for key, value in self.dictionary.access_xdf_options.items()}
         dtype_ops = {value: key for key, value in self.dictionary.dtype_xdf_options.items()}
