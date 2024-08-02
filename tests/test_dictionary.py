@@ -1,5 +1,6 @@
 import io
 import os
+import tempfile
 import xml.etree.ElementTree as ET
 from os.path import join as join_path
 from xml.dom import minidom
@@ -173,3 +174,30 @@ def test_merge_dictionaries_no_coco_exception():
         str(exc_info.value)
         == "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary."
     )
+
+
+@pytest.mark.parametrize(
+    "xml_attribute, class_attribute",
+    [
+        ("firmwareVersion", "firmware_version"),
+        ("ProductCode", "product_code"),
+        ("RevisionNumber", "revision_number"),
+        ("PartNumber", "part_number"),
+    ],
+)
+@pytest.mark.no_connection
+def test_dictionary_no_product_code(xml_attribute, class_attribute):
+    with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
+        tree = ET.parse(xdf_file)
+    root = tree.getroot()
+    device = root.find(EthernetDictionaryV2.DICT_ROOT_DEVICE)
+    device.attrib.pop(xml_attribute)
+    xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
+        indent="  ", newl="", encoding="UTF-8"
+    )
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        temp_file = join_path(tmp_dir, "temp.xdf")
+        with open(temp_file, "wb") as merged_file:
+            merged_file.write(xml_str)
+        dictionary = EthernetDictionaryV2(temp_file)
+    assert getattr(dictionary, class_attribute) is None

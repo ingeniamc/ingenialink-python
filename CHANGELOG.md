@@ -6,6 +6,9 @@
 - Coco product code attribute to the Dictionary class.
 - Enable working with FSoE PDOs and regular PDOs at the same time.
 
+### Changed
+- Set the default values of the firmware version, product code, revision number, and part number of the dictionary class to None.
+
 ## [7.3.3] - 2024-07-15
 
 ### Added

@@ -4,6 +4,7 @@ import shutil
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from packaging import version
 
 import pytest
 
@@ -117,7 +118,10 @@ def test_save_configuration(connect_to_slave):
         else servo.DICTIONARY_INTERFACE_ATTR_ETH
     )
     assert device.attrib.get("Interface") == interface
-    assert device.attrib.get("firmwareVersion") == servo.dictionary.firmware_version
+    # The firmware version from the drive has trailing zeros and the one from the dictionary does not
+    assert version.parse(device.attrib.get("firmwareVersion")) == version.parse(
+        servo.dictionary.firmware_version
+    )
     # TODO: check name and family? These are not stored at the dictionary
 
     assert len(saved_registers) > 0
