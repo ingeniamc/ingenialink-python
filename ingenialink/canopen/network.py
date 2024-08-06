@@ -246,7 +246,9 @@ class CanopenNetwork(Network):
             Containing all the detected node IDs.
 
         """
+        self._init_kvaser_lib()
         if (self.__device, self.__channel) not in self.get_available_devices():
+            self._unload_kvaser_lib()
             raise ILError(
                 f"The {self.__device.upper()} transceiver is not detected. "
                 "Make sure that it's connected and its drivers are installed."
@@ -396,6 +398,7 @@ class CanopenNetwork(Network):
 
         """
         if self._connection is None:
+            self._init_kvaser_lib()
             self._connection = canopen.Network()
             if self.__device in [CAN_DEVICE.IXXAT.value, CAN_DEVICE.KVASER.value]:
                 self._connection.listeners.append(CustomListener())
@@ -432,6 +435,8 @@ class CanopenNetwork(Network):
             logger.error(f"An exception occurred during the teardown connection. Exception: {e}")
         self._connection = None
         logger.info("Tear down connection.")
+        self._unload_kvaser_lib()
+
 
     def _reset_connection(self) -> None:
         """Resets the established CANopen network.
@@ -1066,7 +1071,6 @@ class CanopenNetwork(Network):
         """Get the available Kvaser devices and their channels"""
         if not KVASER_DRIVER_INSTALLED:
             return []
-        CanopenNetwork._reload_kvaser_lib()
         num_channels = ctypes.c_int(0)
         with contextlib.suppress(CANLIBError, NameError):
             canGetNumberOfChannels(ctypes.byref(num_channels))
@@ -1076,10 +1080,14 @@ class CanopenNetwork(Network):
             if "Virtual" not in can.interfaces.kvaser.get_channel_info(channel)
         ]
 
-    @staticmethod
-    def _reload_kvaser_lib() -> None:
-        """Reload the Kvaser library to refresh the connected transceivers."""
-        canInitializeLibrary = get_canlib_function("canInitializeLibrary")
-        canUnLoadLibrary = get_canlib_function("canUnloadLibrary")
-        canUnLoadLibrary()
-        canInitializeLibrary()
+    def _unload_kvaser_lib(self) -> None:
+        """Unload the Kvaser library"""
+        if self.__device == CAN_DEVICE.KVASER.value:
+            canUnLoadLibrary = get_canlib_function("canUnloadLibrary")
+            canUnLoadLibrary()
+
+    def _init_kvaser_lib(self) -> None:
+        """Init the Kvaser library"""
+        if self.__device == CAN_DEVICE.KVASER.value:
+            canInitializeLibrary = get_canlib_function("canInitializeLibrary")
+            canInitializeLibrary()
