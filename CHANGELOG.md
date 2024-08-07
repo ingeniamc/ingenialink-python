@@ -3,7 +3,7 @@
 ## [7.3.4]
 
 ### Fixed
-- CANopen multiple drive connection
+- CANopen multiple drive connection with Kvaser
 
 ## [7.3.3] - 2024-07-15
 

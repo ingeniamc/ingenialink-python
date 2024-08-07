@@ -246,9 +246,7 @@ class CanopenNetwork(Network):
             Containing all the detected node IDs.
 
         """
-        self._init_kvaser_lib()
         if (self.__device, self.__channel) not in self.get_available_devices():
-            self._unload_kvaser_lib()
             raise ILError(
                 f"The {self.__device.upper()} transceiver is not detected. "
                 "Make sure that it's connected and its drivers are installed."
@@ -398,7 +396,6 @@ class CanopenNetwork(Network):
 
         """
         if self._connection is None:
-            self._init_kvaser_lib()
             self._connection = canopen.Network()
             if self.__device in [CAN_DEVICE.IXXAT.value, CAN_DEVICE.KVASER.value]:
                 self._connection.listeners.append(CustomListener())
@@ -435,8 +432,6 @@ class CanopenNetwork(Network):
             logger.error(f"An exception occurred during the teardown connection. Exception: {e}")
         self._connection = None
         logger.info("Tear down connection.")
-        self._unload_kvaser_lib()
-
 
     def _reset_connection(self) -> None:
         """Resets the established CANopen network.
@@ -1050,8 +1045,7 @@ class CanopenNetwork(Network):
     def _set_servo_state(self, node_id: int, state: NET_STATE) -> None:
         self.__servos_state[node_id] = state
 
-    @staticmethod
-    def get_available_devices() -> List[Tuple[str, Union[str, int]]]:
+    def get_available_devices(self) -> List[Tuple[str, Union[str, int]]]:
         """Get the available CAN devices and their channels"""
         unavailable_devices = [CAN_DEVICE.KVASER, CAN_DEVICE.VIRTUAL]
         if platform.system() == "Windows":
@@ -1062,15 +1056,15 @@ class CanopenNetwork(Network):
                 can.detect_available_configs(
                     [device.value for device in CAN_DEVICE if device not in unavailable_devices]
                 )
-                + CanopenNetwork._get_available_kvaser_devices()
+                + self._get_available_kvaser_devices()
             )
         ]
 
-    @staticmethod
-    def _get_available_kvaser_devices() -> List[Dict[str, Any]]:
+    def _get_available_kvaser_devices(self) -> List[Dict[str, Any]]:
         """Get the available Kvaser devices and their channels"""
         if not KVASER_DRIVER_INSTALLED:
             return []
+        self._reload_kvaser_lib()
         num_channels = ctypes.c_int(0)
         with contextlib.suppress(CANLIBError, NameError):
             canGetNumberOfChannels(ctypes.byref(num_channels))
@@ -1080,14 +1074,11 @@ class CanopenNetwork(Network):
             if "Virtual" not in can.interfaces.kvaser.get_channel_info(channel)
         ]
 
-    def _unload_kvaser_lib(self) -> None:
-        """Unload the Kvaser library"""
-        if self.__device == CAN_DEVICE.KVASER.value:
+    def _reload_kvaser_lib(self) -> None:
+        """Reload the Kvaser library to refresh the connected transceivers.
+        Only when no drives are connected"""
+        if self.__device == CAN_DEVICE.KVASER.value and not self.servos:
             canUnLoadLibrary = get_canlib_function("canUnloadLibrary")
-            canUnLoadLibrary()
-
-    def _init_kvaser_lib(self) -> None:
-        """Init the Kvaser library"""
-        if self.__device == CAN_DEVICE.KVASER.value:
             canInitializeLibrary = get_canlib_function("canInitializeLibrary")
+            canUnLoadLibrary()
             canInitializeLibrary()
