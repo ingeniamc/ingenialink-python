@@ -1072,7 +1072,8 @@ class CanopenNetwork(Network):
         """
         if not KVASER_DRIVER_INSTALLED:
             return []
-        self._reload_kvaser_lib()
+        if self.__device == CAN_DEVICE.KVASER.value and not self.servos:
+            self._reload_kvaser_lib()
         num_channels = ctypes.c_int(0)
         with contextlib.suppress(CANLIBError, NameError):
             canGetNumberOfChannels(ctypes.byref(num_channels))
@@ -1082,11 +1083,10 @@ class CanopenNetwork(Network):
             if "Virtual" not in can.interfaces.kvaser.get_channel_info(channel)
         ]
 
-    def _reload_kvaser_lib(self) -> None:
-        """Reload the Kvaser library to refresh the connected transceivers.
-        Only when no drives are connected"""
-        if self.__device == CAN_DEVICE.KVASER.value and not self.servos:
-            canUnLoadLibrary = get_canlib_function("canUnloadLibrary")
-            canInitializeLibrary = get_canlib_function("canInitializeLibrary")
-            canUnLoadLibrary()
-            canInitializeLibrary()
+    @staticmethod
+    def _reload_kvaser_lib() -> None:
+        """Reload the Kvaser library to refresh the connected transceivers."""
+        canUnLoadLibrary = get_canlib_function("canUnloadLibrary")
+        canInitializeLibrary = get_canlib_function("canInitializeLibrary")
+        canUnLoadLibrary()
+        canInitializeLibrary()
