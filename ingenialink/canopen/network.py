@@ -1046,7 +1046,11 @@ class CanopenNetwork(Network):
         self.__servos_state[node_id] = state
 
     def get_available_devices(self) -> List[Tuple[str, Union[str, int]]]:
-        """Get the available CAN devices and their channels"""
+        """Get the available CAN devices and their channels
+
+        Returns:
+            List of tuples with device name and channel
+        """
         unavailable_devices = [CAN_DEVICE.KVASER, CAN_DEVICE.VIRTUAL]
         if platform.system() == "Windows":
             unavailable_devices.append(CAN_DEVICE.SOCKETCAN)
@@ -1061,7 +1065,11 @@ class CanopenNetwork(Network):
         ]
 
     def _get_available_kvaser_devices(self) -> List[Dict[str, Any]]:
-        """Get the available Kvaser devices and their channels"""
+        """Get the available Kvaser devices and their channels
+
+        Returns:
+            List of dictionaries compatible with :func:`can.detect_available_configs` output.
+        """
         if not KVASER_DRIVER_INSTALLED:
             return []
         self._reload_kvaser_lib()
