@@ -1,6 +1,6 @@
 # Changelog
 
-## [7.3.4]
+## [7.3.4] - 2024-08-08
 
 ### Fixed
 - CANopen multiple drive connection with Kvaser
