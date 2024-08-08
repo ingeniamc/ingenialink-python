@@ -8,6 +8,12 @@
 
 ### Changed
 - Set the default values of the firmware version, product code, revision number, and part number of the dictionary class to None.
+- Store nack error code on NACK exceptions
+
+## [7.3.4] - 2024-08-08
+
+### Fixed
+- CANopen multiple drive connection with Kvaser
 
 ## [7.3.3] - 2024-07-15
 
@@ -18,7 +24,6 @@
 - Raise an exception when a CAN transceiver's driver is not installed.
 - Add optional password for the FOE bootloader.
 - Add strict mode to the load configuration method.
-- Store nack error code on NACK exceptions
 
 ### Fixed
 - SDO Error after a store/restore parameters operation.

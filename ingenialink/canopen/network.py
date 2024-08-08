@@ -1054,9 +1054,12 @@ class CanopenNetwork(Network):
     def _set_servo_state(self, node_id: int, state: NET_STATE) -> None:
         self.__servos_state[node_id] = state
 
-    @staticmethod
-    def get_available_devices() -> List[Tuple[str, Union[str, int]]]:
-        """Get the available CAN devices and their channels"""
+    def get_available_devices(self) -> List[Tuple[str, Union[str, int]]]:
+        """Get the available CAN devices and their channels
+
+        Returns:
+            List of tuples with device name and channel
+        """
         unavailable_devices = [CAN_DEVICE.KVASER, CAN_DEVICE.VIRTUAL]
         if platform.system() == "Windows":
             unavailable_devices.append(CAN_DEVICE.SOCKETCAN)
@@ -1066,16 +1069,20 @@ class CanopenNetwork(Network):
                 can.detect_available_configs(
                     [device.value for device in CAN_DEVICE if device not in unavailable_devices]
                 )
-                + CanopenNetwork._get_available_kvaser_devices()
+                + self._get_available_kvaser_devices()
             )
         ]
 
-    @staticmethod
-    def _get_available_kvaser_devices() -> List[Dict[str, Any]]:
-        """Get the available Kvaser devices and their channels"""
+    def _get_available_kvaser_devices(self) -> List[Dict[str, Any]]:
+        """Get the available Kvaser devices and their channels
+
+        Returns:
+            List of dictionaries compatible with :func:`can.detect_available_configs` output.
+        """
         if not KVASER_DRIVER_INSTALLED:
             return []
-        CanopenNetwork._reload_kvaser_lib()
+        if self.__device == CAN_DEVICE.KVASER.value and not self.servos:
+            self._reload_kvaser_lib()
         num_channels = ctypes.c_int(0)
         with contextlib.suppress(CANLIBError, NameError):
             canGetNumberOfChannels(ctypes.byref(num_channels))
@@ -1088,7 +1095,7 @@ class CanopenNetwork(Network):
     @staticmethod
     def _reload_kvaser_lib() -> None:
         """Reload the Kvaser library to refresh the connected transceivers."""
-        canInitializeLibrary = get_canlib_function("canInitializeLibrary")
         canUnLoadLibrary = get_canlib_function("canUnloadLibrary")
+        canInitializeLibrary = get_canlib_function("canInitializeLibrary")
         canUnLoadLibrary()
         canInitializeLibrary()
