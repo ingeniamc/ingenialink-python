@@ -1,6 +1,11 @@
 # Changelog
 
-# [7.3.3] - 2024-07-15
+## [7.3.4] - 2024-08-08
+
+### Fixed
+- CANopen multiple drive connection with Kvaser
+
+## [7.3.3] - 2024-07-15
 
 ### Added
 - Methods to read/write to the ESC EEPROM.
