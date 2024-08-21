@@ -310,7 +310,7 @@ class EthercatNetwork(Network):
 
         """
         for servo in self.servos:
-            servo.process_pdo_inputs()
+            servo.generate_pdo_outputs()
         if self._overlapping_io_map:
             self._ecat_master.send_overlap_processdata()
         else:
@@ -333,7 +333,7 @@ class EthercatNetwork(Network):
                 f" real: {processdata_wkc}. {servos_state_msg}"
             )
         for servo in self.servos:
-            servo.generate_pdo_outputs()
+            servo.process_pdo_inputs()
 
     def _change_nodes_state(
         self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int
