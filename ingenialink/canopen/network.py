@@ -315,13 +315,22 @@ class CanopenNetwork(Network):
                 node = self._connection.add_node(slave_id)
             else:
                 node = connected_slaves[slave_id]
-            product_code = convert_bytes_to_dtype(
-                node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), REG_DTYPE.U32
-            )
-            revision_number = convert_bytes_to_dtype(
-                node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX), REG_DTYPE.U32
-            )
-            slave_info[slave_id] = SlaveInfo(int(product_code), int(revision_number))
+            try:
+                product_code = convert_bytes_to_dtype(
+                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), REG_DTYPE.U32
+                )
+                revision_number = convert_bytes_to_dtype(
+                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX),
+                    REG_DTYPE.U32,
+                )
+            except canopen.sdo.exceptions.SdoError as e:
+                logger.warning(
+                    f"The information of the node {slave_id} cannot be retrieved. "
+                    f"{type(e).__name__}: {e}"
+                )
+                slave_info[slave_id] = SlaveInfo()
+            else:
+                slave_info[slave_id] = SlaveInfo(int(product_code), int(revision_number))
 
         if is_connection_created:
             self._teardown_connection()

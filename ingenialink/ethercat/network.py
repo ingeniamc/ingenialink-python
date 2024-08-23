@@ -210,6 +210,7 @@ class EthercatNetwork(Network):
         if slave_id not in self.__last_init_nodes:
             raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
+        slave.add_emergency_callback(self._emcy_callback)
         servo = EthercatServo(
             slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
         )
@@ -309,7 +310,7 @@ class EthercatNetwork(Network):
 
         """
         for servo in self.servos:
-            servo.process_pdo_inputs()
+            servo.generate_pdo_outputs()
         if self._overlapping_io_map:
             self._ecat_master.send_overlap_processdata()
         else:
@@ -332,7 +333,7 @@ class EthercatNetwork(Network):
                 f" real: {processdata_wkc}. {servos_state_msg}"
             )
         for servo in self.servos:
-            servo.generate_pdo_outputs()
+            servo.process_pdo_inputs()
 
     def _change_nodes_state(
         self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int
@@ -533,3 +534,10 @@ class EthercatNetwork(Network):
                 raise ILStateError(
                     "The communication cannot be recovered. Not all slaves reached PreOp state"
                 )
+
+    def _emcy_callback(self, emergency_msg: "pysoem.Emergency") -> None:
+        """Log the emergency messages"""
+        slave_id = emergency_msg.slave_pos
+        if servo := next((servo for servo in self.servos if servo.slave_id == slave_id), None):
+            error_description = servo.get_emergency_description(emergency_msg.error_code)
+            logger.warning(f"Emergency message received from slave {slave_id}: {error_description}")

@@ -217,7 +217,7 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
         tpdo_map.map_register_index
         == servo.dictionary.registers(0)[servo.TPDO_MAP_REGISTER_SUB_IDX_0[0]].idx
     )
-    assert tpdo_map.map_register_index_bytes == tpdo_map.map_register_index.to_bytes(4, "little")
+    assert tpdo_map.map_register_index_bytes == tpdo_map.map_register_index.to_bytes(2, "little")
     assert servo.read(EthercatServo.TPDO_MAP_REGISTER_SUB_IDX_0[0], subnode=0) == len(
         TPDO_REGISTERS
     )
@@ -232,7 +232,7 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
         rpdo_map.map_register_index
         == servo.dictionary.registers(0)[servo.RPDO_MAP_REGISTER_SUB_IDX_0[0]].idx
     )
-    assert rpdo_map.map_register_index_bytes == rpdo_map.map_register_index.to_bytes(4, "little")
+    assert rpdo_map.map_register_index_bytes == rpdo_map.map_register_index.to_bytes(2, "little")
     assert servo.read(EthercatServo.RPDO_MAP_REGISTER_SUB_IDX_0[0], subnode=0) == len(
         RPDO_REGISTERS
     )

@@ -196,13 +196,16 @@ class Dictionary(ABC):
 
     version: str
     """Version of the dictionary."""
-    firmware_version: Optional[str]
+    firmware_version: Optional[str] = None
     """Firmware version declared in the dictionary."""
-    product_code: int
+    product_code: Optional[int] = None
     """Product code declared in the dictionary."""
-    part_number: Optional[str]
+    coco_product_code: Optional[int] = None
+    """CoCo product code declared in the dictionary.
+    Only used when a COM-KIT and a CORE dictionary are merged."""
+    part_number: Optional[str] = None
     """Part number declared in the dictionary."""
-    revision_number: int
+    revision_number: Optional[int] = None
     """Revision number declared in the dictionary."""
     interface: Interface
     """Interface declared in the dictionary."""
@@ -374,10 +377,13 @@ class Dictionary(ABC):
 
         """
         if not other_dict.is_coco_dictionary:
+            self.coco_product_code = self.product_code
             self.product_code = other_dict.product_code
             self.revision_number = other_dict.revision_number
             self.firmware_version = other_dict.firmware_version
             self.part_number = other_dict.part_number
+        else:
+            self.coco_product_code = other_dict.product_code
 
     @property
     def is_coco_dictionary(self) -> bool:

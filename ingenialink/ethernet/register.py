@@ -95,5 +95,6 @@ class EthernetRegister(Register):
     @property
     def mapped_address(self) -> int:
         """Register mapped address used for monitoring/disturbance."""
-        address_offset = self.MAP_ADDRESS_OFFSET * (self.subnode - 1)
-        return self.address + address_offset
+        if self.subnode > 1:
+            return self.address + self.MAP_ADDRESS_OFFSET * (self.subnode - 1)
+        return self.address

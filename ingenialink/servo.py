@@ -396,7 +396,11 @@ class Servo:
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ILError("Invalid subnode")
-        prod_code, rev_number = self._get_drive_identification(subnode)
+
+        drive_info = self.info
+        prod_code = drive_info["product_code"]
+        rev_number = drive_info["revision_number"]
+        firmware_version = drive_info["firmware_version"]
 
         tree = ET.Element("IngeniaDictionary")
         header = ET.SubElement(tree, "Header")
@@ -416,9 +420,12 @@ class Servo:
         device.set("Interface", interface)
         if self.dictionary.part_number is not None:
             device.set("PartNumber", self.dictionary.part_number)
-        device.set("ProductCode", str(prod_code))
-        device.set("RevisionNumber", str(rev_number))
-        device.set("firmwareVersion", str(self.dictionary.firmware_version))
+        if prod_code is not None:
+            device.set("ProductCode", str(prod_code))
+        if rev_number is not None:
+            device.set("RevisionNumber", str(rev_number))
+        if isinstance(firmware_version, str):
+            device.set("firmwareVersion", firmware_version)
 
         access_ops = {value: key for key, value in self.dictionary.access_xdf_options.items()}
         dtype_ops = {value: key for key, value in self.dictionary.dtype_xdf_options.items()}
@@ -1377,20 +1384,32 @@ class Servo:
             return {}
 
     @property
-    def info(self) -> Dict[str, Union[str, int]]:
+    def info(self) -> Dict[str, Union[None, str, int]]:
         """Servo information."""
-        serial_number = self.__read_coco_moco_register(
-            self.SERIAL_NUMBER_REGISTERS[0], self.SERIAL_NUMBER_REGISTERS[1]
-        )
-        sw_version = self.__read_coco_moco_register(
-            self.SOFTWARE_VERSION_REGISTERS[0], self.SOFTWARE_VERSION_REGISTERS[1]
-        )
-        product_code = self.__read_coco_moco_register(
-            self.PRODUCT_ID_REGISTERS[0], self.PRODUCT_ID_REGISTERS[1]
-        )
-        revision_number = self.__read_coco_moco_register(
-            self.REVISION_NUMBER_REGISTERS[0], self.REVISION_NUMBER_REGISTERS[1]
-        )
+        try:
+            serial_number = self.__read_coco_moco_register(
+                self.SERIAL_NUMBER_REGISTERS[0], self.SERIAL_NUMBER_REGISTERS[1]
+            )
+        except ILError:
+            serial_number = None
+        try:
+            sw_version = self.__read_coco_moco_register(
+                self.SOFTWARE_VERSION_REGISTERS[0], self.SOFTWARE_VERSION_REGISTERS[1]
+            )
+        except ILError:
+            sw_version = None
+        try:
+            product_code = self.__read_coco_moco_register(
+                self.PRODUCT_ID_REGISTERS[0], self.PRODUCT_ID_REGISTERS[1]
+            )
+        except ILError:
+            product_code = None
+        try:
+            revision_number = self.__read_coco_moco_register(
+                self.REVISION_NUMBER_REGISTERS[0], self.REVISION_NUMBER_REGISTERS[1]
+            )
+        except ILError:
+            revision_number = None
         hw_variant = "A"
 
         return {
