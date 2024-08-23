@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.3.5] - 2025-08-23
 
 ### Added
 - Coco product code attribute to the Dictionary class.
