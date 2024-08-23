@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.3.5] - 2025-08-23
 
 ### Added
 - Coco product code attribute to the Dictionary class.
@@ -9,6 +9,9 @@
 ### Changed
 - Set the default values of the firmware version, product code, revision number, and part number of the dictionary class to None.
 - Store nack error code on NACK exceptions
+
+### Fixed
+- Update RPDO values before send process data
 
 ## [7.3.4] - 2024-08-08
 
