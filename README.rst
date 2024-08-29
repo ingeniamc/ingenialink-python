@@ -2,11 +2,21 @@
 ingenialink-python
 ==================
 
-.. image:: https://img.shields.io/pypi/v/ingenialink.svg
+|tests| |pypi| |python_versions|
+
+|license|
+
+.. |tests| image:: https://img.shields.io/github/checks-status/ingeniamc/ingenialink-python/master?label=Tests
+   :alt: GitHub branch status
+
+.. |python_versions| image:: https://img.shields.io/pypi/pyversions/ingenialink?color=%2334D058
+   :alt: PyPI - Python Version
+
+.. |pypi| image:: https://img.shields.io/pypi/v/ingenialink.svg?color=%2334D058
     :target: https://pypi.python.org/pypi/ingenialink
     :alt: PyPI Version
 
-.. image:: https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg
+.. |license| image:: https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg
    :alt: CC by-nc-nd
    :target: https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode
 
