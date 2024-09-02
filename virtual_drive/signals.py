@@ -14,20 +14,11 @@ class Signal(Generic[T]):
 
     def __init__(self, initial_value: T):
         self.__value = initial_value
-        self.__subscribers: List[Callable[[T], None]] = []
         self.__watchers: List[Callable[[], None]] = []
 
     def get(self) -> T:
         """Get current value of the signal"""
         return self.__value
-
-    def subscribe(self, callback: Callable[[T], None]) -> None:
-        """Subscribe to signal.
-
-        Args:
-            Callback that accepts signal value. Will be called when signal changes
-        """
-        self.__subscribers.append(callback)
 
     def watch(self, callback: Callable[[], None]) -> None:
         """Watch signal.
@@ -40,7 +31,5 @@ class Signal(Generic[T]):
     def set(self, value: T) -> None:
         """Set signal value."""
         self.__value = value
-        for sub in self.__subscribers:
-            sub(value)
         for wat in self.__watchers:
             wat()
