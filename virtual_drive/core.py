@@ -5,7 +5,7 @@ import socket
 import time
 from enum import Enum, IntEnum
 from threading import Thread, Timer
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -22,6 +22,10 @@ from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_by
 from ingenialink.utils.constants import IL_MC_CW_EO
 from ingenialink.utils.mcb import MCB
 from ingenialink.virtual.dictionary import VirtualDictionary
+
+from .environment import Environment
+from .gpios import Gpios
+from .signals import Signal
 
 R_VALUE = 1.1
 L_VALUE = 3.9e-4
@@ -1239,6 +1243,15 @@ class VirtualDrive(Thread):
         super(VirtualDrive, self).__init__()
         self.ip = self.IP_ADDRESS
         self.port = port
+
+        self.environment = Environment()
+        self.__gpios = Gpios(self.environment)
+
+        self.__register_signals: Dict[str, Signal[Any]] = {
+            "IO_IN_VALUE": self.__gpios.value,
+            "IO_IN_POLARITY": self.__gpios.polarity,
+        }
+
         default_dictionary = os.path.join(
             pathlib.Path(__file__).parent.resolve(), self.PATH_DICTIONARY_RELATIVE
         )
@@ -1627,6 +1640,9 @@ class VirtualDrive(Thread):
         Returns:
             Register value.
         """
+        if id in self.__register_signals:
+            return self.__register_signals[id].get()  # type: ignore
+
         register = self.__dictionary.registers(subnode)[id]
         value: Union[int, float]
         if len(self.reg_signals[id]) > 0:
@@ -1658,6 +1674,9 @@ class VirtualDrive(Thread):
             id: Register ID.
             value: Value to be set.
         """
+        if id in self.__register_signals:
+            self.__register_signals[id].set(value)
+
         self.__dictionary.registers(subnode)[id].storage = value
 
     def __register_exists(self, subnode: int, id: str) -> bool:
