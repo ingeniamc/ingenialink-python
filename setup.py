@@ -41,7 +41,7 @@ setuptools.setup(
     ],
     install_requires=[
         "canopen==2.2.0",
-        "python-can==4.3.1",
+        "python-can==4.4.2",
         "ingenialogger>=0.2.1",
         "ping3==4.0.3",
         "pysoem>=1.1.7, <1.2.0",
