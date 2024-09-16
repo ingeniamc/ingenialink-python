@@ -168,7 +168,9 @@ pipeline {
                     stages {
                         stage('Run no-connection tests') {
                             steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m docker"
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
+                                        "-m docker " +
+                                        "--cov=ingenialink"
                             }
                             post {
                                 always {
