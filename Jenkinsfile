@@ -28,11 +28,13 @@ def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 coverage_stashes = []
 
-def runTest(protocol) {
+def runTest(protocol, slave = 0) {
     try {
         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
                 "--protocol ${protocol} " +
-                "--cov=ingenialink"
+                "--slave ${slave} " +
+                "--cov=ingenialink " +
+                "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${protocol}-${slave}\""
 
     } catch (err) {
         unstable(message: "Tests failed")
@@ -73,87 +75,71 @@ pipeline {
                     image PUBLISHER_DOCKER_IMAGE
                 }
             }
-            stages {
-                stage('Get FoE application') {
-                    steps {
-                        script {
-                            FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FoE; print(FoE.__version__)"', returnStdout: true).trim()
-                        }
-                        copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
-                        sh "mv FoEUpdateFirmwareLinux $FOE_APP_NAME_LINUX"
-                        stash includes: "$FOE_APP_NAME,$FOE_APP_NAME_LINUX", name: 'foe_app'
-                    }
+            steps {
+                script {
+                    FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FoE; print(FoE.__version__)"', returnStdout: true).trim()
                 }
+                copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
+                sh "mv FoEUpdateFirmwareLinux $FOE_APP_NAME_LINUX"
+                stash includes: "$FOE_APP_NAME,$FOE_APP_NAME_LINUX", name: 'foe_app'
             }
         }
         stage('Build and Tests') {
             parallel {
-                stage('Build and publish') {
+                stage('Typing and formatting') {
+                    agent {
+                        docker {
+                            label SW_NODE
+                            image WIN_DOCKER_IMAGE
+                        }
+                    }
                     stages {
-                        stage('Build wheels and documentation') {
-                            agent {
-                                docker {
-                                    label SW_NODE
-                                    image WIN_DOCKER_IMAGE
-                                }
-                            }
-                            stages {
-                                stage('Get FoE application') {
-                                    steps {
-                                        unstash 'foe_app'
-                                        bat """
-                                            XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
-                                            XCOPY $FOE_APP_NAME_LINUX $LIB_FOE_APP_PATH\\linux\\
-                                        """
-                                    }
-                                }
-                                stage('Build wheels') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
-                                    }
-                                }
-                                stage('Make a static type analysis') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
-                                    }
-                                }
-                                stage('Check formatting') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                                    }
-                                }
-                                stage('Generate documentation') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
-                                    }
-                                }
-                                stage('Archive') {
-                                    steps {
-                                        bat """
-                                            "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
-                                        """
-                                        stash includes: 'dist\\*, docs.zip', name: 'publish_files'
-                                        archiveArtifacts artifacts: "dist\\*, docs.zip"
-                                    }
-                                }
+                         stage('Type checking') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
                             }
                         }
-                        stage('Publish Ingenialink') {
-                            agent {
-                                docker {
-                                    label "worker"
-                                    image PUBLISHER_DOCKER_IMAGE
-                                }
-                            }
-                            when {
-                                beforeAgent true
-                                branch BRANCH_NAME_MASTER
-                            }
+                        stage('Format checking') {
                             steps {
-                                unstash 'publish_files'
-                                unzip zipFile: 'docs.zip', dir: '.'
-                                publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
-                                publishPyPi("dist/*")
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                            }
+                        }
+                    }
+                }
+                stage('Build') {
+                    agent {
+                        docker {
+                            label SW_NODE
+                            image WIN_DOCKER_IMAGE
+                        }
+                    }
+                    stages {
+                        stage('Get FoE application') {
+                            steps {
+                                unstash 'foe_app'
+                                bat """
+                                    XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
+                                    XCOPY $FOE_APP_NAME_LINUX $LIB_FOE_APP_PATH\\linux\\
+                                """
+                            }
+                        }
+                        stage('Build wheels') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
+                            }
+                        }
+                        stage('Generate documentation') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                            }
+                        }
+                        stage('Archive') {
+                            steps {
+                                bat """
+                                    "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
+                                """
+                                stash includes: 'dist\\*, docs.zip', name: 'publish_files'
+                                archiveArtifacts artifacts: "dist\\*, docs.zip"
                             }
                         }
                     }
@@ -226,9 +212,14 @@ pipeline {
                                 """
                             }
                         }
-                        stage('Run EtherCAT tests') {
+                        stage('EtherCAT Everest') {
                             steps {
-                                runTest("ethercat")
+                                runTest("ethercat", 0)
+                            }
+                        }
+                        stage('EtherCAT Capitan') {
+                            steps {
+                                runTest("ethercat", 1)
                             }
                         }
                         stage('Run no-connection tests') {
@@ -246,14 +237,24 @@ pipeline {
                         label CAN_NODE
                     }
                     stages {
-                        stage('Run CANopen tests') {
+                        stage('CANopen Everest') {
                             steps {
-                                runTest("canopen")
+                                runTest("canopen", 0)
                             }
                         }
-                        stage('Run Ethernet tests') {
+                        stage('CANopen Capitan') {
                             steps {
-                                runTest("ethernet")
+                                runTest("canopen", 1)
+                            }
+                        }
+                        stage('Ethernet Everest') {
+                            steps {
+                                runTest("ethernet", 0)
+                            }
+                        }
+                        stage('Ethernet Capitan') {
+                            steps {
+                                runTest("ethernet", 1)
                             }
                         }
                     }
@@ -279,6 +280,24 @@ pipeline {
                 }
                 publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
                 archiveArtifacts artifacts: '*.xml'
+            }
+        }
+        stage('Publish Ingenialink') {
+            agent {
+                docker {
+                    label "worker"
+                    image PUBLISHER_DOCKER_IMAGE
+                }
+            }
+            when {
+                beforeAgent true
+                branch BRANCH_NAME_MASTER
+            }
+            steps {
+                unstash 'publish_files'
+                unzip zipFile: 'docs.zip', dir: '.'
+                publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
+                publishPyPi("dist/*")
             }
         }
     }
