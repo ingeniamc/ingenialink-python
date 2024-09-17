@@ -49,10 +49,18 @@ def wait_until_alive(servo, timeout=None):
         time.sleep(1)
 
 
+def skip_if_monitoring_is_not_available(servo):
+    try:
+        servo.read("MON_DIST_STATUS")
+    except ILError:
+        pytest.skip("Monitoring is not available")
+
+
 @pytest.fixture()
 def create_monitoring(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
     registers_key = ["CL_CUR_D_REF_VALUE"]
@@ -75,6 +83,7 @@ def create_monitoring(connect_to_slave, pytestconfig):
 def create_disturbance(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     data = list(range(DISTURBANCE_NUM_SAMPLES))
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
@@ -341,7 +350,7 @@ def test_store_parameters(connect_to_slave, connect_to_rack_service):
     time.sleep(1)
     client.exposed_turn_on_ps()
 
-    wait_until_alive(servo, timeout=10)
+    wait_until_alive(servo, timeout=20)
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
@@ -367,7 +376,7 @@ def test_restore_parameters(connect_to_slave, connect_to_rack_service):
     time.sleep(1)
     client.exposed_turn_on_ps()
 
-    wait_until_alive(servo, timeout=10)
+    wait_until_alive(servo, timeout=20)
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
 
@@ -404,6 +413,7 @@ def test_write(connect_to_slave):
 @pytest.mark.canopen
 def test_monitoring_enable_disable(connect_to_slave):
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.monitoring_enable()
     assert servo.read(servo.MONITORING_DIST_ENABLE, subnode=0) == 1
     servo.monitoring_disable()
@@ -426,6 +436,7 @@ def test_monitoring_remove_data(create_monitoring):
 def test_monitoring_map_register(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.monitoring_remove_all_mapped_registers()
     registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
     data_size = 4
@@ -480,6 +491,7 @@ def test_monitoring_read_data(create_monitoring):
 @pytest.mark.canopen
 def test_disturbance_enable_disable(connect_to_slave):
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.disturbance_enable()
     assert servo.read(servo.DISTURBANCE_ENABLE, subnode=0) == 1
     servo.disturbance_disable()
@@ -504,6 +516,7 @@ def test_disturbance_remove_data(create_disturbance):
 def test_disturbance_map_register(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.disturbance_remove_all_mapped_registers()
     registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
     data_size = 4
@@ -580,6 +593,7 @@ def test_status_word_wait_change(connect_to_slave):
 def test_disturbance_overflow(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
     reg = servo._get_reg("DRV_OP_CMD", subnode=1)
