@@ -1,5 +1,4 @@
 import json
-import time
 
 import pytest
 import rpyc
@@ -24,6 +23,12 @@ def pytest_addoption(parser):
         choices=ALLOW_PROTOCOLS,
     )
     parser.addoption("--slave", type=int, default=0, help="Slave index in config.json")
+    parser.addoption(
+        "--job_name",
+        action="store",
+        default="ingenialink - Unknown",
+        help="Name of the executing job. Will be set to rack service to have more info of the logs",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -34,7 +39,7 @@ def read_config(request):
         contents = json.load(fp)
     slave = request.config.getoption("--slave")
     for key in contents:
-        if type(contents[key]) is list:
+        if isinstance(contents[key], list) and len(contents[key]) > slave:
             contents[key] = contents[key][slave]
     return contents
 
@@ -128,9 +133,10 @@ def virtual_drive():
 
 
 @pytest.fixture(scope="session")
-def connect_to_rack_service():
+def connect_to_rack_service(request):
     rack_service_port = 33810
     client = rpyc.connect("localhost", rack_service_port, config={"sync_request_timeout": None})
+    client.root.set_job_name(request.config.getoption("--job_name"))
     yield client.root
     client.close()
 
