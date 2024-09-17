@@ -106,7 +106,7 @@ pipeline {
                         }
                     }
                 }
-                stage('Build') {
+                stage('Build wheels and documentation') {
                     agent {
                         docker {
                             label SW_NODE
@@ -144,7 +144,7 @@ pipeline {
                         }
                     }
                 }
-                stage('Run tests on windows docker') {
+                stage('Docker Windows - Tests') {
                     agent {
                         docker {
                             label SW_NODE
@@ -152,7 +152,7 @@ pipeline {
                         }
                     }
                     stages {
-                        stage('Run no-connection tests') {
+                        stage('Run no-connection tests on docker') {
                             steps {
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
                                         "-m docker " +
@@ -173,7 +173,7 @@ pipeline {
                         }
                     }
                 }
-                stage('Run tests on linux docker') {
+                stage('Docker Linux - Tests') {
                     agent {
                         docker {
                             label "worker"
@@ -181,7 +181,7 @@ pipeline {
                         }
                     }
                     stages {
-                        stage('Run no-connection tests') {
+                        stage('Run no-connection tests on docker') {
                             steps {
                                 sh """
                                     python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS}
@@ -195,7 +195,7 @@ pipeline {
                         }
                     }
                 }
-                stage('EtherCAT and no-connection tests') {
+                stage('EtherCAT/No Connection - Tests') {
                     options {
                         lock(ECAT_NODE_LOCK)
                     }
@@ -229,7 +229,7 @@ pipeline {
                         }
                     }
                 }
-                stage('CANopen and Ethernet tests') {
+                stage('CANopen/Ethernet - Tests') {
                     options {
                         lock(CAN_NODE_LOCK)
                     }
@@ -282,7 +282,7 @@ pipeline {
                 archiveArtifacts artifacts: '*.xml'
             }
         }
-        stage('Publish Ingenialink') {
+        stage('Publish wheels and documentation') {
             agent {
                 docker {
                     label "worker"
