@@ -141,23 +141,32 @@ def connect_to_rack_service(request):
     client.close()
 
 
-@pytest.fixture(scope="session", autouse=True)
-def load_firmware(pytestconfig, read_config, request):
+@pytest.fixture(scope="session")
+def get_configuration_from_rack_service(pytestconfig, read_config, connect_to_rack_service):
     protocol = pytestconfig.getoption("--protocol")
-    if protocol == DEFAULT_PROTOCOL:
-        return
     protocol_contents = read_config[protocol]
     drive_identifier = protocol_contents["identifier"]
-    drive_idx = None
-    client = request.getfixturevalue("connect_to_rack_service")
+    client = connect_to_rack_service
     config = client.exposed_get_configuration()
+    drive_idx = None
     for idx, drive in enumerate(config.drives):
         if drive_identifier == drive.identifier:
             drive_idx = idx
             break
     if drive_idx is None:
         pytest.fail(f"The drive {drive_identifier} cannot be found on the rack's configuration.")
-    drive = config.drives[drive_idx]
+    return drive_idx, config.drives
+
+
+@pytest.fixture(scope="session", autouse=True)
+def load_firmware(pytestconfig, read_config, request):
+    protocol = pytestconfig.getoption("--protocol")
+    if protocol == DEFAULT_PROTOCOL:
+        return
+    protocol_contents = read_config[protocol]
+    drive_idx, config = request.getfixturevalue("get_configuration_from_rack_service")
+    drive = config[drive_idx]
+    client = request.getfixturevalue("connect_to_rack_service")
     client.exposed_firmware_load(
         drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
     )
