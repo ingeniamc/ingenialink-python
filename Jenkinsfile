@@ -39,7 +39,7 @@ def runTest(protocol, slave = 0) {
     } catch (err) {
         unstable(message: "Tests failed")
     } finally {
-        coverage_stash = ".coverage_${protocol}"
+        coverage_stash = ".coverage_${protocol}_${slave}"
         bat "move .coverage ${coverage_stash}"
         junit "pytest_reports\\*.xml"
         // Delete the junit after publishing it so it not re-published on the next stage
@@ -278,7 +278,7 @@ pipeline {
                     }
                     bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e coverage -- ${coverage_files}"
                 }
-                publishCoverage adapters: [coberturaReportAdapter('coverage.xml')]
+                recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
                 archiveArtifacts artifacts: '*.xml'
             }
         }
