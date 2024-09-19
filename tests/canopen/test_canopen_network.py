@@ -88,23 +88,21 @@ def test_scan_slaves_missing_drivers(can_device):
 
 
 @pytest.mark.canopen
-def test_scan_slaves_info(read_config):
+def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
     net = CanopenNetwork(
         device=CAN_DEVICE(read_config["canopen"]["device"]),
         channel=read_config["canopen"]["channel"],
         baudrate=CAN_BAUDRATE(read_config["canopen"]["baudrate"]),
     )
     slaves_info = net.scan_slaves_info()
-    dictionary = DictionaryFactory.create_dictionary(
-        read_config["canopen"]["dictionary"], Interface.CAN
-    )
+
+    drive_idx, config = get_configuration_from_rack_service
+    drive = config[drive_idx]
 
     assert len(slaves_info) > 0
     assert read_config["canopen"]["node_id"] in slaves_info
-    assert slaves_info[read_config["canopen"]["node_id"]].product_code == dictionary.product_code
-    assert (
-        slaves_info[read_config["canopen"]["node_id"]].revision_number == dictionary.revision_number
-    )
+    assert slaves_info[read_config["canopen"]["node_id"]].product_code == drive.product_code
+    assert slaves_info[read_config["canopen"]["node_id"]].revision_number == drive.revision_number
 
 
 @pytest.mark.canopen

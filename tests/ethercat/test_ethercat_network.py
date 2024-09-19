@@ -87,16 +87,14 @@ def test_scan_slaves_raises_exception_if_drive_is_already_connected(connect_to_s
 
 
 @pytest.mark.ethercat
-def test_scan_slaves_info(read_config):
+def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     slaves_info = net.scan_slaves_info()
-    dictionary = DictionaryFactory.create_dictionary(
-        read_config["ethercat"]["dictionary"], Interface.ECAT
-    )
+
+    drive_idx, config = get_configuration_from_rack_service
+    drive = config[drive_idx]
 
     assert len(slaves_info) > 0
     assert read_config["ethercat"]["slave"] in slaves_info
-    assert slaves_info[read_config["ethercat"]["slave"]].product_code == dictionary.product_code
-    assert (
-        slaves_info[read_config["ethercat"]["slave"]].revision_number == dictionary.revision_number
-    )
+    assert slaves_info[read_config["ethercat"]["slave"]].product_code == drive.product_code
+    assert slaves_info[read_config["ethercat"]["slave"]].revision_number == drive.revision_number
