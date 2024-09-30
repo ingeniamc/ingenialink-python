@@ -1,7 +1,7 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 import ingenialogger
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError
+from ingenialink.exceptions import ILIOError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
@@ -202,28 +202,25 @@ class EthercatServo(PDOServo):
              timeout period.
 
         """
-        if isinstance(
-            exception, (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError, ILIOError)
-        ):
-            raise ILIOError(
-                f"Error {operation_msg.value} {reg.identifier}. Reason: {exception}"
-            ) from exception
-        elif isinstance(exception, pysoem.WkcError):
-            default_error_msg = f"Error {operation_msg.value} data"
-            wkc_exceptions: Dict[int, ILError] = {
-                self.NO_RESPONSE_WORKING_COUNTER: ILIOError(
-                    f"{default_error_msg}: The working counter remained unchanged."
-                ),
-                self.NOFRAME_WORKING_COUNTER: ILIOError(f"{default_error_msg}: No frame."),
-                self.TIMEOUT_WORKING_COUNTER: ILTimeoutError(
-                    f"Timeout {operation_msg.value} data."
-                ),
+        default_error_msg = f"Error {operation_msg.value} {reg.identifier}"
+        if isinstance(exception, pysoem.WkcError):
+            wkc_errors = {
+                self.NO_RESPONSE_WORKING_COUNTER: "The working counter remained unchanged.",
+                self.NOFRAME_WORKING_COUNTER: "No frame.",
+                self.TIMEOUT_WORKING_COUNTER: "Timeout.",
             }
-            exc = wkc_exceptions.get(
-                exception.wkc,
-                ILIOError(f"{default_error_msg}. Wrong working counter: {exception.wkc}"),
-            )
-            raise exc from exception
+            reason = wkc_errors[exception.wkc]
+        elif isinstance(exception, (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError)):
+            reason = f"{type(exception).__name__}: Slave {exception.slave_pos}, "
+            if isinstance(exception, pysoem.SdoError):
+                reason += f"Abort code {exception.abort_code}, "
+            else:
+                reason += f"Error code {exception.error_code}, "
+            error_description = f"Error description: {exception.desc}."
+            reason += error_description
+        else:
+            reason = str(exception)
+        raise ILIOError(f"{default_error_msg}. {reason}") from exception
 
     def _monitoring_read_data(self, **kwargs: Any) -> bytes:
         """Read monitoring data frame."""
