@@ -170,7 +170,6 @@ class EthercatNetwork(Network):
         """Init all the nodes and set already connected nodes to PreOp state.
         Also fill `__last_init_nodes` attribute.
         """
-        self._ecat_master.slaves = []  # That is because of a bug of pysoem
         nodes = self._ecat_master.config_init()
         if self.servos:
             self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
