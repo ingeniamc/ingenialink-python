@@ -57,11 +57,15 @@ class NetStatusListener(Thread):
             for servo in self.__network.servos:
                 slave_id = servo.slave_id
                 servo_state = self.__network._get_servo_state(slave_id)
-                slave_is_alive = servo.slave.state == pysoem.NONE_STATE
-                if servo_state == NET_STATE.CONNECTED and slave_is_alive:
+                is_servo_alive = not servo.slave.state == pysoem.NONE_STATE
+                if not is_servo_alive and servo_state == NET_STATE.CONNECTED:
                     self.__network._notify_status(slave_id, NET_DEV_EVT.REMOVED)
                     self.__network._set_servo_state(slave_id, NET_STATE.DISCONNECTED)
-                if servo_state == NET_STATE.DISCONNECTED and not slave_is_alive:
+                if (
+                    is_servo_alive
+                    and servo_state == NET_STATE.DISCONNECTED
+                    and self.__network._recover_from_disconnection()
+                ):
                     self.__network._notify_status(slave_id, NET_DEV_EVT.ADDED)
                     self.__network._set_servo_state(slave_id, NET_STATE.CONNECTED)
                 time.sleep(self.__refresh_time)
@@ -220,7 +224,6 @@ class EthercatNetwork(Network):
         servo.reset_pdo_mapping()
         self.servos.append(servo)
         self._set_servo_state(slave_id, NET_STATE.CONNECTED)
-        self.subscribe_to_status(slave_id, self._recover_from_power_cycle)
         if net_status_listener:
             self.start_status_listener()
         return servo
@@ -516,23 +519,27 @@ class EthercatNetwork(Network):
         for callback in self.__observers_net_state[slave_id]:
             callback(status)
 
-    def _recover_from_power_cycle(self, status: NET_DEV_EVT) -> None:
-        """Transition the slaves to Pre-Op state after a power cycle.
+    def _recover_from_disconnection(self) -> bool:
+        """Recover the CoE communication after a disconnection.
+        All the connected slaves need to transitioned to the PreOp state.
 
-        Args:
-            status: The network status.
-
-        Raises:
-            ILStateError: If not all slaves reach PreOp state.
+        Returns:
+            True if all the connected slaves reach the PreOp state.
 
         """
         self._ecat_master.read_state()
-        if status == NET_DEV_EVT.ADDED and self._ecat_master.state == pysoem.INIT_STATE:
-            self.__init_nodes()
-            if not self._check_node_state(self.servos, pysoem.PREOP_STATE):
-                raise ILStateError(
-                    "The communication cannot be recovered. Not all slaves reached PreOp state"
-                )
+        if self._ecat_master.state > pysoem.INIT_STATE:
+            return True
+        self.__init_nodes()
+        all_drives_in_preop = self._check_node_state(self.servos, pysoem.PREOP_STATE)
+        if all_drives_in_preop:
+            log_message = "CoE communication recovered."
+        else:
+            log_message = (
+                "The CoE communication cannot be recovered. Not all slaves reached the PreOp state"
+            )
+        logger.warning(log_message)
+        return all_drives_in_preop
 
     def _emcy_callback(self, emergency_msg: "pysoem.Emergency") -> None:
         """Log the emergency messages"""

@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Restore CoE communication after a power cycle.
+
 ## [7.3.5] - 2025-08-23
 
 ### Added
