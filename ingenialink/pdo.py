@@ -460,7 +460,7 @@ class PDOServo(Servo):
         )
         self.write(
             self.RPDO_MAP_REGISTER_SUB_IDX_1[rpdo_map_register_index],
-            rpdo_map.items_mapping.decode("utf-8"),
+            bytes(rpdo_map.items_mapping),
             complete_access=True,
             subnode=0,
         )
@@ -513,7 +513,7 @@ class PDOServo(Servo):
         )
         self.write(
             self.TPDO_MAP_REGISTER_SUB_IDX_1[tpdo_map_register_index],
-            tpdo_map.items_mapping.decode("utf-8"),
+            bytes(tpdo_map.items_mapping),
             complete_access=True,
             subnode=0,
         )
