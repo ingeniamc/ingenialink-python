@@ -5,6 +5,9 @@
 ### Fixed
 - Restore CoE communication after a power cycle.
 
+### Changed
+- CiA 301 PDO related registers are not saved to the configuration file. 
+
 ## [7.3.5] - 2025-08-23
 
 ### Added

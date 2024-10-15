@@ -429,29 +429,62 @@ class Servo:
 
         access_ops = {value: key for key, value in self.dictionary.access_xdf_options.items()}
         dtype_ops = {value: key for key, value in self.dictionary.dtype_xdf_options.items()}
-
-        if subnode is None:
-            subnodes = list(self.dictionary.subnodes)
-        else:
-            subnodes = [subnode]
-
-        for subnode in subnodes:
-            registers_dict = self.dictionary.registers(subnode=subnode)
-            for reg_id, register in registers_dict.items():
-                if (register.access != REG_ACCESS.RW) or (
-                    register.address_type == REG_ADDRESS_TYPE.NVM_NONE
-                ):
+        for node, configuration_registers in self._registers_to_save_in_configuration_file(
+            subnode
+        ).items():
+            for configuration_register in configuration_registers:
+                if configuration_register.identifier is None:
                     continue
                 register_xml = ET.SubElement(registers, "Register")
-                register_xml.set("access", access_ops[register.access])
-                register_xml.set("dtype", dtype_ops[register.dtype])
-                register_xml.set("id", reg_id)
-                self.__update_register_dict(register_xml, subnode)
-                register_xml.set("subnode", str(subnode))
+                register_xml.set("access", access_ops[configuration_register.access])
+                register_xml.set("dtype", dtype_ops[configuration_register.dtype])
+                register_xml.set("id", configuration_register.identifier)
+                self.__update_register_dict(register_xml, node)
+                register_xml.set("subnode", str(node))
 
         dom = minidom.parseString(ET.tostring(tree, encoding="utf-8"))
         with open(config_file, "wb") as f:
             f.write(dom.toprettyxml(indent="\t").encode())
+
+    def _is_register_valid_for_configuration_file(self, register: Register) -> bool:
+        """Check if a register is valid for the configuration file.
+
+        Args:
+            register: The register object.
+
+        Returns:
+            True if the register can be used for the configuration file. False otherwise.
+
+        """
+        if (register.access != REG_ACCESS.RW) or (
+            register.address_type == REG_ADDRESS_TYPE.NVM_NONE
+        ):
+            return False
+        return True
+
+    def _registers_to_save_in_configuration_file(
+        self, subnode: Optional[int]
+    ) -> Dict[int, List[Register]]:
+        """Generate the registers to be used in the configuration file.
+
+        Args:
+            subnode: Subnode of the axis.
+
+        Returns:
+            A dictionary with a list of valid registers per subnode.
+
+        """
+        if subnode is None:
+            subnodes = list(self.dictionary.subnodes)
+        else:
+            subnodes = [subnode]
+        registers: Dict[int, List[Register]] = {subnode: [] for subnode in subnodes}
+        for subnode in subnodes:
+            registers_dict = self.dictionary.registers(subnode=subnode)
+            for reg_id, register in registers_dict.items():
+                if self._is_register_valid_for_configuration_file(register):
+                    registers[subnode].append(register)
+        return registers
 
     @staticmethod
     def _read_configuration_file(config_file: str) -> Tuple[ET.Element, List[ET.Element]]:
