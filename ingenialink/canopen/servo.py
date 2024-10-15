@@ -128,6 +128,7 @@ class CanopenServo(Servo):
         if not is_register_valid:
             return is_register_valid
         # Exclude the RxPDO and TxPDO related registers
+        # Check INGK-980
         if register.identifier is not None and register.identifier.startswith(
             ("CIA301_COMMS_TPDO", "CIA301_COMMS_RPDO")
         ):
