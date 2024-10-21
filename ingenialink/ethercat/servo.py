@@ -1,7 +1,7 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, List, Optional
 
 import ingenialogger
 
@@ -263,6 +263,15 @@ class EthercatServo(PDOServo):
             subnode, ipb_address, dtype, size
         )
         return mapped_address
+
+    def emcy_subscribe(self, callback: Callable[[pysoem.Emergency], None]) -> None:
+        """Subscribe to emergency messages.
+
+        Args:
+            callback: Callable that takes a pysoem.Emergency instance as argument.
+
+        """
+        self.slave.add_emergency_callback(callback)
 
     def get_emergency_description(self, error_code: int) -> Optional[str]:
         """Get the error description from the error code.

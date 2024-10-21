@@ -95,7 +95,7 @@ class CanopenServo(Servo):
             return bytes()
         return value
 
-    def emcy_subscribe(self, callback: Callable[["EmcyError"], None]) -> None:
+    def emcy_subscribe(self, callback: Callable[[EmcyError], None]) -> None:
         """Subscribe to emergency messages.
 
         Args:
