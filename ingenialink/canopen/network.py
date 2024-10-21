@@ -370,6 +370,7 @@ class CanopenNetwork(Network):
                 servo = CanopenServo(
                     target, node, dictionary, servo_status_listener=servo_status_listener
                 )
+                servo.emcy_subscribe(servo._emcy_callback)
                 self.servos.append(servo)
                 self._set_servo_state(target, NET_STATE.CONNECTED)
                 if net_status_listener:

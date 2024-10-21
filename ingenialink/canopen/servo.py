@@ -2,7 +2,7 @@ from typing import Any, Callable, Optional, Union
 
 import canopen
 import ingenialogger
-from canopen.emcy import EmcyConsumer
+from canopen.emcy import EmcyError
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.constants import CAN_MAX_WRITE_SIZE
@@ -44,7 +44,6 @@ class CanopenServo(Servo):
         servo_status_listener: bool = False,
     ) -> None:
         self.__node = node
-        self.__emcy_consumer = EmcyConsumer()
         super(CanopenServo, self).__init__(target, dictionary_path, servo_status_listener)
 
     def read(
@@ -96,28 +95,14 @@ class CanopenServo(Servo):
             return bytes()
         return value
 
-    def emcy_subscribe(self, cb: Callable[..., Any]) -> int:
+    def emcy_subscribe(self, callback: Callable[["EmcyError"], None]) -> None:
         """Subscribe to emergency messages.
 
         Args:
-            cb: Callback
-
-        Returns:
-            Assigned slot.
+            callback: Callable that takes an EmcyError instance as argument.
 
         """
-        self.__emcy_consumer.add_callback(cb)
-
-        return len(self.__emcy_consumer.callbacks) - 1
-
-    def emcy_unsubscribe(self, slot: int) -> None:
-        """Unsubscribe from emergency messages.
-
-        Args:
-            slot: Assigned slot when subscribed.
-
-        """
-        del self.__emcy_consumer.callbacks[slot]
+        self.__node.emcy.add_callback(callback)
 
     def _change_sdo_timeout(self, value: float) -> None:
         """Changes the SDO timeout of the node."""
@@ -156,6 +141,10 @@ class CanopenServo(Servo):
         return super()._monitoring_disturbance_data_to_map_register(
             subnode, ipb_address, dtype, size
         )
+
+    def _emcy_callback(self, emergency_msg: EmcyError) -> None:
+        """Log the emergency messages"""
+        logger.warning(f"Emergency message received from node {self.target}: {emergency_msg}")
 
     @property
     def node(self) -> canopen.RemoteNode:
