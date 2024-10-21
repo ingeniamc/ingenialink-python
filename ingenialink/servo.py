@@ -9,8 +9,6 @@ from xml.dom import minidom
 
 import ingenialogger
 import numpy as np
-import pysoem
-from canopen.emcy import EmcyError
 
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
 from ingenialink.constants import (
@@ -1361,7 +1359,7 @@ class Servo:
         raise NotImplementedError
 
     def emcy_subscribe(
-        self, callback: Callable[[Union[EmcyError, pysoem.Emergency]], None]
+        self, callback: Callable[[Any], None]
     ) -> None:
         """Subscribe to emergency messages.
 
