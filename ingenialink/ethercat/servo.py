@@ -264,7 +264,7 @@ class EthercatServo(PDOServo):
         )
         return mapped_address
 
-    def emcy_subscribe(self, callback: Callable[[pysoem.Emergency], None]) -> None:
+    def emcy_subscribe(self, callback: Callable[["pysoem.Emergency"], None]) -> None:
         """Subscribe to emergency messages.
 
         Args:

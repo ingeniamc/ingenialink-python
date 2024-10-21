@@ -1358,9 +1358,7 @@ class Servo:
         """
         raise NotImplementedError
 
-    def emcy_subscribe(
-        self, callback: Callable[[Any], None]
-    ) -> None:
+    def emcy_subscribe(self, callback: Callable[[Any], None]) -> None:
         """Subscribe to emergency messages.
 
         Args:
