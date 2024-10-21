@@ -123,6 +123,18 @@ class CanopenServo(Servo):
         """Changes the SDO timeout of the node."""
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
+    def _is_register_valid_for_configuration_file(self, register: Register) -> bool:
+        is_register_valid = super()._is_register_valid_for_configuration_file(register)
+        if not is_register_valid:
+            return is_register_valid
+        # Exclude the RxPDO and TxPDO related registers
+        # Check INGK-980
+        if register.identifier is not None and register.identifier.startswith(
+            ("CIA301_COMMS_TPDO", "CIA301_COMMS_RPDO")
+        ):
+            return False
+        return True
+
     @staticmethod
     def _monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
         """Map CAN register address to IPB register address."""
