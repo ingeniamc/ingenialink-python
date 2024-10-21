@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Method to subscribe to emergency messages.
 
 ### Fixed
 - Restore CoE communication after a power cycle.
