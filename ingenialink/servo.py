@@ -9,6 +9,8 @@ from xml.dom import minidom
 
 import ingenialogger
 import numpy as np
+import pysoem
+from canopen.emcy import EmcyError
 
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
 from ingenialink.constants import (
@@ -1354,6 +1356,17 @@ class Servo:
 
         Raises:
             ILIOError: Error writing the register.
+
+        """
+        raise NotImplementedError
+
+    def emcy_subscribe(
+        self, callback: Callable[[Union[EmcyError, pysoem.Emergency]], None]
+    ) -> None:
+        """Subscribe to emergency messages.
+
+        Args:
+            callback: Callable that takes an EmcyError instance as argument.
 
         """
         raise NotImplementedError
