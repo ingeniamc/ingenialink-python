@@ -1,7 +1,13 @@
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
-import pysoem
+try:
+    import pysoem
+except ImportError:
+    pysoem = None
 from canopen.emcy import EmcyError
+
+if TYPE_CHECKING:
+    from pysoem import Emergency
 
 from ingenialink import Servo
 
@@ -15,7 +21,7 @@ class EmergencyMessage:
 
     """
 
-    def __init__(self, servo: Servo, emergency_msg: Union[pysoem.Emergency, EmcyError]):
+    def __init__(self, servo: Servo, emergency_msg: Union["Emergency", EmcyError]):
         self.servo = servo
         if isinstance(emergency_msg, pysoem.Emergency):
             self.error_code = emergency_msg.error_code
