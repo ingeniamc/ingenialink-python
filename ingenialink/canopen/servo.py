@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, List, Optional, Union
 
 import canopen
 import ingenialogger
@@ -7,6 +7,7 @@ from canopen.emcy import EmcyError
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.constants import CAN_MAX_WRITE_SIZE
 from ingenialink.dictionary import Interface
+from ingenialink.emcy import EmergencyMessage
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import Servo
@@ -44,6 +45,8 @@ class CanopenServo(Servo):
         servo_status_listener: bool = False,
     ) -> None:
         self.__node = node
+        self.__emcy_observers: List[Callable[[EmergencyMessage], None]] = []
+        self.__node.emcy.add_callback(self._on_emcy)
         super(CanopenServo, self).__init__(target, dictionary_path, servo_status_listener)
 
     def read(
@@ -95,14 +98,36 @@ class CanopenServo(Servo):
             return bytes()
         return value
 
-    def emcy_subscribe(self, callback: Callable[[EmcyError], None]) -> None:
+    def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
         """Subscribe to emergency messages.
 
         Args:
-            callback: Callable that takes an EmcyError instance as argument.
+            callback: Callable that takes a EmergencyMessage instance as argument.
 
         """
-        self.__node.emcy.add_callback(callback)
+        self.__emcy_observers.append(callback)
+
+    def emcy_unsubscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
+        """Subscribe to emergency messages.
+
+        Args:
+            callback: Callable that takes a EmergencyMessage instance as argument.
+
+        """
+        self.__emcy_observers.remove(callback)
+
+    def _on_emcy(self, emergency_msg: EmcyError) -> None:
+        """Receive an emergency message from canopen and transform it to a EmergencyMessage.
+        Afterward, send the EmergencyMessage to all the subscribed callbacks.
+
+        Args:
+            emergency_msg: The EmcyError instance.
+
+        """
+        emergency_message = EmergencyMessage(self, emergency_msg)
+        logger.warning(f"Emergency message received from node {self.target}: {emergency_message}")
+        for callback in self.__emcy_observers:
+            callback(emergency_message)
 
     def _change_sdo_timeout(self, value: float) -> None:
         """Changes the SDO timeout of the node."""

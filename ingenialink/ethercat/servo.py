@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING, Any, Callable, List, Optional
 
 import ingenialogger
 
+from ingenialink.emcy import EmergencyMessage
+
 try:
     import pysoem
 except ImportError as ex:
@@ -76,6 +78,8 @@ class EthercatServo(PDOServo):
         self.__slave = slave
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
+        self.__emcy_observers: List[Callable[[EmergencyMessage], None]] = []
+        self.__slave.add_emergency_callback(self._on_emcy)
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
 
     def store_parameters(
@@ -264,28 +268,36 @@ class EthercatServo(PDOServo):
         )
         return mapped_address
 
-    def emcy_subscribe(self, callback: Callable[["pysoem.Emergency"], None]) -> None:
+    def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
         """Subscribe to emergency messages.
 
         Args:
-            callback: Callable that takes a pysoem.Emergency instance as argument.
+            callback: Callable that takes a EmergencyMessage instance as argument.
 
         """
-        self.slave.add_emergency_callback(callback)
+        self.__emcy_observers.append(callback)
 
-    def get_emergency_description(self, error_code: int) -> Optional[str]:
-        """Get the error description from the error code.
+    def emcy_unsubscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
+        """Subscribe to emergency messages.
+
         Args:
-            error_code: Error code received.
-        Returns:
-            The error description corresponding to the error code.
+            callback: Callable that takes a EmergencyMessage instance as argument.
+
         """
-        error_description = None
-        if self.dictionary.errors is not None:
-            error_code &= 0xFFFF
-            if error_code in self.dictionary.errors.errors:
-                error_description = self.dictionary.errors.errors[error_code][-1]
-        return error_description
+        self.__emcy_observers.remove(callback)
+
+    def _on_emcy(self, emergency_msg: "pysoem.Emergency") -> None:
+        """Receive an emergency message from PySOEM and transform it to a EmergencyMessage.
+        Afterward, send the EmergencyMessage to all the subscribed callbacks.
+
+        Args:
+            emergency_msg: The pysoem.Emergency instance.
+
+        """
+        emergency_message = EmergencyMessage(self, emergency_msg)
+        logger.warning(f"Emergency message received from slave {self.target}: {emergency_message}")
+        for callback in self.__emcy_observers:
+            callback(emergency_message)
 
     def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
         self._rpdo_maps.extend(rpdo_maps)
