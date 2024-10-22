@@ -241,7 +241,7 @@ class Servo:
         self.__disturbance_data = bytes()
         self.__disturbance_size: Dict[int, int] = {}
         self.__disturbance_dtype: Dict[int, str] = {}
-        self.__register_update_observers: List[Callable[[Register], None]] = []
+        self.__register_update_observers: List[Callable[["Servo", Register], None]] = []
         if servo_status_listener:
             self.start_status_listener()
         else:
@@ -1290,17 +1290,17 @@ class Servo:
         self._notify_register_update(_reg, value)
         return value
 
-    def register_update_subscribe(self, callback: Callable[[Register], None]) -> None:
+    def register_update_subscribe(self, callback: Callable[["Servo", Register], None]) -> None:
         """Subscribe to register updates.
         The callback will be called when a read/write operation occurs.
 
         Args:
-            callback: Callable that takes a Register instance as argument.
+            callback: Callable that takes a Servo and a Register instance as arguments.
 
         """
         self.__register_update_observers.append(callback)
 
-    def register_update_unsubscribe(self, callback: Callable[[Register], None]) -> None:
+    def register_update_unsubscribe(self, callback: Callable[["Servo", Register], None]) -> None:
         """Unsubscribe to register updates.
 
         Args:
@@ -1320,7 +1320,8 @@ class Servo:
         """
         for callback in self.__register_update_observers:
             callback(
-                Register(reg.dtype, reg.access, reg.identifier, subnode=reg.subnode, storage=data)
+                self,
+                Register(reg.dtype, reg.access, reg.identifier, subnode=reg.subnode, storage=data),
             )
 
     def replace_dictionary(self, dictionary: str) -> None:

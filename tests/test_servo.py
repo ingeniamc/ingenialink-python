@@ -34,9 +34,11 @@ DISTURBANCE_NUM_SAMPLES = 100
 class RegisterUpdateTest:
     def __init__(self):
         self.call_count = 0
+        self.servo = None
         self.register = None
 
-    def register_update_test(self, register):
+    def register_update_test(self, servo, register):
+        self.servo = servo
         self.register = register
         self.call_count += 1
 
@@ -628,12 +630,14 @@ def test_subscribe_register_updates(connect_to_slave):
 
     previous_reg_value = servo.read(user_over_voltage_uid, subnode=1)
     assert register_update_callback.call_count == 1
+    assert register_update_callback.servo == servo
     assert register_update_callback.register.identifier == user_over_voltage_uid
     assert register_update_callback.register.storage == previous_reg_value
 
     new_reg_value = 100
     servo.write(user_over_voltage_uid, data=new_reg_value, subnode=1)
     assert register_update_callback.call_count == 2
+    assert register_update_callback.servo == servo
     assert register_update_callback.register.identifier == user_over_voltage_uid
     assert register_update_callback.register.storage == new_reg_value
 
