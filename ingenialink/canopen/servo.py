@@ -167,10 +167,6 @@ class CanopenServo(Servo):
             subnode, ipb_address, dtype, size
         )
 
-    def _emcy_callback(self, emergency_msg: EmcyError) -> None:
-        """Log the emergency messages"""
-        logger.warning(f"Emergency message received from node {self.target}: {emergency_msg}")
-
     @property
     def node(self) -> canopen.RemoteNode:
         """Remote node of the servo."""
