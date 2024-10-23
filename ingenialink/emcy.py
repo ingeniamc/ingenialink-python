@@ -40,13 +40,12 @@ class EmergencyMessage:
 
     def get_desc(self) -> Optional[str]:
         """Get the error description from the servo's dictionary"""
-        error_code = self.error_code & 0xFFFF
         if (
             self.servo.dictionary.errors is None
-            or error_code not in self.servo.dictionary.errors.errors
+            or self.error_code not in self.servo.dictionary.errors.errors
         ):
             return None
-        error_description = self.servo.dictionary.errors.errors[error_code][-1]
+        error_description = self.servo.dictionary.errors.errors[self.error_code][-1]
         if error_description is None:
             return None
         return error_description
