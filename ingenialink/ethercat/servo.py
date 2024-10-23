@@ -278,10 +278,10 @@ class EthercatServo(PDOServo):
         self.__emcy_observers.append(callback)
 
     def emcy_unsubscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
-        """Subscribe to emergency messages.
+        """Unsubscribe from emergency messages.
 
         Args:
-            callback: Callable that takes a EmergencyMessage instance as argument.
+            callback: Subscribed callback.
 
         """
         self.__emcy_observers.remove(callback)

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 try:
     import pysoem
@@ -38,22 +38,22 @@ class EmergencyMessage:
         else:
             raise NotImplementedError
 
-    def get_desc(self) -> str:
+    def get_desc(self) -> Optional[str]:
         """Get the error description from the servo's dictionary"""
         error_code = self.error_code & 0xFFFF
         if (
             self.servo.dictionary.errors is None
             or error_code not in self.servo.dictionary.errors.errors
         ):
-            return ""
+            return None
         error_description = self.servo.dictionary.errors.errors[error_code][-1]
         if error_description is None:
-            return ""
+            return None
         return error_description
 
     def __str__(self) -> str:
         text = "Error code 0x{:04X}".format(self.error_code)
         description = self.get_desc()
-        if description:
+        if description is not None:
             text = text + ", " + description
         return text
