@@ -87,7 +87,7 @@ def test_canopen_connection_register(connect_to_slave):
     assert register.phy == REG_PHY.NONE
     assert register.subnode == 1
     assert register.storage is None
-    assert register.storage_valid == 0
+    assert not register.storage_valid
     assert register.range == (0, 65535)
     assert register.labels is not None
     assert len(register.enums) == 13

@@ -242,6 +242,9 @@ class Servo:
         self.__disturbance_data = bytes()
         self.__disturbance_size: Dict[int, int] = {}
         self.__disturbance_dtype: Dict[int, str] = {}
+        self.__register_update_observers: List[
+            Callable[["Servo", Register, Union[int, float, str, bytes]], None]
+        ] = []
         if servo_status_listener:
             self.start_status_listener()
         else:
@@ -1251,11 +1254,12 @@ class Servo:
 
         if _reg.access == REG_ACCESS.RO:
             raise ILAccessError("Register is Read-only")
-        if not isinstance(data, bytes):
-            value = convert_dtype_to_bytes(data, _reg.dtype)
+        if isinstance(data, bytes):
+            data_bytes = data
         else:
-            value = data
-        self._write_raw(_reg, value, **kwargs)
+            data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
+        self._write_raw(_reg, data_bytes, **kwargs)
+        self._notify_register_update(_reg, data)
 
     def read(
         self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
@@ -1284,7 +1288,47 @@ class Servo:
         if _reg.dtype == REG_DTYPE.BYTE_ARRAY_512:
             return raw_read
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
+        self._notify_register_update(_reg, value)
         return value
+
+    def register_update_subscribe(
+        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None]
+    ) -> None:
+        """Subscribe to register updates.
+        The callback will be called when a read/write operation occurs.
+
+        Args:
+            callback: Callable that takes a Servo and a Register instance as arguments.
+
+        """
+        self.__register_update_observers.append(callback)
+
+    def register_update_unsubscribe(
+        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None]
+    ) -> None:
+        """Unsubscribe to register updates.
+
+        Args:
+            callback: Subscribed callback.
+
+        """
+        self.__register_update_observers.remove(callback)
+
+    def _notify_register_update(self, reg: Register, data: Union[int, float, str, bytes]) -> None:
+        """Notify a register update to the observers.
+        The updated value is stored in the register's storage attribute.
+
+        Args:
+            reg: Updated register.
+            data: Updated value.
+
+        """
+        for callback in self.__register_update_observers:
+            callback(
+                self,
+                reg,
+                data,
+            )
 
     def replace_dictionary(self, dictionary: str) -> None:
         """Deletes and creates a new instance of the dictionary.

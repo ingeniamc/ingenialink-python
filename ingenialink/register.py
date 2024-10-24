@@ -95,7 +95,7 @@ class Register(ABC):
         self._cat_id = cat_id
         self._scat_id = scat_id
         self._internal_use = internal_use
-        self._storage_valid = False if not storage else True
+        self._storage_valid = storage is not None
         self._address_type = address_type
         self._description = description
         self._default = default

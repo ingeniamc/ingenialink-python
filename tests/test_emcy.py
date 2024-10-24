@@ -1,6 +1,6 @@
 import pytest
 
-from ingenialink.exceptions import ILStateError
+from ingenialink.exceptions import ILError
 
 
 class EmcyTest:
@@ -19,7 +19,7 @@ def test_emcy_callback(connect_to_slave):
     servo.emcy_subscribe(emcy_test.emcy_callback)
     prev_val = servo.read("DRV_PROT_USER_OVER_VOLT", subnode=1)
     servo.write("DRV_PROT_USER_OVER_VOLT", data=10.0, subnode=1)
-    with pytest.raises(ILStateError):
+    with pytest.raises(ILError):
         servo.enable()
     servo.fault_reset()
     assert len(emcy_test.messages) == 2
