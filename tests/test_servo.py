@@ -37,9 +37,10 @@ class RegisterUpdateTest:
         self.servo = None
         self.register = None
 
-    def register_update_test(self, servo, register):
+    def register_update_test(self, servo, register, value):
         self.servo = servo
         self.register = register
+        self.value = value
         self.call_count += 1
 
 
@@ -630,14 +631,14 @@ def test_subscribe_register_updates(connect_virtual_drive):
     assert register_update_callback.call_count == 1
     assert register_update_callback.servo == servo
     assert register_update_callback.register.identifier == user_over_voltage_uid
-    assert register_update_callback.register.storage == previous_reg_value
+    assert register_update_callback.value == previous_reg_value
 
     new_reg_value = 100
     servo.write(user_over_voltage_uid, data=new_reg_value, subnode=1)
     assert register_update_callback.call_count == 2
     assert register_update_callback.servo == servo
     assert register_update_callback.register.identifier == user_over_voltage_uid
-    assert register_update_callback.register.storage == new_reg_value
+    assert register_update_callback.value == new_reg_value
 
     servo.register_update_unsubscribe(register_update_callback.register_update_test)
 
