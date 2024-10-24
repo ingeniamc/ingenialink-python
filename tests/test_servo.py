@@ -617,14 +617,13 @@ def test_disturbance_overflow(connect_to_slave, pytestconfig):
         servo.disturbance_write_data(0, REG_DTYPE.U16, data)
 
 
-@pytest.mark.ethernet
-@pytest.mark.canopen
-@pytest.mark.ethercat
-def test_subscribe_register_updates(connect_to_slave):
+@pytest.mark.no_connection
+def test_subscribe_register_updates(connect_virtual_drive):
     user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
     register_update_callback = RegisterUpdateTest()
 
-    servo, _ = connect_to_slave
+    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+    servo, _ = connect_virtual_drive(dictionary)
     servo.register_update_subscribe(register_update_callback.register_update_test)
 
     previous_reg_value = servo.read(user_over_voltage_uid, subnode=1)
