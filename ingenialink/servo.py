@@ -20,6 +20,7 @@ from ingenialink.constants import (
     PASSWORD_STORE_RESTORE_SUB_0,
 )
 from ingenialink.dictionary import Dictionary, DictionaryV3, Interface, SubnodeType
+from ingenialink.emcy import EmergencyMessage
 from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
 from ingenialink.enums.servo import SERVO_STATE
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
@@ -1354,6 +1355,24 @@ class Servo:
 
         Raises:
             ILIOError: Error writing the register.
+
+        """
+        raise NotImplementedError
+
+    def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
+        """Subscribe to emergency messages.
+
+        Args:
+            callback: Callable that takes an EmergencyMessage instance as argument.
+
+        """
+        raise NotImplementedError
+
+    def emcy_unsubscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
+        """Unsubscribe from emergency messages.
+
+        Args:
+            callback: Subscribed callback.
 
         """
         raise NotImplementedError

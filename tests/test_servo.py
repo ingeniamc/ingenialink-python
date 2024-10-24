@@ -254,8 +254,7 @@ def test_load_configuration_strict(mocker, connect_virtual_drive):
 @pytest.mark.no_connection
 def test_read_configuration_file():
     test_file = "./tests/resources/test_config_file.xcf"
-    servo = CanopenServo("test", 0, "./tests/resources/canopen/test_dict_can.xdf")
-    device, registers = servo._read_configuration_file(test_file)
+    device, registers = CanopenServo._read_configuration_file(test_file)
 
     assert device.attrib.get("PartNumber") == "EVE-NET-C"
     assert device.attrib.get("Interface") == "CAN"
