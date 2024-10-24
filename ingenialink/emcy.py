@@ -51,8 +51,8 @@ class EmergencyMessage:
         return error_description
 
     def __str__(self) -> str:
-        text = "Error code 0x{:04X}".format(self.error_code)
+        text = f"Error code 0x{self.error_code:04X}"
         description = self.get_desc()
         if description is not None:
-            text = text + ", " + description
+            text = f"{text}, {description}"
         return text

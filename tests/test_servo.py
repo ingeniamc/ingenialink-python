@@ -252,7 +252,7 @@ def test_load_configuration_strict(mocker, connect_virtual_drive):
 
 
 @pytest.mark.no_connection
-def test_read_configuration_file(mocker):
+def test_read_configuration_file():
     test_file = "./tests/resources/test_config_file.xcf"
     device, registers = CanopenServo._read_configuration_file(test_file)
 
