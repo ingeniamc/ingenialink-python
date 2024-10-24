@@ -3,6 +3,7 @@
 ## [Unreleased]
 ### Added
 - Method to subscribe to emergency messages.
+- Add is_node_id_dependent property to CanopenRegister
 
 ### Fixed
 - Restore CoE communication after a power cycle.
