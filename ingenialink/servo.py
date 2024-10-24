@@ -1256,8 +1256,6 @@ class Servo:
         else:
             data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
         self._write_raw(_reg, data_bytes, **kwargs)
-        if isinstance(data, bytes):
-            return
         self._notify_register_update(_reg, data)
 
     def read(
@@ -1309,7 +1307,7 @@ class Servo:
         """
         self.__register_update_observers.remove(callback)
 
-    def _notify_register_update(self, reg: Register, data: Union[int, float, str]) -> None:
+    def _notify_register_update(self, reg: Register, data: Union[int, float, str, bytes]) -> None:
         """Notify a register update to the observers.
         The updated value is stored in the register's storage attribute.
 
@@ -1318,10 +1316,12 @@ class Servo:
             data: Updated value.
 
         """
+        reg.storage_valid = True
+        reg.storage = data
         for callback in self.__register_update_observers:
             callback(
                 self,
-                Register(reg.dtype, reg.access, reg.identifier, subnode=reg.subnode, storage=data),
+                reg,
             )
 
     def replace_dictionary(self, dictionary: str) -> None:

@@ -236,6 +236,10 @@ def convert_dtype_to_bytes(data: Union[int, float, str], dtype: REG_DTYPE) -> by
         and not isinstance(data, bytes)
     ):
         raise ValueError(f"Invalid value. Expected values: {VALID_BIT_REGISTER_VALUES}, got {data}")
+    if dtype == REG_DTYPE.BYTE_ARRAY_512:
+        if not isinstance(data, bytes):
+            raise ValueError(f"Expected data of type bytes, but got {type(data)}")
+        return data
     if dtype == REG_DTYPE.FLOAT:
         if not isinstance(data, (float, int)):
             raise ValueError(f"Expected data of type float, but got {type(data)}")
