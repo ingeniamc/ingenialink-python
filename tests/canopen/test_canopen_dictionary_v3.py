@@ -203,6 +203,10 @@ def test_register_description(dictionary_path):
             "DRV_AXIS_NUMBER": "",
             "CIA301_COMMS_RPDO1_MAP": "",
             "CIA301_COMMS_RPDO1_MAP_1": "",
+            "CIA301_COMMS_RPDO1": "",
+            "CIA301_COMMS_RPDO1_1": "COB-Id used",
+            "CIA301_COMMS_RPDO1_2": "Transmission type",
+            "CIA301_COMMS_RPDO1_3": "Inhibit time",
         },
         1: {
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
