@@ -219,8 +219,9 @@ def test_register_description(dictionary_path):
                 == expected_description_per_subnode[subnode][register.identifier]
             )
 
+
 @pytest.mark.no_connection
-def test_register_description():
+def test_register_is_node_id_dependent():
     dictionary_path = join_path(path_resources, dict_can_v3)
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
     assert canopen_dict.registers(0)["CIA301_COMMS_RPDO1_1"].is_node_id_dependent

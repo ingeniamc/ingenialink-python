@@ -31,7 +31,7 @@ def test_getters_canopen_register():
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",
         "address_type": REG_ADDRESS_TYPE.NVM,
-        "is_node_id_dependent": True
+        "is_node_id_dependent": True,
     }
 
     register = CanopenRegister(
