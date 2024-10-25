@@ -31,6 +31,19 @@ DISTURBANCE_CH_DATA_SIZE = 4
 DISTURBANCE_NUM_SAMPLES = 100
 
 
+class RegisterUpdateTest:
+    def __init__(self):
+        self.call_count = 0
+        self.servo = None
+        self.register = None
+
+    def register_update_test(self, servo, register, value):
+        self.servo = servo
+        self.register = register
+        self.value = value
+        self.call_count += 1
+
+
 def _clean(filename):
     if os.path.isfile(filename):
         os.remove(filename)
@@ -603,3 +616,30 @@ def test_disturbance_overflow(connect_to_slave, pytestconfig):
     data = list(range(-10, 11))
     with pytest.raises(ILValueError):
         servo.disturbance_write_data(0, REG_DTYPE.U16, data)
+
+
+@pytest.mark.no_connection
+def test_subscribe_register_updates(connect_virtual_drive):
+    user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
+    register_update_callback = RegisterUpdateTest()
+
+    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+    servo, _ = connect_virtual_drive(dictionary)
+    servo.register_update_subscribe(register_update_callback.register_update_test)
+
+    previous_reg_value = servo.read(user_over_voltage_uid, subnode=1)
+    assert register_update_callback.call_count == 1
+    assert register_update_callback.servo == servo
+    assert register_update_callback.register.identifier == user_over_voltage_uid
+    assert register_update_callback.value == previous_reg_value
+
+    new_reg_value = 100
+    servo.write(user_over_voltage_uid, data=new_reg_value, subnode=1)
+    assert register_update_callback.call_count == 2
+    assert register_update_callback.servo == servo
+    assert register_update_callback.register.identifier == user_over_voltage_uid
+    assert register_update_callback.value == new_reg_value
+
+    servo.register_update_unsubscribe(register_update_callback.register_update_test)
+
+    servo.write(user_over_voltage_uid, data=previous_reg_value, subnode=1)

@@ -1324,7 +1324,7 @@ class VirtualDrive(Thread):
             if cmd == self.WRITE_CMD:
                 response = self.__get_response_to_write_command(register, data)
             elif cmd == self.READ_CMD:
-                response = self.__get_response_to_read_command(register, data)
+                response = self.__get_response_to_read_command(register)
             else:
                 continue
             self.__send(response, add)
@@ -1349,12 +1349,11 @@ class VirtualDrive(Thread):
 
         return response
 
-    def __get_response_to_read_command(self, register: EthernetRegister, data: bytes) -> bytes:
+    def __get_response_to_read_command(self, register: EthernetRegister) -> bytes:
         """Return the response to a READ command.
 
         Args:
             register: Register instance.
-            data: Received data frame.
 
         Returns:
             bytes: Response to be sent.
@@ -1369,7 +1368,10 @@ class VirtualDrive(Thread):
             self._monitoring.update_data()
             response = self._response_monitoring_data(value)
         else:
-            data = convert_dtype_to_bytes(value, register.dtype)
+            if not isinstance(value, bytes):
+                data = convert_dtype_to_bytes(value, register.dtype)
+            else:
+                data = value
             response = MCB.build_mcb_frame(self.ACK_CMD, register.subnode, register.address, data)
 
         return response
