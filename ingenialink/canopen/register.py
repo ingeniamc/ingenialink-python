@@ -106,6 +106,6 @@ class CanopenRegister(Register):
         return self.idx
 
     @property
-    def is_node_id_dependent(self):
+    def is_node_id_dependent(self) -> bool:
         """True if register values depends on Node Id"""
         return self.__is_node_id_dependent
