@@ -3,6 +3,7 @@
 ## [Unreleased]
 ### Added
 - Method to subscribe to emergency messages.
+- Method to subscribe to register value updates.
 
 ### Fixed
 - Restore CoE communication after a power cycle.
