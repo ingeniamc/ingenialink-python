@@ -1,7 +1,7 @@
 import enum
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
-from dataclasses import astuple, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Tuple, Union
 
@@ -116,7 +116,7 @@ class DictionaryCategories:
 
 @dataclass
 class DictionaryError:
-    id: str
+    id: int
     """The error ID."""
 
     affected_module: str
@@ -128,8 +128,9 @@ class DictionaryError:
     description: Optional[str]
     """The error description."""
 
-    def __iter__(self) -> Iterator[str]:
-        return iter(astuple(self))
+    def __iter__(self) -> Iterator[Union[str, None]]:
+        id_hex_string = f"0x{self.id:08X}"
+        return iter((id_hex_string, self.affected_module, self.error_type, self.description))
 
 
 class Dictionary(ABC):
@@ -409,7 +410,7 @@ class Dictionary(ABC):
             error_type = element.attrib["error_type"].capitalize()
             error_affected_module = element.attrib["affected_module"]
             self.errors[error_id] = DictionaryError(
-                element.attrib["id"], error_affected_module, error_type, error_description
+                error_id, error_affected_module, error_type, error_description
             )
 
     @property
