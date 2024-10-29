@@ -88,12 +88,12 @@ def test_merge_dictionaries_errors():
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
     coco_dict = EthernetDictionaryV2(coco_dict_path)
     moco_dict = EthernetDictionaryV2(moco_dict_path)
-    coco_num_errors = len(coco_dict.errors.errors)
+    coco_num_errors = len(coco_dict.errors)
     assert coco_num_errors == 1
-    moco_num_errors = len(moco_dict.errors.errors)
+    moco_num_errors = len(moco_dict.errors)
     assert moco_num_errors == 1
     merged_dict = coco_dict + moco_dict
-    merged_dict_num_errors = len(merged_dict.errors.errors)
+    merged_dict_num_errors = len(merged_dict.errors)
     assert merged_dict_num_errors == coco_num_errors + moco_num_errors
 
 
@@ -139,7 +139,7 @@ def test_merge_dictionaries_order_invariant():
     dict_b = EthernetDictionaryV2(moco_dict_path) + EthernetDictionaryV2(coco_dict_path)
     assert dict_a.registers(0).keys() == dict_b.registers(0).keys()
     assert dict_a.registers(1).keys() == dict_b.registers(1).keys()
-    assert dict_a.errors.errors == dict_b.errors.errors
+    assert dict_a.errors == dict_b.errors
     assert dict_a.product_code == dict_b.product_code
     assert dict_a.revision_number == dict_b.revision_number
     assert dict_a.firmware_version == dict_b.firmware_version

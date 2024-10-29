@@ -105,7 +105,7 @@ def test_read_dictionary_errors():
 
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
 
-    assert [error for error in canopen_dict.errors.errors] == expected_errors
+    assert [error for error in canopen_dict.errors] == expected_errors
 
 
 @pytest.mark.no_connection

@@ -114,6 +114,21 @@ class DictionaryCategories:
         return self._categories[cat_id]
 
 
+@dataclass
+class DictionaryError:
+    id: int
+    """The error ID."""
+
+    description: Optional[str]
+    """The error description."""
+
+    error_type: str
+    """The error type."""
+
+    affected_module: str
+    """The module affected by the error."""
+
+
 class DictionaryErrors:
     """Errors for the dictionary.
 
@@ -123,7 +138,7 @@ class DictionaryErrors:
 
     def __init__(self, list_xdf_errors: List[ET.Element]) -> None:
         self._list_xdf_errors = list_xdf_errors
-        self._errors: Dict[int, List[Optional[str]]] = {}
+        self._errors: Dict[int, DictionaryError] = {}
 
         self.load_errors()
 
@@ -134,15 +149,16 @@ class DictionaryErrors:
             if label is None:
                 logger.warning(f"Could not load label of error {element.attrib['id']}")
                 continue
-            self._errors[int(element.attrib["id"], 16)] = [
-                element.attrib["id"],
-                element.attrib["affected_module"],
-                element.attrib["error_type"].capitalize(),
-                label.text,
-            ]
+            error_id = int(element.attrib["id"], 16)
+            error_description = label.text
+            error_type = element.attrib["error_type"].capitalize()
+            error_affected_module = element.attrib["affected_module"]
+            self._errors[error_id] = DictionaryError(
+                error_id, error_description, error_type, error_affected_module
+            )
 
     @property
-    def errors(self) -> Dict[int, List[Optional[str]]]:
+    def errors(self) -> Dict[int, DictionaryError]:
         """Get the errors dictionary.
 
         Returns:
@@ -213,7 +229,7 @@ class Dictionary(ABC):
     """Number of subnodes in the dictionary."""
     categories: DictionaryCategories
     """Instance of all the categories in the dictionary."""
-    errors: DictionaryErrors
+    errors: Dict[int, "DictionaryError"]
     """Instance of all the errors in the dictionary."""
     image: Optional[str] = None
     """Drive's encoded image."""
@@ -354,7 +370,7 @@ class Dictionary(ABC):
             other_dict: The other dictionary instance.
 
         """
-        self.errors.errors.update(other_dict.errors.errors)
+        self.errors.update(other_dict.errors)
 
     def _set_image(self, other_dict: "Dictionary") -> None:
         """Set the image attribute.
@@ -711,7 +727,7 @@ class DictionaryV3(Dictionary):
 
         """
         error_list = self.__findall_and_check(root, self.ERROR_ELEMENT)
-        self.errors = DictionaryErrors(error_list)
+        self.errors = DictionaryErrors(error_list).errors
 
     def __read_labels(self, root: ET.Element) -> Dict[str, str]:
         """Process Labels element
@@ -1037,7 +1053,7 @@ class DictionaryV2(Dictionary):
 
         # Errors
         list_xdf_errors = root.findall(self.DICT_ROOT_ERROR)
-        self.errors = DictionaryErrors(list_xdf_errors)
+        self.errors = DictionaryErrors(list_xdf_errors).errors
 
         # Version
         version_node = root.find(self.DICT_ROOT_VERSION)
