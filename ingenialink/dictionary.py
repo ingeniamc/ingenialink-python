@@ -1,9 +1,9 @@
 import enum
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import astuple, dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Iterator, List, Optional, Tuple, Union
 
 import ingenialogger
 
@@ -116,17 +116,20 @@ class DictionaryCategories:
 
 @dataclass
 class DictionaryError:
-    id: int
+    id: str
     """The error ID."""
 
-    description: Optional[str]
-    """The error description."""
+    affected_module: str
+    """The module affected by the error."""
 
     error_type: str
     """The error type."""
 
-    affected_module: str
-    """The module affected by the error."""
+    description: Optional[str]
+    """The error description."""
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(astuple(self))
 
 
 class DictionaryErrors:
@@ -154,7 +157,7 @@ class DictionaryErrors:
             error_type = element.attrib["error_type"].capitalize()
             error_affected_module = element.attrib["affected_module"]
             self._errors[error_id] = DictionaryError(
-                error_id, error_description, error_type, error_affected_module
+                element.attrib["id"], error_affected_module, error_type, error_description
             )
 
     @property
