@@ -48,6 +48,10 @@ def test_read_dictionary_registers():
         0: [
             "DRV_DIAG_ERROR_LAST_COM",
             "DRV_AXIS_NUMBER",
+            "CIA301_COMMS_RPDO1",
+            "CIA301_COMMS_RPDO1_1",
+            "CIA301_COMMS_RPDO1_2",
+            "CIA301_COMMS_RPDO1_3",
             "CIA301_COMMS_RPDO1_MAP",
             "CIA301_COMMS_RPDO1_MAP_1",
         ],
@@ -171,6 +175,10 @@ def test_register_default_values(dictionary_path):
             "DRV_AXIS_NUMBER": 1,
             "CIA301_COMMS_RPDO1_MAP": 1,
             "CIA301_COMMS_RPDO1_MAP_1": 268451936,
+            "CIA301_COMMS_RPDO1": 3,
+            "CIA301_COMMS_RPDO1_1": 2,
+            "CIA301_COMMS_RPDO1_2": 1,
+            "CIA301_COMMS_RPDO1_3": 0,
         },
         1: {
             "COMMU_ANGLE_SENSOR": 4,
@@ -195,6 +203,10 @@ def test_register_description(dictionary_path):
             "DRV_AXIS_NUMBER": "",
             "CIA301_COMMS_RPDO1_MAP": "",
             "CIA301_COMMS_RPDO1_MAP_1": "",
+            "CIA301_COMMS_RPDO1": "",
+            "CIA301_COMMS_RPDO1_1": "COB-Id used",
+            "CIA301_COMMS_RPDO1_2": "Transmission type",
+            "CIA301_COMMS_RPDO1_3": "Inhibit time",
         },
         1: {
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
@@ -210,3 +222,12 @@ def test_register_description(dictionary_path):
                 register.description
                 == expected_description_per_subnode[subnode][register.identifier]
             )
+
+
+@pytest.mark.no_connection
+def test_register_is_node_id_dependent():
+    dictionary_path = join_path(path_resources, dict_can_v3)
+    canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
+    assert canopen_dict.registers(0)["CIA301_COMMS_RPDO1_1"].is_node_id_dependent
+    assert not canopen_dict.registers(0)["CIA301_COMMS_RPDO1_2"].is_node_id_dependent
+    assert not canopen_dict.registers(0)["CIA301_COMMS_RPDO1_3"].is_node_id_dependent

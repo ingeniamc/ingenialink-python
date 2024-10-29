@@ -64,6 +64,7 @@ class CanopenRegister(Register):
         address_type: Optional[REG_ADDRESS_TYPE] = None,
         description: Optional[str] = None,
         default: Optional[bytes] = None,
+        is_node_id_dependent: bool = False,
     ):
         super().__init__(
             dtype,
@@ -87,6 +88,7 @@ class CanopenRegister(Register):
 
         self.__idx = idx
         self.__subidx = subidx
+        self.__is_node_id_dependent = is_node_id_dependent
 
     @property
     def idx(self) -> int:
@@ -102,3 +104,8 @@ class CanopenRegister(Register):
     def mapped_address(self) -> int:
         """Register mapped address used for monitoring/disturbance."""
         return self.idx
+
+    @property
+    def is_node_id_dependent(self) -> bool:
+        """True if register values depends on Node Id"""
+        return self.__is_node_id_dependent

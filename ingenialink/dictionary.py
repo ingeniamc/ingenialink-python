@@ -433,6 +433,8 @@ class DictionaryV3(Dictionary):
     DEFAULT_ATTR = "default"
     CAT_ID_ATTR = "cat_id"
     UNITS_ATTR = "units"
+    IS_NODE_ID_DEPENDENT_ATTR = "is_node_id_dependent"
+    IS_NODE_ID_DEPENDENT_TRUE_ATTR_VALUE = "true"
 
     CANOPEN_OBJECTS_ELEMENT = "CANopenObjects"
     CANOPEN_OBJECT_ELEMENT = "CANopenObject"
@@ -877,6 +879,10 @@ class DictionaryV3(Dictionary):
         default = bytes.fromhex(subitem.attrib[self.DEFAULT_ATTR])
         cat_id = subitem.attrib[self.CAT_ID_ATTR]
         units = subitem.attrib.get(self.UNITS_ATTR)
+        is_node_id_dependent = (
+            subitem.attrib.get(self.IS_NODE_ID_DEPENDENT_ATTR)
+            == self.IS_NODE_ID_DEPENDENT_TRUE_ATTR_VALUE
+        )
         # Labels
         labels_element = self.__find_and_check(subitem, self.LABELS_ELEMENT)
         labels = self.__read_labels(labels_element)
@@ -903,6 +909,7 @@ class DictionaryV3(Dictionary):
             address_type=address_type,
             description=description,
             default=default,
+            is_node_id_dependent=is_node_id_dependent,
         )
         if subnode not in self._registers:
             self._registers[subnode] = {}

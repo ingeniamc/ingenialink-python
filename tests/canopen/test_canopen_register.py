@@ -31,6 +31,7 @@ def test_getters_canopen_register():
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",
         "address_type": REG_ADDRESS_TYPE.NVM,
+        "is_node_id_dependent": True,
     }
 
     register = CanopenRegister(
@@ -60,6 +61,7 @@ def test_getters_canopen_register():
     assert register.enums == reg_kwargs["enums"]
     assert register.enums_count == 2
     assert register.storage_valid == True
+    assert register.is_node_id_dependent is True
 
 
 @pytest.mark.canopen
@@ -95,3 +97,4 @@ def test_canopen_connection_register(connect_to_slave):
     assert register.cat_id == "TARGET"
     assert register.scat_id is None
     assert register.internal_use == 0
+    assert register.is_node_id_dependent is False
