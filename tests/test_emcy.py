@@ -1,5 +1,6 @@
 import pytest
 
+from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError
 
 EVEREST_PROJECT_NUMBER = 44
@@ -22,8 +23,8 @@ def is_coco_moco(servo):
 @pytest.mark.ethercat
 def test_emcy_callback(connect_to_slave):
     servo, _ = connect_to_slave
-    if is_coco_moco(servo):
-        pytest.skip("The test is not supported for COCO MOCO drives")
+    if isinstance(servo, EthercatServo) and is_coco_moco(servo):
+        pytest.skip("The test is not supported for COCO MOCO EtherCAT drives")
     emcy_test = EmcyTest()
     servo.emcy_subscribe(emcy_test.emcy_callback)
     prev_val = servo.read("DRV_PROT_USER_OVER_VOLT", subnode=1)
@@ -42,14 +43,13 @@ def test_emcy_callback(connect_to_slave):
     servo.emcy_unsubscribe(emcy_test.emcy_callback)
 
 
-@pytest.mark.canopen
 @pytest.mark.ethercat
-def test_emcy_callback_coco_moco(connect_to_slave):
-    # EMCY test for COCO MOCO drives
+def test_emcy_callback_coco_moco_ethercat(connect_to_slave):
+    # EMCY test for COCO MOCO EtherCAT drives
     # Check INGK-993
     servo, _ = connect_to_slave
     if not is_coco_moco(servo):
-        pytest.skip("The test is only for COCO MOCO drives")
+        pytest.skip("The test is only for COCO MOCO EtherCAT drives")
     emcy_test = EmcyTest()
     servo.emcy_subscribe(emcy_test.emcy_callback)
     prev_val = servo.read("DRV_PROT_USER_OVER_VOLT", subnode=1)
