@@ -50,7 +50,7 @@ def test_ethernet_connection(connect_to_slave, read_config):
     servo, net = connect_to_slave
     family = servo.socket.family
     ip, port = servo.socket.getpeername()
-    assert net._get_servo_state(read_config["ethernet"]["ip"]) == NET_STATE.CONNECTED
+    assert net.get_servo_state(read_config["ethernet"]["ip"]) == NET_STATE.CONNECTED
     assert net.protocol == NET_PROT.ETH
     assert family == socket.AF_INET
     assert servo.socket.type == socket.SOCK_DGRAM
@@ -62,7 +62,7 @@ def test_ethernet_connection(connect_to_slave, read_config):
 def test_ethernet_disconnection(connect, read_config):
     servo, net = connect
     net.disconnect_from_slave(servo)
-    assert net._get_servo_state(read_config["ethernet"]["ip"]) == NET_STATE.DISCONNECTED
+    assert net.get_servo_state(read_config["ethernet"]["ip"]) == NET_STATE.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
 

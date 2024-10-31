@@ -6,7 +6,7 @@ from collections import OrderedDict, defaultdict
 from ftplib import FTP
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import ingenialogger
 
@@ -50,7 +50,7 @@ class NetStatusListener(Thread):
             for servo in self.__network.servos:
                 unsuccessful_pings = 0
                 servo_ip = servo.ip_address
-                servo_state = self.__network._get_servo_state(servo_ip)
+                servo_state = self.__network.get_servo_state(servo_ip)
                 while unsuccessful_pings < self.__max_unsuccessful_pings:
                     response = servo.is_alive()  # TODO: Use ping after CAP-924 is fixed
                     if not response:
@@ -75,7 +75,6 @@ class EthernetNetwork(Network):
 
     def __init__(self) -> None:
         super(EthernetNetwork, self).__init__()
-        self.__servos_state: Dict[str, NET_STATE] = {}
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: Dict[str, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
             list
@@ -300,11 +299,30 @@ class EthernetNetwork(Network):
             return
         self.__observers_net_state[ip].remove(callback)
 
-    def _get_servo_state(self, ip: str) -> NET_STATE:
-        return self.__servos_state[ip]
+    def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
+        """Get the state of a servo that's a part of network.
+        The state indicates if the servo is connected or disconnected.
 
-    def _set_servo_state(self, ip: str, state: NET_STATE) -> None:
-        self.__servos_state[ip] = state
+        Args:
+            servo_id: The servo's IP address.
+
+        Returns:
+            The servo's state.
+
+        """
+        if not isinstance(servo_id, str):
+            raise ValueError("The servo ID must be a string.")
+        return self._servos_state[servo_id]
+
+    def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
+        """Set the state of a servo that's a part of network.
+
+        Args:
+            servo_id: The servo's IP address.
+            state: The servo's state.
+
+        """
+        self._servos_state[servo_id] = state
 
     @property
     def protocol(self) -> NET_PROT:
