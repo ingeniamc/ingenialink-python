@@ -23,7 +23,7 @@ class EthercatDictionaryV2(DictionaryV2):
 
     """
 
-    MONITORING_DISTURBANCE_REGISTERS: List[EthercatRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: List[EthercatRegister] = [
         EthercatRegister(
             identifier="MON_DATA_VALUE",
             units="",

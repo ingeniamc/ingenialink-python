@@ -7,7 +7,7 @@ from xml.dom import minidom
 
 import pytest
 
-from ingenialink.dictionary import Interface, DictionaryV3
+from ingenialink.dictionary import Interface, DictionaryV3, DictionaryV2
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
@@ -30,7 +30,7 @@ def test_dictionary_v2_image_none(dictionary_class):
     with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
-    root.remove(root.find(dictionary_class.DICT_IMAGE))
+    root.remove(root.find(DictionaryV2._DictionaryV2__DICT_IMAGE))
     xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
         indent="  ", newl="", encoding="UTF-8"
     )
@@ -190,7 +190,7 @@ def test_dictionary_no_product_code(xml_attribute, class_attribute):
     with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
-    device = root.find(EthernetDictionaryV2.DICT_ROOT_DEVICE)
+    device = root.find(DictionaryV2._DictionaryV2__DICT_ROOT_DEVICE)
     device.attrib.pop(xml_attribute)
     xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
         indent="  ", newl="", encoding="UTF-8"
