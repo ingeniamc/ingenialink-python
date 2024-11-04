@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import ingenialogger
 
@@ -63,6 +63,9 @@ class Network(ABC):
         self.servos: List[Any] = []
         """List of the connected servos in the network."""
 
+        self._servos_state: Dict[Union[int, str], NET_STATE] = {}
+        """Dictionary containing the state of the servos that are a part of the network."""
+
     @abstractmethod
     def scan_slaves(self) -> List[int]:
         raise NotImplementedError
@@ -102,6 +105,14 @@ class Network(ABC):
     @abstractmethod
     def stop_status_listener(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError
+
+    @abstractmethod
+    def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
+        return self._servos_state[servo_id]
+
+    @abstractmethod
+    def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
+        self._servos_state[servo_id] = state
 
     @property
     def protocol(self) -> NET_PROT:

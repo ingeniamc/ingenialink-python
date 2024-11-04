@@ -50,7 +50,7 @@ def test_virtual_drive_disconnection(connect_virtual_drive):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
     servo, net = connect_virtual_drive(dictionary)
     net.disconnect_from_slave(servo)
-    assert net._get_servo_state(VirtualDrive.IP_ADDRESS) == NET_STATE.DISCONNECTED
+    assert net.get_servo_state(VirtualDrive.IP_ADDRESS) == NET_STATE.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
 

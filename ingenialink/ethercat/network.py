@@ -56,7 +56,7 @@ class NetStatusListener(Thread):
             self._ecat_master.read_state()
             for servo in self.__network.servos:
                 slave_id = servo.slave_id
-                servo_state = self.__network._get_servo_state(slave_id)
+                servo_state = self.__network.get_servo_state(slave_id)
                 is_servo_alive = not servo.slave.state == pysoem.NONE_STATE
                 if not is_servo_alive and servo_state == NET_STATE.CONNECTED:
                     self.__network._notify_status(slave_id, NET_DEV_EVT.REMOVED)
@@ -120,7 +120,6 @@ class EthercatNetwork(Network):
         super(EthercatNetwork, self).__init__()
         self.interface_name: str = interface_name
         self.servos: List[EthercatServo] = []
-        self.__servos_state: Dict[int, NET_STATE] = {}
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: Dict[int, List[Any]] = defaultdict(list)
         self._connection_timeout: float = connection_timeout
@@ -507,11 +506,30 @@ class EthercatNetwork(Network):
         """NET_PROT: Obtain network protocol."""
         return NET_PROT.ECAT
 
-    def _get_servo_state(self, slave_id: int) -> NET_STATE:
-        return self.__servos_state[slave_id]
+    def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
+        """Get the state of a servo that's a part of network.
+        The state indicates if the servo is connected or disconnected.
 
-    def _set_servo_state(self, slave_id: int, state: NET_STATE) -> None:
-        self.__servos_state[slave_id] = state
+        Args:
+            servo_id: The servo's slave ID.
+
+        Returns:
+            The servo's state.
+
+        """
+        if not isinstance(servo_id, int):
+            raise ValueError("The servo ID must be an int.")
+        return self._servos_state[servo_id]
+
+    def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
+        """Set the state of a servo that's a part of network.
+
+        Args:
+            servo_id: The servo's slave ID.
+            state: The servo's state.
+
+        """
+        self._servos_state[servo_id] = state
 
     def _notify_status(self, slave_id: int, status: NET_DEV_EVT) -> None:
         """Notify subscribers of a network state change."""
