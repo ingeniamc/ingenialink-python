@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Iterator, List, Optional, Tuple, Union
 
 import ingenialogger
 
@@ -114,41 +114,23 @@ class DictionaryCategories:
         return self._categories[cat_id]
 
 
-class DictionaryErrors:
-    """Errors for the dictionary.
+@dataclass
+class DictionaryError:
+    id: int
+    """The error ID."""
 
-    Args:
-        list_xdf_errors:  List of Elements from xdf file
-    """
+    affected_module: str
+    """The module affected by the error."""
 
-    def __init__(self, list_xdf_errors: List[ET.Element]) -> None:
-        self._list_xdf_errors = list_xdf_errors
-        self._errors: Dict[int, List[Optional[str]]] = {}
+    error_type: str
+    """The error type."""
 
-        self.load_errors()
+    description: Optional[str]
+    """The error description."""
 
-    def load_errors(self) -> None:
-        """Load errors from dictionary."""
-        for element in self._list_xdf_errors:
-            label = element.find(DICT_LABELS_LABEL)
-            if label is None:
-                logger.warning(f"Could not load label of error {element.attrib['id']}")
-                continue
-            self._errors[int(element.attrib["id"], 16)] = [
-                element.attrib["id"],
-                element.attrib["affected_module"],
-                element.attrib["error_type"].capitalize(),
-                label.text,
-            ]
-
-    @property
-    def errors(self) -> Dict[int, List[Optional[str]]]:
-        """Get the errors dictionary.
-
-        Returns:
-            Errors dictionary.
-        """
-        return self._errors
+    def __iter__(self) -> Iterator[Union[str, None]]:
+        id_hex_string = f"0x{self.id:08X}"
+        return iter((id_hex_string, self.affected_module, self.error_type, self.description))
 
 
 class Dictionary(ABC):
@@ -213,7 +195,7 @@ class Dictionary(ABC):
     """Number of subnodes in the dictionary."""
     categories: DictionaryCategories
     """Instance of all the categories in the dictionary."""
-    errors: DictionaryErrors
+    errors: Dict[int, "DictionaryError"]
     """Instance of all the errors in the dictionary."""
     image: Optional[str] = None
     """Drive's encoded image."""
@@ -354,7 +336,7 @@ class Dictionary(ABC):
             other_dict: The other dictionary instance.
 
         """
-        self.errors.errors.update(other_dict.errors.errors)
+        self.errors.update(other_dict.errors)
 
     def _set_image(self, other_dict: "Dictionary") -> None:
         """Set the image attribute.
@@ -384,6 +366,52 @@ class Dictionary(ABC):
             self.part_number = other_dict.part_number
         else:
             self.coco_product_code = other_dict.product_code
+
+    def _read_errors(self, root: ET.Element, path: str) -> None:
+        """Process Errors element and set errors
+
+        Args:
+            root: Errors element
+
+        """
+        error_list = self._findall_and_check(root, path)
+        self._load_errors(error_list)
+
+    @staticmethod
+    def _findall_and_check(root: ET.Element, path: str) -> List[ET.Element]:
+        """Return list of elements in the target root element if exist, else, raises an exception.
+
+        Args:
+          root: root element
+          path: target elements path
+
+        Returns:
+          list of path elements
+
+        Raises:
+          ILDictionaryParseError: path elements not found
+
+        """
+        element = root.findall(path)
+        if not element:
+            raise ILDictionaryParseError(f"{path} element is not found")
+        return element
+
+    def _load_errors(self, error_list: List[ET.Element]) -> None:
+        """Parse and load the errors into the errors dictionary"""
+        self.errors = {}
+        for element in error_list:
+            label = element.find(DICT_LABELS_LABEL)
+            if label is None:
+                logger.warning(f"Could not load label of error {element.attrib['id']}")
+                continue
+            error_id = int(element.attrib["id"], 16)
+            error_description = label.text
+            error_type = element.attrib["error_type"].capitalize()
+            error_affected_module = element.attrib["affected_module"]
+            self.errors[error_id] = DictionaryError(
+                error_id, error_affected_module, error_type, error_description
+            )
 
     @property
     def is_coco_dictionary(self) -> bool:
@@ -491,26 +519,6 @@ class DictionaryV3(Dictionary):
             raise ILDictionaryParseError(f"{path} element is not found")
         return element
 
-    @staticmethod
-    def __findall_and_check(root: ET.Element, path: str) -> List[ET.Element]:
-        """Return list of elements in the target root element if exist, else, raises an exception.
-
-        Args:
-          root: root element
-          path: target elements path
-
-        Returns:
-          list of path elements
-
-        Raises:
-          ILDictionaryParseError: path elements not found
-
-        """
-        element = root.findall(path)
-        if not element:
-            raise ILDictionaryParseError(f"{path} element is not found")
-        return element
-
     def read_dictionary(self) -> None:
         try:
             with open(self.path, "r", encoding="utf-8") as xdf_file:
@@ -581,7 +589,7 @@ class DictionaryV3(Dictionary):
             root: Categories element
 
         """
-        category_list = self.__findall_and_check(root, self.CATEGORY_ELEMENT)
+        category_list = self._findall_and_check(root, self.CATEGORY_ELEMENT)
         self.categories = DictionaryCategories(category_list)
 
     def __read_devices(self, root: ET.Element) -> None:
@@ -638,13 +646,13 @@ class DictionaryV3(Dictionary):
         subnodes_element = self.__find_and_check(root, self.SUBNODES_ELEMENT)
         self.__read_subnodes(subnodes_element)
         registers_element = self.__find_and_check(root, self.MCB_REGISTERS_ELEMENT)
-        register_element_list = self.__findall_and_check(
+        register_element_list = self._findall_and_check(
             registers_element, self.MCB_REGISTER_ELEMENT
         )
         for register_element in register_element_list:
             self.__read_mcb_register(register_element)
         errors_element = self.__find_and_check(root, self.ERRORS_ELEMENT)
-        self.__read_errors(errors_element)
+        self._read_errors(errors_element, self.ERROR_ELEMENT)
 
     def __read_device_ecat(self, root: ET.Element) -> None:
         """Process ECATDevice element
@@ -656,13 +664,13 @@ class DictionaryV3(Dictionary):
         subnodes_element = self.__find_and_check(root, self.SUBNODES_ELEMENT)
         self.__read_subnodes(subnodes_element)
         registers_element = self.__find_and_check(root, self.CANOPEN_OBJECTS_ELEMENT)
-        register_element_list = self.__findall_and_check(
+        register_element_list = self._findall_and_check(
             registers_element, self.CANOPEN_OBJECT_ELEMENT
         )
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
         errors_element = self.__find_and_check(root, self.ERRORS_ELEMENT)
-        self.__read_errors(errors_element)
+        self._read_errors(errors_element, self.ERROR_ELEMENT)
         safety_pdos_element = root.find(self.SAFETY_PDOS_ELEMENT)
         if safety_pdos_element is not None:
             self.__read_safety_pdos(safety_pdos_element)
@@ -677,13 +685,13 @@ class DictionaryV3(Dictionary):
         subnodes_element = self.__find_and_check(root, self.SUBNODES_ELEMENT)
         self.__read_subnodes(subnodes_element)
         registers_element = self.__find_and_check(root, self.CANOPEN_OBJECTS_ELEMENT)
-        register_element_list = self.__findall_and_check(
+        register_element_list = self._findall_and_check(
             registers_element, self.CANOPEN_OBJECT_ELEMENT
         )
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
         errors_element = self.__find_and_check(root, self.ERRORS_ELEMENT)
-        self.__read_errors(errors_element)
+        self._read_errors(errors_element, self.ERROR_ELEMENT)
 
     def __read_subnodes(self, root: ET.Element) -> None:
         """Process Subnodes element and fill subnodes
@@ -695,23 +703,13 @@ class DictionaryV3(Dictionary):
             ILDictionaryParseError: Subnode element text is None
 
         """
-        subnode_list = self.__findall_and_check(root, self.SUBNODE_ELEMENT)
+        subnode_list = self._findall_and_check(root, self.SUBNODE_ELEMENT)
         for subnode in subnode_list:
             if subnode.text is None:
                 raise ILDictionaryParseError("Subnode element text is None")
             self.subnodes[int(subnode.attrib[self.SUBNODE_INDEX_ATTR])] = self.subnode_xdf_options[
                 subnode.text.strip()
             ]
-
-    def __read_errors(self, root: ET.Element) -> None:
-        """Process Errors element and set errors
-
-        Args:
-            root: Errors element
-
-        """
-        error_list = self.__findall_and_check(root, self.ERROR_ELEMENT)
-        self.errors = DictionaryErrors(error_list)
 
     def __read_labels(self, root: ET.Element) -> Dict[str, str]:
         """Process Labels element
@@ -723,7 +721,7 @@ class DictionaryV3(Dictionary):
             labels by localization
 
         """
-        label_list = self.__findall_and_check(root, self.LABEL_ELEMENT)
+        label_list = self._findall_and_check(root, self.LABEL_ELEMENT)
         labels = {}
         for label in label_list:
             key, value = self.__read_label(label)
@@ -778,7 +776,7 @@ class DictionaryV3(Dictionary):
 
         """
         if enumerations_element is not None:
-            enum_list = self.__findall_and_check(enumerations_element, self.ENUM_ELEMENT)
+            enum_list = self._findall_and_check(enumerations_element, self.ENUM_ELEMENT)
             return {
                 str(enum_element.text.strip()): int(enum_element.attrib[self.ENUM_VALUE_ATTR])
                 for enum_element in enum_list
@@ -845,7 +843,7 @@ class DictionaryV3(Dictionary):
         reg_index = int(root.attrib[self.INDEX_ATTR], 16)
         subnode = int(root.attrib[self.SUBNODE_ATTR])
         subitmes_element = self.__find_and_check(root, self.SUBITEMS_ELEMENT)
-        subitem_list = self.__findall_and_check(subitmes_element, self.SUBITEM_ELEMENT)
+        subitem_list = self._findall_and_check(subitmes_element, self.SUBITEM_ELEMENT)
         register_list = [
             self.__read_canopen_subitem(subitem, reg_index, subnode) for subitem in subitem_list
         ]
@@ -924,11 +922,11 @@ class DictionaryV3(Dictionary):
 
         """
         self.is_safe = True
-        rpdo_list = self.__findall_and_check(root, self.RPDO_ELEMENT)
+        rpdo_list = self._findall_and_check(root, self.RPDO_ELEMENT)
         for rpdo_element in rpdo_list:
             uid, safety_rpdo = self.__read_pdo(rpdo_element)
             self.safety_rpdos[uid] = safety_rpdo
-        tpdo_list = self.__findall_and_check(root, self.TPDO_ELEMENT)
+        tpdo_list = self._findall_and_check(root, self.TPDO_ELEMENT)
         for tpdo_element in tpdo_list:
             uid, safety_tpdo = self.__read_pdo(tpdo_element)
             self.safety_tpdos[uid] = safety_tpdo
@@ -948,7 +946,7 @@ class DictionaryV3(Dictionary):
         """
         uid = pdo.attrib[self.PDO_UID_ATTR]
         pdo_index = int(pdo.attrib[self.PDO_INDEX_ATTR], 16)
-        entry_list = self.__findall_and_check(pdo, self.PDO_ENTRY_ELEMENT)
+        entry_list = self._findall_and_check(pdo, self.PDO_ENTRY_ELEMENT)
         pdo_registers = []
         for entry in entry_list:
             size = int(entry.attrib[self.PDO_ENTRY_SIZE_ATTR])
@@ -1036,8 +1034,7 @@ class DictionaryV2(Dictionary):
         self.categories = DictionaryCategories(list_xdf_categories)
 
         # Errors
-        list_xdf_errors = root.findall(self.DICT_ROOT_ERROR)
-        self.errors = DictionaryErrors(list_xdf_errors)
+        self._read_errors(root, self.DICT_ROOT_ERROR)
 
         # Version
         version_node = root.find(self.DICT_ROOT_VERSION)

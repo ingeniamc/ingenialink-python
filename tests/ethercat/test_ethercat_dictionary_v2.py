@@ -120,7 +120,7 @@ def test_read_dictionary_errors():
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
-    assert [error for error in ethercat_dict.errors.errors] == expected_errors
+    assert [error for error in ethercat_dict.errors] == expected_errors
 
 
 @pytest.mark.no_connection

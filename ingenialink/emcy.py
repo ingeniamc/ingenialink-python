@@ -42,10 +42,10 @@ class EmergencyMessage:
         """Get the error description from the servo's dictionary"""
         if (
             self.servo.dictionary.errors is None
-            or self.error_code not in self.servo.dictionary.errors.errors
+            or self.error_code not in self.servo.dictionary.errors
         ):
             return None
-        error_description = self.servo.dictionary.errors.errors[self.error_code][-1]
+        error_description = self.servo.dictionary.errors[self.error_code].description
         if error_description is None:
             return None
         return error_description
