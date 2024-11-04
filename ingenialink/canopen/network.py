@@ -15,6 +15,7 @@ import canopen
 import ingenialogger
 from can import CanError
 from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
+from can.interfaces.pcan.pcan import PcanCanOperationError
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
@@ -437,7 +438,7 @@ class CanopenNetwork(Network):
             return
         try:
             self._connection.disconnect()
-        except (VCIError, CANLIBOperationError) as e:
+        except (VCIError, CANLIBOperationError, PcanCanOperationError) as e:
             logger.error(f"An exception occurred during the teardown connection. Exception: {e}")
         self._connection = None
         logger.info("Tear down connection.")
