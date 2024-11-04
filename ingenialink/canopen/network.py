@@ -664,7 +664,7 @@ class CanopenNetwork(Network):
         Returns:
             True if values is reached, else False
         """
-        logger.debug(f"Waiting for register {register} to return <{expected_value}>")
+        logger.debug(f"Waiting for register {register.identifier} to return <{expected_value}>")
         num_tries = 0
         value = None
         while num_tries < POLLING_MAX_TRIES:
