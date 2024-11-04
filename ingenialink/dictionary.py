@@ -652,7 +652,7 @@ class DictionaryV3(Dictionary):
         for register_element in register_element_list:
             self.__read_mcb_register(register_element)
         errors_element = self.__find_and_check(root, self.__ERRORS_ELEMENT)
-        self._read_errors(errors_element, self.ERROR_ELEMENT)
+        self._read_errors(errors_element, self.__ERROR_ELEMENT)
 
     def __read_device_ecat(self, root: ET.Element) -> None:
         """Process ECATDevice element
@@ -670,7 +670,7 @@ class DictionaryV3(Dictionary):
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
         errors_element = self.__find_and_check(root, self.__ERRORS_ELEMENT)
-        self._read_errors(errors_element, self.ERROR_ELEMENT)
+        self._read_errors(errors_element, self.__ERROR_ELEMENT)
         safety_pdos_element = root.find(self.__SAFETY_PDOS_ELEMENT)
         if safety_pdos_element is not None:
             self.__read_safety_pdos(safety_pdos_element)
@@ -691,7 +691,7 @@ class DictionaryV3(Dictionary):
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
         errors_element = self.__find_and_check(root, self.__ERRORS_ELEMENT)
-        self._read_errors(errors_element, self.ERROR_ELEMENT)
+        self._read_errors(errors_element, self.__ERROR_ELEMENT)
 
     def __read_subnodes(self, root: ET.Element) -> None:
         """Process Subnodes element and fill subnodes
