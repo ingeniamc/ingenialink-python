@@ -19,7 +19,7 @@ from ingenialink.constants import (
     PASSWORD_STORE_ALL,
     PASSWORD_STORE_RESTORE_SUB_0,
 )
-from ingenialink.dictionary import Dictionary, DictionaryV3, Interface, SubnodeType
+from ingenialink.dictionary import Dictionary, DictionaryError, DictionaryV3, Interface, SubnodeType
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
 from ingenialink.enums.servo import SERVO_STATE
@@ -1472,12 +1472,9 @@ class Servo:
         return self.dictionary.subnodes
 
     @property
-    def errors(self) -> Dict[int, List[Optional[str]]]:
+    def errors(self) -> Dict[int, DictionaryError]:
         """Errors."""
-        if self.dictionary.errors:
-            return self.dictionary.errors.errors
-        else:
-            return {}
+        return self.dictionary.errors
 
     @property
     def info(self) -> Dict[str, Union[None, str, int]]:

@@ -8,6 +8,7 @@
 
 ### Fixed
 - Restore CoE communication after a power cycle.
+- Catch exception on disconnection when the PCAN is in bus-off state.
 
 ### Changed
 - CiA 301 PDO related registers are not saved to the configuration file. 
