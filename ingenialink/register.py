@@ -116,24 +116,21 @@ class Register(ABC):
         self,
         reg_range: Union[Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]],
     ) -> None:
-        if self.dtype in dtypes_ranges:
-            if self.dtype == REG_DTYPE.FLOAT:
-                if self.storage:
-                    self._storage = float(self.storage)
-                aux_range = (
-                    float(reg_range[0]) if reg_range[0] else dtypes_ranges[self.dtype]["min"],
-                    float(reg_range[1]) if reg_range[1] else dtypes_ranges[self.dtype]["max"],
-                )
-            else:
-                if self.storage:
-                    self._storage = int(self.storage)
-                aux_range = (
-                    int(reg_range[0]) if reg_range[0] else dtypes_ranges[self.dtype]["min"],
-                    int(reg_range[1]) if reg_range[1] else dtypes_ranges[self.dtype]["max"],
-                )
-            self._range = aux_range
-        else:
+        cast_type: Union[type[int], type[float]]
+        if self.dtype not in dtypes_ranges:
             self._storage_valid = False
+            return
+        elif self.dtype == REG_DTYPE.FLOAT:
+            cast_type = float
+        else:
+            cast_type = int
+        if reg_range[0] is None or reg_range[1] is None:
+            register_range = dtypes_ranges[self.dtype]["min"], dtypes_ranges[self.dtype]["max"]
+        else:
+            register_range = cast_type(reg_range[0]), cast_type(reg_range[1])
+        self._range = register_range
+        if self.storage is not None:
+            self._storage = cast_type(self.storage)
 
     @property
     def dtype(self) -> REG_DTYPE:
