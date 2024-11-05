@@ -23,7 +23,7 @@ class EthercatDictionaryV2(DictionaryV2):
 
     """
 
-    MONITORING_DISTURBANCE_REGISTERS: List[EthercatRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: List[EthercatRegister] = [
         EthercatRegister(
             identifier="MON_DATA_VALUE",
             units="",
@@ -46,7 +46,7 @@ class EthercatDictionaryV2(DictionaryV2):
         ),
     ]
 
-    PDO_REGISTERS: List[EthercatRegister] = [
+    __PDO_REGISTERS: List[EthercatRegister] = [
         EthercatRegister(
             identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_0",
             units="",
@@ -196,6 +196,6 @@ class EthercatDictionaryV2(DictionaryV2):
 
         """
         super()._append_missing_registers()
-        for register in self.PDO_REGISTERS:
+        for register in self.__PDO_REGISTERS:
             if register.identifier is not None:
                 self._registers[register.subnode][register.identifier] = register

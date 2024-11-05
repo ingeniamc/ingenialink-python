@@ -17,7 +17,7 @@ class CanopenDictionaryV2(DictionaryV2):
 
     """
 
-    MONITORING_DISTURBANCE_REGISTERS: List[CanopenRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: List[CanopenRegister] = [
         CanopenRegister(
             identifier="MON_DATA_VALUE",
             idx=0x58B2,

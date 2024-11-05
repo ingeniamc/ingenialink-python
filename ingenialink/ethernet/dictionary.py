@@ -17,7 +17,7 @@ class EthernetDictionaryV2(DictionaryV2):
 
     """
 
-    MONITORING_DISTURBANCE_REGISTERS: List[EthernetRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: List[EthernetRegister] = [
         EthernetRegister(
             identifier="MON_DATA_VALUE",
             units="",
