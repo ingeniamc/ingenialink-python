@@ -161,7 +161,6 @@ pipeline {
                 unstash 'publish_files'
                 unzip zipFile: 'docs.zip', dir: '.'
                 publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
-                publishPyPi("dist/*")
             }
         }
     }
