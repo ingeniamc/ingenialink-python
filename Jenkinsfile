@@ -160,9 +160,7 @@ pipeline {
             steps {
                 unstash 'publish_files'
                 unzip zipFile: 'docs.zip', dir: '.'
-                // Pending distext migration
-                // publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
-                publishPyPi("dist/*")
+                publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
             }
         }
     }
