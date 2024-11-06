@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.11') _
+@Library('cicd-lib@CIT-296-evaluate-using-sftp-for-publishing-to-distext') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -8,7 +8,7 @@ def CAN_NODE_LOCK = "test_execution_lock_can"
 
 def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.5"
 def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.6"
-def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
+def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:dev"
 
 def DIST_FOE_APP_PATH = "ECAT-tools"
 def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
@@ -23,7 +23,7 @@ RUN_PYTHON_VERSIONS = ""
 def PYTHON_VERSION_MIN = "py39"
 def PYTHON_VERSION_MAX = "py312"
 
-def BRANCH_NAME_MASTER = "master"
+def BRANCH_NAME_MASTER = "CIT-296-evaluate-using-sftp-for-publishing-to-distext"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 coverage_stashes = []
@@ -144,142 +144,6 @@ pipeline {
                         }
                     }
                 }
-                stage('Docker Windows - Tests') {
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage('Run no-connection tests on docker') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker " +
-                                        "--cov=ingenialink"
-                            }
-                            post {
-                                always {
-                                    bat "move .coverage .coverage_docker"
-                                    junit "pytest_reports\\*.xml"
-                                    // Delete the junit after publishing it so it not re-published on the next stage
-                                    bat "del /S /Q pytest_reports\\*.xml"
-                                    stash includes: '.coverage_docker', name: '.coverage_docker'
-                                    script {
-                                        coverage_stashes.add(".coverage_docker")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('Docker Linux - Tests') {
-                    agent {
-                        docker {
-                            label "worker"
-                            image LIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage('Run no-connection tests on docker') {
-                            steps {
-                                sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS}
-                                """
-                            }
-                            post {
-                                always {
-                                    junit "pytest_reports\\*.xml"
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('EtherCAT/No Connection - Tests') {
-                    options {
-                        lock(ECAT_NODE_LOCK)
-                    }
-                    agent {
-                        label ECAT_NODE
-                    }
-                    stages {
-                        stage('Get FoE application') {
-                            steps {
-                                unstash 'foe_app'
-                                bat """
-                                    XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
-                                    XCOPY $FOE_APP_NAME_LINUX $LIB_FOE_APP_PATH\\linux\\
-                                """
-                            }
-                        }
-                        stage('EtherCAT Everest') {
-                            steps {
-                                runTest("ethercat", 0)
-                            }
-                        }
-                        stage('EtherCAT Capitan') {
-                            steps {
-                                runTest("ethercat", 1)
-                            }
-                        }
-                        stage('Run no-connection tests') {
-                            steps {
-                                runTest("no_connection")
-                            }
-                        }
-                    }
-                }
-                stage('CANopen/Ethernet - Tests') {
-                    options {
-                        lock(CAN_NODE_LOCK)
-                    }
-                    agent {
-                        label CAN_NODE
-                    }
-                    stages {
-                        stage('CANopen Everest') {
-                            steps {
-                                runTest("canopen", 0)
-                            }
-                        }
-                        stage('CANopen Capitan') {
-                            steps {
-                                runTest("canopen", 1)
-                            }
-                        }
-                        stage('Ethernet Everest') {
-                            steps {
-                                runTest("ethernet", 0)
-                            }
-                        }
-                        stage('Ethernet Capitan') {
-                            steps {
-                                runTest("ethernet", 1)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        stage('Publish coverage') {
-            agent {
-                docker {
-                    label SW_NODE
-                    image WIN_DOCKER_IMAGE
-                }
-            }
-            steps {
-                script {
-                    def coverage_files = ""
-
-                    for (coverage_stash in coverage_stashes) {
-                        unstash coverage_stash
-                        coverage_files += " " + coverage_stash
-                    }
-                    bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e coverage -- ${coverage_files}"
-                }
-                recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
-                archiveArtifacts artifacts: '*.xml'
             }
         }
         stage('Publish wheels and documentation') {
