@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.11') _
+@Library('cicd-lib@CIT-296-evaluate-using-scp-for-publishing-to-distext') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -284,10 +284,7 @@ pipeline {
         }
         stage('Publish wheels and documentation') {
             agent {
-                docker {
-                    label "worker"
-                    image PUBLISHER_DOCKER_IMAGE
-                }
+                label "worker"
             }
             when {
                 beforeAgent true
@@ -296,8 +293,7 @@ pipeline {
             steps {
                 unstash 'publish_files'
                 unzip zipFile: 'docs.zip', dir: '.'
-                // Pending distext migration
-                // publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
+                publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
                 publishPyPi("dist/*")
             }
         }
