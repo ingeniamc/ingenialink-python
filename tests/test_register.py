@@ -155,24 +155,22 @@ def test_register_set_storage():
 
 
 @pytest.mark.parametrize(
-    "dtype, reg_range, reg_type",
+    "dtype, reg_range, expected_range, reg_type",
     [
-        (REG_DTYPE.U8, (0, 100), int),
-        (REG_DTYPE.FLOAT, (0.0, 1.0), float),
-        (REG_DTYPE.S16, (-100, None), int),
-        (REG_DTYPE.U32, (None, 100), int),
+        (REG_DTYPE.U8, (0, 100), (0, 100), int),
+        (REG_DTYPE.FLOAT, (0.0, 1.0), (0.0, 1.0), float),
+        (REG_DTYPE.S16, (-100, None), (-100, 32767), int),
+        (REG_DTYPE.U32, (None, 100), (0, 100), int),
+        (REG_DTYPE.S32, (None, None), (-2147483648, 2147483647), int),
     ],
 )
 @pytest.mark.no_connection
-def test_register_range(dtype, reg_range, reg_type):
+def test_register_range(dtype, reg_range, expected_range, reg_type):
     register = Register(dtype, REG_ACCESS.RW, reg_range=reg_range)
 
     assert type(register.range[0]) is reg_type
     assert type(register.range[1]) is reg_type
-    if None in reg_range:
-        assert register.range == (dtypes_ranges[dtype]["min"], dtypes_ranges[dtype]["max"])
-    else:
-        assert register.range == reg_range
+    assert register.range == expected_range
 
 
 @pytest.mark.no_connection
