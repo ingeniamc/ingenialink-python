@@ -124,15 +124,17 @@ class Register(ABC):
             cast_type = float
         else:
             cast_type = int
-        if reg_range[0] is not None and reg_range[1] is not None:
-            register_range = cast_type(reg_range[0]), cast_type(reg_range[1])
-        elif reg_range[0] is None and reg_range[1] is None:
-            register_range = dtypes_ranges[self.dtype]["min"], dtypes_ranges[self.dtype]["max"]
-        elif reg_range[0] is not None:
-            register_range = cast_type(reg_range[0]), dtypes_ranges[self.dtype]["max"]
-        else:
-            register_range = dtypes_ranges[self.dtype]["min"], cast_type(reg_range[1])
-        self._range = register_range
+        reg_range_min = (
+            cast_type(reg_range[0])
+            if reg_range[0] is not None
+            else dtypes_ranges[self.dtype]["min"]
+        )
+        reg_range_max = (
+            cast_type(reg_range[1])
+            if reg_range[1] is not None
+            else dtypes_ranges[self.dtype]["max"]
+        )
+        self._range = reg_range_min, reg_range_max
         if self.storage is not None:
             self._storage = cast_type(self.storage)
 
