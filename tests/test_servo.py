@@ -4,25 +4,23 @@ import shutil
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from packaging import version
 
 import pytest
+from packaging import version
 
 from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.register import REG_DTYPE
 from ingenialink.exceptions import (
     ILConfigurationError,
+    ILError,
     ILStateError,
     ILTimeoutError,
     ILValueError,
-    ILError,
 )
 from ingenialink.register import REG_ADDRESS_TYPE
 from ingenialink.servo import SERVO_STATE
 from tests.virtual.test_virtual_network import (
     RESOURCES_FOLDER,
-    connect_virtual_drive,
-    stop_virtual_drive,
 )
 
 MONITORING_CH_DATA_SIZE = 4
@@ -140,7 +138,8 @@ def test_save_configuration(connect_to_slave):
         else servo.DICTIONARY_INTERFACE_ATTR_ETH
     )
     assert device.attrib.get("Interface") == interface
-    # The firmware version from the drive has trailing zeros and the one from the dictionary does not
+    # The firmware version from the drive has trailing zeros
+    # and the one from the dictionary does not
     assert version.parse(device.attrib.get("firmwareVersion")) == version.parse(
         servo.dictionary.firmware_version
     )
@@ -259,8 +258,8 @@ def test_load_configuration_strict(mocker, connect_virtual_drive):
     with pytest.raises(ILError) as exc_info:
         servo.load_configuration(test_file, strict=True)
     assert (
-        str(exc_info.value)
-        == "Exception during load_configuration, register DRV_DIAG_SYS_ERROR_TOTAL_COM: Error writing"
+        str(exc_info.value) == "Exception during load_configuration, "
+        "register DRV_DIAG_SYS_ERROR_TOTAL_COM: Error writing"
     )
 
 

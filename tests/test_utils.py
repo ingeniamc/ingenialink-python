@@ -1,7 +1,7 @@
 import pytest
 
-from ingenialink.exceptions import ILValueError
 from ingenialink.enums.register import REG_DTYPE
+from ingenialink.exceptions import ILValueError
 from ingenialink.utils._utils import convert_bytes_to_dtype
 
 

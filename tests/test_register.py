@@ -83,7 +83,7 @@ def test_getters_register():
     assert register.internal_use == reg_kwargs["internal_use"]
     assert register.enums == reg_kwargs["enums"]
     assert register.enums_count == 2
-    assert register.storage_valid == True
+    assert register.storage_valid
 
 
 @pytest.mark.no_connection
@@ -131,13 +131,13 @@ def test_register_get_storage():
     dtype = REG_DTYPE.FLOAT
     storage = 123
     register = Register(dtype, access, storage=storage)
-    assert type(register.storage) is float
+    assert isinstance(register.storage, float)
 
     # parse int storage
     dtype = REG_DTYPE.U8
     storage = 123.1
     register = Register(dtype, access, storage=storage)
-    assert type(register.storage) is int
+    assert isinstance(register.storage, int)
     assert register.storage == 123
 
 
@@ -162,16 +162,16 @@ def test_register_range():
     dtype = REG_DTYPE.U8
     range = (0, 100)
     register = Register(dtype, access, reg_range=range)
-    assert type(register.range[0]) is int
-    assert type(register.range[1]) is int
+    assert isinstance(register.range[0], int)
+    assert isinstance(register.range[1], int)
     assert register.range == range
 
     # custom range float
     dtype = REG_DTYPE.FLOAT
     range = (1.11, 100.25)
     register = Register(dtype, access, reg_range=range)
-    assert type(register.range[0]) is float
-    assert type(register.range[1]) is float
+    assert isinstance(register.range[0], float)
+    assert isinstance(register.range[1], float)
     assert register.range == range
 
     # default range

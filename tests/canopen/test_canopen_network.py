@@ -2,10 +2,8 @@ import platform
 
 import pytest
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, NET_STATE, CanopenNetwork
-from ingenialink.dictionary import Interface
+from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.exceptions import ILError
-from ingenialink.servo import DictionaryFactory
 
 test_bus = "virtual"
 test_baudrate = 1000000
@@ -81,8 +79,8 @@ def test_scan_slaves_missing_drivers(can_device):
     with pytest.raises(ILError) as exc_info:
         net.scan_slaves()
     assert (
-        str(exc_info.value)
-        == f"The {can_device.value.upper()} transceiver is not detected. Make sure that it's connected and"
+        str(exc_info.value) == f"The {can_device.value.upper()} transceiver is not detected. "
+        f"Make sure that it's connected and"
         " its drivers are installed."
     )
 
