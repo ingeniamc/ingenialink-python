@@ -658,7 +658,10 @@ class Servo:
             # Check state and command action to reach enabled
             cmd = constants.IL_MC_PDS_CMD_EO
             if state == SERVO_STATE.FAULT:
-                raise ILStateError(None)
+                raise ILStateError(
+                    f"The subnode {subnode} could not be enabled within {timeout} ms. "
+                    f"The current subnode state is {state}"
+                )
             elif state == SERVO_STATE.NRDY:
                 cmd = constants.IL_MC_PDS_CMD_DV
             elif state == SERVO_STATE.DISABLED:
