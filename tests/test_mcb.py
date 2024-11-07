@@ -1,10 +1,10 @@
 import pytest
 
-from ingenialink.ethernet.register import REG_DTYPE
-from ingenialink.utils._utils import convert_dtype_to_bytes, convert_bytes_to_dtype
-from ingenialink.utils.mcb import MCB
 from ingenialink.constants import MCB_CMD_READ, MCB_CMD_WRITE
-from ingenialink.exceptions import ILWrongCRCError, ILNACKError, ILWrongRegisterError
+from ingenialink.ethernet.register import REG_DTYPE
+from ingenialink.exceptions import ILNACKError, ILWrongCRCError, ILWrongRegisterError
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.utils.mcb import MCB
 
 
 @pytest.mark.no_connection

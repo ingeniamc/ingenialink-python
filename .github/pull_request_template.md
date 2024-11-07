@@ -33,7 +33,7 @@ Please update the documentation.
 ### Code formatting and linting
 
 - [ ] Use the ruff package to format the code: `ruff format ingenialink tests`.
-- [ ] Use the ruff package to lint the code: `ruff check ingenialink`.
+- [ ] Use the ruff package to lint the code: `ruff check ingenialink tests`.
 
 ### Others
 

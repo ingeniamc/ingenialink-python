@@ -7,10 +7,10 @@ from xml.dom import minidom
 
 import pytest
 
-from ingenialink.dictionary import Interface, DictionaryV3, DictionaryV2
+from ingenialink.canopen.dictionary import CanopenDictionaryV2
+from ingenialink.dictionary import DictionaryV2, DictionaryV3, Interface
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
-from ingenialink.canopen.dictionary import CanopenDictionaryV2
 from ingenialink.servo import DictionaryFactory
 
 PATH_RESOURCE = "./tests/resources/"
