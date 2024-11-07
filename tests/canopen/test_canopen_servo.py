@@ -1,5 +1,4 @@
 import pytest
-
 from canopen.network import RemoteNode
 
 

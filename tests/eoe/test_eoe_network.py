@@ -1,10 +1,10 @@
-import pytest
 import socket
-import ipaddress
 
-from ingenialink.ethernet.servo import EthernetServo
+import pytest
+
+from ingenialink.eoe.network import EoECommand, EoENetwork
 from ingenialink.ethernet.network import NET_PROT
-from ingenialink.eoe.network import EoENetwork, EoECommand
+from ingenialink.ethernet.servo import EthernetServo
 
 
 @pytest.fixture()
@@ -23,7 +23,6 @@ def connect(read_config):
 def test_eoe_connection(connect_to_slave, read_config):
     eoe_service_ip = "127.0.0.1"
     eoe_service_port = 8888
-    drive_ip = read_config["eoe"]["ip"]
     servo, net = connect_to_slave
     net_socket = net._eoe_socket
     ip, port = net_socket.getpeername()

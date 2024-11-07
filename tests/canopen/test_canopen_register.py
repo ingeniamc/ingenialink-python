@@ -60,7 +60,7 @@ def test_getters_canopen_register():
     assert register.address_type == reg_kwargs["address_type"]
     assert register.enums == reg_kwargs["enums"]
     assert register.enums_count == 2
-    assert register.storage_valid == True
+    assert register.storage_valid
     assert register.is_node_id_dependent is True
 
 

@@ -1,9 +1,10 @@
-import pytest
 from os.path import join as join_path
 
-from ingenialink.exceptions import ILDictionaryParseError
+import pytest
+
 from ingenialink import CanopenRegister
-from ingenialink.dictionary import Interface, SubnodeType, DictionaryV3, DictionarySafetyPDO
+from ingenialink.dictionary import DictionarySafetyPDO, DictionaryV3, Interface, SubnodeType
+from ingenialink.exceptions import ILDictionaryParseError
 
 path_resources = "./tests/resources/"
 dict_ecat_v3 = "test_dict_ecat_eoe_v3.0.xdf"

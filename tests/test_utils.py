@@ -5,6 +5,7 @@ from ingenialink.exceptions import ILValueError
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "byts, value, dtype",
     [
@@ -26,7 +27,7 @@ def test_bytes_dtype_conversions(byts, value, dtype):
 
     assert convert_dtype_to_bytes(value, dtype) == byts
 
-
+@pytest.mark.no_connection
 def test_null_terminated_string():
     assert (
         convert_bytes_to_dtype(
@@ -36,6 +37,7 @@ def test_null_terminated_string():
     )
 
 
+@pytest.mark.no_connection
 def test_convert_bytes_to_dtype_wrong_string():
     wrong_data = b"\xff\xff\xff\xff\xff\x00"
     with pytest.raises(ILValueError):

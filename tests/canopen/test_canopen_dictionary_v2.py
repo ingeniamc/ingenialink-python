@@ -1,9 +1,9 @@
-import pytest
 from os.path import join as join_path
 
-from ingenialink.dictionary import Interface, SubnodeType
-from ingenialink.canopen.dictionary import CanopenDictionaryV2
+import pytest
 
+from ingenialink.canopen.dictionary import CanopenDictionaryV2
+from ingenialink.dictionary import Interface, SubnodeType
 
 path_resources = "./tests/resources/canopen/"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
