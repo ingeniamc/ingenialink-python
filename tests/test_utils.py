@@ -5,6 +5,7 @@ from ingenialink.enums.register import REG_DTYPE
 from ingenialink.utils._utils import convert_bytes_to_dtype
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "v_input, v_output, dtype",
     [
@@ -19,6 +20,7 @@ def test_convert_bytes_to_dtype(v_input, v_output, dtype):
     assert convert_bytes_to_dtype(v_input, dtype) == v_output
 
 
+@pytest.mark.no_connection
 def test_convert_bytes_to_dtype_wrong_string():
     wrong_data = b"\xff\xff\xff\xff\xff\x00"
     with pytest.raises(ILValueError):
