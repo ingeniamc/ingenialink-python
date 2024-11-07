@@ -1285,8 +1285,6 @@ class Servo:
             raise ILAccessError("Register is Write-only")
 
         raw_read = self._read_raw(_reg, **kwargs)
-        if _reg.dtype == REG_DTYPE.BYTE_ARRAY_512:
-            return raw_read
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
         self._notify_register_update(_reg, value)
         return value

@@ -192,7 +192,7 @@ class INT_SIZES(Enum):
     U64_MAX = 18446744073709551615
 
 
-def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, str]:
+def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, str, bytes]:
     """Convert data in bytes to corresponding dtype.
 
     Bytes have to be ordered in LSB.
@@ -221,6 +221,8 @@ def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, s
             value = data.split(b"\x00")[0].decode("utf-8")
         except UnicodeDecodeError as e:
             raise ILValueError(f"Can't decode {e.object!r} to utf-8 string") from e
+    elif dtype == REG_DTYPE.BYTE_ARRAY_512:
+        return data
     else:
         value = int.from_bytes(data, "little", signed=signed)
     if dtype == REG_DTYPE.BOOL:
@@ -230,7 +232,7 @@ def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, s
     return value
 
 
-def convert_dtype_to_bytes(data: Union[int, float, str], dtype: REG_DTYPE) -> bytes:
+def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: REG_DTYPE) -> bytes:
     """Convert data in dtype to bytes.
 
     Bytes will be ordered in LSB.
