@@ -162,6 +162,7 @@ def test_register_set_storage():
         (REG_DTYPE.S16, (-100, None), (-100, 32767), int),
         (REG_DTYPE.U32, (None, 100), (0, 100), int),
         (REG_DTYPE.S32, (None, None), (-2147483648, 2147483647), int),
+        (REG_DTYPE.FLOAT, (None, None), (-3.4e38, 3.4e38), float),
     ],
 )
 @pytest.mark.no_connection
