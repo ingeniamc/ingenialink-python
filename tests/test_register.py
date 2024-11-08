@@ -5,7 +5,7 @@ import pytest
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
-from ingenialink.register import REG_ACCESS, REG_DTYPE, REG_PHY, Register, dtypes_ranges
+from ingenialink.register import REG_ACCESS, REG_DTYPE, REG_PHY, Register
 from ingenialink.virtual.network import VirtualNetwork
 from virtual_drive.core import VirtualDrive
 
