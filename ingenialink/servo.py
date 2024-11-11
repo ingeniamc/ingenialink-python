@@ -10,6 +10,7 @@ from xml.dom import minidom
 import ingenialogger
 import numpy as np
 
+from ingenialink.bitfield import BitField
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
@@ -1291,6 +1292,70 @@ class Servo:
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
         self._notify_register_update(_reg, value)
         return value
+
+    def read_bitfields(
+        self,
+        reg: Union[str, Register],
+        subnode: int = 1,
+        bitfields: Optional[Dict[str, "BitField"]] = None,
+    ) -> Dict[str, int]:
+        """Read bitfields of a register.
+
+        Args:
+            reg: Register.
+            subnode: Target subnode of the drive.
+            bitfields: Optional bitfield specification.
+                If not it will be used from the register definition (if Any)
+
+        Returns:
+            Dictionary with values of the bitfields.
+            Key is the name of the bitfield.
+            Value is the value parsed.
+        """
+        _reg = self._get_reg(reg, subnode)
+
+        if bitfields is None:
+            if _reg.bitfields is None:
+                raise ValueError(f"Register {_reg.identifier} does not have bitfields")
+            bitfields = _reg.bitfields
+        value = self.read(_reg, subnode)
+        if not isinstance(value, int):
+            raise TypeError("Bitfield only work with integer registers")
+        return BitField.parse_bitfields(bitfields, value)
+
+    def write_bitfields(
+        self,
+        reg: Union[str, Register],
+        values: Dict[str, int],
+        subnode: int = 1,
+        bitfields: Optional[Dict[str, "BitField"]] = None,
+    ) -> None:
+        """Write bitfields of a register.
+
+        Only the values specified will be updated.
+        The register will be read first to prevent overwriting other bits.
+
+        Args:
+            reg: Register
+            values: Dictionary with values of the bitfields.
+                Key is the name of the bitfield.
+                Value is the value to set.
+            subnode: Target subnode of the drive.
+            bitfields: Optional bitfield specification.
+                If not it will be used from the register definition (if Any)
+        """
+        _reg = self._get_reg(reg, subnode)
+        if bitfields is None:
+            if _reg.bitfields is None:
+                raise ValueError(f"Register {_reg.identifier} does not have bitfields")
+            bitfields = _reg.bitfields
+
+        previous_value = self.read(_reg, subnode)
+        if not isinstance(previous_value, int):
+            raise TypeError("Bitfield only work with integer registers")
+
+        new_value = BitField.set_bitfields(bitfields, values, previous_value)
+        self.write(_reg, new_value, subnode)
 
     def register_update_subscribe(
         self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None]

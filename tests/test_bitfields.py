@@ -1,7 +1,10 @@
+import os
+
 import pytest
 
 from ingenialink.bitfield import BitField
 from tests.virtual.test_virtual_network import (
+    RESOURCES_FOLDER,
     connect_virtual_drive,  # noqa: F401
 )
 
@@ -56,3 +59,70 @@ def test_set_bitfield_over_max_value(values, error):
         BitField.set_bitfields(BITFIELD_EXAMPLES, values, 0)
 
     assert ex.value.args[0] == error
+
+
+@pytest.mark.no_connection
+def test_read_status_word_known_bitfields(connect_virtual_drive):  # noqa: F811
+    # Load dictionary v2, that does not contain bitfield information.
+    # DRV_STATE_STATUS is injected by the XDF V2 parser
+    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+
+    servo, _ = connect_virtual_drive(dictionary)
+
+    assert servo.read_bitfields("DRV_STATE_STATUS") == {
+        "COMMUTATION_FEEDBACK_ALIGNED": 0,
+        "FAULT": 0,
+        "OPERATION_ENABLED": 0,
+        "QUICK_STOP": 1,
+        "READY_TO_SWITCH_ON": 1,
+        "SWITCHED_ON": 0,
+        "SWITCH_LIMITS_ACTIVE": 0,
+        "SWITCH_ON_DISABLED": 0,
+        "TARGET_REACHED": 0,
+        "VOLTAGE_ENABLED": 0,
+        "WARNING": 0,
+    }
+    servo.enable()
+
+    assert servo.read_bitfields("DRV_STATE_STATUS") == {
+        "COMMUTATION_FEEDBACK_ALIGNED": 0,
+        "FAULT": 0,
+        "OPERATION_ENABLED": 1,
+        "QUICK_STOP": 1,
+        "READY_TO_SWITCH_ON": 1,
+        "SWITCHED_ON": 1,
+        "SWITCH_LIMITS_ACTIVE": 0,
+        "SWITCH_ON_DISABLED": 0,
+        "TARGET_REACHED": 0,
+        "VOLTAGE_ENABLED": 0,
+        "WARNING": 0,
+    }
+
+
+@pytest.mark.no_connection
+def test_write_control_word_known_bitfields(connect_virtual_drive, mocker):  # noqa: F811
+    # Load dictionary v2, that does not contain bitfield information.
+    # DRV_STATE_CONTROL is injected by the XDF V2 parser
+    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+
+    servo, _ = connect_virtual_drive(dictionary)
+
+    read_mock = mocker.patch("ingenialink.servo.Servo.read", return_value=0b1101_0101)
+    write_mock = mocker.patch("ingenialink.servo.Servo.write")
+
+    reg = servo._get_reg("DRV_STATE_CONTROL")
+
+    servo.write_bitfields(
+        "DRV_STATE_CONTROL",
+        {
+            "SWITCH_ON": 1,
+            "VOLTAGE_ENABLE": 1,
+            "QUICK_STOP": 1,
+            "ENABLE_OPERATION": 1,
+            "RUN_SET_POINT_MANAGER": 0,
+            "FAULT_RESET": 0,
+        },
+    )
+
+    read_mock.assert_called_once_with(reg, 1)
+    write_mock.assert_called_once_with(reg, 0b0100_1111, 1)

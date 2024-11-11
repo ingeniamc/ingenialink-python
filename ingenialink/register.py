@@ -2,6 +2,7 @@ from abc import ABC
 from typing import Any, Dict, Optional, Tuple, Union
 
 from ingenialink import exceptions as exc
+from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
     REG_ACCESS,
     REG_ADDRESS_TYPE,
@@ -45,6 +46,7 @@ class Register(ABC):
         address_type: Address tpye.
         description: Register description.
         default: Register default value.
+        bitfields: Fields that specify groups of bits
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -74,6 +76,7 @@ class Register(ABC):
         address_type: Optional[REG_ADDRESS_TYPE] = None,
         description: Optional[str] = None,
         default: Optional[bytes] = None,
+        bitfields: Optional[Dict[str, BitField]] = None,
     ) -> None:
         if labels is None:
             labels = {}
@@ -100,6 +103,7 @@ class Register(ABC):
         self._description = description
         self._default = default
         self._enums = enums
+        self.__bitfields = bitfields
         self.__config_range(reg_range)
 
     def __type_errors(self, dtype: REG_DTYPE, access: REG_ACCESS, phy: REG_PHY) -> None:
@@ -269,3 +273,7 @@ class Register(ABC):
     def mapped_address(self) -> int:
         """Register mapped address used for monitoring/disturbance."""
         raise NotImplementedError()
+
+    @property
+    def bitfields(self) -> Optional[Dict[str, BitField]]:
+        return self.__bitfields
