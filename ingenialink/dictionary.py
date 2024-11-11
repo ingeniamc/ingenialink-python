@@ -910,7 +910,7 @@ class DictionaryV3(Dictionary):
             address_type=address_type,
             description=description,
             default=default,
-            bitfields={},  # TODO bitfields definition on xml
+            bitfields={},  # TODO read bitfields definition on xdf
             is_node_id_dependent=is_node_id_dependent,
         )
         if subnode not in self._registers:
@@ -1032,12 +1032,14 @@ class DictionaryV2(Dictionary):
             "FAULT_RESET": BitField.bit(7),
         },
         "DRV_OP_CMD": lambda: {
+            # https://drives.novantamotion.com/summit/0x014-operation-mode
             "OPERATION_MODE": BitField(0, 3),
             "PROFILER_MODE": BitField(4, 6),
             "PTP_BUFFER": BitField.bit(7),
             "HOMING": BitField.bit(8),
         },
         "DRV_PROT_STO_STATUS": lambda: {
+            # https://drives.novantamotion.com/summit/0x51a-sto-status
             "STO1": BitField.bit(0),
             "STO2": BitField.bit(1),
             "STO_SUPPLY_FAULT": BitField.bit(2),
