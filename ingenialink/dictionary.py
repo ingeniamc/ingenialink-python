@@ -1031,8 +1031,19 @@ class DictionaryV2(Dictionary):
             "RUN_SET_POINT_MANAGER": BitField.bit(4),
             "FAULT_RESET": BitField.bit(7),
         },
-        # TODO STO STATUS
-        #  REVIEW OTHER regs
+        "DRV_OP_CMD": lambda: {
+            "OPERATION_MODE": BitField(0, 3),
+            "PROFILER_MODE": BitField(4, 6),
+            "PTP_BUFFER": BitField.bit(7),
+            "HOMING": BitField.bit(8),
+        },
+        "DRV_PROT_STO_STATUS": lambda: {
+            "STO1": BitField.bit(0),
+            "STO2": BitField.bit(1),
+            "STO_SUPPLY_FAULT": BitField.bit(2),
+            "STO_ABNORMAL_FAULT": BitField.bit(3),
+            "STO_REPORT": BitField.bit(4),
+        },
     }
 
     def read_dictionary(self) -> None:
