@@ -5,12 +5,12 @@ class ILError(Exception):
 
 
 class ILConfigurationError(ILError):
-    """IngeniaLink IPB protocol configuration error."""
+    """IngeniaLink configuration error."""
 
     pass
 
 
-class ILUDPException(Exception):
+class ILUDPException(ILError):
     """Ingenialink exception on UDP action."""
 
     pass
@@ -80,12 +80,6 @@ class ILNACKError(ILError):
 
 class ILDictionaryParseError(ILError):
     """IngeniaLink dictionary parse error."""
-
-    pass
-
-
-class ILObjectNotExist(ILConfigurationError):
-    """Object doesn't exist configuration error."""
 
     pass
 

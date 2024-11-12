@@ -66,7 +66,6 @@ class CanopenServo(Servo):
 
         Raises:
             ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
 
         """
         self._change_sdo_timeout(sdo_timeout)

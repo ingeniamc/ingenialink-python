@@ -537,7 +537,6 @@ class Servo:
 
         Raises:
             ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
 
         """
         if subnode is None:
@@ -569,7 +568,6 @@ class Servo:
 
         Raises:
             ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
 
         """
         r = 0
