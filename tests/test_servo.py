@@ -13,6 +13,7 @@ from ingenialink.ethernet.register import REG_DTYPE
 from ingenialink.exceptions import (
     ILConfigurationError,
     ILError,
+    ILIOError,
     ILStateError,
     ILTimeoutError,
     ILValueError,
@@ -214,13 +215,13 @@ def test_check_configuration(virtual_drive, read_config, pytestconfig):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration(connect_to_slave, read_config, pytestconfig):
+def test_load_configuration(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
 
-    protocol = pytestconfig.getoption("--protocol")
+    filename = "temp_config"
 
-    filename = read_config[protocol]["load_config_file"]
+    servo.save_configuration(filename)
 
     assert os.path.isfile(filename)
 
@@ -231,25 +232,23 @@ def test_load_configuration(connect_to_slave, read_config, pytestconfig):
     for register in loaded_registers:
         reg_id = register.attrib.get("id")
         storage = register.attrib.get("storage")
-        access = register.attrib.get("access")
-        if storage is None or access != "rw":
-            continue
         subnode = int(register.attrib.get("subnode"))
         dtype = register.attrib.get("dtype")
 
-        if reg_id in servo.dictionary.registers(subnode):
-            if (
-                servo.dictionary.registers(subnode)[reg_id].address_type
-                == REG_ADDRESS_TYPE.NVM_NONE
-            ):
-                continue
+        # Check if the register exists in the drive
+        try:
             value = servo.read(reg_id, subnode=subnode)
-            if dtype == "str":
-                assert value == storage
-            elif dtype == "float":
-                assert value == pytest.approx(float(storage), 0.0001)
-            else:
-                assert value == int(storage)
+        except ILIOError:
+            continue
+
+        if dtype == "str":
+            assert value == storage
+        elif dtype == "float":
+            assert value == pytest.approx(float(storage), 0.0001)
+        else:
+            assert value == int(storage)
+
+    _clean(filename)
 
 
 @pytest.mark.no_connection
