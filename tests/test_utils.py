@@ -27,6 +27,7 @@ def test_bytes_dtype_conversions(byts, value, dtype):
 
     assert convert_dtype_to_bytes(value, dtype) == byts
 
+
 @pytest.mark.no_connection
 def test_null_terminated_string():
     assert (
