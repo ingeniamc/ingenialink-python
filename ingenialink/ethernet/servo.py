@@ -38,6 +38,7 @@ class EthernetServo(Servo):
     COMMS_ETH_IP = "COMMS_ETH_IP"
     COMMS_ETH_NET_MASK = "COMMS_ETH_NET_MASK"
     COMMS_ETH_NET_GATEWAY = "COMMS_ETH_GW"
+    COMMS_ETH_MAC = "COMMS_ETH_MAC"
 
     interface = Interface.ETH
 
@@ -66,7 +67,9 @@ class EthernetServo(Servo):
         self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Restore TCP/IP successfully done.")
 
-    def change_tcp_ip_parameters(self, ip_address: str, subnet_mask: str, gateway: str) -> None:
+    def change_tcp_ip_parameters(
+        self, ip_address: str, subnet_mask: str, gateway: str, mac_address: Optional[int]
+    ) -> None:
         """Stores the TCP/IP values. Affects IP address,
         network mask and gateway
 
@@ -78,6 +81,7 @@ class EthernetServo(Servo):
             ip_address: IP Address to be changed.
             subnet_mask: Subnet mask to be changed.
             gateway: Gateway to be changed.
+            mac_address: The MAC address to be set.
 
         Raises:
             ValueError: If the drive or gateway IP is not a
@@ -105,10 +109,36 @@ class EthernetServo(Servo):
         self.write(self.COMMS_ETH_NET_MASK, int_subnet_mask, subnode=0)
         self.write(self.COMMS_ETH_NET_GATEWAY, int_gateway, subnode=0)
 
+        if mac_address is not None:
+            self.set_mac_address(mac_address)
+
         try:
             self.store_tcp_ip_parameters()
         except ILError:
             self.store_parameters()
+
+    def get_mac_address(self) -> int:
+        """Get the MAC address of the servo.
+
+        Returns:
+            The servo's MAC address.
+
+        """
+        mac_address = self.read(self.COMMS_ETH_MAC, subnode=0)
+        if not isinstance(mac_address, int):
+            raise ValueError(
+                f"Error retrieving the MAC address. Expected an int, got: {type(mac_address)}"
+            )
+        return mac_address
+
+    def set_mac_address(self, mac_address: int) -> None:
+        """Set the MAC address of the servo.
+
+        Args:
+            mac_address: The MAC address to be set.
+
+        """
+        self.write(self.COMMS_ETH_MAC, subnode=0, data=mac_address)
 
     def _write_raw(self, reg: EthernetRegister, data: bytes) -> None:  # type: ignore [override]
         self._send_mcb_frame(MCB_CMD_WRITE, reg.address, reg.subnode, data)
