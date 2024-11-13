@@ -1,10 +1,8 @@
-import os
-
 import pytest
 
+import virtual_drive.resources
 from ingenialink.bitfield import BitField
 from tests.virtual.test_virtual_network import (
-    RESOURCES_FOLDER,
     connect_virtual_drive,  # noqa: F401
 )
 
@@ -65,7 +63,7 @@ def test_set_bitfield_over_max_value(values, error):
 def test_read_status_word_known_bitfields(connect_virtual_drive):  # noqa: F811
     # Load dictionary v2, that does not contain bitfield information.
     # DRV_STATE_STATUS is injected by the XDF V2 parser
-    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+    dictionary = virtual_drive.resources
 
     servo, _ = connect_virtual_drive(dictionary)
 
@@ -103,7 +101,7 @@ def test_read_status_word_known_bitfields(connect_virtual_drive):  # noqa: F811
 def test_write_control_word_known_bitfields(connect_virtual_drive, mocker):  # noqa: F811
     # Load dictionary v2, that does not contain bitfield information.
     # DRV_STATE_CONTROL is injected by the XDF V2 parser
-    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+    dictionary = virtual_drive.resources.DICTIONARY
 
     servo, _ = connect_virtual_drive(dictionary)
 

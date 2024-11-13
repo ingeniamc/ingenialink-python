@@ -1,7 +1,6 @@
-import os
-
 import pytest
 
+import virtual_drive.resources
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
@@ -219,7 +218,7 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
 @pytest.mark.usefixtures("stop_virtual_drive")
 @pytest.mark.no_connection
 def test_bit_register(connect_virtual_drive_with_bool_register, write_value, expected_read_value):
-    dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
+    dictionary = virtual_drive.resources.DICTIONARY
     boolean_reg_uid = "TEST_BOOLEAN"
     servo, _ = connect_virtual_drive_with_bool_register(dictionary)
 
@@ -234,7 +233,7 @@ def test_bit_register(connect_virtual_drive_with_bool_register, write_value, exp
 @pytest.mark.no_connection
 @pytest.mark.usefixtures("stop_virtual_drive")
 def test_bit_register_write_invalid_value(connect_virtual_drive_with_bool_register, write_value):
-    dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
+    dictionary = virtual_drive.resources.DICTIONARY
     servo, _ = connect_virtual_drive_with_bool_register(dictionary)
     with pytest.raises(ValueError) as exc_info:
         servo.write("TEST_BOOLEAN", write_value)

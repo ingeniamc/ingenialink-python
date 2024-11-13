@@ -20,6 +20,8 @@ from ingenialink.register import Register
 from ingenialink.servo import DictionaryFactory
 from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_length_bits
 
+from .. import resources
+
 TPDO_REGISTERS = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
 RPDO_REGISTERS = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
 SUBNODE = 1
@@ -27,7 +29,7 @@ SUBNODE = 1
 
 @pytest.fixture()
 def open_dictionary():
-    dictionary = "./tests/resources/ethercat/test_dict_ethercat.xdf"
+    dictionary = resources.ethercat.TEST_DICT_ETHERCAT
     ethercat_dictionary = DictionaryFactory.create_dictionary(dictionary, Interface.ECAT)
     return ethercat_dictionary
 

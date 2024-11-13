@@ -26,7 +26,7 @@ from ingenialink.virtual.dictionary import VirtualDictionary
 from .environment import Environment
 from .gpios import Gpios
 from .signals import Signal
-
+from . import resources
 R_VALUE = 1.1
 L_VALUE = 3.9e-4
 J_VALUE = 0.012
@@ -1236,8 +1236,8 @@ class VirtualDrive(Thread):
     WRITE_CMD = 2
     READ_CMD = 1
 
-    PATH_CONFIGURATION_RELATIVE = "./resources/virtual_drive.xcf"
-    PATH_DICTIONARY_RELATIVE = "./resources/virtual_drive.xdf"
+    PATH_CONFIGURATION_RELATIVE = resources.CONFIG
+    PATH_DICTIONARY_RELATIVE = resources.DICTIONARY
 
     def __init__(self, port: int, dictionary_path: Optional[str] = None) -> None:
         super(VirtualDrive, self).__init__()

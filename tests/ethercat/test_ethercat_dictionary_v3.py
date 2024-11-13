@@ -1,13 +1,12 @@
-from os.path import join as join_path
-
 import pytest
 
+import tests.resources.canopen
 from ingenialink import CanopenRegister
 from ingenialink.dictionary import DictionarySafetyPDO, DictionaryV3, Interface, SubnodeType
 from ingenialink.exceptions import ILDictionaryParseError
 
-path_resources = "./tests/resources/"
-dict_ecat_v3 = "test_dict_ecat_eoe_v3.0.xdf"
+from .. import resources
+
 SINGLE_AXIS_SAFETY_SUBNODES = {
     0: SubnodeType.COMMUNICATION,
     1: SubnodeType.MOTION,
@@ -17,7 +16,7 @@ SINGLE_AXIS_SAFETY_SUBNODES = {
 
 @pytest.mark.no_connection
 def test_read_dictionary():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
     expected_device_attr = {
         "path": dictionary_path,
         "version": "3.0",
@@ -47,7 +46,7 @@ def test_read_dictionary_file_not_found():
 
 @pytest.mark.no_connection
 def test_read_dictionary_registers():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
     expected_regs_per_subnode = {
         0: [
             "DRV_DIAG_ERROR_LAST_COM",
@@ -73,7 +72,7 @@ def test_read_dictionary_categories():
         "OTHERS",
         "IDENTIFICATION",
     ]
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
 
@@ -86,7 +85,7 @@ def test_read_dictionary_errors():
         0x00003280,
         0x00002280,
     ]
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
 
@@ -95,7 +94,7 @@ def test_read_dictionary_errors():
 
 @pytest.mark.no_connection
 def test_read_xdf_register():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
     idx = 0x580F
     subidx = 0x00
     reg_id = "DRV_DIAG_ERROR_LAST_COM"
@@ -111,7 +110,7 @@ def test_read_xdf_register():
 
 @pytest.mark.no_connection
 def test_child_registers():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
     reg_list = ethercat_dict.child_registers("CIA301_COMMS_RPDO1_MAP", 0)
     reg_subindex = [0, 1]
@@ -126,7 +125,7 @@ def test_child_registers():
 
 @pytest.mark.no_connection
 def test_child_registers_not_exist():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
     with pytest.raises(KeyError):
         ethercat_dict.child_registers("NOT_EXISTING_UID", 0)
@@ -134,7 +133,7 @@ def test_child_registers_not_exist():
 
 @pytest.mark.no_connection
 def test_safety_rpdo():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
     safety_rpdo = ethercat_dict.get_safety_rpdo("READ_ONLY_RPDO_1")
     assert isinstance(safety_rpdo, DictionarySafetyPDO)
@@ -156,7 +155,7 @@ def test_safety_rpdo():
 
 @pytest.mark.no_connection
 def test_safety_rpdo_not_exist():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
     with pytest.raises(KeyError):
         ethercat_dict.get_safety_rpdo("READ_ONLY_TPDO_1")
@@ -164,7 +163,7 @@ def test_safety_rpdo_not_exist():
 
 @pytest.mark.no_connection
 def test_safety_tpdo():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
     safety_rpdo = ethercat_dict.get_safety_tpdo("READ_ONLY_TPDO_1")
     assert isinstance(safety_rpdo, DictionarySafetyPDO)
@@ -186,7 +185,7 @@ def test_safety_tpdo():
 
 @pytest.mark.no_connection
 def test_safety_tpdo_not_exist():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
     with pytest.raises(KeyError):
         ethercat_dict.get_safety_tpdo("READ_ONLY_RPDO_1")
@@ -197,12 +196,12 @@ def test_wrong_dictionary():
     with pytest.raises(
         ILDictionaryParseError, match="Dictionary can not be used for the chose communication"
     ):
-        DictionaryV3("./tests/resources/canopen/test_dict_can_v3.0.xdf", Interface.ECAT)
+        DictionaryV3(tests.resources.canopen.TEST_DICT_CAN_V3_0, Interface.ECAT)
 
 
 @pytest.mark.no_connection
 def test_register_default_values():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
     expected_defaults_per_subnode = {
         0: {
             "DRV_DIAG_ERROR_LAST_COM": 0,
@@ -223,7 +222,7 @@ def test_register_default_values():
 
 @pytest.mark.no_connection
 def test_register_description():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    dictionary_path = resources.TEST_DICT_ECAT_EOE_3_0
     expected_description_per_subnode = {
         0: {
             "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",

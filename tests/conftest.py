@@ -1,4 +1,5 @@
 import json
+from os.path import abspath, dirname, join
 
 import pytest
 import rpyc
@@ -33,7 +34,7 @@ def pytest_addoption(parser):
 
 @pytest.fixture(scope="session")
 def read_config(request):
-    config = "tests/config.json"
+    config = join(dirname(abspath(__file__)), "config.json")
     print("current config file:", config)
     with open(config, "r", encoding="utf-8") as fp:
         contents = json.load(fp)

@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from packaging import version
 
+import virtual_drive.resources
 from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.register import REG_DTYPE
 from ingenialink.exceptions import (
@@ -21,10 +22,11 @@ from ingenialink.exceptions import (
 from ingenialink.register import REG_ADDRESS_TYPE
 from ingenialink.servo import SERVO_STATE
 from tests.virtual.test_virtual_network import (
-    RESOURCES_FOLDER,
     connect_virtual_drive,  # noqa: F401
     stop_virtual_drive,  # noqa: F401
 )
+
+from . import resources
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -254,9 +256,9 @@ def test_load_configuration(connect_to_slave):
 @pytest.mark.no_connection
 @pytest.mark.usefixtures("stop_virtual_drive")
 def test_load_configuration_strict(mocker, connect_virtual_drive):  # noqa: F811
-    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+    dictionary = virtual_drive.resources.DICTIONARY
     servo, net = connect_virtual_drive(dictionary)
-    test_file = "./tests/resources/test_config_file.xcf"
+    test_file = resources.TEST_CONFIG_FILE
     mocker.patch("ingenialink.servo.Servo.write", side_effect=ILError("Error writing"))
     with pytest.raises(ILError) as exc_info:
         servo.load_configuration(test_file, strict=True)
@@ -268,7 +270,7 @@ def test_load_configuration_strict(mocker, connect_virtual_drive):  # noqa: F811
 
 @pytest.mark.no_connection
 def test_read_configuration_file():
-    test_file = "./tests/resources/test_config_file.xcf"
+    test_file = resources.TEST_CONFIG_FILE
     device, registers = CanopenServo._read_configuration_file(test_file)
 
     assert device.attrib.get("PartNumber") == "EVE-NET-C"
@@ -644,7 +646,7 @@ def test_subscribe_register_updates(connect_virtual_drive):  # noqa: F811
     user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
     register_update_callback = RegisterUpdateTest()
 
-    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+    dictionary = virtual_drive.resources.DICTIONARY
     servo, _ = connect_virtual_drive(dictionary)
     servo.register_update_subscribe(register_update_callback.register_update_test)
 

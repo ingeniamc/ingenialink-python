@@ -1,17 +1,16 @@
-from os.path import join as join_path
-
 import pytest
 
 from ingenialink.dictionary import Interface, SubnodeType
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 
-path_resources = "./tests/resources/ethercat/"
+from .. import resources
+
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
 @pytest.mark.no_connection
 def test_read_dictionary():
-    dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
+    dictionary_path = resources.ethercat.TEST_DICT_ETHERCAT
     expected_device_attr = {
         "path": dictionary_path,
         "version": "2",
@@ -40,7 +39,7 @@ def test_read_dictionary_file_not_found():
 
 @pytest.mark.no_connection
 def test_read_dictionary_registers():
-    dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
+    dictionary_path = resources.ethercat.TEST_DICT_ETHERCAT
     expected_regs_per_subnode = {
         0: [
             "DRV_DIAG_ERROR_LAST_COM",
@@ -78,7 +77,7 @@ def test_read_dictionary_registers():
 @pytest.mark.no_connection
 def test_read_dictionary_registers_multiaxis():
     expected_num_registers_per_subnode = {0: 10, 1: 2, 2: 2}
-    dictionary_path = join_path(path_resources, "test_dict_ethercat_axis.xdf")
+    dictionary_path = resources.ethercat.TEST_DICT_ETHERCAT_AXIS
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
     assert ethercat_dict.subnodes == {
@@ -101,7 +100,7 @@ def test_read_dictionary_categories():
         "REPORTING",
         "MONITORING",
     ]
-    dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
+    dictionary_path = resources.ethercat.TEST_DICT_ETHERCAT
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
@@ -116,7 +115,7 @@ def test_read_dictionary_errors():
         0x00007385,
         0x06010000,
     ]
-    dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
+    dictionary_path = resources.ethercat.TEST_DICT_ETHERCAT
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
@@ -125,7 +124,7 @@ def test_read_dictionary_errors():
 
 @pytest.mark.no_connection
 def test_read_xdf_register():
-    dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
+    dictionary_path = resources.ethercat.TEST_DICT_ETHERCAT
     idx = 0x580F
     subidx = 0x00
     reg_id = "DRV_DIAG_ERROR_LAST_COM"
@@ -143,7 +142,7 @@ def test_read_xdf_register():
     [("DIST_CFG_REG0_MAP", 0, 0x5890), ("DRV_OP_CMD", 1, 0x2014), ("DRV_STATE_CONTROL", 2, 0x2810)],
 )
 def test_mcb_to_can_mapping(register_uid, subnode, idx):
-    dictionary_path = join_path(path_resources, "test_dict_ethercat_axis.xdf")
+    dictionary_path = resources.ethercat.TEST_DICT_ETHERCAT_AXIS
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
@@ -153,7 +152,7 @@ def test_mcb_to_can_mapping(register_uid, subnode, idx):
 
 @pytest.mark.no_connection
 def test_child_registers_not_exist():
-    dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
+    dictionary_path = resources.ethercat.TEST_DICT_ETHERCAT
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
     with pytest.raises(KeyError):
         ethercat_dict.child_registers("NOT_EXISTING_UID", 0)
@@ -161,7 +160,7 @@ def test_child_registers_not_exist():
 
 @pytest.mark.no_connection
 def test_safety_pdo_not_implemented():
-    dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
+    dictionary_path = resources.ethercat.TEST_DICT_ETHERCAT
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
     with pytest.raises(NotImplementedError):
         ethercat_dict.get_safety_rpdo("NOT_EXISTING_UID")
