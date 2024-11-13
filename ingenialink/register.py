@@ -259,7 +259,7 @@ class Register(ABC):
         return self._description
 
     @property
-    def default(self) -> Union[None, int, float, str]:
+    def default(self) -> Union[None, int, float, str, bytes]:
         """Register default value"""
         if self._default is None:
             return self._default
