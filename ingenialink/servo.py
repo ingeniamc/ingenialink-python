@@ -234,7 +234,7 @@ class Servo:
         self.units_acc = None
         """SERVO_UNITS_ACC: Acceleration units."""
         self._lock = threading.Lock()
-        self.__observers_servo_state: List[Callable[[SERVO_STATE, None, int], Any]] = []
+        self.__observers_servo_state: List[Callable[[SERVO_STATE, int], Any]] = []
         self.__listener_servo_status: Optional[ServoStatusListener] = None
         self.__monitoring_data: Dict[int, List[Union[int, float]]] = {}
         self.__monitoring_size: Dict[int, int] = {}
@@ -980,7 +980,7 @@ class Servo:
         self.__disturbance_size = {}
         self.__disturbance_dtype = {}
 
-    def subscribe_to_status(self, callback: Callable[[SERVO_STATE, None, int], Any]) -> None:
+    def subscribe_to_status(self, callback: Callable[[SERVO_STATE, int], Any]) -> None:
         """Subscribe to state changes.
 
         Args:
@@ -995,7 +995,7 @@ class Servo:
             return
         self.__observers_servo_state.append(callback)
 
-    def unsubscribe_from_status(self, callback: Callable[[SERVO_STATE, None, int], Any]) -> None:
+    def unsubscribe_from_status(self, callback: Callable[[SERVO_STATE, int], Any]) -> None:
         """Unsubscribe from state changes.
 
         Args:
@@ -1094,7 +1094,7 @@ class Servo:
 
         """
         for callback in self.__observers_servo_state:
-            callback(state, None, subnode)
+            callback(state, subnode)
 
     def __read_coco_moco_register(self, register_coco: str, register_moco: str) -> str:
         """Reads the COCO register and if it does not exist,
