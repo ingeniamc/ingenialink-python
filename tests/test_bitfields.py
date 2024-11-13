@@ -63,7 +63,7 @@ def test_set_bitfield_over_max_value(values, error):
 def test_read_status_word_known_bitfields(connect_virtual_drive):  # noqa: F811
     # Load dictionary v2, that does not contain bitfield information.
     # DRV_STATE_STATUS is injected by the XDF V2 parser
-    dictionary = virtual_drive.resources
+    dictionary = virtual_drive.resources.DICTIONARY
 
     servo, _ = connect_virtual_drive(dictionary)
 
