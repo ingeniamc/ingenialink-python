@@ -97,7 +97,6 @@ class EthercatServo(PDOServo):
 
         Raises:
             ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
 
         """
         super().store_parameters(subnode)
@@ -122,7 +121,6 @@ class EthercatServo(PDOServo):
 
         Raises:
             ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
 
         """
         super().restore_parameters(subnode)

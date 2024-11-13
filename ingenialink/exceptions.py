@@ -5,12 +5,12 @@ class ILError(Exception):
 
 
 class ILConfigurationError(ILError):
-    """IngeniaLink IPB protocol configuration error."""
+    """IngeniaLink configuration error."""
 
     pass
 
 
-class ILUDPException(Exception):
+class ILUDPException(ILError):
     """Ingenialink exception on UDP action."""
 
     pass
@@ -34,24 +34,6 @@ class ILTimeoutError(ILError):
     pass
 
 
-class ILAlreadyInitializedError(ILError):
-    """IngeniaLink already initialized error."""
-
-    pass
-
-
-class ILMemoryError(ILError):
-    """IngeniaLink memory error."""
-
-    pass
-
-
-class ILDisconnectionError(ILError):
-    """IngeniaLink disconnection error."""
-
-    pass
-
-
 class ILAccessError(ILError):
     """IngeniaLink access error."""
 
@@ -66,12 +48,6 @@ class ILStateError(ILError):
 
 class ILIOError(ILError):
     """IngeniaLink I/O error."""
-
-    pass
-
-
-class ILNotSupportedError(ILError):
-    """IngeniaLink Not supported error."""
 
     pass
 
@@ -104,92 +80,6 @@ class ILNACKError(ILError):
 
 class ILDictionaryParseError(ILError):
     """IngeniaLink dictionary parse error."""
-
-    pass
-
-
-# Configuration error
-class ILIncorrectAccessType(ILConfigurationError):
-    """Incorrect access type configuration error."""
-
-    pass
-
-
-class ILObjectNotExist(ILConfigurationError):
-    """Object doesn't exist configuration error."""
-
-    pass
-
-
-class ILObjectNotCyclicMappable(ILConfigurationError):
-    """Object isn't cyclic mappable as requested configuration error."""
-
-    pass
-
-
-class ILCyclicMappingTooLarge(ILConfigurationError):
-    """Cyclic mapping is too large configuration error."""
-
-    pass
-
-
-class ILWrongCyclicKey(ILConfigurationError):
-    """Cyclic mapping key is wrong configuration error."""
-
-    pass
-
-
-class ILWrongCyclicRegisterSize(ILConfigurationError):
-    """Mapped cyclic register size is wrong configuration error."""
-
-    pass
-
-
-class ILCommunicationStateUnreachable(ILConfigurationError):
-    """Communication state is unreachable configuration error."""
-
-    pass
-
-
-class ILCommunicationNotModifiable(ILConfigurationError):
-    """Communication setting is not modifiable in the
-    current state configuration"""
-
-    pass
-
-
-class ILUnsupportedRegisterValue(ILConfigurationError):
-    """Unsupported value introduced in register configuration error."""
-
-    pass
-
-
-class ILInvalidCommand(ILConfigurationError):
-    """Invalid command configuration error."""
-
-    pass
-
-
-class ILCRCError(ILConfigurationError):
-    """CRC error configuration error."""
-
-    pass
-
-
-class ILUnsupportedSynchronization(ILConfigurationError):
-    """Unsupported synchronization method configuration error."""
-
-    pass
-
-
-class ILActiveFeedbacksHigherThanAllowed(ILConfigurationError):
-    """Number of active feedbacks is higher than allowed configuration error."""
-
-    pass
-
-
-class ILCOMKITTimeout(ILConfigurationError):
-    """COMKIT Timeout. CORE device is not properly connected configuration error."""
 
     pass
 

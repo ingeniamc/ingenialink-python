@@ -14,6 +14,7 @@
 
 ### Changed
 - CiA 301 PDO related registers are not saved to the configuration file. 
+- Remove an unnecessary argument for a servo status listener callback.
 
 ## [7.3.5] - 2025-08-23
 
