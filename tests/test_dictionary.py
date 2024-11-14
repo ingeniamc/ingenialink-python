@@ -132,6 +132,23 @@ def test_merge_dictionaries_image():
 
 
 @pytest.mark.no_connection
+def test_merge_dictionaries_new_instance():
+    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
+    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    dict_a = EthernetDictionaryV2(coco_dict_path)
+    dict_b = EthernetDictionaryV2(moco_dict_path)
+    dict_c = dict_a + dict_b
+
+    assert id(dict_c) != id(dict_a)
+    assert id(dict_c) != id(dict_b)
+
+    dict_d = dict_b + dict_a
+
+    assert id(dict_d) != id(dict_a)
+    assert id(dict_d) != id(dict_b)
+
+
+@pytest.mark.no_connection
 def test_merge_dictionaries_order_invariant():
     coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
