@@ -143,8 +143,8 @@ def virtual_drive_custom_dict():
         servers.append(server)
         server.start()
         net = VirtualNetwork()
-        virtual_servo = net.connect_to_slave(server.dictionary_path, server.port)
-        return server, net, virtual_servo
+        servo = net.connect_to_slave(server.dictionary_path, server.port)
+        return server, net, servo
 
     yield connect
 

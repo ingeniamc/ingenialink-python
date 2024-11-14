@@ -10,7 +10,6 @@ from virtual_drive.core import VirtualDrive
 RESOURCES_FOLDER = "virtual_drive/resources/"
 
 
-
 @pytest.mark.no_connection
 def test_connect_to_virtual_drive(virtual_drive_custom_dict):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
