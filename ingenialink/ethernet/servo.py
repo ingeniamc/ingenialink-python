@@ -68,7 +68,7 @@ class EthernetServo(Servo):
         logger.info("Restore TCP/IP successfully done.")
 
     def change_tcp_ip_parameters(
-        self, ip_address: str, subnet_mask: str, gateway: str, mac_address: Optional[int]
+        self, ip_address: str, subnet_mask: str, gateway: str, mac_address: Optional[int] = None
     ) -> None:
         """Stores the TCP/IP values. Affects IP address,
         network mask and gateway
