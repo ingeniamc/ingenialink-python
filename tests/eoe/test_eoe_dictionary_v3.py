@@ -48,7 +48,7 @@ def test_read_dictionary_registers():
             "DRV_DIAG_ERROR_LAST_COM",
             "DRV_AXIS_NUMBER",
         ],
-        1: ["COMMU_ANGLE_SENSOR"],
+        1: ["COMMU_ANGLE_SENSOR", "DRV_STATE_CONTROL"],
     }
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
@@ -115,6 +115,7 @@ def test_register_default_values():
         },
         1: {
             "COMMU_ANGLE_SENSOR": 4,
+            "DRV_STATE_CONTROL": 0
         },
     }
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
@@ -135,6 +136,8 @@ def test_register_description():
         },
         1: {
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
+            "DRV_STATE_CONTROL": "Parameter to manage the drive state machine. "
+                                 "It is compliant with DS402."
         },
     }
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)

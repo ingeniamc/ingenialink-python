@@ -57,7 +57,7 @@ def test_read_dictionary_registers():
             "CIA301_COMMS_RPDO1_MAP",
             "CIA301_COMMS_RPDO1_MAP_1",
         ],
-        1: ["COMMU_ANGLE_SENSOR"],
+        1: ["COMMU_ANGLE_SENSOR", "DRV_STATE_CONTROL"],
     }
 
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
@@ -184,6 +184,7 @@ def test_register_default_values(dictionary_path):
         },
         1: {
             "COMMU_ANGLE_SENSOR": 4,
+            "DRV_STATE_CONTROL": 0
         },
         2: {
             "COMMU_ANGLE_SENSOR": 4,
@@ -212,6 +213,8 @@ def test_register_description(dictionary_path):
         },
         1: {
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
+            "DRV_STATE_CONTROL": "Parameter to manage the drive state machine. "
+                                 "It is compliant with DS402."
         },
         2: {
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
