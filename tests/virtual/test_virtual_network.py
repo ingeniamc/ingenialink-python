@@ -8,9 +8,7 @@ from ingenialink.network import NET_STATE
 from virtual_drive.core import VirtualDrive
 
 RESOURCES_FOLDER = "virtual_drive/resources/"
-TEST_PORT = 82
 
-server = VirtualDrive(TEST_PORT)
 
 
 @pytest.mark.no_connection

@@ -6,28 +6,12 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
 from ingenialink.register import REG_ACCESS, REG_DTYPE, REG_PHY, Register
-from ingenialink.virtual.network import VirtualNetwork
-from virtual_drive.core import VirtualDrive
-
-TEST_PORT = 82
-server = VirtualDrive(TEST_PORT)
-
-
-@pytest.fixture(scope="function")
-def stop_virtual_drive():
-    yield
-    server.stop()
 
 
 @pytest.fixture
-def connect_virtual_drive_with_bool_register():
+def connect_virtual_drive_with_bool_register(virtual_drive_custom_dict):
     def connect(dictionary):
-        global server
-        server.stop()
-        server = VirtualDrive(TEST_PORT, dictionary)
-        server.start()
-        net = VirtualNetwork()
-        servo = net.connect_to_slave(dictionary, TEST_PORT)
+        server, net, servo = virtual_drive_custom_dict(dictionary)
 
         boolean_reg_uid = "TEST_BOOLEAN"
         bool_register = EthernetRegister(
@@ -216,7 +200,6 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
         (True, True),
     ],
 )
-@pytest.mark.usefixtures("stop_virtual_drive")
 @pytest.mark.no_connection
 def test_bit_register(connect_virtual_drive_with_bool_register, write_value, expected_read_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
@@ -232,7 +215,6 @@ def test_bit_register(connect_virtual_drive_with_bool_register, write_value, exp
     [2, "one"],
 )
 @pytest.mark.no_connection
-@pytest.mark.usefixtures("stop_virtual_drive")
 def test_bit_register_write_invalid_value(connect_virtual_drive_with_bool_register, write_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
     servo, _ = connect_virtual_drive_with_bool_register(dictionary)

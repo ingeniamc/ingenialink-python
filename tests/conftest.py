@@ -9,7 +9,6 @@ from ingenialink.eoe.network import EoENetwork
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.virtual.network import VirtualNetwork
-from tests.virtual.test_virtual_network import TEST_PORT
 from virtual_drive.core import VirtualDrive
 
 DEFAULT_PROTOCOL = "no_connection"
@@ -126,8 +125,7 @@ def connect_to_slave(pytestconfig, read_config):
 
 @pytest.fixture()
 def virtual_drive():
-    test_port = 81
-    server = VirtualDrive(test_port)
+    server = VirtualDrive(81)
     server.start()
     net = VirtualNetwork()
     virtual_servo = net.connect_to_slave(server.dictionary_path, server.port)
@@ -138,7 +136,7 @@ def virtual_drive():
 @pytest.fixture()
 def virtual_drive_custom_dict():
     servers: list[VirtualDrive] = []
-    next_port = itertools.count(TEST_PORT)
+    next_port = itertools.count(81)
 
     def connect(dictionary):
         server = VirtualDrive(next(next_port), dictionary)
