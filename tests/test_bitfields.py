@@ -1,10 +1,6 @@
 import pytest
 
-import virtual_drive.resources
 from ingenialink.bitfield import BitField
-from tests.virtual.test_virtual_network import (
-    connect_virtual_drive,  # noqa: F401
-)
 
 BITFIELD_EXAMPLES = {
     "BIT_0": BitField.bit(0),
@@ -60,12 +56,11 @@ def test_set_bitfield_over_max_value(values, error):
 
 
 @pytest.mark.no_connection
-def test_read_status_word_known_bitfields(connect_virtual_drive):  # noqa: F811
+def test_read_status_word_known_bitfields(virtual_drive):
+    server, net, servo = virtual_drive
+    assert servo.dictionary.version == "2"
     # Load dictionary v2, that does not contain bitfield information.
     # DRV_STATE_STATUS is injected by the XDF V2 parser
-    dictionary = virtual_drive.resources.DICTIONARY
-
-    servo, _ = connect_virtual_drive(dictionary)
 
     assert servo.read_bitfields("DRV_STATE_STATUS") == {
         "COMMUTATION_FEEDBACK_ALIGNED": 0,
@@ -98,12 +93,11 @@ def test_read_status_word_known_bitfields(connect_virtual_drive):  # noqa: F811
 
 
 @pytest.mark.no_connection
-def test_write_control_word_known_bitfields(connect_virtual_drive, mocker):  # noqa: F811
+def test_write_control_word_known_bitfields(virtual_drive, mocker):  # noqa: F811
+    server, net, servo = virtual_drive
+    assert servo.dictionary.version == "2"
     # Load dictionary v2, that does not contain bitfield information.
-    # DRV_STATE_CONTROL is injected by the XDF V2 parser
-    dictionary = virtual_drive.resources.DICTIONARY
-
-    servo, _ = connect_virtual_drive(dictionary)
+    # DRV_STATE_STATUS is injected by the XDF V2 parser
 
     read_mock = mocker.patch("ingenialink.servo.Servo.read", return_value=0b1101_0101)
     write_mock = mocker.patch("ingenialink.servo.Servo.write")
