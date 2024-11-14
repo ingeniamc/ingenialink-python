@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import tempfile
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -41,11 +42,6 @@ class RegisterUpdateTest:
         self.register = register
         self.value = value
         self.call_count += 1
-
-
-def _clean(filename):
-    if os.path.isfile(filename):
-        os.remove(filename)
 
 
 def _get_reg_address(register, protocol):
@@ -116,13 +112,14 @@ def test_save_configuration(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
 
-    filename = "temp_config"
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        file = os.path.join(tmp_dir, "temp_config")
 
-    servo.save_configuration(filename)
+        servo.save_configuration(file)
 
-    assert os.path.isfile(filename)
+        assert os.path.isfile(file)
 
-    device, saved_registers = servo._read_configuration_file(filename)
+        device, saved_registers = servo._read_configuration_file(file)
 
     prod_code, rev_number = servo._get_drive_identification()
     if "ProductCode" in device.attrib and prod_code is not None:
@@ -171,8 +168,6 @@ def test_save_configuration(connect_to_slave):
         assert access == "rw"
         assert registers[reg_id].address_type != REG_ADDRESS_TYPE.NVM_NONE
 
-    _clean(filename)
-
 
 @pytest.mark.no_connection
 def test_check_configuration(virtual_drive, read_config, pytestconfig):
@@ -180,34 +175,35 @@ def test_check_configuration(virtual_drive, read_config, pytestconfig):
 
     assert servo is not None and server is not None
 
-    filename = "temp_config"
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        file = os.path.join(tmp_dir, "temp_config")
 
-    # Load the configuration, the subsequent check should not raise an error.
-    servo.save_configuration(filename)
-    servo.check_configuration(filename)
+        # Load the configuration, the subsequent check should not raise an error.
+        servo.save_configuration(file)
+        servo.check_configuration(file)
 
-    # Change a random register
-    register = "DRV_PROT_USER_OVER_VOLT"
-    new_value = 10.0
-    servo.write(register, data=new_value, subnode=1)
+        # Change a random register
+        register = "DRV_PROT_USER_OVER_VOLT"
+        new_value = 10.0
+        servo.write(register, data=new_value, subnode=1)
 
-    check_failed_message = re.escape("Configuration check failed for the following registers:")
+        check_failed_message = re.escape("Configuration check failed for the following registers:")
 
-    # The check should fail for this register
-    with pytest.raises(
-        ILConfigurationError,
-        match=check_failed_message
-        + r"\n"
-        + register
-        + r" --- Expected: \d*\.\d+ | Found: "
-        + str(new_value),
-    ):
-        servo.check_configuration(filename)
+        # The check should fail for this register
+        with pytest.raises(
+            ILConfigurationError,
+            match=check_failed_message
+            + r"\n"
+            + register
+            + r" --- Expected: \d*\.\d+ | Found: "
+            + str(new_value),
+        ):
+            servo.check_configuration(file)
 
-    # Load the configuration again to reset the changes we just made
-    # The subsequent check should no longer raise an error.
-    servo.load_configuration(filename)
-    servo.check_configuration(filename)
+        # Load the configuration again to reset the changes we just made
+        # The subsequent check should no longer raise an error.
+        servo.load_configuration(file)
+        servo.check_configuration(file)
 
 
 @pytest.mark.canopen
@@ -217,15 +213,16 @@ def test_load_configuration(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
 
-    filename = "temp_config"
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        file = os.path.join(tmp_dir, "temp_config")
 
-    servo.save_configuration(filename)
+        servo.save_configuration(file)
 
-    assert os.path.isfile(filename)
+        assert os.path.isfile(file)
 
-    servo.load_configuration(filename)
+        servo.load_configuration(file)
 
-    _, loaded_registers = servo._read_configuration_file(filename)
+        _, loaded_registers = servo._read_configuration_file(file)
 
     for register in loaded_registers:
         reg_id = register.attrib.get("id")
@@ -245,8 +242,6 @@ def test_load_configuration(connect_to_slave):
             assert value == pytest.approx(float(storage), 0.0001)
         else:
             assert value == int(storage)
-
-    _clean(filename)
 
 
 @pytest.mark.no_connection
