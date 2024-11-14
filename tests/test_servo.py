@@ -21,10 +21,6 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import REG_ADDRESS_TYPE
 from ingenialink.servo import SERVO_STATE
-from tests.virtual.test_virtual_network import (
-    connect_virtual_drive,  # noqa: F401
-    stop_virtual_drive,  # noqa: F401
-)
 
 from . import resources
 
@@ -254,10 +250,9 @@ def test_load_configuration(connect_to_slave):
 
 
 @pytest.mark.no_connection
-@pytest.mark.usefixtures("stop_virtual_drive")
-def test_load_configuration_strict(mocker, connect_virtual_drive):  # noqa: F811
+def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
     dictionary = virtual_drive.resources.DICTIONARY
-    servo, net = connect_virtual_drive(dictionary)
+    server, net, servo = virtual_drive_custom_dict(dictionary)
     test_file = resources.TEST_CONFIG_FILE
     mocker.patch("ingenialink.servo.Servo.write", side_effect=ILError("Error writing"))
     with pytest.raises(ILError) as exc_info:
@@ -642,12 +637,12 @@ def test_disturbance_overflow(connect_to_slave, pytestconfig):
 
 
 @pytest.mark.no_connection
-def test_subscribe_register_updates(connect_virtual_drive):  # noqa: F811
+def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
     register_update_callback = RegisterUpdateTest()
 
     dictionary = virtual_drive.resources.DICTIONARY
-    servo, _ = connect_virtual_drive(dictionary)
+    server, net, servo = virtual_drive_custom_dict(dictionary)
     servo.register_update_subscribe(register_update_callback.register_update_test)
 
     previous_reg_value = servo.read(user_over_voltage_uid, subnode=1)
