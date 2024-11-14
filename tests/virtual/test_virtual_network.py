@@ -7,13 +7,10 @@ from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
 from ingenialink.network import NET_STATE
 from virtual_drive.core import VirtualDrive
 
-RESOURCES_FOLDER = "virtual_drive/resources/"
-
 
 @pytest.mark.no_connection
-def test_connect_to_virtual_drive(virtual_drive_custom_dict):
-    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
-    server, net, servo = virtual_drive_custom_dict(dictionary)
+def test_connect_to_virtual_drive(virtual_drive):
+    server, net, servo = virtual_drive
     assert servo is not None and net is not None
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
@@ -21,9 +18,8 @@ def test_connect_to_virtual_drive(virtual_drive_custom_dict):
 
 
 @pytest.mark.no_connection
-def test_virtual_drive_disconnection(virtual_drive_custom_dict):
-    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
-    server, net, servo = virtual_drive_custom_dict(dictionary)
+def test_virtual_drive_disconnection(virtual_drive):
+    server, net, servo = virtual_drive
     net.disconnect_from_slave(servo)
     assert net.get_servo_state(VirtualDrive.IP_ADDRESS) == NET_STATE.DISCONNECTED
     assert len(net.servos) == 0

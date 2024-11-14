@@ -38,7 +38,8 @@ def create_monitoring_disturbance(servo, dist_reg, monit_regs, dist_data):
 
 @pytest.mark.no_connection
 def test_connect_to_virtual(virtual_drive):
-    _, servo = virtual_drive
+    server, net, servo = virtual_drive
+
     time.sleep(1)
     servo.write("CL_AUX_FBK_SENSOR", 4)
     servo.write("DIST_CFG_REG0_MAP", 4, 0)
@@ -49,7 +50,7 @@ def test_connect_to_virtual(virtual_drive):
 )
 @pytest.mark.no_connection
 def test_virtual_drive_write_read(virtual_drive, reg, value, subnode):
-    _, virtual_servo = virtual_drive
+    _, _, virtual_servo = virtual_drive
 
     virtual_servo.write(reg, value, subnode)
     response = virtual_servo.read(reg, subnode)
@@ -59,7 +60,7 @@ def test_virtual_drive_write_read(virtual_drive, reg, value, subnode):
 
 @pytest.mark.no_connection
 def test_virtual_drive_write_wrong_enum(virtual_drive):
-    _, virtual_servo = virtual_drive
+    _, _, virtual_servo = virtual_drive
 
     register = "FBK_GEN_MODE"
     subnode = 1
@@ -79,7 +80,7 @@ def test_virtual_drive_write_read_compare_responses(
     connect_to_slave, virtual_drive, reg, value, subnode
 ):
     servo, _ = connect_to_slave
-    _, virtual_servo = virtual_drive
+    _, _, virtual_servo = virtual_drive
 
     virtual_response = virtual_servo.write(reg, value, subnode)
     response = servo.write(reg, value, subnode)
@@ -98,7 +99,7 @@ def test_virtual_drive_write_read_compare_responses(
 @pytest.mark.no_connection
 @pytest.mark.parametrize("divisor", [1, 2])
 def test_virtual_monitoring(virtual_drive, divisor):
-    _, servo = virtual_drive
+    _, _, servo = virtual_drive
 
     servo.monitoring_disable()
     registers_key = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
@@ -134,7 +135,7 @@ def test_virtual_monitoring(virtual_drive, divisor):
 @pytest.mark.no_connection
 @pytest.mark.parametrize("register_key", ["CL_VEL_FBK_VALUE", "CL_POS_FBK_VALUE"])
 def test_virtual_disturbance(virtual_drive, register_key):
-    server, servo = virtual_drive
+    server, net, servo = virtual_drive
 
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
@@ -158,7 +159,7 @@ def test_virtual_disturbance(virtual_drive, register_key):
 
 @pytest.mark.no_connection
 def test_virtual_motor_enable_disable(virtual_drive):
-    _, servo = virtual_drive
+    _, _, servo = virtual_drive
 
     assert servo.get_state() == SERVO_STATE.RDY
     servo.enable()
@@ -210,7 +211,7 @@ def test_virtual_motor_enable_disable(virtual_drive):
     ],
 )
 def test_plants(virtual_drive, plant_name, dist_reg, monit_regs, op_mode):
-    server, servo = virtual_drive
+    server, net, servo = virtual_drive
 
     dist_data = [1] + [0] * (MONITORING_NUM_SAMPLES - 1)
 

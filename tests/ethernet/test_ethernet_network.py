@@ -101,7 +101,7 @@ def test_load_firmware_error_during_loading():
 
 @pytest.mark.no_connection
 def test_net_status_listener_connection(virtual_drive):
-    server, _ = virtual_drive
+    server, _, _ = virtual_drive
     net = EthernetNetwork()
     status_list = []
     net.connect_to_slave(server.ip, dictionary=server.dictionary_path, port=server.port)
@@ -127,7 +127,7 @@ def test_net_status_listener_disconnection():
 
 @pytest.mark.no_connection
 def test_unsubscribe_from_status(virtual_drive):
-    server, _ = virtual_drive
+    server, _, _ = virtual_drive
     net = EthernetNetwork()
 
     status_list = []

@@ -129,8 +129,8 @@ def virtual_drive():
     server = VirtualDrive(81)
     server.start()
     net = VirtualNetwork()
-    virtual_servo = net.connect_to_slave(server.dictionary_path, server.port)
-    yield server, virtual_servo
+    servo = net.connect_to_slave(server.dictionary_path, server.port)
+    yield server, net, servo
     server.stop()
 
 
