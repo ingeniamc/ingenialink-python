@@ -242,12 +242,13 @@ class Dictionary(ABC):
             raise ValueError(
                 "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary."
             )
-        new_obj = copy.deepcopy(self)
-        new_obj._merge_registers(other_dict)
-        new_obj._merge_errors(other_dict)
-        new_obj._merge_attributes(other_dict)
-        new_obj._set_image(other_dict)
-        return new_obj
+        self_dict_copy = copy.deepcopy(self)
+        other_dict_copy = copy.deepcopy(other_dict)
+        self_dict_copy._merge_registers(other_dict_copy)
+        self_dict_copy._merge_errors(other_dict_copy)
+        self_dict_copy._merge_attributes(other_dict_copy)
+        self_dict_copy._set_image(other_dict_copy)
+        return self_dict_copy
 
     def registers(self, subnode: int) -> Dict[str, Register]:
         """Gets the register dictionary to the targeted subnode.
