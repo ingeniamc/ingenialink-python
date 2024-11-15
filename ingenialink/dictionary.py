@@ -1,3 +1,4 @@
+import copy
 import enum
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
@@ -229,6 +230,9 @@ class Dictionary(ABC):
 
         It can only be used for merging COM-KIT and CORE dictionaries.
 
+        Returns:
+            A new dictionary instance with the attributes merged.
+
         """
         if not isinstance(other_dict, type(self)):
             raise TypeError(
@@ -238,11 +242,13 @@ class Dictionary(ABC):
             raise ValueError(
                 "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary."
             )
-        self._merge_registers(other_dict)
-        self._merge_errors(other_dict)
-        self._merge_attributes(other_dict)
-        self._set_image(other_dict)
-        return self
+        self_dict_copy = copy.deepcopy(self)
+        other_dict_copy = copy.deepcopy(other_dict)
+        self_dict_copy._merge_registers(other_dict_copy)
+        self_dict_copy._merge_errors(other_dict_copy)
+        self_dict_copy._merge_attributes(other_dict_copy)
+        self_dict_copy._set_image(other_dict_copy)
+        return self_dict_copy
 
     def registers(self, subnode: int) -> Dict[str, Register]:
         """Gets the register dictionary to the targeted subnode.
