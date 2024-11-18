@@ -132,6 +132,35 @@ def test_merge_dictionaries_image():
 
 
 @pytest.mark.no_connection
+def test_merge_dictionaries_new_instance():
+    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
+    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    dict_a = EthernetDictionaryV2(coco_dict_path)
+    dict_b = EthernetDictionaryV2(moco_dict_path)
+    dict_c = dict_a + dict_b
+
+    assert id(dict_c) != id(dict_a)
+    assert id(dict_c) != id(dict_b)
+
+    dict_d = dict_b + dict_a
+
+    assert id(dict_d) != id(dict_a)
+    assert id(dict_d) != id(dict_b)
+
+    # The registers should reference different objects
+    dict_a_reg_subnode_0 = dict_a.registers(0)["DRV_AXIS_NUMBER"]
+    dict_b_reg_subnode_1 = dict_b.registers(1)["DRV_STATE_STATUS"]
+    dict_c_reg_subnode_0 = dict_c.registers(0)["DRV_AXIS_NUMBER"]
+    dict_c_reg_subnode_1 = dict_c.registers(1)["DRV_STATE_STATUS"]
+    assert id(dict_a_reg_subnode_0) != id(dict_c_reg_subnode_0)
+    assert id(dict_b_reg_subnode_1) != id(dict_c_reg_subnode_1)
+
+    # Enum attributes should have the same reference
+    assert id(dict_a.interface) == id(dict_c.interface)
+    assert id(dict_b.interface) == id(dict_c.interface)
+
+
+@pytest.mark.no_connection
 def test_merge_dictionaries_order_invariant():
     coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
