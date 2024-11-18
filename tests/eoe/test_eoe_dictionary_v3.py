@@ -113,10 +113,7 @@ def test_register_default_values():
             "CIA301_COMMS_RPDO1_MAP": 1,
             "CIA301_COMMS_RPDO1_MAP_1": 268451936,
         },
-        1: {
-            "COMMU_ANGLE_SENSOR": 4,
-            "DRV_STATE_CONTROL": 0
-        },
+        1: {"COMMU_ANGLE_SENSOR": 4, "DRV_STATE_CONTROL": 0},
     }
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
     for subnode, registers in ethercat_dict._registers.items():
@@ -137,7 +134,7 @@ def test_register_description():
         1: {
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
             "DRV_STATE_CONTROL": "Parameter to manage the drive state machine. "
-                                 "It is compliant with DS402."
+            "It is compliant with DS402.",
         },
     }
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)

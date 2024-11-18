@@ -182,10 +182,7 @@ def test_register_default_values(dictionary_path):
             "CIA301_COMMS_RPDO1_2": 1,
             "CIA301_COMMS_RPDO1_3": 0,
         },
-        1: {
-            "COMMU_ANGLE_SENSOR": 4,
-            "DRV_STATE_CONTROL": 0
-        },
+        1: {"COMMU_ANGLE_SENSOR": 4, "DRV_STATE_CONTROL": 0},
         2: {
             "COMMU_ANGLE_SENSOR": 4,
         },
@@ -214,7 +211,7 @@ def test_register_description(dictionary_path):
         1: {
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
             "DRV_STATE_CONTROL": "Parameter to manage the drive state machine. "
-                                 "It is compliant with DS402."
+            "It is compliant with DS402.",
         },
         2: {
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
