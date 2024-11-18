@@ -5,6 +5,7 @@
 - Method to subscribe to emergency messages.
 - Method to subscribe to register value updates.
 - Add is_node_id_dependent property to CanopenRegister
+- Methods to get/set the MAC Address of Ethernet drives.
 - Methods to read and update registers by bitfield
 
 ### Fixed

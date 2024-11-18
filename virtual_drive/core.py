@@ -1316,7 +1316,7 @@ class VirtualDrive(Thread):
         while not self.__stop:
             try:
                 frame, add = self.socket.recvfrom(ETH_BUF_SIZE)
-            except:
+            except Exception:
                 continue
             reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
             self.__log(add, frame, MSG_TYPE.RECEIVED)

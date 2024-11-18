@@ -1,3 +1,4 @@
+import itertools
 import json
 
 import pytest
@@ -7,6 +8,7 @@ from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.eoe.network import EoENetwork
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethernet.network import EthernetNetwork
+from ingenialink.virtual.network import VirtualNetwork
 from virtual_drive.core import VirtualDrive
 
 DEFAULT_PROTOCOL = "no_connection"
@@ -123,13 +125,32 @@ def connect_to_slave(pytestconfig, read_config):
 
 @pytest.fixture()
 def virtual_drive():
-    test_port = 81
-    server = VirtualDrive(test_port)
+    server = VirtualDrive(81)
     server.start()
-    net = EthernetNetwork()
-    virtual_servo = net.connect_to_slave(server.ip, server.dictionary_path, server.port)
+    net = VirtualNetwork()
+    virtual_servo = net.connect_to_slave(server.dictionary_path, server.port)
     yield server, virtual_servo
     server.stop()
+
+
+@pytest.fixture()
+def virtual_drive_custom_dict():
+    servers: list[VirtualDrive] = []
+    next_port = itertools.count(81)
+
+    def connect(dictionary):
+        server = VirtualDrive(next(next_port), dictionary)
+        servers.append(server)
+        server.start()
+        net = VirtualNetwork()
+        servo = net.connect_to_slave(server.dictionary_path, server.port)
+        return server, net, servo
+
+    yield connect
+
+    for server in servers:
+        if server.is_alive():
+            server.stop()
 
 
 @pytest.fixture(scope="session")
