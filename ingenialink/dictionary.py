@@ -2,12 +2,14 @@ import copy
 import enum
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Tuple, Union
 
 import ingenialogger
 
+from ingenialink.bitfield import BitField
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
@@ -833,6 +835,7 @@ class DictionaryV3(Dictionary):
             address_type=address_type,
             description=description,
             default=default,
+            bitfields={},  # TODO read bitfields definition on xdf
         )
         if subnode not in self._registers:
             self._registers[subnode] = {}
@@ -913,6 +916,7 @@ class DictionaryV3(Dictionary):
             address_type=address_type,
             description=description,
             default=default,
+            bitfields={},  # TODO read bitfields definition on xdf
             is_node_id_dependent=is_node_id_dependent,
         )
         if subnode not in self._registers:
@@ -1008,6 +1012,47 @@ class DictionaryV2(Dictionary):
     _MONITORING_DISTURBANCE_REGISTERS: Union[
         List[EthercatRegister], List[EthernetRegister], List[CanopenRegister]
     ]
+
+    _KNOWN_REGISTER_BITFIELDS: Dict[str, Callable[[], Dict[str, BitField]]] = {
+        "DRV_STATE_STATUS": lambda: {
+            # https://drives.novantamotion.com/summit/0x011-status-word
+            "READY_TO_SWITCH_ON": BitField.bit(0),
+            "SWITCHED_ON": BitField.bit(1),
+            "OPERATION_ENABLED": BitField.bit(2),
+            "FAULT": BitField.bit(3),
+            "VOLTAGE_ENABLED": BitField.bit(4),
+            "QUICK_STOP": BitField.bit(5),
+            "SWITCH_ON_DISABLED": BitField.bit(6),
+            "WARNING": BitField.bit(7),
+            "TARGET_REACHED": BitField.bit(10),
+            "SWITCH_LIMITS_ACTIVE": BitField.bit(11),
+            "COMMUTATION_FEEDBACK_ALIGNED": BitField.bit(14),
+        },
+        "DRV_STATE_CONTROL": lambda: {
+            # https://drives.novantamotion.com/summit/0x010-control-word
+            "SWITCH_ON": BitField.bit(0),
+            "VOLTAGE_ENABLE": BitField.bit(1),
+            "QUICK_STOP": BitField.bit(2),
+            "ENABLE_OPERATION": BitField.bit(3),
+            "RUN_SET_POINT_MANAGER": BitField.bit(4),
+            "FAULT_RESET": BitField.bit(7),
+        },
+        "DRV_OP_CMD": lambda: {
+            # https://drives.novantamotion.com/summit/0x014-operation-mode
+            "OPERATION_MODE": BitField(0, 3),
+            "PROFILER_MODE": BitField(4, 6),
+            "PTP_BUFFER": BitField.bit(7),
+            "HOMING": BitField.bit(8),
+        },
+        "DRV_PROT_STO_STATUS": lambda: {
+            # https://drives.novantamotion.com/summit/0x51a-sto-status
+            "STO1": BitField.bit(0),
+            "STO2": BitField.bit(1),
+            "STO_SUPPLY_FAULT": BitField.bit(2),
+            "STO_ABNORMAL_FAULT": BitField.bit(3),
+            "STO_REPORT": BitField.bit(4),
+        },
+    }
 
     def read_dictionary(self) -> None:
         try:
@@ -1158,6 +1203,11 @@ class DictionaryV2(Dictionary):
             enums_elem = register.findall(self.__DICT_ENUMERATIONS_ENUMERATION)
             enums = {str(enum.text): int(enum.attrib["value"]) for enum in enums_elem}
 
+            # Known bitfields.
+            bitfields = None
+            if identifier in self._KNOWN_REGISTER_BITFIELDS:
+                bitfields = self._KNOWN_REGISTER_BITFIELDS[identifier]()
+
             current_read_register = Register(
                 dtype,
                 access,
@@ -1172,6 +1222,7 @@ class DictionaryV2(Dictionary):
                 cat_id=cat_id,
                 internal_use=internal_use,
                 address_type=address_type,
+                bitfields=bitfields,
             )
 
             return current_read_register
