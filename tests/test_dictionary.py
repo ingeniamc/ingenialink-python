@@ -8,7 +8,13 @@ from xml.dom import minidom
 import pytest
 
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
-from ingenialink.dictionary import DictionaryDescriptor, DictionaryV2, DictionaryV3, Interface, ILDictionaryParseError
+from ingenialink.dictionary import (
+    DictionaryDescriptor,
+    DictionaryV2,
+    DictionaryV3,
+    ILDictionaryParseError,
+    Interface,
+)
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.servo import DictionaryFactory
@@ -51,7 +57,7 @@ PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
             57745409,
             "CAP-NET-E",
             196635,
-        )
+        ),
     ],
 )
 def test_dictionary_description(
@@ -65,17 +71,16 @@ def test_dictionary_description(
         revision_number=revision_number,
     )
 
+
 @pytest.mark.parametrize(
     "dict_path, interface, raises",
     [
         (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.ECAT, ILDictionaryParseError),
         (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.ECAT, ILDictionaryParseError),
         (f"{PATH_RESOURCE}test_no_dict.xdf", Interface.ECAT, FileNotFoundError),
-    ]
+    ],
 )
-def test_dictionary_description_fail(
-    dict_path, interface, raises
-):
+def test_dictionary_description_fail(dict_path, interface, raises):
     with pytest.raises(raises):
         DictionaryFactory.get_dictionary_description(dict_path, interface)
 
