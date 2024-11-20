@@ -6,6 +6,7 @@
 - Method to subscribe to register value updates.
 - Add is_node_id_dependent property to CanopenRegister
 - Methods to get/set the MAC Address of Ethernet drives.
+- Add get_dictionary_description in DictionaryFactory
 
 ### Fixed
 - Restore CoE communication after a power cycle.

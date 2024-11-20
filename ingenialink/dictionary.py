@@ -134,6 +134,18 @@ class DictionaryError:
         return iter((id_hex_string, self.affected_module, self.error_type, self.description))
 
 
+@dataclass
+class DictionaryDescriptor:
+    firmware_version: Optional[str] = None
+    """Firmware version declared in the dictionary."""
+    product_code: Optional[int] = None
+    """Product code declared in the dictionary."""
+    part_number: Optional[str] = None
+    """Part number declared in the dictionary."""
+    revision_number: Optional[int] = None
+    """Revision number declared in the dictionary."""
+
+
 class Dictionary(ABC):
     """Ingenia dictionary Abstract Base Class.
 
@@ -224,6 +236,20 @@ class Dictionary(ABC):
             self.read_dictionary()
         except KeyError as e:
             raise ILDictionaryParseError("The dictionary is not well-formed.") from e
+
+    @classmethod
+    @abstractmethod
+    def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
+        """Quick function to get target dictionary description
+
+        Args:
+            dictionary_path: target dictionary path
+            interface: device interface
+
+        Returns:
+            Target dictionary description
+        """
+        pass
 
     def __add__(self, other_dict: "Dictionary") -> "Dictionary":
         """Merge two dictionary instances.
@@ -504,6 +530,24 @@ class DictionaryV3(Dictionary):
     __PDO_ENTRY_ELEMENT = "PDOEntry"
     __PDO_ENTRY_SIZE_ATTR = "size"
     __PDO_ENTRY_SUBNODE_ATTR = "subnode"
+
+    @classmethod
+    def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
+        try:
+            with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+                tree = ET.parse(xdf_file)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"There is not any xdf file in the path: {dictionary_path}")
+        root = tree.getroot()
+        device_path = (
+            f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}/{cls.__DEVICE_ELEMENT[interface]}"
+        )
+        device = cls.__find_and_check(root, device_path)
+        firmware_version = device.attrib[cls.__DEVICE_FW_VERSION_ATTR]
+        product_code = int(device.attrib[cls.__DEVICE_PRODUCT_CODE_ATTR])
+        part_number = device.attrib[cls.__DEVICE_PART_NUMBER_ATTR]
+        revision_number = int(device.attrib[cls.DEVICE_REVISION_NUMBER_ATTR])
+        return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
 
     @staticmethod
     def __find_and_check(root: ET.Element, path: str) -> ET.Element:
@@ -1008,6 +1052,33 @@ class DictionaryV2(Dictionary):
     _MONITORING_DISTURBANCE_REGISTERS: Union[
         List[EthercatRegister], List[EthernetRegister], List[CanopenRegister]
     ]
+
+    @classmethod
+    def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
+        try:
+            with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+                tree = ET.parse(xdf_file)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"There is not any xdf file in the path: {dictionary_path}")
+        root = tree.getroot()
+        device = root.find(cls.__DICT_ROOT_DEVICE)
+        if device is None:
+            raise ILDictionaryParseError(
+                f"Could not load the dictionary {dictionary_path}. Device information is missing"
+            )
+        firmware_version = device.attrib.get("firmwareVersion")
+        product_code = device.attrib.get("ProductCode")
+        if product_code is not None and product_code.isdecimal():
+            product_code = int(product_code)
+        else:
+            product_code = None
+        part_number = device.attrib.get("PartNumber")
+        revision_number = device.attrib.get("RevisionNumber")
+        if revision_number is not None and revision_number.isdecimal():
+            revision_number = int(revision_number)
+        else:
+            revision_number = None
+        return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
 
     def read_dictionary(self) -> None:
         try:

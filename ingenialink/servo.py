@@ -19,7 +19,15 @@ from ingenialink.constants import (
     PASSWORD_STORE_ALL,
     PASSWORD_STORE_RESTORE_SUB_0,
 )
-from ingenialink.dictionary import Dictionary, DictionaryError, DictionaryV3, Interface, SubnodeType
+from ingenialink.dictionary import (
+    Dictionary,
+    DictionaryDescriptor,
+    DictionaryError,
+    DictionaryV2,
+    DictionaryV3,
+    Interface,
+    SubnodeType,
+)
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
 from ingenialink.enums.servo import SERVO_STATE
@@ -86,6 +94,31 @@ class DictionaryFactory:
                 return EthernetDictionaryV2(dictionary_path)
             if interface == Interface.VIRTUAL:
                 return VirtualDictionary(dictionary_path)
+        raise NotImplementedError(f"Dictionary version {major_version} is not supported")
+
+    @classmethod
+    def get_dictionary_description(
+        cls, dictionary_path: str, interface: Interface
+    ) -> DictionaryDescriptor:
+        """Quick function to get target dictionary description
+
+        Args:
+            dictionary_path: target dictionary path
+            interface: device interface
+
+        Returns:
+            Target dictionary description
+
+        Raises:
+            FileNotFoundError: dictionary path does not exist.
+            ILDictionaryParseError: xdf is not well-formed.
+            NotImplementedError: Dictionary version is not supported.
+        """
+        major_version, minor_version = cls.__get_dictionary_version(dictionary_path)
+        if major_version == 3:
+            return DictionaryV3.get_description(dictionary_path, interface)
+        if major_version == 2:
+            return DictionaryV2.get_description(dictionary_path, interface)
         raise NotImplementedError(f"Dictionary version {major_version} is not supported")
 
     @classmethod
