@@ -65,6 +65,7 @@ class EthernetDictionaryV2(DictionaryV2):
                 scat_id=current_read_register.scat_id,
                 internal_use=current_read_register.internal_use,
                 address_type=current_read_register.address_type,
+                bitfields=current_read_register.bitfields,
             )
 
             return ethernet_register
