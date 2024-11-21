@@ -661,7 +661,7 @@ class DictionaryV3(Dictionary):
         else:
             device_element = root.find(self.__DEVICE_ELEMENT[self.interface])
         if device_element is None:
-            raise ILDictionaryParseError("Dictionary can not be used for the chose communication")
+            raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
         self.__read_device_attributes(device_element)
         if self.interface == Interface.ETH:
             self.__read_device_eth(device_element)
@@ -1098,6 +1098,13 @@ class DictionaryV2(Dictionary):
         },
     }
 
+    _INTERFACE_STR = {
+        Interface.CAN: "CAN",
+        Interface.ECAT: "ETH",
+        Interface.EoE: "ETH",
+        Interface.ETH: "ETH",
+    }
+
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
         try:
@@ -1111,6 +1118,9 @@ class DictionaryV2(Dictionary):
             raise ILDictionaryParseError(
                 f"Could not load the dictionary {dictionary_path}. Device information is missing"
             )
+        dict_interface = device.attrib.get("Interface")
+        if cls._INTERFACE_STR[interface] != dict_interface and dict_interface is not None:
+            raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
         firmware_version = device.attrib.get("firmwareVersion")
         product_code = device.attrib.get("ProductCode")
         if product_code is not None and product_code.isdecimal():
