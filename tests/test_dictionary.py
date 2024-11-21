@@ -130,6 +130,7 @@ def test_dictionary_factory(dict_path, interface, dict_class):
     test_dict = DictionaryFactory.create_dictionary(dict_path, interface)
     assert isinstance(test_dict, dict_class)
 
+
 @pytest.mark.no_connection
 @pytest.mark.parametrize(
     "dict_path, interface, raises",
