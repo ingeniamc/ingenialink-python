@@ -1185,7 +1185,9 @@ class DictionaryV2(Dictionary):
         revision_number = device.attrib.get("RevisionNumber")
         if revision_number is not None and revision_number.isdecimal():
             self.revision_number = int(revision_number)
-        self.dict_interface = device.attrib.get("Interface")
+        dict_interface = device.attrib.get("Interface")
+        if self._INTERFACE_STR[self.interface] != dict_interface and dict_interface is not None:
+            raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
 
         if root.findall(self.__DICT_ROOT_AXES):
             # For each axis

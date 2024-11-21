@@ -130,6 +130,23 @@ def test_dictionary_factory(dict_path, interface, dict_class):
     test_dict = DictionaryFactory.create_dictionary(dict_path, interface)
     assert isinstance(test_dict, dict_class)
 
+@pytest.mark.no_connection
+@pytest.mark.parametrize(
+    "dict_path, interface, raises",
+    [
+        (f"{PATH_RESOURCE}canopen/test_dict_can.xdf", Interface.ETH, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.ECAT, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.CAN, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf", Interface.CAN, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.CAN, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.ETH, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.CAN, ILDictionaryParseError),
+    ],
+)
+def test_dictionary_factory_fail(dict_path, interface, raises):
+    with pytest.raises(raises):
+        DictionaryFactory.create_dictionary(dict_path, interface)
+
 
 @pytest.mark.no_connection
 def test_merge_dictionaries_registers():
