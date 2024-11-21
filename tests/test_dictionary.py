@@ -87,17 +87,29 @@ def test_dictionary_description_fail(dict_path, interface, raises):
         DictionaryFactory.get_dictionary_description(dict_path, interface)
 
 
-@pytest.mark.parametrize("dictionary_class", [CanopenDictionaryV2, EthernetDictionaryV2])
+@pytest.mark.parametrize(
+    "dictionary_class, dictionary_path",
+    [
+        (CanopenDictionaryV2, f"{PATH_RESOURCE}canopen/test_dict_can.xdf"),
+        (EthernetDictionaryV2, f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf"),
+    ],
+)
 @pytest.mark.no_connection
-def test_dictionary_v2_image(dictionary_class):
-    dictionary = dictionary_class(PATH_TO_DICTIONARY)
+def test_dictionary_v2_image(dictionary_class, dictionary_path):
+    dictionary = dictionary_class(dictionary_path)
     assert isinstance(dictionary.image, str)
 
 
-@pytest.mark.parametrize("dictionary_class", [CanopenDictionaryV2, EthernetDictionaryV2])
+@pytest.mark.parametrize(
+    "dictionary_class, dictionary_path",
+    [
+        (CanopenDictionaryV2, f"{PATH_RESOURCE}canopen/test_dict_can.xdf"),
+        (EthernetDictionaryV2, f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf"),
+    ],
+)
 @pytest.mark.no_connection
-def test_dictionary_v2_image_none(dictionary_class):
-    with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
+def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
+    with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
     root.remove(root.find(DictionaryV2._DictionaryV2__DICT_IMAGE))

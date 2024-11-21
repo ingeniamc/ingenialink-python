@@ -38,8 +38,7 @@ class EthernetDictionaryV2(DictionaryV2):
         ),
     ]
 
-    def __init__(self, dictionary_path: str) -> None:
-        super().__init__(dictionary_path, Interface.ETH)
+    interface = Interface.ETH
 
     def _read_xdf_register(self, register: ET.Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)

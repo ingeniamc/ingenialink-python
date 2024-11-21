@@ -95,5 +95,6 @@
     </Errors>
   </Body>
   <DriveImage encoding="xs:base64Binary">
+    test_image
   </DriveImage>
 </IngeniaDictionary>
