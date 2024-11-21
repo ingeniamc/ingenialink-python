@@ -538,8 +538,10 @@ class DictionaryV3(Dictionary):
         try:
             with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"There is not any xdf file in the path: {dictionary_path}")
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"There is not any xdf file in the path: {dictionary_path}"
+            ) from e
         root = tree.getroot()
         device_path = (
             f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}/{cls.__DEVICE_ELEMENT[interface]}"
@@ -575,8 +577,8 @@ class DictionaryV3(Dictionary):
         try:
             with open(self.path, "r", encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}")
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}") from e
         root = tree.getroot()
         drive_image_element = self.__find_and_check(root, self.__DRIVE_IMAGE_ELEMENT)
         self.__read_drive_image(drive_image_element)
@@ -1110,8 +1112,10 @@ class DictionaryV2(Dictionary):
         try:
             with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"There is not any xdf file in the path: {dictionary_path}")
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"There is not any xdf file in the path: {dictionary_path}"
+            ) from e
         root = tree.getroot()
         device = root.find(cls.__DICT_ROOT_DEVICE)
         if device is None:
@@ -1139,8 +1143,8 @@ class DictionaryV2(Dictionary):
         try:
             with open(self.path, "r", encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}")
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}") from e
         root = tree.getroot()
 
         device = root.find(self.__DICT_ROOT_DEVICE)
