@@ -195,7 +195,7 @@ def test_safety_tpdo_not_exist():
 @pytest.mark.no_connection
 def test_wrong_dictionary():
     with pytest.raises(
-        ILDictionaryParseError, match="Dictionary can not be used for the chose communication"
+        ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication"
     ):
         DictionaryV3("./tests/resources/canopen/test_dict_can_v3.0.xdf", Interface.ECAT)
 
