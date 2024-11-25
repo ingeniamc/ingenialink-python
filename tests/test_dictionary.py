@@ -8,13 +8,83 @@ from xml.dom import minidom
 import pytest
 
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
-from ingenialink.dictionary import DictionaryV2, DictionaryV3, Interface
+from ingenialink.dictionary import (
+    DictionaryDescriptor,
+    DictionaryV2,
+    DictionaryV3,
+    ILDictionaryParseError,
+    Interface,
+)
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.servo import DictionaryFactory
 
 PATH_RESOURCE = "./tests/resources/"
 PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
+
+
+@pytest.mark.parametrize(
+    "dict_path, interface, fw_version, product_code, part_number, revision_number",
+    [
+        (
+            f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf",
+            Interface.CAN,
+            "2.4.1",
+            61939713,
+            "EVS-NET-C",
+            196617,
+        ),
+        (
+            f"{PATH_RESOURCE}comkit/com-kit.xdf",
+            Interface.ETH,
+            "1.4.7",
+            123456789,
+            None,
+            12345,
+        ),
+        (
+            f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf",
+            Interface.ECAT,
+            "2.0.1",
+            57745409,
+            "CAP-NET-E",
+            196635,
+        ),
+        (
+            f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf",
+            Interface.ETH,
+            "2.0.1",
+            57745409,
+            "CAP-NET-E",
+            196635,
+        ),
+    ],
+)
+def test_dictionary_description(
+    dict_path, interface, fw_version, product_code, part_number, revision_number
+):
+    dict_description = DictionaryFactory.get_dictionary_description(dict_path, interface)
+    assert dict_description == DictionaryDescriptor(
+        firmware_version=fw_version,
+        product_code=product_code,
+        part_number=part_number,
+        revision_number=revision_number,
+    )
+
+
+@pytest.mark.parametrize(
+    "dict_path, interface, raises",
+    [
+        (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.ECAT, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}canopen/test_dict_can.xdf", Interface.ECAT, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.CAN, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.CAN, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}test_no_dict.xdf", Interface.ECAT, FileNotFoundError),
+    ],
+)
+def test_dictionary_description_fail(dict_path, interface, raises):
+    with pytest.raises(raises):
+        DictionaryFactory.get_dictionary_description(dict_path, interface)
 
 
 @pytest.mark.parametrize("dictionary_class", [CanopenDictionaryV2, EthernetDictionaryV2])

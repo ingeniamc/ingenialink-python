@@ -7,6 +7,7 @@
 - Add is_node_id_dependent property to CanopenRegister
 - Methods to get/set the MAC Address of Ethernet drives.
 - Methods to read and update registers by bitfield
+- Add get_dictionary_description in DictionaryFactory
 
 ### Fixed
 - Restore CoE communication after a power cycle.
