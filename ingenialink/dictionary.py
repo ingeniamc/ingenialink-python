@@ -546,7 +546,9 @@ class DictionaryV3(Dictionary):
         device_path = (
             f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}/{cls.__DEVICE_ELEMENT[interface]}"
         )
-        device = cls.__find_and_check(root, device_path)
+        device = root.find(device_path)
+        if device is None:
+            raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
         firmware_version = device.attrib[cls.__DEVICE_FW_VERSION_ATTR]
         product_code = int(device.attrib[cls.__DEVICE_PRODUCT_CODE_ATTR])
         part_number = device.attrib[cls.__DEVICE_PART_NUMBER_ATTR]
