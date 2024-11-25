@@ -156,7 +156,7 @@ def test_dictionary_factory(dict_path, interface, dict_class):
         (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.CAN, ILDictionaryParseError),
     ],
 )
-def test_dictionary_factory_fail(dict_path, interface, raises):
+def test_dictionary_interface_mismatch(dict_path, interface, raises):
     with pytest.raises(raises):
         DictionaryFactory.create_dictionary(dict_path, interface)
 
