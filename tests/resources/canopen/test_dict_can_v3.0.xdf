@@ -101,6 +101,24 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject >
+					<CANopenObject index="0x2010" subnode="1">
+            <Subitems>
+              <Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="u16" id="DRV_STATE_CONTROL" cyclic="CYCLIC_RX" desc="Parameter to manage the drive state machine. It is compliant with DS402." units="none" default="0000" cat_id="TARGET">
+                <Labels>
+                  <Label lang="en_US">Control word</Label>
+                </Labels>
+                <BitFields>
+                  <BitField name="SWITCH_ON" start="0" end="0"/>
+                  <BitField name="VOLTAGE_ENABLE" start="1" end="1"/>
+                  <BitField name="QUICK_STOP" start="2" end="2"/>
+                  <BitField name="ENABLE_OPERATION" start="3" end="3"/>
+                  <BitField name="RUN_SET_POINT_MANAGER" start="4" end="4"/>
+                  <BitField name="FAULT_RESET" start="7" end="7"/>
+									<BitField name="OPERATION_MODE_SPECIFIC" start="8" end="15"/>
+                </BitFields>
+              </Subitem>
+            </Subitems>
+          </CANopenObject>
 				</CANopenObjects>
 				<Errors>
 					<Error id="0x00003280" affected_module="Power stage" error_type="cyclic">

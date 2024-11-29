@@ -145,6 +145,20 @@
 							<Enum value="8">Incremental encoder 2</Enum>
 						</Enumerations>
 					</MCBRegister>
+					<MCBRegister address="0x0010" subnode="1" address_type="NVM_NONE" access="rw" dtype="u16" id="DRV_STATE_CONTROL" units="none" cyclic="CYCLIC_RX" desc="Parameter to manage the drive state machine. It is compliant with DS402." default="0000" cat_id="TARGET">
+            <Labels>
+              <Label lang="en_US">Control word</Label>
+            </Labels>
+            <BitFields>
+              <BitField name="SWITCH_ON" start="0" end="0"/>
+              <BitField name="VOLTAGE_ENABLE" start="1" end="1"/>
+              <BitField name="QUICK_STOP" start="2" end="2"/>
+              <BitField name="ENABLE_OPERATION" start="3" end="3"/>
+              <BitField name="RUN_SET_POINT_MANAGER" start="4" end="4"/>
+              <BitField name="FAULT_RESET" start="7" end="7"/>
+							<BitField name="OPERATION_MODE_SPECIFIC" start="8" end="15"/>
+            </BitFields>
+          </MCBRegister>
 				</MCBRegisters>
 				<Errors>
 					<Error id="0x00003280" affected_module="Power stage" error_type="cyclic">

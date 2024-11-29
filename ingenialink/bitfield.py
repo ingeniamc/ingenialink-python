@@ -30,6 +30,11 @@ class BitField:
         self._max_value = 2**self._len - 1
         self._mask = _bit_mask(range(start, end + 1))
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BitField):
+            return False
+        return (self._start == other._start) and (self._end == other._end)
+
     @classmethod
     def bit(cls, bit: int) -> "BitField":
         """Bitfield of single bit."""

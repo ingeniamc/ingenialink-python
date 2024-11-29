@@ -520,6 +520,12 @@ class DictionaryV3(Dictionary):
     __ENUM_ELEMENT = "Enum"
     __ENUM_VALUE_ATTR = "value"
 
+    __BITFIELDS_ELEMENT = "BitFields"
+    __BITFIELD_ELEMENT = "BitField"
+    __BITFIELD_NAME = "name"
+    __BITFIELD_START = "start"
+    __BITFIELD_END = "end"
+
     __RANGE_ELEMENT = "Range"
     __RANGE_MIN_ATTR = "min"
     __RANGE_MAX_ATTR = "max"
@@ -822,10 +828,10 @@ class DictionaryV3(Dictionary):
     def __read_enumeration(
         self, enumerations_element: Optional[ET.Element]
     ) -> Optional[Dict[str, int]]:
-        """Process Enumerations element if is not None
+        """Process Enumerations possible element
 
         Args:
-            enumerations_element: Enumerations element
+            enumerations_element: Enumerations element, also accepts None
 
         Returns:
             If Enumerations is not None, return enums values
@@ -838,6 +844,30 @@ class DictionaryV3(Dictionary):
                 for enum_element in enum_list
                 if enum_element.text is not None
             }
+        return None
+
+    def __read_bitfields(
+        self, bitfields_element: Optional[ET.Element]
+    ) -> Optional[Dict[str, BitField]]:
+        """Process Bitfields possible element
+
+        Args:
+            bitfields_element: Bitfields element, also accepts None
+
+        Returns:
+            If Bitfields is not None, return bitfields definitions
+
+        """
+        if bitfields_element is not None:
+            bitfields_list = self._findall_and_check(bitfields_element, self.__BITFIELD_ELEMENT)
+            return {
+                bitfield_element.attrib[self.__BITFIELD_NAME]: BitField(
+                    int(bitfield_element.attrib[self.__BITFIELD_START]),
+                    int(bitfield_element.attrib[self.__BITFIELD_END]),
+                )
+                for bitfield_element in bitfields_list
+            }
+
         return None
 
     def __read_mcb_register(self, register: ET.Element) -> None:
@@ -867,6 +897,9 @@ class DictionaryV3(Dictionary):
         # Enumerations
         enumerations_element = register.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
+        # Bitfields
+        bitfields_element = register.find(self.__BITFIELDS_ELEMENT)
+        bitfields = self.__read_bitfields(bitfields_element)
 
         ethernet_register = EthernetRegister(
             reg_address,
@@ -883,7 +916,7 @@ class DictionaryV3(Dictionary):
             address_type=address_type,
             description=description,
             default=default,
-            bitfields={},  # TODO read bitfields definition on xdf
+            bitfields=bitfields,
         )
         if subnode not in self._registers:
             self._registers[subnode] = {}
@@ -947,6 +980,9 @@ class DictionaryV3(Dictionary):
         # Enumerations
         enumerations_element = subitem.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
+        # Bitfields
+        bitfields_element = subitem.find(self.__BITFIELDS_ELEMENT)
+        bitfields = self.__read_bitfields(bitfields_element)
 
         canopen_register = CanopenRegister(
             reg_index,
@@ -964,7 +1000,7 @@ class DictionaryV3(Dictionary):
             address_type=address_type,
             description=description,
             default=default,
-            bitfields={},  # TODO read bitfields definition on xdf
+            bitfields=bitfields,
             is_node_id_dependent=is_node_id_dependent,
         )
         if subnode not in self._registers:
