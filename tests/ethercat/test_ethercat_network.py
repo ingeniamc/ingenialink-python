@@ -4,16 +4,14 @@ except ImportError:
     pass
 import pytest
 
-from ingenialink.dictionary import Interface
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.servo import DictionaryFactory
 
 
 @pytest.mark.docker
 def test_raise_exception_if_not_winpcap():
     try:
-        import pysoem
+        import pysoem  # noqa: F401
 
         pytest.skip("WinPcap is installed")
     except ImportError:
@@ -87,16 +85,14 @@ def test_scan_slaves_raises_exception_if_drive_is_already_connected(connect_to_s
 
 
 @pytest.mark.ethercat
-def test_scan_slaves_info(read_config):
+def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     slaves_info = net.scan_slaves_info()
-    dictionary = DictionaryFactory.create_dictionary(
-        read_config["ethercat"]["dictionary"], Interface.ECAT
-    )
+
+    drive_idx, config = get_configuration_from_rack_service
+    drive = config[drive_idx]
 
     assert len(slaves_info) > 0
     assert read_config["ethercat"]["slave"] in slaves_info
-    assert slaves_info[read_config["ethercat"]["slave"]].product_code == dictionary.product_code
-    assert (
-        slaves_info[read_config["ethercat"]["slave"]].revision_number == dictionary.revision_number
-    )
+    assert slaves_info[read_config["ethercat"]["slave"]].product_code == drive.product_code
+    assert slaves_info[read_config["ethercat"]["slave"]].revision_number == drive.revision_number

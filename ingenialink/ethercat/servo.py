@@ -1,9 +1,11 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, List, Optional
 
 import ingenialogger
+
+from ingenialink.emcy import EmergencyMessage
 
 try:
     import pysoem
@@ -17,7 +19,7 @@ if TYPE_CHECKING:
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError
+from ingenialink.exceptions import ILIOError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
@@ -76,6 +78,8 @@ class EthercatServo(PDOServo):
         self.__slave = slave
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
+        self.__emcy_observers: List[Callable[[EmergencyMessage], None]] = []
+        self.__slave.add_emergency_callback(self._on_emcy)
         super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
 
     def store_parameters(
@@ -93,7 +97,6 @@ class EthercatServo(PDOServo):
 
         Raises:
             ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
 
         """
         super().store_parameters(subnode)
@@ -118,7 +121,6 @@ class EthercatServo(PDOServo):
 
         Raises:
             ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
 
         """
         super().restore_parameters(subnode)
@@ -202,28 +204,25 @@ class EthercatServo(PDOServo):
              timeout period.
 
         """
-        if isinstance(
-            exception, (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError, ILIOError)
-        ):
-            raise ILIOError(
-                f"Error {operation_msg.value} {reg.identifier}. Reason: {exception}"
-            ) from exception
-        elif isinstance(exception, pysoem.WkcError):
-            default_error_msg = f"Error {operation_msg.value} data"
-            wkc_exceptions: Dict[int, ILError] = {
-                self.NO_RESPONSE_WORKING_COUNTER: ILIOError(
-                    f"{default_error_msg}: The working counter remained unchanged."
-                ),
-                self.NOFRAME_WORKING_COUNTER: ILIOError(f"{default_error_msg}: No frame."),
-                self.TIMEOUT_WORKING_COUNTER: ILTimeoutError(
-                    f"Timeout {operation_msg.value} data."
-                ),
+        default_error_msg = f"Error {operation_msg.value} {reg.identifier}"
+        if isinstance(exception, pysoem.WkcError):
+            wkc_errors = {
+                self.NO_RESPONSE_WORKING_COUNTER: "The working counter remained unchanged.",
+                self.NOFRAME_WORKING_COUNTER: "No frame.",
+                self.TIMEOUT_WORKING_COUNTER: "Timeout.",
             }
-            exc = wkc_exceptions.get(
-                exception.wkc,
-                ILIOError(f"{default_error_msg}. Wrong working counter: {exception.wkc}"),
-            )
-            raise exc from exception
+            reason = wkc_errors[exception.wkc]
+        elif isinstance(exception, (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError)):
+            reason = f"{type(exception).__name__}: Slave {exception.slave_pos}, "
+            if isinstance(exception, pysoem.SdoError):
+                reason += f"Abort code {exception.abort_code}, "
+            else:
+                reason += f"Error code {exception.error_code}, "
+            error_description = f"Error description: {exception.desc}."
+            reason += error_description
+        else:
+            reason = str(exception)
+        raise ILIOError(f"{default_error_msg}. {reason}") from exception
 
     def _monitoring_read_data(self, **kwargs: Any) -> bytes:
         """Read monitoring data frame."""
@@ -267,19 +266,36 @@ class EthercatServo(PDOServo):
         )
         return mapped_address
 
-    def get_emergency_description(self, error_code: int) -> Optional[str]:
-        """Get the error description from the error code.
+    def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
+        """Subscribe to emergency messages.
+
         Args:
-            error_code: Error code received.
-        Returns:
-            The error description corresponding to the error code.
+            callback: Callable that takes a EmergencyMessage instance as argument.
+
         """
-        error_description = None
-        if self.dictionary.errors is not None:
-            error_code &= 0xFFFF
-            if error_code in self.dictionary.errors.errors:
-                error_description = self.dictionary.errors.errors[error_code][-1]
-        return error_description
+        self.__emcy_observers.append(callback)
+
+    def emcy_unsubscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
+        """Unsubscribe from emergency messages.
+
+        Args:
+            callback: Subscribed callback.
+
+        """
+        self.__emcy_observers.remove(callback)
+
+    def _on_emcy(self, emergency_msg: "pysoem.Emergency") -> None:
+        """Receive an emergency message from PySOEM and transform it to a EmergencyMessage.
+        Afterward, send the EmergencyMessage to all the subscribed callbacks.
+
+        Args:
+            emergency_msg: The pysoem.Emergency instance.
+
+        """
+        emergency_message = EmergencyMessage(self, emergency_msg)
+        logger.warning(f"Emergency message received from slave {self.target}: {emergency_message}")
+        for callback in self.__emcy_observers:
+            callback(emergency_message)
 
     def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
         self._rpdo_maps.extend(rpdo_maps)

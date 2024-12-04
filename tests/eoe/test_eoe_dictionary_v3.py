@@ -1,7 +1,9 @@
-import pytest
 from os.path import join as join_path
 
-from ingenialink.dictionary import Interface, SubnodeType, DictionaryV3
+import pytest
+
+from ingenialink.bitfield import BitField
+from ingenialink.dictionary import DictionaryV3, Interface, SubnodeType
 
 path_resources = "./tests/resources/"
 dict_eoe_v3 = "test_dict_ecat_eoe_v3.0.xdf"
@@ -46,7 +48,7 @@ def test_read_dictionary_registers():
             "DRV_DIAG_ERROR_LAST_COM",
             "DRV_AXIS_NUMBER",
         ],
-        1: ["COMMU_ANGLE_SENSOR"],
+        1: ["COMMU_ANGLE_SENSOR", "DRV_STATE_CONTROL"],
     }
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
@@ -80,7 +82,7 @@ def test_read_dictionary_errors():
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
 
-    assert [error for error in ethercat_dict.errors.errors] == expected_errors
+    assert [error for error in ethercat_dict.errors] == expected_errors
 
 
 @pytest.mark.no_connection
@@ -111,9 +113,7 @@ def test_register_default_values():
             "CIA301_COMMS_RPDO1_MAP": 1,
             "CIA301_COMMS_RPDO1_MAP_1": 268451936,
         },
-        1: {
-            "COMMU_ANGLE_SENSOR": 4,
-        },
+        1: {"COMMU_ANGLE_SENSOR": 4, "DRV_STATE_CONTROL": 0},
     }
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
     for subnode, registers in ethercat_dict._registers.items():
@@ -133,6 +133,8 @@ def test_register_description():
         },
         1: {
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
+            "DRV_STATE_CONTROL": "Parameter to manage the drive state machine. "
+            "It is compliant with DS402.",
         },
     }
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
@@ -142,3 +144,23 @@ def test_register_description():
                 register.description
                 == expected_description_per_subnode[subnode][register.identifier]
             )
+
+
+def test_register_bitfields():
+    dictionary_path = join_path(path_resources, dict_eoe_v3)
+    canopen_dict = DictionaryV3(dictionary_path, Interface.EoE)
+
+    for subnode, registers in canopen_dict._registers.items():
+        for register in registers.values():
+            if register.identifier == "DRV_STATE_CONTROL":
+                assert register.bitfields == {
+                    "SWITCH_ON": BitField.bit(0),
+                    "VOLTAGE_ENABLE": BitField.bit(1),
+                    "QUICK_STOP": BitField.bit(2),
+                    "ENABLE_OPERATION": BitField.bit(3),
+                    "RUN_SET_POINT_MANAGER": BitField.bit(4),
+                    "FAULT_RESET": BitField.bit(7),
+                    "OPERATION_MODE_SPECIFIC": BitField(8, 15),
+                }
+            else:
+                assert register.bitfields is None

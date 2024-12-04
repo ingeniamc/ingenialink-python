@@ -15,11 +15,12 @@ import canopen
 import ingenialogger
 from can import CanError
 from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
+from can.interfaces.pcan.pcan import PcanCanOperationError
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
 from ingenialink.enums.register import RegCyclicType
-from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILObjectNotExist
+from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
 from ingenialink.register import REG_ACCESS, REG_DTYPE
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
@@ -182,7 +183,7 @@ class NetStatusListener(Thread):
                     timestamps[node_id] = current_timestamp
                     continue
                 is_alive = current_timestamp != timestamps[node_id]
-                servo_state = self.__network._get_servo_state(node_id)
+                servo_state = self.__network.get_servo_state(node_id)
                 if is_alive:
                     if servo_state != NET_STATE.CONNECTED:
                         self.__network._notify_status(node_id, NET_DEV_EVT.ADDED)
@@ -225,7 +226,6 @@ class CanopenNetwork(Network):
         self.__channel: Union[int, str] = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
         self._connection: Optional[NetworkLib] = None
-        self.__servos_state: Dict[int, NET_STATE] = {}
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: Dict[int, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
             list
@@ -437,7 +437,7 @@ class CanopenNetwork(Network):
             return
         try:
             self._connection.disconnect()
-        except (VCIError, CANLIBOperationError) as e:
+        except (VCIError, CANLIBOperationError, PcanCanOperationError) as e:
             logger.error(f"An exception occurred during the teardown connection. Exception: {e}")
         self._connection = None
         logger.info("Tear down connection.")
@@ -664,7 +664,7 @@ class CanopenNetwork(Network):
         Returns:
             True if values is reached, else False
         """
-        logger.debug(f"Waiting for register {register} to return <{expected_value}>")
+        logger.debug(f"Waiting for register {register.identifier} to return <{expected_value}>")
         num_tries = 0
         value = None
         while num_tries < POLLING_MAX_TRIES:
@@ -861,7 +861,7 @@ class CanopenNetwork(Network):
 
         """
         if self._connection is None:
-            raise ILObjectNotExist("CAN connection was not established.")
+            raise ValueError("The CAN connection has not been established yet.")
 
         try:
             logger.debug("Switching LSS into CONFIGURATION state...")
@@ -907,7 +907,7 @@ class CanopenNetwork(Network):
 
         """
         if self._connection is None:
-            raise ILObjectNotExist("CAN connection was not established.")
+            raise ValueError("The CAN connection has not been established yet.")
 
         try:
             logger.debug("Switching LSS into CONFIGURATION state...")
@@ -1048,11 +1048,30 @@ class CanopenNetwork(Network):
         """Obtain network protocol."""
         return NET_PROT.CAN
 
-    def _get_servo_state(self, node_id: int) -> NET_STATE:
-        return self.__servos_state[node_id]
+    def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
+        """Get the state of a servo that's a part of network.
+        The state indicates if the servo is connected or disconnected.
 
-    def _set_servo_state(self, node_id: int, state: NET_STATE) -> None:
-        self.__servos_state[node_id] = state
+        Args:
+            servo_id: The servo's node ID.
+
+        Returns:
+            The servo's state.
+
+        """
+        if not isinstance(servo_id, int):
+            raise ValueError("The servo ID must be an int.")
+        return self._servos_state[servo_id]
+
+    def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
+        """Set the state of a servo that's a part of network.
+
+        Args:
+            servo_id: The servo's node ID.
+            state: The servo's state.
+
+        """
+        self._servos_state[servo_id] = state
 
     def get_available_devices(self) -> List[Tuple[str, Union[str, int]]]:
         """Get the available CAN devices and their channels

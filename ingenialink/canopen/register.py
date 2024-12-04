@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional, Tuple, Union
 
+from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
     REG_ACCESS,
     REG_ADDRESS_TYPE,
@@ -33,6 +34,7 @@ class CanopenRegister(Register):
         address_type: Address Type.
         description: Register description.
         default: Register default value.
+        bitfields: Fields that specify groups of bits
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -64,6 +66,8 @@ class CanopenRegister(Register):
         address_type: Optional[REG_ADDRESS_TYPE] = None,
         description: Optional[str] = None,
         default: Optional[bytes] = None,
+        bitfields: Optional[Dict[str, BitField]] = None,
+        is_node_id_dependent: bool = False,
     ):
         super().__init__(
             dtype,
@@ -83,10 +87,12 @@ class CanopenRegister(Register):
             address_type,
             description,
             default,
+            bitfields,
         )
 
         self.__idx = idx
         self.__subidx = subidx
+        self.__is_node_id_dependent = is_node_id_dependent
 
     @property
     def idx(self) -> int:
@@ -102,3 +108,8 @@ class CanopenRegister(Register):
     def mapped_address(self) -> int:
         """Register mapped address used for monitoring/disturbance."""
         return self.idx
+
+    @property
+    def is_node_id_dependent(self) -> bool:
+        """True if register values depends on Node Id"""
+        return self.__is_node_id_dependent

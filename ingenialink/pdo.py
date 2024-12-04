@@ -118,7 +118,7 @@ class PDOMapItem:
         self.raw_data_bits = data_bits
 
     @property
-    def value(self) -> Union[int, float, bool]:
+    def value(self) -> Union[int, float, bool, bytes]:
         """Register value. Converts the raw data bytes into the register value.
 
         Raises:
@@ -128,7 +128,7 @@ class PDOMapItem:
         Returns:
             Register value.
         """
-        value: Union[bool, int, float, str]
+        value: Union[bool, int, float, str, bytes]
         if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
             raise NotImplementedError(
                 "The register value must be read by the raw_data_bytes attribute."
@@ -168,7 +168,7 @@ class RPDOMapItem(PDOMapItem):
         super().__init__(register, size_bits)
 
     @property
-    def value(self) -> Union[int, float]:
+    def value(self) -> Union[int, float, bytes]:
         return super().value
 
     @value.setter
@@ -460,7 +460,7 @@ class PDOServo(Servo):
         )
         self.write(
             self.RPDO_MAP_REGISTER_SUB_IDX_1[rpdo_map_register_index],
-            rpdo_map.items_mapping.decode("utf-8"),
+            bytes(rpdo_map.items_mapping),
             complete_access=True,
             subnode=0,
         )
@@ -513,7 +513,7 @@ class PDOServo(Servo):
         )
         self.write(
             self.TPDO_MAP_REGISTER_SUB_IDX_1[tpdo_map_register_index],
-            tpdo_map.items_mapping.decode("utf-8"),
+            bytes(tpdo_map.items_mapping),
             complete_access=True,
             subnode=0,
         )

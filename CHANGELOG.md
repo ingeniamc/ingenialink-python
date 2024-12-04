@@ -1,5 +1,23 @@
 # Changelog
 
+## [7.4.0] - 2025-12-3
+### Added
+- Method to subscribe to emergency messages.
+- Method to subscribe to register value updates.
+- Add is_node_id_dependent property to CanopenRegister
+- Methods to get/set the MAC Address of Ethernet drives.
+- Methods to read and update registers by bitfield
+- Add get_dictionary_description in DictionaryFactory
+
+### Fixed
+- Restore CoE communication after a power cycle.
+- Catch exception on disconnection when the PCAN is in bus-off state.
+- Default of byteArray512 are in bytes
+
+### Changed
+- CiA 301 PDO related registers are not saved to the configuration file. 
+- Remove an unnecessary argument for a servo status listener callback.
+
 ## [7.3.5] - 2025-08-23
 
 ### Added

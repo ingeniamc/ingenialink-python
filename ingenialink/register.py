@@ -2,6 +2,7 @@ from abc import ABC
 from typing import Any, Dict, Optional, Tuple, Union
 
 from ingenialink import exceptions as exc
+from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
     REG_ACCESS,
     REG_ADDRESS_TYPE,
@@ -45,6 +46,7 @@ class Register(ABC):
         address_type: Address tpye.
         description: Register description.
         default: Register default value.
+        bitfields: Fields that specify groups of bits
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -74,6 +76,7 @@ class Register(ABC):
         address_type: Optional[REG_ADDRESS_TYPE] = None,
         description: Optional[str] = None,
         default: Optional[bytes] = None,
+        bitfields: Optional[Dict[str, BitField]] = None,
     ) -> None:
         if labels is None:
             labels = {}
@@ -95,11 +98,12 @@ class Register(ABC):
         self._cat_id = cat_id
         self._scat_id = scat_id
         self._internal_use = internal_use
-        self._storage_valid = False if not storage else True
+        self._storage_valid = storage is not None
         self._address_type = address_type
         self._description = description
         self._default = default
         self._enums = enums
+        self.__bitfields = bitfields
         self.__config_range(reg_range)
 
     def __type_errors(self, dtype: REG_DTYPE, access: REG_ACCESS, phy: REG_PHY) -> None:
@@ -116,24 +120,27 @@ class Register(ABC):
         self,
         reg_range: Union[Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]],
     ) -> None:
-        if self.dtype in dtypes_ranges:
-            if self.dtype == REG_DTYPE.FLOAT:
-                if self.storage:
-                    self._storage = float(self.storage)
-                aux_range = (
-                    float(reg_range[0]) if reg_range[0] else dtypes_ranges[self.dtype]["min"],
-                    float(reg_range[1]) if reg_range[1] else dtypes_ranges[self.dtype]["max"],
-                )
-            else:
-                if self.storage:
-                    self._storage = int(self.storage)
-                aux_range = (
-                    int(reg_range[0]) if reg_range[0] else dtypes_ranges[self.dtype]["min"],
-                    int(reg_range[1]) if reg_range[1] else dtypes_ranges[self.dtype]["max"],
-                )
-            self._range = aux_range
-        else:
+        cast_type: Union[type[int], type[float]]
+        if self.dtype not in dtypes_ranges:
             self._storage_valid = False
+            return
+        elif self.dtype == REG_DTYPE.FLOAT:
+            cast_type = float
+        else:
+            cast_type = int
+        reg_range_min = (
+            cast_type(reg_range[0])
+            if reg_range[0] is not None
+            else dtypes_ranges[self.dtype]["min"]
+        )
+        reg_range_max = (
+            cast_type(reg_range[1])
+            if reg_range[1] is not None
+            else dtypes_ranges[self.dtype]["max"]
+        )
+        self._range = reg_range_min, reg_range_max
+        if self.storage is not None:
+            self._storage = cast_type(self.storage)
 
     @property
     def dtype(self) -> REG_DTYPE:
@@ -256,7 +263,7 @@ class Register(ABC):
         return self._description
 
     @property
-    def default(self) -> Union[None, int, float, str]:
+    def default(self) -> Union[None, int, float, str, bytes]:
         """Register default value"""
         if self._default is None:
             return self._default
@@ -266,3 +273,7 @@ class Register(ABC):
     def mapped_address(self) -> int:
         """Register mapped address used for monitoring/disturbance."""
         raise NotImplementedError()
+
+    @property
+    def bitfields(self) -> Optional[Dict[str, BitField]]:
+        return self.__bitfields

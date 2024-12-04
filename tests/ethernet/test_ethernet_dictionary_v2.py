@@ -1,9 +1,9 @@
-import pytest
 from os.path import join as join_path
+
+import pytest
 
 from ingenialink.dictionary import Interface, SubnodeType
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
-
 
 path_resources = "./tests/resources/ethernet/"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
@@ -104,7 +104,7 @@ def test_read_dictionary_errors():
 
     ethernet_dict = EthernetDictionaryV2(dictionary_path)
 
-    assert [error for error in ethernet_dict.errors.errors] == expected_errors
+    assert [error for error in ethernet_dict.errors] == expected_errors
 
 
 @pytest.mark.no_connection

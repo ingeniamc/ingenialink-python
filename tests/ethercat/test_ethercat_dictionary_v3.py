@@ -1,9 +1,11 @@
-import pytest
 from os.path import join as join_path
 
-from ingenialink.exceptions import ILDictionaryParseError
+import pytest
+
 from ingenialink import CanopenRegister
-from ingenialink.dictionary import Interface, SubnodeType, DictionaryV3, DictionarySafetyPDO
+from ingenialink.bitfield import BitField
+from ingenialink.dictionary import DictionarySafetyPDO, DictionaryV3, Interface, SubnodeType
+from ingenialink.exceptions import ILDictionaryParseError
 
 path_resources = "./tests/resources/"
 dict_ecat_v3 = "test_dict_ecat_eoe_v3.0.xdf"
@@ -89,7 +91,7 @@ def test_read_dictionary_errors():
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
 
-    assert [error for error in ethercat_dict.errors.errors] == expected_errors
+    assert [error for error in ethercat_dict.errors] == expected_errors
 
 
 @pytest.mark.no_connection
@@ -194,7 +196,7 @@ def test_safety_tpdo_not_exist():
 @pytest.mark.no_connection
 def test_wrong_dictionary():
     with pytest.raises(
-        ILDictionaryParseError, match="Dictionary can not be used for the chose communication"
+        ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication"
     ):
         DictionaryV3("./tests/resources/canopen/test_dict_can_v3.0.xdf", Interface.ECAT)
 
@@ -242,3 +244,23 @@ def test_register_description():
                 register.description
                 == expected_description_per_subnode[subnode][register.identifier]
             )
+
+
+def test_register_bitfields():
+    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    canopen_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+
+    for subnode, registers in canopen_dict._registers.items():
+        for register in registers.values():
+            if register.identifier == "DRV_STATE_CONTROL":
+                assert register.bitfields == {
+                    "SWITCH_ON": BitField.bit(0),
+                    "VOLTAGE_ENABLE": BitField.bit(1),
+                    "QUICK_STOP": BitField.bit(2),
+                    "ENABLE_OPERATION": BitField.bit(3),
+                    "RUN_SET_POINT_MANAGER": BitField.bit(4),
+                    "FAULT_RESET": BitField.bit(7),
+                    "OPERATION_MODE_SPECIFIC": BitField(8, 15),
+                }
+            else:
+                assert register.bitfields is None

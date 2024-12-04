@@ -111,7 +111,7 @@ class ProcessDataExample:
         for index, _ in enumerate(self.servos):
             sys.stdout.write(f"Drive: {index} ")
             console_output = " ".join(
-                f"{item.register.identifier}: {item.value}" for item in self.tpdo_maps[index].items
+                f"{item.register.identifier}: {item.value!r}" for item in self.tpdo_maps[index].items
             )
             sys.stdout.write(console_output + " ")
         sys.stdout.flush()

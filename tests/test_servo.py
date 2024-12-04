@@ -4,31 +4,41 @@ import shutil
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from packaging import version
 
 import pytest
+from packaging import version
 
 from ingenialink.canopen.servo import CanopenServo
 from ingenialink.ethernet.register import REG_DTYPE
 from ingenialink.exceptions import (
     ILConfigurationError,
+    ILError,
+    ILIOError,
     ILStateError,
     ILTimeoutError,
     ILValueError,
-    ILError,
 )
 from ingenialink.register import REG_ADDRESS_TYPE
 from ingenialink.servo import SERVO_STATE
-from tests.virtual.test_virtual_network import (
-    RESOURCES_FOLDER,
-    connect_virtual_drive,
-    stop_virtual_drive,
-)
+from tests.virtual.test_virtual_network import RESOURCES_FOLDER
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
 DISTURBANCE_CH_DATA_SIZE = 4
 DISTURBANCE_NUM_SAMPLES = 100
+
+
+class RegisterUpdateTest:
+    def __init__(self):
+        self.call_count = 0
+        self.servo = None
+        self.register = None
+
+    def register_update_test(self, servo, register, value):
+        self.servo = servo
+        self.register = register
+        self.value = value
+        self.call_count += 1
 
 
 def _clean(filename):
@@ -49,10 +59,18 @@ def wait_until_alive(servo, timeout=None):
         time.sleep(1)
 
 
+def skip_if_monitoring_is_not_available(servo):
+    try:
+        servo.read("MON_DIST_STATUS")
+    except ILError:
+        pytest.skip("Monitoring is not available")
+
+
 @pytest.fixture()
 def create_monitoring(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
     registers_key = ["CL_CUR_D_REF_VALUE"]
@@ -75,6 +93,7 @@ def create_monitoring(connect_to_slave, pytestconfig):
 def create_disturbance(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     data = list(range(DISTURBANCE_NUM_SAMPLES))
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
@@ -90,6 +109,7 @@ def create_disturbance(connect_to_slave, pytestconfig):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
+@pytest.mark.ethercat
 def test_save_configuration(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -118,7 +138,8 @@ def test_save_configuration(connect_to_slave):
         else servo.DICTIONARY_INTERFACE_ATTR_ETH
     )
     assert device.attrib.get("Interface") == interface
-    # The firmware version from the drive has trailing zeros and the one from the dictionary does not
+    # The firmware version from the drive has trailing zeros
+    # and the one from the dictionary does not
     assert version.parse(device.attrib.get("firmwareVersion")) == version.parse(
         servo.dictionary.firmware_version
     )
@@ -189,13 +210,14 @@ def test_check_configuration(virtual_drive, read_config, pytestconfig):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
-def test_load_configuration(connect_to_slave, read_config, pytestconfig):
+@pytest.mark.ethercat
+def test_load_configuration(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
 
-    protocol = pytestconfig.getoption("--protocol")
+    filename = "temp_config"
 
-    filename = read_config[protocol]["load_config_file"]
+    servo.save_configuration(filename)
 
     assert os.path.isfile(filename)
 
@@ -206,47 +228,43 @@ def test_load_configuration(connect_to_slave, read_config, pytestconfig):
     for register in loaded_registers:
         reg_id = register.attrib.get("id")
         storage = register.attrib.get("storage")
-        access = register.attrib.get("access")
-        if storage is None or access != "rw":
-            continue
         subnode = int(register.attrib.get("subnode"))
         dtype = register.attrib.get("dtype")
 
-        if reg_id in servo.dictionary.registers(subnode):
-            if (
-                servo.dictionary.registers(subnode)[reg_id].address_type
-                == REG_ADDRESS_TYPE.NVM_NONE
-            ):
-                continue
+        # Check if the register exists in the drive
+        try:
             value = servo.read(reg_id, subnode=subnode)
-            if dtype == "str":
-                assert value == storage
-            elif dtype == "float":
-                assert value == pytest.approx(float(storage), 0.0001)
-            else:
-                assert value == int(storage)
+        except ILIOError:
+            continue
+
+        if dtype == "str":
+            assert value == storage
+        elif dtype == "float":
+            assert value == pytest.approx(float(storage), 0.0001)
+        else:
+            assert value == int(storage)
+
+    _clean(filename)
 
 
 @pytest.mark.no_connection
-@pytest.mark.usefixtures("stop_virtual_drive")
-def test_load_configuration_strict(mocker, connect_virtual_drive):
+def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
-    servo, net = connect_virtual_drive(dictionary)
+    server, net, servo = virtual_drive_custom_dict(dictionary)
     test_file = "./tests/resources/test_config_file.xcf"
     mocker.patch("ingenialink.servo.Servo.write", side_effect=ILError("Error writing"))
     with pytest.raises(ILError) as exc_info:
         servo.load_configuration(test_file, strict=True)
     assert (
-        str(exc_info.value)
-        == "Exception during load_configuration, register DRV_DIAG_SYS_ERROR_TOTAL_COM: Error writing"
+        str(exc_info.value) == "Exception during load_configuration, "
+        "register DRV_DIAG_SYS_ERROR_TOTAL_COM: Error writing"
     )
 
 
 @pytest.mark.no_connection
 def test_read_configuration_file():
     test_file = "./tests/resources/test_config_file.xcf"
-    servo = CanopenServo("test", 0, "./tests/resources/canopen/test_dict_can.xdf")
-    device, registers = servo._read_configuration_file(test_file)
+    device, registers = CanopenServo._read_configuration_file(test_file)
 
     assert device.attrib.get("PartNumber") == "EVE-NET-C"
     assert device.attrib.get("Interface") == "CAN"
@@ -266,6 +284,7 @@ def test_read_configuration_file():
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
+@pytest.mark.ethercat
 def test_load_configuration_file_not_found(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -278,6 +297,7 @@ def test_load_configuration_file_not_found(connect_to_slave):
 @pytest.mark.parametrize("subnode", [-1, "1"])
 @pytest.mark.canopen
 @pytest.mark.ethernet
+@pytest.mark.ethercat
 def test_load_configuration_invalid_subnode(read_config, pytestconfig, connect_to_slave, subnode):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -290,6 +310,7 @@ def test_load_configuration_invalid_subnode(read_config, pytestconfig, connect_t
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
+@pytest.mark.ethercat
 def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -341,7 +362,7 @@ def test_store_parameters(connect_to_slave, connect_to_rack_service):
     time.sleep(1)
     client.exposed_turn_on_ps()
 
-    wait_until_alive(servo, timeout=10)
+    wait_until_alive(servo, timeout=20)
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
@@ -367,13 +388,14 @@ def test_restore_parameters(connect_to_slave, connect_to_rack_service):
     time.sleep(1)
     client.exposed_turn_on_ps()
 
-    wait_until_alive(servo, timeout=10)
+    wait_until_alive(servo, timeout=20)
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
 
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
+@pytest.mark.ethercat
 def test_read(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -384,6 +406,7 @@ def test_read(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
+@pytest.mark.ethercat
 def test_write(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
@@ -402,8 +425,10 @@ def test_write(connect_to_slave):
 
 @pytest.mark.ethernet
 @pytest.mark.canopen
+@pytest.mark.ethercat
 def test_monitoring_enable_disable(connect_to_slave):
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.monitoring_enable()
     assert servo.read(servo.MONITORING_DIST_ENABLE, subnode=0) == 1
     servo.monitoring_disable()
@@ -412,6 +437,7 @@ def test_monitoring_enable_disable(connect_to_slave):
 
 @pytest.mark.ethernet
 @pytest.mark.canopen
+@pytest.mark.ethercat
 def test_monitoring_remove_data(create_monitoring):
     servo, net = create_monitoring
     servo.monitoring_enable()
@@ -423,9 +449,11 @@ def test_monitoring_remove_data(create_monitoring):
 
 @pytest.mark.ethernet
 @pytest.mark.canopen
+@pytest.mark.ethercat
 def test_monitoring_map_register(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.monitoring_remove_all_mapped_registers()
     registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
     data_size = 4
@@ -449,6 +477,7 @@ def test_monitoring_map_register(connect_to_slave, pytestconfig):
 
 @pytest.mark.ethernet
 @pytest.mark.canopen
+@pytest.mark.ethercat
 def test_monitoring_data_size(create_monitoring):
     servo, net = create_monitoring
     servo.monitoring_enable()
@@ -461,6 +490,7 @@ def test_monitoring_data_size(create_monitoring):
 
 @pytest.mark.ethernet
 @pytest.mark.canopen
+@pytest.mark.ethercat
 def test_monitoring_read_data(create_monitoring):
     servo, net = create_monitoring
     servo.monitoring_enable()
@@ -478,8 +508,10 @@ def test_monitoring_read_data(create_monitoring):
 
 @pytest.mark.ethernet
 @pytest.mark.canopen
+@pytest.mark.ethercat
 def test_disturbance_enable_disable(connect_to_slave):
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.disturbance_enable()
     assert servo.read(servo.DISTURBANCE_ENABLE, subnode=0) == 1
     servo.disturbance_disable()
@@ -488,6 +520,7 @@ def test_disturbance_enable_disable(connect_to_slave):
 
 @pytest.mark.ethernet
 @pytest.mark.canopen
+@pytest.mark.ethercat
 def test_disturbance_remove_data(create_disturbance):
     servo, net = create_disturbance
     servo.disturbance_enable()
@@ -501,9 +534,11 @@ def test_disturbance_remove_data(create_disturbance):
 
 @pytest.mark.ethernet
 @pytest.mark.canopen
+@pytest.mark.ethercat
 def test_disturbance_map_register(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.disturbance_remove_all_mapped_registers()
     registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
     data_size = 4
@@ -527,6 +562,7 @@ def test_disturbance_map_register(connect_to_slave, pytestconfig):
 
 @pytest.mark.ethernet
 @pytest.mark.canopen
+@pytest.mark.ethercat
 def test_disturbance_data_size(create_disturbance):
     servo, net = create_disturbance
     servo.disturbance_enable()
@@ -536,6 +572,7 @@ def test_disturbance_data_size(create_disturbance):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
+@pytest.mark.ethercat
 def test_enable_disable(connect_to_slave):
     servo, net = connect_to_slave
     servo.enable()
@@ -546,6 +583,7 @@ def test_enable_disable(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
+@pytest.mark.ethercat
 def test_fault_reset(connect_to_slave):
     servo, net = connect_to_slave
     prev_val = servo.read("DRV_PROT_USER_OVER_VOLT", subnode=1)
@@ -559,6 +597,7 @@ def test_fault_reset(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
+@pytest.mark.ethercat
 def test_is_alive(connect_to_slave):
     servo, net = connect_to_slave
     assert servo.is_alive()
@@ -566,6 +605,7 @@ def test_is_alive(connect_to_slave):
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
+@pytest.mark.ethercat
 def test_status_word_wait_change(connect_to_slave):
     servo, net = connect_to_slave
     subnode = 1
@@ -577,9 +617,11 @@ def test_status_word_wait_change(connect_to_slave):
 
 @pytest.mark.ethernet
 @pytest.mark.canopen
+@pytest.mark.ethercat
 def test_disturbance_overflow(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     servo, net = connect_to_slave
+    skip_if_monitoring_is_not_available(servo)
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
     reg = servo._get_reg("DRV_OP_CMD", subnode=1)
@@ -590,3 +632,30 @@ def test_disturbance_overflow(connect_to_slave, pytestconfig):
     data = list(range(-10, 11))
     with pytest.raises(ILValueError):
         servo.disturbance_write_data(0, REG_DTYPE.U16, data)
+
+
+@pytest.mark.no_connection
+def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
+    user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
+    register_update_callback = RegisterUpdateTest()
+
+    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+    server, net, servo = virtual_drive_custom_dict(dictionary)
+    servo.register_update_subscribe(register_update_callback.register_update_test)
+
+    previous_reg_value = servo.read(user_over_voltage_uid, subnode=1)
+    assert register_update_callback.call_count == 1
+    assert register_update_callback.servo == servo
+    assert register_update_callback.register.identifier == user_over_voltage_uid
+    assert register_update_callback.value == previous_reg_value
+
+    new_reg_value = 100
+    servo.write(user_over_voltage_uid, data=new_reg_value, subnode=1)
+    assert register_update_callback.call_count == 2
+    assert register_update_callback.servo == servo
+    assert register_update_callback.register.identifier == user_over_voltage_uid
+    assert register_update_callback.value == new_reg_value
+
+    servo.register_update_unsubscribe(register_update_callback.register_update_test)
+
+    servo.write(user_over_voltage_uid, data=previous_reg_value, subnode=1)

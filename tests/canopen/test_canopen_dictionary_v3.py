@@ -1,9 +1,11 @@
-import pytest
 from os.path import join as join_path
 
-from ingenialink.exceptions import ILDictionaryParseError
+import pytest
+
 from ingenialink import CanopenRegister
-from ingenialink.dictionary import Interface, SubnodeType, DictionaryV3
+from ingenialink.bitfield import BitField
+from ingenialink.dictionary import DictionaryV3, Interface, SubnodeType
+from ingenialink.exceptions import ILDictionaryParseError
 
 path_resources = "./tests/resources/canopen/"
 dict_can_v3 = "test_dict_can_v3.0.xdf"
@@ -48,10 +50,14 @@ def test_read_dictionary_registers():
         0: [
             "DRV_DIAG_ERROR_LAST_COM",
             "DRV_AXIS_NUMBER",
+            "CIA301_COMMS_RPDO1",
+            "CIA301_COMMS_RPDO1_1",
+            "CIA301_COMMS_RPDO1_2",
+            "CIA301_COMMS_RPDO1_3",
             "CIA301_COMMS_RPDO1_MAP",
             "CIA301_COMMS_RPDO1_MAP_1",
         ],
-        1: ["COMMU_ANGLE_SENSOR"],
+        1: ["COMMU_ANGLE_SENSOR", "DRV_STATE_CONTROL"],
     }
 
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
@@ -101,7 +107,7 @@ def test_read_dictionary_errors():
 
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
 
-    assert [error for error in canopen_dict.errors.errors] == expected_errors
+    assert [error for error in canopen_dict.errors] == expected_errors
 
 
 @pytest.mark.no_connection
@@ -156,7 +162,7 @@ def test_safety_pdo_not_implemented():
 @pytest.mark.no_connection
 def test_wrong_dictionary():
     with pytest.raises(
-        ILDictionaryParseError, match="Dictionary can not be used for the chose communication"
+        ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication"
     ):
         DictionaryV3("./tests/resources/test_dict_ecat_eoe_v3.0.xdf", Interface.CAN)
 
@@ -171,10 +177,12 @@ def test_register_default_values(dictionary_path):
             "DRV_AXIS_NUMBER": 1,
             "CIA301_COMMS_RPDO1_MAP": 1,
             "CIA301_COMMS_RPDO1_MAP_1": 268451936,
+            "CIA301_COMMS_RPDO1": 3,
+            "CIA301_COMMS_RPDO1_1": 2,
+            "CIA301_COMMS_RPDO1_2": 1,
+            "CIA301_COMMS_RPDO1_3": 0,
         },
-        1: {
-            "COMMU_ANGLE_SENSOR": 4,
-        },
+        1: {"COMMU_ANGLE_SENSOR": 4, "DRV_STATE_CONTROL": 0},
         2: {
             "COMMU_ANGLE_SENSOR": 4,
         },
@@ -195,9 +203,15 @@ def test_register_description(dictionary_path):
             "DRV_AXIS_NUMBER": "",
             "CIA301_COMMS_RPDO1_MAP": "",
             "CIA301_COMMS_RPDO1_MAP_1": "",
+            "CIA301_COMMS_RPDO1": "",
+            "CIA301_COMMS_RPDO1_1": "COB-Id used",
+            "CIA301_COMMS_RPDO1_2": "Transmission type",
+            "CIA301_COMMS_RPDO1_3": "Inhibit time",
         },
         1: {
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
+            "DRV_STATE_CONTROL": "Parameter to manage the drive state machine. "
+            "It is compliant with DS402.",
         },
         2: {
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
@@ -210,3 +224,32 @@ def test_register_description(dictionary_path):
                 register.description
                 == expected_description_per_subnode[subnode][register.identifier]
             )
+
+
+def test_register_bitfields():
+    dictionary_path = join_path(path_resources, dict_can_v3)
+    canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
+
+    for subnode, registers in canopen_dict._registers.items():
+        for register in registers.values():
+            if register.identifier == "DRV_STATE_CONTROL":
+                assert register.bitfields == {
+                    "SWITCH_ON": BitField.bit(0),
+                    "VOLTAGE_ENABLE": BitField.bit(1),
+                    "QUICK_STOP": BitField.bit(2),
+                    "ENABLE_OPERATION": BitField.bit(3),
+                    "RUN_SET_POINT_MANAGER": BitField.bit(4),
+                    "FAULT_RESET": BitField.bit(7),
+                    "OPERATION_MODE_SPECIFIC": BitField(8, 15),
+                }
+            else:
+                assert register.bitfields is None
+
+
+@pytest.mark.no_connection
+def test_register_is_node_id_dependent():
+    dictionary_path = join_path(path_resources, dict_can_v3)
+    canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
+    assert canopen_dict.registers(0)["CIA301_COMMS_RPDO1_1"].is_node_id_dependent
+    assert not canopen_dict.registers(0)["CIA301_COMMS_RPDO1_2"].is_node_id_dependent
+    assert not canopen_dict.registers(0)["CIA301_COMMS_RPDO1_3"].is_node_id_dependent

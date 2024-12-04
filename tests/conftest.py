@@ -1,5 +1,5 @@
+import itertools
 import json
-import time
 
 import pytest
 import rpyc
@@ -8,6 +8,7 @@ from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.eoe.network import EoENetwork
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethernet.network import EthernetNetwork
+from ingenialink.virtual.network import VirtualNetwork
 from virtual_drive.core import VirtualDrive
 
 DEFAULT_PROTOCOL = "no_connection"
@@ -24,6 +25,12 @@ def pytest_addoption(parser):
         choices=ALLOW_PROTOCOLS,
     )
     parser.addoption("--slave", type=int, default=0, help="Slave index in config.json")
+    parser.addoption(
+        "--job_name",
+        action="store",
+        default="ingenialink - Unknown",
+        help="Name of the executing job. Will be set to rack service to have more info of the logs",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -34,7 +41,7 @@ def read_config(request):
         contents = json.load(fp)
     slave = request.config.getoption("--slave")
     for key in contents:
-        if type(contents[key]) is list:
+        if isinstance(contents[key], list) and len(contents[key]) > slave:
             contents[key] = contents[key][slave]
     return contents
 
@@ -118,21 +125,58 @@ def connect_to_slave(pytestconfig, read_config):
 
 @pytest.fixture()
 def virtual_drive():
-    test_port = 81
-    server = VirtualDrive(test_port)
+    server = VirtualDrive(81)
     server.start()
-    net = EthernetNetwork()
-    virtual_servo = net.connect_to_slave(server.ip, server.dictionary_path, server.port)
+    net = VirtualNetwork()
+    virtual_servo = net.connect_to_slave(server.dictionary_path, server.port)
     yield server, virtual_servo
     server.stop()
 
 
+@pytest.fixture()
+def virtual_drive_custom_dict():
+    servers: list[VirtualDrive] = []
+    next_port = itertools.count(81)
+
+    def connect(dictionary):
+        server = VirtualDrive(next(next_port), dictionary)
+        servers.append(server)
+        server.start()
+        net = VirtualNetwork()
+        servo = net.connect_to_slave(server.dictionary_path, server.port)
+        return server, net, servo
+
+    yield connect
+
+    for server in servers:
+        if server.is_alive():
+            server.stop()
+
+
 @pytest.fixture(scope="session")
-def connect_to_rack_service():
+def connect_to_rack_service(request):
     rack_service_port = 33810
     client = rpyc.connect("localhost", rack_service_port, config={"sync_request_timeout": None})
+    client.root.set_job_name(request.config.getoption("--job_name"))
     yield client.root
     client.close()
+
+
+@pytest.fixture(scope="session")
+def get_configuration_from_rack_service(pytestconfig, read_config, connect_to_rack_service):
+    protocol = pytestconfig.getoption("--protocol")
+    protocol_contents = read_config[protocol]
+    drive_identifier = protocol_contents["identifier"]
+    client = connect_to_rack_service
+    config = client.exposed_get_configuration()
+    drive_idx = None
+    for idx, drive in enumerate(config.drives):
+        if drive_identifier == drive.identifier:
+            drive_idx = idx
+            break
+    if drive_idx is None:
+        pytest.fail(f"The drive {drive_identifier} cannot be found on the rack's configuration.")
+    return drive_idx, config.drives
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -141,17 +185,9 @@ def load_firmware(pytestconfig, read_config, request):
     if protocol == DEFAULT_PROTOCOL:
         return
     protocol_contents = read_config[protocol]
-    drive_identifier = protocol_contents["identifier"]
-    drive_idx = None
+    drive_idx, config = request.getfixturevalue("get_configuration_from_rack_service")
+    drive = config[drive_idx]
     client = request.getfixturevalue("connect_to_rack_service")
-    config = client.exposed_get_configuration()
-    for idx, drive in enumerate(config.drives):
-        if drive_identifier == drive.identifier:
-            drive_idx = idx
-            break
-    if drive_idx is None:
-        pytest.fail(f"The drive {drive_identifier} cannot be found on the rack's configuration.")
-    drive = config.drives[drive_idx]
     client.exposed_firmware_load(
         drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
     )

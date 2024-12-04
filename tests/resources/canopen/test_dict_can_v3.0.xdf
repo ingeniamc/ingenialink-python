@@ -42,6 +42,30 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject >
+					<CANopenObject index="0x1400" subnode="0">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u8" id="CIA301_COMMS_RPDO1" cyclic="CONFIG" desc="" default="0300" cat_id="CIA402">
+								<Labels>
+									<Label lang="en_US">Highest subindex supported</Label>
+								</Labels>
+							</Subitem>
+							<Subitem subindex="1" address_type="NVM" access="rw" dtype="u32" id="CIA301_COMMS_RPDO1_1" cyclic="CONFIG" desc="COB-Id used" default="02000000" cat_id="CIA402" is_node_id_dependent="true">
+								<Labels>
+									<Label lang="en_US">COB-Id used</Label>
+								</Labels>
+							</Subitem>
+							<Subitem subindex="2" address_type="NVM" access="rw" dtype="u8" id="CIA301_COMMS_RPDO1_2" cyclic="CONFIG" desc="Transmission type" default="0100" cat_id="CIA402" is_node_id_dependent="false">
+								<Labels>
+									<Label lang="en_US">Transmission type</Label>
+								</Labels>
+							</Subitem>
+							<Subitem subindex="3" address_type="NVM" access="rw" dtype="u16" id="CIA301_COMMS_RPDO1_3" cyclic="CONFIG" desc="Inhibit time" default="000000" cat_id="CIA402">
+								<Labels>
+									<Label lang="en_US">Inhibit time</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject >
 					<CANopenObject index="0x1600" subnode="0" id="CIA301_COMMS_RPDO1_MAP">
 						<Labels>
 							<Label lang="en_US">RPDO 1 mapping parameter</Label>
@@ -77,6 +101,24 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject >
+					<CANopenObject index="0x2010" subnode="1">
+            <Subitems>
+              <Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="u16" id="DRV_STATE_CONTROL" cyclic="CYCLIC_RX" desc="Parameter to manage the drive state machine. It is compliant with DS402." units="none" default="0000" cat_id="TARGET">
+                <Labels>
+                  <Label lang="en_US">Control word</Label>
+                </Labels>
+                <BitFields>
+                  <BitField name="SWITCH_ON" start="0" end="0"/>
+                  <BitField name="VOLTAGE_ENABLE" start="1" end="1"/>
+                  <BitField name="QUICK_STOP" start="2" end="2"/>
+                  <BitField name="ENABLE_OPERATION" start="3" end="3"/>
+                  <BitField name="RUN_SET_POINT_MANAGER" start="4" end="4"/>
+                  <BitField name="FAULT_RESET" start="7" end="7"/>
+									<BitField name="OPERATION_MODE_SPECIFIC" start="8" end="15"/>
+                </BitFields>
+              </Subitem>
+            </Subitems>
+          </CANopenObject>
 				</CANopenObjects>
 				<Errors>
 					<Error id="0x00003280" affected_module="Power stage" error_type="cyclic">

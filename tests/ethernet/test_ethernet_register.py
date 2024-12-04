@@ -1,7 +1,7 @@
 import pytest
 
 from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY, dtypes_ranges
+from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY
 
 
 @pytest.mark.no_connection
@@ -44,4 +44,4 @@ def test_getters_ethernet_register():
     assert register.address_type == reg_kwargs["address_type"]
     assert register.enums == reg_kwargs["enums"]
     assert register.enums_count == 2
-    assert register.storage_valid == True
+    assert register.storage_valid

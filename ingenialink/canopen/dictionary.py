@@ -17,7 +17,7 @@ class CanopenDictionaryV2(DictionaryV2):
 
     """
 
-    MONITORING_DISTURBANCE_REGISTERS: List[CanopenRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: List[CanopenRegister] = [
         CanopenRegister(
             identifier="MON_DATA_VALUE",
             idx=0x58B2,
@@ -68,6 +68,7 @@ class CanopenDictionaryV2(DictionaryV2):
                 scat_id=current_read_register.scat_id,
                 internal_use=current_read_register.internal_use,
                 address_type=current_read_register.address_type,
+                bitfields=current_read_register.bitfields,
             )
 
             return canopen_register

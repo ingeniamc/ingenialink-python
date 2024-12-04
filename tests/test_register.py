@@ -5,29 +5,13 @@ import pytest
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
-from ingenialink.register import REG_ACCESS, REG_DTYPE, REG_PHY, Register, dtypes_ranges
-from ingenialink.virtual.network import VirtualNetwork
-from virtual_drive.core import VirtualDrive
-
-TEST_PORT = 82
-server = VirtualDrive(TEST_PORT)
-
-
-@pytest.fixture(scope="function")
-def stop_virtual_drive():
-    yield
-    server.stop()
+from ingenialink.register import REG_ACCESS, REG_DTYPE, REG_PHY, Register
 
 
 @pytest.fixture
-def connect_virtual_drive_with_bool_register():
+def connect_virtual_drive_with_bool_register(virtual_drive_custom_dict):
     def connect(dictionary):
-        global server
-        server.stop()
-        server = VirtualDrive(TEST_PORT, dictionary)
-        server.start()
-        net = VirtualNetwork()
-        servo = net.connect_to_slave(dictionary, TEST_PORT)
+        server, net, servo = virtual_drive_custom_dict(dictionary)
 
         boolean_reg_uid = "TEST_BOOLEAN"
         bool_register = EthernetRegister(
@@ -83,7 +67,7 @@ def test_getters_register():
     assert register.internal_use == reg_kwargs["internal_use"]
     assert register.enums == reg_kwargs["enums"]
     assert register.enums_count == 2
-    assert register.storage_valid == True
+    assert register.storage_valid
 
 
 @pytest.mark.no_connection
@@ -131,13 +115,13 @@ def test_register_get_storage():
     dtype = REG_DTYPE.FLOAT
     storage = 123
     register = Register(dtype, access, storage=storage)
-    assert type(register.storage) is float
+    assert isinstance(register.storage, float)
 
     # parse int storage
     dtype = REG_DTYPE.U8
     storage = 123.1
     register = Register(dtype, access, storage=storage)
-    assert type(register.storage) is int
+    assert isinstance(register.storage, int)
     assert register.storage == 123
 
 
@@ -154,30 +138,24 @@ def test_register_set_storage():
     assert register.storage == storage
 
 
+@pytest.mark.parametrize(
+    "dtype, reg_range, expected_range, reg_type",
+    [
+        (REG_DTYPE.U8, (0, 100), (0, 100), int),
+        (REG_DTYPE.FLOAT, (0.0, 1.0), (0.0, 1.0), float),
+        (REG_DTYPE.S16, (-100, None), (-100, 32767), int),
+        (REG_DTYPE.U32, (None, 100), (0, 100), int),
+        (REG_DTYPE.S32, (None, None), (-2147483648, 2147483647), int),
+        (REG_DTYPE.FLOAT, (None, None), (-3.4e38, 3.4e38), float),
+    ],
+)
 @pytest.mark.no_connection
-def test_register_range():
-    access = REG_ACCESS.RW
+def test_register_range(dtype, reg_range, expected_range, reg_type):
+    register = Register(dtype, REG_ACCESS.RW, reg_range=reg_range)
 
-    # custom range
-    dtype = REG_DTYPE.U8
-    range = (0, 100)
-    register = Register(dtype, access, reg_range=range)
-    assert type(register.range[0]) is int
-    assert type(register.range[1]) is int
-    assert register.range == range
-
-    # custom range float
-    dtype = REG_DTYPE.FLOAT
-    range = (1.11, 100.25)
-    register = Register(dtype, access, reg_range=range)
-    assert type(register.range[0]) is float
-    assert type(register.range[1]) is float
-    assert register.range == range
-
-    # default range
-    dtype = REG_DTYPE.U8
-    register = Register(dtype, access)
-    assert register.range == (dtypes_ranges[dtype]["min"], dtypes_ranges[dtype]["max"])
+    assert type(register.range[0]) is reg_type
+    assert type(register.range[1]) is reg_type
+    assert register.range == expected_range
 
 
 @pytest.mark.no_connection
@@ -222,7 +200,6 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
         (True, True),
     ],
 )
-@pytest.mark.usefixtures("stop_virtual_drive")
 @pytest.mark.no_connection
 def test_bit_register(connect_virtual_drive_with_bool_register, write_value, expected_read_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
@@ -238,7 +215,6 @@ def test_bit_register(connect_virtual_drive_with_bool_register, write_value, exp
     [2, "one"],
 )
 @pytest.mark.no_connection
-@pytest.mark.usefixtures("stop_virtual_drive")
 def test_bit_register_write_invalid_value(connect_virtual_drive_with_bool_register, write_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
     servo, _ = connect_virtual_drive_with_bool_register(dictionary)

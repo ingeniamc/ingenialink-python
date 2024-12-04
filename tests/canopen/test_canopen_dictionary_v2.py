@@ -1,9 +1,9 @@
-import pytest
 from os.path import join as join_path
 
-from ingenialink.dictionary import Interface, SubnodeType
-from ingenialink.canopen.dictionary import CanopenDictionaryV2
+import pytest
 
+from ingenialink.canopen.dictionary import CanopenDictionaryV2
+from ingenialink.dictionary import Interface, SubnodeType
 
 path_resources = "./tests/resources/canopen/"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
@@ -115,7 +115,7 @@ def test_read_dictionary_errors():
 
     canopen_dict = CanopenDictionaryV2(dictionary_path)
 
-    assert [error for error in canopen_dict.errors.errors] == expected_errors
+    assert [error for error in canopen_dict.errors] == expected_errors
 
 
 @pytest.mark.no_connection

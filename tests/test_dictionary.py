@@ -7,14 +7,84 @@ from xml.dom import minidom
 
 import pytest
 
-from ingenialink.dictionary import Interface, DictionaryV3
+from ingenialink.canopen.dictionary import CanopenDictionaryV2
+from ingenialink.dictionary import (
+    DictionaryDescriptor,
+    DictionaryV2,
+    DictionaryV3,
+    ILDictionaryParseError,
+    Interface,
+)
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
-from ingenialink.canopen.dictionary import CanopenDictionaryV2
 from ingenialink.servo import DictionaryFactory
 
 PATH_RESOURCE = "./tests/resources/"
 PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
+
+
+@pytest.mark.parametrize(
+    "dict_path, interface, fw_version, product_code, part_number, revision_number",
+    [
+        (
+            f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf",
+            Interface.CAN,
+            "2.4.1",
+            61939713,
+            "EVS-NET-C",
+            196617,
+        ),
+        (
+            f"{PATH_RESOURCE}comkit/com-kit.xdf",
+            Interface.ETH,
+            "1.4.7",
+            123456789,
+            None,
+            12345,
+        ),
+        (
+            f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf",
+            Interface.ECAT,
+            "2.0.1",
+            57745409,
+            "CAP-NET-E",
+            196635,
+        ),
+        (
+            f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf",
+            Interface.ETH,
+            "2.0.1",
+            57745409,
+            "CAP-NET-E",
+            196635,
+        ),
+    ],
+)
+def test_dictionary_description(
+    dict_path, interface, fw_version, product_code, part_number, revision_number
+):
+    dict_description = DictionaryFactory.get_dictionary_description(dict_path, interface)
+    assert dict_description == DictionaryDescriptor(
+        firmware_version=fw_version,
+        product_code=product_code,
+        part_number=part_number,
+        revision_number=revision_number,
+    )
+
+
+@pytest.mark.parametrize(
+    "dict_path, interface, raises",
+    [
+        (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.ECAT, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}canopen/test_dict_can.xdf", Interface.ECAT, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.CAN, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.CAN, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}test_no_dict.xdf", Interface.ECAT, FileNotFoundError),
+    ],
+)
+def test_dictionary_description_fail(dict_path, interface, raises):
+    with pytest.raises(raises):
+        DictionaryFactory.get_dictionary_description(dict_path, interface)
 
 
 @pytest.mark.parametrize("dictionary_class", [CanopenDictionaryV2, EthernetDictionaryV2])
@@ -30,7 +100,7 @@ def test_dictionary_v2_image_none(dictionary_class):
     with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
-    root.remove(root.find(dictionary_class.DICT_IMAGE))
+    root.remove(root.find(DictionaryV2._DictionaryV2__DICT_IMAGE))
     xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
         indent="  ", newl="", encoding="UTF-8"
     )
@@ -88,12 +158,12 @@ def test_merge_dictionaries_errors():
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
     coco_dict = EthernetDictionaryV2(coco_dict_path)
     moco_dict = EthernetDictionaryV2(moco_dict_path)
-    coco_num_errors = len(coco_dict.errors.errors)
+    coco_num_errors = len(coco_dict.errors)
     assert coco_num_errors == 1
-    moco_num_errors = len(moco_dict.errors.errors)
+    moco_num_errors = len(moco_dict.errors)
     assert moco_num_errors == 1
     merged_dict = coco_dict + moco_dict
-    merged_dict_num_errors = len(merged_dict.errors.errors)
+    merged_dict_num_errors = len(merged_dict.errors)
     assert merged_dict_num_errors == coco_num_errors + moco_num_errors
 
 
@@ -132,6 +202,35 @@ def test_merge_dictionaries_image():
 
 
 @pytest.mark.no_connection
+def test_merge_dictionaries_new_instance():
+    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
+    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    dict_a = EthernetDictionaryV2(coco_dict_path)
+    dict_b = EthernetDictionaryV2(moco_dict_path)
+    dict_c = dict_a + dict_b
+
+    assert id(dict_c) != id(dict_a)
+    assert id(dict_c) != id(dict_b)
+
+    dict_d = dict_b + dict_a
+
+    assert id(dict_d) != id(dict_a)
+    assert id(dict_d) != id(dict_b)
+
+    # The registers should reference different objects
+    dict_a_reg_subnode_0 = dict_a.registers(0)["DRV_AXIS_NUMBER"]
+    dict_b_reg_subnode_1 = dict_b.registers(1)["DRV_STATE_STATUS"]
+    dict_c_reg_subnode_0 = dict_c.registers(0)["DRV_AXIS_NUMBER"]
+    dict_c_reg_subnode_1 = dict_c.registers(1)["DRV_STATE_STATUS"]
+    assert id(dict_a_reg_subnode_0) != id(dict_c_reg_subnode_0)
+    assert id(dict_b_reg_subnode_1) != id(dict_c_reg_subnode_1)
+
+    # Enum attributes should have the same reference
+    assert id(dict_a.interface) == id(dict_c.interface)
+    assert id(dict_b.interface) == id(dict_c.interface)
+
+
+@pytest.mark.no_connection
 def test_merge_dictionaries_order_invariant():
     coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
@@ -139,7 +238,7 @@ def test_merge_dictionaries_order_invariant():
     dict_b = EthernetDictionaryV2(moco_dict_path) + EthernetDictionaryV2(coco_dict_path)
     assert dict_a.registers(0).keys() == dict_b.registers(0).keys()
     assert dict_a.registers(1).keys() == dict_b.registers(1).keys()
-    assert dict_a.errors.errors == dict_b.errors.errors
+    assert dict_a.errors == dict_b.errors
     assert dict_a.product_code == dict_b.product_code
     assert dict_a.revision_number == dict_b.revision_number
     assert dict_a.firmware_version == dict_b.firmware_version
@@ -190,7 +289,7 @@ def test_dictionary_no_product_code(xml_attribute, class_attribute):
     with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
-    device = root.find(EthernetDictionaryV2.DICT_ROOT_DEVICE)
+    device = root.find(DictionaryV2._DictionaryV2__DICT_ROOT_DEVICE)
     device.attrib.pop(xml_attribute)
     xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
         indent="  ", newl="", encoding="UTF-8"

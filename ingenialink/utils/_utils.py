@@ -15,6 +15,7 @@ logger = ingenialogger.get_logger(__name__)
 
 POLLING_MAX_TRIES = 5  # Seconds
 
+# Mapping type -> [Number of bytes, signedness]
 dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
     REG_DTYPE.U8: (1, False),
     REG_DTYPE.S8: (1, True),
@@ -191,12 +192,17 @@ class INT_SIZES(Enum):
     U64_MAX = 18446744073709551615
 
 
-def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, str]:
+def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, str, bytes]:
     """Convert data in bytes to corresponding dtype.
+
+    Bytes have to be ordered in LSB.
 
     Args:
         data: data to convert
         dtype: output dtype
+
+    Returns:
+        Value formatted in data type
 
     Raises:
         ILValueError: If data can't be decoded in utf-8
@@ -215,6 +221,8 @@ def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, s
             value = data.split(b"\x00")[0].decode("utf-8")
         except UnicodeDecodeError as e:
             raise ILValueError(f"Can't decode {e.object!r} to utf-8 string") from e
+    elif dtype == REG_DTYPE.BYTE_ARRAY_512:
+        return data
     else:
         value = int.from_bytes(data, "little", signed=signed)
     if dtype == REG_DTYPE.BOOL:
@@ -226,9 +234,15 @@ def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, s
 
 def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: REG_DTYPE) -> bytes:
     """Convert data in dtype to bytes.
+
+    Bytes will be ordered in LSB.
+
     Args:
         data: Data to convert.
         dtype: Data type.
+
+    Returns:
+        Value formatted to bytes
     """
     if (
         dtype == REG_DTYPE.BOOL

@@ -10,6 +10,7 @@ from xml.dom import minidom
 import ingenialogger
 import numpy as np
 
+from ingenialink.bitfield import BitField
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
@@ -19,7 +20,16 @@ from ingenialink.constants import (
     PASSWORD_STORE_ALL,
     PASSWORD_STORE_RESTORE_SUB_0,
 )
-from ingenialink.dictionary import Dictionary, DictionaryV3, Interface, SubnodeType
+from ingenialink.dictionary import (
+    Dictionary,
+    DictionaryDescriptor,
+    DictionaryError,
+    DictionaryV2,
+    DictionaryV3,
+    Interface,
+    SubnodeType,
+)
+from ingenialink.emcy import EmergencyMessage
 from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
 from ingenialink.enums.servo import SERVO_STATE
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
@@ -85,6 +95,31 @@ class DictionaryFactory:
                 return EthernetDictionaryV2(dictionary_path)
             if interface == Interface.VIRTUAL:
                 return VirtualDictionary(dictionary_path)
+        raise NotImplementedError(f"Dictionary version {major_version} is not supported")
+
+    @classmethod
+    def get_dictionary_description(
+        cls, dictionary_path: str, interface: Interface
+    ) -> DictionaryDescriptor:
+        """Quick function to get target dictionary description
+
+        Args:
+            dictionary_path: target dictionary path
+            interface: device interface
+
+        Returns:
+            Target dictionary description
+
+        Raises:
+            FileNotFoundError: dictionary path does not exist.
+            ILDictionaryParseError: xdf is not well-formed.
+            NotImplementedError: Dictionary version is not supported.
+        """
+        major_version, minor_version = cls.__get_dictionary_version(dictionary_path)
+        if major_version == 3:
+            return DictionaryV3.get_description(dictionary_path, interface)
+        if major_version == 2:
+            return DictionaryV2.get_description(dictionary_path, interface)
         raise NotImplementedError(f"Dictionary version {major_version} is not supported")
 
     @classmethod
@@ -233,7 +268,7 @@ class Servo:
         self.units_acc = None
         """SERVO_UNITS_ACC: Acceleration units."""
         self._lock = threading.Lock()
-        self.__observers_servo_state: List[Callable[[SERVO_STATE, None, int], Any]] = []
+        self.__observers_servo_state: List[Callable[[SERVO_STATE, int], Any]] = []
         self.__listener_servo_status: Optional[ServoStatusListener] = None
         self.__monitoring_data: Dict[int, List[Union[int, float]]] = {}
         self.__monitoring_size: Dict[int, int] = {}
@@ -241,6 +276,9 @@ class Servo:
         self.__disturbance_data = bytes()
         self.__disturbance_size: Dict[int, int] = {}
         self.__disturbance_dtype: Dict[int, str] = {}
+        self.__register_update_observers: List[
+            Callable[["Servo", Register, Union[int, float, str, bytes]], None]
+        ] = []
         if servo_status_listener:
             self.start_status_listener()
         else:
@@ -429,29 +467,62 @@ class Servo:
 
         access_ops = {value: key for key, value in self.dictionary.access_xdf_options.items()}
         dtype_ops = {value: key for key, value in self.dictionary.dtype_xdf_options.items()}
-
-        if subnode is None:
-            subnodes = list(self.dictionary.subnodes)
-        else:
-            subnodes = [subnode]
-
-        for subnode in subnodes:
-            registers_dict = self.dictionary.registers(subnode=subnode)
-            for reg_id, register in registers_dict.items():
-                if (register.access != REG_ACCESS.RW) or (
-                    register.address_type == REG_ADDRESS_TYPE.NVM_NONE
-                ):
+        for node, configuration_registers in self._registers_to_save_in_configuration_file(
+            subnode
+        ).items():
+            for configuration_register in configuration_registers:
+                if configuration_register.identifier is None:
                     continue
                 register_xml = ET.SubElement(registers, "Register")
-                register_xml.set("access", access_ops[register.access])
-                register_xml.set("dtype", dtype_ops[register.dtype])
-                register_xml.set("id", reg_id)
-                self.__update_register_dict(register_xml, subnode)
-                register_xml.set("subnode", str(subnode))
+                register_xml.set("access", access_ops[configuration_register.access])
+                register_xml.set("dtype", dtype_ops[configuration_register.dtype])
+                register_xml.set("id", configuration_register.identifier)
+                self.__update_register_dict(register_xml, node)
+                register_xml.set("subnode", str(node))
 
         dom = minidom.parseString(ET.tostring(tree, encoding="utf-8"))
         with open(config_file, "wb") as f:
             f.write(dom.toprettyxml(indent="\t").encode())
+
+    def _is_register_valid_for_configuration_file(self, register: Register) -> bool:
+        """Check if a register is valid for the configuration file.
+
+        Args:
+            register: The register object.
+
+        Returns:
+            True if the register can be used for the configuration file. False otherwise.
+
+        """
+        if (register.access != REG_ACCESS.RW) or (
+            register.address_type == REG_ADDRESS_TYPE.NVM_NONE
+        ):
+            return False
+        return True
+
+    def _registers_to_save_in_configuration_file(
+        self, subnode: Optional[int]
+    ) -> Dict[int, List[Register]]:
+        """Generate the registers to be used in the configuration file.
+
+        Args:
+            subnode: Subnode of the axis.
+
+        Returns:
+            A dictionary with a list of valid registers per subnode.
+
+        """
+        if subnode is None:
+            subnodes = list(self.dictionary.subnodes)
+        else:
+            subnodes = [subnode]
+        registers: Dict[int, List[Register]] = {subnode: [] for subnode in subnodes}
+        for subnode in subnodes:
+            registers_dict = self.dictionary.registers(subnode=subnode)
+            for reg_id, register in registers_dict.items():
+                if self._is_register_valid_for_configuration_file(register):
+                    registers[subnode].append(register)
+        return registers
 
     @staticmethod
     def _read_configuration_file(config_file: str) -> Tuple[ET.Element, List[ET.Element]]:
@@ -500,7 +571,6 @@ class Servo:
 
         Raises:
             ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
 
         """
         if subnode is None:
@@ -532,7 +602,6 @@ class Servo:
 
         Raises:
             ILError: Invalid subnode.
-            ILObjectNotExist: Failed to write to the registers.
 
         """
         r = 0
@@ -621,7 +690,10 @@ class Servo:
             # Check state and command action to reach enabled
             cmd = constants.IL_MC_PDS_CMD_EO
             if state == SERVO_STATE.FAULT:
-                raise ILStateError(None)
+                raise ILStateError(
+                    f"The subnode {subnode} could not be enabled within {timeout} ms. "
+                    f"The current subnode state is {state}"
+                )
             elif state == SERVO_STATE.NRDY:
                 cmd = constants.IL_MC_PDS_CMD_DV
             elif state == SERVO_STATE.DISABLED:
@@ -940,7 +1012,7 @@ class Servo:
         self.__disturbance_size = {}
         self.__disturbance_dtype = {}
 
-    def subscribe_to_status(self, callback: Callable[[SERVO_STATE, None, int], Any]) -> None:
+    def subscribe_to_status(self, callback: Callable[[SERVO_STATE, int], Any]) -> None:
         """Subscribe to state changes.
 
         Args:
@@ -955,7 +1027,7 @@ class Servo:
             return
         self.__observers_servo_state.append(callback)
 
-    def unsubscribe_from_status(self, callback: Callable[[SERVO_STATE, None, int], Any]) -> None:
+    def unsubscribe_from_status(self, callback: Callable[[SERVO_STATE, int], Any]) -> None:
         """Unsubscribe from state changes.
 
         Args:
@@ -1054,7 +1126,7 @@ class Servo:
 
         """
         for callback in self.__observers_servo_state:
-            callback(state, None, subnode)
+            callback(state, subnode)
 
     def __read_coco_moco_register(self, register_coco: str, register_moco: str) -> str:
         """Reads the COCO register and if it does not exist,
@@ -1217,11 +1289,12 @@ class Servo:
 
         if _reg.access == REG_ACCESS.RO:
             raise ILAccessError("Register is Read-only")
-        if not isinstance(data, bytes):
-            value = convert_dtype_to_bytes(data, _reg.dtype)
+        if isinstance(data, bytes):
+            data_bytes = data
         else:
-            value = data
-        self._write_raw(_reg, value, **kwargs)
+            data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
+        self._write_raw(_reg, data_bytes, **kwargs)
+        self._notify_register_update(_reg, data)
 
     def read(
         self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
@@ -1247,10 +1320,112 @@ class Servo:
             raise ILAccessError("Register is Write-only")
 
         raw_read = self._read_raw(_reg, **kwargs)
-        if _reg.dtype == REG_DTYPE.BYTE_ARRAY_512:
-            return raw_read
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
+        self._notify_register_update(_reg, value)
         return value
+
+    def read_bitfields(
+        self,
+        reg: Union[str, Register],
+        subnode: int = 1,
+        bitfields: Optional[Dict[str, "BitField"]] = None,
+    ) -> Dict[str, int]:
+        """Read bitfields of a register.
+
+        Args:
+            reg: Register.
+            subnode: Target subnode of the drive.
+            bitfields: Optional bitfield specification.
+                If not it will be used from the register definition (if Any)
+
+        Returns:
+            Dictionary with values of the bitfields.
+            Key is the name of the bitfield.
+            Value is the value parsed.
+        """
+        _reg = self._get_reg(reg, subnode)
+
+        if bitfields is None:
+            if _reg.bitfields is None:
+                raise ValueError(f"Register {_reg.identifier} does not have bitfields")
+            bitfields = _reg.bitfields
+        value = self.read(_reg, subnode)
+        if not isinstance(value, int):
+            raise TypeError("Bitfield only work with integer registers")
+        return BitField.parse_bitfields(bitfields, value)
+
+    def write_bitfields(
+        self,
+        reg: Union[str, Register],
+        values: Dict[str, int],
+        subnode: int = 1,
+        bitfields: Optional[Dict[str, "BitField"]] = None,
+    ) -> None:
+        """Write bitfields of a register.
+
+        Only the values specified will be updated.
+        The register will be read first to prevent overwriting other bits.
+
+        Args:
+            reg: Register
+            values: Dictionary with values of the bitfields.
+                Key is the name of the bitfield.
+                Value is the value to set.
+            subnode: Target subnode of the drive.
+            bitfields: Optional bitfield specification.
+                If not it will be used from the register definition (if Any)
+        """
+        _reg = self._get_reg(reg, subnode)
+        if bitfields is None:
+            if _reg.bitfields is None:
+                raise ValueError(f"Register {_reg.identifier} does not have bitfields")
+            bitfields = _reg.bitfields
+
+        previous_value = self.read(_reg, subnode)
+        if not isinstance(previous_value, int):
+            raise TypeError("Bitfield only work with integer registers")
+
+        new_value = BitField.set_bitfields(bitfields, values, previous_value)
+        self.write(_reg, new_value, subnode)
+
+    def register_update_subscribe(
+        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None]
+    ) -> None:
+        """Subscribe to register updates.
+        The callback will be called when a read/write operation occurs.
+
+        Args:
+            callback: Callable that takes a Servo and a Register instance as arguments.
+
+        """
+        self.__register_update_observers.append(callback)
+
+    def register_update_unsubscribe(
+        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None]
+    ) -> None:
+        """Unsubscribe to register updates.
+
+        Args:
+            callback: Subscribed callback.
+
+        """
+        self.__register_update_observers.remove(callback)
+
+    def _notify_register_update(self, reg: Register, data: Union[int, float, str, bytes]) -> None:
+        """Notify a register update to the observers.
+        The updated value is stored in the register's storage attribute.
+
+        Args:
+            reg: Updated register.
+            data: Updated value.
+
+        """
+        for callback in self.__register_update_observers:
+            callback(
+                self,
+                reg,
+                data,
+            )
 
     def replace_dictionary(self, dictionary: str) -> None:
         """Deletes and creates a new instance of the dictionary.
@@ -1325,6 +1500,24 @@ class Servo:
         """
         raise NotImplementedError
 
+    def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
+        """Subscribe to emergency messages.
+
+        Args:
+            callback: Callable that takes an EmergencyMessage instance as argument.
+
+        """
+        raise NotImplementedError
+
+    def emcy_unsubscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
+        """Unsubscribe from emergency messages.
+
+        Args:
+            callback: Subscribed callback.
+
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def _read_raw(self, reg: Register) -> bytes:
         """Read raw bytes from a target register.
@@ -1376,12 +1569,9 @@ class Servo:
         return self.dictionary.subnodes
 
     @property
-    def errors(self) -> Dict[int, List[Optional[str]]]:
+    def errors(self) -> Dict[int, DictionaryError]:
         """Errors."""
-        if self.dictionary.errors:
-            return self.dictionary.errors.errors
-        else:
-            return {}
+        return self.dictionary.errors
 
     @property
     def info(self) -> Dict[str, Union[None, str, int]]:
