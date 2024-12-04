@@ -129,8 +129,7 @@ class EthercatDictionaryV2(DictionaryV2):
         ),
     ]
 
-    def __init__(self, dictionary_path: str):
-        super().__init__(dictionary_path, Interface.ECAT)
+    interface = Interface.ECAT
 
     @staticmethod
     def __get_cia_offset(subnode: int) -> int:

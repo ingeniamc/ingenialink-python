@@ -87,17 +87,29 @@ def test_dictionary_description_fail(dict_path, interface, raises):
         DictionaryFactory.get_dictionary_description(dict_path, interface)
 
 
-@pytest.mark.parametrize("dictionary_class", [CanopenDictionaryV2, EthernetDictionaryV2])
+@pytest.mark.parametrize(
+    "dictionary_class, dictionary_path",
+    [
+        (CanopenDictionaryV2, f"{PATH_RESOURCE}canopen/test_dict_can.xdf"),
+        (EthernetDictionaryV2, f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf"),
+    ],
+)
 @pytest.mark.no_connection
-def test_dictionary_v2_image(dictionary_class):
-    dictionary = dictionary_class(PATH_TO_DICTIONARY)
+def test_dictionary_v2_image(dictionary_class, dictionary_path):
+    dictionary = dictionary_class(dictionary_path)
     assert isinstance(dictionary.image, str)
 
 
-@pytest.mark.parametrize("dictionary_class", [CanopenDictionaryV2, EthernetDictionaryV2])
+@pytest.mark.parametrize(
+    "dictionary_class, dictionary_path",
+    [
+        (CanopenDictionaryV2, f"{PATH_RESOURCE}canopen/test_dict_can.xdf"),
+        (EthernetDictionaryV2, f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf"),
+    ],
+)
 @pytest.mark.no_connection
-def test_dictionary_v2_image_none(dictionary_class):
-    with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
+def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
+    with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
     root.remove(root.find(DictionaryV2._DictionaryV2__DICT_IMAGE))
@@ -129,6 +141,24 @@ def test_dictionary_v2_image_none(dictionary_class):
 def test_dictionary_factory(dict_path, interface, dict_class):
     test_dict = DictionaryFactory.create_dictionary(dict_path, interface)
     assert isinstance(test_dict, dict_class)
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize(
+    "dict_path, interface, raises",
+    [
+        (f"{PATH_RESOURCE}canopen/test_dict_can.xdf", Interface.ETH, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.ECAT, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.CAN, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf", Interface.CAN, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.CAN, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.ETH, ILDictionaryParseError),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.CAN, ILDictionaryParseError),
+    ],
+)
+def test_dictionary_interface_mismatch(dict_path, interface, raises):
+    with pytest.raises(raises):
+        DictionaryFactory.create_dictionary(dict_path, interface)
 
 
 @pytest.mark.no_connection
