@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.4.0] - 2025-12-3
 ### Added
 - Method to subscribe to emergency messages.
 - Method to subscribe to register value updates.
