@@ -1145,6 +1145,9 @@ class DictionaryV2(Dictionary):
         Interface.ETH: "ETH",
     }
 
+    def __init__(self, dictionary_path: str) -> None:
+        super().__init__(dictionary_path, self.interface)
+
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
         try:
@@ -1224,6 +1227,12 @@ class DictionaryV2(Dictionary):
         if revision_number is not None and revision_number.isdecimal():
             self.revision_number = int(revision_number)
         self.dict_interface = device.attrib.get("Interface")
+        if (
+            self.interface != Interface.VIRTUAL
+            and self._INTERFACE_STR[self.interface] != self.dict_interface
+            and self.dict_interface is not None
+        ):
+            raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
 
         if root.findall(self.__DICT_ROOT_AXES):
             # For each axis
