@@ -2,8 +2,7 @@
 ingenialink-python
 ==================
 
-.. |tests| |pypi| |python_versions| #TODO INGK-969: Include test badge once master branch jobs are passing.
-|pypi| |python_versions|
+|tests| |pypi| |python_versions|
 
 |license|
 
