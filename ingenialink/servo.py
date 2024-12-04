@@ -46,7 +46,6 @@ from ingenialink.exceptions import (
     ILValueError,
 )
 from ingenialink.register import Register
-from ingenialink.utils import constants
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.virtual.dictionary import VirtualDictionary
 
@@ -704,7 +703,7 @@ class Servo:
                 self.CONTROL_WORD_VOLTAGE_ENABLE: 1,
                 self.CONTROL_WORD_QUICK_STOP: 1,
                 self.CONTROL_WORD_ENABLE_OPERATION: 1,
-                self.CONTROL_WORD_FAULT_RESET: 0
+                self.CONTROL_WORD_FAULT_RESET: 0,
             }
             if state == SERVO_STATE.FAULT:
                 raise ILStateError(
@@ -712,16 +711,13 @@ class Servo:
                     f"The current subnode state is {state}"
                 )
             elif state == SERVO_STATE.NRDY:
-                cmd = {
-                    self.CONTROL_WORD_VOLTAGE_ENABLE: 0,
-                    self.CONTROL_WORD_FAULT_RESET: 0
-                }
+                cmd = {self.CONTROL_WORD_VOLTAGE_ENABLE: 0, self.CONTROL_WORD_FAULT_RESET: 0}
             elif state == SERVO_STATE.DISABLED:
                 cmd = {
                     self.CONTROL_WORD_SWITCH_ON: 0,
                     self.CONTROL_WORD_VOLTAGE_ENABLE: 1,
                     self.CONTROL_WORD_QUICK_STOP: 1,
-                    self.CONTROL_WORD_FAULT_RESET: 0
+                    self.CONTROL_WORD_FAULT_RESET: 0,
                 }
             elif state == SERVO_STATE.RDY:
                 cmd = {
@@ -729,7 +725,7 @@ class Servo:
                     self.CONTROL_WORD_VOLTAGE_ENABLE: 1,
                     self.CONTROL_WORD_QUICK_STOP: 1,
                     self.CONTROL_WORD_ENABLE_OPERATION: 1,
-                    self.CONTROL_WORD_FAULT_RESET: 0
+                    self.CONTROL_WORD_FAULT_RESET: 0,
                 }
 
             self.write_bitfields(self.CONTROL_WORD_REGISTERS, cmd, subnode=subnode)
@@ -760,10 +756,7 @@ class Servo:
                 state = self.get_state(subnode)
             else:
                 # Check state and command action to reach disabled
-                cmd = {
-                    self.CONTROL_WORD_VOLTAGE_ENABLE: 0,
-                    self.CONTROL_WORD_FAULT_RESET: 0
-                }
+                cmd = {self.CONTROL_WORD_VOLTAGE_ENABLE: 0, self.CONTROL_WORD_FAULT_RESET: 0}
                 self.write_bitfields(self.CONTROL_WORD_REGISTERS, cmd, subnode=subnode)
 
                 # Wait until state changes
