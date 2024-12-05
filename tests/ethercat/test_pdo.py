@@ -388,6 +388,16 @@ def test_set_pdo_map_to_slave(connect_to_slave, create_pdo_map):
     assert len(servo._tpdo_maps) == 2
     assert servo._tpdo_maps[1] == new_tpdo_map
 
+    # Add same maps again
+    servo.set_pdo_map_to_slave([new_rdpo_map, rpdo_map], [new_tpdo_map, tpdo_map])
+    # Check that nothing changes
+    assert len(servo._rpdo_maps) == 2
+    assert servo._rpdo_maps[0] == rpdo_map
+    assert servo._rpdo_maps[1] == new_rdpo_map
+    assert len(servo._tpdo_maps) == 2
+    assert servo._tpdo_maps[0] == tpdo_map
+    assert servo._tpdo_maps[1] == new_tpdo_map
+
 
 @pytest.mark.no_connection
 def test_pdo_item_bool():
