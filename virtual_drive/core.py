@@ -1554,9 +1554,17 @@ class VirtualDrive(Thread):
             self.__clean_plant_signals()
         if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (int(value) & constants.IL_MC_CW_EO):
             self.__set_motor_enable()
-        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_DV):
+        if (
+            reg_id == "DRV_STATE_CONTROL"
+            and subnode == 1
+            and (int(value) & constants.IL_MC_PDS_CMD_DV_MSK == constants.IL_MC_PDS_CMD_DV)
+        ):
             self.__set_motor_disable()
-        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_SD):
+        if (
+            reg_id == "DRV_STATE_CONTROL"
+            and subnode == 1
+            and (int(value) & constants.IL_MC_PDS_CMD_MSK == constants.IL_MC_PDS_CMD_SD)
+        ):
             self.__set_motor_ready_to_switch_on()
         if reg_id == "COMMU_ANGLE_SENSOR" and subnode == 1:
             self.phasing.clear_phasing_bit()
