@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Recover from a disconnection while PDOs were active.
+
 ## [7.4.0] - 2025-12-3
 ### Added
 - Method to subscribe to emergency messages.
