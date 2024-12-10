@@ -547,7 +547,7 @@ class EthercatNetwork(Network):
 
         """
         self._ecat_master.read_state()
-        if self._ecat_master.state > pysoem.INIT_STATE:
+        if self._ecat_master.state == pysoem.PREOP_STATE:
             return True
         self.__init_nodes()
         all_drives_in_preop = self._check_node_state(self.servos, pysoem.PREOP_STATE)
