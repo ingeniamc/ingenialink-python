@@ -295,6 +295,8 @@ class EthercatNetwork(Network):
             for servo in self.servos
             if servo.slave.state in [pysoem.OP_STATE, pysoem.SAFEOP_STATE]
         ]
+        if len(op_servo_list) == 0:
+            return
         if not self._change_nodes_state(op_servo_list, pysoem.INIT_STATE):
             logger.warning("Not all drives could reach the Init state")
         self.__init_nodes()
