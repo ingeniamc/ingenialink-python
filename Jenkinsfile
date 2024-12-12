@@ -151,6 +151,7 @@ pipeline {
                 docker {
                     label "worker"
                     image PUBLISHER_DOCKER_IMAGE
+                    args '--user root'
                 }
             }
             when {
