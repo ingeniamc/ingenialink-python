@@ -23,7 +23,7 @@ RUN_PYTHON_VERSIONS = ""
 def PYTHON_VERSION_MIN = "py39"
 def PYTHON_VERSION_MAX = "py312"
 
-def BRANCH_NAME_MASTER = "CIT-296-evaluate-using-sftp-for-publishing-to-distext"
+def BRANCH_NAME_MASTER = "CIT-296-evaluate-using-scp-for-publishing-to-distext"
 def DISTEXT_PROJECT_DIR = "tests/ingenialink-python"
 
 coverage_stashes = []
