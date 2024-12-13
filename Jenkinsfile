@@ -148,9 +148,7 @@ pipeline {
         }
         stage('Publish wheels and documentation') {
             agent {
-                docker {
-                    label "worker"
-                }
+                label "worker"
             }
             when {
                 beforeAgent true
