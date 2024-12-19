@@ -46,7 +46,6 @@ from ingenialink.exceptions import (
     ILValueError,
 )
 from ingenialink.register import Register
-from ingenialink.utils import constants
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.virtual.dictionary import VirtualDictionary
 
@@ -212,11 +211,22 @@ class Servo:
     MAX_WRITE_SIZE = 1
 
     STATUS_WORD_REGISTERS = "DRV_STATE_STATUS"
+    STATUS_WORD_READY_TO_SWITCH_ON = "READY_TO_SWITCH_ON"
+    STATUS_WORD_SWITCHED_ON = "SWITCHED_ON"
+    STATUS_WORD_OPERATION_ENABLED = "OPERATION_ENABLED"
+    STATUS_WORD_FAULT = "FAULT"
+    STATUS_WORD_QUICK_STOP = "QUICK_STOP"
+    STATUS_WORD_SWITCH_ON_DISABLED = "SWITCH_ON_DISABLED"
     RESTORE_COCO_ALL = "DRV_RESTORE_COCO_ALL"
     RESTORE_MOCO_ALL_REGISTERS = "DRV_RESTORE_MOCO_ALL"
     STORE_COCO_ALL = "DRV_STORE_COCO_ALL"
     STORE_MOCO_ALL_REGISTERS = "DRV_STORE_MOCO_ALL"
     CONTROL_WORD_REGISTERS = "DRV_STATE_CONTROL"
+    CONTROL_WORD_SWITCH_ON = "SWITCH_ON"
+    CONTROL_WORD_VOLTAGE_ENABLE = "VOLTAGE_ENABLE"
+    CONTROL_WORD_QUICK_STOP = "QUICK_STOP"
+    CONTROL_WORD_ENABLE_OPERATION = "ENABLE_OPERATION"
+    CONTROL_WORD_FAULT_RESET = "FAULT_RESET"
     SERIAL_NUMBER_REGISTERS = ["DRV_ID_SERIAL_NUMBER_COCO", "DRV_ID_SERIAL_NUMBER"]
     SOFTWARE_VERSION_REGISTERS = ["DRV_APP_COCO_VERSION", "DRV_ID_SOFTWARE_VERSION"]
     PRODUCT_ID_REGISTERS = ["DRV_ID_PRODUCT_CODE_COCO", "DRV_ID_PRODUCT_CODE"]
@@ -688,20 +698,37 @@ class Servo:
         state = self.get_state(subnode)
         while state != SERVO_STATE.ENABLED:
             # Check state and command action to reach enabled
-            cmd = constants.IL_MC_PDS_CMD_EO
+            cmd = {
+                self.CONTROL_WORD_SWITCH_ON: 1,
+                self.CONTROL_WORD_VOLTAGE_ENABLE: 1,
+                self.CONTROL_WORD_QUICK_STOP: 1,
+                self.CONTROL_WORD_ENABLE_OPERATION: 1,
+                self.CONTROL_WORD_FAULT_RESET: 0,
+            }
             if state == SERVO_STATE.FAULT:
                 raise ILStateError(
                     f"The subnode {subnode} could not be enabled within {timeout} ms. "
                     f"The current subnode state is {state}"
                 )
             elif state == SERVO_STATE.NRDY:
-                cmd = constants.IL_MC_PDS_CMD_DV
+                cmd = {self.CONTROL_WORD_VOLTAGE_ENABLE: 0, self.CONTROL_WORD_FAULT_RESET: 0}
             elif state == SERVO_STATE.DISABLED:
-                cmd = constants.IL_MC_PDS_CMD_SD
+                cmd = {
+                    self.CONTROL_WORD_SWITCH_ON: 0,
+                    self.CONTROL_WORD_VOLTAGE_ENABLE: 1,
+                    self.CONTROL_WORD_QUICK_STOP: 1,
+                    self.CONTROL_WORD_FAULT_RESET: 0,
+                }
             elif state == SERVO_STATE.RDY:
-                cmd = constants.IL_MC_PDS_CMD_SOEO
+                cmd = {
+                    self.CONTROL_WORD_SWITCH_ON: 1,
+                    self.CONTROL_WORD_VOLTAGE_ENABLE: 1,
+                    self.CONTROL_WORD_QUICK_STOP: 1,
+                    self.CONTROL_WORD_ENABLE_OPERATION: 1,
+                    self.CONTROL_WORD_FAULT_RESET: 0,
+                }
 
-            self.write(self.CONTROL_WORD_REGISTERS, cmd, subnode=subnode)
+            self.write_bitfields(self.CONTROL_WORD_REGISTERS, cmd, subnode=subnode)
 
             # Wait for state change
             state = self.state_wait_change(state, timeout, subnode=subnode)
@@ -729,7 +756,8 @@ class Servo:
                 state = self.get_state(subnode)
             else:
                 # Check state and command action to reach disabled
-                self.write(self.CONTROL_WORD_REGISTERS, constants.IL_MC_PDS_CMD_DV, subnode=subnode)
+                cmd = {self.CONTROL_WORD_VOLTAGE_ENABLE: 0, self.CONTROL_WORD_FAULT_RESET: 0}
+                self.write_bitfields(self.CONTROL_WORD_REGISTERS, cmd, subnode=subnode)
 
                 # Wait until state changes
                 state = self.state_wait_change(state, timeout, subnode=subnode)
@@ -752,8 +780,12 @@ class Servo:
             SERVO_STATE.FAULTR,
         ]:
             # Check if faulty, if so try to reset (0->1)
-            self.write(self.CONTROL_WORD_REGISTERS, 0, subnode=subnode)
-            self.write(self.CONTROL_WORD_REGISTERS, constants.IL_MC_CW_FR, subnode=subnode)
+            self.write_bitfields(
+                self.CONTROL_WORD_REGISTERS, {self.CONTROL_WORD_FAULT_RESET: 0}, subnode=subnode
+            )
+            self.write_bitfields(
+                self.CONTROL_WORD_REGISTERS, {self.CONTROL_WORD_FAULT_RESET: 1}, subnode=subnode
+            )
             # Wait until status word changes
             self.state_wait_change(state, timeout, subnode=subnode)
 
@@ -812,12 +844,11 @@ class Servo:
 
     def get_state(self, subnode: int = 1) -> SERVO_STATE:
         """Current drive state."""
-        status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
-        state = self.status_word_decode(int(status_word))
+        status_word = self.read_bitfields(self.STATUS_WORD_REGISTERS, subnode=subnode)
+        state = self.status_word_decode(status_word)
         return state
 
-    @staticmethod
-    def status_word_decode(status_word: int) -> SERVO_STATE:
+    def status_word_decode(self, status_word: Dict[str, int]) -> SERVO_STATE:
         """Decodes the status word to a known value.
 
         Args:
@@ -827,21 +858,28 @@ class Servo:
             Status word value.
 
         """
-        if (status_word & constants.IL_MC_PDS_STA_NRTSO_MSK) == constants.IL_MC_PDS_STA_NRTSO:
+        sw_rtso = status_word[self.STATUS_WORD_READY_TO_SWITCH_ON]
+        sw_so = status_word[self.STATUS_WORD_SWITCHED_ON]
+        sw_oe = status_word[self.STATUS_WORD_OPERATION_ENABLED]
+        sw_f = status_word[self.STATUS_WORD_FAULT]
+        sw_qs = status_word[self.STATUS_WORD_QUICK_STOP]
+        sw_sod = status_word[self.STATUS_WORD_SWITCH_ON_DISABLED]
+
+        if not (sw_rtso | sw_so | sw_oe | sw_f | sw_sod):
             state = SERVO_STATE.NRDY
-        elif (status_word & constants.IL_MC_PDS_STA_SOD_MSK) == constants.IL_MC_PDS_STA_SOD:
+        elif not (sw_rtso | sw_so | sw_oe | sw_f) and sw_sod:
             state = SERVO_STATE.DISABLED
-        elif (status_word & constants.IL_MC_PDS_STA_RTSO_MSK) == constants.IL_MC_PDS_STA_RTSO:
+        elif not (sw_so | sw_oe | sw_f | sw_sod) and (sw_rtso & sw_qs):
             state = SERVO_STATE.RDY
-        elif (status_word & constants.IL_MC_PDS_STA_SO_MSK) == constants.IL_MC_PDS_STA_SO:
+        elif not (sw_oe | sw_f | sw_sod) and (sw_rtso & sw_so & sw_qs):
             state = SERVO_STATE.ON
-        elif (status_word & constants.IL_MC_PDS_STA_OE_MSK) == constants.IL_MC_PDS_STA_OE:
+        elif not (sw_f | sw_sod) and (sw_rtso & sw_so & sw_oe & sw_qs):
             state = SERVO_STATE.ENABLED
-        elif (status_word & constants.IL_MC_PDS_STA_QSA_MSK) == constants.IL_MC_PDS_STA_QSA:
+        elif not (sw_f | sw_qs | sw_sod) and (sw_rtso & sw_so & sw_oe):
             state = SERVO_STATE.QSTOP
-        elif (status_word & constants.IL_MC_PDS_STA_FRA_MSK) == constants.IL_MC_PDS_STA_FRA:
+        elif not sw_sod and (sw_rtso & sw_so & sw_oe & sw_f):
             state = SERVO_STATE.FAULTR
-        elif (status_word & constants.IL_MC_PDS_STA_F_MSK) == constants.IL_MC_PDS_STA_F:
+        elif not (sw_rtso | sw_so | sw_oe | sw_sod) and sw_f:
             state = SERVO_STATE.FAULT
         else:
             state = SERVO_STATE.NRDY
