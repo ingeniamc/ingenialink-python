@@ -67,25 +67,6 @@ pipeline {
                 }
             }
         }
-        stage('Build wheels and documentation') {
-            agent {
-                docker {
-                    label SW_NODE
-                    image WIN_DOCKER_IMAGE
-                }
-            }
-            stages {
-                stage('Archive') {
-                    steps {
-                        bat """
-                            "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
-                        """
-                        stash includes: 'dist\\*, docs.zip', name: 'publish_files'
-                        archiveArtifacts artifacts: "dist\\*, docs.zip"
-                    }
-                }
-            }
-        }
         stage('Publish wheels and documentation') {
             agent {
                 label "worker"
@@ -95,8 +76,7 @@ pipeline {
                 branch BRANCH_NAME_MASTER
             }
             steps {
-                unstash 'publish_files'
-                unzip zipFile: 'docs.zip', dir: '.'
+
                 publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
             }
         }
