@@ -49,8 +49,14 @@ def runTest(protocol, slave = 0) {
     }
 }
 
+/* Build develop everyday at 19:00 UTC (21:00 Barcelona Time), running all tests */
+CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19 * * *''' : ""
+
 pipeline {
     agent none
+    triggers {
+        parameterizedCron(CRON_SETTINGS)
+    }
     stages {
         stage("Set run python versions") {
             steps {
