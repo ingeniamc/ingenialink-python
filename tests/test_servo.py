@@ -19,7 +19,7 @@ from ingenialink.exceptions import (
     ILValueError,
 )
 from ingenialink.register import REG_ADDRESS_TYPE
-from ingenialink.servo import SERVO_STATE
+from ingenialink.servo import SERVO_STATE, Servo
 from tests.virtual.test_virtual_network import RESOURCES_FOLDER
 
 MONITORING_CH_DATA_SIZE = 4
@@ -659,3 +659,142 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     servo.register_update_unsubscribe(register_update_callback.register_update_test)
 
     servo.write(user_over_voltage_uid, data=previous_reg_value, subnode=1)
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize(
+    "status_word, state",
+    [
+        (
+            {
+                Servo.STATUS_WORD_READY_TO_SWITCH_ON: 0,
+                Servo.STATUS_WORD_SWITCHED_ON: 0,
+                Servo.STATUS_WORD_OPERATION_ENABLED: 0,
+                Servo.STATUS_WORD_FAULT: 0,
+                "VOLTAGE_ENABLED": 1,
+                Servo.STATUS_WORD_QUICK_STOP: 1,
+                Servo.STATUS_WORD_SWITCH_ON_DISABLED: 0,
+                "WARNING": 1,
+                "TARGET_REACHED": 0,
+                "SWITCH_LIMITS_ACTIVE": 0,
+                "COMMUTATION_FEEDBACK_ALIGNED": 0,
+            },
+            SERVO_STATE.NRDY,
+        ),
+        (
+            {
+                Servo.STATUS_WORD_READY_TO_SWITCH_ON: 0,
+                Servo.STATUS_WORD_SWITCHED_ON: 0,
+                Servo.STATUS_WORD_OPERATION_ENABLED: 0,
+                Servo.STATUS_WORD_FAULT: 0,
+                "VOLTAGE_ENABLED": 1,
+                Servo.STATUS_WORD_QUICK_STOP: 1,
+                Servo.STATUS_WORD_SWITCH_ON_DISABLED: 1,
+                "WARNING": 0,
+                "TARGET_REACHED": 0,
+                "SWITCH_LIMITS_ACTIVE": 0,
+                "COMMUTATION_FEEDBACK_ALIGNED": 0,
+            },
+            SERVO_STATE.DISABLED,
+        ),
+        (
+            {
+                Servo.STATUS_WORD_READY_TO_SWITCH_ON: 1,
+                Servo.STATUS_WORD_SWITCHED_ON: 0,
+                Servo.STATUS_WORD_OPERATION_ENABLED: 0,
+                Servo.STATUS_WORD_FAULT: 0,
+                "VOLTAGE_ENABLED": 1,
+                Servo.STATUS_WORD_QUICK_STOP: 1,
+                Servo.STATUS_WORD_SWITCH_ON_DISABLED: 0,
+                "WARNING": 0,
+                "TARGET_REACHED": 1,
+                "SWITCH_LIMITS_ACTIVE": 0,
+                "COMMUTATION_FEEDBACK_ALIGNED": 0,
+            },
+            SERVO_STATE.RDY,
+        ),
+        (
+            {
+                Servo.STATUS_WORD_READY_TO_SWITCH_ON: 1,
+                Servo.STATUS_WORD_SWITCHED_ON: 1,
+                Servo.STATUS_WORD_OPERATION_ENABLED: 0,
+                Servo.STATUS_WORD_FAULT: 0,
+                "VOLTAGE_ENABLED": 1,
+                Servo.STATUS_WORD_QUICK_STOP: 1,
+                Servo.STATUS_WORD_SWITCH_ON_DISABLED: 0,
+                "WARNING": 1,
+                "TARGET_REACHED": 0,
+                "SWITCH_LIMITS_ACTIVE": 0,
+                "COMMUTATION_FEEDBACK_ALIGNED": 0,
+            },
+            SERVO_STATE.ON,
+        ),
+        (
+            {
+                Servo.STATUS_WORD_READY_TO_SWITCH_ON: 1,
+                Servo.STATUS_WORD_SWITCHED_ON: 1,
+                Servo.STATUS_WORD_OPERATION_ENABLED: 1,
+                Servo.STATUS_WORD_FAULT: 0,
+                "VOLTAGE_ENABLED": 0,
+                Servo.STATUS_WORD_QUICK_STOP: 1,
+                Servo.STATUS_WORD_SWITCH_ON_DISABLED: 0,
+                "WARNING": 0,
+                "TARGET_REACHED": 0,
+                "SWITCH_LIMITS_ACTIVE": 0,
+                "COMMUTATION_FEEDBACK_ALIGNED": 0,
+            },
+            SERVO_STATE.ENABLED,
+        ),
+        (
+            {
+                Servo.STATUS_WORD_READY_TO_SWITCH_ON: 1,
+                Servo.STATUS_WORD_SWITCHED_ON: 1,
+                Servo.STATUS_WORD_OPERATION_ENABLED: 1,
+                Servo.STATUS_WORD_FAULT: 0,
+                "VOLTAGE_ENABLED": 0,
+                Servo.STATUS_WORD_QUICK_STOP: 0,
+                Servo.STATUS_WORD_SWITCH_ON_DISABLED: 0,
+                "WARNING": 0,
+                "TARGET_REACHED": 0,
+                "SWITCH_LIMITS_ACTIVE": 0,
+                "COMMUTATION_FEEDBACK_ALIGNED": 0,
+            },
+            SERVO_STATE.QSTOP,
+        ),
+        (
+            {
+                Servo.STATUS_WORD_READY_TO_SWITCH_ON: 1,
+                Servo.STATUS_WORD_SWITCHED_ON: 1,
+                Servo.STATUS_WORD_OPERATION_ENABLED: 1,
+                Servo.STATUS_WORD_FAULT: 1,
+                "VOLTAGE_ENABLED": 1,
+                Servo.STATUS_WORD_QUICK_STOP: 0,
+                Servo.STATUS_WORD_SWITCH_ON_DISABLED: 0,
+                "WARNING": 0,
+                "TARGET_REACHED": 0,
+                "SWITCH_LIMITS_ACTIVE": 0,
+                "COMMUTATION_FEEDBACK_ALIGNED": 0,
+            },
+            SERVO_STATE.FAULTR,
+        ),
+        (
+            {
+                Servo.STATUS_WORD_READY_TO_SWITCH_ON: 0,
+                Servo.STATUS_WORD_SWITCHED_ON: 0,
+                Servo.STATUS_WORD_OPERATION_ENABLED: 0,
+                Servo.STATUS_WORD_FAULT: 1,
+                "VOLTAGE_ENABLED": 0,
+                Servo.STATUS_WORD_QUICK_STOP: 1,
+                Servo.STATUS_WORD_SWITCH_ON_DISABLED: 0,
+                "WARNING": 0,
+                "TARGET_REACHED": 0,
+                "SWITCH_LIMITS_ACTIVE": 0,
+                "COMMUTATION_FEEDBACK_ALIGNED": 0,
+            },
+            SERVO_STATE.FAULT,
+        ),
+    ],
+)
+def test_status_word_decode(virtual_drive, status_word, state):
+    server, servo = virtual_drive
+    assert servo.status_word_decode(status_word) == state
