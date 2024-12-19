@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Fixed
+- Avoid mapping a PDO map twice.
+
 ## [7.4.0] - 2025-12-3
 ### Added
 - Method to subscribe to emergency messages.
