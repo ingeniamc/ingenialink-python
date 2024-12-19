@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exceptions &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Base classes" href="base_classes.html" />
+    <link rel="prev" title="Registers" href="protocols/ethernet/register.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">API documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="protocols.html">Protocols</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Exceptions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILAccessError"><code class="docutils literal notranslate"><span class="pre">ILAccessError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILActiveFeedbacksHigherThanAllowed"><code class="docutils literal notranslate"><span class="pre">ILActiveFeedbacksHigherThanAllowed</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILAlreadyInitializedError"><code class="docutils literal notranslate"><span class="pre">ILAlreadyInitializedError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILCOMKITTimeout"><code class="docutils literal notranslate"><span class="pre">ILCOMKITTimeout</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILCRCError"><code class="docutils literal notranslate"><span class="pre">ILCRCError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILCommunicationNotModifiable"><code class="docutils literal notranslate"><span class="pre">ILCommunicationNotModifiable</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILCommunicationStateUnreachable"><code class="docutils literal notranslate"><span class="pre">ILCommunicationStateUnreachable</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILConfigurationError"><code class="docutils literal notranslate"><span class="pre">ILConfigurationError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILCyclicMappingTooLarge"><code class="docutils literal notranslate"><span class="pre">ILCyclicMappingTooLarge</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILDictionaryParseError"><code class="docutils literal notranslate"><span class="pre">ILDictionaryParseError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILDisconnectionError"><code class="docutils literal notranslate"><span class="pre">ILDisconnectionError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILError"><code class="docutils literal notranslate"><span class="pre">ILError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILFirmwareLoadError"><code class="docutils literal notranslate"><span class="pre">ILFirmwareLoadError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILIOError"><code class="docutils literal notranslate"><span class="pre">ILIOError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILIncorrectAccessType"><code class="docutils literal notranslate"><span class="pre">ILIncorrectAccessType</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILInvalidCommand"><code class="docutils literal notranslate"><span class="pre">ILInvalidCommand</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILMemoryError"><code class="docutils literal notranslate"><span class="pre">ILMemoryError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILNACKError"><code class="docutils literal notranslate"><span class="pre">ILNACKError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILNotSupportedError"><code class="docutils literal notranslate"><span class="pre">ILNotSupportedError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILObjectNotCyclicMappable"><code class="docutils literal notranslate"><span class="pre">ILObjectNotCyclicMappable</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILObjectNotExist"><code class="docutils literal notranslate"><span class="pre">ILObjectNotExist</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILRegisterNotFoundError"><code class="docutils literal notranslate"><span class="pre">ILRegisterNotFoundError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILStateError"><code class="docutils literal notranslate"><span class="pre">ILStateError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILTimeoutError"><code class="docutils literal notranslate"><span class="pre">ILTimeoutError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILUDPException"><code class="docutils literal notranslate"><span class="pre">ILUDPException</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILUnsupportedRegisterValue"><code class="docutils literal notranslate"><span class="pre">ILUnsupportedRegisterValue</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILUnsupportedSynchronization"><code class="docutils literal notranslate"><span class="pre">ILUnsupportedSynchronization</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILValueError"><code class="docutils literal notranslate"><span class="pre">ILValueError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILWrongCRCError"><code class="docutils literal notranslate"><span class="pre">ILWrongCRCError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILWrongCyclicKey"><code class="docutils literal notranslate"><span class="pre">ILWrongCyclicKey</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILWrongCyclicRegisterSize"><code class="docutils literal notranslate"><span class="pre">ILWrongCyclicRegisterSize</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILWrongRegisterError"><code class="docutils literal notranslate"><span class="pre">ILWrongRegisterError</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ingenialink.exceptions.ILWrongWorkingCount"><code class="docutils literal notranslate"><span class="pre">ILWrongWorkingCount</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="base_classes.html">Base classes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../api.html">API documentation</a></li>
+      <li class="breadcrumb-item active">Exceptions</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/exceptions.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-ingenialink.exceptions">
+<span id="exceptions"></span><h1>Exceptions<a class="headerlink" href="#module-ingenialink.exceptions" title="Link to this heading"></a></h1>
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILAccessError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILAccessError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILAccessError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILAccessError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink access error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILActiveFeedbacksHigherThanAllowed">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILActiveFeedbacksHigherThanAllowed</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILActiveFeedbacksHigherThanAllowed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILActiveFeedbacksHigherThanAllowed" title="Link to this definition"></a></dt>
+<dd><p>Number of active feedbacks is higher than allowed configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILAlreadyInitializedError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILAlreadyInitializedError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILAlreadyInitializedError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILAlreadyInitializedError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink already initialized error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILCOMKITTimeout">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILCOMKITTimeout</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILCOMKITTimeout"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILCOMKITTimeout" title="Link to this definition"></a></dt>
+<dd><p>COMKIT Timeout. CORE device is not properly connected configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILCRCError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILCRCError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILCRCError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILCRCError" title="Link to this definition"></a></dt>
+<dd><p>CRC error configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILCommunicationNotModifiable">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILCommunicationNotModifiable</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILCommunicationNotModifiable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILCommunicationNotModifiable" title="Link to this definition"></a></dt>
+<dd><p>Communication setting is not modifiable in the
+current state configuration</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILCommunicationStateUnreachable">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILCommunicationStateUnreachable</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILCommunicationStateUnreachable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILCommunicationStateUnreachable" title="Link to this definition"></a></dt>
+<dd><p>Communication state is unreachable configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILConfigurationError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILConfigurationError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILConfigurationError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILConfigurationError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink IPB protocol configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILCyclicMappingTooLarge">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILCyclicMappingTooLarge</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILCyclicMappingTooLarge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILCyclicMappingTooLarge" title="Link to this definition"></a></dt>
+<dd><p>Cyclic mapping is too large configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILDictionaryParseError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILDictionaryParseError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILDictionaryParseError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILDictionaryParseError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink dictionary parse error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILDisconnectionError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILDisconnectionError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILDisconnectionError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILDisconnectionError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink disconnection error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink generic error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILFirmwareLoadError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILFirmwareLoadError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILFirmwareLoadError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILFirmwareLoadError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink error while loading a firmware.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILIOError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILIOError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILIOError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILIOError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink I/O error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILIncorrectAccessType">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILIncorrectAccessType</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILIncorrectAccessType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILIncorrectAccessType" title="Link to this definition"></a></dt>
+<dd><p>Incorrect access type configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILInvalidCommand">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILInvalidCommand</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILInvalidCommand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILInvalidCommand" title="Link to this definition"></a></dt>
+<dd><p>Invalid command configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILMemoryError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILMemoryError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILMemoryError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILMemoryError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink memory error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILNACKError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILNACKError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">err_code</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILNACKError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILNACKError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink NACK error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILNotSupportedError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILNotSupportedError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILNotSupportedError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILNotSupportedError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink Not supported error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILObjectNotCyclicMappable">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILObjectNotCyclicMappable</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILObjectNotCyclicMappable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILObjectNotCyclicMappable" title="Link to this definition"></a></dt>
+<dd><p>Object isn’t cyclic mappable as requested configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILObjectNotExist">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILObjectNotExist</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILObjectNotExist"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILObjectNotExist" title="Link to this definition"></a></dt>
+<dd><p>Object doesn’t exist configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILRegisterNotFoundError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILRegisterNotFoundError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILRegisterNotFoundError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILRegisterNotFoundError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink register not found in dictionary.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILStateError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILStateError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILStateError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILStateError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink state error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILTimeoutError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILTimeoutError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILTimeoutError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILTimeoutError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink timeout error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILUDPException">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILUDPException</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILUDPException"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILUDPException" title="Link to this definition"></a></dt>
+<dd><p>Ingenialink exception on UDP action.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILUnsupportedRegisterValue">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILUnsupportedRegisterValue</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILUnsupportedRegisterValue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILUnsupportedRegisterValue" title="Link to this definition"></a></dt>
+<dd><p>Unsupported value introduced in register configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILUnsupportedSynchronization">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILUnsupportedSynchronization</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILUnsupportedSynchronization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILUnsupportedSynchronization" title="Link to this definition"></a></dt>
+<dd><p>Unsupported synchronization method configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILValueError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILValueError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILValueError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILValueError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink value error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILWrongCRCError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILWrongCRCError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILWrongCRCError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILWrongCRCError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink Wrong CRC error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILWrongCyclicKey">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILWrongCyclicKey</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILWrongCyclicKey"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILWrongCyclicKey" title="Link to this definition"></a></dt>
+<dd><p>Cyclic mapping key is wrong configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILWrongCyclicRegisterSize">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILWrongCyclicRegisterSize</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILWrongCyclicRegisterSize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILWrongCyclicRegisterSize" title="Link to this definition"></a></dt>
+<dd><p>Mapped cyclic register size is wrong configuration error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILWrongRegisterError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILWrongRegisterError</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILWrongRegisterError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILWrongRegisterError" title="Link to this definition"></a></dt>
+<dd><p>IngeniaLink Wrong register error.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="ingenialink.exceptions.ILWrongWorkingCount">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.exceptions.</span></span><span class="sig-name descname"><span class="pre">ILWrongWorkingCount</span></span><a class="reference internal" href="../_modules/ingenialink/exceptions.html#ILWrongWorkingCount"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.exceptions.ILWrongWorkingCount" title="Link to this definition"></a></dt>
+<dd><p>PDOs process data working count expected and received differ.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="protocols/ethernet/register.html" class="btn btn-neutral float-left" title="Registers" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="base_classes.html" class="btn btn-neutral float-right" title="Base classes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

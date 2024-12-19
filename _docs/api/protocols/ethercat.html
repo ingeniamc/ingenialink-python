@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EtherCAT API documentation &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Network" href="ethercat/network.html" />
+    <link rel="prev" title="Network" href="eoe/network.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../api.html">API documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../protocols.html">Protocols</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="canopen.html">CANopen API documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="eoe_service.html">EoE Service API documentation</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">EtherCAT API documentation</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ethercat/network.html">Network</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ethercat/servo.html">Servo</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ethercat/dictionary.html">Dictionary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ethercat/register.html">Registers</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ethernet.html">Ethernet API documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../exceptions.html">Exceptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../base_classes.html">Base classes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../api.html">API documentation</a></li>
+          <li class="breadcrumb-item"><a href="../protocols.html">Protocols</a></li>
+      <li class="breadcrumb-item active">EtherCAT API documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/protocols/ethercat.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ethercat-api-documentation">
+<h1>EtherCAT API documentation<a class="headerlink" href="#ethercat-api-documentation" title="Link to this heading"></a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ethercat/network.html">Network</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.config_pdo_maps"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.config_pdo_maps()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.connect_to_slave"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.connect_to_slave()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.disconnect_from_slave"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.disconnect_from_slave()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.get_servo_state"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.get_servo_state()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.load_firmware"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.load_firmware()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.scan_slaves"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.scan_slaves()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.scan_slaves_info"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.scan_slaves_info()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.send_receive_processdata"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.send_receive_processdata()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.start_pdos"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.start_pdos()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.start_status_listener"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.start_status_listener()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.stop_pdos"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.stop_pdos()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.stop_status_listener"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.stop_status_listener()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.subscribe_to_status"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.subscribe_to_status()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.unsubscribe_from_status"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.unsubscribe_from_status()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.protocol"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.protocol</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.servos"><code class="docutils literal notranslate"><span class="pre">EthercatNetwork.servos</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.NetStatusListener"><code class="docutils literal notranslate"><span class="pre">NetStatusListener</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.NetStatusListener.is_alive"><code class="docutils literal notranslate"><span class="pre">NetStatusListener.is_alive()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.NetStatusListener.join"><code class="docutils literal notranslate"><span class="pre">NetStatusListener.join()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.NetStatusListener.run"><code class="docutils literal notranslate"><span class="pre">NetStatusListener.run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.NetStatusListener.start"><code class="docutils literal notranslate"><span class="pre">NetStatusListener.start()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.NetStatusListener.daemon"><code class="docutils literal notranslate"><span class="pre">NetStatusListener.daemon</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.NetStatusListener.ident"><code class="docutils literal notranslate"><span class="pre">NetStatusListener.ident</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.NetStatusListener.name"><code class="docutils literal notranslate"><span class="pre">NetStatusListener.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.NetStatusListener.native_id"><code class="docutils literal notranslate"><span class="pre">NetStatusListener.native_id</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ethercat/network.html#ingenialink.ethercat.network.SlaveState"><code class="docutils literal notranslate"><span class="pre">SlaveState</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ethercat/servo.html">Servo</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ethercat/dictionary.html">Dictionary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.child_registers"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.child_registers()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.get_safety_rpdo"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.get_safety_rpdo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.get_safety_tpdo"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.get_safety_tpdo()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.read_dictionary"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.read_dictionary()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.registers"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.registers()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.categories"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.categories</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.coco_product_code"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.coco_product_code</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.errors"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.errors</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.firmware_version"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.firmware_version</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.image"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.image</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.interface"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.interface</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.is_coco_dictionary"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.is_coco_dictionary</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.is_safe"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.is_safe</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.part_number"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.part_number</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.path"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.path</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.product_code"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.product_code</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.registers_group"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.registers_group</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.revision_number"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.revision_number</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.safety_rpdos"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.safety_rpdos</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.safety_tpdos"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.safety_tpdos</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.subnodes"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.subnodes</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/dictionary.html#ingenialink.ethercat.dictionary.EthercatDictionaryV2.version"><code class="docutils literal notranslate"><span class="pre">EthercatDictionaryV2.version</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ethercat/register.html">Registers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister"><code class="docutils literal notranslate"><span class="pre">EthercatRegister</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.access"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.access</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.address_type"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.address_type</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.cat_id"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.cat_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.cyclic"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.cyclic</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.default"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.default</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.description"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.description</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.dtype"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.dtype</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.enums"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.enums</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.enums_count"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.enums_count</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.identifier"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.identifier</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.idx"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.idx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.internal_use"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.internal_use</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.is_node_id_dependent"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.is_node_id_dependent</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.labels"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.labels</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.mapped_address"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.mapped_address</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.phy"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.phy</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.range"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.range</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.scat_id"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.scat_id</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.storage"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.storage</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.storage_valid"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.storage_valid</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.subidx"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.subidx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.subnode"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.subnode</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="ethercat/register.html#ingenialink.ethercat.register.EthercatRegister.units"><code class="docutils literal notranslate"><span class="pre">EthercatRegister.units</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="eoe/network.html" class="btn btn-neutral float-left" title="Network" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ethercat/network.html" class="btn btn-neutral float-right" title="Network" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

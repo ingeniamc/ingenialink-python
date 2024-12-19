@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Changelog &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Load and Save configuration Examples" href="examples/load_save_configuration.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="api.html">API documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#unreleased">[Unreleased]</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#added">Added</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fixed">Fixed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#changed">Changed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id1">[7.3.5] - 2025-08-23</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Added</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">Changed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">[7.3.4] - 2024-08-08</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id6">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id7">[7.3.3] - 2024-07-15</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id8">Added</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">Changed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">Fixed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">Added</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id12">[7.3.2] - 2024-06-05</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id13">Added</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id14">Changed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id15">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id16">[7.3.1] - 2024-05-10</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id17">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id18">[7.3.0] - 2024-04-23</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#add">Add</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id19">Changed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id20">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id21">[7.2.0] - 2024-03-13</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id22">Add</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id23">Fixed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#deprecated">Deprecated</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id24">Changed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id25">[7.1.1] - 2024-01-03</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id26">Added</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id27">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id28">[7.1.0] - 2023-11-28</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id29">Add</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id30">Fixed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id31">Changed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id32">Deprecated</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id33">[7.0.4] - 2023-10-11</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id34">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id35">[7.0.3] - 2023-09-05</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id36">Add</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id37">Changed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id38">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id39">[7.0.2] - 2023-05-22</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id40">Changed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id41">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id42">[7.0.1] - 2023-04-04</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id43">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id44">[7.0.0] - 2023-03-31</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id45">Add</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id46">Changed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#removed">Removed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id47">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id48">[6.5.1] - 2023-01-17</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id49">Fixed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id50">[6.5.0] - 2023-01-04</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id51">Added</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id52">Changed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id53">Deprecated</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id54">[6.4.0] - 2022-07-13</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id55">Added</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id56">Changed</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id57">Deprecated</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Changelog</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/changelog.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="changelog">
+<h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading"></a></h1>
+<section id="unreleased">
+<h2>[Unreleased]<a class="headerlink" href="#unreleased" title="Link to this heading"></a></h2>
+<section id="added">
+<h3>Added<a class="headerlink" href="#added" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Method to subscribe to emergency messages.</p></li>
+<li><p>Method to subscribe to register value updates.</p></li>
+<li><p>Add is_node_id_dependent property to CanopenRegister</p></li>
+</ul>
+</section>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Restore CoE communication after a power cycle.</p></li>
+<li><p>Catch exception on disconnection when the PCAN is in bus-off state.</p></li>
+<li><p>Default of byteArray512 are in bytes</p></li>
+</ul>
+</section>
+<section id="changed">
+<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>CiA 301 PDO related registers are not saved to the configuration file.</p></li>
+</ul>
+</section>
+</section>
+<section id="id1">
+<h2>[7.3.5] - 2025-08-23<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="id2">
+<h3>Added<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Coco product code attribute to the Dictionary class.</p></li>
+<li><p>Enable working with FSoE PDOs and regular PDOs at the same time.</p></li>
+</ul>
+</section>
+<section id="id3">
+<h3>Changed<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Set the default values of the firmware version, product code, revision number, and part number of the dictionary class to None.</p></li>
+<li><p>Store nack error code on NACK exceptions</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>Fixed<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Update RPDO values before send process data</p></li>
+</ul>
+</section>
+</section>
+<section id="id5">
+<h2>[7.3.4] - 2024-08-08<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>Fixed<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>CANopen multiple drive connection with Kvaser</p></li>
+</ul>
+</section>
+</section>
+<section id="id7">
+<h2>[7.3.3] - 2024-07-15<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="id8">
+<h3>Added<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Methods to read/write to the ESC EEPROM.</p></li>
+</ul>
+</section>
+<section id="id9">
+<h3>Changed<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Raise an exception when a CAN transceiver’s driver is not installed.</p></li>
+<li><p>Add optional password for the FOE bootloader.</p></li>
+<li><p>Add strict mode to the load configuration method.</p></li>
+</ul>
+</section>
+<section id="id10">
+<h3>Fixed<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>SDO Error after a store/restore parameters operation.</p></li>
+<li><p>EoE service initialization error when a slave cannot reach the PreOp state.</p></li>
+<li><p>EoE connection recovery after a power cycle.</p></li>
+<li><p>Stop the servo status listener when a EtherCAT drive cannot reach the PreOp state.</p></li>
+</ul>
+</section>
+<section id="id11">
+<h3>Added<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Support to dictionaries V3 in the virtual drive.</p></li>
+<li><p>Arguments in examples and tests.</p></li>
+<li><p>Retry sending an Ethernet request after a communication timeout.</p></li>
+</ul>
+</section>
+</section>
+<section id="id12">
+<h2>[7.3.2] - 2024-06-05<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<section id="id13">
+<h3>Added<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Set RPDOMap values by byte string.</p></li>
+<li><p>Function to check if a configuration has been applied to the drive.</p></li>
+<li><p>EtherCAT connection example script.</p></li>
+<li><p>Typing in examples.</p></li>
+</ul>
+</section>
+<section id="id14">
+<h3>Changed<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>The signature of the load_firmware method of EthercatNetwork is changed to add the boot_in_app argument.</p></li>
+<li><p>The polling sampling precision of the Poller is improved.</p></li>
+</ul>
+</section>
+<section id="id15">
+<h3>Fixed<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Issue when connecting to the virtual drive using an EVE CANopen dictionary.</p></li>
+<li><p>Issue when the KVASER transceiver was disconnected.</p></li>
+</ul>
+</section>
+</section>
+<section id="id16">
+<h2>[7.3.1] - 2024-05-10<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3>Fixed<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Bug that when the path to the FoE binary has blank spaces.</p></li>
+<li><p>The Interface attribute format in the configuration file.</p></li>
+<li><p>CANopen communication re-establishment after a power cycle.</p></li>
+<li><p>Exception when scanning drives using an IXXAT tranceiver.</p></li>
+</ul>
+</section>
+</section>
+<section id="id18">
+<h2>[7.3.0] - 2024-04-23<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<section id="add">
+<h3>Add<a class="headerlink" href="#add" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Dictionary V3 support</p></li>
+<li><p>ILWrongWorkingCount exception raised when the working count in PDO is not the expected one.</p></li>
+<li><p>Register type for monitoring/disturbance data.</p></li>
+<li><p>Support for merging dictionary instances. (It can only be used for merging COM-KIT and CORE dictionaries.)</p></li>
+<li><p>Support to socketcan so the canopen communication can be used in Linux.</p></li>
+<li><p>Default value and description attributes to registers.</p></li>
+<li><p>Read/write functionalities for bit register type.</p></li>
+<li><p>Method to set the PDO watchdog time.</p></li>
+<li><p>FoE binary compiled for Linux machines.</p></li>
+</ul>
+</section>
+<section id="id19">
+<h3>Changed<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Dictionary class properties, such as subnodes and interface.</p></li>
+<li><p>Add monitoring/disturbance registers to the dictionary if monitoring/disturbance is supported.</p></li>
+<li><p>Add PDO registers to the dictionary for EtherCAT drives.</p></li>
+<li><p>IXXAT missing DLLs logs are ignored.</p></li>
+</ul>
+</section>
+<section id="id20">
+<h3>Fixed<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Bug that prevented the slaves to reach Operational state after the PDO exchange is re-started.</p></li>
+<li><p>Recover the CoE communication after a power-cycle. The network status listener must be turned on in order for it to work.</p></li>
+</ul>
+</section>
+</section>
+<section id="id21">
+<h2>[7.2.0] - 2024-03-13<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<section id="id22">
+<h3>Add<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Motor enable and disable features in the virtual drive.</p></li>
+<li><p>Emulate control loops in the virtual drive.</p></li>
+<li><p>Support to Python 3.9 to 3.12.</p></li>
+<li><p>EtherCAT PDO module.</p></li>
+<li><p>Store and restore functionalities for subnode 0.</p></li>
+<li><p>Add functionalities to update ECAT state machine</p></li>
+<li><p>Add send_receive_processdata function</p></li>
+<li><p>Add scan_slaves_info method</p></li>
+</ul>
+</section>
+<section id="id23">
+<h3>Fixed<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Raise exception when ECAT SDO write/read is wrong</p></li>
+</ul>
+</section>
+<section id="deprecated">
+<h3>Deprecated<a class="headerlink" href="#deprecated" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Support to Python 3.6 to 3.8.</p></li>
+</ul>
+</section>
+<section id="id24">
+<h3>Changed<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>The PCAN transceiver bus is automatically reset when the bus-off state is reached.</p></li>
+<li><p>Emergency (EMCY) messages are discarded when using the CoE protocol.</p></li>
+<li><p>The enums are represented using dicts in the Register class.</p></li>
+</ul>
+</section>
+</section>
+<section id="id25">
+<h2>[7.1.1] - 2024-01-03<a class="headerlink" href="#id25" title="Link to this heading"></a></h2>
+<section id="id26">
+<h3>Added<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Missing EtherCAT protocol documentation.</p></li>
+</ul>
+</section>
+<section id="id27">
+<h3>Fixed<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Import Ingenialink does not raise an error if WinPcap is not installed, but ethercat features are disabled.</p></li>
+</ul>
+</section>
+</section>
+<section id="id28">
+<h2>[7.1.0] - 2023-11-28<a class="headerlink" href="#id28" title="Link to this heading"></a></h2>
+<section id="id29">
+<h3>Add<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Support for multi-drive in CANopen’s NetStatusListener.</p></li>
+<li><p>EtherCAT communication via CoE (SDOs).</p></li>
+<li><p>Add image attribute to dictionary class.</p></li>
+<li><p>Add EthercatDictionary class.</p></li>
+<li><p>Add EthercatRegister class.</p></li>
+<li><p>Create EtherCAT PDOs example script.</p></li>
+</ul>
+</section>
+<section id="id30">
+<h3>Fixed<a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Fix CANopen load_firmware function.</p></li>
+<li><p>Set product name correctly if no dictionary is provided.</p></li>
+<li><p>Docstrings from Register constructor and its subclasses are updated.</p></li>
+<li><p>CanopenRegister and EthernetRegister have the same signature.</p></li>
+<li><p>Add PySOEM to setup.py.</p></li>
+<li><p>Exception error when trying to write an int to a register of dtype float.</p></li>
+<li><p>Fix acquisition data variable initialization in Poller class.</p></li>
+<li><p>Unexpected closing when disconnecting from an EtherCAT (SDOs) drive if servo status listener is active.</p></li>
+<li><p>Avoid crashes in the Poller due to read timeouts.</p></li>
+<li><p>Poller timer thread not closing after the poller is finished.</p></li>
+<li><p>Improve the enable and disable methods of the Servo class.</p></li>
+<li><p>Unexpected VCIErrors.</p></li>
+</ul>
+</section>
+<section id="id31">
+<h3>Changed<a class="headerlink" href="#id31" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Raise ILValueError when the disturbance data does not fit in a register.</p></li>
+</ul>
+</section>
+<section id="id32">
+<h3>Deprecated<a class="headerlink" href="#id32" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Support to Python 3.6 and 3.7.</p></li>
+</ul>
+</section>
+</section>
+<section id="id33">
+<h2>[7.0.4] - 2023-10-11<a class="headerlink" href="#id33" title="Link to this heading"></a></h2>
+<section id="id34">
+<h3>Fixed<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Reread when ethernet read a wrong address</p></li>
+<li><p>Read strings until NULL character</p></li>
+</ul>
+</section>
+</section>
+<section id="id35">
+<h2>[7.0.3] - 2023-09-05<a class="headerlink" href="#id35" title="Link to this heading"></a></h2>
+<section id="id36">
+<h3>Add<a class="headerlink" href="#id36" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Virtual drive.</p></li>
+</ul>
+</section>
+<section id="id37">
+<h3>Changed<a class="headerlink" href="#id37" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>convert_bytes_to_dtype raises an ILValueError string bytes are wrong</p></li>
+<li><p>Wait EoE starts before connect drive</p></li>
+<li><p>Remove EDS file path param from CANopen connection. It is no longer necessary.</p></li>
+</ul>
+</section>
+<section id="id38">
+<h3>Fixed<a class="headerlink" href="#id38" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Catch EoE service deinit error when disconnecting the drive.</p></li>
+<li><p>Log exceptions in read_coco_moco_register function correctly.</p></li>
+</ul>
+</section>
+</section>
+<section id="id39">
+<h2>[7.0.2] - 2023-05-22<a class="headerlink" href="#id39" title="Link to this heading"></a></h2>
+<section id="id40">
+<h3>Changed<a class="headerlink" href="#id40" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Read a register instead of doing a ping in the Ethernet’s NetStatusListener</p></li>
+<li><p>Use inspect instead of pkg_resources to find the path to the FoE application.</p></li>
+<li><p>Call FoE application with utf-8 encoding.</p></li>
+</ul>
+</section>
+<section id="id41">
+<h3>Fixed<a class="headerlink" href="#id41" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Capture all the ingenialink exceptions in servo status listener</p></li>
+<li><p>Truncate NACK error code to a int32</p></li>
+</ul>
+</section>
+</section>
+<section id="id42">
+<h2>[7.0.1] - 2023-04-04<a class="headerlink" href="#id42" title="Link to this heading"></a></h2>
+<section id="id43">
+<h3>Fixed<a class="headerlink" href="#id43" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Recover old Monitoring/Disturbance compatibility</p></li>
+<li><p>Fix ServoStatusListener for multiaxis</p></li>
+</ul>
+</section>
+</section>
+<section id="id44">
+<h2>[7.0.0] - 2023-03-31<a class="headerlink" href="#id44" title="Link to this heading"></a></h2>
+<section id="id45">
+<h3>Add<a class="headerlink" href="#id45" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Interface a Network class with SOEM service</p></li>
+<li><p>Add multi-slaves support to EoE service</p></li>
+<li><p>Implement stop EoE service feature</p></li>
+<li><p>Create mapped register property</p></li>
+<li><p>Create project toml file</p></li>
+<li><p>Use FoE application to load FW in windows</p></li>
+</ul>
+</section>
+<section id="id46">
+<h3>Changed<a class="headerlink" href="#id46" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Update the load_FWs script to only use ingenialink.</p></li>
+<li><p>Improve the load_FWs script when using canopen protocol.</p></li>
+</ul>
+</section>
+<section id="removed">
+<h3>Removed<a class="headerlink" href="#removed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Remove numpy from requirements</p></li>
+<li><p>Remove binding to the <a class="reference external" href="https://github.com/ingeniamc/ingenialink">ingenialink</a> C library.</p></li>
+<li><p>Move virtual drive from tests to ingenialink.</p></li>
+</ul>
+</section>
+<section id="id47">
+<h3>Fixed<a class="headerlink" href="#id47" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>NACK error code formatting.</p></li>
+<li><p>Fix pytest tests launch</p></li>
+<li><p>Wrong float range</p></li>
+</ul>
+</section>
+</section>
+<section id="id48">
+<h2>[6.5.1] - 2023-01-17<a class="headerlink" href="#id48" title="Link to this heading"></a></h2>
+<section id="id49">
+<h3>Fixed<a class="headerlink" href="#id49" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Truncate received data in ethernet by the expected data length.</p></li>
+<li><p>Don’t add PartNumber to the configuration file if it does not exist in the dictionary.</p></li>
+<li><p>CAN load firmware error if net_status_listener is disabled.</p></li>
+</ul>
+</section>
+</section>
+<section id="id50">
+<h2>[6.5.0] - 2023-01-04<a class="headerlink" href="#id50" title="Link to this heading"></a></h2>
+<section id="id51">
+<h3>Added<a class="headerlink" href="#id51" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Tests are separated by communication protocol.</p></li>
+<li><p>Pull request template.</p></li>
+</ul>
+</section>
+<section id="id52">
+<h3>Changed<a class="headerlink" href="#id52" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Re-organize the tests by protocol and add a no-connection mark to separate test that do not need a servo connected.</p></li>
+<li><p>Remove enums_count as an argument to create a Register.</p></li>
+<li><p>Convert enums type from list[dict] to dict.</p></li>
+<li><p>Ethernet communication is done using Python’s standard library.</p></li>
+<li><p>Ethernet network now supports connection to multiple devices.</p></li>
+<li><p>Improved tests.</p></li>
+<li><p>Improved code formatting.</p></li>
+<li><p>Configuration file only stores registers that are stored in non-volatile memory and have access type RW.</p></li>
+</ul>
+</section>
+<section id="id53">
+<h3>Deprecated<a class="headerlink" href="#id53" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>TCP support for ethernet devices.</p></li>
+</ul>
+</section>
+</section>
+<section id="id54">
+<h2>[6.4.0] - 2022-07-13<a class="headerlink" href="#id54" title="Link to this heading"></a></h2>
+<section id="id55">
+<h3>Added<a class="headerlink" href="#id55" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Support monitoring/disturbance with CANopen protocol.</p></li>
+<li><p>Check for IP address validity in change_tcp_ip_parameters function.</p></li>
+</ul>
+</section>
+<section id="id56">
+<h3>Changed<a class="headerlink" href="#id56" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>On multiaxis drives the function load_configuration now allows to load the configuration of one axis into another.</p></li>
+<li><p>Set Ingenialink-C library log level to warning by default.</p></li>
+<li><p>Raise ILError on IPB monitoring/disturbance functions when an operation is not successful.</p></li>
+</ul>
+</section>
+<section id="id57">
+<h3>Deprecated<a class="headerlink" href="#id57" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>monitoring_data function in ipb/servo use monitoring_channel_data instead.</p></li>
+<li><p>All serial protocol functions.</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="examples/load_save_configuration.html" class="btn btn-neutral float-left" title="Load and Save configuration Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

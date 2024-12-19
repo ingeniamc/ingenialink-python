@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Network &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="Servo" href="servo.html" />
+    <link rel="prev" title="EtherCAT API documentation" href="../ethercat.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../../api.html">API documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../protocols.html">Protocols</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="../canopen.html">CANopen API documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../eoe_service.html">EoE Service API documentation</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="../ethercat.html">EtherCAT API documentation</a><ul class="current">
+<li class="toctree-l4 current"><a class="current reference internal" href="#">Network</a></li>
+<li class="toctree-l4"><a class="reference internal" href="servo.html">Servo</a></li>
+<li class="toctree-l4"><a class="reference internal" href="dictionary.html">Dictionary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="register.html">Registers</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../ethernet.html">Ethernet API documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../exceptions.html">Exceptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../base_classes.html">Base classes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../api.html">API documentation</a></li>
+          <li class="breadcrumb-item"><a href="../../protocols.html">Protocols</a></li>
+          <li class="breadcrumb-item"><a href="../ethercat.html">EtherCAT API documentation</a></li>
+      <li class="breadcrumb-item active">Network</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../_sources/api/protocols/ethercat/network.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-ingenialink.ethercat.network">
+<span id="network"></span><h1>Network<a class="headerlink" href="#module-ingenialink.ethercat.network" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.ethercat.network.</span></span><span class="sig-name descname"><span class="pre">EthercatNetwork</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">interface_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">connection_timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlapping_io_map</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork" title="Link to this definition"></a></dt>
+<dd><p>Network for all EtherCAT communications.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>interface_name</strong> – Interface name to be targeted.</p></li>
+<li><p><strong>connection_timeout</strong> – Time in seconds of the connection timeout.</p></li>
+<li><p><strong>overlapping_io_map</strong> – Map PDOs to overlapping IO map.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ImportError</strong> – WinPcap is not installed</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.config_pdo_maps">
+<span class="sig-name descname"><span class="pre">config_pdo_maps</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.config_pdo_maps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.config_pdo_maps" title="Link to this definition"></a></dt>
+<dd><p>Configure the PDO maps.</p>
+<p>It maps the PDO maps of each slave and sets its state to SafeOP.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.connect_to_slave">
+<span class="sig-name descname"><span class="pre">connect_to_slave</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slave_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dictionary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">servo_status_listener</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">net_status_listener</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">EthercatServo</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.connect_to_slave"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.connect_to_slave" title="Link to this definition"></a></dt>
+<dd><p>Connects to a drive through a given slave number.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>slave_id</strong> – Targeted slave to be connected.</p></li>
+<li><p><strong>dictionary</strong> – Path to the dictionary file.</p></li>
+<li><p><strong>servo_status_listener</strong> – Toggle the listener of the servo for
+its status, errors, faults, etc.</p></li>
+<li><p><strong>net_status_listener</strong> – Toggle the listener of the network
+status, connection and disconnection.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the slave ID is not valid.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If no slaves are found.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILStateError" title="ingenialink.exceptions.ILStateError"><strong>ILStateError</strong></a> – If slave can not reach PreOp state</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.disconnect_from_slave">
+<span class="sig-name descname"><span class="pre">disconnect_from_slave</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">servo</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">EthercatServo</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.disconnect_from_slave"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.disconnect_from_slave" title="Link to this definition"></a></dt>
+<dd><p>Disconnects the slave from the network.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>servo</strong> – Instance of the servo connected.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.get_servo_state">
+<span class="sig-name descname"><span class="pre">get_servo_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">servo_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../base_classes/net.html#ingenialink.network.NET_STATE" title="ingenialink.network.NET_STATE"><span class="pre">NET_STATE</span></a></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.get_servo_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.get_servo_state" title="Link to this definition"></a></dt>
+<dd><p>Get the state of a servo that’s a part of network.
+The state indicates if the servo is connected or disconnected.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>servo_id</strong> – The servo’s slave ID.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The servo’s state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.load_firmware">
+<span class="sig-name descname"><span class="pre">load_firmware</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fw_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boot_in_app</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slave_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.load_firmware"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.load_firmware" title="Link to this definition"></a></dt>
+<dd><p>Loads a given firmware file to a target slave.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fw_file</strong> – Path to the firmware file.</p></li>
+<li><p><strong>boot_in_app</strong> – True if the application includes the bootloader (i.e, <code class="docutils literal notranslate"><span class="pre">fw_file</span></code> extension
+is .sfu), False otherwise.</p></li>
+<li><p><strong>slave_id</strong> – Slave ID to which load the firmware file.</p></li>
+<li><p><strong>password</strong> – Password to load the firmware file. If <code class="docutils literal notranslate"><span class="pre">None</span></code> the default password will be
+used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – If the firmware file cannot be found.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILFirmwareLoadError" title="ingenialink.exceptions.ILFirmwareLoadError"><strong>ILFirmwareLoadError</strong></a> – If no slave is detected.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILFirmwareLoadError" title="ingenialink.exceptions.ILFirmwareLoadError"><strong>ILFirmwareLoadError</strong></a> – If the FoE write operation is not successful.</p></li>
+<li><p><strong>NotImplementedError</strong> – If FoE is not implemented for the current OS and architecture</p></li>
+<li><p><strong>AttributeError</strong> – If the boot_in_app argument is not a boolean.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.scan_slaves">
+<span class="sig-name descname"><span class="pre">scan_slaves</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.scan_slaves"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.scan_slaves" title="Link to this definition"></a></dt>
+<dd><p>Scans for slaves in the network. Scanning of slaves cannot be done if a slave is already
+connected to the network.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List containing all the detected slaves.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If any slaves is already connected.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.scan_slaves_info">
+<span class="sig-name descname"><span class="pre">scan_slaves_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">OrderedDict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../base_classes/net.html#ingenialink.network.SlaveInfo" title="ingenialink.network.SlaveInfo"><span class="pre">SlaveInfo</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.scan_slaves_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.scan_slaves_info" title="Link to this definition"></a></dt>
+<dd><p>Scans for slaves in the network and return an ordered dict with the slave information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Ordered dict with the slave information.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If any slave is already connected.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.send_receive_processdata">
+<span class="sig-name descname"><span class="pre">send_receive_processdata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.send_receive_processdata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.send_receive_processdata" title="Link to this definition"></a></dt>
+<dd><p>Send and receive PDOs</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>timeout</strong> – receive processdata timeout in seconds, 0.1 seconds by default.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILWrongWorkingCount" title="ingenialink.exceptions.ILWrongWorkingCount"><strong>ILWrongWorkingCount</strong></a> – If processdata working count is wrong</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.start_pdos">
+<span class="sig-name descname"><span class="pre">start_pdos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.start_pdos"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.start_pdos" title="Link to this definition"></a></dt>
+<dd><p>Set all slaves with mapped PDOs to Operational State.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>timeout</strong> – timeout in seconds to reach Op state, 1.0 seconds by default.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILStateError" title="ingenialink.exceptions.ILStateError"><strong>ILStateError</strong></a> – If slaves can not reach SafeOp or Op state</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.start_status_listener">
+<span class="sig-name descname"><span class="pre">start_status_listener</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.start_status_listener"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.start_status_listener" title="Link to this definition"></a></dt>
+<dd><p>Start monitoring network events (CONNECTION/DISCONNECTION).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.stop_pdos">
+<span class="sig-name descname"><span class="pre">stop_pdos</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.stop_pdos"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.stop_pdos" title="Link to this definition"></a></dt>
+<dd><p>For all slaves in OP or SafeOp state, set state to PreOp</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.stop_status_listener">
+<span class="sig-name descname"><span class="pre">stop_status_listener</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.stop_status_listener"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.stop_status_listener" title="Link to this definition"></a></dt>
+<dd><p>Stops the NetStatusListener from listening to the drive.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.subscribe_to_status">
+<span class="sig-name descname"><span class="pre">subscribe_to_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slave_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../base_classes/net.html#ingenialink.network.NET_DEV_EVT" title="ingenialink.network.NET_DEV_EVT"><span class="pre">NET_DEV_EVT</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.subscribe_to_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.subscribe_to_status" title="Link to this definition"></a></dt>
+<dd><p>Subscribe to network state changes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>slave_id</strong> – Slave ID of the drive to subscribe.</p></li>
+<li><p><strong>callback</strong> – Callback function.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.unsubscribe_from_status">
+<span class="sig-name descname"><span class="pre">unsubscribe_from_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slave_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../base_classes/net.html#ingenialink.network.NET_DEV_EVT" title="ingenialink.network.NET_DEV_EVT"><span class="pre">NET_DEV_EVT</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#EthercatNetwork.unsubscribe_from_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.unsubscribe_from_status" title="Link to this definition"></a></dt>
+<dd><p>Unsubscribe from network state changes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>slave_id</strong> – Slave ID of the drive to subscribe.</p></li>
+<li><p><strong>callback</strong> – Callback function.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.protocol">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">protocol</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../../base_classes/net.html#ingenialink.network.NET_PROT" title="ingenialink.network.NET_PROT"><span class="pre">NET_PROT</span></a></em><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.protocol" title="Link to this definition"></a></dt>
+<dd><p>Obtain network protocol.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../../base_classes/net.html#ingenialink.network.NET_PROT" title="ingenialink.network.NET_PROT">NET_PROT</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.EthercatNetwork.servos">
+<span class="sig-name descname"><span class="pre">servos</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">EthercatServo</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.ethercat.network.EthercatNetwork.servos" title="Link to this definition"></a></dt>
+<dd><p>List of the connected servos in the network.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.NetStatusListener">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.ethercat.network.</span></span><span class="sig-name descname"><span class="pre">NetStatusListener</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">network</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ingenialink.ethercat.network.EthercatNetwork" title="ingenialink.ethercat.network.EthercatNetwork"><span class="pre">EthercatNetwork</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">refresh_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.25</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#NetStatusListener"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.NetStatusListener" title="Link to this definition"></a></dt>
+<dd><p>Network status listener thread to check if the drive is alive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>network</strong> – Network instance of the EtherCAT communication.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.NetStatusListener.is_alive">
+<span class="sig-name descname"><span class="pre">is_alive</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ingenialink.ethercat.network.NetStatusListener.is_alive" title="Link to this definition"></a></dt>
+<dd><p>Return whether the thread is alive.</p>
+<p>This method returns True just before the run() method starts until just
+after the run() method terminates. See also the module function
+enumerate().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.NetStatusListener.join">
+<span class="sig-name descname"><span class="pre">join</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#ingenialink.ethercat.network.NetStatusListener.join" title="Link to this definition"></a></dt>
+<dd><p>Wait until the thread terminates.</p>
+<p>This blocks the calling thread until the thread whose join() method is
+called terminates – either normally or through an unhandled exception
+or until the optional timeout occurs.</p>
+<p>When the timeout argument is present and not None, it should be a
+floating point number specifying a timeout for the operation in seconds
+(or fractions thereof). As join() always returns None, you must call
+is_alive() after join() to decide whether a timeout happened – if the
+thread is still alive, the join() call timed out.</p>
+<p>When the timeout argument is not present or None, the operation will
+block until the thread terminates.</p>
+<p>A thread can be join()ed many times.</p>
+<p>join() raises a RuntimeError if an attempt is made to join the current
+thread as that would cause a deadlock. It is also an error to join() a
+thread before it has been started and attempts to do so raises the same
+exception.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.NetStatusListener.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#NetStatusListener.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.NetStatusListener.run" title="Link to this definition"></a></dt>
+<dd><p>Method representing the thread’s activity.</p>
+<p>You may override this method in a subclass. The standard run() method
+invokes the callable object passed to the object’s constructor as the
+target argument, if any, with sequential and keyword arguments taken
+from the args and kwargs arguments, respectively.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.NetStatusListener.start">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#ingenialink.ethercat.network.NetStatusListener.start" title="Link to this definition"></a></dt>
+<dd><p>Start the thread’s activity.</p>
+<p>It must be called at most once per thread object. It arranges for the
+object’s run() method to be invoked in a separate thread of control.</p>
+<p>This method will raise a RuntimeError if called more than once on the
+same thread object.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.NetStatusListener.daemon">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">daemon</span></span><a class="headerlink" href="#ingenialink.ethercat.network.NetStatusListener.daemon" title="Link to this definition"></a></dt>
+<dd><p>A boolean value indicating whether this thread is a daemon thread.</p>
+<p>This must be set before start() is called, otherwise RuntimeError is
+raised. Its initial value is inherited from the creating thread; the
+main thread is not a daemon thread and therefore all threads created in
+the main thread default to daemon = False.</p>
+<p>The entire Python program exits when only daemon threads are left.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.NetStatusListener.ident">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ident</span></span><a class="headerlink" href="#ingenialink.ethercat.network.NetStatusListener.ident" title="Link to this definition"></a></dt>
+<dd><p>Thread identifier of this thread or None if it has not been started.</p>
+<p>This is a nonzero integer. See the get_ident() function. Thread
+identifiers may be recycled when a thread exits and another thread is
+created. The identifier is available even after the thread has exited.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.NetStatusListener.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#ingenialink.ethercat.network.NetStatusListener.name" title="Link to this definition"></a></dt>
+<dd><p>A string used for identification purposes only.</p>
+<p>It has no semantics. Multiple threads may be given the same name. The
+initial name is set by the constructor.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.NetStatusListener.native_id">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">native_id</span></span><a class="headerlink" href="#ingenialink.ethercat.network.NetStatusListener.native_id" title="Link to this definition"></a></dt>
+<dd><p>Native integral thread ID of this thread, or None if it has not been started.</p>
+<p>This is a non-negative integer. See the get_native_id() function.
+This represents the Thread ID as reported by the kernel.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.ethercat.network.SlaveState">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.ethercat.network.</span></span><span class="sig-name descname"><span class="pre">SlaveState</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/ingenialink/ethercat/network.html#SlaveState"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.ethercat.network.SlaveState" title="Link to this definition"></a></dt>
+<dd><p>An enumeration.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../ethercat.html" class="btn btn-neutral float-left" title="EtherCAT API documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="servo.html" class="btn btn-neutral float-right" title="Servo" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

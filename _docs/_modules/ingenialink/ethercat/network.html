@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ingenialink.ethercat.network &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ingenialink.ethercat.network</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ingenialink.ethercat.network</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">platform</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span><span class="p">,</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Thread</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">ingenialogger</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pysoem</span>
+<span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+    <span class="n">pysoem</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">pysoem_import_error</span> <span class="o">=</span> <span class="n">ex</span>
+
+<span class="kn">from</span> <span class="nn">ingenialink</span> <span class="kn">import</span> <span class="nb">bin</span> <span class="k">as</span> <span class="n">bin_module</span>
+<span class="kn">from</span> <span class="nn">ingenialink.ethercat.servo</span> <span class="kn">import</span> <span class="n">EthercatServo</span>
+<span class="kn">from</span> <span class="nn">ingenialink.exceptions</span> <span class="kn">import</span> <span class="n">ILError</span><span class="p">,</span> <span class="n">ILFirmwareLoadError</span><span class="p">,</span> <span class="n">ILStateError</span><span class="p">,</span> <span class="n">ILWrongWorkingCount</span>
+<span class="kn">from</span> <span class="nn">ingenialink.network</span> <span class="kn">import</span> <span class="n">NET_DEV_EVT</span><span class="p">,</span> <span class="n">NET_PROT</span><span class="p">,</span> <span class="n">NET_STATE</span><span class="p">,</span> <span class="n">Network</span><span class="p">,</span> <span class="n">SlaveInfo</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">ingenialogger</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SlaveState">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.SlaveState">[docs]</a>
+<span class="k">class</span> <span class="nc">SlaveState</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">NONE_STATE</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">INIT_STATE</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">PREOP_STATE</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">SAFEOP_STATE</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">OP_STATE</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">ERROR_STATE</span> <span class="o">=</span> <span class="mi">16</span>
+    <span class="n">PREOP_ERROR_STATE</span> <span class="o">=</span> <span class="n">PREOP_STATE</span> <span class="o">+</span> <span class="n">ERROR_STATE</span>
+    <span class="n">SAFEOP_ERROR_STATE</span> <span class="o">=</span> <span class="n">SAFEOP_STATE</span> <span class="o">+</span> <span class="n">ERROR_STATE</span></div>
+
+
+
+<div class="viewcode-block" id="NetStatusListener">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.NetStatusListener">[docs]</a>
+<span class="k">class</span> <span class="nc">NetStatusListener</span><span class="p">(</span><span class="n">Thread</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Network status listener thread to check if the drive is alive.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        network: Network instance of the EtherCAT communication.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="s2">&quot;EthercatNetwork&quot;</span><span class="p">,</span> <span class="n">refresh_time</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">NetStatusListener</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__network</span> <span class="o">=</span> <span class="n">network</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__refresh_time</span> <span class="o">=</span> <span class="n">refresh_time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__stop</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_ecat_master</span>
+
+<div class="viewcode-block" id="NetStatusListener.run">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.NetStatusListener.run">[docs]</a>
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__stop</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">read_state</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">servo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+                <span class="n">slave_id</span> <span class="o">=</span> <span class="n">servo</span><span class="o">.</span><span class="n">slave_id</span>
+                <span class="n">servo_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">get_servo_state</span><span class="p">(</span><span class="n">slave_id</span><span class="p">)</span>
+                <span class="n">is_servo_alive</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">servo</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">NONE_STATE</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">is_servo_alive</span> <span class="ow">and</span> <span class="n">servo_state</span> <span class="o">==</span> <span class="n">NET_STATE</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_notify_status</span><span class="p">(</span><span class="n">slave_id</span><span class="p">,</span> <span class="n">NET_DEV_EVT</span><span class="o">.</span><span class="n">REMOVED</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_set_servo_state</span><span class="p">(</span><span class="n">slave_id</span><span class="p">,</span> <span class="n">NET_STATE</span><span class="o">.</span><span class="n">DISCONNECTED</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">is_servo_alive</span>
+                    <span class="ow">and</span> <span class="n">servo_state</span> <span class="o">==</span> <span class="n">NET_STATE</span><span class="o">.</span><span class="n">DISCONNECTED</span>
+                    <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_recover_from_disconnection</span><span class="p">()</span>
+                <span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_notify_status</span><span class="p">(</span><span class="n">slave_id</span><span class="p">,</span> <span class="n">NET_DEV_EVT</span><span class="o">.</span><span class="n">ADDED</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_set_servo_state</span><span class="p">(</span><span class="n">slave_id</span><span class="p">,</span> <span class="n">NET_STATE</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__refresh_time</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__stop</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="EthercatNetwork">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork">[docs]</a>
+<span class="k">class</span> <span class="nc">EthercatNetwork</span><span class="p">(</span><span class="n">Network</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Network for all EtherCAT communications.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        interface_name: Interface name to be targeted.</span>
+<span class="sd">        connection_timeout: Time in seconds of the connection timeout.</span>
+<span class="sd">        overlapping_io_map: Map PDOs to overlapping IO map.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ImportError: WinPcap is not installed</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">FOE_APPLICATION</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;win32&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;64bit&quot;</span><span class="p">:</span> <span class="s2">&quot;FoE/win_64x/FoEUpdateFirmware.exe&quot;</span><span class="p">},</span>
+        <span class="s2">&quot;linux&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;64bit&quot;</span><span class="p">:</span> <span class="s2">&quot;FoE/linux/FoEUpdateFirmware&quot;</span><span class="p">},</span>
+    <span class="p">}</span>
+    <span class="n">FOE_ERRORS</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;Can’t read the input file.&quot;</span><span class="p">,</span>
+        <span class="mi">2</span><span class="p">:</span> <span class="s2">&quot;ECAT slave can’t reach the BOOT mode.&quot;</span><span class="p">,</span>
+        <span class="mi">3</span><span class="p">:</span> <span class="s2">&quot;No ECAT slave detected&quot;</span><span class="p">,</span>
+        <span class="mi">4</span><span class="p">:</span> <span class="s2">&quot;Can’t initialize the network adapter&quot;</span><span class="p">,</span>
+        <span class="mi">5</span><span class="p">:</span> <span class="s2">&quot;Drive can&#39;t init. Ensure the FW file is right&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">UNKNOWN_FOE_ERROR</span> <span class="o">=</span> <span class="s2">&quot;Unknown error&quot;</span>
+    <span class="n">MANUAL_STATE_CHANGE</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="n">DEFAULT_ECAT_CONNECTION_TIMEOUT_S</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">ECAT_STATE_CHANGE_TIMEOUT_NS</span> <span class="o">=</span> <span class="mi">50_000</span>
+    <span class="n">ECAT_PROCESSDATA_TIMEOUT_S</span> <span class="o">=</span> <span class="mf">0.1</span>
+
+    <span class="n">EXPECTED_WKC_PROCESS_DATA</span> <span class="o">=</span> <span class="mi">3</span>
+
+    <span class="n">DEFAULT_FOE_PASSWORD</span> <span class="o">=</span> <span class="mh">0x70636675</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">interface_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">connection_timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_ECAT_CONNECTION_TIMEOUT_S</span><span class="p">,</span>
+        <span class="n">overlapping_io_map</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">pysoem</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">pysoem_import_error</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">EthercatNetwork</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interface_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">interface_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">EthercatServo</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NetStatusListener</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection_timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">connection_timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="p">:</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">CdefMaster</span> <span class="o">=</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">Master</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">sdo_read_timeout</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">1_000_000</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection_timeout</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">sdo_write_timeout</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">1_000_000</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection_timeout</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">manual_state_change</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">MANUAL_STATE_CHANGE</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_overlapping_io_map</span> <span class="o">=</span> <span class="n">overlapping_io_map</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__is_master_running</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__last_init_nodes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="EthercatNetwork.scan_slaves">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.scan_slaves">[docs]</a>
+    <span class="k">def</span> <span class="nf">scan_slaves</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scans for slaves in the network. Scanning of slaves cannot be done if a slave is already</span>
+<span class="sd">        connected to the network.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List containing all the detected slaves.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: If any slaves is already connected.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Some slaves are already connected&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__is_master_running</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_master</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__init_nodes</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__last_init_nodes</span></div>
+
+
+<div class="viewcode-block" id="EthercatNetwork.scan_slaves_info">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.scan_slaves_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">scan_slaves_info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OrderedDict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">SlaveInfo</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scans for slaves in the network and return an ordered dict with the slave information.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Ordered dict with the slave information.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: If any slave is already connected.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">slave_info</span><span class="p">:</span> <span class="n">OrderedDict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">SlaveInfo</span><span class="p">]</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">slaves</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scan_slaves</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">ILError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">slave_info</span>
+        <span class="k">for</span> <span class="n">slave_id</span> <span class="ow">in</span> <span class="n">slaves</span><span class="p">:</span>
+            <span class="n">slave</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">slaves</span><span class="p">[</span><span class="n">slave_id</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">slave_info</span><span class="p">[</span><span class="n">slave_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">SlaveInfo</span><span class="p">(</span><span class="n">slave</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">slave</span><span class="o">.</span><span class="n">rev</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">slave_info</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__init_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Init all the nodes and set already connected nodes to PreOp state.</span>
+<span class="sd">        Also fill `__last_init_nodes` attribute.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">config_init</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_change_nodes_state</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">PREOP_STATE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__last_init_nodes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nodes</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+<div class="viewcode-block" id="EthercatNetwork.connect_to_slave">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.connect_to_slave">[docs]</a>
+    <span class="k">def</span> <span class="nf">connect_to_slave</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">slave_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">dictionary</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">servo_status_listener</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">net_status_listener</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EthercatServo</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Connects to a drive through a given slave number.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            slave_id: Targeted slave to be connected.</span>
+<span class="sd">            dictionary: Path to the dictionary file.</span>
+<span class="sd">            servo_status_listener: Toggle the listener of the servo for</span>
+<span class="sd">                its status, errors, faults, etc.</span>
+<span class="sd">            net_status_listener: Toggle the listener of the network</span>
+<span class="sd">                status, connection and disconnection.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the slave ID is not valid.</span>
+<span class="sd">            ILError: If no slaves are found.</span>
+<span class="sd">            ILStateError: If slave can not reach PreOp state</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slave_id</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="n">slave_id</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid slave ID value&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__is_master_running</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_master</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">slave_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__last_init_nodes</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__init_nodes</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__last_init_nodes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Could not find any slaves in the network.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">slave_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__last_init_nodes</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Slave </span><span class="si">{</span><span class="n">slave_id</span><span class="si">}</span><span class="s2"> was not found.&quot;</span><span class="p">)</span>
+        <span class="n">slave</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">slaves</span><span class="p">[</span><span class="n">slave_id</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">servo</span> <span class="o">=</span> <span class="n">EthercatServo</span><span class="p">(</span>
+            <span class="n">slave</span><span class="p">,</span> <span class="n">slave_id</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection_timeout</span><span class="p">,</span> <span class="n">servo_status_listener</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_change_nodes_state</span><span class="p">(</span><span class="n">servo</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">PREOP_STATE</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">servo_status_listener</span><span class="p">:</span>
+                <span class="n">servo</span><span class="o">.</span><span class="n">stop_status_listener</span><span class="p">()</span>
+            <span class="k">raise</span> <span class="n">ILStateError</span><span class="p">(</span><span class="s2">&quot;Slave can not reach PreOp state&quot;</span><span class="p">)</span>
+        <span class="n">servo</span><span class="o">.</span><span class="n">reset_pdo_mapping</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">servo</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_set_servo_state</span><span class="p">(</span><span class="n">slave_id</span><span class="p">,</span> <span class="n">NET_STATE</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">net_status_listener</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start_status_listener</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">servo</span></div>
+
+
+<div class="viewcode-block" id="EthercatNetwork.disconnect_from_slave">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.disconnect_from_slave">[docs]</a>
+    <span class="k">def</span> <span class="nf">disconnect_from_slave</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">servo</span><span class="p">:</span> <span class="n">EthercatServo</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore [override]</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Disconnects the slave from the network.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            servo: Instance of the servo connected.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">servo</span><span class="o">.</span><span class="n">stop_status_listener</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_change_nodes_state</span><span class="p">(</span><span class="n">servo</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">INIT_STATE</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Drive can not reach Init state&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">servo</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stop_status_listener</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__is_master_running</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__last_init_nodes</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="EthercatNetwork.config_pdo_maps">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.config_pdo_maps">[docs]</a>
+    <span class="k">def</span> <span class="nf">config_pdo_maps</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Configure the PDO maps.</span>
+
+<span class="sd">        It maps the PDO maps of each slave and sets its state to SafeOP.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overlapping_io_map</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">config_overlap_map</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">config_map</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="EthercatNetwork.start_pdos">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.start_pdos">[docs]</a>
+    <span class="k">def</span> <span class="nf">start_pdos</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set all slaves with mapped PDOs to Operational State.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            timeout: timeout in seconds to reach Op state, 1.0 seconds by default.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILStateError: If slaves can not reach SafeOp or Op state</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">op_servo_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">servo</span> <span class="k">for</span> <span class="n">servo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span> <span class="k">if</span> <span class="n">servo</span><span class="o">.</span><span class="n">_rpdo_maps</span> <span class="ow">or</span> <span class="n">servo</span><span class="o">.</span><span class="n">_tpdo_maps</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">op_servo_list</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;There are no PDOs assigned to any connected slave.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">servo</span> <span class="ow">in</span> <span class="n">op_servo_list</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">rpdo_map</span> <span class="ow">in</span> <span class="n">servo</span><span class="o">.</span><span class="n">_rpdo_maps</span><span class="p">:</span>
+                    <span class="n">rpdo_map</span><span class="o">.</span><span class="n">get_item_bytes</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">ILError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span>
+                <span class="s2">&quot;The RPDO values should be set before starting the PDO exchange process.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config_pdo_maps</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">SAFEOP_STATE</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_change_nodes_state</span><span class="p">(</span><span class="n">op_servo_list</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">SAFEOP_STATE</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">ILStateError</span><span class="p">(</span><span class="s2">&quot;Drives can not reach SafeOp state&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_change_nodes_state</span><span class="p">(</span><span class="n">op_servo_list</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">OP_STATE</span><span class="p">)</span>
+        <span class="n">init_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_node_state</span><span class="p">(</span><span class="n">op_servo_list</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">OP_STATE</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_receive_processdata</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">timeout</span> <span class="o">&lt;</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">init_time</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ILStateError</span><span class="p">(</span><span class="s2">&quot;Drives can not reach Op state&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EthercatNetwork.stop_pdos">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.stop_pdos">[docs]</a>
+    <span class="k">def</span> <span class="nf">stop_pdos</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;For all slaves in OP or SafeOp state, set state to PreOp&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">read_state</span><span class="p">()</span>
+        <span class="n">op_servo_list</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">servo</span>
+            <span class="k">for</span> <span class="n">servo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span>
+            <span class="k">if</span> <span class="n">servo</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">state</span> <span class="ow">in</span> <span class="p">[</span><span class="n">pysoem</span><span class="o">.</span><span class="n">OP_STATE</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">SAFEOP_STATE</span><span class="p">]</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_change_nodes_state</span><span class="p">(</span><span class="n">op_servo_list</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">INIT_STATE</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Not all drives could reach the Init state&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__init_nodes</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="EthercatNetwork.send_receive_processdata">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.send_receive_processdata">[docs]</a>
+    <span class="k">def</span> <span class="nf">send_receive_processdata</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">ECAT_PROCESSDATA_TIMEOUT_S</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send and receive PDOs</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            timeout: receive processdata timeout in seconds, 0.1 seconds by default.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILWrongWorkingCount: If processdata working count is wrong</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">servo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">generate_pdo_outputs</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_overlapping_io_map</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">send_overlap_processdata</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">send_processdata</span><span class="p">()</span>
+        <span class="n">processdata_wkc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">receive_processdata</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">timeout</span> <span class="o">*</span> <span class="mi">1_000_000</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">processdata_wkc</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">EXPECTED_WKC_PROCESS_DATA</span> <span class="o">*</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">)):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">read_state</span><span class="p">()</span>
+            <span class="n">servos_state_msg</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">for</span> <span class="n">servo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+                <span class="n">servos_state_msg</span> <span class="o">+=</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Slave </span><span class="si">{</span><span class="n">servo</span><span class="o">.</span><span class="n">slave_id</span><span class="si">}</span><span class="s2">: state </span><span class="si">{</span><span class="n">SlaveState</span><span class="p">(</span><span class="n">servo</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">state</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">servo</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">al_status</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">al_status</span> <span class="o">=</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">al_status_code_to_string</span><span class="p">(</span><span class="n">servo</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">al_status</span><span class="p">)</span>
+                    <span class="n">servos_state_msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;, AL status </span><span class="si">{</span><span class="n">al_status</span><span class="si">}</span><span class="s2">.&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">servos_state_msg</span> <span class="o">+=</span> <span class="s2">&quot;. &quot;</span>
+            <span class="k">raise</span> <span class="n">ILWrongWorkingCount</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Processdata working count is wrong, expected: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">expected_wkc</span><span class="si">}</span><span class="s2">,&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; real: </span><span class="si">{</span><span class="n">processdata_wkc</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">servos_state_msg</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">for</span> <span class="n">servo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">process_pdo_inputs</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_change_nodes_state</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">nodes</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s2">&quot;EthercatServo&quot;</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="s2">&quot;EthercatServo&quot;</span><span class="p">]],</span> <span class="n">target_state</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set ECAT state to target state for all nodes in list</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            nodes: target node or list of nodes</span>
+<span class="sd">            target_state: target ECAT state</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if all nodes reached the target state, else False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">node_list</span> <span class="o">=</span> <span class="n">nodes</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">nodes</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">drive</span> <span class="ow">in</span> <span class="n">node_list</span><span class="p">:</span>
+            <span class="n">drive</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">target_state</span>
+            <span class="n">drive</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">write_state</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_node_state</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span> <span class="n">target_state</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_check_node_state</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">nodes</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="s2">&quot;EthercatServo&quot;</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="s2">&quot;EthercatServo&quot;</span><span class="p">]],</span> <span class="n">target_state</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check ECAT state for all nodes in list</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            nodes: target node or list of nodes</span>
+<span class="sd">            target_state: target ECAT state</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if all nodes reached the target state, else False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">node_list</span> <span class="o">=</span> <span class="n">nodes</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nodes</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">nodes</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">read_state</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span>
+            <span class="n">target_state</span> <span class="o">==</span> <span class="n">drive</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">state_check</span><span class="p">(</span><span class="n">target_state</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ECAT_STATE_CHANGE_TIMEOUT_NS</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">drive</span> <span class="ow">in</span> <span class="n">node_list</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="EthercatNetwork.subscribe_to_status">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.subscribe_to_status">[docs]</a>
+    <span class="k">def</span> <span class="nf">subscribe_to_status</span><span class="p">(</span>  <span class="c1"># type: ignore [override]</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">slave_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">NET_DEV_EVT</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Subscribe to network state changes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            slave_id: Slave ID of the drive to subscribe.</span>
+<span class="sd">            callback: Callback function.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">[</span><span class="n">slave_id</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Callback already subscribed.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">[</span><span class="n">slave_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EthercatNetwork.unsubscribe_from_status">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.unsubscribe_from_status">[docs]</a>
+    <span class="k">def</span> <span class="nf">unsubscribe_from_status</span><span class="p">(</span>  <span class="c1"># type: ignore [override]</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">slave_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">,</span> <span class="n">NET_DEV_EVT</span><span class="p">],</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unsubscribe from network state changes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            slave_id: Slave ID of the drive to subscribe.</span>
+<span class="sd">            callback: Callback function.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">callback</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">[</span><span class="n">slave_id</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Callback not subscribed.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">[</span><span class="n">slave_id</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EthercatNetwork.start_status_listener">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.start_status_listener">[docs]</a>
+    <span class="k">def</span> <span class="nf">start_status_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start monitoring network events (CONNECTION/DISCONNECTION).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">listener</span> <span class="o">=</span> <span class="n">NetStatusListener</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="n">listener</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span> <span class="o">=</span> <span class="n">listener</span></div>
+
+
+<div class="viewcode-block" id="EthercatNetwork.stop_status_listener">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.stop_status_listener">[docs]</a>
+    <span class="k">def</span> <span class="nf">stop_status_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stops the NetStatusListener from listening to the drive.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="EthercatNetwork.load_firmware">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.load_firmware">[docs]</a>
+    <span class="k">def</span> <span class="nf">load_firmware</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">fw_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">boot_in_app</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">slave_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Loads a given firmware file to a target slave.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            fw_file: Path to the firmware file.</span>
+<span class="sd">            boot_in_app: True if the application includes the bootloader (i.e, ``fw_file`` extension</span>
+<span class="sd">                is .sfu), False otherwise.</span>
+<span class="sd">            slave_id: Slave ID to which load the firmware file.</span>
+<span class="sd">            password: Password to load the firmware file. If ``None`` the default password will be</span>
+<span class="sd">                used.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: If the firmware file cannot be found.</span>
+<span class="sd">            ILFirmwareLoadError: If no slave is detected.</span>
+<span class="sd">            ILFirmwareLoadError: If the FoE write operation is not successful.</span>
+<span class="sd">            NotImplementedError: If FoE is not implemented for the current OS and architecture</span>
+<span class="sd">            AttributeError: If the boot_in_app argument is not a boolean.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">boot_in_app</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;The boot_in_app argument should be a boolean.&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">fw_file</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find </span><span class="si">{</span><span class="n">fw_file</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">password</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">password</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_FOE_PASSWORD</span>
+
+        <span class="n">arch</span> <span class="o">=</span> <span class="n">platform</span><span class="o">.</span><span class="n">architecture</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">sys_name</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span>
+        <span class="n">app_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">FOE_APPLICATION</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">sys_name</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">arch</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">app_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="s2">&quot;Load FW by ECAT is not implemented for this OS and architecture:&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">sys_name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">arch</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">exec_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">getfile</span><span class="p">(</span><span class="n">bin_module</span><span class="p">)),</span> <span class="n">app_path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Call FoE application for </span><span class="si">{</span><span class="n">sys_name</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">arch</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sys_name</span> <span class="o">==</span> <span class="s2">&quot;linux&quot;</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;chmod 777 </span><span class="si">{</span><span class="n">exec_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ILFirmwareLoadError</span><span class="p">(</span><span class="s2">&quot;Could not change the FoE binary permissions.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sys_name</span> <span class="o">==</span> <span class="s2">&quot;linux&quot;</span><span class="p">:</span>
+                <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">exec_path</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">interface_name</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">slave_id</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">fw_file</span><span class="si">}</span><span class="s2"> &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">boot_in_app</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">password</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="n">exec_path</span><span class="p">,</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">interface_name</span><span class="p">,</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">slave_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">fw_file</span><span class="p">,</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">boot_in_app</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">password</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="p">],</span>
+                    <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">foe_return_error</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">FOE_ERRORS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">returncode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">UNKNOWN_FOE_ERROR</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">ILFirmwareLoadError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;The firmware file could not be loaded correctly. </span><span class="si">{</span><span class="n">foe_return_error</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Firmware updated successfully&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_start_master</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start the EtherCAT master&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interface_name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__is_master_running</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">protocol</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NET_PROT</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;NET_PROT: Obtain network protocol.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">NET_PROT</span><span class="o">.</span><span class="n">ECAT</span>
+
+<div class="viewcode-block" id="EthercatNetwork.get_servo_state">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/network.html#ingenialink.ethercat.network.EthercatNetwork.get_servo_state">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_servo_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">servo_id</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">NET_STATE</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the state of a servo that&#39;s a part of network.</span>
+<span class="sd">        The state indicates if the servo is connected or disconnected.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            servo_id: The servo&#39;s slave ID.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The servo&#39;s state.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">servo_id</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The servo ID must be an int.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_servos_state</span><span class="p">[</span><span class="n">servo_id</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_set_servo_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">servo_id</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">state</span><span class="p">:</span> <span class="n">NET_STATE</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the state of a servo that&#39;s a part of network.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            servo_id: The servo&#39;s slave ID.</span>
+<span class="sd">            state: The servo&#39;s state.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_servos_state</span><span class="p">[</span><span class="n">servo_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span>
+
+    <span class="k">def</span> <span class="nf">_notify_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slave_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">status</span><span class="p">:</span> <span class="n">NET_DEV_EVT</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Notify subscribers of a network state change.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">[</span><span class="n">slave_id</span><span class="p">]:</span>
+            <span class="n">callback</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_recover_from_disconnection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Recover the CoE communication after a disconnection.</span>
+<span class="sd">        All the connected slaves need to transitioned to the PreOp state.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if all the connected slaves reach the PreOp state.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">read_state</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ecat_master</span><span class="o">.</span><span class="n">state</span> <span class="o">&gt;</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">INIT_STATE</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__init_nodes</span><span class="p">()</span>
+        <span class="n">all_drives_in_preop</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_node_state</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">PREOP_STATE</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">all_drives_in_preop</span><span class="p">:</span>
+            <span class="n">log_message</span> <span class="o">=</span> <span class="s2">&quot;CoE communication recovered.&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">log_message</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;The CoE communication cannot be recovered. Not all slaves reached the PreOp state&quot;</span>
+            <span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">log_message</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">all_drives_in_preop</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

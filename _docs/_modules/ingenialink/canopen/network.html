@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ingenialink.canopen.network &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ingenialink.canopen.network</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ingenialink.canopen.network</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">contextlib</span>
+<span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">platform</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span><span class="p">,</span> <span class="n">defaultdict</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Thread</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">sleep</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">can</span>
+<span class="kn">import</span> <span class="nn">canopen</span>
+<span class="kn">import</span> <span class="nn">ingenialogger</span>
+<span class="kn">from</span> <span class="nn">can</span> <span class="kn">import</span> <span class="n">CanError</span>
+<span class="kn">from</span> <span class="nn">can.interfaces.kvaser.canlib</span> <span class="kn">import</span> <span class="n">__get_canlib_function</span> <span class="k">as</span> <span class="n">get_canlib_function</span>
+<span class="kn">from</span> <span class="nn">can.interfaces.pcan.pcan</span> <span class="kn">import</span> <span class="n">PcanCanOperationError</span>
+
+<span class="kn">from</span> <span class="nn">ingenialink.canopen.register</span> <span class="kn">import</span> <span class="n">CanopenRegister</span>
+<span class="kn">from</span> <span class="nn">ingenialink.canopen.servo</span> <span class="kn">import</span> <span class="n">CANOPEN_SDO_RESPONSE_TIMEOUT</span><span class="p">,</span> <span class="n">CanopenServo</span>
+<span class="kn">from</span> <span class="nn">ingenialink.enums.register</span> <span class="kn">import</span> <span class="n">RegCyclicType</span>
+<span class="kn">from</span> <span class="nn">ingenialink.exceptions</span> <span class="kn">import</span> <span class="n">ILError</span><span class="p">,</span> <span class="n">ILFirmwareLoadError</span><span class="p">,</span> <span class="n">ILObjectNotExist</span>
+<span class="kn">from</span> <span class="nn">ingenialink.network</span> <span class="kn">import</span> <span class="n">NET_DEV_EVT</span><span class="p">,</span> <span class="n">NET_PROT</span><span class="p">,</span> <span class="n">NET_STATE</span><span class="p">,</span> <span class="n">Network</span><span class="p">,</span> <span class="n">SlaveInfo</span>
+<span class="kn">from</span> <span class="nn">ingenialink.register</span> <span class="kn">import</span> <span class="n">REG_ACCESS</span><span class="p">,</span> <span class="n">REG_DTYPE</span>
+<span class="kn">from</span> <span class="nn">ingenialink.utils._utils</span> <span class="kn">import</span> <span class="n">DisableLogger</span><span class="p">,</span> <span class="n">convert_bytes_to_dtype</span>
+<span class="kn">from</span> <span class="nn">ingenialink.utils.mcb</span> <span class="kn">import</span> <span class="n">MCB</span>
+
+<span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Windows&quot;</span><span class="p">:</span>
+    <span class="k">with</span> <span class="n">DisableLogger</span><span class="p">():</span>
+        <span class="kn">from</span> <span class="nn">can.interfaces.ixxat.exceptions</span> <span class="kn">import</span> <span class="n">VCIError</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">VCIError</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="kn">from</span> <span class="nn">canopen</span> <span class="kn">import</span> <span class="n">Network</span> <span class="k">as</span> <span class="n">NetworkLib</span>
+
+<span class="n">KVASER_DRIVER_INSTALLED</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">can.interfaces.kvaser.canlib</span> <span class="kn">import</span> <span class="p">(</span>
+        <span class="n">CANLIBError</span><span class="p">,</span>
+        <span class="n">CANLIBOperationError</span><span class="p">,</span>
+        <span class="n">canGetNumberOfChannels</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">KVASER_DRIVER_INSTALLED</span> <span class="o">=</span> <span class="kc">False</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">ingenialogger</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">PROG_STAT_1</span> <span class="o">=</span> <span class="n">CanopenRegister</span><span class="p">(</span>
+    <span class="n">idx</span><span class="o">=</span><span class="mh">0x1F51</span><span class="p">,</span>
+    <span class="n">subidx</span><span class="o">=</span><span class="mh">0x01</span><span class="p">,</span>
+    <span class="n">cyclic</span><span class="o">=</span><span class="n">RegCyclicType</span><span class="o">.</span><span class="n">CONFIG</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">REG_DTYPE</span><span class="o">.</span><span class="n">U8</span><span class="p">,</span>
+    <span class="n">access</span><span class="o">=</span><span class="n">REG_ACCESS</span><span class="o">.</span><span class="n">RW</span><span class="p">,</span>
+    <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;CIA302_BL_PROGRAM_CONTROL_1&quot;</span><span class="p">,</span>
+    <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">PROG_DL_1</span> <span class="o">=</span> <span class="n">CanopenRegister</span><span class="p">(</span>
+    <span class="n">idx</span><span class="o">=</span><span class="mh">0x1F50</span><span class="p">,</span>
+    <span class="n">subidx</span><span class="o">=</span><span class="mh">0x01</span><span class="p">,</span>
+    <span class="n">cyclic</span><span class="o">=</span><span class="n">RegCyclicType</span><span class="o">.</span><span class="n">CONFIG</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">REG_DTYPE</span><span class="o">.</span><span class="n">BYTE_ARRAY_512</span><span class="p">,</span>
+    <span class="n">access</span><span class="o">=</span><span class="n">REG_ACCESS</span><span class="o">.</span><span class="n">RW</span><span class="p">,</span>
+    <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;CIA302_BL_PROGRAM_DATA&quot;</span><span class="p">,</span>
+    <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">FORCE_BOOT</span> <span class="o">=</span> <span class="n">CanopenRegister</span><span class="p">(</span>
+    <span class="n">idx</span><span class="o">=</span><span class="mh">0x5EDE</span><span class="p">,</span>
+    <span class="n">subidx</span><span class="o">=</span><span class="mh">0x00</span><span class="p">,</span>
+    <span class="n">cyclic</span><span class="o">=</span><span class="n">RegCyclicType</span><span class="o">.</span><span class="n">CONFIG</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">REG_DTYPE</span><span class="o">.</span><span class="n">U32</span><span class="p">,</span>
+    <span class="n">access</span><span class="o">=</span><span class="n">REG_ACCESS</span><span class="o">.</span><span class="n">WO</span><span class="p">,</span>
+    <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;DRV_BOOT_COCO_FORCE&quot;</span><span class="p">,</span>
+    <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">CIA301_DRV_ID_DEVICE_TYPE</span> <span class="o">=</span> <span class="n">CanopenRegister</span><span class="p">(</span>
+    <span class="n">idx</span><span class="o">=</span><span class="mh">0x1000</span><span class="p">,</span>
+    <span class="n">subidx</span><span class="o">=</span><span class="mh">0x00</span><span class="p">,</span>
+    <span class="n">cyclic</span><span class="o">=</span><span class="n">RegCyclicType</span><span class="o">.</span><span class="n">CONFIG</span><span class="p">,</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">REG_DTYPE</span><span class="o">.</span><span class="n">U32</span><span class="p">,</span>
+    <span class="n">access</span><span class="o">=</span><span class="n">REG_ACCESS</span><span class="o">.</span><span class="n">RO</span><span class="p">,</span>
+    <span class="n">identifier</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">CANOPEN_BOTT_NODE_GUARDING_PERIOD</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">CANOPEN_SEND_FW_SDO_RESPONSE_TIMEOUT</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># Seconds</span>
+<span class="n">BOOTLOADER_MSG_SIZE</span> <span class="o">=</span> <span class="mi">256</span>  <span class="c1"># Size in Bytes</span>
+<span class="n">RECONNECTION_TIMEOUT</span> <span class="o">=</span> <span class="mi">180</span>  <span class="c1"># Seconds</span>
+<span class="n">POLLING_MAX_TRIES</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># Seconds</span>
+
+<span class="n">PROG_CTRL_STATE_STOP</span> <span class="o">=</span> <span class="mh">0x00</span>
+<span class="n">PROG_CTRL_STATE_START</span> <span class="o">=</span> <span class="mh">0x01</span>
+<span class="n">PROG_CTRL_STATE_CLEAR</span> <span class="o">=</span> <span class="mh">0x03</span>
+<span class="n">PROG_CTRL_STATE_FLASH</span> <span class="o">=</span> <span class="mh">0x80</span>
+
+<span class="n">APPLICATION_LOADED_STATE</span> <span class="o">=</span> <span class="mi">402</span>
+
+<span class="n">CAN_CHANNELS</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;kvaser&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="s2">&quot;pcan&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;PCAN_USBBUS1&quot;</span><span class="p">,</span> <span class="s2">&quot;PCAN_USBBUS2&quot;</span><span class="p">),</span>
+    <span class="s2">&quot;ixxat&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="s2">&quot;virtual&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="s2">&quot;socketcan&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;can0&quot;</span><span class="p">,</span> <span class="s2">&quot;can1&quot;</span><span class="p">),</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="CAN_DEVICE">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CAN_DEVICE">[docs]</a>
+<span class="k">class</span> <span class="nc">CAN_DEVICE</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;CAN Device.&quot;&quot;&quot;</span>
+
+    <span class="n">KVASER</span> <span class="o">=</span> <span class="s2">&quot;kvaser&quot;</span>
+    <span class="n">PCAN</span> <span class="o">=</span> <span class="s2">&quot;pcan&quot;</span>
+    <span class="n">IXXAT</span> <span class="o">=</span> <span class="s2">&quot;ixxat&quot;</span>
+    <span class="n">VIRTUAL</span> <span class="o">=</span> <span class="s2">&quot;virtual&quot;</span>
+    <span class="n">SOCKETCAN</span> <span class="o">=</span> <span class="s2">&quot;socketcan&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="CAN_BAUDRATE">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CAN_BAUDRATE">[docs]</a>
+<span class="k">class</span> <span class="nc">CAN_BAUDRATE</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Baudrates.&quot;&quot;&quot;</span>
+
+    <span class="n">Baudrate_1M</span> <span class="o">=</span> <span class="mi">1000000</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;1 Mbit/s&quot;&quot;&quot;</span>
+    <span class="n">Baudrate_500K</span> <span class="o">=</span> <span class="mi">500000</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;500 Kbit/s&quot;&quot;&quot;</span>
+    <span class="n">Baudrate_250K</span> <span class="o">=</span> <span class="mi">250000</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;250 Kbit/s&quot;&quot;&quot;</span>
+    <span class="n">Baudrate_125K</span> <span class="o">=</span> <span class="mi">125000</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;125 Kbit/s&quot;&quot;&quot;</span>
+    <span class="n">Baudrate_100K</span> <span class="o">=</span> <span class="mi">100000</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;100 Kbit/s&quot;&quot;&quot;</span>
+    <span class="n">Baudrate_50K</span> <span class="o">=</span> <span class="mi">50000</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;50 Kbit/s&quot;&quot;&quot;</span></div>
+
+
+
+<span class="n">CAN_BIT_TIMMING</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">CAN_BAUDRATE</span><span class="o">.</span><span class="n">Baudrate_1M</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">CAN_BAUDRATE</span><span class="o">.</span><span class="n">Baudrate_500K</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">CAN_BAUDRATE</span><span class="o">.</span><span class="n">Baudrate_250K</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">CAN_BAUDRATE</span><span class="o">.</span><span class="n">Baudrate_125K</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="n">CAN_BAUDRATE</span><span class="o">.</span><span class="n">Baudrate_100K</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">CAN_BAUDRATE</span><span class="o">.</span><span class="n">Baudrate_50K</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span>
+<span class="p">}</span>
+
+
+<span class="k">class</span> <span class="nc">CustomListener</span><span class="p">(</span><span class="n">can</span><span class="o">.</span><span class="n">Listener</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom listener for IXXAT and KVASER connection.</span>
+<span class="sd">    It is used to ignore the exceptions that occur when</span>
+<span class="sd">    the error limit is reached.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">on_message_received</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="n">can</span><span class="o">.</span><span class="n">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">on_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;An exception occurred with the IXXAT or KVASER connection. Exception: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="NetStatusListener">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.NetStatusListener">[docs]</a>
+<span class="k">class</span> <span class="nc">NetStatusListener</span><span class="p">(</span><span class="n">Thread</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Network status listener thread to check if the drive is alive.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        network: Network instance of the CANopen communication.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="s2">&quot;CanopenNetwork&quot;</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">NetStatusListener</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__network</span> <span class="o">=</span> <span class="n">network</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__stop</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="NetStatusListener.run">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.NetStatusListener.run">[docs]</a>
+    <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">timestamps</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__stop</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">node_id</span><span class="p">,</span> <span class="n">node</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+                <span class="n">sleep</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span>
+                <span class="n">current_timestamp</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">timestamp</span>
+                <span class="k">if</span> <span class="n">node_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">timestamps</span><span class="p">:</span>
+                    <span class="n">timestamps</span><span class="p">[</span><span class="n">node_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_timestamp</span>
+                    <span class="k">continue</span>
+                <span class="n">is_alive</span> <span class="o">=</span> <span class="n">current_timestamp</span> <span class="o">!=</span> <span class="n">timestamps</span><span class="p">[</span><span class="n">node_id</span><span class="p">]</span>
+                <span class="n">servo_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">get_servo_state</span><span class="p">(</span><span class="n">node_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">is_alive</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">servo_state</span> <span class="o">!=</span> <span class="n">NET_STATE</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_notify_status</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">NET_DEV_EVT</span><span class="o">.</span><span class="n">ADDED</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_set_servo_state</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">NET_STATE</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">)</span>
+                    <span class="n">timestamps</span><span class="p">[</span><span class="n">node_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">timestamp</span>
+                <span class="k">elif</span> <span class="n">servo_state</span> <span class="o">==</span> <span class="n">NET_STATE</span><span class="o">.</span><span class="n">DISCONNECTED</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_reset_connection</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_notify_status</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">NET_DEV_EVT</span><span class="o">.</span><span class="n">REMOVED</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__network</span><span class="o">.</span><span class="n">_set_servo_state</span><span class="p">(</span><span class="n">node_id</span><span class="p">,</span> <span class="n">NET_STATE</span><span class="o">.</span><span class="n">DISCONNECTED</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__stop</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="CanopenNetwork">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork">[docs]</a>
+<span class="k">class</span> <span class="nc">CanopenNetwork</span><span class="p">(</span><span class="n">Network</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Network of the CANopen communication.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        device: Targeted device to connect.</span>
+<span class="sd">        channel: Targeted channel number of the transceiver.</span>
+<span class="sd">        baudrate: Baudrate to communicate through.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">DRIVE_INFO_INDEX</span> <span class="o">=</span> <span class="mh">0x1018</span>
+    <span class="n">PRODUCT_CODE_SUB_IX</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">REVISION_NUMBER_SUB_IX</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">NODE_GUARDING_PERIOD_S</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">device</span><span class="p">:</span> <span class="n">CAN_DEVICE</span><span class="p">,</span>
+        <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">baudrate</span><span class="p">:</span> <span class="n">CAN_BAUDRATE</span> <span class="o">=</span> <span class="n">CAN_BAUDRATE</span><span class="o">.</span><span class="n">Baudrate_1M</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">CanopenNetwork</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CanopenServo</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__device</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__channel</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">CAN_CHANNELS</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">__device</span><span class="p">][</span><span class="n">channel</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__baudrate</span> <span class="o">=</span> <span class="n">baudrate</span><span class="o">.</span><span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NetworkLib</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NetStatusListener</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">NET_DEV_EVT</span><span class="p">],</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span>
+            <span class="nb">list</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">__connection_args</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;interface&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">__device</span><span class="p">,</span>
+            <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">__channel</span><span class="p">,</span>
+            <span class="s2">&quot;bitrate&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">__baudrate</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__device</span> <span class="o">==</span> <span class="n">CAN_DEVICE</span><span class="o">.</span><span class="n">PCAN</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__connection_args</span><span class="p">[</span><span class="s2">&quot;auto_reset&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="CanopenNetwork.scan_slaves">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.scan_slaves">[docs]</a>
+    <span class="k">def</span> <span class="nf">scan_slaves</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scans for nodes in the network.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Containing all the detected node IDs.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__device</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__channel</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_available_devices</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;The </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">__device</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> transceiver is not detected. &quot;</span>
+                <span class="s2">&quot;Make sure that it&#39;s connected and its drivers are installed.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">is_connection_created</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">is_connection_created</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_setup_connection</span><span class="p">()</span>
+            <span class="k">except</span> <span class="n">ILError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_teardown_connection</span><span class="p">()</span>
+                <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">scanner</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">scanner</span><span class="o">.</span><span class="n">search</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Error searching for nodes. Exception: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Resetting bus&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">bus</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">bus</span><span class="p">,</span> <span class="s2">&quot;reset&quot;</span><span class="p">)</span>
+            <span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="n">sleep</span><span class="p">(</span><span class="mf">0.05</span><span class="p">)</span>
+
+        <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">scanner</span><span class="o">.</span><span class="n">nodes</span>
+
+        <span class="k">if</span> <span class="n">is_connection_created</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_teardown_connection</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">nodes</span>  <span class="c1"># type: ignore [no-any-return]</span></div>
+
+
+<div class="viewcode-block" id="CanopenNetwork.scan_slaves_info">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.scan_slaves_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">scan_slaves_info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OrderedDict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">SlaveInfo</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scans for nodes in the network and return an ordered dict with the slave information.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Ordered dict with the slave information.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">connected_slaves</span> <span class="o">=</span> <span class="p">{</span><span class="n">servo</span><span class="o">.</span><span class="n">target</span><span class="p">:</span> <span class="n">servo</span><span class="o">.</span><span class="n">node</span> <span class="k">for</span> <span class="n">servo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">}</span>
+        <span class="n">slave_info</span><span class="p">:</span> <span class="n">OrderedDict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">SlaveInfo</span><span class="p">]</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">slaves</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scan_slaves</span><span class="p">()</span>
+        <span class="k">except</span> <span class="n">ILError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">slave_info</span>
+
+        <span class="n">is_connection_created</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">is_connection_created</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_setup_connection</span><span class="p">()</span>
+            <span class="k">except</span> <span class="n">ILError</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_teardown_connection</span><span class="p">()</span>
+                <span class="k">return</span> <span class="n">slave_info</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">slave_info</span>
+
+        <span class="k">for</span> <span class="n">slave_id</span> <span class="ow">in</span> <span class="n">slaves</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">slave_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">connected_slaves</span><span class="p">:</span>
+                <span class="n">node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">slave_id</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">node</span> <span class="o">=</span> <span class="n">connected_slaves</span><span class="p">[</span><span class="n">slave_id</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">product_code</span> <span class="o">=</span> <span class="n">convert_bytes_to_dtype</span><span class="p">(</span>
+                    <span class="n">node</span><span class="o">.</span><span class="n">sdo</span><span class="o">.</span><span class="n">upload</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">DRIVE_INFO_INDEX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">PRODUCT_CODE_SUB_IX</span><span class="p">),</span> <span class="n">REG_DTYPE</span><span class="o">.</span><span class="n">U32</span>
+                <span class="p">)</span>
+                <span class="n">revision_number</span> <span class="o">=</span> <span class="n">convert_bytes_to_dtype</span><span class="p">(</span>
+                    <span class="n">node</span><span class="o">.</span><span class="n">sdo</span><span class="o">.</span><span class="n">upload</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">DRIVE_INFO_INDEX</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">REVISION_NUMBER_SUB_IX</span><span class="p">),</span>
+                    <span class="n">REG_DTYPE</span><span class="o">.</span><span class="n">U32</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="n">canopen</span><span class="o">.</span><span class="n">sdo</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">SdoError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;The information of the node </span><span class="si">{</span><span class="n">slave_id</span><span class="si">}</span><span class="s2"> cannot be retrieved. &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="n">slave_info</span><span class="p">[</span><span class="n">slave_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">SlaveInfo</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">slave_info</span><span class="p">[</span><span class="n">slave_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">SlaveInfo</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">product_code</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">revision_number</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">is_connection_created</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_teardown_connection</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">slave_info</span></div>
+
+
+<div class="viewcode-block" id="CanopenNetwork.connect_to_slave">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.connect_to_slave">[docs]</a>
+    <span class="k">def</span> <span class="nf">connect_to_slave</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">dictionary</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">servo_status_listener</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">net_status_listener</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CanopenServo</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Connects to a drive through a given target node ID.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            target: Targeted node ID to be connected.</span>
+<span class="sd">            dictionary: Path to the dictionary file.</span>
+<span class="sd">            servo_status_listener: Toggle the listener of the servo for</span>
+<span class="sd">                its status, errors, faults, etc.</span>
+<span class="sd">            net_status_listener: Toggle the listener of the network</span>
+<span class="sd">                status, connection and disconnection.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scan_slaves</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Could not find any nodes in the network&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setup_connection</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Connection has not been established&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+
+                <span class="n">node</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">start_node_guarding</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">NODE_GUARDING_PERIOD_S</span><span class="p">)</span>
+
+                <span class="n">servo</span> <span class="o">=</span> <span class="n">CanopenServo</span><span class="p">(</span>
+                    <span class="n">target</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="n">dictionary</span><span class="p">,</span> <span class="n">servo_status_listener</span><span class="o">=</span><span class="n">servo_status_listener</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">servo</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_set_servo_state</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">NET_STATE</span><span class="o">.</span><span class="n">CONNECTED</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">net_status_listener</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">start_status_listener</span><span class="p">()</span>
+                <span class="k">return</span> <span class="n">servo</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed connecting to node </span><span class="si">%i</span><span class="s2">. Exception: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span>
+                    <span class="s2">&quot;Failed connecting to node </span><span class="si">{}</span><span class="s2">. &quot;</span>
+                    <span class="s2">&quot;Please check the connection settings and verify &quot;</span>
+                    <span class="s2">&quot;the transceiver is properly connected.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">target</span><span class="p">)</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Node id not found&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Node id </span><span class="si">{}</span><span class="s2"> not found in the network.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">target</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="CanopenNetwork.disconnect_from_slave">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.disconnect_from_slave">[docs]</a>
+    <span class="k">def</span> <span class="nf">disconnect_from_slave</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">servo</span><span class="p">:</span> <span class="n">CanopenServo</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore [override]</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Disconnects the slave from the network.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            servo: Instance of the servo connected.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_status_listener</span><span class="p">()</span>
+        <span class="n">servo</span><span class="o">.</span><span class="n">stop_status_listener</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">servo</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_teardown_connection</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_setup_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates a network interface object establishing an empty connection</span>
+<span class="sd">        with all the network attributes already specified.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="n">canopen</span><span class="o">.</span><span class="n">Network</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__device</span> <span class="ow">in</span> <span class="p">[</span><span class="n">CAN_DEVICE</span><span class="o">.</span><span class="n">IXXAT</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">CAN_DEVICE</span><span class="o">.</span><span class="n">KVASER</span><span class="o">.</span><span class="n">value</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">listeners</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CustomListener</span><span class="p">())</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">__connection_args</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">CanError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transceiver not found in network. Exception: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span>
+                    <span class="s2">&quot;Error connecting to the transceiver. &quot;</span>
+                    <span class="s2">&quot;Please verify the transceiver &quot;</span>
+                    <span class="s2">&quot;is properly connected.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Transceiver drivers not properly installed. Exception: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="s2">&quot;winerror&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">e</span><span class="o">.</span><span class="n">winerror</span> <span class="o">==</span> <span class="mi">126</span><span class="p">:</span>
+                    <span class="n">e</span><span class="o">.</span><span class="n">strerror</span> <span class="o">=</span> <span class="s2">&quot;Driver module not found. Drivers might not be properly installed.&quot;</span>
+                <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">error_message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Failed trying to connect. Exception: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">error_message</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="n">error_message</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Connection already established&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_teardown_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Tears down the already established connection</span>
+<span class="sd">        and deletes the network interface&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Can not disconnect. The connection is not established yet.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">VCIError</span><span class="p">,</span> <span class="n">CANLIBOperationError</span><span class="p">,</span> <span class="n">PcanCanOperationError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;An exception occurred during the teardown connection. Exception: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Tear down connection.&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_reset_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resets the established CANopen network.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: If the connection was not established yet.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Can not reset connection. The connection is not established yet.&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">BaseException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Disconnection failed. Exception: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">scanner</span><span class="o">.</span><span class="n">nodes</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">node</span><span class="p">]</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">stop_node_guarding</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">bus</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">bus</span><span class="o">.</span><span class="n">flush_tx_buffer</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Bus flushed&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not stop guarding. Exception: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__device</span> <span class="ow">in</span> <span class="p">[</span><span class="n">CAN_DEVICE</span><span class="o">.</span><span class="n">IXXAT</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">CAN_DEVICE</span><span class="o">.</span><span class="n">KVASER</span><span class="o">.</span><span class="n">value</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">listeners</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CustomListener</span><span class="p">())</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">__connection_args</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">servo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+                <span class="n">servo</span><span class="o">.</span><span class="n">node</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">servo</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
+                <span class="n">servo</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">start_node_guarding</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">NODE_GUARDING_PERIOD_S</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">BaseException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Connection failed. Exception: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CanopenNetwork.load_firmware">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.load_firmware">[docs]</a>
+    <span class="k">def</span> <span class="nf">load_firmware</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">fw_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">callback_status_msg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">callback_progress</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">int</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">callback_errors_enabled</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">bool</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Loads a given firmware file to a target.</span>
+
+<span class="sd">        .. warning ::</span>
+<span class="sd">            It is needed to disconnect the drive(:func:`disconnect_from_slave`)</span>
+<span class="sd">            after loading the firmware since the `Servo` object&#39;s data will</span>
+<span class="sd">            become obsolete.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            target: Targeted node ID to be loaded.</span>
+<span class="sd">            fw_file: Path to the firmware file.</span>
+<span class="sd">            callback_status_msg: Subscribed callback function for the status</span>
+<span class="sd">                message when loading a firmware.</span>
+<span class="sd">            callback_progress: Subscribed callback function for the live</span>
+<span class="sd">                progress when loading a firmware.</span>
+<span class="sd">            callback_errors_enabled: Subscribed callback function for</span>
+<span class="sd">                knowing when to toggle the error detection when loading firmware.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: Firmware file does not exist.</span>
+<span class="sd">            ILFirmwareLoadError: The firmware load process fails with an error message.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">servo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__load_fw_checks</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">fw_file</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">)</span>
+        <span class="n">start_network_listener_after_reconnect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_listener_started</span><span class="p">()</span>
+        <span class="n">start_servo_listener_after_reconnect</span> <span class="o">=</span> <span class="n">servo</span><span class="o">.</span><span class="n">is_listener_started</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_status_listener</span><span class="p">()</span>
+        <span class="n">servo</span><span class="o">.</span><span class="n">stop_status_listener</span><span class="p">()</span>
+        <span class="n">initial_status</span> <span class="o">=</span> <span class="n">servo</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">PROG_STAT_1</span><span class="p">,</span> <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">file_extension</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">fw_file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">file_extension</span> <span class="o">==</span> <span class="s2">&quot;.sfu&quot;</span><span class="p">:</span>
+            <span class="n">fw_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__optimize_firmware_file</span><span class="p">(</span><span class="n">fw_file</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__force_boot</span><span class="p">(</span><span class="n">servo</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__program_control_to_flash</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">initial_status</span><span class="p">),</span> <span class="n">servo</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__send_fw_file</span><span class="p">(</span><span class="n">fw_file</span><span class="p">,</span> <span class="n">servo</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">,</span> <span class="n">callback_progress</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">ILError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__send_fw_file_failure</span><span class="p">(</span><span class="n">servo</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">ILFirmwareLoadError</span><span class="p">(</span>
+                <span class="s2">&quot;An error occurred while downloading. Check firmware file is correct.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__program_control_to_stop</span><span class="p">(</span><span class="n">servo</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__program_control_to_start</span><span class="p">(</span><span class="n">servo</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">file_extension</span> <span class="o">==</span> <span class="s2">&quot;.sfu&quot;</span><span class="p">:</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fw_file</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Bootloader finished successfully!&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">callback_status_msg</span><span class="p">:</span>
+            <span class="n">callback_status_msg</span><span class="p">(</span><span class="s2">&quot;Bootloader finished successfully!&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">start_network_listener_after_reconnect</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start_status_listener</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">start_servo_listener_after_reconnect</span><span class="p">:</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">start_status_listener</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__load_fw_checks</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">fw_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CanopenServo</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Checks prior to firmware upload and return the target CanopenServo instance</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            target: Targeted node ID to be loaded.</span>
+<span class="sd">            fw_file: Path to the firmware file.</span>
+<span class="sd">            callback_status_msg: Subscribed callback function for the status message</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Target servo</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: Firmware file does not exist.</span>
+<span class="sd">            ILFirmwareLoadError: The drive is not connected.</span>
+<span class="sd">            ILFirmwareLoadError: Firmware and bootloader versions are not compatible.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">fw_file</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find </span><span class="si">{</span><span class="n">fw_file</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+        <span class="n">servo</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">connected_servo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">connected_servo</span><span class="o">.</span><span class="n">target</span> <span class="o">==</span> <span class="n">target</span><span class="p">:</span>
+                <span class="n">servo</span> <span class="o">=</span> <span class="n">connected_servo</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">servo</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILFirmwareLoadError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Node </span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2"> is not connected.&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Checking compatibility&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">callback_status_msg</span><span class="p">:</span>
+            <span class="n">callback_status_msg</span><span class="p">(</span><span class="s2">&quot;Checking compatibility&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">PROG_STAT_1</span><span class="p">,</span> <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">ILError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILFirmwareLoadError</span><span class="p">(</span>
+                <span class="s2">&quot;Firmware and bootloader versions are not compatible. Use FTP Bootloader instead.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">return</span> <span class="n">servo</span>
+
+    <span class="k">def</span> <span class="nf">__force_boot</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">servo</span><span class="p">:</span> <span class="n">CanopenServo</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Force boot, if drive is already in boot, do nothing</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            servo: target drive</span>
+<span class="sd">            callback_status_msg: Subscribed callback function for the status message</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: If the connection was not established yet.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Can not force boot. The connection is not established yet.&quot;</span><span class="p">)</span>
+        <span class="n">device_type</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">servo</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">CIA301_DRV_ID_DEVICE_TYPE</span><span class="p">,</span> <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+        <span class="n">device_type</span> <span class="o">=</span> <span class="n">device_type</span> <span class="o">&amp;</span> <span class="mh">0xFFFF</span>
+        <span class="k">if</span> <span class="n">device_type</span> <span class="o">==</span> <span class="n">APPLICATION_LOADED_STATE</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">callback_status_msg</span><span class="p">:</span>
+                <span class="n">callback_status_msg</span><span class="p">(</span><span class="s2">&quot;Entering Bootmode&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Entering Bootmode&quot;</span><span class="p">)</span>
+            <span class="c1"># Drive profile</span>
+            <span class="c1"># Enter in NMT pre-operational state.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="n">PROG_CTRL_STATE_FLASH</span><span class="p">)</span>
+            <span class="c1"># The drive will unlock the clear program command</span>
+            <span class="n">password</span> <span class="o">=</span> <span class="mh">0x70636675</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">FORCE_BOOT</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__send_fw_file_failure</span><span class="p">(</span><span class="n">servo</span><span class="p">:</span> <span class="n">CanopenServo</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Move the Program state machine from Flash to Start.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            servo: target drive.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">target_status</span> <span class="ow">in</span> <span class="p">[</span><span class="n">PROG_CTRL_STATE_STOP</span><span class="p">,</span> <span class="n">PROG_CTRL_STATE_START</span><span class="p">]:</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">PROG_STAT_1</span><span class="p">,</span> <span class="n">target_status</span><span class="p">,</span> <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__program_control_to_flash</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">initial_status</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">servo</span><span class="p">:</span> <span class="n">CanopenServo</span><span class="p">,</span>
+        <span class="n">callback_status_msg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Change program control status to flash.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            initial_status: program control initial status</span>
+<span class="sd">            servo: target drive</span>
+<span class="sd">            callback_status_msg: Subscribed callback function for the status message</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILFirmwareLoadError: Program control status does not change</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">callback_status_msg</span><span class="p">:</span>
+            <span class="n">callback_status_msg</span><span class="p">(</span><span class="s2">&quot;Setting up drive&quot;</span><span class="p">)</span>
+        <span class="n">target_status_list</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">PROG_CTRL_STATE_START</span><span class="p">,</span>
+            <span class="n">PROG_CTRL_STATE_STOP</span><span class="p">,</span>
+            <span class="n">PROG_CTRL_STATE_CLEAR</span><span class="p">,</span>
+            <span class="n">PROG_CTRL_STATE_FLASH</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="n">status_index</span> <span class="o">=</span> <span class="n">target_status_list</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">initial_status</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Clearing program...&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">target_status</span> <span class="ow">in</span> <span class="n">target_status_list</span><span class="p">[</span><span class="n">status_index</span><span class="p">:]:</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">PROG_STAT_1</span><span class="p">,</span> <span class="n">target_status</span><span class="p">,</span> <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">__wait_for_register_value</span><span class="p">(</span><span class="n">servo</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">PROG_STAT_1</span><span class="p">,</span> <span class="n">target_status</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">ILFirmwareLoadError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error setting program control to 0x</span><span class="si">{</span><span class="n">target_status</span><span class="si">:</span><span class="s2">X</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__wait_for_register_value</span><span class="p">(</span>
+        <span class="n">servo</span><span class="p">:</span> <span class="n">CanopenServo</span><span class="p">,</span>
+        <span class="n">subnode</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">register</span><span class="p">:</span> <span class="n">CanopenRegister</span><span class="p">,</span>
+        <span class="n">expected_value</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Waits for the register to reach a value.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            servo: Instance of the servo to be used.</span>
+<span class="sd">            subnode: Target subnode.</span>
+<span class="sd">            register: Register to be read.</span>
+<span class="sd">            expected_value: Expected value for the given register.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            True if values is reached, else False</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Waiting for register </span><span class="si">{</span><span class="n">register</span><span class="o">.</span><span class="n">identifier</span><span class="si">}</span><span class="s2"> to return &lt;</span><span class="si">{</span><span class="n">expected_value</span><span class="si">}</span><span class="s2">&gt;&quot;</span><span class="p">)</span>
+        <span class="n">num_tries</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">while</span> <span class="n">num_tries</span> <span class="o">&lt;</span> <span class="n">POLLING_MAX_TRIES</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">servo</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">register</span><span class="p">,</span> <span class="n">subnode</span><span class="o">=</span><span class="n">subnode</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Error reading register </span><span class="si">{</span><span class="n">register</span><span class="o">.</span><span class="n">identifier</span><span class="si">}</span><span class="s2">. Expected data type&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">register</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">, got bytes.&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="o">==</span> <span class="n">expected_value</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Success. Read value </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">. Num tries </span><span class="si">{</span><span class="n">num_tries</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="n">num_tries</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Trying again </span><span class="si">{</span><span class="n">num_tries</span><span class="si">}</span><span class="s2">. value </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+            <span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__program_control_to_stop</span><span class="p">(</span>
+        <span class="n">servo</span><span class="p">:</span> <span class="n">CanopenServo</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Change program control status to stop.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            servo: target drive</span>
+<span class="sd">            callback_status_msg: Subscribed callback function for the status message</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILFirmwareLoadError: Drive does not respond</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">callback_status_msg</span><span class="p">:</span>
+            <span class="n">callback_status_msg</span><span class="p">(</span><span class="s2">&quot;Flashing firmware&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Flashing firmware&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">PROG_STAT_1</span><span class="p">,</span> <span class="n">PROG_CTRL_STATE_STOP</span><span class="p">,</span> <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">start_node_guarding</span><span class="p">(</span><span class="n">CANOPEN_BOTT_NODE_GUARDING_PERIOD</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">VCIError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># This error is a specific error for ixxat transceivers</span>
+            <span class="k">raise</span> <span class="n">ILFirmwareLoadError</span><span class="p">(</span><span class="s2">&quot;An error occurred when starting the node guarding.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">wait_for_heartbeat</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">RECONNECTION_TIMEOUT</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">canopen</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">NmtError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILFirmwareLoadError</span><span class="p">(</span><span class="s2">&quot;Could not recover drive&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">stop_node_guarding</span><span class="p">()</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__program_control_to_start</span><span class="p">(</span>
+        <span class="n">servo</span><span class="p">:</span> <span class="n">CanopenServo</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Change program control status to start.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            servo: target drive</span>
+<span class="sd">            callback_status_msg: Subscribed callback function for the status message</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILFirmwareLoadError: Drive does not respond</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">callback_status_msg</span><span class="p">:</span>
+            <span class="n">callback_status_msg</span><span class="p">(</span><span class="s2">&quot;Starting program&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting program&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">PROG_STAT_1</span><span class="p">,</span> <span class="n">PROG_CTRL_STATE_START</span><span class="p">,</span> <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">servo</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">wait_for_bootup</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">RECONNECTION_TIMEOUT</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">canopen</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">NmtError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILFirmwareLoadError</span><span class="p">(</span><span class="s2">&quot;Could not recover drive&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__optimize_firmware_file</span><span class="p">(</span>
+        <span class="n">sfu_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">callback_status_msg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert SFU file to LFU to optimize the firmware loading.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            sfu_file: target SFU file</span>
+<span class="sd">            callback_status_msg: Subscribed callback function for the status message</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            LFU file path</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mcb</span> <span class="o">=</span> <span class="n">MCB</span><span class="p">()</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">sfu_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp_file</span><span class="p">:</span>
+            <span class="n">total_file_lines</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">temp_file</span><span class="p">)</span>
+        <span class="c1"># Convert the sfu file to lfu</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Converting sfu to lfu...&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Optimizing file&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">callback_status_msg</span><span class="p">:</span>
+            <span class="n">callback_status_msg</span><span class="p">(</span><span class="s2">&quot;Optimizing file&quot;</span><span class="p">)</span>
+        <span class="n">lfu_file_d</span><span class="p">,</span> <span class="n">lfu_path</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="s2">&quot;.lfu&quot;</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">lfu_file_d</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">lfu_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">lfu_file</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">sfu_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">coco_in</span><span class="p">:</span>
+                <span class="n">bin_node</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+                <span class="n">current_progress</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">node</span> <span class="o">=</span> <span class="mi">10</span>
+                <span class="k">for</span> <span class="n">copy_process</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">coco_in</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;74 67 [0-4][0-4] 00 00 00 00 00 00 00&quot;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">bin_node</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">6</span><span class="p">:</span><span class="mi">8</span><span class="p">]</span>
+
+                    <span class="n">newline</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">bin_node</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="n">words</span> <span class="o">=</span> <span class="n">newline</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+                    <span class="c1"># Get command and address</span>
+                    <span class="n">subnode</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+                    <span class="n">cmd</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">words</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
+                    <span class="n">num</span> <span class="o">=</span> <span class="mi">3</span>
+                    <span class="k">while</span> <span class="n">num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">words</span><span class="p">)):</span>
+                        <span class="c1"># load data MCB</span>
+                        <span class="n">data</span> <span class="o">+=</span> <span class="nb">bytes</span><span class="p">([</span><span class="nb">int</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="n">num</span><span class="p">],</span> <span class="mi">16</span><span class="p">)])</span>
+                        <span class="n">num</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                    <span class="c1"># send message</span>
+                    <span class="n">mcb</span><span class="o">.</span><span class="n">add_cmd</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">subnode</span><span class="p">,</span> <span class="n">cmd</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">lfu_file</span><span class="p">)</span>
+                    <span class="n">new_progress</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">copy_process</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">/</span> <span class="n">total_file_lines</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">new_progress</span> <span class="o">!=</span> <span class="n">current_progress</span><span class="p">:</span>
+                        <span class="n">current_progress</span> <span class="o">=</span> <span class="n">new_progress</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Optimizing firmware file in progress: </span><span class="si">{</span><span class="n">current_progress</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Converted to lfu&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">lfu_path</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__send_fw_file</span><span class="p">(</span>
+        <span class="n">fw_file</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">servo</span><span class="p">:</span> <span class="n">CanopenServo</span><span class="p">,</span>
+        <span class="n">callback_status_msg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">]],</span>
+        <span class="n">callback_progress</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="nb">int</span><span class="p">],</span> <span class="kc">None</span><span class="p">]],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Send firmware file to drive with SDOs</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            fw_file: target firmware file</span>
+<span class="sd">            servo: target drive</span>
+<span class="sd">            callback_status_msg: Subscribed callback function for the status message</span>
+<span class="sd">            callback_progress: Subscribed callback function for the live progress.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILFirmwareLoadError: Drive does not respond</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">total_file_size</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">fw_file</span><span class="p">)</span> <span class="o">/</span> <span class="n">BOOTLOADER_MSG_SIZE</span>
+        <span class="n">servo</span><span class="o">.</span><span class="n">_change_sdo_timeout</span><span class="p">(</span><span class="n">CANOPEN_SEND_FW_SDO_RESPONSE_TIMEOUT</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Downloading firmware&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">callback_status_msg</span><span class="p">:</span>
+            <span class="n">callback_status_msg</span><span class="p">(</span><span class="s2">&quot;Downloading firmware&quot;</span><span class="p">)</span>
+        <span class="n">counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">progress</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fw_file</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">image</span><span class="p">:</span>
+            <span class="n">byte</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">BOOTLOADER_MSG_SIZE</span><span class="p">)</span>
+            <span class="k">while</span> <span class="n">byte</span><span class="p">:</span>
+                <span class="n">servo</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">PROG_DL_1</span><span class="p">,</span> <span class="n">byte</span><span class="p">,</span> <span class="n">subnode</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">new_progress</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">counter</span> <span class="o">*</span> <span class="mi">100</span> <span class="o">/</span> <span class="n">total_file_size</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">progress</span> <span class="o">!=</span> <span class="n">new_progress</span><span class="p">:</span>
+                    <span class="n">progress</span> <span class="o">=</span> <span class="n">new_progress</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Download firmware in progress: </span><span class="si">{</span><span class="n">progress</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">callback_progress</span><span class="p">:</span>
+                        <span class="n">callback_progress</span><span class="p">(</span><span class="n">progress</span><span class="p">)</span>
+                <span class="n">byte</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">BOOTLOADER_MSG_SIZE</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Download Finished!&quot;</span><span class="p">)</span>
+        <span class="n">servo</span><span class="o">.</span><span class="n">_change_sdo_timeout</span><span class="p">(</span><span class="n">CANOPEN_SDO_RESPONSE_TIMEOUT</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CanopenNetwork.change_baudrate">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.change_baudrate">[docs]</a>
+    <span class="k">def</span> <span class="nf">change_baudrate</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">target_node</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">new_target_baudrate</span><span class="p">:</span> <span class="n">CAN_BAUDRATE</span><span class="p">,</span>
+        <span class="n">vendor_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">product_code</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">rev_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">serial_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Changes the node ID of a given target node ID.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            The servo must be disconnected after this operation in order</span>
+<span class="sd">            to make the changes visible and update all the internal data.</span>
+<span class="sd">            It is also needed a power cycle of the servo otherwise the</span>
+<span class="sd">            changes will not be applied.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            target_node: Node ID of the targeted device.</span>
+<span class="sd">            new_target_baudrate: New baudrate for the targeted device.</span>
+<span class="sd">            vendor_id: Vendor ID of the targeted device.</span>
+<span class="sd">            product_code: Product code of the targeted device.</span>
+<span class="sd">            rev_number: Revision number of the targeted device.</span>
+<span class="sd">            serial_number: Serial number of the targeted device.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILObjectNotExist</span><span class="p">(</span><span class="s2">&quot;CAN connection was not established.&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Switching LSS into CONFIGURATION state...&quot;</span><span class="p">)</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">lss</span><span class="o">.</span><span class="n">send_switch_state_selective</span><span class="p">(</span>
+                <span class="n">vendor_id</span><span class="p">,</span>
+                <span class="n">product_code</span><span class="p">,</span>
+                <span class="n">rev_number</span><span class="p">,</span>
+                <span class="n">serial_number</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">r</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">lss</span><span class="o">.</span><span class="n">configure_bit_timing</span><span class="p">(</span><span class="n">CAN_BIT_TIMMING</span><span class="p">[</span><span class="n">new_target_baudrate</span><span class="p">])</span>
+                <span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_lss_store_configuration</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Error switching lss to selective state. Error code: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lss_reset_connection_nodes</span><span class="p">(</span><span class="n">target_node</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Baudrate changed to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">new_target_baudrate</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="CanopenNetwork.change_node_id">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.change_node_id">[docs]</a>
+    <span class="k">def</span> <span class="nf">change_node_id</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">target_node</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">new_target_node</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">vendor_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">product_code</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">rev_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">serial_number</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Changes the node ID of a given target node ID.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            The servo must be disconnected after this operation in order</span>
+<span class="sd">            to make the changes visible and update all the internal data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            target_node: Node ID of the targeted device.</span>
+<span class="sd">            new_target_node: New node ID for the targeted device.</span>
+<span class="sd">            vendor_id: Vendor ID of the targeted device.</span>
+<span class="sd">            product_code: Product code of the targeted device.</span>
+<span class="sd">            rev_number: Revision number of the targeted device.</span>
+<span class="sd">            serial_number: Serial number of the targeted device.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILObjectNotExist</span><span class="p">(</span><span class="s2">&quot;CAN connection was not established.&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Switching LSS into CONFIGURATION state...&quot;</span><span class="p">)</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">lss</span><span class="o">.</span><span class="n">send_switch_state_selective</span><span class="p">(</span>
+                <span class="n">vendor_id</span><span class="p">,</span>
+                <span class="n">product_code</span><span class="p">,</span>
+                <span class="n">rev_number</span><span class="p">,</span>
+                <span class="n">serial_number</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">r</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">lss</span><span class="o">.</span><span class="n">configure_node_id</span><span class="p">(</span><span class="n">new_target_node</span><span class="p">)</span>
+                <span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_lss_store_configuration</span><span class="p">()</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Error switching lss to selective state. Error code: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lss_reset_connection_nodes</span><span class="p">(</span><span class="n">target_node</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Node ID changed to </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">new_target_node</span><span class="p">))</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_lss_store_configuration</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stores the current configuration of the LSS</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: If the connection was not established yet.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Can not store configuration. The connection is not established yet.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">lss</span><span class="o">.</span><span class="n">store_configuration</span><span class="p">()</span>
+        <span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Stored new configuration&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">lss</span><span class="o">.</span><span class="n">send_switch_state_global</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">lss</span><span class="o">.</span><span class="n">WAITING_STATE</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_lss_reset_connection_nodes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_node</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resets the connection and starts node guarding for the connection nodes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            target_node: Node ID of the targeted device.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: If the connection was not established yet.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Can not reset connection. The connection is not established yet.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">target_node</span><span class="p">]</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="mh">0x82</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Wait until node is reset&quot;</span><span class="p">)</span>
+        <span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">servo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Node connected: </span><span class="si">%i</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">servo</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">add_node</span><span class="p">(</span><span class="n">servo</span><span class="o">.</span><span class="n">target</span><span class="p">)</span>
+
+        <span class="c1"># Reset all nodes to default state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">lss</span><span class="o">.</span><span class="n">send_switch_state_global</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">lss</span><span class="o">.</span><span class="n">WAITING_STATE</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">target_node</span><span class="p">]</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">start_node_guarding</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">NODE_GUARDING_PERIOD_S</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CanopenNetwork.subscribe_to_status">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.subscribe_to_status">[docs]</a>
+    <span class="k">def</span> <span class="nf">subscribe_to_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">NET_DEV_EVT</span><span class="p">],</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore [override]</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Subscribe to network state changes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            node_id: Drive&#39;s node ID.</span>
+<span class="sd">            callback: Callback function.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">[</span><span class="n">node_id</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Callback already subscribed.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">[</span><span class="n">node_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CanopenNetwork.unsubscribe_from_status">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.unsubscribe_from_status">[docs]</a>
+    <span class="k">def</span> <span class="nf">unsubscribe_from_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">NET_DEV_EVT</span><span class="p">],</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore [override]</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unsubscribe from network state changes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            node_id: Drive&#39;s node ID.</span>
+<span class="sd">            callback: Callback function.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">callback</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">[</span><span class="n">node_id</span><span class="p">]:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Callback not subscribed.&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">[</span><span class="n">node_id</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_notify_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">status</span><span class="p">:</span> <span class="n">NET_DEV_EVT</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Notify subscribers of a network state change.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__observers_net_state</span><span class="p">[</span><span class="n">node_id</span><span class="p">]:</span>
+            <span class="n">callback</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">is_listener_started</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="CanopenNetwork.start_status_listener">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.start_status_listener">[docs]</a>
+    <span class="k">def</span> <span class="nf">start_status_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start monitoring network events (CONNECTION/DISCONNECTION).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">listener</span> <span class="o">=</span> <span class="n">NetStatusListener</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="n">listener</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span> <span class="o">=</span> <span class="n">listener</span></div>
+
+
+<div class="viewcode-block" id="CanopenNetwork.stop_status_listener">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.stop_status_listener">[docs]</a>
+    <span class="k">def</span> <span class="nf">stop_status_listener</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stops the NetStatusListener from listening to the drive.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">node_id</span><span class="p">,</span> <span class="n">node_obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">node_obj</span><span class="o">.</span><span class="n">nmt</span><span class="o">.</span><span class="n">stop_node_guarding</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Could not stop node guarding. Exception: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__listener_net_status</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">device</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Current device of the network.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__device</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">channel</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Current channel of the network.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__channel</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">baudrate</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Current baudrate of the network.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__baudrate</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">network</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">canopen</span><span class="o">.</span><span class="n">Network</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the instance of the CANopen Network.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">protocol</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NET_PROT</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Obtain network protocol.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">NET_PROT</span><span class="o">.</span><span class="n">CAN</span>
+
+<div class="viewcode-block" id="CanopenNetwork.get_servo_state">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.get_servo_state">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_servo_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">servo_id</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">NET_STATE</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the state of a servo that&#39;s a part of network.</span>
+<span class="sd">        The state indicates if the servo is connected or disconnected.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            servo_id: The servo&#39;s node ID.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The servo&#39;s state.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">servo_id</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The servo ID must be an int.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_servos_state</span><span class="p">[</span><span class="n">servo_id</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_set_servo_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">servo_id</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">state</span><span class="p">:</span> <span class="n">NET_STATE</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the state of a servo that&#39;s a part of network.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            servo_id: The servo&#39;s node ID.</span>
+<span class="sd">            state: The servo&#39;s state.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_servos_state</span><span class="p">[</span><span class="n">servo_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span>
+
+<div class="viewcode-block" id="CanopenNetwork.get_available_devices">
+<a class="viewcode-back" href="../../../api/protocols/canopen/network.html#ingenialink.canopen.network.CanopenNetwork.get_available_devices">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_available_devices</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the available CAN devices and their channels</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of tuples with device name and channel</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">unavailable_devices</span> <span class="o">=</span> <span class="p">[</span><span class="n">CAN_DEVICE</span><span class="o">.</span><span class="n">KVASER</span><span class="p">,</span> <span class="n">CAN_DEVICE</span><span class="o">.</span><span class="n">VIRTUAL</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Windows&quot;</span><span class="p">:</span>
+            <span class="n">unavailable_devices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CAN_DEVICE</span><span class="o">.</span><span class="n">SOCKETCAN</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">available_device</span><span class="p">[</span><span class="s2">&quot;interface&quot;</span><span class="p">],</span> <span class="n">available_device</span><span class="p">[</span><span class="s2">&quot;channel&quot;</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">available_device</span> <span class="ow">in</span> <span class="p">(</span>
+                <span class="n">can</span><span class="o">.</span><span class="n">detect_available_configs</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">device</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">device</span> <span class="ow">in</span> <span class="n">CAN_DEVICE</span> <span class="k">if</span> <span class="n">device</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">unavailable_devices</span><span class="p">]</span>
+                <span class="p">)</span>
+                <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_kvaser_devices</span><span class="p">()</span>
+            <span class="p">)</span>
+        <span class="p">]</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_get_available_kvaser_devices</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the available Kvaser devices and their channels</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of dictionaries compatible with :func:`can.detect_available_configs` output.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">KVASER_DRIVER_INSTALLED</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__device</span> <span class="o">==</span> <span class="n">CAN_DEVICE</span><span class="o">.</span><span class="n">KVASER</span><span class="o">.</span><span class="n">value</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_reload_kvaser_lib</span><span class="p">()</span>
+        <span class="n">num_channels</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_int</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="n">CANLIBError</span><span class="p">,</span> <span class="ne">NameError</span><span class="p">):</span>
+            <span class="n">canGetNumberOfChannels</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">byref</span><span class="p">(</span><span class="n">num_channels</span><span class="p">))</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s2">&quot;interface&quot;</span><span class="p">:</span> <span class="s2">&quot;kvaser&quot;</span><span class="p">,</span> <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="n">channel</span><span class="p">}</span>
+            <span class="k">for</span> <span class="n">channel</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_channels</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;Virtual&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">can</span><span class="o">.</span><span class="n">interfaces</span><span class="o">.</span><span class="n">kvaser</span><span class="o">.</span><span class="n">get_channel_info</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span>
+        <span class="p">]</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_reload_kvaser_lib</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reload the Kvaser library to refresh the connected transceivers.&quot;&quot;&quot;</span>
+        <span class="n">canUnLoadLibrary</span> <span class="o">=</span> <span class="n">get_canlib_function</span><span class="p">(</span><span class="s2">&quot;canUnloadLibrary&quot;</span><span class="p">)</span>
+        <span class="n">canInitializeLibrary</span> <span class="o">=</span> <span class="n">get_canlib_function</span><span class="p">(</span><span class="s2">&quot;canInitializeLibrary&quot;</span><span class="p">)</span>
+        <span class="n">canUnLoadLibrary</span><span class="p">()</span>
+        <span class="n">canInitializeLibrary</span><span class="p">()</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

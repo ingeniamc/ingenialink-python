@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dictionary &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Network" href="net.html" />
+    <link rel="prev" title="Base classes" href="../base_classes.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../api.html">API documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../protocols.html">Protocols</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exceptions.html">Exceptions</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../base_classes.html">Base classes</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Dictionary</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.dictionary.Dictionary"><code class="docutils literal notranslate"><span class="pre">Dictionary</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.dictionary.DictionaryCategories"><code class="docutils literal notranslate"><span class="pre">DictionaryCategories</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.dictionary.DictionaryError"><code class="docutils literal notranslate"><span class="pre">DictionaryError</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.dictionary.DictionarySafetyPDO"><code class="docutils literal notranslate"><span class="pre">DictionarySafetyPDO</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.dictionary.DictionaryV2"><code class="docutils literal notranslate"><span class="pre">DictionaryV2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.dictionary.DictionaryV3"><code class="docutils literal notranslate"><span class="pre">DictionaryV3</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.dictionary.Interface"><code class="docutils literal notranslate"><span class="pre">Interface</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.dictionary.SubnodeType"><code class="docutils literal notranslate"><span class="pre">SubnodeType</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="net.html">Network</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pdo.html">PDOs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="poller.html">Poller</a></li>
+<li class="toctree-l3"><a class="reference internal" href="register.html">Registers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="servo.html">Servo</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../api.html">API documentation</a></li>
+          <li class="breadcrumb-item"><a href="../base_classes.html">Base classes</a></li>
+      <li class="breadcrumb-item active">Dictionary</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/base_classes/dictionary.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-ingenialink.dictionary">
+<span id="dictionary"></span><h1>Dictionary<a class="headerlink" href="#module-ingenialink.dictionary" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.dictionary.</span></span><span class="sig-name descname"><span class="pre">Dictionary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dictionary_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interface</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ingenialink.dictionary.Interface" title="ingenialink.dictionary.Interface"><span class="pre">Interface</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#Dictionary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.Dictionary" title="Link to this definition"></a></dt>
+<dd><p>Ingenia dictionary Abstract Base Class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dictionary_path</strong> – Dictionary file path.</p></li>
+<li><p><strong>interface</strong> – communication interface.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILDictionaryParseError" title="ingenialink.exceptions.ILDictionaryParseError"><strong>ILDictionaryParseError</strong></a> – If the dictionary could not be created.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.child_registers">
+<span class="sig-name descname"><span class="pre">child_registers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="register.html#ingenialink.register.Register" title="ingenialink.register.Register"><span class="pre">Register</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#Dictionary.child_registers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.Dictionary.child_registers" title="Link to this definition"></a></dt>
+<dd><p>Return group registers by an UID</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>uid</strong> – registers group UID</p></li>
+<li><p><strong>subnode</strong> – registers group subnode</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>All registers in the group</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>KeyError</strong> – Registers group does not exist</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.get_safety_rpdo">
+<span class="sig-name descname"><span class="pre">get_safety_rpdo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ingenialink.dictionary.DictionarySafetyPDO" title="ingenialink.dictionary.DictionarySafetyPDO"><span class="pre">DictionarySafetyPDO</span></a></span></span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#Dictionary.get_safety_rpdo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.Dictionary.get_safety_rpdo" title="Link to this definition"></a></dt>
+<dd><p>Get Safe RPDO by uid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>uid</strong> – Safe RPDO uid</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>PDO object description</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>NotImplementedError</strong> – Device is not safe</p></li>
+<li><p><strong>KeyError</strong> – Safe RPDO not exist</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.get_safety_tpdo">
+<span class="sig-name descname"><span class="pre">get_safety_tpdo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ingenialink.dictionary.DictionarySafetyPDO" title="ingenialink.dictionary.DictionarySafetyPDO"><span class="pre">DictionarySafetyPDO</span></a></span></span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#Dictionary.get_safety_tpdo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.Dictionary.get_safety_tpdo" title="Link to this definition"></a></dt>
+<dd><p>Get Safe TPDO by uid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>uid</strong> – Safe TPDO uid</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>PDO object description</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>NotImplementedError</strong> – Device is not safe</p></li>
+<li><p><strong>KeyError</strong> – Safe TPDO not exist</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.read_dictionary">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">read_dictionary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#Dictionary.read_dictionary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.Dictionary.read_dictionary" title="Link to this definition"></a></dt>
+<dd><p>Reads the dictionary file and initializes all its components.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.registers">
+<span class="sig-name descname"><span class="pre">registers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="register.html#ingenialink.register.Register" title="ingenialink.register.Register"><span class="pre">Register</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#Dictionary.registers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.Dictionary.registers" title="Link to this definition"></a></dt>
+<dd><p>Gets the register dictionary to the targeted subnode.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>subnode</strong> – Identifier for the subnode.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dictionary of all the registers for a subnode.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.categories">
+<span class="sig-name descname"><span class="pre">categories</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#ingenialink.dictionary.DictionaryCategories" title="ingenialink.dictionary.DictionaryCategories"><span class="pre">DictionaryCategories</span></a></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.categories" title="Link to this definition"></a></dt>
+<dd><p>Instance of all the categories in the dictionary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.coco_product_code">
+<span class="sig-name descname"><span class="pre">coco_product_code</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.coco_product_code" title="Link to this definition"></a></dt>
+<dd><p>CoCo product code declared in the dictionary.
+Only used when a COM-KIT and a CORE dictionary are merged.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.errors">
+<span class="sig-name descname"><span class="pre">errors</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#ingenialink.dictionary.DictionaryError" title="ingenialink.dictionary.DictionaryError"><span class="pre">DictionaryError</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.errors" title="Link to this definition"></a></dt>
+<dd><p>Instance of all the errors in the dictionary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.firmware_version">
+<span class="sig-name descname"><span class="pre">firmware_version</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.firmware_version" title="Link to this definition"></a></dt>
+<dd><p>Firmware version declared in the dictionary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.image">
+<span class="sig-name descname"><span class="pre">image</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.image" title="Link to this definition"></a></dt>
+<dd><p>Drive’s encoded image.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.interface">
+<span class="sig-name descname"><span class="pre">interface</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#ingenialink.dictionary.Interface" title="ingenialink.dictionary.Interface"><span class="pre">Interface</span></a></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.interface" title="Link to this definition"></a></dt>
+<dd><p>Interface declared in the dictionary.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.is_coco_dictionary">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_coco_dictionary</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.is_coco_dictionary" title="Link to this definition"></a></dt>
+<dd><p>Check if dictionary is a CoCo dictionary</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if the dictionary is a CoCo dictionary. False otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.is_safe">
+<span class="sig-name descname"><span class="pre">is_safe</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.is_safe" title="Link to this definition"></a></dt>
+<dd><p>True if has SafetyPDOs element, else False</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.part_number">
+<span class="sig-name descname"><span class="pre">part_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.part_number" title="Link to this definition"></a></dt>
+<dd><p>Part number declared in the dictionary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.path">
+<span class="sig-name descname"><span class="pre">path</span></span><a class="headerlink" href="#ingenialink.dictionary.Dictionary.path" title="Link to this definition"></a></dt>
+<dd><p>Path of the dictionary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.product_code">
+<span class="sig-name descname"><span class="pre">product_code</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.product_code" title="Link to this definition"></a></dt>
+<dd><p>Product code declared in the dictionary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.registers_group">
+<span class="sig-name descname"><span class="pre">registers_group</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="register.html#ingenialink.register.Register" title="ingenialink.register.Register"><span class="pre">Register</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.registers_group" title="Link to this definition"></a></dt>
+<dd><p>Registers group by subnode and UID</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.revision_number">
+<span class="sig-name descname"><span class="pre">revision_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.revision_number" title="Link to this definition"></a></dt>
+<dd><p>Revision number declared in the dictionary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.safety_rpdos">
+<span class="sig-name descname"><span class="pre">safety_rpdos</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#ingenialink.dictionary.DictionarySafetyPDO" title="ingenialink.dictionary.DictionarySafetyPDO"><span class="pre">DictionarySafetyPDO</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.safety_rpdos" title="Link to this definition"></a></dt>
+<dd><p>Safety RPDOs by UID</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.safety_tpdos">
+<span class="sig-name descname"><span class="pre">safety_tpdos</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#ingenialink.dictionary.DictionarySafetyPDO" title="ingenialink.dictionary.DictionarySafetyPDO"><span class="pre">DictionarySafetyPDO</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.safety_tpdos" title="Link to this definition"></a></dt>
+<dd><p>Safety TPDOs by UID</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.subnodes">
+<span class="sig-name descname"><span class="pre">subnodes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#ingenialink.dictionary.SubnodeType" title="ingenialink.dictionary.SubnodeType"><span class="pre">SubnodeType</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.subnodes" title="Link to this definition"></a></dt>
+<dd><p>Number of subnodes in the dictionary.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Dictionary.version">
+<span class="sig-name descname"><span class="pre">version</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#ingenialink.dictionary.Dictionary.version" title="Link to this definition"></a></dt>
+<dd><p>Version of the dictionary.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryCategories">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.dictionary.</span></span><span class="sig-name descname"><span class="pre">DictionaryCategories</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">list_xdf_categories</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Element</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#DictionaryCategories"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.DictionaryCategories" title="Link to this definition"></a></dt>
+<dd><p>Contains all categories from a Dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>list_xdf_categories</strong> – List of Elements from xdf file</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryCategories.labels">
+<span class="sig-name descname"><span class="pre">labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cat_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#DictionaryCategories.labels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.DictionaryCategories.labels" title="Link to this definition"></a></dt>
+<dd><p>Obtain labels for a certain category ID.</p>
+<p>Args:
+cat_id:  Category ID</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Labels dictionary.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryCategories.load_cat_ids">
+<span class="sig-name descname"><span class="pre">load_cat_ids</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#DictionaryCategories.load_cat_ids"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.DictionaryCategories.load_cat_ids" title="Link to this definition"></a></dt>
+<dd><p>Load category IDs from dictionary.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryCategories.category_ids">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">category_ids</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.dictionary.DictionaryCategories.category_ids" title="Link to this definition"></a></dt>
+<dd><p>Category IDs.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryError">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.dictionary.</span></span><span class="sig-name descname"><span class="pre">DictionaryError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">affected_module</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#DictionaryError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.DictionaryError" title="Link to this definition"></a></dt>
+<dd><dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryError.affected_module">
+<span class="sig-name descname"><span class="pre">affected_module</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#ingenialink.dictionary.DictionaryError.affected_module" title="Link to this definition"></a></dt>
+<dd><p>The module affected by the error.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryError.description">
+<span class="sig-name descname"><span class="pre">description</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#ingenialink.dictionary.DictionaryError.description" title="Link to this definition"></a></dt>
+<dd><p>The error description.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryError.error_type">
+<span class="sig-name descname"><span class="pre">error_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#ingenialink.dictionary.DictionaryError.error_type" title="Link to this definition"></a></dt>
+<dd><p>The error type.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryError.id">
+<span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#ingenialink.dictionary.DictionaryError.id" title="Link to this definition"></a></dt>
+<dd><p>The error ID.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionarySafetyPDO">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.dictionary.</span></span><span class="sig-name descname"><span class="pre">DictionarySafetyPDO</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#ingenialink.dictionary.DictionarySafetyPDO.PDORegister" title="ingenialink.dictionary.DictionarySafetyPDO.PDORegister"><span class="pre">PDORegister</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#DictionarySafetyPDO"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.DictionarySafetyPDO" title="Link to this definition"></a></dt>
+<dd><p>Safety PDOs dictionary descriptor</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionarySafetyPDO.PDORegister">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">PDORegister</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">register</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../protocols/canopen/register.html#ingenialink.canopen.register.CanopenRegister" title="ingenialink.canopen.register.CanopenRegister"><span class="pre">CanopenRegister</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#DictionarySafetyPDO.PDORegister"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.DictionarySafetyPDO.PDORegister" title="Link to this definition"></a></dt>
+<dd><p>PDO register descriptor</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryV2">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.dictionary.</span></span><span class="sig-name descname"><span class="pre">DictionaryV2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dictionary_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interface</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ingenialink.dictionary.Interface" title="ingenialink.dictionary.Interface"><span class="pre">Interface</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#DictionaryV2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.DictionaryV2" title="Link to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryV2.read_dictionary">
+<span class="sig-name descname"><span class="pre">read_dictionary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#DictionaryV2.read_dictionary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.DictionaryV2.read_dictionary" title="Link to this definition"></a></dt>
+<dd><p>Reads the dictionary file and initializes all its components.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryV3">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.dictionary.</span></span><span class="sig-name descname"><span class="pre">DictionaryV3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dictionary_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interface</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ingenialink.dictionary.Interface" title="ingenialink.dictionary.Interface"><span class="pre">Interface</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#DictionaryV3"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.DictionaryV3" title="Link to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.dictionary.DictionaryV3.read_dictionary">
+<span class="sig-name descname"><span class="pre">read_dictionary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#DictionaryV3.read_dictionary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.DictionaryV3.read_dictionary" title="Link to this definition"></a></dt>
+<dd><p>Reads the dictionary file and initializes all its components.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Interface">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.dictionary.</span></span><span class="sig-name descname"><span class="pre">Interface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#Interface"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.Interface" title="Link to this definition"></a></dt>
+<dd><p>Connection Interfaces</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Interface.CAN">
+<span class="sig-name descname"><span class="pre">CAN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#ingenialink.dictionary.Interface.CAN" title="Link to this definition"></a></dt>
+<dd><p>CANopen</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Interface.ECAT">
+<span class="sig-name descname"><span class="pre">ECAT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#ingenialink.dictionary.Interface.ECAT" title="Link to this definition"></a></dt>
+<dd><p>EtherCAT</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Interface.ETH">
+<span class="sig-name descname"><span class="pre">ETH</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#ingenialink.dictionary.Interface.ETH" title="Link to this definition"></a></dt>
+<dd><p>Ethernet</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Interface.EoE">
+<span class="sig-name descname"><span class="pre">EoE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#ingenialink.dictionary.Interface.EoE" title="Link to this definition"></a></dt>
+<dd><p>Ethernet over EtherCAT</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.Interface.VIRTUAL">
+<span class="sig-name descname"><span class="pre">VIRTUAL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#ingenialink.dictionary.Interface.VIRTUAL" title="Link to this definition"></a></dt>
+<dd><p>Virtual Drive</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.dictionary.SubnodeType">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.dictionary.</span></span><span class="sig-name descname"><span class="pre">SubnodeType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/dictionary.html#SubnodeType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.dictionary.SubnodeType" title="Link to this definition"></a></dt>
+<dd><p>Subnode types</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.SubnodeType.COMMUNICATION">
+<span class="sig-name descname"><span class="pre">COMMUNICATION</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#ingenialink.dictionary.SubnodeType.COMMUNICATION" title="Link to this definition"></a></dt>
+<dd><p>Communication</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.SubnodeType.MOTION">
+<span class="sig-name descname"><span class="pre">MOTION</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#ingenialink.dictionary.SubnodeType.MOTION" title="Link to this definition"></a></dt>
+<dd><p>Motion</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.dictionary.SubnodeType.SAFETY">
+<span class="sig-name descname"><span class="pre">SAFETY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#ingenialink.dictionary.SubnodeType.SAFETY" title="Link to this definition"></a></dt>
+<dd><p>Safety</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../base_classes.html" class="btn btn-neutral float-left" title="Base classes" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="net.html" class="btn btn-neutral float-right" title="Network" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

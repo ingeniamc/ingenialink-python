@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ingenialink.ethercat.servo &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ingenialink.ethercat.servo</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ingenialink.ethercat.servo</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">ingenialogger</span>
+
+<span class="kn">from</span> <span class="nn">ingenialink.emcy</span> <span class="kn">import</span> <span class="n">EmergencyMessage</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pysoem</span>
+<span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+    <span class="n">pysoem</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">pysoem_import_error</span> <span class="o">=</span> <span class="n">ex</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">pysoem</span> <span class="kn">import</span> <span class="n">CdefSlave</span>
+
+<span class="kn">from</span> <span class="nn">ingenialink.constants</span> <span class="kn">import</span> <span class="n">CAN_MAX_WRITE_SIZE</span><span class="p">,</span> <span class="n">CANOPEN_ADDRESS_OFFSET</span><span class="p">,</span> <span class="n">MAP_ADDRESS_OFFSET</span>
+<span class="kn">from</span> <span class="nn">ingenialink.dictionary</span> <span class="kn">import</span> <span class="n">Interface</span>
+<span class="kn">from</span> <span class="nn">ingenialink.ethercat.register</span> <span class="kn">import</span> <span class="n">EthercatRegister</span>
+<span class="kn">from</span> <span class="nn">ingenialink.exceptions</span> <span class="kn">import</span> <span class="n">ILIOError</span>
+<span class="kn">from</span> <span class="nn">ingenialink.pdo</span> <span class="kn">import</span> <span class="n">PDOServo</span><span class="p">,</span> <span class="n">RPDOMap</span><span class="p">,</span> <span class="n">TPDOMap</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">ingenialogger</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SDO_OPERATION_MSG">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/servo.html#ingenialink.ethercat.servo.SDO_OPERATION_MSG">[docs]</a>
+<span class="k">class</span> <span class="nc">SDO_OPERATION_MSG</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Message for exceptions depending on the operation type.&quot;&quot;&quot;</span>
+
+    <span class="n">READ</span> <span class="o">=</span> <span class="s2">&quot;reading&quot;</span>
+    <span class="n">WRITE</span> <span class="o">=</span> <span class="s2">&quot;writing&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="EthercatServo">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/servo.html#ingenialink.ethercat.servo.EthercatServo">[docs]</a>
+<span class="k">class</span> <span class="nc">EthercatServo</span><span class="p">(</span><span class="n">PDOServo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ethercat Servo instance.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        slave: Slave to be connected.</span>
+<span class="sd">        slave_id: Slave ID.</span>
+<span class="sd">        dictionary_path: Path to the dictionary.</span>
+<span class="sd">        connection_timeout: Time in seconds of the connection timeout.</span>
+<span class="sd">        servo_status_listener: Toggle the listener of the servo for</span>
+<span class="sd">            its status, errors, faults, etc.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ImportError: WinPcap is not installed</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">MAX_WRITE_SIZE</span> <span class="o">=</span> <span class="n">CAN_MAX_WRITE_SIZE</span>
+    <span class="n">MONITORING_DATA_BUFFER_SIZE</span> <span class="o">=</span> <span class="mi">1024</span>
+
+    <span class="n">NO_RESPONSE_WORKING_COUNTER</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">TIMEOUT_WORKING_COUNTER</span> <span class="o">=</span> <span class="o">-</span><span class="mi">5</span>
+    <span class="n">NOFRAME_WORKING_COUNTER</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+    <span class="n">ETHERCAT_PDO_WATCHDOG</span> <span class="o">=</span> <span class="s2">&quot;processdata&quot;</span>
+    <span class="n">SECONDS_TO_MS_CONVERSION_FACTOR</span> <span class="o">=</span> <span class="mi">1000</span>
+
+    <span class="n">interface</span> <span class="o">=</span> <span class="n">Interface</span><span class="o">.</span><span class="n">ECAT</span>
+
+    <span class="n">DEFAULT_STORE_RECOVERY_TIMEOUT</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="n">DEFAULT_EEPROM_OPERATION_TIMEOUT_uS</span> <span class="o">=</span> <span class="mi">200_000</span>
+    <span class="n">DEFAULT_EEPROM_READ_BYTES_LENGTH</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">slave</span><span class="p">:</span> <span class="s2">&quot;CdefSlave&quot;</span><span class="p">,</span>
+        <span class="n">slave_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">dictionary_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">connection_timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">servo_status_listener</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">pysoem</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">pysoem_import_error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__slave</span> <span class="o">=</span> <span class="n">slave</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slave_id</span> <span class="o">=</span> <span class="n">slave_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection_timeout</span> <span class="o">=</span> <span class="n">connection_timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__emcy_observers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">EmergencyMessage</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__slave</span><span class="o">.</span><span class="n">add_emergency_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_emcy</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">EthercatServo</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">slave_id</span><span class="p">,</span> <span class="n">dictionary_path</span><span class="p">,</span> <span class="n">servo_status_listener</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EthercatServo.store_parameters">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/servo.html#ingenialink.ethercat.servo.EthercatServo.store_parameters">[docs]</a>
+    <span class="k">def</span> <span class="nf">store_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">subnode</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">DEFAULT_STORE_RECOVERY_TIMEOUT</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Store all the current parameters of the target subnode.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            subnode: Subnode of the axis. `None` by default which stores</span>
+<span class="sd">            all the parameters.</span>
+<span class="sd">            timeout : how many seconds to wait for the drive to become responsive</span>
+<span class="sd">            after the store operation. If ``None`` it will wait forever.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: Invalid subnode.</span>
+<span class="sd">            ILObjectNotExist: Failed to write to the registers.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">store_parameters</span><span class="p">(</span><span class="n">subnode</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_wait_until_alive</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EthercatServo.restore_parameters">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/servo.html#ingenialink.ethercat.servo.EthercatServo.restore_parameters">[docs]</a>
+    <span class="k">def</span> <span class="nf">restore_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">subnode</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">DEFAULT_STORE_RECOVERY_TIMEOUT</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Restore all the current parameters of all the slave to default.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            The drive needs a power cycle after this</span>
+<span class="sd">            in order for the changes to be properly applied.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            subnode: Subnode of the axis. `None` by default which restores</span>
+<span class="sd">                all the parameters.</span>
+<span class="sd">            timeout : how many seconds to wait for the drive to become responsive</span>
+<span class="sd">            after the restore operation. If ``None`` it will wait forever.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: Invalid subnode.</span>
+<span class="sd">            ILObjectNotExist: Failed to write to the registers.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">restore_parameters</span><span class="p">(</span><span class="n">subnode</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_wait_until_alive</span><span class="p">(</span><span class="n">timeout</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_wait_until_alive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Wait until the drive becomes responsive.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            timeout : how many seconds to wait for the drive to become responsive.</span>
+<span class="sd">            If ``None`` it will wait forever.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">init_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">init_time</span> <span class="o">+</span> <span class="n">timeout</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">():</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;The drive is unresponsive after the recovery timeout.&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+    <span class="k">def</span> <span class="nf">_read_raw</span><span class="p">(</span>  <span class="c1"># type: ignore [override]</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">reg</span><span class="p">:</span> <span class="n">EthercatRegister</span><span class="p">,</span>
+        <span class="n">buffer_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">complete_access</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">start_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.0001</span><span class="p">)</span>  <span class="c1"># Unlock threads before SDO read</span>
+            <span class="n">value</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__slave</span><span class="o">.</span><span class="n">sdo_read</span><span class="p">(</span><span class="n">reg</span><span class="o">.</span><span class="n">idx</span><span class="p">,</span> <span class="n">reg</span><span class="o">.</span><span class="n">subidx</span><span class="p">,</span> <span class="n">buffer_size</span><span class="p">,</span> <span class="n">complete_access</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span>
+            <span class="n">pysoem</span><span class="o">.</span><span class="n">SdoError</span><span class="p">,</span>
+            <span class="n">pysoem</span><span class="o">.</span><span class="n">MailboxError</span><span class="p">,</span>
+            <span class="n">pysoem</span><span class="o">.</span><span class="n">PacketError</span><span class="p">,</span>
+            <span class="n">pysoem</span><span class="o">.</span><span class="n">WkcError</span><span class="p">,</span>
+            <span class="n">ILIOError</span><span class="p">,</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_sdo_exception</span><span class="p">(</span><span class="n">reg</span><span class="p">,</span> <span class="n">SDO_OPERATION_MSG</span><span class="o">.</span><span class="n">READ</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">_write_raw</span><span class="p">(</span>  <span class="c1"># type: ignore [override]</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">reg</span><span class="p">:</span> <span class="n">EthercatRegister</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span>
+        <span class="n">complete_access</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">start_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="o">.</span><span class="n">acquire</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.0001</span><span class="p">)</span>  <span class="c1"># Unlock threads before SDO write</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__slave</span><span class="o">.</span><span class="n">sdo_write</span><span class="p">(</span><span class="n">reg</span><span class="o">.</span><span class="n">idx</span><span class="p">,</span> <span class="n">reg</span><span class="o">.</span><span class="n">subidx</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">complete_access</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span>
+            <span class="n">pysoem</span><span class="o">.</span><span class="n">SdoError</span><span class="p">,</span>
+            <span class="n">pysoem</span><span class="o">.</span><span class="n">MailboxError</span><span class="p">,</span>
+            <span class="n">pysoem</span><span class="o">.</span><span class="n">PacketError</span><span class="p">,</span>
+            <span class="n">pysoem</span><span class="o">.</span><span class="n">WkcError</span><span class="p">,</span>
+            <span class="n">ILIOError</span><span class="p">,</span>
+        <span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_handle_sdo_exception</span><span class="p">(</span><span class="n">reg</span><span class="p">,</span> <span class="n">SDO_OPERATION_MSG</span><span class="o">.</span><span class="n">WRITE</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_handle_sdo_exception</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">reg</span><span class="p">:</span> <span class="n">EthercatRegister</span><span class="p">,</span> <span class="n">operation_msg</span><span class="p">:</span> <span class="n">SDO_OPERATION_MSG</span><span class="p">,</span> <span class="n">exception</span><span class="p">:</span> <span class="ne">Exception</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle the exceptions that occur when reading or writing SDOs.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reg: The register that was read or written.</span>
+<span class="sd">            operation_msg: Operation type message to be shown on the exception.</span>
+<span class="sd">            exception: The exception that occurred while reading or writing.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILIOError: If the register cannot be read or written.</span>
+<span class="sd">            ILIOError: If the slave fails to acknowledge the command.</span>
+<span class="sd">            ILIOError: If the working counter value is wrong.</span>
+<span class="sd">            ILTimeoutError: If the slave fails to respond within the connection</span>
+<span class="sd">             timeout period.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">default_error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Error </span><span class="si">{</span><span class="n">operation_msg</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">reg</span><span class="o">.</span><span class="n">identifier</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exception</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">WkcError</span><span class="p">):</span>
+            <span class="n">wkc_errors</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">NO_RESPONSE_WORKING_COUNTER</span><span class="p">:</span> <span class="s2">&quot;The working counter remained unchanged.&quot;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">NOFRAME_WORKING_COUNTER</span><span class="p">:</span> <span class="s2">&quot;No frame.&quot;</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">TIMEOUT_WORKING_COUNTER</span><span class="p">:</span> <span class="s2">&quot;Timeout.&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="n">wkc_errors</span><span class="p">[</span><span class="n">exception</span><span class="o">.</span><span class="n">wkc</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exception</span><span class="p">,</span> <span class="p">(</span><span class="n">pysoem</span><span class="o">.</span><span class="n">SdoError</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">MailboxError</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">PacketError</span><span class="p">)):</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exception</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: Slave </span><span class="si">{</span><span class="n">exception</span><span class="o">.</span><span class="n">slave_pos</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exception</span><span class="p">,</span> <span class="n">pysoem</span><span class="o">.</span><span class="n">SdoError</span><span class="p">):</span>
+                <span class="n">reason</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;Abort code </span><span class="si">{</span><span class="n">exception</span><span class="o">.</span><span class="n">abort_code</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">reason</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;Error code </span><span class="si">{</span><span class="n">exception</span><span class="o">.</span><span class="n">error_code</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="n">error_description</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Error description: </span><span class="si">{</span><span class="n">exception</span><span class="o">.</span><span class="n">desc</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="n">reason</span> <span class="o">+=</span> <span class="n">error_description</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">reason</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">exception</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">ILIOError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">default_error_msg</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">exception</span>
+
+    <span class="k">def</span> <span class="nf">_monitoring_read_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read monitoring data frame.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_monitoring_read_data</span><span class="p">(</span>
+            <span class="n">buffer_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">MONITORING_DATA_BUFFER_SIZE</span><span class="p">,</span> <span class="n">complete_access</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_disturbance_write_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write disturbance data.&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_disturbance_write_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">complete_access</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__monitoring_disturbance_map_can_address</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">subnode</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Map CAN register address to IPB register address.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            subnode: Subnode to be targeted.</span>
+<span class="sd">            address: Register address to map.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">mapped_address</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">address</span> <span class="o">-</span> <span class="p">(</span>
+            <span class="n">CANOPEN_ADDRESS_OFFSET</span> <span class="o">+</span> <span class="p">(</span><span class="n">MAP_ADDRESS_OFFSET</span> <span class="o">*</span> <span class="p">(</span><span class="n">subnode</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">mapped_address</span>
+
+    <span class="k">def</span> <span class="nf">_monitoring_disturbance_data_to_map_register</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">subnode</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">dtype</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Arrange necessary data to map a monitoring/disturbance register.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            subnode: Subnode to be targeted.</span>
+<span class="sd">            address: Register address to map.</span>
+<span class="sd">            dtype: Register data type.</span>
+<span class="sd">            size: Size of data in bytes.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ipb_address</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__monitoring_disturbance_map_can_address</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">subnode</span><span class="p">)</span>
+        <span class="n">mapped_address</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_monitoring_disturbance_data_to_map_register</span><span class="p">(</span>
+            <span class="n">subnode</span><span class="p">,</span> <span class="n">ipb_address</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">size</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">mapped_address</span>
+
+<div class="viewcode-block" id="EthercatServo.emcy_subscribe">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/servo.html#ingenialink.ethercat.servo.EthercatServo.emcy_subscribe">[docs]</a>
+    <span class="k">def</span> <span class="nf">emcy_subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">EmergencyMessage</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Subscribe to emergency messages.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            callback: Callable that takes a EmergencyMessage instance as argument.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__emcy_observers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EthercatServo.emcy_unsubscribe">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/servo.html#ingenialink.ethercat.servo.EthercatServo.emcy_unsubscribe">[docs]</a>
+    <span class="k">def</span> <span class="nf">emcy_unsubscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">EmergencyMessage</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unsubscribe from emergency messages.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            callback: Subscribed callback.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__emcy_observers</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_on_emcy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">emergency_msg</span><span class="p">:</span> <span class="s2">&quot;pysoem.Emergency&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Receive an emergency message from PySOEM and transform it to a EmergencyMessage.</span>
+<span class="sd">        Afterward, send the EmergencyMessage to all the subscribed callbacks.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            emergency_msg: The pysoem.Emergency instance.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">emergency_message</span> <span class="o">=</span> <span class="n">EmergencyMessage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">emergency_msg</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Emergency message received from slave </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">emergency_message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__emcy_observers</span><span class="p">:</span>
+            <span class="n">callback</span><span class="p">(</span><span class="n">emergency_message</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EthercatServo.set_pdo_map_to_slave">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/servo.html#ingenialink.ethercat.servo.EthercatServo.set_pdo_map_to_slave">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_pdo_map_to_slave</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rpdo_maps</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">RPDOMap</span><span class="p">],</span> <span class="n">tpdo_maps</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">TPDOMap</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rpdo_maps</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">rpdo_maps</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tpdo_maps</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">tpdo_maps</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">config_func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_pdos</span></div>
+
+
+<div class="viewcode-block" id="EthercatServo.process_pdo_inputs">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/servo.html#ingenialink.ethercat.servo.EthercatServo.process_pdo_inputs">[docs]</a>
+    <span class="k">def</span> <span class="nf">process_pdo_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_process_tpdo</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__slave</span><span class="o">.</span><span class="n">input</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="EthercatServo.generate_pdo_outputs">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/servo.html#ingenialink.ethercat.servo.EthercatServo.generate_pdo_outputs">[docs]</a>
+    <span class="k">def</span> <span class="nf">generate_pdo_outputs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_rpdo</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">output</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__slave</span><span class="o">.</span><span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_rpdo</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="EthercatServo.set_pdo_watchdog_time">
+<a class="viewcode-back" href="../../../api/protocols/ethercat/servo.html#ingenialink.ethercat.servo.EthercatServo.set_pdo_watchdog_time">[docs]</a>
+    <span class="k">def</span> <span class="nf">set_pdo_watchdog_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the process data watchdog time.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            timeout: Time in seconds.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">set_watchdog</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ETHERCAT_PDO_WATCHDOG</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">SECONDS_TO_MS_CONVERSION_FACTOR</span> <span class="o">*</span> <span class="n">timeout</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_read_esc_eeprom</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_EEPROM_READ_BYTES_LENGTH</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_EEPROM_OPERATION_TIMEOUT_uS</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read from the ESC EEPROM.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            address: EEPROM address to be read.</span>
+<span class="sd">            length: Length of data to be read. By default, 2 bytes are read.</span>
+<span class="sd">            timeout: Operation timeout (microseconds). By default, 200.000 us.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            EEPROM data. The read data.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the length to be read has an invalid value.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">length</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The minimum length is 1 byte.&quot;</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">()</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">length</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">eeprom_read</span><span class="p">(</span><span class="n">address</span><span class="p">,</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="n">address</span> <span class="o">+=</span> <span class="mi">2</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">length</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:</span><span class="n">length</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="k">def</span> <span class="nf">_write_esc_eeprom</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_EEPROM_OPERATION_TIMEOUT_uS</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write to the ESC EEPROM.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            address: EEPROM address to be written.</span>
+<span class="sd">            data: Data to be written. The data length must be a multiple of 2 bytes.</span>
+<span class="sd">            timeout: Operation timeout (microseconds). By default, 200.000 us.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the data has the wrong size.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The data length must be a multiple of 2 bytes.&quot;</span><span class="p">)</span>
+        <span class="n">start_address</span> <span class="o">=</span> <span class="n">address</span>
+        <span class="k">while</span> <span class="n">data</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">slave</span><span class="o">.</span><span class="n">eeprom_write</span><span class="p">(</span><span class="n">start_address</span><span class="p">,</span> <span class="n">data</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">timeout</span><span class="p">)</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+            <span class="n">start_address</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">_write_esc_eeprom_from_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load a binary file to the ESC EEPROM.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file_path: Path to the binary file to be loaded.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: If the binary file cannot be found.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_esc_eeprom</span><span class="p">(</span><span class="n">address</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">slave</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CdefSlave&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Ethercat slave&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__slave</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

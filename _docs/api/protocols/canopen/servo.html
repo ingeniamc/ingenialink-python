@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Servo &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="Dictionary" href="dictionary.html" />
+    <link rel="prev" title="Network" href="network.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../../api.html">API documentation</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../protocols.html">Protocols</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="../canopen.html">CANopen API documentation</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="network.html">Network</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">Servo</a></li>
+<li class="toctree-l4"><a class="reference internal" href="dictionary.html">Dictionary</a></li>
+<li class="toctree-l4"><a class="reference internal" href="register.html">Registers</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="../eoe_service.html">EoE Service API documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ethercat.html">EtherCAT API documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../ethernet.html">Ethernet API documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../exceptions.html">Exceptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../base_classes.html">Base classes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../api.html">API documentation</a></li>
+          <li class="breadcrumb-item"><a href="../../protocols.html">Protocols</a></li>
+          <li class="breadcrumb-item"><a href="../canopen.html">CANopen API documentation</a></li>
+      <li class="breadcrumb-item active">Servo</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../_sources/api/protocols/canopen/servo.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="servo">
+<h1>Servo<a class="headerlink" href="#servo" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.canopen.servo.</span></span><span class="sig-name descname"><span class="pre">CanopenServo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">RemoteNode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dictionary_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">servo_status_listener</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/ingenialink/canopen/servo.html#CanopenServo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo" title="Link to this definition"></a></dt>
+<dd><p>CANopen Servo instance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target</strong> – Node ID to be connected.</p></li>
+<li><p><strong>node</strong> – Remote Node of the drive.</p></li>
+<li><p><strong>dictionary_path</strong> – Path to the dictionary.</p></li>
+<li><p><strong>servo_status_listener</strong> – Toggle the listener of the servo for
+its status, errors, faults, etc.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.check_configuration">
+<span class="sig-name descname"><span class="pre">check_configuration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.check_configuration" title="Link to this definition"></a></dt>
+<dd><p>Check if the drive is configured in the same way as the given configuration file.
+Compares the value of each register in the given file with the corresponding value in the
+drive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config_file</strong> – the configuration to check</p></li>
+<li><p><strong>subnode</strong> – Subnode of the axis. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – If the configuration file cannot be found.</p></li>
+<li><p><strong>ValueError</strong> – If a configuration file from a subnode different from 0
+    is attempted to be loaded to subnode 0.</p></li>
+<li><p><strong>ValueError</strong> – If an invalid subnode is provided.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILConfigurationError" title="ingenialink.exceptions.ILConfigurationError"><strong>ILConfigurationError</strong></a> – If the configuration file differs from the drive state.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.disable">
+<span class="sig-name descname"><span class="pre">disable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.disable" title="Link to this definition"></a></dt>
+<dd><p>Disable PDS.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>subnode</strong> – Subnode of the drive.</p></li>
+<li><p><strong>timeout</strong> – Timeout in milliseconds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILTimeoutError" title="ingenialink.exceptions.ILTimeoutError"><strong>ILTimeoutError</strong></a> – The servo could not be disabled due to timeout.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – Failed to disable PDS.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.disturbance_disable">
+<span class="sig-name descname"><span class="pre">disturbance_disable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.disturbance_disable" title="Link to this definition"></a></dt>
+<dd><p>Disable disturbance process.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.disturbance_enable">
+<span class="sig-name descname"><span class="pre">disturbance_enable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.disturbance_enable" title="Link to this definition"></a></dt>
+<dd><p>Enable disturbance process.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.disturbance_get_num_mapped_registers">
+<span class="sig-name descname"><span class="pre">disturbance_get_num_mapped_registers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.disturbance_get_num_mapped_registers" title="Link to this definition"></a></dt>
+<dd><p>Obtain the number of disturbance mapped registers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Actual number of mapped registers.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.disturbance_remove_all_mapped_registers">
+<span class="sig-name descname"><span class="pre">disturbance_remove_all_mapped_registers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.disturbance_remove_all_mapped_registers" title="Link to this definition"></a></dt>
+<dd><p>Remove all disturbance mapped registers.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.disturbance_remove_data">
+<span class="sig-name descname"><span class="pre">disturbance_remove_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.disturbance_remove_data" title="Link to this definition"></a></dt>
+<dd><p>Remove disturbance data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.disturbance_set_mapped_register">
+<span class="sig-name descname"><span class="pre">disturbance_set_mapped_register</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.disturbance_set_mapped_register" title="Link to this definition"></a></dt>
+<dd><p>Set monitoring mapped register.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> – Identity channel number.</p></li>
+<li><p><strong>address</strong> – Register address to map.</p></li>
+<li><p><strong>subnode</strong> – Subnode to be targeted.</p></li>
+<li><p><strong>dtype</strong> – Register data type.</p></li>
+<li><p><strong>size</strong> – Size of data in bytes.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.disturbance_write_data">
+<span class="sig-name descname"><span class="pre">disturbance_write_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtypes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">REG_DTYPE</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">REG_DTYPE</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.disturbance_write_data" title="Link to this definition"></a></dt>
+<dd><p>Write disturbance data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channels</strong> – Channel identifier.</p></li>
+<li><p><strong>dtypes</strong> – Data type.</p></li>
+<li><p><strong>data_arr</strong> – Data array.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.emcy_subscribe">
+<span class="sig-name descname"><span class="pre">emcy_subscribe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">EmergencyMessage</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/canopen/servo.html#CanopenServo.emcy_subscribe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.emcy_subscribe" title="Link to this definition"></a></dt>
+<dd><p>Subscribe to emergency messages.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>callback</strong> – Callable that takes a EmergencyMessage instance as argument.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.emcy_unsubscribe">
+<span class="sig-name descname"><span class="pre">emcy_unsubscribe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">EmergencyMessage</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/canopen/servo.html#CanopenServo.emcy_unsubscribe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.emcy_unsubscribe" title="Link to this definition"></a></dt>
+<dd><p>Unsubscribe from emergency messages.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>callback</strong> – Subscribed callback.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.enable">
+<span class="sig-name descname"><span class="pre">enable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.enable" title="Link to this definition"></a></dt>
+<dd><p>Enable PDS.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>Args:</dt><dd><p>subnode: Subnode of the drive.
+timeout: Timeout in milliseconds.</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILTimeoutError" title="ingenialink.exceptions.ILTimeoutError"><strong>ILTimeoutError</strong></a> – The servo could not be enabled due to timeout.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – Failed to enable PDS.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.fault_reset">
+<span class="sig-name descname"><span class="pre">fault_reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.fault_reset" title="Link to this definition"></a></dt>
+<dd><p>Executes a fault reset on the drive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>subnode</strong> – Subnode of the drive.</p></li>
+<li><p><strong>timeout</strong> – Timeout in milliseconds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILTimeoutError" title="ingenialink.exceptions.ILTimeoutError"><strong>ILTimeoutError</strong></a> – If fault reset spend too much time.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – Failed to fault reset.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.get_state">
+<span class="sig-name descname"><span class="pre">get_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">SERVO_STATE</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.get_state" title="Link to this definition"></a></dt>
+<dd><p>Current drive state.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.is_alive">
+<span class="sig-name descname"><span class="pre">is_alive</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.is_alive" title="Link to this definition"></a></dt>
+<dd><p>Checks if the servo responds to a reading a register.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Return code with the result of the read.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.is_listener_started">
+<span class="sig-name descname"><span class="pre">is_listener_started</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.is_listener_started" title="Link to this definition"></a></dt>
+<dd><p>Check if servo listener is started</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if listener is started, else False</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.load_configuration">
+<span class="sig-name descname"><span class="pre">load_configuration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.load_configuration" title="Link to this definition"></a></dt>
+<dd><p>Write current dictionary storage to the servo drive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config_file</strong> – Path to the dictionary.</p></li>
+<li><p><strong>subnode</strong> – Subnode of the axis.</p></li>
+<li><p><strong>strict</strong> – Whether to raise an exception if any error occurs during the loading</p></li>
+<li><p><strong>false</strong> (<em>configuration process. If</em>)</p></li>
+<li><p><strong>ignored.</strong> (<em>all errors will only be</em>)</p></li>
+<li><p><strong>default.</strong> (<em>False by</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – If the configuration file cannot be found.</p></li>
+<li><p><strong>ValueError</strong> – If a configuration file from a subnode different from 0
+    is attempted to be loaded to subnode 0.</p></li>
+<li><p><strong>ValueError</strong> – If an invalid subnode is provided.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If strict is set to True and any error occurs during the loading</p></li>
+<li><p><strong>configuration process.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_actual_number_bytes">
+<span class="sig-name descname"><span class="pre">monitoring_actual_number_bytes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_actual_number_bytes" title="Link to this definition"></a></dt>
+<dd><p>Get the number of monitoring bytes left to be read.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_channel_data">
+<span class="sig-name descname"><span class="pre">monitoring_channel_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">REG_DTYPE</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_channel_data" title="Link to this definition"></a></dt>
+<dd><p>Obtain processed monitoring data of a channel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> – Identity channel number.</p></li>
+<li><p><strong>dtype</strong> – Data type of the register to map.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The dtype argument is not necessary for this function, it
+was added to maintain compatibility with IPB’s implementation
+of monitoring.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Monitoring data.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_disable">
+<span class="sig-name descname"><span class="pre">monitoring_disable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_disable" title="Link to this definition"></a></dt>
+<dd><p>Disable monitoring process.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_enable">
+<span class="sig-name descname"><span class="pre">monitoring_enable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_enable" title="Link to this definition"></a></dt>
+<dd><p>Enable monitoring process.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_get_bytes_per_block">
+<span class="sig-name descname"><span class="pre">monitoring_get_bytes_per_block</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_get_bytes_per_block" title="Link to this definition"></a></dt>
+<dd><p>Obtain Bytes x Block configured.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Actual number of Bytes x Block configured.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_get_num_mapped_registers">
+<span class="sig-name descname"><span class="pre">monitoring_get_num_mapped_registers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_get_num_mapped_registers" title="Link to this definition"></a></dt>
+<dd><p>Obtain the number of monitoring mapped registers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Actual number of mapped registers.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_read_data">
+<span class="sig-name descname"><span class="pre">monitoring_read_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_read_data" title="Link to this definition"></a></dt>
+<dd><p>Obtain processed monitoring data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Actual processed monitoring data.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_remove_all_mapped_registers">
+<span class="sig-name descname"><span class="pre">monitoring_remove_all_mapped_registers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_remove_all_mapped_registers" title="Link to this definition"></a></dt>
+<dd><p>Remove all monitoring mapped registers.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_remove_data">
+<span class="sig-name descname"><span class="pre">monitoring_remove_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_remove_data" title="Link to this definition"></a></dt>
+<dd><p>Remove monitoring data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_set_mapped_register">
+<span class="sig-name descname"><span class="pre">monitoring_set_mapped_register</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_set_mapped_register" title="Link to this definition"></a></dt>
+<dd><p>Set monitoring mapped register.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> – Identity channel number.</p></li>
+<li><p><strong>address</strong> – Register address to map.</p></li>
+<li><p><strong>subnode</strong> – Subnode to be targeted.</p></li>
+<li><p><strong>dtype</strong> – Register data type.</p></li>
+<li><p><strong>size</strong> – Size of data in bytes.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../../base_classes/register.html#ingenialink.register.Register" title="ingenialink.register.Register"><span class="pre">Register</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bytes</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/canopen/servo.html#CanopenServo.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.read" title="Link to this definition"></a></dt>
+<dd><p>Read a register value from servo.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>reg</strong> – Register.</p></li>
+<li><p><strong>subnode</strong> – Target axis of the drive.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>int, float or Value stored in the register.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILAccessError" title="ingenialink.exceptions.ILAccessError"><strong>ILAccessError</strong></a> – Wrong access to the register.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILIOError" title="ingenialink.exceptions.ILIOError"><strong>ILIOError</strong></a> – Error reading the register.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILTimeoutError" title="ingenialink.exceptions.ILTimeoutError"><strong>ILTimeoutError</strong></a> – Read timeout.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.register_update_subscribe">
+<span class="sig-name descname"><span class="pre">register_update_subscribe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../base_classes/servo.html#ingenialink.servo.Servo" title="ingenialink.servo.Servo"><span class="pre">Servo</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../base_classes/register.html#ingenialink.register.Register" title="ingenialink.register.Register"><span class="pre">Register</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.register_update_subscribe" title="Link to this definition"></a></dt>
+<dd><p>Subscribe to register updates.
+The callback will be called when a read/write operation occurs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>callback</strong> – Callable that takes a Servo and a Register instance as arguments.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.register_update_unsubscribe">
+<span class="sig-name descname"><span class="pre">register_update_unsubscribe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../base_classes/servo.html#ingenialink.servo.Servo" title="ingenialink.servo.Servo"><span class="pre">Servo</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../base_classes/register.html#ingenialink.register.Register" title="ingenialink.register.Register"><span class="pre">Register</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.register_update_unsubscribe" title="Link to this definition"></a></dt>
+<dd><p>Unsubscribe to register updates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>callback</strong> – Subscribed callback.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.reload_errors">
+<span class="sig-name descname"><span class="pre">reload_errors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dictionary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.reload_errors" title="Link to this definition"></a></dt>
+<dd><p>Force to reload all dictionary errors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>Dictionary.</strong></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.replace_dictionary">
+<span class="sig-name descname"><span class="pre">replace_dictionary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dictionary</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.replace_dictionary" title="Link to this definition"></a></dt>
+<dd><p>Deletes and creates a new instance of the dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dictionary</strong> – Path to the dictionary.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.restore_parameters">
+<span class="sig-name descname"><span class="pre">restore_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.restore_parameters" title="Link to this definition"></a></dt>
+<dd><p>Restore all the current parameters of all the slave to default.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The drive needs a power cycle after this
+in order for the changes to be properly applied.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>subnode</strong> – Subnode of the axis. <cite>None</cite> by default which restores
+all the parameters.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – Invalid subnode.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILObjectNotExist" title="ingenialink.exceptions.ILObjectNotExist"><strong>ILObjectNotExist</strong></a> – Failed to write to the registers.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.save_configuration">
+<span class="sig-name descname"><span class="pre">save_configuration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.save_configuration" title="Link to this definition"></a></dt>
+<dd><p>Read all dictionary registers content and put it to the dictionary
+storage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config_file</strong> – Destination path for the configuration file.</p></li>
+<li><p><strong>subnode</strong> – Subnode of the axis.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.start_status_listener">
+<span class="sig-name descname"><span class="pre">start_status_listener</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.start_status_listener" title="Link to this definition"></a></dt>
+<dd><p>Start listening for servo status events (SERVO_STATE).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.state_wait_change">
+<span class="sig-name descname"><span class="pre">state_wait_change</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">SERVO_STATE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">SERVO_STATE</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.state_wait_change" title="Link to this definition"></a></dt>
+<dd><p>Waits for a state change.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> – Servo state before calling this function.</p></li>
+<li><p><strong>timeout</strong> – Maximum value to wait for the change.</p></li>
+<li><p><strong>subnode</strong> – Subnode of the drive.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The last read state.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILTimeoutError" title="ingenialink.exceptions.ILTimeoutError"><strong>ILTimeoutError</strong></a> – If state does not change in the given time.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.status_word_decode">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">status_word_decode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_word</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">SERVO_STATE</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.status_word_decode" title="Link to this definition"></a></dt>
+<dd><p>Decodes the status word to a known value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>status_word</strong> – Read value for the status word.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Status word value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.status_word_wait_change">
+<span class="sig-name descname"><span class="pre">status_word_wait_change</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">status_word</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.status_word_wait_change" title="Link to this definition"></a></dt>
+<dd><p>Waits for a status word change.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>status_word</strong> – Status word to wait for.</p></li>
+<li><p><strong>timeout</strong> – Maximum value to wait for the change.</p></li>
+<li><p><strong>subnode</strong> – Subnode of the drive.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILTimeoutError" title="ingenialink.exceptions.ILTimeoutError"><strong>ILTimeoutError</strong></a> – If status word does not change in the given time.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.stop_status_listener">
+<span class="sig-name descname"><span class="pre">stop_status_listener</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.stop_status_listener" title="Link to this definition"></a></dt>
+<dd><p>Stop listening for servo status events (SERVO_STATE).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.store_parameters">
+<span class="sig-name descname"><span class="pre">store_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sdo_timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../_modules/ingenialink/canopen/servo.html#CanopenServo.store_parameters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.store_parameters" title="Link to this definition"></a></dt>
+<dd><p>Store all the current parameters of the target subnode.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>subnode</strong> – Subnode of the axis. <cite>None</cite> by default which stores all the parameters.</p></li>
+<li><p><strong>sdo_timeout</strong> – Timeout value for each SDO response.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – Invalid subnode.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILObjectNotExist" title="ingenialink.exceptions.ILObjectNotExist"><strong>ILObjectNotExist</strong></a> – Failed to write to the registers.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.subscribe_to_status">
+<span class="sig-name descname"><span class="pre">subscribe_to_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">SERVO_STATE</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.subscribe_to_status" title="Link to this definition"></a></dt>
+<dd><p>Subscribe to state changes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>callback</strong> – Callback function.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Assigned slot.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.unsubscribe_from_status">
+<span class="sig-name descname"><span class="pre">unsubscribe_from_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">SERVO_STATE</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.unsubscribe_from_status" title="Link to this definition"></a></dt>
+<dd><p>Unsubscribe from state changes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>function.</strong> (<em>Callback</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../../base_classes/register.html#ingenialink.register.Register" title="ingenialink.register.Register"><span class="pre">Register</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bytes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subnode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.write" title="Link to this definition"></a></dt>
+<dd><p>Writes a data to a target register.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>reg</strong> – Target register to be written.</p></li>
+<li><p><strong>data</strong> – Data to be written.</p></li>
+<li><p><strong>subnode</strong> – Target axis of the drive.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILAccessError" title="ingenialink.exceptions.ILAccessError"><strong>ILAccessError</strong></a> – Wrong access to the register.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILIOError" title="ingenialink.exceptions.ILIOError"><strong>ILIOError</strong></a> – Error writing the register.</p></li>
+<li><p><a class="reference internal" href="../../exceptions.html#ingenialink.exceptions.ILTimeoutError" title="ingenialink.exceptions.ILTimeoutError"><strong>ILTimeoutError</strong></a> – Write timeout.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.dictionary">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dictionary</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../../base_classes/dictionary.html#ingenialink.dictionary.Dictionary" title="ingenialink.dictionary.Dictionary"><span class="pre">Dictionary</span></a></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.dictionary" title="Link to this definition"></a></dt>
+<dd><p>Returns dictionary object</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.disturbance_data">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">disturbance_data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bytes</span></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.disturbance_data" title="Link to this definition"></a></dt>
+<dd><p>Obtain disturbance data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current disturbance data.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.disturbance_data_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">disturbance_data_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.disturbance_data_size" title="Link to this definition"></a></dt>
+<dd><p>Obtain disturbance data size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current disturbance data size.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.disturbance_number_mapped_registers">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">disturbance_number_mapped_registers</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.disturbance_number_mapped_registers" title="Link to this definition"></a></dt>
+<dd><p>Get the number of mapped disturbance registers.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.errors">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">errors</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../base_classes/dictionary.html#ingenialink.dictionary.DictionaryError" title="ingenialink.dictionary.DictionaryError"><span class="pre">DictionaryError</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.errors" title="Link to this definition"></a></dt>
+<dd><p>Errors.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.full_name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">full_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.full_name" title="Link to this definition"></a></dt>
+<dd><p>Drive full name.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.info">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">info</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.info" title="Link to this definition"></a></dt>
+<dd><p>Servo information.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_data_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">monitoring_data_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_data_size" title="Link to this definition"></a></dt>
+<dd><p>Obtain monitoring data size.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current monitoring data size in bytes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.monitoring_number_mapped_registers">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">monitoring_number_mapped_registers</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.monitoring_number_mapped_registers" title="Link to this definition"></a></dt>
+<dd><p>Get the number of mapped monitoring registers.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.node">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">node</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">RemoteNode</span></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.node" title="Link to this definition"></a></dt>
+<dd><p>Remote node of the servo.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.status">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">status</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">SERVO_STATE</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.status" title="Link to this definition"></a></dt>
+<dd><p>Servo status.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.subnodes">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">subnodes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="../../base_classes/dictionary.html#ingenialink.dictionary.SubnodeType" title="ingenialink.dictionary.SubnodeType"><span class="pre">SubnodeType</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.subnodes" title="Link to this definition"></a></dt>
+<dd><p>Dictionary of subnode ids and their type</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.units_acc">
+<span class="sig-name descname"><span class="pre">units_acc</span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.units_acc" title="Link to this definition"></a></dt>
+<dd><p>Acceleration units.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>SERVO_UNITS_ACC</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.units_pos">
+<span class="sig-name descname"><span class="pre">units_pos</span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.units_pos" title="Link to this definition"></a></dt>
+<dd><p>Position units.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>SERVO_UNITS_POS</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.units_torque">
+<span class="sig-name descname"><span class="pre">units_torque</span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.units_torque" title="Link to this definition"></a></dt>
+<dd><p>Torque units.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>SERVO_UNITS_TORQUE</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.canopen.servo.CanopenServo.units_vel">
+<span class="sig-name descname"><span class="pre">units_vel</span></span><a class="headerlink" href="#ingenialink.canopen.servo.CanopenServo.units_vel" title="Link to this definition"></a></dt>
+<dd><p>Velocity units.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>SERVO_UNITS_VEL</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="network.html" class="btn btn-neutral float-left" title="Network" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dictionary.html" class="btn btn-neutral float-right" title="Dictionary" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

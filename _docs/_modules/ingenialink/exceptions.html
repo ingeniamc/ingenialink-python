@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ingenialink.exceptions &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ingenialink.exceptions</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ingenialink.exceptions</h1><div class="highlight"><pre>
+<div class="viewcode-block" id="ILError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILError">[docs]</a>
+<span></span><span class="k">class</span> <span class="nc">ILError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink generic error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILConfigurationError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILConfigurationError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILConfigurationError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink IPB protocol configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILUDPException">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILUDPException">[docs]</a>
+<span class="k">class</span> <span class="nc">ILUDPException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ingenialink exception on UDP action.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILFirmwareLoadError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILFirmwareLoadError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILFirmwareLoadError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink error while loading a firmware.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILValueError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILValueError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILValueError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink value error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILTimeoutError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILTimeoutError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILTimeoutError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink timeout error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILAlreadyInitializedError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILAlreadyInitializedError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILAlreadyInitializedError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink already initialized error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILMemoryError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILMemoryError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILMemoryError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink memory error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILDisconnectionError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILDisconnectionError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILDisconnectionError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink disconnection error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILAccessError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILAccessError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILAccessError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink access error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILStateError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILStateError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILStateError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink state error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILIOError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILIOError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILIOError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink I/O error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILNotSupportedError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILNotSupportedError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILNotSupportedError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink Not supported error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILWrongRegisterError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILWrongRegisterError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILWrongRegisterError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink Wrong register error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILRegisterNotFoundError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILRegisterNotFoundError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILRegisterNotFoundError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink register not found in dictionary.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILWrongCRCError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILWrongCRCError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILWrongCRCError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink Wrong CRC error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILNACKError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILNACKError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILNACKError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink NACK error.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">err_code</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">error_code</span> <span class="o">=</span> <span class="n">err_code</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Communications error (NACK -&gt; 0x</span><span class="si">{</span><span class="n">err_code</span><span class="si">:</span><span class="s2">08X</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ILDictionaryParseError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILDictionaryParseError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILDictionaryParseError</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;IngeniaLink dictionary parse error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<span class="c1"># Configuration error</span>
+<div class="viewcode-block" id="ILIncorrectAccessType">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILIncorrectAccessType">[docs]</a>
+<span class="k">class</span> <span class="nc">ILIncorrectAccessType</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Incorrect access type configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILObjectNotExist">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILObjectNotExist">[docs]</a>
+<span class="k">class</span> <span class="nc">ILObjectNotExist</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Object doesn&#39;t exist configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILObjectNotCyclicMappable">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILObjectNotCyclicMappable">[docs]</a>
+<span class="k">class</span> <span class="nc">ILObjectNotCyclicMappable</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Object isn&#39;t cyclic mappable as requested configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILCyclicMappingTooLarge">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILCyclicMappingTooLarge">[docs]</a>
+<span class="k">class</span> <span class="nc">ILCyclicMappingTooLarge</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cyclic mapping is too large configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILWrongCyclicKey">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILWrongCyclicKey">[docs]</a>
+<span class="k">class</span> <span class="nc">ILWrongCyclicKey</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cyclic mapping key is wrong configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILWrongCyclicRegisterSize">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILWrongCyclicRegisterSize">[docs]</a>
+<span class="k">class</span> <span class="nc">ILWrongCyclicRegisterSize</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mapped cyclic register size is wrong configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILCommunicationStateUnreachable">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILCommunicationStateUnreachable">[docs]</a>
+<span class="k">class</span> <span class="nc">ILCommunicationStateUnreachable</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Communication state is unreachable configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILCommunicationNotModifiable">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILCommunicationNotModifiable">[docs]</a>
+<span class="k">class</span> <span class="nc">ILCommunicationNotModifiable</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Communication setting is not modifiable in the</span>
+<span class="sd">    current state configuration&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILUnsupportedRegisterValue">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILUnsupportedRegisterValue">[docs]</a>
+<span class="k">class</span> <span class="nc">ILUnsupportedRegisterValue</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Unsupported value introduced in register configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILInvalidCommand">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILInvalidCommand">[docs]</a>
+<span class="k">class</span> <span class="nc">ILInvalidCommand</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Invalid command configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILCRCError">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILCRCError">[docs]</a>
+<span class="k">class</span> <span class="nc">ILCRCError</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;CRC error configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILUnsupportedSynchronization">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILUnsupportedSynchronization">[docs]</a>
+<span class="k">class</span> <span class="nc">ILUnsupportedSynchronization</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Unsupported synchronization method configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILActiveFeedbacksHigherThanAllowed">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILActiveFeedbacksHigherThanAllowed">[docs]</a>
+<span class="k">class</span> <span class="nc">ILActiveFeedbacksHigherThanAllowed</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Number of active feedbacks is higher than allowed configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILCOMKITTimeout">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILCOMKITTimeout">[docs]</a>
+<span class="k">class</span> <span class="nc">ILCOMKITTimeout</span><span class="p">(</span><span class="n">ILConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;COMKIT Timeout. CORE device is not properly connected configuration error.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+
+
+<div class="viewcode-block" id="ILWrongWorkingCount">
+<a class="viewcode-back" href="../../api/exceptions.html#ingenialink.exceptions.ILWrongWorkingCount">[docs]</a>
+<span class="k">class</span> <span class="nc">ILWrongWorkingCount</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;PDOs process data working count expected and received differ.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

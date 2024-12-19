@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDOs &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Poller" href="poller.html" />
+    <link rel="prev" title="Network" href="net.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../api.html">API documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../protocols.html">Protocols</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exceptions.html">Exceptions</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../base_classes.html">Base classes</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="dictionary.html">Dictionary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="net.html">Network</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">PDOs</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.pdo.PDOMap"><code class="docutils literal notranslate"><span class="pre">PDOMap</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.pdo.PDOMapItem"><code class="docutils literal notranslate"><span class="pre">PDOMapItem</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.pdo.PDOServo"><code class="docutils literal notranslate"><span class="pre">PDOServo</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.pdo.RPDOMap"><code class="docutils literal notranslate"><span class="pre">RPDOMap</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.pdo.RPDOMapItem"><code class="docutils literal notranslate"><span class="pre">RPDOMapItem</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.pdo.TPDOMap"><code class="docutils literal notranslate"><span class="pre">TPDOMap</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ingenialink.pdo.TPDOMapItem"><code class="docutils literal notranslate"><span class="pre">TPDOMapItem</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="poller.html">Poller</a></li>
+<li class="toctree-l3"><a class="reference internal" href="register.html">Registers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="servo.html">Servo</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../api.html">API documentation</a></li>
+          <li class="breadcrumb-item"><a href="../base_classes.html">Base classes</a></li>
+      <li class="breadcrumb-item active">PDOs</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/base_classes/pdo.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-ingenialink.pdo">
+<span id="pdos"></span><h1>PDOs<a class="headerlink" href="#module-ingenialink.pdo" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.pdo.</span></span><span class="sig-name descname"><span class="pre">PDOMap</span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOMap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOMap" title="Link to this definition"></a></dt>
+<dd><p>Abstract class that contains PDO mapping information.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.add_item">
+<span class="sig-name descname"><span class="pre">add_item</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">item</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ingenialink.pdo.PDOMapItem" title="ingenialink.pdo.PDOMapItem"><span class="pre">PDOMapItem</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOMap.add_item"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOMap.add_item" title="Link to this definition"></a></dt>
+<dd><p>Append a new item.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>item</strong> – Item to be added.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.add_registers">
+<span class="sig-name descname"><span class="pre">add_registers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">registers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../protocols/ethercat/register.html#ingenialink.ethercat.register.EthercatRegister" title="ingenialink.ethercat.register.EthercatRegister"><span class="pre">EthercatRegister</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../protocols/canopen/register.html#ingenialink.canopen.register.CanopenRegister" title="ingenialink.canopen.register.CanopenRegister"><span class="pre">CanopenRegister</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../protocols/ethercat/register.html#ingenialink.ethercat.register.EthercatRegister" title="ingenialink.ethercat.register.EthercatRegister"><span class="pre">EthercatRegister</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../protocols/canopen/register.html#ingenialink.canopen.register.CanopenRegister" title="ingenialink.canopen.register.CanopenRegister"><span class="pre">CanopenRegister</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOMap.add_registers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOMap.add_registers" title="Link to this definition"></a></dt>
+<dd><p>Add a register or a list of registers in bulk.</p>
+<p>It creates a new item for each register and adds it the items attribute.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>registers</strong> – Register object or list of Registers.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.create_item">
+<span class="sig-name descname"><span class="pre">create_item</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">register</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../protocols/ethercat/register.html#ingenialink.ethercat.register.EthercatRegister" title="ingenialink.ethercat.register.EthercatRegister"><span class="pre">EthercatRegister</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../protocols/canopen/register.html#ingenialink.canopen.register.CanopenRegister" title="ingenialink.canopen.register.CanopenRegister"><span class="pre">CanopenRegister</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_bits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ingenialink.pdo.PDOMapItem" title="ingenialink.pdo.PDOMapItem"><span class="pre">PDOMapItem</span></a></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOMap.create_item"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOMap.create_item" title="Link to this definition"></a></dt>
+<dd><p>Create a new PDOMapItem.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>register</strong> – Register object.</p></li>
+<li><p><strong>size_bits</strong> – Register size in bits.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>PDO Map item.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.get_item_bits">
+<span class="sig-name descname"><span class="pre">get_item_bits</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bitarray</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOMap.get_item_bits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOMap.get_item_bits" title="Link to this definition"></a></dt>
+<dd><p>Return the concatenated items raw data (in bits).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – Raw data is empty.</p></li>
+<li><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If the length of the bit array is incorrect.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Concatenated items raw data in bits.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.get_item_bytes">
+<span class="sig-name descname"><span class="pre">get_item_bytes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOMap.get_item_bytes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOMap.get_item_bytes" title="Link to this definition"></a></dt>
+<dd><p>Return the concatenated items raw data (in bytes).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – Raw data is empty.</p></li>
+<li><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If the length of th byte array is incorrect.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Concatenated items raw data in bytes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.set_item_bytes">
+<span class="sig-name descname"><span class="pre">set_item_bytes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_bytes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOMap.set_item_bytes"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOMap.set_item_bytes" title="Link to this definition"></a></dt>
+<dd><p>Set the items raw data from a byte array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data_bytes</strong> – Byte array.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If the length of the received data does not coincide.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.data_length_bits">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">data_length_bits</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#ingenialink.pdo.PDOMap.data_length_bits" title="Link to this definition"></a></dt>
+<dd><p>Length of the map in bits.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Length of the map in bits.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.data_length_bytes">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">data_length_bytes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#ingenialink.pdo.PDOMap.data_length_bytes" title="Link to this definition"></a></dt>
+<dd><p>Length of the map in bytes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Length of the map in bytes.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.items">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">items</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#ingenialink.pdo.PDOMapItem" title="ingenialink.pdo.PDOMapItem"><span class="pre">PDOMapItem</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ingenialink.pdo.PDOMap.items" title="Link to this definition"></a></dt>
+<dd><p>List of items.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of items.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.items_mapping">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">items_mapping</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bytearray</span></em><a class="headerlink" href="#ingenialink.pdo.PDOMap.items_mapping" title="Link to this definition"></a></dt>
+<dd><p>Returns all register item mappings concatenated.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>_description_</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.map_register_index">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">map_register_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#ingenialink.pdo.PDOMap.map_register_index" title="Link to this definition"></a></dt>
+<dd><p>Index of the mapping register. None if it is not mapped in the slave.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Index of the mapping register.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMap.map_register_index_bytes">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">map_register_index_bytes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bytes</span></em><a class="headerlink" href="#ingenialink.pdo.PDOMap.map_register_index_bytes" title="Link to this definition"></a></dt>
+<dd><p>Index of the mapping register in bytes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Index of the mapping register in bytes.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If map_register_index is None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMapItem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.pdo.</span></span><span class="sig-name descname"><span class="pre">PDOMapItem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">register</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../protocols/ethercat/register.html#ingenialink.ethercat.register.EthercatRegister" title="ingenialink.ethercat.register.EthercatRegister"><span class="pre">EthercatRegister</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../protocols/canopen/register.html#ingenialink.canopen.register.CanopenRegister" title="ingenialink.canopen.register.CanopenRegister"><span class="pre">CanopenRegister</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_bits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOMapItem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOMapItem" title="Link to this definition"></a></dt>
+<dd><p>Abstract class to represent a register in the PDO mapping.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMapItem.register">
+<span class="sig-name descname"><span class="pre">register</span></span><a class="headerlink" href="#ingenialink.pdo.PDOMapItem.register" title="Link to this definition"></a></dt>
+<dd><p>mapped register object. If None the item will padding.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMapItem.size_bits">
+<span class="sig-name descname"><span class="pre">size_bits</span></span><a class="headerlink" href="#ingenialink.pdo.PDOMapItem.size_bits" title="Link to this definition"></a></dt>
+<dd><p>custom register size in bits.</p>
+</dd></dl>
+
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the register and size_bits are not provided.</p></li>
+<li><p><strong>ValueError</strong> – If the size_bits value is invalid. Only when the register</p></li>
+<li><p><strong>is set to None.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMapItem.ACCEPTED_CYCLIC">
+<span class="sig-name descname"><span class="pre">ACCEPTED_CYCLIC</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">RegCyclicType</span></em><a class="headerlink" href="#ingenialink.pdo.PDOMapItem.ACCEPTED_CYCLIC" title="Link to this definition"></a></dt>
+<dd><p>CYCLIC_TX, CYCLIC_RX or CYCLIC_TXRX.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Accepted cyclic</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMapItem.raw_data_bits">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">raw_data_bits</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bitarray</span></em><a class="headerlink" href="#ingenialink.pdo.PDOMapItem.raw_data_bits" title="Link to this definition"></a></dt>
+<dd><p>Raw data in bits.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Raw data in bits</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If the raw data is empty.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMapItem.raw_data_bytes">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">raw_data_bytes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bytes</span></em><a class="headerlink" href="#ingenialink.pdo.PDOMapItem.raw_data_bytes" title="Link to this definition"></a></dt>
+<dd><p>Raw data in bytes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Raw data in bytes</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If the raw data is empty.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMapItem.register_mapping">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">register_mapping</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bytes</span></em><a class="headerlink" href="#ingenialink.pdo.PDOMapItem.register_mapping" title="Link to this definition"></a></dt>
+<dd><p>Arrange register information into PDO mapping format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>PDO register mapping format.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOMapItem.value">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bytes</span></em><a class="headerlink" href="#ingenialink.pdo.PDOMapItem.value" title="Link to this definition"></a></dt>
+<dd><p>Register value. Converts the raw data bytes into the register value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If the raw data is empty.</p></li>
+<li><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If the register type is not int or float.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Register value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.pdo.</span></span><span class="sig-name descname"><span class="pre">PDOServo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dictionary_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">servo_status_listener</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo" title="Link to this definition"></a></dt>
+<dd><p>Abstract class to implement PDOs in a Servo class.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo.generate_pdo_outputs">
+<span class="sig-name descname"><span class="pre">generate_pdo_outputs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo.generate_pdo_outputs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo.generate_pdo_outputs" title="Link to this definition"></a></dt>
+<dd><p>Process the PDO outputs.</p>
+<p>It should call _process_tpdo method using the received bytes as argument.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo.map_pdos">
+<span class="sig-name descname"><span class="pre">map_pdos</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slave_index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo.map_pdos"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo.map_pdos" title="Link to this definition"></a></dt>
+<dd><p>Map RPDO and TPDO register into the slave.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>slave_index</strong> – salve index.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo.map_rpdos">
+<span class="sig-name descname"><span class="pre">map_rpdos</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo.map_rpdos"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo.map_rpdos" title="Link to this definition"></a></dt>
+<dd><p>Map the RPDO registers into the servo slave.
+It takes the first available RPDO assignment slot of the slave.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If there are no available PDOs.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo.map_tpdos">
+<span class="sig-name descname"><span class="pre">map_tpdos</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo.map_tpdos"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo.map_tpdos" title="Link to this definition"></a></dt>
+<dd><p>Map the TPDO registers into the servo slave.
+It takes the first available TPDO assignment slot of the slave.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If there are no available PDOs.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo.process_pdo_inputs">
+<span class="sig-name descname"><span class="pre">process_pdo_inputs</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo.process_pdo_inputs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo.process_pdo_inputs" title="Link to this definition"></a></dt>
+<dd><p>Process the PDO inputs.</p>
+<p>It should call _process_rpdo method to obtain the bytes to be sent to the slave.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo.remove_rpdo_map">
+<span class="sig-name descname"><span class="pre">remove_rpdo_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rpdo_map</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ingenialink.pdo.RPDOMap" title="ingenialink.pdo.RPDOMap"><span class="pre">RPDOMap</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rpdo_map_index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo.remove_rpdo_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo.remove_rpdo_map" title="Link to this definition"></a></dt>
+<dd><p>Remove a RPDOMap from the RPDOMap list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rpdo_map</strong> – The RPDOMap instance to be removed.</p></li>
+<li><p><strong>rpdo_map_index</strong> – The index of the RPDOMap list to be removed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the RPDOMap instance is not in the RPDOMap list.</p></li>
+<li><p><strong>IndexError</strong> – If the index is out of range.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo.remove_tpdo_map">
+<span class="sig-name descname"><span class="pre">remove_tpdo_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tpdo_map</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ingenialink.pdo.TPDOMap" title="ingenialink.pdo.TPDOMap"><span class="pre">TPDOMap</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tpdo_map_index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo.remove_tpdo_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo.remove_tpdo_map" title="Link to this definition"></a></dt>
+<dd><p>Remove a TPDOMap from the TPDOMap list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tpdo_map</strong> – The TPDOMap instance to be removed.</p></li>
+<li><p><strong>tpdo_map_index</strong> – The index of the TPDOMap list to be removed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the TPDOMap instance is not in the TPDOMap list.</p></li>
+<li><p><strong>IndexError</strong> – If the index is out of range.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo.reset_pdo_mapping">
+<span class="sig-name descname"><span class="pre">reset_pdo_mapping</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo.reset_pdo_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo.reset_pdo_mapping" title="Link to this definition"></a></dt>
+<dd><p>Reset the RPDO and TPDO mapping in the slave.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo.reset_rpdo_mapping">
+<span class="sig-name descname"><span class="pre">reset_rpdo_mapping</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo.reset_rpdo_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo.reset_rpdo_mapping" title="Link to this definition"></a></dt>
+<dd><p>Delete the RPDO mapping stored in the servo slave.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo.reset_tpdo_mapping">
+<span class="sig-name descname"><span class="pre">reset_tpdo_mapping</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo.reset_tpdo_mapping"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo.reset_tpdo_mapping" title="Link to this definition"></a></dt>
+<dd><p>Delete the TPDO mapping stored in the servo slave.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ingenialink.pdo.PDOServo.set_pdo_map_to_slave">
+<span class="sig-name descname"><span class="pre">set_pdo_map_to_slave</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rpdo_maps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#ingenialink.pdo.RPDOMap" title="ingenialink.pdo.RPDOMap"><span class="pre">RPDOMap</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tpdo_maps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#ingenialink.pdo.TPDOMap" title="ingenialink.pdo.TPDOMap"><span class="pre">TPDOMap</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#PDOServo.set_pdo_map_to_slave"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.PDOServo.set_pdo_map_to_slave" title="Link to this definition"></a></dt>
+<dd><p>Callback called by the slave to configure the map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rpdo_maps</strong> – List of RPDO maps.</p></li>
+<li><p><strong>tpdo_maps</strong> – List of TPDO maps.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.pdo.RPDOMap">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.pdo.</span></span><span class="sig-name descname"><span class="pre">RPDOMap</span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#RPDOMap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.RPDOMap" title="Link to this definition"></a></dt>
+<dd><p>Class to store RPDO mapping information.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.pdo.RPDOMapItem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.pdo.</span></span><span class="sig-name descname"><span class="pre">RPDOMapItem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">register</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../protocols/ethercat/register.html#ingenialink.ethercat.register.EthercatRegister" title="ingenialink.ethercat.register.EthercatRegister"><span class="pre">EthercatRegister</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../protocols/canopen/register.html#ingenialink.canopen.register.CanopenRegister" title="ingenialink.canopen.register.CanopenRegister"><span class="pre">CanopenRegister</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_bits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#RPDOMapItem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.RPDOMapItem" title="Link to this definition"></a></dt>
+<dd><p>Class to represent RPDO mapping items.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.pdo.RPDOMapItem.ACCEPTED_CYCLIC">
+<span class="sig-name descname"><span class="pre">ACCEPTED_CYCLIC</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">RegCyclicType</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CYCLIC_RX'</span></em><a class="headerlink" href="#ingenialink.pdo.RPDOMapItem.ACCEPTED_CYCLIC" title="Link to this definition"></a></dt>
+<dd><p>CYCLIC_TX, CYCLIC_RX or CYCLIC_TXRX.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Accepted cyclic</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ingenialink.pdo.RPDOMapItem.value">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">bytes</span></em><a class="headerlink" href="#ingenialink.pdo.RPDOMapItem.value" title="Link to this definition"></a></dt>
+<dd><p>Register value. Converts the raw data bytes into the register value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If the raw data is empty.</p></li>
+<li><p><a class="reference internal" href="../exceptions.html#ingenialink.exceptions.ILError" title="ingenialink.exceptions.ILError"><strong>ILError</strong></a> – If the register type is not int or float.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Register value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.pdo.TPDOMap">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.pdo.</span></span><span class="sig-name descname"><span class="pre">TPDOMap</span></span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#TPDOMap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.TPDOMap" title="Link to this definition"></a></dt>
+<dd><p>Class to store TPDO mapping information.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ingenialink.pdo.TPDOMapItem">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ingenialink.pdo.</span></span><span class="sig-name descname"><span class="pre">TPDOMapItem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">register</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../protocols/ethercat/register.html#ingenialink.ethercat.register.EthercatRegister" title="ingenialink.ethercat.register.EthercatRegister"><span class="pre">EthercatRegister</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="../protocols/canopen/register.html#ingenialink.canopen.register.CanopenRegister" title="ingenialink.canopen.register.CanopenRegister"><span class="pre">CanopenRegister</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_bits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ingenialink/pdo.html#TPDOMapItem"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ingenialink.pdo.TPDOMapItem" title="Link to this definition"></a></dt>
+<dd><p>Class to represent TPDO mapping items.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ingenialink.pdo.TPDOMapItem.ACCEPTED_CYCLIC">
+<span class="sig-name descname"><span class="pre">ACCEPTED_CYCLIC</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">RegCyclicType</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'CYCLIC_TX'</span></em><a class="headerlink" href="#ingenialink.pdo.TPDOMapItem.ACCEPTED_CYCLIC" title="Link to this definition"></a></dt>
+<dd><p>CYCLIC_TX, CYCLIC_RX or CYCLIC_TXRX.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Accepted cyclic</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="net.html" class="btn btn-neutral float-left" title="Network" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="poller.html" class="btn btn-neutral float-right" title="Poller" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

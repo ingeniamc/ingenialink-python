@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ingenialink.eoe.network &mdash; ingenialink 7.3.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=9e6469cb" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../../../_static/documentation_options.js?v=2593fe3a"></script>
+        <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ingenialink
+          </a>
+              <div class="version">
+                7.3.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ingenialink</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ingenialink.eoe.network</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ingenialink.eoe.network</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">contextlib</span>
+<span class="kn">import</span> <span class="nn">ipaddress</span>
+<span class="kn">import</span> <span class="nn">socket</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="kn">import</span> <span class="n">Thread</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">ingenialogger</span>
+
+<span class="kn">from</span> <span class="nn">ingenialink</span> <span class="kn">import</span> <span class="n">constants</span>
+<span class="kn">from</span> <span class="nn">ingenialink.ethernet.network</span> <span class="kn">import</span> <span class="n">EthernetNetwork</span>
+<span class="kn">from</span> <span class="nn">ingenialink.ethernet.servo</span> <span class="kn">import</span> <span class="n">EthernetServo</span>
+<span class="kn">from</span> <span class="nn">ingenialink.exceptions</span> <span class="kn">import</span> <span class="n">ILError</span><span class="p">,</span> <span class="n">ILIOError</span><span class="p">,</span> <span class="n">ILTimeoutError</span>
+<span class="kn">from</span> <span class="nn">ingenialink.network</span> <span class="kn">import</span> <span class="n">NET_DEV_EVT</span><span class="p">,</span> <span class="n">SlaveInfo</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">ingenialogger</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="EoECommand">
+<a class="viewcode-back" href="../../../api/protocols/eoe/network.html#ingenialink.eoe.network.EoECommand">[docs]</a>
+<span class="k">class</span> <span class="nc">EoECommand</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="n">INIT</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">DEINIT</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">SCAN</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">CONFIG</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">ERASE_CONFIG</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">EOE_START</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">EOE_STOP</span> <span class="o">=</span> <span class="mi">6</span>
+    <span class="n">GET_STATUS</span> <span class="o">=</span> <span class="mi">7</span></div>
+
+
+
+<div class="viewcode-block" id="EoENetwork">
+<a class="viewcode-back" href="../../../api/protocols/eoe/network.html#ingenialink.eoe.network.EoENetwork">[docs]</a>
+<span class="k">class</span> <span class="nc">EoENetwork</span><span class="p">(</span><span class="n">EthernetNetwork</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Network for EoE (Ethernet over EtherCAT) communication.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ifname: Network interface name.</span>
+<span class="sd">        connection_timeout: Time in seconds of the connection timeout to the EoE service.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">EOE_MSG_CMD_SIZE</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">EOE_MSG_NODE_SIZE</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">EOE_MSG_IP_SIZE</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">EOE_MSG_DATA_SIZE</span> <span class="o">=</span> <span class="mi">53</span>
+    <span class="n">EOE_MSG_FRAME_SIZE</span> <span class="o">=</span> <span class="n">EOE_MSG_CMD_SIZE</span> <span class="o">+</span> <span class="n">EOE_MSG_DATA_SIZE</span>
+    <span class="n">NULL_TERMINATOR</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x00</span><span class="s2">&quot;</span>
+
+    <span class="n">STATUS_EOE_BIT</span> <span class="o">=</span> <span class="mb">0b10</span>
+    <span class="n">STATUS_INIT_BIT</span> <span class="o">=</span> <span class="mb">0b1</span>
+    <span class="n">WAIT_EOE_TIMEOUT</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="n">ECAT_SERVICE_NETWORK</span> <span class="o">=</span> <span class="n">ipaddress</span><span class="o">.</span><span class="n">ip_network</span><span class="p">(</span><span class="s2">&quot;192.168.3.0/24&quot;</span><span class="p">)</span>
+
+    <span class="c1"># The timeout used by the EoE Service is 4 times the EC_TIMEOUTSTATE</span>
+    <span class="c1"># https://github.com/OpenEtherCATsociety/SOEM/blob/v1.4.0/soem/ethercattype.h#L76</span>
+    <span class="c1"># An extra second is added to compensate for the communication delays.</span>
+    <span class="n">EOE_SERVICE_STATE_CHANGE_TIMEOUT</span> <span class="o">=</span> <span class="mf">9.0</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">ifname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">connection_timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">constants</span><span class="o">.</span><span class="n">DEFAULT_ETH_CONNECTION_TIMEOUT</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ifname</span> <span class="o">=</span> <span class="n">ifname</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__connection_timeout</span> <span class="o">=</span> <span class="n">connection_timeout</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_socket</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_DGRAM</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_socket</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__connection_timeout</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connect_to_eoe_service</span><span class="p">()</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_status_eoe_service</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">status</span> <span class="o">&amp;</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATUS_EOE_BIT</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_eoe_service</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_erase_config_eoe_service</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">status</span> <span class="o">&amp;</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATUS_INIT_BIT</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_deinitialize_eoe_service</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_service_init</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_service_started</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_configured_slaves</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="EoENetwork.connect_to_slave">
+<a class="viewcode-back" href="../../../api/protocols/eoe/network.html#ingenialink.eoe.network.EoENetwork.connect_to_slave">[docs]</a>
+    <span class="k">def</span> <span class="nf">connect_to_slave</span><span class="p">(</span>  <span class="c1"># type: ignore [override]</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">slave_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">dictionary</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1061</span><span class="p">,</span>
+        <span class="n">connection_timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">constants</span><span class="o">.</span><span class="n">DEFAULT_ETH_CONNECTION_TIMEOUT</span><span class="p">,</span>
+        <span class="n">servo_status_listener</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">net_status_listener</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EthernetServo</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Connects to a slave through the given network settings.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            slave_id: EtherCAT slave ID.</span>
+<span class="sd">            ip_address: IP address to be assigned to the slave.</span>
+<span class="sd">            dictionary: Path to the target dictionary file.</span>
+<span class="sd">            port: Port to connect to the slave.</span>
+<span class="sd">            connection_timeout: Time in seconds of the connection timeout.</span>
+<span class="sd">            servo_status_listener: Toggle the listener of the servo for</span>
+<span class="sd">                its status, errors, faults, etc.</span>
+<span class="sd">            net_status_listener: Toggle the listener of the network</span>
+<span class="sd">                status, connection and disconnection.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: ip_address must be a subnetwork of 192.168.3.0/24</span>
+<span class="sd">            ILError: If the EoE service is not running.</span>
+<span class="sd">            ILError: If the EoE service cannot be started on the network interface.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            EthernetServo: Instance of the servo connected.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">ipaddress</span><span class="o">.</span><span class="n">ip_address</span><span class="p">(</span><span class="n">ip_address</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ECAT_SERVICE_NETWORK</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;ip_address must be a subnetwork of 192.168.3.0/24&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_service_init</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_eoe_service</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_service_started</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_eoe_service</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_erase_config_eoe_service</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__reconfigure_drives</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_configure_slave</span><span class="p">(</span><span class="n">slave_id</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_start_eoe_service</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__wait_eoe_starts</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_configured_slaves</span><span class="p">[</span><span class="n">ip_address</span><span class="p">]</span> <span class="o">=</span> <span class="n">slave_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subscribe_to_status</span><span class="p">(</span><span class="n">ip_address</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recover_from_power_cycle</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">connect_to_slave</span><span class="p">(</span>
+            <span class="n">ip_address</span><span class="p">,</span>
+            <span class="n">dictionary</span><span class="p">,</span>
+            <span class="n">port</span><span class="p">,</span>
+            <span class="n">connection_timeout</span><span class="p">,</span>
+            <span class="n">servo_status_listener</span><span class="p">,</span>
+            <span class="n">net_status_listener</span><span class="p">,</span>
+            <span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="nf">__wait_eoe_starts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Wait until the EoE service starts the EoE or the timeout was reached&quot;&quot;&quot;</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_status_eoe_service</span><span class="p">()</span>
+        <span class="n">time_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="n">status</span> <span class="o">&amp;</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATUS_EOE_BIT</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">WAIT_EOE_TIMEOUT</span> <span class="o">&gt;</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time_start</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_status_eoe_service</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">status</span> <span class="o">&amp;</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATUS_EOE_BIT</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Service did not starts the EoE&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__reconfigure_drives</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reconfigure all the slaves saved in the network&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">ip_addr</span><span class="p">,</span> <span class="n">slave_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_configured_slaves</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_configure_slave</span><span class="p">(</span><span class="n">slave_id</span><span class="p">,</span> <span class="n">ip_addr</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">ILError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+<div class="viewcode-block" id="EoENetwork.disconnect_from_slave">
+<a class="viewcode-back" href="../../../api/protocols/eoe/network.html#ingenialink.eoe.network.EoENetwork.disconnect_from_slave">[docs]</a>
+    <span class="k">def</span> <span class="nf">disconnect_from_slave</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">servo</span><span class="p">:</span> <span class="n">EthernetServo</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore [override]</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_configured_slaves</span><span class="p">[</span><span class="n">servo</span><span class="o">.</span><span class="n">ip_address</span><span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">disconnect_from_slave</span><span class="p">(</span><span class="n">servo</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_eoe_service</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_erase_config_eoe_service</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_deinitialize_eoe_service</span><span class="p">()</span>
+            <span class="k">except</span> <span class="n">ILError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span> <span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_socket</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">SHUT_RDWR</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<div class="viewcode-block" id="EoENetwork.scan_slaves">
+<a class="viewcode-back" href="../../../api/protocols/eoe/network.html#ingenialink.eoe.network.EoENetwork.scan_slaves">[docs]</a>
+    <span class="k">def</span> <span class="nf">scan_slaves</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scan slaves connected to the network adapter.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List containing the ids of the connected slaves.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: If the EoE service fails to perform a scan.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">deinit_later</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_service_init</span><span class="p">:</span>
+            <span class="n">deinit_later</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_eoe_service</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_scan_eoe_service</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">deinit_later</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_deinitialize_eoe_service</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+    <span class="k">def</span> <span class="nf">_scan_eoe_service</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Make the scan request to the EoE service</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List containing the ids of the connected slaves.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: If the EoE service fails to perform a scan.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_eoe_command_msg</span><span class="p">(</span><span class="n">EoECommand</span><span class="o">.</span><span class="n">SCAN</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">ILIOError</span><span class="p">,</span> <span class="n">ILTimeoutError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span>
+                <span class="s2">&quot;Failed to perform a network scan. Please verify the EoE service is running.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">r</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">scan_slaves_info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OrderedDict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">SlaveInfo</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_build_eoe_command_msg</span><span class="p">(</span><span class="n">cmd</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build a message with the following format.</span>
+
+<span class="sd">        +----------+----------+</span>
+<span class="sd">        |   cmd    |   data   |</span>
+<span class="sd">        +==========+==========+</span>
+<span class="sd">        |  2 Byte  | 53 Bytes |</span>
+<span class="sd">        +----------+----------+</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cmd: Indicates which operation to perform.</span>
+<span class="sd">            data: Contains the necessary data to perform the desired command.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The message to send.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">()</span>
+        <span class="n">cmd_field</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="n">EoENetwork</span><span class="o">.</span><span class="n">EOE_MSG_CMD_SIZE</span><span class="p">,</span> <span class="s2">&quot;little&quot;</span><span class="p">)</span>
+        <span class="n">data_field</span> <span class="o">=</span> <span class="n">data</span> <span class="o">+</span> <span class="n">EoENetwork</span><span class="o">.</span><span class="n">NULL_TERMINATOR</span> <span class="o">*</span> <span class="p">(</span><span class="n">EoENetwork</span><span class="o">.</span><span class="n">EOE_MSG_DATA_SIZE</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">cmd_field</span> <span class="o">+</span> <span class="n">data_field</span>
+
+    <span class="k">def</span> <span class="nf">_send_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Send command to EoE service.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            msg: Message to send.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Response from the EoE service.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILTimeoutError: Timeout while receiving a response from</span>
+<span class="sd">            the EoE service.</span>
+<span class="sd">            ILIOError: Error while sending/receiving message.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_socket</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILIOError</span><span class="p">(</span><span class="s2">&quot;Error sending message.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_socket</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">timeout</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILTimeoutError</span><span class="p">(</span><span class="s2">&quot;Timeout while receiving response.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">except</span> <span class="n">socket</span><span class="o">.</span><span class="n">error</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILIOError</span><span class="p">(</span><span class="s2">&quot;Error receiving response.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">byteorder</span><span class="o">=</span><span class="s2">&quot;little&quot;</span><span class="p">,</span> <span class="n">signed</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_connect_to_eoe_service</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Connect to the EoE service.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_socket</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="mi">8888</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_initialize_eoe_service</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the virtual network interface and the packet forwarder.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: If the EoE service is not running.</span>
+<span class="sd">            ILError: If the EoE service cannot be started on the network interface.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_service_init</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ifname</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_eoe_command_msg</span><span class="p">(</span><span class="n">EoECommand</span><span class="o">.</span><span class="n">INIT</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_socket</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span>
+            <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">EOE_SERVICE_STATE_CHANGE_TIMEOUT</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__connection_timeout</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">ILIOError</span><span class="p">,</span> <span class="n">ILTimeoutError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span>
+                <span class="s2">&quot;Failed to initialize the EoE service. Please verify it&#39;s running.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">if</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to initialize the EoE service using interface </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ifname</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_socket</span><span class="o">.</span><span class="n">settimeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__connection_timeout</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_deinitialize_eoe_service</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Deinitialize the virtual network interface and the packet forwarder.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: If the EoE service is not running.</span>
+<span class="sd">            ILError: If the EoE service cannot be stopped on the network interface.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ifname</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_eoe_command_msg</span><span class="p">(</span><span class="n">EoECommand</span><span class="o">.</span><span class="n">DEINIT</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_service_init</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">ILIOError</span><span class="p">,</span> <span class="n">ILTimeoutError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Failed to deinitialize the EoE service.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+    <span class="k">def</span> <span class="nf">_configure_slave</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">slave_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">net_mask</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;255.255.255.0&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Configure an EtherCAT slave with a given IP.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            slave_id: EtherCAT slave ID.</span>
+<span class="sd">            ip_address: IP address to be set to the slave.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ILError: If the EoE service fails to configure a slave.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">slave_bytes</span> <span class="o">=</span> <span class="n">slave_id</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">EOE_MSG_NODE_SIZE</span><span class="p">,</span> <span class="s2">&quot;little&quot;</span><span class="p">)</span>
+        <span class="n">ip_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ipaddress</span><span class="o">.</span><span class="n">IPv4Address</span><span class="p">(</span><span class="n">ip_address</span><span class="p">))</span>
+        <span class="n">ip_bytes</span> <span class="o">=</span> <span class="n">ip_int</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">EOE_MSG_IP_SIZE</span><span class="p">,</span> <span class="s2">&quot;little&quot;</span><span class="p">)</span>
+        <span class="n">net_mask_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ipaddress</span><span class="o">.</span><span class="n">IPv4Address</span><span class="p">(</span><span class="n">net_mask</span><span class="p">))</span>
+        <span class="n">net_mask_bytes</span> <span class="o">=</span> <span class="n">net_mask_int</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">EOE_MSG_IP_SIZE</span><span class="p">,</span> <span class="s2">&quot;little&quot;</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">slave_bytes</span> <span class="o">+</span> <span class="n">ip_bytes</span> <span class="o">+</span> <span class="n">net_mask_bytes</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_eoe_command_msg</span><span class="p">(</span><span class="n">EoECommand</span><span class="o">.</span><span class="n">CONFIG</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">ILIOError</span><span class="p">,</span> <span class="n">ILTimeoutError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to configure slave </span><span class="si">{</span><span class="n">slave_id</span><span class="si">}</span><span class="s2"> with IP </span><span class="si">{</span><span class="n">ip_address</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+    <span class="k">def</span> <span class="nf">_start_eoe_service</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Starts the EoE service</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">           ILError: If the EoE service fails to start.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_service_started</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_eoe_command_msg</span><span class="p">(</span><span class="n">EoECommand</span><span class="o">.</span><span class="n">EOE_START</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">ILIOError</span><span class="p">,</span> <span class="n">ILTimeoutError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Failed to start the EoE service.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+    <span class="k">def</span> <span class="nf">_stop_eoe_service</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stops the EoE service</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">           ILError: If the EoE service fails to stop.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_service_started</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_eoe_command_msg</span><span class="p">(</span><span class="n">EoECommand</span><span class="o">.</span><span class="n">EOE_STOP</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">ILIOError</span><span class="p">,</span> <span class="n">ILTimeoutError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Failed to stop the EoE service.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+    <span class="k">def</span> <span class="nf">_erase_config_eoe_service</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stops the EoE service</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">           ILError: If the EoE service fails to stop.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_eoe_command_msg</span><span class="p">(</span><span class="n">EoECommand</span><span class="o">.</span><span class="n">ERASE_CONFIG</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">ILIOError</span><span class="p">,</span> <span class="n">ILTimeoutError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Failed to stop the EoE service.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+    <span class="k">def</span> <span class="nf">_get_status_eoe_service</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the EoE service status.</span>
+
+<span class="sd">        +-----------+------+------+</span>
+<span class="sd">        |ECAT status| init | eoe  |</span>
+<span class="sd">        +===========+======+======+</span>
+<span class="sd">        |   1Byte   | 1bit | 1bit |</span>
+<span class="sd">        +-----------+------+------+</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Status response</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">           ILError: If get status request fails.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_eoe_command_msg</span><span class="p">(</span><span class="n">EoECommand</span><span class="o">.</span><span class="n">GET_STATUS</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">r</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_send_command</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">ILIOError</span><span class="p">,</span> <span class="n">ILTimeoutError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ILError</span><span class="p">(</span><span class="s2">&quot;Failed to get service status.&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">return</span> <span class="n">r</span>
+
+    <span class="k">def</span> <span class="nf">load_firmware_moco</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore [override]</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span> <span class="nf">load_firmware</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore [override]</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span> <span class="nf">_recover_from_power_cycle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status</span><span class="p">:</span> <span class="n">NET_DEV_EVT</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Recover the connection after a power cycle.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            status: The network status.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">NET_DEV_EVT</span><span class="o">.</span><span class="n">REMOVED</span><span class="p">:</span>
+            <span class="n">connection_recovery_thread</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection_recovery</span><span class="p">)</span>
+            <span class="n">connection_recovery_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_connection_recovery</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Restart the EoE service until all slaves are detected.&quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">servo</span><span class="o">.</span><span class="n">is_alive</span><span class="p">()</span> <span class="k">for</span> <span class="n">servo</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servos</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="n">ILError</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stop_eoe_service</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_deinitialize_eoe_service</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_eoe_service_init</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_eoe_service</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">__reconfigure_drives</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_start_eoe_service</span><span class="p">()</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Novanta Technologies Spain S.L..</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
