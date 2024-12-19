@@ -76,7 +76,7 @@ pipeline {
                 branch BRANCH_NAME_MASTER
             }
             steps {
-
+                copyToSharedFS("_docs", "test/copyToSharedFS", "distext")
                 publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
             }
         }
