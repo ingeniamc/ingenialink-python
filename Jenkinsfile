@@ -85,54 +85,46 @@ pipeline {
         }
         stage('Build and Tests') {
             parallel {
-                stage('Typing and formatting') {
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
+                stage('Build and publish') {
                     stages {
-                        stage('Type checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
-                            }
-                        }
-                        stage('Format checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                            }
-                        }
-                    }
-                }
-                stage('Build wheels and documentation') {
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage('Get FoE application') {
-                            steps {
-                                unstash 'foe_app'
-                                bat """
-                                    XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
-                                    XCOPY $FOE_APP_NAME_LINUX $LIB_FOE_APP_PATH\\linux\\
-                                """
-                            }
-                        }
                         stage('Build') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
-                                stash includes: 'dist\\*', name: 'build'
+                            agent {
+                                docker {
+                                    label SW_NODE
+                                    image WIN_DOCKER_IMAGE
+                                }
                             }
-                        }
-                        stage('Generate documentation') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
-                                bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
-                                stash includes: 'docs.zip', name: 'docs'
+                            stages {
+                                stage('Type checking') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                                    }
+                                }
+                                stage('Format checking') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                                    }
+                                }
+                                stage('Get FoE application') {
+                                    steps {
+                                        unstash 'foe_app'
+                                        bat "XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\"
+                                        bat "XCOPY $FOE_APP_NAME_LINUX $LIB_FOE_APP_PATH\\linux\\"
+                                    }
+                                }
+                                stage('Build') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
+                                        stash includes: 'dist\\*', name: 'build'
+                                    }
+                                }
+                                stage('Generate documentation') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                                        bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
+                                        stash includes: 'docs.zip', name: 'docs'
+                                    }
+                                }
                             }
                         }
                         stage('Publish documentation') {
@@ -146,14 +138,14 @@ pipeline {
                             steps {
                                 unstash 'docs'
                                 unzip zipFile: 'docs.zip', dir: '.'
-                                // publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
+                            // publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                             }
                         }
                         stage('Publish to pypi') {
-                            /*when {
-                                beforeAgent true
-                                branch BRANCH_NAME_MASTER
-                            }*/
+                        /*when {
+                            beforeAgent true
+                            branch BRANCH_NAME_MASTER
+                        }*/
                             agent {
                                 docker {
                                     label 'worker'
@@ -162,7 +154,7 @@ pipeline {
                             }
                             steps {
                                 unstash 'build'
-                                // publishPyPi("dist/*")
+                            // publishPyPi("dist/*")
                             }
                         }
                     }
