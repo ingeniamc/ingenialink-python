@@ -128,24 +128,24 @@ pipeline {
                             }
                         }
                         stage('Publish documentation') {
-                            /*when {
+                            when {
                                 beforeAgent true
                                 branch BRANCH_NAME_MASTER
-                            }*/
+                            }
                             agent {
                                 label 'worker'
                             }
                             steps {
                                 unstash 'docs'
                                 unzip zipFile: 'docs.zip', dir: '.'
-                            // publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
+                                publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                             }
                         }
                         stage('Publish to pypi') {
-                        /*when {
-                            beforeAgent true
-                            branch BRANCH_NAME_MASTER
-                        }*/
+                            when {
+                                beforeAgent true
+                                branch BRANCH_NAME_MASTER
+                            }
                             agent {
                                 docker {
                                     label 'worker'
@@ -154,7 +154,7 @@ pipeline {
                             }
                             steps {
                                 unstash 'build'
-                            // publishPyPi("dist/*")
+                                publishPyPi("dist/*")
                             }
                         }
                     }
