@@ -33,8 +33,7 @@ class MCB:
         pass
 
     def __del__(self) -> None:
-        """Delete method"""
-        pass
+        """Delete method."""
 
     def create_msg(self, node: int, subnode: int, cmd: int, data: bytes, size: int) -> bytes:
         """Creates a command message following the MCB protocol.

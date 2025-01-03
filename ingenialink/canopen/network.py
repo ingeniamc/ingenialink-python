@@ -153,10 +153,9 @@ class CustomListener(can.Listener):
 
     def on_message_received(self, msg: can.Message) -> None:
         """On message received callback."""
-        pass
 
     def on_error(self, exc: Exception) -> None:
-        """On error callback"""
+        """On error callback."""
         logger.error(f"An exception occurred with the IXXAT or KVASER connection. Exception: {exc}")
 
 
@@ -460,7 +459,7 @@ class CanopenNetwork(Network):
             self._connection.disconnect()
         except (VCIError, CANLIBOperationError, PcanCanOperationError) as e:
             logger.exception(
-                f"An exception occurred during the teardown connection. Exception: {e}"
+                f"An exception occurred during the teardown connection. Exception: {e}",
             )
         self._connection = None
         logger.info("Tear down connection.")
