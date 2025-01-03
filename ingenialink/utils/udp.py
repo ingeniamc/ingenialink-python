@@ -16,6 +16,9 @@ class UDP:
     transport protocol based off the MCB protocol.
     """
 
+    ACK_COMMAND = 3
+    STANDARD_MCB_MSG_SIZE_BYTES = 8
+
     def __init__(self, port: int, ip: str) -> None:
         self.port = port
         self.ip = ip
@@ -62,7 +65,7 @@ class UDP:
         """
         rcv = self.read()
         ret_cmd = self.unmsg(rcv)
-        if ret_cmd != 3:
+        if ret_cmd != self.ACK_COMMAND:
             self.socket.close()
             raise Exception("No ACK received (command received %d)" % ret_cmd)
         return ret_cmd
@@ -94,8 +97,8 @@ class UDP:
 
         return int(cmd)
 
-    @staticmethod
-    def raw_msg(node: int, subnode: int, cmd: int, data: bytes, size: int) -> bytes:
+    @classmethod
+    def raw_msg(cls, node: int, subnode: int, cmd: int, data: bytes, size: int) -> bytes:
         """Creates a raw message with the proper format.
 
         Args:
@@ -111,7 +114,7 @@ class UDP:
         node_head = (node << 4) | (subnode & 0xF)
         node_head_bytes = struct.pack("<H", node_head)
 
-        if size > 8:
+        if size > cls.STANDARD_MCB_MSG_SIZE_BYTES:
             cmd = cmd + 1
             head = struct.pack("<H", cmd)
             head_size = struct.pack("<H", size)
@@ -141,7 +144,7 @@ class UDP:
             cmd: Command of the message.
             data: Data of the message.
         """
-        if len(data) <= 8:
+        if len(data) <= self.STANDARD_MCB_MSG_SIZE_BYTES:
             data = data + bytes([0] * (8 - len(data)))
         frame = self.raw_msg(node, subnode, cmd, data, len(data))
         self.write(frame)

@@ -4,6 +4,7 @@ import threading
 import time
 import xml.etree.ElementTree as ET
 from abc import abstractmethod
+from enum import Enum
 from typing import Any, Callable, Optional, Union
 from xml.dom import minidom
 
@@ -54,6 +55,13 @@ logger = ingenialogger.get_logger(__name__)
 OPERATION_TIME_OUT = -3
 
 
+class DictionaryVersion(Enum):
+    """CAN Device."""
+
+    V2 = 2
+    V3 = 3
+
+
 class DictionaryFactory:
     """Dictionary factory.
 
@@ -88,9 +96,9 @@ class DictionaryFactory:
 
         """
         major_version, minor_version = cls.__get_dictionary_version(dictionary_path)
-        if major_version == 3:
+        if major_version == DictionaryVersion.V3.value:
             return DictionaryV3(dictionary_path, interface)
-        if major_version == 2:
+        if major_version == DictionaryVersion.V2.value:
             if interface == Interface.CAN:
                 return CanopenDictionaryV2(dictionary_path)
             if interface == Interface.ECAT:
@@ -123,9 +131,9 @@ class DictionaryFactory:
             NotImplementedError: Dictionary version is not supported.
         """
         major_version, minor_version = cls.__get_dictionary_version(dictionary_path)
-        if major_version == 3:
+        if major_version == DictionaryVersion.V3.value:
             return DictionaryV3.get_description(dictionary_path, interface)
-        if major_version == 2:
+        if major_version == DictionaryVersion.V2.value:
             return DictionaryV2.get_description(dictionary_path, interface)
         msg = f"Dictionary version {major_version} is not supported"
         raise NotImplementedError(msg)
@@ -1254,7 +1262,7 @@ class Servo:
             Monitoring Mapped Register ID.
 
         """
-        if self.monitoring_number_mapped_registers < 10:
+        if self.monitoring_number_mapped_registers < 10:  # noqa: PLR2004
             register_id = f"MON_CFG_REG{self.monitoring_number_mapped_registers}_MAP"
         else:
             register_id = f"MON_CFG_REFG{self.monitoring_number_mapped_registers}_MAP"
