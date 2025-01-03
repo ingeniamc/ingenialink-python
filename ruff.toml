@@ -2,10 +2,31 @@ line-length = 100
 target-version = "py39"
 
 [lint]
-select = [
-    "F", # Pyflakes
-    "E", # pycodestyle
-    "W", # pycodestyle
-    "I", # isort
-]
 pydocstyle.convention = "google"
+select = [
+    "ALL",
+]
+ignore = [
+    "ANN", # flake8-annotations
+    "C90", # mccabe complexity
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "FA100", # Missing `from __future__ import annotations`
+    "FIX002", # TODO comment
+    "G004", # Logging statement uses f-string
+    "S314", # Insecure XML parser,
+    "SLF001", # Private member accessed
+    "TD002", # Missing author in TODO
+    "TD003", # Missing issue link in TODO
+    "TRY003", # Avoid specifying long messages outside the exception class
+]
+[lint.per-file-ignores]
+"tests/*" = [
+    "D", # Docstring rules
+    "ERA001", # Commented-out code
+    "S101", # Use of assert keyword
+]
+"virtual_drive/*" = [
+    "D", # Docstring rules
+    "ERA001", # Commented-out code
+]
