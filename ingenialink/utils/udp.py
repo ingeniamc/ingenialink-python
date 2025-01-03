@@ -10,7 +10,9 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class UDP:
-    """UDP Contains all the basic operations for the lightweight data
+    """Class to create a UDP connection.
+
+    UDP Contains all the basic operations for the lightweight data
     transport protocol based off the MCB protocol.
     """
 

@@ -297,6 +297,7 @@ class EthercatServo(PDOServo):
 
     def _on_emcy(self, emergency_msg: "pysoem.Emergency") -> None:
         """Receive an emergency message from PySOEM and transform it to a EmergencyMessage.
+
         Afterward, send the EmergencyMessage to all the subscribed callbacks.
 
         Args:

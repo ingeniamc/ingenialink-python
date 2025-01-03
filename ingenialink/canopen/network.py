@@ -144,6 +144,7 @@ CAN_BIT_TIMMING = {
 
 class CustomListener(can.Listener):
     """Custom listener for IXXAT and KVASER connection.
+
     It is used to ignore the exceptions that occur when
     the error limit is reached.
     """
@@ -416,8 +417,10 @@ class CanopenNetwork(Network):
             self._teardown_connection()
 
     def _setup_connection(self) -> None:
-        """Creates a network interface object establishing an empty connection
-        with all the network attributes already specified.
+        """Creates a network interface object.
+
+        Establishing an empty connection with all the network
+        attributes already specified.
 
         """
         if self._connection is None:
@@ -449,8 +452,11 @@ class CanopenNetwork(Network):
             logger.info("Connection already established")
 
     def _teardown_connection(self) -> None:
-        """Tears down the already established connection
-        and deletes the network interface.
+        """Tears down a connection.
+
+        An already established connection and delete
+        the network interface.
+
         """
         if self._connection is None:
             logger.warning("Can not disconnect. The connection is not established yet.")
@@ -1099,6 +1105,7 @@ class CanopenNetwork(Network):
 
     def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
         """Get the state of a servo that's a part of network.
+
         The state indicates if the servo is connected or disconnected.
 
         Args:

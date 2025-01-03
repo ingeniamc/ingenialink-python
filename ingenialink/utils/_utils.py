@@ -49,7 +49,9 @@ def deprecated(
     custom_msg: Optional[str] = None,
     new_func_name: Optional[str] = None,
 ) -> Callable[..., Any]:
-    """This is a decorator which can be used to mark functions as deprecated.
+    """Deprecated decorator.
+
+    This is a decorator which can be used to mark functions as deprecated.
     It will result in a warning being emitted when the function is used. We use
     this decorator instead of any deprecation library because all libraries raise
     a DeprecationWarning but since by default this warning is hidden, we use this
@@ -120,7 +122,9 @@ def pop_element(dictionary: dict[str, Any], element: str) -> None:
 
 
 def cleanup_register(register: ET.Element) -> None:
-    """Cleans a ElementTree register to remove all
+    """Clean a register element.
+
+    Cleans a ElementTree register to remove all
     unnecessary fields for a configuration file.
 
     Args:

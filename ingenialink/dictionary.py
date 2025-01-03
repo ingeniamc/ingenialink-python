@@ -396,7 +396,9 @@ class Dictionary(ABC):
         self.image = core_dict.image
 
     def _merge_attributes(self, other_dict: "Dictionary") -> None:
-        """Add the revision number, product code, firmware version and part number
+        """Merge dictionary attributes.
+
+        Add the revision number, product code, firmware version and part number
         from the other dictionary to the dictionary instance.
 
         Args:

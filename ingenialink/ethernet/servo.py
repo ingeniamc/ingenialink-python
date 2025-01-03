@@ -56,15 +56,17 @@ class EthernetServo(Servo):
         super().__init__(self.ip_address, dictionary_path, servo_status_listener)
 
     def store_tcp_ip_parameters(self) -> None:
-        """Stores the TCP/IP values. Affects IP address,
-        subnet mask and gateway.
+        """Stores the TCP/IP values.
+
+        Affects IP address, subnet mask and gateway.
         """
         self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Store TCP/IP successfully done.")
 
     def restore_tcp_ip_parameters(self) -> None:
-        """Restores the TCP/IP values back to default. Affects
-        IP address, subnet mask and gateway.
+        """Restores the TCP/IP values back to default.
+
+        Affects IP address, subnet mask and gateway.
         """
         self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Restore TCP/IP successfully done.")
@@ -76,8 +78,9 @@ class EthernetServo(Servo):
         gateway: str,
         mac_address: Optional[int] = None,
     ) -> None:
-        """Stores the TCP/IP values. Affects IP address,
-        network mask and gateway.
+        """Stores the TCP/IP values.
+
+         Affects IP address, network mask and gateway.
 
         .. note::
             The drive needs a power cycle after this
