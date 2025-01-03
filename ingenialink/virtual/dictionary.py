@@ -55,7 +55,8 @@ class VirtualDictionary(EthernetDictionaryV2):
                 reg_address = int(register.attrib["address"][:6], 16)
                 if current_read_register.subnode > 0:
                     reg_address = self._transform_canopen_index_to_mcb_address(
-                        reg_address, current_read_register.subnode,
+                        reg_address,
+                        current_read_register.subnode,
                     )
                 else:
                     reg_address -= 0x5800
@@ -81,7 +82,6 @@ class VirtualDictionary(EthernetDictionaryV2):
                 address_type=current_read_register.address_type,
                 bitfields=current_read_register.bitfields,
             )
-
 
         except KeyError as ke:
             logger.exception(

@@ -57,7 +57,9 @@ class EoENetwork(EthernetNetwork):
     EOE_SERVICE_STATE_CHANGE_TIMEOUT = 9.0
 
     def __init__(
-        self, ifname: str, connection_timeout: float = constants.DEFAULT_ETH_CONNECTION_TIMEOUT,
+        self,
+        ifname: str,
+        connection_timeout: float = constants.DEFAULT_ETH_CONNECTION_TIMEOUT,
     ) -> None:
         super().__init__()
         self.ifname = ifname
@@ -151,7 +153,7 @@ class EoENetwork(EthernetNetwork):
             except ILError as e:
                 logger.exception(e)
 
-    def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override]
+    def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override] # noqa: D102
         del self._configured_slaves[servo.ip_address]
         super().disconnect_from_slave(servo)
         if len(self.servos) == 0:
@@ -205,7 +207,7 @@ class EoENetwork(EthernetNetwork):
             ) from e
         return list(range(1, r + 1))
 
-    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:  # noqa: D102
         raise NotImplementedError
 
     @staticmethod
@@ -310,7 +312,10 @@ class EoENetwork(EthernetNetwork):
             raise ILError(msg) from e
 
     def _configure_slave(
-        self, slave_id: int, ip_address: str, net_mask: str = "255.255.255.0",
+        self,
+        slave_id: int,
+        ip_address: str,
+        net_mask: str = "255.255.255.0",
     ) -> None:
         """Configure an EtherCAT slave with a given IP.
 
@@ -403,10 +408,10 @@ class EoENetwork(EthernetNetwork):
             raise ILError(msg) from e
         return r
 
-    def load_firmware_moco(self) -> None:  # type: ignore [override]
+    def load_firmware_moco(self) -> None:  # type: ignore [override]   # noqa: D102
         raise NotImplementedError
 
-    def load_firmware(self) -> None:  # type: ignore [override]
+    def load_firmware(self) -> None:  # type: ignore [override]   # noqa: D102
         raise NotImplementedError
 
     def _recover_from_power_cycle(self, status: NET_DEV_EVT) -> None:

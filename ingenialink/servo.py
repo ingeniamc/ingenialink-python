@@ -100,7 +100,9 @@ class DictionaryFactory:
 
     @classmethod
     def get_dictionary_description(
-        cls, dictionary_path: str, interface: Interface,
+        cls,
+        dictionary_path: str,
+        interface: Interface,
     ) -> DictionaryDescriptor:
         """Quick function to get target dictionary description.
 
@@ -362,7 +364,8 @@ class Servo:
                 reg_id = element.attrib["id"]
                 try:
                     stored_data: Union[str, int, float, bytes, np.float32] = self.read(
-                        reg_id, element_subnode,
+                        reg_id,
+                        element_subnode,
                     )
                 except ILError as e:
                     reg_id = element.attrib["id"]
@@ -389,7 +392,10 @@ class Servo:
             raise ILConfigurationError(error_message)
 
     def load_configuration(
-        self, config_file: str, subnode: Optional[int] = None, strict: bool = False,
+        self,
+        config_file: str,
+        subnode: Optional[int] = None,
+        strict: bool = False,
     ) -> None:
         """Write current dictionary storage to the servo drive.
 
@@ -520,7 +526,8 @@ class Servo:
         return True
 
     def _registers_to_save_in_configuration_file(
-        self, subnode: Optional[int],
+        self,
+        subnode: Optional[int],
     ) -> dict[int, list[Register]]:
         """Generate the registers to be used in the configuration file.
 
@@ -602,7 +609,9 @@ class Servo:
         elif subnode > 0:
             # Restore axis
             self.write(
-                reg=self.RESTORE_MOCO_ALL_REGISTERS, data=PASSWORD_RESTORE_ALL, subnode=subnode,
+                reg=self.RESTORE_MOCO_ALL_REGISTERS,
+                data=PASSWORD_RESTORE_ALL,
+                subnode=subnode,
             )
             logger.info(f"Restore subnode {subnode} successfully done.")
         else:
@@ -651,7 +660,9 @@ class Servo:
             elif subnode > 0:
                 # Store axis
                 self.write(
-                    reg=self.STORE_MOCO_ALL_REGISTERS, data=PASSWORD_STORE_ALL, subnode=subnode,
+                    reg=self.STORE_MOCO_ALL_REGISTERS,
+                    data=PASSWORD_STORE_ALL,
+                    subnode=subnode,
                 )
                 logger.info(f"Store axis {subnode} successfully done.")
             else:
@@ -799,10 +810,14 @@ class Servo:
         ]:
             # Check if faulty, if so try to reset (0->1)
             self.write_bitfields(
-                self.CONTROL_WORD_REGISTERS, {self.CONTROL_WORD_FAULT_RESET: 0}, subnode=subnode,
+                self.CONTROL_WORD_REGISTERS,
+                {self.CONTROL_WORD_FAULT_RESET: 0},
+                subnode=subnode,
             )
             self.write_bitfields(
-                self.CONTROL_WORD_REGISTERS, {self.CONTROL_WORD_FAULT_RESET: 1}, subnode=subnode,
+                self.CONTROL_WORD_REGISTERS,
+                {self.CONTROL_WORD_FAULT_RESET: 1},
+                subnode=subnode,
             )
             # Wait until status word changes
             self.state_wait_change(state, timeout, subnode=subnode)
@@ -915,7 +930,12 @@ class Servo:
         self.write(self.MONITORING_REMOVE_DATA, data=1, subnode=0)
 
     def monitoring_set_mapped_register(
-        self, channel: int, address: int, subnode: int, dtype: int, size: int,
+        self,
+        channel: int,
+        address: int,
+        subnode: int,
+        dtype: int,
+        size: int,
     ) -> None:
         """Set monitoring mapped register.
 
@@ -994,7 +1014,9 @@ class Servo:
         self.__monitoring_process_data(monitoring_data)
 
     def monitoring_channel_data(
-        self, channel: int, dtype: Optional[REG_DTYPE] = None,
+        self,
+        channel: int,
+        dtype: Optional[REG_DTYPE] = None,
     ) -> list[float]:
         """Obtain processed monitoring data of a channel.
 
@@ -1027,7 +1049,12 @@ class Servo:
         self.disturbance_data = b""
 
     def disturbance_set_mapped_register(
-        self, channel: int, address: int, subnode: int, dtype: int, size: int,
+        self,
+        channel: int,
+        address: int,
+        subnode: int,
+        dtype: int,
+        size: int,
     ) -> None:
         """Set monitoring mapped register.
 
@@ -1160,7 +1187,8 @@ class Servo:
         """
         try:
             storage: Union[str, int, float, bytes, np.float32] = self.read(
-                register.attrib["id"], subnode=subnode,
+                register.attrib["id"],
+                subnode=subnode,
             )
             if isinstance(storage, float):
                 storage = np.float32(storage)
@@ -1224,7 +1252,11 @@ class Servo:
         return register_id
 
     def _monitoring_disturbance_data_to_map_register(
-        self, subnode: int, address: int, dtype: int, size: int,
+        self,
+        subnode: int,
+        address: int,
+        dtype: int,
+        size: int,
     ) -> int:
         """Arrange necessary data to map a monitoring/disturbance register.
 
@@ -1264,7 +1296,8 @@ class Servo:
             for channel in range(number_of_channels):
                 channel_data_size = self.__monitoring_size[channel]
                 val = convert_bytes_to_dtype(
-                    block_data[:channel_data_size], self.__monitoring_dtype[channel],
+                    block_data[:channel_data_size],
+                    self.__monitoring_dtype[channel],
                 )
                 if not isinstance(val, (int, float)):
                     continue
@@ -1356,7 +1389,10 @@ class Servo:
         self._notify_register_update(_reg, data)
 
     def read(
-        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any,
+        self,
+        reg: Union[str, Register],
+        subnode: int = 1,
+        **kwargs: Any,
     ) -> Union[int, float, str, bytes]:
         """Read a register value from servo.
 
@@ -1453,7 +1489,8 @@ class Servo:
         self.write(_reg, new_value, subnode)
 
     def register_update_subscribe(
-        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None],
+        self,
+        callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None],
     ) -> None:
         """Subscribe to register updates.
         The callback will be called when a read/write operation occurs.
@@ -1465,7 +1502,8 @@ class Servo:
         self.__register_update_observers.append(callback)
 
     def register_update_unsubscribe(
-        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None],
+        self,
+        callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None],
     ) -> None:
         """Unsubscribe to register updates.
 
@@ -1516,7 +1554,10 @@ class Servo:
         """
         try:
             data, chunks = self._disturbance_create_data_chunks(
-                channels, dtypes, data_arr, self.MAX_WRITE_SIZE,
+                channels,
+                dtypes,
+                data_arr,
+                self.MAX_WRITE_SIZE,
             )
         except OverflowError as e:
             msg = "Disturbance data cannot be written."
@@ -1645,25 +1686,29 @@ class Servo:
         """Servo information."""
         try:
             serial_number = self.__read_coco_moco_register(
-                self.SERIAL_NUMBER_REGISTERS[0], self.SERIAL_NUMBER_REGISTERS[1],
+                self.SERIAL_NUMBER_REGISTERS[0],
+                self.SERIAL_NUMBER_REGISTERS[1],
             )
         except ILError:
             serial_number = None
         try:
             sw_version = self.__read_coco_moco_register(
-                self.SOFTWARE_VERSION_REGISTERS[0], self.SOFTWARE_VERSION_REGISTERS[1],
+                self.SOFTWARE_VERSION_REGISTERS[0],
+                self.SOFTWARE_VERSION_REGISTERS[1],
             )
         except ILError:
             sw_version = None
         try:
             product_code = self.__read_coco_moco_register(
-                self.PRODUCT_ID_REGISTERS[0], self.PRODUCT_ID_REGISTERS[1],
+                self.PRODUCT_ID_REGISTERS[0],
+                self.PRODUCT_ID_REGISTERS[1],
             )
         except ILError:
             product_code = None
         try:
             revision_number = self.__read_coco_moco_register(
-                self.REVISION_NUMBER_REGISTERS[0], self.REVISION_NUMBER_REGISTERS[1],
+                self.REVISION_NUMBER_REGISTERS[0],
+                self.REVISION_NUMBER_REGISTERS[1],
             )
         except ILError:
             revision_number = None

@@ -179,7 +179,6 @@ class EthercatDictionaryV2(DictionaryV2):
                 bitfields=current_read_register.bitfields,
             )
 
-
         except KeyError as ke:
             logger.exception(
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}",

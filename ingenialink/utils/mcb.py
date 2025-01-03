@@ -75,7 +75,12 @@ class MCB:
         return ret
 
     def add_cmd(
-        self, node: int, subnode: int, cmd: int, data: bytes, output: io.BufferedWriter,
+        self,
+        node: int,
+        subnode: int,
+        cmd: int,
+        data: bytes,
+        output: io.BufferedWriter,
     ) -> None:
         """Creates and adds a MCB message to a given file.
 
@@ -93,7 +98,11 @@ class MCB:
 
     @classmethod
     def build_mcb_frame(
-        cls: type[T], cmd: int, subnode: int, address: int, data: Optional[bytes] = None,
+        cls: type[T],
+        cmd: int,
+        subnode: int,
+        address: int,
+        data: Optional[bytes] = None,
     ) -> bytes:
         """Build an MCB frame.
 
@@ -113,7 +122,8 @@ class MCB:
         header_h = (cls.MCB_DEFAULT_NODE << 4) | subnode
         header_l = (address << 4) | (cmd << 1) | extended
         header = header_h.to_bytes(cls.MCB_HEADER_H_SIZE, "little") + header_l.to_bytes(
-            cls.MCB_HEADER_L_SIZE, "little",
+            cls.MCB_HEADER_L_SIZE,
+            "little",
         )
         if extended:
             config_data = data_size.to_bytes(cls.MCB_DATA_SIZE, "little")

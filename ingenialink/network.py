@@ -88,13 +88,17 @@ class Network(ABC):
 
     @abstractmethod
     def subscribe_to_status(
-        self, target: Union[int, str], callback: Callable[[NET_DEV_EVT], Any],
+        self,
+        target: Union[int, str],
+        callback: Callable[[NET_DEV_EVT], Any],
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def unsubscribe_from_status(
-        self, target: Union[int, str], callback: Callable[[NET_DEV_EVT], Any],
+        self,
+        target: Union[int, str],
+        callback: Callable[[NET_DEV_EVT], Any],
     ) -> None:
         raise NotImplementedError
 

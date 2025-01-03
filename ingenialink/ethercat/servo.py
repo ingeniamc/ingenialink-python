@@ -186,7 +186,10 @@ class EthercatServo(PDOServo):
             self._lock.release()
 
     def _handle_sdo_exception(
-        self, reg: EthercatRegister, operation_msg: SDO_OPERATION_MSG, exception: Exception,
+        self,
+        reg: EthercatRegister,
+        operation_msg: SDO_OPERATION_MSG,
+        exception: Exception,
     ) -> None:
         """Handle the exceptions that occur when reading or writing SDOs.
 
@@ -227,7 +230,8 @@ class EthercatServo(PDOServo):
     def _monitoring_read_data(self, **kwargs: Any) -> bytes:
         """Read monitoring data frame."""
         return super()._monitoring_read_data(
-            buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True,
+            buffer_size=self.MONITORING_DATA_BUFFER_SIZE,
+            complete_access=True,
         )
 
     def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
@@ -249,7 +253,11 @@ class EthercatServo(PDOServo):
         return mapped_address
 
     def _monitoring_disturbance_data_to_map_register(
-        self, subnode: int, address: int, dtype: int, size: int,
+        self,
+        subnode: int,
+        address: int,
+        dtype: int,
+        size: int,
     ) -> int:
         """Arrange necessary data to map a monitoring/disturbance register.
 
@@ -262,7 +270,10 @@ class EthercatServo(PDOServo):
         """
         ipb_address = self.__monitoring_disturbance_map_can_address(address, subnode)
         mapped_address: int = super()._monitoring_disturbance_data_to_map_register(
-            subnode, ipb_address, dtype, size,
+            subnode,
+            ipb_address,
+            dtype,
+            size,
         )
         return mapped_address
 
@@ -297,7 +308,7 @@ class EthercatServo(PDOServo):
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
-    def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
+    def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:  # noqa: D102
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
                 self._rpdo_maps.append(rpdo_map)
@@ -306,10 +317,10 @@ class EthercatServo(PDOServo):
                 self._tpdo_maps.append(tpdo_map)
         self.slave.config_func = self.map_pdos
 
-    def process_pdo_inputs(self) -> None:
+    def process_pdo_inputs(self) -> None:  # noqa: D102
         self._process_tpdo(self.__slave.input)
 
-    def generate_pdo_outputs(self) -> None:
+    def generate_pdo_outputs(self) -> None:  # noqa: D102
         output = self._process_rpdo()
         if output is None:
             return
@@ -323,7 +334,8 @@ class EthercatServo(PDOServo):
 
         """
         self.slave.set_watchdog(
-            self.ETHERCAT_PDO_WATCHDOG, self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout,
+            self.ETHERCAT_PDO_WATCHDOG,
+            self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout,
         )
 
     def _read_esc_eeprom(
@@ -358,7 +370,10 @@ class EthercatServo(PDOServo):
         return data
 
     def _write_esc_eeprom(
-        self, address: int, data: bytes, timeout: int = DEFAULT_EEPROM_OPERATION_TIMEOUT_uS,
+        self,
+        address: int,
+        data: bytes,
+        timeout: int = DEFAULT_EEPROM_OPERATION_TIMEOUT_uS,
     ) -> None:
         """Write to the ESC EEPROM.
 

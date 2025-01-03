@@ -46,7 +46,8 @@ VALID_BIT_REGISTER_VALUES = [0, 1, True, False]
 
 
 def deprecated(
-    custom_msg: Optional[str] = None, new_func_name: Optional[str] = None,
+    custom_msg: Optional[str] = None,
+    new_func_name: Optional[str] = None,
 ) -> Callable[..., Any]:
     """This is a decorator which can be used to mark functions as deprecated.
     It will result in a warning being emitted when the function is used. We use

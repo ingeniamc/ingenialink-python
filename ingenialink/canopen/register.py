@@ -56,7 +56,10 @@ class CanopenRegister(Register):
         subnode: int = 1,
         storage: Any = None,
         reg_range: Union[
-            tuple[None, None], tuple[int, int], tuple[float, float], tuple[str, str],
+            tuple[None, None],
+            tuple[int, int],
+            tuple[float, float],
+            tuple[str, str],
         ] = (None, None),
         labels: Optional[dict[str, str]] = None,
         enums: Optional[dict[str, int]] = None,

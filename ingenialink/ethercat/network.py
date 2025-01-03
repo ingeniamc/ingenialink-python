@@ -52,6 +52,7 @@ class NetStatusListener(Thread):
         self._ecat_master = self.__network._ecat_master
 
     def run(self) -> None:
+        """Check the network status."""
         while not self.__stop:
             self._ecat_master.read_state()
             for servo in self.__network.servos:
@@ -71,6 +72,7 @@ class NetStatusListener(Thread):
                 time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
+        """Stop the listener."""
         self.__stop = True
 
 
@@ -217,7 +219,11 @@ class EthercatNetwork(Network):
             raise ILError(msg)
         slave = self._ecat_master.slaves[slave_id - 1]
         servo = EthercatServo(
-            slave, slave_id, dictionary, self._connection_timeout, servo_status_listener,
+            slave,
+            slave_id,
+            dictionary,
+            self._connection_timeout,
+            servo_status_listener,
         )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             if servo_status_listener:
@@ -349,7 +355,9 @@ class EthercatNetwork(Network):
             servo.process_pdo_inputs()
 
     def _change_nodes_state(
-        self, nodes: Union["EthercatServo", list["EthercatServo"]], target_state: int,
+        self,
+        nodes: Union["EthercatServo", list["EthercatServo"]],
+        target_state: int,
     ) -> bool:
         """Set ECAT state to target state for all nodes in list.
 
@@ -367,7 +375,9 @@ class EthercatNetwork(Network):
         return self._check_node_state(nodes, target_state)
 
     def _check_node_state(
-        self, nodes: Union["EthercatServo", list["EthercatServo"]], target_state: int,
+        self,
+        nodes: Union["EthercatServo", list["EthercatServo"]],
+        target_state: int,
     ) -> bool:
         """Check ECAT state for all nodes in list.
 
@@ -387,7 +397,9 @@ class EthercatNetwork(Network):
         )
 
     def subscribe_to_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[NET_DEV_EVT], None],
+        self,
+        slave_id: int,
+        callback: Callable[[NET_DEV_EVT], None],
     ) -> None:
         """Subscribe to network state changes.
 
@@ -402,7 +414,9 @@ class EthercatNetwork(Network):
         self.__observers_net_state[slave_id].append(callback)
 
     def unsubscribe_from_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None],
+        self,
+        slave_id: int,
+        callback: Callable[[str, NET_DEV_EVT], None],
     ) -> None:
         """Unsubscribe from network state changes.
 
@@ -431,7 +445,11 @@ class EthercatNetwork(Network):
         self.__listener_net_status = None
 
     def load_firmware(
-        self, fw_file: str, boot_in_app: bool, slave_id: int = 1, password: Optional[int] = None,
+        self,
+        fw_file: str,
+        boot_in_app: bool,
+        slave_id: int = 1,
+        password: Optional[int] = None,
     ) -> None:
         """Loads a given firmware file to a target slave.
 

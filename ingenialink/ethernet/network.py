@@ -45,6 +45,7 @@ class NetStatusListener(Thread):
         self.__max_unsuccessful_pings = MAX_NUM_UNSUCCESSFUL_PINGS
 
     def run(self) -> None:
+        """Check the network status."""
         while not self.__stop:
             for servo in self.__network.servos:
                 unsuccessful_pings = 0
@@ -66,6 +67,7 @@ class NetStatusListener(Thread):
             time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
+        """Stop the listener."""
         self.__stop = True
 
 
@@ -81,7 +83,10 @@ class EthernetNetwork(Network):
 
     @staticmethod
     def load_firmware(
-        fw_file: str, target: str = "192.168.2.22", ftp_user: str = "", ftp_pwd: str = "",
+        fw_file: str,
+        target: str = "192.168.2.22",
+        ftp_user: str = "",
+        ftp_pwd: str = "",
     ) -> None:
         """Loads a given firmware file to the target slave.
 
@@ -189,10 +194,10 @@ class EthernetNetwork(Network):
             msg = "Error during bootloader process."
             raise ILFirmwareLoadError(msg)
 
-    def scan_slaves(self) -> list[int]:
+    def scan_slaves(self) -> list[int]:  # noqa: D102
         raise NotImplementedError
 
-    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:  # noqa: D102
         raise NotImplementedError
 
     def connect_to_slave(

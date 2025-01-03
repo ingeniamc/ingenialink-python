@@ -70,7 +70,11 @@ class EthernetServo(Servo):
         logger.info("Restore TCP/IP successfully done.")
 
     def change_tcp_ip_parameters(
-        self, ip_address: str, subnet_mask: str, gateway: str, mac_address: Optional[int] = None,
+        self,
+        ip_address: str,
+        subnet_mask: str,
+        gateway: str,
+        mac_address: Optional[int] = None,
     ) -> None:
         """Stores the TCP/IP values. Affects IP address,
         network mask and gateway.
@@ -151,7 +155,11 @@ class EthernetServo(Servo):
         return self._send_mcb_frame(MCB_CMD_READ, reg.address, reg.subnode)
 
     def _send_mcb_frame(
-        self, cmd: int, reg: int, subnode: int, data: Optional[bytes] = None,
+        self,
+        cmd: int,
+        reg: int,
+        subnode: int,
+        data: Optional[bytes] = None,
     ) -> bytes:
         """Send an MCB frame to the drive.
 

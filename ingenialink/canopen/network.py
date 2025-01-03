@@ -152,9 +152,11 @@ class CustomListener(can.Listener):
         super().__init__()
 
     def on_message_received(self, msg: can.Message) -> None:
+        """On message received callback."""
         pass
 
     def on_error(self, exc: Exception) -> None:
+        """On error callback"""
         logger.error(f"An exception occurred with the IXXAT or KVASER connection. Exception: {exc}")
 
 
@@ -172,6 +174,7 @@ class NetStatusListener(Thread):
         self.__stop = False
 
     def run(self) -> None:
+        """Check the network status."""
         timestamps = {}
         if self.__network._connection is None:
             return
@@ -196,6 +199,7 @@ class NetStatusListener(Thread):
                     self.__network._set_servo_state(node_id, NET_STATE.DISCONNECTED)
 
     def stop(self) -> None:
+        """Stop the listener."""
         self.__stop = True
 
 
@@ -320,7 +324,8 @@ class CanopenNetwork(Network):
                 node = connected_slaves[slave_id]
             try:
                 product_code = convert_bytes_to_dtype(
-                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), REG_DTYPE.U32,
+                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX),
+                    REG_DTYPE.U32,
                 )
                 revision_number = convert_bytes_to_dtype(
                     node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX),
@@ -373,7 +378,10 @@ class CanopenNetwork(Network):
                 node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
                 servo = CanopenServo(
-                    target, node, dictionary, servo_status_listener=servo_status_listener,
+                    target,
+                    node,
+                    dictionary,
+                    servo_status_listener=servo_status_listener,
                 )
                 self.servos.append(servo)
                 self._set_servo_state(target, NET_STATE.CONNECTED)
@@ -451,7 +459,9 @@ class CanopenNetwork(Network):
         try:
             self._connection.disconnect()
         except (VCIError, CANLIBOperationError, PcanCanOperationError) as e:
-            logger.exception(f"An exception occurred during the teardown connection. Exception: {e}")
+            logger.exception(
+                f"An exception occurred during the teardown connection. Exception: {e}"
+            )
         self._connection = None
         logger.info("Tear down connection.")
 
@@ -551,7 +561,10 @@ class CanopenNetwork(Network):
             servo.start_status_listener()
 
     def __load_fw_checks(
-        self, target: int, fw_file: str, callback_status_msg: Optional[Callable[[str], None]] = None,
+        self,
+        target: int,
+        fw_file: str,
+        callback_status_msg: Optional[Callable[[str], None]] = None,
     ) -> CanopenServo:
         """Checks prior to firmware upload and return the target CanopenServo instance.
 
@@ -594,7 +607,9 @@ class CanopenNetwork(Network):
         return servo
 
     def __force_boot(
-        self, servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]],
+        self,
+        servo: CanopenServo,
+        callback_status_msg: Optional[Callable[[str], None]],
     ) -> None:
         """Force boot, if drive is already in boot, do nothing.
 
@@ -708,7 +723,8 @@ class CanopenNetwork(Network):
 
     @staticmethod
     def __program_control_to_stop(
-        servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]],
+        servo: CanopenServo,
+        callback_status_msg: Optional[Callable[[str], None]],
     ) -> None:
         """Change program control status to stop.
 
@@ -741,7 +757,8 @@ class CanopenNetwork(Network):
 
     @staticmethod
     def __program_control_to_start(
-        servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]],
+        servo: CanopenServo,
+        callback_status_msg: Optional[Callable[[str], None]],
     ) -> None:
         """Change program control status to start.
 
@@ -766,7 +783,8 @@ class CanopenNetwork(Network):
 
     @staticmethod
     def __optimize_firmware_file(
-        sfu_file: str, callback_status_msg: Optional[Callable[[str], None]],
+        sfu_file: str,
+        callback_status_msg: Optional[Callable[[str], None]],
     ) -> str:
         """Convert SFU file to LFU to optimize the firmware loading.
 
@@ -1031,6 +1049,7 @@ class CanopenNetwork(Network):
             callback(status)
 
     def is_listener_started(self) -> bool:
+        """Check if the listener has been started."""
         return self.__listener_net_status is not None
 
     def start_status_listener(self) -> None:

@@ -178,7 +178,7 @@ class RPDOMapItem(PDOMapItem):
         super().__init__(register, size_bits)
 
     @property
-    def value(self) -> Union[int, float, bytes]:
+    def value(self) -> Union[int, float, bytes]:  # noqa: D102
         return super().value
 
     @value.setter
@@ -213,7 +213,9 @@ class PDOMap:
         self.__map_register_address: Optional[int] = None
 
     def create_item(
-        self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None,
+        self,
+        register: Union[EthercatRegister, CanopenRegister],
+        size_bits: Optional[int] = None,
     ) -> PDOMapItem:
         """Create a new PDOMapItem.
 
@@ -237,7 +239,8 @@ class PDOMap:
     def add_registers(
         self,
         registers: Union[
-            Union[EthercatRegister, CanopenRegister], list[Union[EthercatRegister, CanopenRegister]],
+            Union[EthercatRegister, CanopenRegister],
+            list[Union[EthercatRegister, CanopenRegister]],
         ],
     ) -> None:
         """Add a register or a list of registers in bulk.
@@ -463,7 +466,10 @@ class PDOServo(Servo):
                 custom_map_index += 1
             rpdo_assigns += rpdo_map.map_register_index_bytes
         self.write(
-            self.RPDO_ASSIGN_REGISTER_SUB_IDX_1, rpdo_assigns, complete_access=True, subnode=0,
+            self.RPDO_ASSIGN_REGISTER_SUB_IDX_1,
+            rpdo_assigns,
+            complete_access=True,
+            subnode=0,
         )
 
     def _set_rpdo_map_register(self, rpdo_map_register_index: int, rpdo_map: RPDOMap) -> None:
@@ -522,7 +528,10 @@ class PDOServo(Servo):
                 custom_map_index += 1
             tpdo_assigns += tpdo_map.map_register_index_bytes
         self.write(
-            self.TPDO_ASSIGN_REGISTER_SUB_IDX_1, tpdo_assigns, complete_access=True, subnode=0,
+            self.TPDO_ASSIGN_REGISTER_SUB_IDX_1,
+            tpdo_assigns,
+            complete_access=True,
+            subnode=0,
         )
 
     def _set_tpdo_map_register(self, tpdo_map_register_index: int, tpdo_map: TPDOMap) -> None:
@@ -572,7 +581,9 @@ class PDOServo(Servo):
         self.reset_tpdo_mapping()
 
     def remove_rpdo_map(
-        self, rpdo_map: Optional[RPDOMap] = None, rpdo_map_index: Optional[int] = None,
+        self,
+        rpdo_map: Optional[RPDOMap] = None,
+        rpdo_map_index: Optional[int] = None,
     ) -> None:
         """Remove a RPDOMap from the RPDOMap list.
 
@@ -595,7 +606,9 @@ class PDOServo(Servo):
             self._rpdo_maps.pop(rpdo_map_index)
 
     def remove_tpdo_map(
-        self, tpdo_map: Optional[TPDOMap] = None, tpdo_map_index: Optional[int] = None,
+        self,
+        tpdo_map: Optional[TPDOMap] = None,
+        tpdo_map_index: Optional[int] = None,
     ) -> None:
         """Remove a TPDOMap from the TPDOMap list.
 

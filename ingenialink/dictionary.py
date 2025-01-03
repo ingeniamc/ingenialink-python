@@ -451,7 +451,10 @@ class Dictionary(ABC):
             error_type = element.attrib["error_type"].capitalize()
             error_affected_module = element.attrib["affected_module"]
             self.errors[error_id] = DictionaryError(
-                error_id, error_affected_module, error_type, error_description,
+                error_id,
+                error_affected_module,
+                error_type,
+                error_description,
             )
 
     @property
@@ -547,7 +550,7 @@ class DictionaryV3(Dictionary):
     __PDO_ENTRY_SUBNODE_ATTR = "subnode"
 
     @classmethod
-    def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
+    def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:  # noqa: D102
         try:
             with open(dictionary_path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
@@ -591,7 +594,7 @@ class DictionaryV3(Dictionary):
             raise ILDictionaryParseError(msg)
         return element
 
-    def read_dictionary(self) -> None:
+    def read_dictionary(self) -> None:  # noqa: D102
         try:
             with open(self.path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
@@ -722,7 +725,8 @@ class DictionaryV3(Dictionary):
         self.__read_subnodes(subnodes_element)
         registers_element = self.__find_and_check(root, self.__MCB_REGISTERS_ELEMENT)
         register_element_list = self._findall_and_check(
-            registers_element, self.__MCB_REGISTER_ELEMENT,
+            registers_element,
+            self.__MCB_REGISTER_ELEMENT,
         )
         for register_element in register_element_list:
             self.__read_mcb_register(register_element)
@@ -740,7 +744,8 @@ class DictionaryV3(Dictionary):
         self.__read_subnodes(subnodes_element)
         registers_element = self.__find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
-            registers_element, self.__CANOPEN_OBJECT_ELEMENT,
+            registers_element,
+            self.__CANOPEN_OBJECT_ELEMENT,
         )
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
@@ -761,7 +766,8 @@ class DictionaryV3(Dictionary):
         self.__read_subnodes(subnodes_element)
         registers_element = self.__find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
-            registers_element, self.__CANOPEN_OBJECT_ELEMENT,
+            registers_element,
+            self.__CANOPEN_OBJECT_ELEMENT,
         )
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
@@ -823,7 +829,8 @@ class DictionaryV3(Dictionary):
         return label.attrib[self.__LABEL_LANG_ATTR], label.text.strip()
 
     def __read_range(
-        self, range_elem: Optional[ET.Element],
+        self,
+        range_elem: Optional[ET.Element],
     ) -> Union[tuple[None, None], tuple[str, str]]:
         """Process Range element.
 
@@ -841,7 +848,8 @@ class DictionaryV3(Dictionary):
         return None, None
 
     def __read_enumeration(
-        self, enumerations_element: Optional[ET.Element],
+        self,
+        enumerations_element: Optional[ET.Element],
     ) -> Optional[dict[str, int]]:
         """Process Enumerations possible element.
 
@@ -862,7 +870,8 @@ class DictionaryV3(Dictionary):
         return None
 
     def __read_bitfields(
-        self, bitfields_element: Optional[ET.Element],
+        self,
+        bitfields_element: Optional[ET.Element],
     ) -> Optional[dict[str, BitField]]:
         """Process Bitfields possible element.
 
@@ -959,7 +968,10 @@ class DictionaryV3(Dictionary):
             self.registers_group[subnode][object_uid] = list(register_list)
 
     def __read_canopen_subitem(
-        self, subitem: ET.Element, reg_index: int, subnode: int,
+        self,
+        subitem: ET.Element,
+        reg_index: int,
+        subnode: int,
     ) -> CanopenRegister:
         """Process Subitem element and add it to _registers.
 
@@ -1111,7 +1123,9 @@ class DictionaryV2(Dictionary):
     __MON_DIST_STATUS_REGISTER = "MON_DIST_STATUS"
 
     _MONITORING_DISTURBANCE_REGISTERS: Union[
-        list[EthercatRegister], list[EthernetRegister], list[CanopenRegister],
+        list[EthercatRegister],
+        list[EthernetRegister],
+        list[CanopenRegister],
     ]
 
     _KNOWN_REGISTER_BITFIELDS: dict[str, Callable[[], dict[str, BitField]]] = {
@@ -1166,7 +1180,7 @@ class DictionaryV2(Dictionary):
         super().__init__(dictionary_path, self.interface)
 
     @classmethod
-    def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
+    def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:  # noqa: D102
         try:
             with open(dictionary_path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
@@ -1200,7 +1214,7 @@ class DictionaryV2(Dictionary):
             revision_number = None
         return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
 
-    def read_dictionary(self) -> None:
+    def read_dictionary(self) -> None:  # noqa: D102
         try:
             with open(self.path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
@@ -1384,7 +1398,6 @@ class DictionaryV2(Dictionary):
                 address_type=address_type,
                 bitfields=bitfields,
             )
-
 
         except KeyError as ke:
             logger.exception(f"Register with ID {identifier} has not attribute {ke}")
