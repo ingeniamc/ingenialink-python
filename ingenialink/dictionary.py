@@ -2,10 +2,10 @@ import copy
 import enum
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import ingenialogger
 
@@ -90,7 +90,7 @@ class DictionaryCategories:
             cat_element = element.find(DICT_LABELS_LABEL)
             if cat_element is None:
                 logger.warning(
-                    f"The element of the category {element.attrib['id']} could not be load"
+                    f"The element of the category {element.attrib['id']} could not be load",
                 )
                 continue
             cat_id = cat_element.text
@@ -251,7 +251,6 @@ class Dictionary(ABC):
         Returns:
             Target dictionary description
         """
-        pass
 
     def __add__(self, other_dict: "Dictionary") -> "Dictionary":
         """Merge two dictionary instances.
@@ -264,11 +263,11 @@ class Dictionary(ABC):
         """
         if not isinstance(other_dict, type(self)):
             raise TypeError(
-                f"Cannot merge dictionaries. Expected type: {type(self)}, got: {type(other_dict)}"
+                f"Cannot merge dictionaries. Expected type: {type(self)}, got: {type(other_dict)}",
             )
         if not other_dict.is_coco_dictionary and not self.is_coco_dictionary:
             raise ValueError(
-                "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary."
+                "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary.",
             )
         self_dict_copy = copy.deepcopy(self)
         other_dict_copy = copy.deepcopy(other_dict)
@@ -293,7 +292,6 @@ class Dictionary(ABC):
     @abstractmethod
     def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
-        pass
 
     def child_registers(self, uid: str, subnode: int) -> List[Register]:
         """Return group registers by an UID
@@ -444,7 +442,7 @@ class Dictionary(ABC):
             error_type = element.attrib["error_type"].capitalize()
             error_affected_module = element.attrib["affected_module"]
             self.errors[error_id] = DictionaryError(
-                error_id, error_affected_module, error_type, error_description
+                error_id, error_affected_module, error_type, error_description,
             )
 
     @property
@@ -542,11 +540,11 @@ class DictionaryV3(Dictionary):
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
         try:
-            with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+            with open(dictionary_path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
             raise FileNotFoundError(
-                f"There is not any xdf file in the path: {dictionary_path}"
+                f"There is not any xdf file in the path: {dictionary_path}",
             ) from e
         root = tree.getroot()
         device_path = (
@@ -583,7 +581,7 @@ class DictionaryV3(Dictionary):
 
     def read_dictionary(self) -> None:
         try:
-            with open(self.path, "r", encoding="utf-8") as xdf_file:
+            with open(self.path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
             raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}") from e
@@ -709,7 +707,7 @@ class DictionaryV3(Dictionary):
         self.__read_subnodes(subnodes_element)
         registers_element = self.__find_and_check(root, self.__MCB_REGISTERS_ELEMENT)
         register_element_list = self._findall_and_check(
-            registers_element, self.__MCB_REGISTER_ELEMENT
+            registers_element, self.__MCB_REGISTER_ELEMENT,
         )
         for register_element in register_element_list:
             self.__read_mcb_register(register_element)
@@ -727,7 +725,7 @@ class DictionaryV3(Dictionary):
         self.__read_subnodes(subnodes_element)
         registers_element = self.__find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
-            registers_element, self.__CANOPEN_OBJECT_ELEMENT
+            registers_element, self.__CANOPEN_OBJECT_ELEMENT,
         )
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
@@ -748,7 +746,7 @@ class DictionaryV3(Dictionary):
         self.__read_subnodes(subnodes_element)
         registers_element = self.__find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
-            registers_element, self.__CANOPEN_OBJECT_ELEMENT
+            registers_element, self.__CANOPEN_OBJECT_ELEMENT,
         )
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
@@ -808,7 +806,7 @@ class DictionaryV3(Dictionary):
         return label.attrib[self.__LABEL_LANG_ATTR], label.text.strip()
 
     def __read_range(
-        self, range_elem: Optional[ET.Element]
+        self, range_elem: Optional[ET.Element],
     ) -> Union[Tuple[None, None], Tuple[str, str]]:
         """Process Range element
 
@@ -826,7 +824,7 @@ class DictionaryV3(Dictionary):
         return None, None
 
     def __read_enumeration(
-        self, enumerations_element: Optional[ET.Element]
+        self, enumerations_element: Optional[ET.Element],
     ) -> Optional[Dict[str, int]]:
         """Process Enumerations possible element
 
@@ -847,7 +845,7 @@ class DictionaryV3(Dictionary):
         return None
 
     def __read_bitfields(
-        self, bitfields_element: Optional[ET.Element]
+        self, bitfields_element: Optional[ET.Element],
     ) -> Optional[Dict[str, BitField]]:
         """Process Bitfields possible element
 
@@ -944,7 +942,7 @@ class DictionaryV3(Dictionary):
             self.registers_group[subnode][object_uid] = list(register_list)
 
     def __read_canopen_subitem(
-        self, subitem: ET.Element, reg_index: int, subnode: int
+        self, subitem: ET.Element, reg_index: int, subnode: int,
     ) -> CanopenRegister:
         """Process Subitem element and add it to _registers
 
@@ -1049,7 +1047,7 @@ class DictionaryV3(Dictionary):
             if reg_uid:
                 if not (reg_subnode in self._registers and reg_uid in self._registers[reg_subnode]):
                     raise ILDictionaryParseError(
-                        f"PDO entry {reg_uid} subnode {reg_subnode} does not exist"
+                        f"PDO entry {reg_uid} subnode {reg_subnode} does not exist",
                     )
                 entry_reg = self._registers[reg_subnode][reg_uid]
                 if not isinstance(entry_reg, CanopenRegister):
@@ -1094,7 +1092,7 @@ class DictionaryV2(Dictionary):
     __MON_DIST_STATUS_REGISTER = "MON_DIST_STATUS"
 
     _MONITORING_DISTURBANCE_REGISTERS: Union[
-        List[EthercatRegister], List[EthernetRegister], List[CanopenRegister]
+        List[EthercatRegister], List[EthernetRegister], List[CanopenRegister],
     ]
 
     _KNOWN_REGISTER_BITFIELDS: Dict[str, Callable[[], Dict[str, BitField]]] = {
@@ -1151,17 +1149,17 @@ class DictionaryV2(Dictionary):
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
         try:
-            with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+            with open(dictionary_path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
             raise FileNotFoundError(
-                f"There is not any xdf file in the path: {dictionary_path}"
+                f"There is not any xdf file in the path: {dictionary_path}",
             ) from e
         root = tree.getroot()
         device = root.find(cls.__DICT_ROOT_DEVICE)
         if device is None:
             raise ILDictionaryParseError(
-                f"Could not load the dictionary {dictionary_path}. Device information is missing"
+                f"Could not load the dictionary {dictionary_path}. Device information is missing",
             )
         dict_interface = device.attrib.get("Interface")
         if cls._INTERFACE_STR[interface] != dict_interface and dict_interface is not None:
@@ -1182,7 +1180,7 @@ class DictionaryV2(Dictionary):
 
     def read_dictionary(self) -> None:
         try:
-            with open(self.path, "r", encoding="utf-8") as xdf_file:
+            with open(self.path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
             raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}") from e
@@ -1191,7 +1189,7 @@ class DictionaryV2(Dictionary):
         device = root.find(self.__DICT_ROOT_DEVICE)
         if device is None:
             raise ILDictionaryParseError(
-                f"Could not load the dictionary {self.path}. Device information is missing"
+                f"Could not load the dictionary {self.path}. Device information is missing",
             )
 
         # Subnodes
@@ -1290,7 +1288,7 @@ class DictionaryV2(Dictionary):
                 dtype = self.dtype_xdf_options[dtype_aux]
             else:
                 raise ILDictionaryParseError(
-                    f"The data type {dtype_aux} does not exist for the register: {identifier}"
+                    f"The data type {dtype_aux} does not exist for the register: {identifier}",
                 )
 
             # Access type
@@ -1300,7 +1298,7 @@ class DictionaryV2(Dictionary):
                 access = self.access_xdf_options[access_aux]
             else:
                 raise ILDictionaryParseError(
-                    f"The access type {access_aux} does not exist for the register: {identifier}"
+                    f"The access type {access_aux} does not exist for the register: {identifier}",
                 )
 
             # Address type
@@ -1311,7 +1309,7 @@ class DictionaryV2(Dictionary):
             else:
                 raise ILDictionaryParseError(
                     f"The address type {address_type_aux} does not exist for the register: "
-                    f"{identifier}"
+                    f"{identifier}",
                 )
 
             subnode = int(register.attrib.get("subnode", 1))

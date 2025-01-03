@@ -8,14 +8,14 @@ from ingenialink.exceptions import ILAccessError, ILValueError
 from ingenialink.register import REG_ACCESS, REG_DTYPE, REG_PHY, Register
 
 
-@pytest.fixture
+@pytest.fixture()
 def connect_virtual_drive_with_bool_register(virtual_drive_custom_dict):
     def connect(dictionary):
         server, net, servo = virtual_drive_custom_dict(dictionary)
 
         boolean_reg_uid = "TEST_BOOLEAN"
         bool_register = EthernetRegister(
-            0x0200, REG_DTYPE.BOOL, REG_ACCESS.RW, identifier=boolean_reg_uid
+            0x0200, REG_DTYPE.BOOL, REG_ACCESS.RW, identifier=boolean_reg_uid,
         )
         server._VirtualDrive__dictionary._add_register_list(bool_register)
         server._VirtualDrive__dictionary.registers(bool_register.subnode)[
@@ -32,7 +32,7 @@ def connect_virtual_drive_with_bool_register(virtual_drive_custom_dict):
     return connect
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_getters_register():
     reg_dtype = REG_DTYPE.U32
     reg_access = REG_ACCESS.RW
@@ -70,7 +70,7 @@ def test_getters_register():
     assert register.storage_valid
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_register_type_errors():
     dtype = "False type"
     access = REG_ACCESS.RW
@@ -88,7 +88,7 @@ def test_register_type_errors():
         Register(dtype, access, phy="False Phy")
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_register_get_storage():
     access = REG_ACCESS.RW
 
@@ -125,7 +125,7 @@ def test_register_get_storage():
     assert register.storage == 123
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_register_set_storage():
     access = REG_ACCESS.RW
     dtype = REG_DTYPE.FLOAT
@@ -149,7 +149,7 @@ def test_register_set_storage():
         (REG_DTYPE.FLOAT, (None, None), (-3.4e38, 3.4e38), float),
     ],
 )
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_register_range(dtype, reg_range, expected_range, reg_type):
     register = Register(dtype, REG_ACCESS.RW, reg_range=reg_range)
 
@@ -158,7 +158,7 @@ def test_register_range(dtype, reg_range, expected_range, reg_type):
     assert register.range == expected_range
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 @pytest.mark.parametrize(
     "subnode, address, mapped_address_eth, mapped_address_can",
     [
@@ -200,7 +200,7 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
         (True, True),
     ],
 )
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_bit_register(connect_virtual_drive_with_bool_register, write_value, expected_read_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
     boolean_reg_uid = "TEST_BOOLEAN"
@@ -214,7 +214,7 @@ def test_bit_register(connect_virtual_drive_with_bool_register, write_value, exp
     "write_value",
     [2, "one"],
 )
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_bit_register_write_invalid_value(connect_virtual_drive_with_bool_register, write_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
     servo, _ = connect_virtual_drive_with_bool_register(dictionary)

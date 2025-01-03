@@ -77,12 +77,12 @@ class EthernetNetwork(Network):
         super(EthernetNetwork, self).__init__()
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: Dict[str, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
-            list
+            list,
         )
 
     @staticmethod
     def load_firmware(
-        fw_file: str, target: str = "192.168.2.22", ftp_user: str = "", ftp_pwd: str = ""
+        fw_file: str, target: str = "192.168.2.22", ftp_user: str = "", ftp_pwd: str = "",
     ) -> None:
         """Loads a given firmware file to the target slave.
 
@@ -152,7 +152,7 @@ class EthernetNetwork(Network):
 
         if not moco_file or not os.path.isfile(moco_file):
             raise ILFirmwareLoadError("File not found")
-        moco_in = open(moco_file, "r")
+        moco_in = open(moco_file)
 
         logger.info("Loading firmware...")
         try:

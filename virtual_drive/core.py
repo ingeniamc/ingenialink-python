@@ -156,7 +156,7 @@ class BasePlant:
         )
         use_fft_method = self.value_register.dtype == REG_DTYPE.FLOAT
         mon_signal = self._filter_signal(
-            dist_signal, use_fft_method=use_fft_method, initial_value=initial_value
+            dist_signal, use_fft_method=use_fft_method, initial_value=initial_value,
         )
 
         self.drive.reg_signals[self.REGISTER_COMMAND] = dist_signal
@@ -166,11 +166,11 @@ class BasePlant:
 
     def _filter_signal(
         self,
-        input_signal: NDArray[np.float_],
+        input_signal: NDArray[np.float64],
         use_fft_method: bool = True,
         initial_value: float = 0.0,
         plant: Optional[signal.TransferFunction] = None,
-    ) -> NDArray[np.float_]:
+    ) -> NDArray[np.float64]:
         """Filter signal with the plant's frequency response.
 
         Args:
@@ -188,7 +188,7 @@ class BasePlant:
         if use_fft_method:
             input_signal_fft = np.fft.fft(input_signal)
             _, freq_response = signal.freqz(
-                plant.num, plant.den, worN=len(input_signal), whole=True
+                plant.num, plant.den, worN=len(input_signal), whole=True,
             )
             output_signal_fft = input_signal_fft * freq_response
             output_signal = np.real(np.fft.ifft(output_signal_fft))
@@ -315,7 +315,7 @@ class BaseClosedLoopPlant(BasePlant):
             return
         output_signal = self.drive.reg_signals[self.REGISTER_VALUE]
         inverse_open_loop = signal.TransferFunction(
-            self.open_loop_plant.den, self.open_loop_plant.num, dt=self.open_loop_plant.dt
+            self.open_loop_plant.den, self.open_loop_plant.num, dt=self.open_loop_plant.dt,
         )
         command_value = self._filter_signal(
             output_signal,
@@ -565,7 +565,7 @@ class VirtualPhasing:
         current_signal = np.zeros(n_samples)
         current_signal[:setup_ix] = 0.0
         current_signal[setup_ix : step_samples + setup_ix] = np.linspace(
-            0, self.phasing_current, step_samples
+            0, self.phasing_current, step_samples,
         )
         current_signal[step_samples + setup_ix :] = self.phasing_current
 
@@ -727,8 +727,8 @@ class VirtualInternalGenerator:
         n_samples = int(VirtualMonitoring.FREQUENCY * period * self.cycles)
         time_vector = self.start_time + np.linspace(0, period * self.cycles, n_samples)
 
-        signal_period: NDArray[np.float_] = self.offset + np.linspace(
-            0, self.gain, int(n_samples / self.cycles), dtype=np.float_
+        signal_period: NDArray[np.float64] = self.offset + np.linspace(
+            0, self.gain, int(n_samples / self.cycles), dtype=np.float64,
         )
         pos_signal = np.tile(signal_period, self.cycles)
         initial_value = self.drive.get_value_by_id(1, self.ACTUAL_POSITION_REGISTER)
@@ -747,7 +747,7 @@ class VirtualInternalGenerator:
         self.drive.reg_signals[self.ACTUAL_POSITION_REGISTER] = pos_signal
         self.drive.reg_time[self.ACTUAL_POSITION_REGISTER] = time_vector
 
-    def __create_halls_encoder_signal(self, pos_signal: NDArray[np.float_]) -> NDArray[np.float_]:
+    def __create_halls_encoder_signal(self, pos_signal: NDArray[np.float64]) -> NDArray[np.float64]:
         """Create the halls encoder signal by discretizing the pos_signal using the hall values.
 
         Args:
@@ -772,7 +772,7 @@ class VirtualInternalGenerator:
             encoder_signal[sample_ix] = self.HALL_VALUES[hall_value_ix]
         return encoder_signal
 
-    def __create_abs_encoder_signal(self, pos_signal: NDArray[np.float_]) -> NDArray[np.float_]:
+    def __create_abs_encoder_signal(self, pos_signal: NDArray[np.float64]) -> NDArray[np.float64]:
         """Crete the absolute encoder signal by saturating the position signal.
 
         Args:
@@ -1083,12 +1083,12 @@ class VirtualMonitoring(VirtualMonDistBase):
                 self.channels_signal[channel] = self.drive.reg_signals[reg_id]
                 if self.divider > 1:
                     indexes = np.arange(
-                        0, self.buffer_size * self.divider - 1, self.divider, dtype=int
+                        0, self.buffer_size * self.divider - 1, self.divider, dtype=int,
                     )
                     self.channels_signal[channel] = self.channels_signal[channel][indexes]
                 if self.drive.reg_noise_amplitude[reg_id] > 0:
                     noise = self.drive.reg_noise_amplitude[reg_id] * np.random.normal(
-                        size=len(self.channels_signal[channel])
+                        size=len(self.channels_signal[channel]),
                     )
                     self.channels_signal[channel] = self.channels_signal[channel] + noise
                 continue
@@ -1107,7 +1107,7 @@ class VirtualMonitoring(VirtualMonDistBase):
 
     def _store_data_bytes(self) -> None:
         """Convert signals into a bytes and store it at MON_DATA register."""
-        byte_array = bytes()
+        byte_array = b""
         n_samples = len(self.channels_data[0])
         for sample in range(n_samples):
             for channel in range(self.number_mapped_registers):
@@ -1150,7 +1150,7 @@ class VirtualDisturbance(VirtualMonDistBase):
 
     def __init__(self, drive: "VirtualDrive") -> None:
         self.start_time = 0.0
-        self.received_bytes = bytes()
+        self.received_bytes = b""
         super().__init__(drive)
 
     def enable(self) -> None:
@@ -1163,7 +1163,7 @@ class VirtualDisturbance(VirtualMonDistBase):
         super().enable()
 
     def disable(self) -> None:
-        self.received_bytes = bytes()
+        self.received_bytes = b""
         return super().disable()
 
     def append_data(self, data: bytes) -> None:
@@ -1252,7 +1252,7 @@ class VirtualDrive(Thread):
         }
 
         default_dictionary = os.path.join(
-            pathlib.Path(__file__).parent.resolve(), self.PATH_DICTIONARY_RELATIVE
+            pathlib.Path(__file__).parent.resolve(), self.PATH_DICTIONARY_RELATIVE,
         )
         self.dictionary_path = dictionary_path or default_dictionary
         self.__stop = False
@@ -1260,13 +1260,13 @@ class VirtualDrive(Thread):
         self.__logger: List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]] = []
         self.__reg_address_to_id: Dict[int, Dict[int, str]] = {}
         self.__dictionary = DictionaryFactory.create_dictionary(
-            self.dictionary_path, Interface.VIRTUAL
+            self.dictionary_path, Interface.VIRTUAL,
         )
-        self.reg_signals: Dict[str, NDArray[np.float_]] = {}
-        self.reg_time: Dict[str, NDArray[np.float_]] = {}
+        self.reg_signals: Dict[str, NDArray[np.float64]] = {}
+        self.reg_time: Dict[str, NDArray[np.float64]] = {}
         self.reg_noise_amplitude: Dict[str, float] = {}
         self.is_monitoring_available = EthernetServo.MONITORING_DATA in self.__dictionary.registers(
-            0
+            0,
         )
 
         self._init_registers()
@@ -1286,13 +1286,13 @@ class VirtualDrive(Thread):
         self._plant_closed_loop_rl_d = PlantClosedLoopRL(self, self._plant_open_loop_rl_d.plant)
         self._plant_open_loop_rl_q = PlantOpenLoopRLQuadrature(self)
         self._plant_closed_loop_rl_q = PlantClosedLoopRLQuadrature(
-            self, self._plant_open_loop_rl_q.plant
+            self, self._plant_open_loop_rl_q.plant,
         )
         self._plant_open_loop_jb = PlantOpenLoopJB(self)
         self._plant_closed_loop_jb = PlantClosedLoopJB(self, self._plant_open_loop_jb.plant)
         self._plant_open_loop_position = PlantOpenLoopPosition(self)
         self._plant_closed_loop_position = PlantClosedLoopPosition(
-            self, self._plant_open_loop_position.plant
+            self, self._plant_open_loop_position.plant,
         )
         self._plant_open_loop_vol_to_vel = PlantOpenLoopVoltageToVelocity(self)
         self._plant_open_loop_vol_to_curr_a = PlantOpenLoopVoltageToCurrentA(self)
@@ -1386,7 +1386,7 @@ class VirtualDrive(Thread):
     def _init_registers(self) -> None:
         """Initialize the registers using the configuration file."""
         configuration_file = os.path.join(
-            pathlib.Path(__file__).parent.resolve(), self.PATH_CONFIGURATION_RELATIVE
+            pathlib.Path(__file__).parent.resolve(), self.PATH_CONFIGURATION_RELATIVE,
         )
         _, registers = EthernetServo._read_configuration_file(configuration_file)
         cast_data = {"float": float, "str": str}
@@ -1504,7 +1504,7 @@ class VirtualDrive(Thread):
                 "ip_port": ip_port,
                 "type": msg_type.value,
                 "message": message,
-            }
+            },
         )
 
     @property
@@ -1701,7 +1701,7 @@ class VirtualDrive(Thread):
         return subnode in self.__dictionary.subnodes and id in self.__dictionary.registers(subnode)
 
     def get_register(
-        self, subnode: int, address: Optional[int] = None, id: Optional[str] = None
+        self, subnode: int, address: Optional[int] = None, id: Optional[str] = None,
     ) -> EthernetRegister:
         """Returns a register by its address or ID.
 
@@ -1718,9 +1718,8 @@ class VirtualDrive(Thread):
         """
         if address is not None:
             id = self.address_to_id(subnode, address)
-        else:
-            if id is None:
-                raise ValueError("Register address or id should be passed")
+        elif id is None:
+            raise ValueError("Register address or id should be passed")
         register = self.__dictionary.registers(subnode)[id]
         if not isinstance(register, EthernetRegister):
             raise ValueError(f"Register {id} is not an EthernetRegister")

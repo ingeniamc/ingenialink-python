@@ -186,10 +186,9 @@ class EthercatServo(PDOServo):
             self._lock.release()
 
     def _handle_sdo_exception(
-        self, reg: EthercatRegister, operation_msg: SDO_OPERATION_MSG, exception: Exception
+        self, reg: EthercatRegister, operation_msg: SDO_OPERATION_MSG, exception: Exception,
     ) -> None:
-        """
-        Handle the exceptions that occur when reading or writing SDOs.
+        """Handle the exceptions that occur when reading or writing SDOs.
 
         Args:
             reg: The register that was read or written.
@@ -227,7 +226,7 @@ class EthercatServo(PDOServo):
     def _monitoring_read_data(self, **kwargs: Any) -> bytes:
         """Read monitoring data frame."""
         return super()._monitoring_read_data(
-            buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True
+            buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True,
         )
 
     def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
@@ -249,7 +248,7 @@ class EthercatServo(PDOServo):
         return mapped_address
 
     def _monitoring_disturbance_data_to_map_register(
-        self, subnode: int, address: int, dtype: int, size: int
+        self, subnode: int, address: int, dtype: int, size: int,
     ) -> int:
         """Arrange necessary data to map a monitoring/disturbance register.
 
@@ -262,7 +261,7 @@ class EthercatServo(PDOServo):
         """
         ipb_address = self.__monitoring_disturbance_map_can_address(address, subnode)
         mapped_address: int = super()._monitoring_disturbance_data_to_map_register(
-            subnode, ipb_address, dtype, size
+            subnode, ipb_address, dtype, size,
         )
         return mapped_address
 
@@ -323,7 +322,7 @@ class EthercatServo(PDOServo):
 
         """
         self.slave.set_watchdog(
-            self.ETHERCAT_PDO_WATCHDOG, self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout
+            self.ETHERCAT_PDO_WATCHDOG, self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout,
         )
 
     def _read_esc_eeprom(
@@ -348,7 +347,7 @@ class EthercatServo(PDOServo):
         """
         if length < 1:
             raise ValueError("The minimum length is 1 byte.")
-        data = bytes()
+        data = b""
         while len(data) < length:
             data += self.slave.eeprom_read(address, timeout)
             address += 2
@@ -357,7 +356,7 @@ class EthercatServo(PDOServo):
         return data
 
     def _write_esc_eeprom(
-        self, address: int, data: bytes, timeout: int = DEFAULT_EEPROM_OPERATION_TIMEOUT_uS
+        self, address: int, data: bytes, timeout: int = DEFAULT_EEPROM_OPERATION_TIMEOUT_uS,
     ) -> None:
         """Write to the ESC EEPROM.
 

@@ -98,7 +98,6 @@ class Poller(Thread):
             TypeError: If the register is not valid.
 
         """
-
         if self.__running:
             raise ILStateError("Poller is running")
 
@@ -131,7 +130,6 @@ class Poller(Thread):
             Status code.
 
         """
-
         if self.__running:
             raise ILStateError("Poller is running")
 
@@ -189,7 +187,7 @@ class Poller(Thread):
                     reading_error = True
                     logger.warning(
                         f"Could not read {register.identifier} register. This sample is lost for"
-                        " all channels."
+                        " all channels.",
                     )
 
             if not reading_error:

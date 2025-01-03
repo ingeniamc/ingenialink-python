@@ -68,7 +68,7 @@ class PDOMapItem:
         if self.register.cyclic not in [self.ACCEPTED_CYCLIC, RegCyclicType.TXRX]:
             raise ILError(
                 f"Incorrect cyclic. It should be {self.ACCEPTED_CYCLIC} or {RegCyclicType.TXRX},"
-                f" obtained: {self.register.cyclic}"
+                f" obtained: {self.register.cyclic}",
             )
 
     @property
@@ -131,7 +131,7 @@ class PDOMapItem:
         value: Union[bool, int, float, str, bytes]
         if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
             raise NotImplementedError(
-                "The register value must be read by the raw_data_bytes attribute."
+                "The register value must be read by the raw_data_bytes attribute.",
             )
         if self.register.dtype == REG_DTYPE.BOOL:
             value = self.raw_data_bits.any()
@@ -175,7 +175,7 @@ class RPDOMapItem(PDOMapItem):
     def value(self, value: Union[int, float, bool]) -> None:
         if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
             raise NotImplementedError(
-                "The register value must be set by the raw_data_bytes attribute."
+                "The register value must be set by the raw_data_bytes attribute.",
             )
         if isinstance(value, bool):
             raw_data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
@@ -202,7 +202,7 @@ class PDOMap:
         self.__map_register_address: Optional[int] = None
 
     def create_item(
-        self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
+        self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None,
     ) -> PDOMapItem:
         """Create a new PDOMapItem.
 
@@ -227,7 +227,7 @@ class PDOMap:
     def add_registers(
         self,
         registers: Union[
-            Union[EthercatRegister, CanopenRegister], List[Union[EthercatRegister, CanopenRegister]]
+            Union[EthercatRegister, CanopenRegister], List[Union[EthercatRegister, CanopenRegister]],
         ],
     ) -> None:
         """Add a register or a list of registers in bulk.
@@ -322,7 +322,7 @@ class PDOMap:
         if len(data_bytes) != self.data_length_bytes:
             raise ILError(
                 f"The length of the data array is incorrect. Expected {self.data_length_bytes},"
-                f" obtained {len(data_bytes)}"
+                f" obtained {len(data_bytes)}",
             )
         data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
         data_bits.frombytes(data_bytes)
@@ -352,7 +352,7 @@ class PDOMap:
         if len(data_bits) != self.data_length_bits:
             raise ILError(
                 "The length in bits of the data array is incorrect. Expected"
-                f" {self.data_length_bits}, obtained {len(data_bits)}"
+                f" {self.data_length_bits}, obtained {len(data_bits)}",
             )
         return data_bits
 
@@ -431,7 +431,7 @@ class PDOServo(Servo):
         if len(self._rpdo_maps) > self.AVAILABLE_PDOS:
             raise ILError(
                 f"Could not map the RPDO maps, received {len(self._rpdo_maps)} PDOs and only"
-                f" {self.AVAILABLE_PDOS} are available"
+                f" {self.AVAILABLE_PDOS} are available",
             )
         self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._rpdo_maps), subnode=0)
         custom_map_index = 0
@@ -442,7 +442,7 @@ class PDOServo(Servo):
                 custom_map_index += 1
             rpdo_assigns += rpdo_map.map_register_index_bytes
         self.write(
-            self.RPDO_ASSIGN_REGISTER_SUB_IDX_1, rpdo_assigns, complete_access=True, subnode=0
+            self.RPDO_ASSIGN_REGISTER_SUB_IDX_1, rpdo_assigns, complete_access=True, subnode=0,
         )
 
     def _set_rpdo_map_register(self, rpdo_map_register_index: int, rpdo_map: RPDOMap) -> None:
@@ -470,7 +470,7 @@ class PDOServo(Servo):
         if not isinstance(rpdo_map_register, EthercatRegister):
             raise ValueError(
                 "Error retrieving the RPDO Map register. Expected EthercatRegister, got:"
-                f" {type(rpdo_map_register)}"
+                f" {type(rpdo_map_register)}",
             )
         rpdo_map.map_register_index = rpdo_map_register.idx
 
@@ -484,7 +484,7 @@ class PDOServo(Servo):
         if len(self._tpdo_maps) > self.AVAILABLE_PDOS:
             raise ILError(
                 f"Could not map the TPDO maps, received {len(self._tpdo_maps)} PDOs and only"
-                f" {self.AVAILABLE_PDOS} are available"
+                f" {self.AVAILABLE_PDOS} are available",
             )
         self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._tpdo_maps), subnode=0)
         custom_map_index = 0
@@ -495,7 +495,7 @@ class PDOServo(Servo):
                 custom_map_index += 1
             tpdo_assigns += tpdo_map.map_register_index_bytes
         self.write(
-            self.TPDO_ASSIGN_REGISTER_SUB_IDX_1, tpdo_assigns, complete_access=True, subnode=0
+            self.TPDO_ASSIGN_REGISTER_SUB_IDX_1, tpdo_assigns, complete_access=True, subnode=0,
         )
 
     def _set_tpdo_map_register(self, tpdo_map_register_index: int, tpdo_map: TPDOMap) -> None:
@@ -523,7 +523,7 @@ class PDOServo(Servo):
         if not isinstance(tpdo_map_register, EthercatRegister):
             raise ValueError(
                 "Error retrieving the TPDO Map register. Expected EthercatRegister, got:"
-                f" {type(tpdo_map_register)}"
+                f" {type(tpdo_map_register)}",
             )
         tpdo_map.map_register_index = tpdo_map_register.idx
 
@@ -542,7 +542,7 @@ class PDOServo(Servo):
         self.reset_tpdo_mapping()
 
     def remove_rpdo_map(
-        self, rpdo_map: Optional[RPDOMap] = None, rpdo_map_index: Optional[int] = None
+        self, rpdo_map: Optional[RPDOMap] = None, rpdo_map_index: Optional[int] = None,
     ) -> None:
         """Remove a RPDOMap from the RPDOMap list.
 
@@ -564,7 +564,7 @@ class PDOServo(Servo):
             self._rpdo_maps.pop(rpdo_map_index)
 
     def remove_tpdo_map(
-        self, tpdo_map: Optional[TPDOMap] = None, tpdo_map_index: Optional[int] = None
+        self, tpdo_map: Optional[TPDOMap] = None, tpdo_map_index: Optional[int] = None,
     ) -> None:
         """Remove a TPDOMap from the TPDOMap list.
 

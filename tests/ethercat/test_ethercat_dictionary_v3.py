@@ -16,7 +16,7 @@ SINGLE_AXIS_SAFETY_SUBNODES = {
 }
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     expected_device_attr = {
@@ -38,7 +38,7 @@ def test_read_dictionary():
         assert getattr(ethercat_dict, attr) == value
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
@@ -46,7 +46,7 @@ def test_read_dictionary_file_not_found():
         DictionaryV3(dictionary_path, Interface.ECAT)
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_registers():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     expected_regs_per_subnode = {
@@ -62,13 +62,13 @@ def test_read_dictionary_registers():
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
 
-    for subnode in expected_regs_per_subnode.keys():
+    for subnode in expected_regs_per_subnode:
         assert expected_regs_per_subnode[subnode] == [
             reg for reg in ethercat_dict.registers(subnode)
         ]
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_categories():
     expected_categories = [
         "OTHERS",
@@ -81,7 +81,7 @@ def test_read_dictionary_categories():
     assert ethercat_dict.categories.category_ids == expected_categories
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_errors():
     expected_errors = [
         0x00003280,
@@ -94,7 +94,7 @@ def test_read_dictionary_errors():
     assert [error for error in ethercat_dict.errors] == expected_errors
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_xdf_register():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     idx = 0x580F
@@ -110,7 +110,7 @@ def test_read_xdf_register():
     assert target_register.subidx == subidx
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_child_registers():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
@@ -125,7 +125,7 @@ def test_child_registers():
         assert reg.subidx == reg_subindex[index]
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_child_registers_not_exist():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
@@ -133,7 +133,7 @@ def test_child_registers_not_exist():
         ethercat_dict.child_registers("NOT_EXISTING_UID", 0)
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_safety_rpdo():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
@@ -155,7 +155,7 @@ def test_safety_rpdo():
         assert pdo_entry.register == entry_reg
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_safety_rpdo_not_exist():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
@@ -163,7 +163,7 @@ def test_safety_rpdo_not_exist():
         ethercat_dict.get_safety_rpdo("READ_ONLY_TPDO_1")
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_safety_tpdo():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
@@ -185,7 +185,7 @@ def test_safety_tpdo():
         assert pdo_entry.register == entry_reg
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_safety_tpdo_not_exist():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
@@ -193,15 +193,15 @@ def test_safety_tpdo_not_exist():
         ethercat_dict.get_safety_tpdo("READ_ONLY_RPDO_1")
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_wrong_dictionary():
     with pytest.raises(
-        ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication"
+        ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication",
     ):
         DictionaryV3("./tests/resources/canopen/test_dict_can_v3.0.xdf", Interface.ECAT)
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_register_default_values():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     expected_defaults_per_subnode = {
@@ -222,7 +222,7 @@ def test_register_default_values():
             assert register.default == expected_defaults_per_subnode[subnode][register.identifier]
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_register_description():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     expected_description_per_subnode = {

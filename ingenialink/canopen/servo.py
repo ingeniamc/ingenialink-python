@@ -50,7 +50,7 @@ class CanopenServo(Servo):
         super(CanopenServo, self).__init__(target, dictionary_path, servo_status_listener)
 
     def read(
-        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
+        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any,
     ) -> Union[int, float, str, bytes]:
         value = super().read(reg, subnode=subnode)
         if isinstance(value, str):
@@ -94,7 +94,7 @@ class CanopenServo(Servo):
         finally:
             self._lock.release()
         if not isinstance(value, bytes):
-            return bytes()
+            return b""
         return value
 
     def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
@@ -139,7 +139,7 @@ class CanopenServo(Servo):
         # Exclude the RxPDO and TxPDO related registers
         # Check INGK-980
         if register.identifier is not None and register.identifier.startswith(
-            ("CIA301_COMMS_TPDO", "CIA301_COMMS_RPDO")
+            ("CIA301_COMMS_TPDO", "CIA301_COMMS_RPDO"),
         ):
             return False
         return True
@@ -150,7 +150,7 @@ class CanopenServo(Servo):
         return address - (0x2000 + (0x800 * (subnode - 1)))
 
     def _monitoring_disturbance_data_to_map_register(
-        self, subnode: int, address: int, dtype: int, size: int
+        self, subnode: int, address: int, dtype: int, size: int,
     ) -> int:
         """Arrange necessary data to map a monitoring/disturbance register.
 
@@ -163,7 +163,7 @@ class CanopenServo(Servo):
         """
         ipb_address = self._monitoring_disturbance_map_can_address(address, subnode)
         return super()._monitoring_disturbance_data_to_map_register(
-            subnode, ipb_address, dtype, size
+            subnode, ipb_address, dtype, size,
         )
 
     @property

@@ -9,7 +9,7 @@ path_resources = "./tests/resources/canopen/"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary():
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
     expected_device_attr = {
@@ -30,7 +30,7 @@ def test_read_dictionary():
         assert getattr(canopen_dict, attr) == value
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
@@ -38,7 +38,7 @@ def test_read_dictionary_file_not_found():
         CanopenDictionaryV2(dictionary_path)
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_registers():
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
     expected_regs_per_subnode = {
@@ -54,13 +54,13 @@ def test_read_dictionary_registers():
 
     canopen_dict = CanopenDictionaryV2(dictionary_path)
 
-    for subnode in expected_regs_per_subnode.keys():
+    for subnode in expected_regs_per_subnode:
         assert expected_regs_per_subnode[subnode] == [
             reg for reg in canopen_dict.registers(subnode)
         ]
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_registers_multiaxis():
     expected_num_registers_per_subnode = {0: 6, 1: 5, 2: 5}
     dictionary_path = join_path(path_resources, "test_dict_can_axis.xdf")
@@ -71,12 +71,12 @@ def test_read_dictionary_registers_multiaxis():
         1: SubnodeType.MOTION,
         2: SubnodeType.MOTION,
     }
-    for subnode in expected_num_registers_per_subnode.keys():
+    for subnode in expected_num_registers_per_subnode:
         num_registers = len(canopen_dict.registers(subnode))
         assert num_registers == expected_num_registers_per_subnode[subnode]
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_registers_attr_errors():
     dictionary_path = join_path(path_resources, "test_dict_can_no_attr_reg.xdf")
 
@@ -87,7 +87,7 @@ def test_read_dictionary_registers_attr_errors():
         assert num_registers == 0
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_categories():
     expected_categories = [
         "IDENTIFICATION",
@@ -103,7 +103,7 @@ def test_read_dictionary_categories():
     assert canopen_dict.categories.category_ids == expected_categories
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_errors():
     expected_errors = [
         0x00003280,
@@ -118,7 +118,7 @@ def test_read_dictionary_errors():
     assert [error for error in canopen_dict.errors] == expected_errors
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_xdf_register():
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
     idx = 0x580F
@@ -132,7 +132,7 @@ def test_read_xdf_register():
     assert canopen_dict.registers(subnode)[reg_id].subidx == subidx
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_child_registers_not_exist():
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
     canopen_dict = CanopenDictionaryV2(dictionary_path)
@@ -140,7 +140,7 @@ def test_child_registers_not_exist():
         canopen_dict.child_registers("NOT_EXISTING_UID", 0)
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_safety_pdo_not_implemented():
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
     canopen_dict = CanopenDictionaryV2(dictionary_path)

@@ -56,7 +56,7 @@ class EthernetRegister(Register):
         subnode: int = 1,
         storage: Any = None,
         reg_range: Union[
-            Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]
+            Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str],
         ] = (None, None),
         labels: Optional[Dict[str, str]] = None,
         enums: Optional[Dict[str, int]] = None,

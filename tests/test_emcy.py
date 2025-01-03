@@ -19,8 +19,8 @@ def is_coco_moco(servo):
     return product_code >> 20 == EVEREST_PROJECT_NUMBER
 
 
-@pytest.mark.canopen
-@pytest.mark.ethercat
+@pytest.mark.canopen()
+@pytest.mark.ethercat()
 def test_emcy_callback(connect_to_slave):
     servo, _ = connect_to_slave
     if isinstance(servo, EthercatServo) and is_coco_moco(servo):
@@ -43,7 +43,7 @@ def test_emcy_callback(connect_to_slave):
     servo.emcy_unsubscribe(emcy_test.emcy_callback)
 
 
-@pytest.mark.ethercat
+@pytest.mark.ethercat()
 def test_emcy_callback_coco_moco_ethercat(connect_to_slave):
     # EMCY test for COCO MOCO EtherCAT drives
     # Check INGK-993

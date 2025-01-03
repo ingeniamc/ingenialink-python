@@ -1,4 +1,5 @@
-from typing import Dict, Iterable
+from collections.abc import Iterable
+from typing import Dict
 
 
 def _bit_mask(selected_bits: Iterable[int]) -> int:
@@ -89,7 +90,7 @@ class BitField:
             if new_bitfields_value > bitfield._max_value:
                 raise ValueError(
                     f"value {new_bitfields_value} cannot be set to bitfield {name}. "
-                    f"Max: {bitfield._max_value}"
+                    f"Max: {bitfield._max_value}",
                 )
 
             # Clear bits

@@ -4,7 +4,7 @@ from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_getters_ethercat_register():
     reg_idx = 0x58F0
     reg_subidx = 0x00

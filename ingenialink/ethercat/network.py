@@ -57,7 +57,7 @@ class NetStatusListener(Thread):
             for servo in self.__network.servos:
                 slave_id = servo.slave_id
                 servo_state = self.__network.get_servo_state(slave_id)
-                is_servo_alive = not servo.slave.state == pysoem.NONE_STATE
+                is_servo_alive = servo.slave.state != pysoem.NONE_STATE
                 if not is_servo_alive and servo_state == NET_STATE.CONNECTED:
                     self.__network._notify_status(slave_id, NET_DEV_EVT.REMOVED)
                     self.__network._set_servo_state(slave_id, NET_STATE.DISCONNECTED)
@@ -213,7 +213,7 @@ class EthercatNetwork(Network):
             raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
         servo = EthercatServo(
-            slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
+            slave, slave_id, dictionary, self._connection_timeout, servo_status_listener,
         )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             if servo_status_listener:
@@ -274,7 +274,7 @@ class EthercatNetwork(Network):
                     rpdo_map.get_item_bytes()
         except ILError as e:
             raise ILError(
-                "The RPDO values should be set before starting the PDO exchange process."
+                "The RPDO values should be set before starting the PDO exchange process.",
             ) from e
         self.config_pdo_maps()
         self._ecat_master.state = pysoem.SAFEOP_STATE
@@ -332,13 +332,13 @@ class EthercatNetwork(Network):
                     servos_state_msg += ". "
             raise ILWrongWorkingCount(
                 f"Processdata working count is wrong, expected: {self._ecat_master.expected_wkc},"
-                f" real: {processdata_wkc}. {servos_state_msg}"
+                f" real: {processdata_wkc}. {servos_state_msg}",
             )
         for servo in self.servos:
             servo.process_pdo_inputs()
 
     def _change_nodes_state(
-        self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int
+        self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int,
     ) -> bool:
         """Set ECAT state to target state for all nodes in list
 
@@ -356,7 +356,7 @@ class EthercatNetwork(Network):
         return self._check_node_state(nodes, target_state)
 
     def _check_node_state(
-        self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int
+        self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int,
     ) -> bool:
         """Check ECAT state for all nodes in list
 
@@ -376,7 +376,7 @@ class EthercatNetwork(Network):
         )
 
     def subscribe_to_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[NET_DEV_EVT], None]
+        self, slave_id: int, callback: Callable[[NET_DEV_EVT], None],
     ) -> None:
         """Subscribe to network state changes.
 
@@ -391,7 +391,7 @@ class EthercatNetwork(Network):
         self.__observers_net_state[slave_id].append(callback)
 
     def unsubscribe_from_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None]
+        self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None],
     ) -> None:
         """Unsubscribe from network state changes.
 
@@ -420,7 +420,7 @@ class EthercatNetwork(Network):
         self.__listener_net_status = None
 
     def load_firmware(
-        self, fw_file: str, boot_in_app: bool, slave_id: int = 1, password: Optional[int] = None
+        self, fw_file: str, boot_in_app: bool, slave_id: int = 1, password: Optional[int] = None,
     ) -> None:
         """Loads a given firmware file to a target slave.
 
@@ -454,7 +454,7 @@ class EthercatNetwork(Network):
         if app_path is None:
             raise NotImplementedError(
                 "Load FW by ECAT is not implemented for this OS and architecture:"
-                f" {sys_name} {arch}"
+                f" {sys_name} {arch}",
             )
         exec_path = os.path.join(os.path.dirname(inspect.getfile(bin_module)), app_path)
         logger.debug(f"Call FoE application for {sys_name}-{arch}")
@@ -494,7 +494,7 @@ class EthercatNetwork(Network):
         except subprocess.CalledProcessError as e:
             foe_return_error = self.FOE_ERRORS.get(e.returncode, self.UNKNOWN_FOE_ERROR)
             raise ILFirmwareLoadError(
-                f"The firmware file could not be loaded correctly. {foe_return_error}"
+                f"The firmware file could not be loaded correctly. {foe_return_error}",
             ) from e
         logger.info("Firmware updated successfully")
 

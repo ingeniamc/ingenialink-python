@@ -57,18 +57,20 @@ class EthernetServo(Servo):
 
     def store_tcp_ip_parameters(self) -> None:
         """Stores the TCP/IP values. Affects IP address,
-        subnet mask and gateway"""
+        subnet mask and gateway
+        """
         self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Store TCP/IP successfully done.")
 
     def restore_tcp_ip_parameters(self) -> None:
         """Restores the TCP/IP values back to default. Affects
-        IP address, subnet mask and gateway"""
+        IP address, subnet mask and gateway
+        """
         self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Restore TCP/IP successfully done.")
 
     def change_tcp_ip_parameters(
-        self, ip_address: str, subnet_mask: str, gateway: str, mac_address: Optional[int] = None
+        self, ip_address: str, subnet_mask: str, gateway: str, mac_address: Optional[int] = None,
     ) -> None:
         """Stores the TCP/IP values. Affects IP address,
         network mask and gateway
@@ -98,7 +100,7 @@ class EthernetServo(Servo):
 
         if gateway_ip not in net:
             raise ValueError(
-                f"Drive IP {ip_address} and Gateway IP {gateway} are not on the same network."
+                f"Drive IP {ip_address} and Gateway IP {gateway} are not on the same network.",
             )
 
         int_ip_address = convert_ip_to_int(ip_address)
@@ -127,7 +129,7 @@ class EthernetServo(Servo):
         mac_address = self.read(self.COMMS_ETH_MAC, subnode=0)
         if not isinstance(mac_address, int):
             raise ValueError(
-                f"Error retrieving the MAC address. Expected an int, got: {type(mac_address)}"
+                f"Error retrieving the MAC address. Expected an int, got: {type(mac_address)}",
             )
         return mac_address
 
@@ -147,7 +149,7 @@ class EthernetServo(Servo):
         return self._send_mcb_frame(MCB_CMD_READ, reg.address, reg.subnode)
 
     def _send_mcb_frame(
-        self, cmd: int, reg: int, subnode: int, data: Optional[bytes] = None
+        self, cmd: int, reg: int, subnode: int, data: Optional[bytes] = None,
     ) -> bytes:
         """Send an MCB frame to the drive.
 
@@ -165,7 +167,7 @@ class EthernetServo(Servo):
         try:
             try:
                 self.socket.sendall(frame)
-            except socket.error as e:
+            except OSError as e:
                 raise ILIOError("Error sending data.") from e
             try:
                 return self.__receive_mcb_frame(reg)
@@ -197,6 +199,6 @@ class EthernetServo(Servo):
             response = self.socket.recv(ETH_BUF_SIZE)
         except socket.timeout as e:
             raise ILTimeoutError("Timeout while receiving data.") from e
-        except socket.error as e:
+        except OSError as e:
             raise ILIOError("Error receiving data.") from e
         return MCB.read_mcb_data(reg, response)

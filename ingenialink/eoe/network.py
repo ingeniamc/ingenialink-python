@@ -57,7 +57,7 @@ class EoENetwork(EthernetNetwork):
     EOE_SERVICE_STATE_CHANGE_TIMEOUT = 9.0
 
     def __init__(
-        self, ifname: str, connection_timeout: float = constants.DEFAULT_ETH_CONNECTION_TIMEOUT
+        self, ifname: str, connection_timeout: float = constants.DEFAULT_ETH_CONNECTION_TIMEOUT,
     ) -> None:
         super().__init__()
         self.ifname = ifname
@@ -136,7 +136,7 @@ class EoENetwork(EthernetNetwork):
         """Wait until the EoE service starts the EoE or the timeout was reached"""
         status = self._get_status_eoe_service()
         time_start = time.time()
-        while not status & self.STATUS_EOE_BIT and self.WAIT_EOE_TIMEOUT > time.time() - time_start:
+        while not status & self.STATUS_EOE_BIT and time.time() - time_start < self.WAIT_EOE_TIMEOUT:
             time.sleep(0.1)
             status = self._get_status_eoe_service()
         if not status & self.STATUS_EOE_BIT:
@@ -199,7 +199,7 @@ class EoENetwork(EthernetNetwork):
             r = self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
             raise ILError(
-                "Failed to perform a network scan. Please verify the EoE service is running."
+                "Failed to perform a network scan. Please verify the EoE service is running.",
             ) from e
         return list(range(1, r + 1))
 
@@ -208,8 +208,7 @@ class EoENetwork(EthernetNetwork):
 
     @staticmethod
     def _build_eoe_command_msg(cmd: int, data: Optional[bytes] = None) -> bytes:
-        """
-        Build a message with the following format.
+        """Build a message with the following format.
 
         +----------+----------+
         |   cmd    |   data   |
@@ -226,14 +225,13 @@ class EoENetwork(EthernetNetwork):
 
         """
         if data is None:
-            data = bytes()
+            data = b""
         cmd_field = cmd.to_bytes(EoENetwork.EOE_MSG_CMD_SIZE, "little")
         data_field = data + EoENetwork.NULL_TERMINATOR * (EoENetwork.EOE_MSG_DATA_SIZE - len(data))
         return cmd_field + data_field
 
     def _send_command(self, msg: bytes) -> int:
-        """
-        Send command to EoE service.
+        """Send command to EoE service.
 
         Args:
             msg: Message to send.
@@ -249,13 +247,13 @@ class EoENetwork(EthernetNetwork):
         """
         try:
             self._eoe_socket.send(msg)
-        except socket.error as e:
+        except OSError as e:
             raise ILIOError("Error sending message.") from e
         try:
             response = self._eoe_socket.recv(1024)
         except socket.timeout as e:
             raise ILTimeoutError("Timeout while receiving response.") from e
-        except socket.error as e:
+        except OSError as e:
             raise ILIOError("Error receiving response.") from e
         return int.from_bytes(response, byteorder="little", signed=True)
 
@@ -275,13 +273,13 @@ class EoENetwork(EthernetNetwork):
         data = self.ifname
         msg = self._build_eoe_command_msg(EoECommand.INIT.value, data=data.encode("utf-8"))
         self._eoe_socket.settimeout(
-            max(self.EOE_SERVICE_STATE_CHANGE_TIMEOUT, self.__connection_timeout)
+            max(self.EOE_SERVICE_STATE_CHANGE_TIMEOUT, self.__connection_timeout),
         )
         try:
             r = self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
             raise ILError(
-                "Failed to initialize the EoE service. Please verify it's running."
+                "Failed to initialize the EoE service. Please verify it's running.",
             ) from e
         if r < 0:
             raise ILError(f"Failed to initialize the EoE service using interface {self.ifname}.")
@@ -304,10 +302,9 @@ class EoENetwork(EthernetNetwork):
             raise ILError("Failed to deinitialize the EoE service.") from e
 
     def _configure_slave(
-        self, slave_id: int, ip_address: str, net_mask: str = "255.255.255.0"
+        self, slave_id: int, ip_address: str, net_mask: str = "255.255.255.0",
     ) -> None:
-        """
-        Configure an EtherCAT slave with a given IP.
+        """Configure an EtherCAT slave with a given IP.
 
         Args:
             slave_id: EtherCAT slave ID.

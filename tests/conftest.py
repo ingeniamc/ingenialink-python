@@ -37,7 +37,7 @@ def pytest_addoption(parser):
 def read_config(request):
     config = "tests/config.json"
     print("current config file:", config)
-    with open(config, "r", encoding="utf-8") as fp:
+    with open(config, encoding="utf-8") as fp:
         contents = json.load(fp)
     slave = request.config.getoption("--slave")
     for key in contents:
@@ -76,7 +76,7 @@ def connect_ethernet(protocol_contents):
     net = EthernetNetwork()
 
     servo = net.connect_to_slave(
-        protocol_contents["ip"], protocol_contents["dictionary"], protocol_contents["port"]
+        protocol_contents["ip"], protocol_contents["dictionary"], protocol_contents["port"],
     )
     return servo, net
 
@@ -85,7 +85,7 @@ def connect_ethercat(protocol_contents):
     net = EthercatNetwork(protocol_contents["ifname"])
 
     servo = net.connect_to_slave(
-        protocol_contents["slave"], protocol_contents["dictionary"], net_status_listener=True
+        protocol_contents["slave"], protocol_contents["dictionary"], net_status_listener=True,
     )
     return servo, net
 
@@ -101,7 +101,7 @@ def connect_eoe(protocol_contents):
     return servo, net
 
 
-@pytest.fixture
+@pytest.fixture()
 def connect_to_slave(pytestconfig, read_config):
     servo = None
     net = None
@@ -189,5 +189,5 @@ def load_firmware(pytestconfig, read_config, request):
     drive = config[drive_idx]
     client = request.getfixturevalue("connect_to_rack_service")
     client.exposed_firmware_load(
-        drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
+        drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number,
     )

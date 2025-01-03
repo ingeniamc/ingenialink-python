@@ -66,7 +66,7 @@ class Register(ABC):
         subnode: int = 1,
         storage: Any = None,
         reg_range: Union[
-            Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]
+            Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str],
         ] = (None, None),
         labels: Optional[Dict[str, str]] = None,
         enums: Optional[Dict[str, int]] = None,
@@ -120,7 +120,7 @@ class Register(ABC):
         self,
         reg_range: Union[Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]],
     ) -> None:
-        cast_type: Union[type[int], type[float]]
+        cast_type: type[Union[int, float]]
         if self.dtype not in dtypes_ranges:
             self._storage_valid = False
             return
@@ -272,7 +272,7 @@ class Register(ABC):
     @property
     def mapped_address(self) -> int:
         """Register mapped address used for monitoring/disturbance."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @property
     def bitfields(self) -> Optional[Dict[str, BitField]]:

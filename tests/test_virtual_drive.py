@@ -28,7 +28,7 @@ def create_monitoring_disturbance(servo, dist_reg, monit_regs, dist_data):
     for idx, key in enumerate(monit_regs):
         reg = servo._get_reg(key, subnode=1)
         servo.monitoring_set_mapped_register(
-            idx, reg.address, reg.subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE
+            idx, reg.address, reg.subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE,
         )
 
     servo.write("MON_DIST_FREQ_DIV", divisor, subnode=0)
@@ -36,7 +36,7 @@ def create_monitoring_disturbance(servo, dist_reg, monit_regs, dist_data):
     servo.write("MON_CFG_WINDOW_SAMP", MONITORING_NUM_SAMPLES, subnode=0)
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_connect_to_virtual(virtual_drive):
     _, servo = virtual_drive
     time.sleep(1)
@@ -45,9 +45,9 @@ def test_connect_to_virtual(virtual_drive):
 
 
 @pytest.mark.parametrize(
-    "reg, value, subnode", [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)]
+    "reg, value, subnode", [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)],
 )
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_virtual_drive_write_read(virtual_drive, reg, value, subnode):
     _, virtual_servo = virtual_drive
 
@@ -57,7 +57,7 @@ def test_virtual_drive_write_read(virtual_drive, reg, value, subnode):
     assert response == value
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_virtual_drive_write_wrong_enum(virtual_drive):
     _, virtual_servo = virtual_drive
 
@@ -71,12 +71,12 @@ def test_virtual_drive_write_wrong_enum(virtual_drive):
     assert virtual_servo.read(register, subnode) == 5
 
 
-@pytest.mark.ethernet
+@pytest.mark.ethernet()
 @pytest.mark.parametrize(
-    "reg, value, subnode", [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)]
+    "reg, value, subnode", [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)],
 )
 def test_virtual_drive_write_read_compare_responses(
-    connect_to_slave, virtual_drive, reg, value, subnode
+    connect_to_slave, virtual_drive, reg, value, subnode,
 ):
     servo, _ = connect_to_slave
     _, virtual_servo = virtual_drive
@@ -95,7 +95,7 @@ def test_virtual_drive_write_read_compare_responses(
     assert saved_value == new_value
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 @pytest.mark.parametrize("divisor", [1, 2])
 def test_virtual_monitoring(virtual_drive, divisor):
     _, servo = virtual_drive
@@ -107,7 +107,7 @@ def test_virtual_monitoring(virtual_drive, divisor):
         reg = servo._get_reg(key, subnode=1)
         address = reg.address
         servo.monitoring_set_mapped_register(
-            idx, address, subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE
+            idx, address, subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE,
         )
 
     servo.write("MON_DIST_FREQ_DIV", divisor, subnode=0)
@@ -131,7 +131,7 @@ def test_virtual_monitoring(virtual_drive, divisor):
         assert data == expected_data
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 @pytest.mark.parametrize("register_key", ["CL_VEL_FBK_VALUE", "CL_POS_FBK_VALUE"])
 def test_virtual_disturbance(virtual_drive, register_key):
     server, servo = virtual_drive
@@ -156,7 +156,7 @@ def test_virtual_disturbance(virtual_drive, register_key):
     assert server._disturbance.channels_data[0] == data_arr[0]
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_virtual_motor_enable_disable(virtual_drive):
     _, servo = virtual_drive
 
@@ -167,7 +167,7 @@ def test_virtual_motor_enable_disable(virtual_drive):
     assert servo.get_state() == SERVO_STATE.DISABLED
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 @pytest.mark.parametrize(
     "plant_name,dist_reg,monit_regs,op_mode",
     [
@@ -238,17 +238,17 @@ def test_plants(virtual_drive, plant_name, dist_reg, monit_regs, op_mode):
 
     assert np.allclose(command, dist_data)
     assert np.allclose(
-        np.abs(freq_response), np.abs(freq_response_est), atol=np.amax(np.abs(freq_response)) / 2
+        np.abs(freq_response), np.abs(freq_response_est), atol=np.amax(np.abs(freq_response)) / 2,
     )
 
 
 # TODO: INGK-779 Use ingeniamotion to test the phasing
-@pytest.mark.skip
+@pytest.mark.skip()
 def test_phasing():
     pass
 
 
 # TODO: INGK-779 Use ingeniamotion to test the feedbacks
-@pytest.mark.skip
+@pytest.mark.skip()
 def test_feedbacks():
     pass

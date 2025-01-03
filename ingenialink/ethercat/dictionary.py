@@ -154,7 +154,7 @@ class EthercatDictionaryV2(DictionaryV2):
             return None
         try:
             idx = int(register.attrib["address"], 16) + self.__get_cia_offset(
-                current_read_register.subnode
+                current_read_register.subnode,
             )
             subidx = 0x00
 
@@ -183,7 +183,7 @@ class EthercatDictionaryV2(DictionaryV2):
 
         except KeyError as ke:
             logger.error(
-                f"Register with ID {current_read_register.identifier} has not attribute {ke}"
+                f"Register with ID {current_read_register.identifier} has not attribute {ke}",
             )
             return None
 

@@ -74,6 +74,6 @@ class CanopenDictionaryV2(DictionaryV2):
 
         except KeyError as ke:
             logger.error(
-                f"Register with ID {current_read_register.identifier} has not attribute {ke}"
+                f"Register with ID {current_read_register.identifier} has not attribute {ke}",
             )
             return None

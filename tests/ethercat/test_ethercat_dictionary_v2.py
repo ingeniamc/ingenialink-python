@@ -9,7 +9,7 @@ path_resources = "./tests/resources/ethercat/"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary():
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
     expected_device_attr = {
@@ -30,7 +30,7 @@ def test_read_dictionary():
         assert getattr(ethercat_dict, attr) == value
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
@@ -38,7 +38,7 @@ def test_read_dictionary_file_not_found():
         EthercatDictionaryV2(dictionary_path)
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_registers():
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
     expected_regs_per_subnode = {
@@ -69,13 +69,13 @@ def test_read_dictionary_registers():
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
-    for subnode in expected_regs_per_subnode.keys():
+    for subnode in expected_regs_per_subnode:
         assert expected_regs_per_subnode[subnode] == [
             reg for reg in ethercat_dict.registers(subnode)
         ]
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_registers_multiaxis():
     expected_num_registers_per_subnode = {0: 10, 1: 2, 2: 2}
     dictionary_path = join_path(path_resources, "test_dict_ethercat_axis.xdf")
@@ -87,12 +87,12 @@ def test_read_dictionary_registers_multiaxis():
         2: SubnodeType.MOTION,
     }
 
-    for subnode in expected_num_registers_per_subnode.keys():
+    for subnode in expected_num_registers_per_subnode:
         num_registers = len(ethercat_dict.registers(subnode))
         assert num_registers == expected_num_registers_per_subnode[subnode]
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_categories():
     expected_categories = [
         "IDENTIFICATION",
@@ -108,7 +108,7 @@ def test_read_dictionary_categories():
     assert ethercat_dict.categories.category_ids == expected_categories
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_dictionary_errors():
     expected_errors = [
         0x00003280,
@@ -123,7 +123,7 @@ def test_read_dictionary_errors():
     assert [error for error in ethercat_dict.errors] == expected_errors
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_read_xdf_register():
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
     idx = 0x580F
@@ -137,7 +137,7 @@ def test_read_xdf_register():
     assert ethercat_dict.registers(subnode)[reg_id].subidx == subidx
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 @pytest.mark.parametrize(
     "register_uid, subnode, idx",
     [("DIST_CFG_REG0_MAP", 0, 0x5890), ("DRV_OP_CMD", 1, 0x2014), ("DRV_STATE_CONTROL", 2, 0x2810)],
@@ -151,7 +151,7 @@ def test_mcb_to_can_mapping(register_uid, subnode, idx):
     assert ethercat_register.idx == idx
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_child_registers_not_exist():
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
@@ -159,7 +159,7 @@ def test_child_registers_not_exist():
         ethercat_dict.child_registers("NOT_EXISTING_UID", 0)
 
 
-@pytest.mark.no_connection
+@pytest.mark.no_connection()
 def test_safety_pdo_not_implemented():
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
     ethercat_dict = EthercatDictionaryV2(dictionary_path)

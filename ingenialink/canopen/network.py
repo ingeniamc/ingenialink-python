@@ -228,7 +228,7 @@ class CanopenNetwork(Network):
         self._connection: Optional[NetworkLib] = None
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: Dict[int, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
-            list
+            list,
         )
 
         self.__connection_args = {
@@ -249,7 +249,7 @@ class CanopenNetwork(Network):
         if (self.__device, self.__channel) not in self.get_available_devices():
             raise ILError(
                 f"The {self.__device.upper()} transceiver is not detected. "
-                "Make sure that it's connected and its drivers are installed."
+                "Make sure that it's connected and its drivers are installed.",
             )
         is_connection_created = False
         if self._connection is None:
@@ -267,7 +267,7 @@ class CanopenNetwork(Network):
         try:
             self._connection.scanner.search()
         except Exception as e:
-            logger.error("Error searching for nodes. Exception: {}".format(e))
+            logger.error(f"Error searching for nodes. Exception: {e}")
             logger.info("Resetting bus")
             if (
                 self._connection is not None
@@ -317,7 +317,7 @@ class CanopenNetwork(Network):
                 node = connected_slaves[slave_id]
             try:
                 product_code = convert_bytes_to_dtype(
-                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), REG_DTYPE.U32
+                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), REG_DTYPE.U32,
                 )
                 revision_number = convert_bytes_to_dtype(
                     node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX),
@@ -326,7 +326,7 @@ class CanopenNetwork(Network):
             except canopen.sdo.exceptions.SdoError as e:
                 logger.warning(
                     f"The information of the node {slave_id} cannot be retrieved. "
-                    f"{type(e).__name__}: {e}"
+                    f"{type(e).__name__}: {e}",
                 )
                 slave_info[slave_id] = SlaveInfo()
             else:
@@ -368,7 +368,7 @@ class CanopenNetwork(Network):
                 node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
                 servo = CanopenServo(
-                    target, node, dictionary, servo_status_listener=servo_status_listener
+                    target, node, dictionary, servo_status_listener=servo_status_listener,
                 )
                 self.servos.append(servo)
                 self._set_servo_state(target, NET_STATE.CONNECTED)
@@ -378,13 +378,13 @@ class CanopenNetwork(Network):
             except Exception as e:
                 logger.error("Failed connecting to node %i. Exception: %s", target, e)
                 raise ILError(
-                    "Failed connecting to node {}. "
+                    f"Failed connecting to node {target}. "
                     "Please check the connection settings and verify "
-                    "the transceiver is properly connected.".format(target)
+                    "the transceiver is properly connected.",
                 )
         else:
             logger.error("Node id not found")
-            raise ILError("Node id {} not found in the network.".format(target))
+            raise ILError(f"Node id {target} not found in the network.")
 
     def disconnect_from_slave(self, servo: CanopenServo) -> None:  # type: ignore [override]
         """Disconnects the slave from the network.
@@ -415,7 +415,7 @@ class CanopenNetwork(Network):
                 raise ILError(
                     "Error connecting to the transceiver. "
                     "Please verify the transceiver "
-                    "is properly connected."
+                    "is properly connected.",
                 )
             except OSError as e:
                 logger.error(f"Transceiver drivers not properly installed. Exception: {e}")
@@ -431,7 +431,8 @@ class CanopenNetwork(Network):
 
     def _teardown_connection(self) -> None:
         """Tears down the already established connection
-        and deletes the network interface"""
+        and deletes the network interface
+        """
         if self._connection is None:
             logger.warning("Can not disconnect. The connection is not established yet.")
             return
@@ -519,7 +520,7 @@ class CanopenNetwork(Network):
         except ILError as e:
             self.__send_fw_file_failure(servo)
             raise ILFirmwareLoadError(
-                "An error occurred while downloading. Check firmware file is correct."
+                "An error occurred while downloading. Check firmware file is correct.",
             ) from e
         else:
             self.__program_control_to_stop(servo, callback_status_msg)
@@ -536,7 +537,7 @@ class CanopenNetwork(Network):
             servo.start_status_listener()
 
     def __load_fw_checks(
-        self, target: int, fw_file: str, callback_status_msg: Optional[Callable[[str], None]] = None
+        self, target: int, fw_file: str, callback_status_msg: Optional[Callable[[str], None]] = None,
     ) -> CanopenServo:
         """Checks prior to firmware upload and return the target CanopenServo instance
 
@@ -571,12 +572,12 @@ class CanopenNetwork(Network):
             servo.read(PROG_STAT_1, subnode=0)
         except ILError as e:
             raise ILFirmwareLoadError(
-                "Firmware and bootloader versions are not compatible. Use FTP Bootloader instead."
+                "Firmware and bootloader versions are not compatible. Use FTP Bootloader instead.",
             ) from e
         return servo
 
     def __force_boot(
-        self, servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]]
+        self, servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]],
     ) -> None:
         """Force boot, if drive is already in boot, do nothing
 
@@ -673,7 +674,7 @@ class CanopenNetwork(Network):
             if isinstance(value, bytes):
                 raise ValueError(
                     f"Error reading register {register.identifier}. Expected data type"
-                    f" {register.dtype}, got bytes."
+                    f" {register.dtype}, got bytes.",
                 )
             if value == expected_value:
                 logger.debug(f"Success. Read value {value}. Num tries {num_tries}")
@@ -685,7 +686,7 @@ class CanopenNetwork(Network):
 
     @staticmethod
     def __program_control_to_stop(
-        servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]]
+        servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]],
     ) -> None:
         """Change program control status to stop.
 
@@ -716,7 +717,7 @@ class CanopenNetwork(Network):
 
     @staticmethod
     def __program_control_to_start(
-        servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]]
+        servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]],
     ) -> None:
         """Change program control status to start.
 
@@ -740,7 +741,7 @@ class CanopenNetwork(Network):
 
     @staticmethod
     def __optimize_firmware_file(
-        sfu_file: str, callback_status_msg: Optional[Callable[[str], None]]
+        sfu_file: str, callback_status_msg: Optional[Callable[[str], None]],
     ) -> str:
         """Convert SFU file to LFU to optimize the firmware loading.
 
@@ -753,7 +754,7 @@ class CanopenNetwork(Network):
 
         """
         mcb = MCB()
-        with open(sfu_file, "r") as temp_file:
+        with open(sfu_file) as temp_file:
             total_file_lines = sum(1 for _ in temp_file)
         # Convert the sfu file to lfu
         logger.info("Converting sfu to lfu...")
@@ -763,7 +764,7 @@ class CanopenNetwork(Network):
         lfu_file_d, lfu_path = tempfile.mkstemp(suffix=".lfu", text=True)
         os.close(lfu_file_d)
         with open(lfu_path, "wb") as lfu_file:
-            with open(sfu_file, "r") as coco_in:
+            with open(sfu_file) as coco_in:
                 bin_node = ""
                 current_progress = 0
                 node = 10
@@ -877,10 +878,10 @@ class CanopenNetwork(Network):
 
                 self._lss_store_configuration()
             else:
-                raise ILError("Error switching lss to selective state. Error code: {}".format(r))
+                raise ILError(f"Error switching lss to selective state. Error code: {r}")
         finally:
             self._lss_reset_connection_nodes(target_node)
-            logger.info("Baudrate changed to {}".format(new_target_baudrate))
+            logger.info(f"Baudrate changed to {new_target_baudrate}")
 
     def change_node_id(
         self,
@@ -924,10 +925,10 @@ class CanopenNetwork(Network):
                 self._lss_store_configuration()
 
             else:
-                raise ILError("Error switching lss to selective state. Error code: {}".format(r))
+                raise ILError(f"Error switching lss to selective state. Error code: {r}")
         finally:
             self._lss_reset_connection_nodes(target_node)
-            logger.info("Node ID changed to {}".format(new_target_node))
+            logger.info(f"Node ID changed to {new_target_node}")
 
     def _lss_store_configuration(self) -> None:
         """Stores the current configuration of the LSS
@@ -1086,7 +1087,7 @@ class CanopenNetwork(Network):
             (available_device["interface"], available_device["channel"])
             for available_device in (
                 can.detect_available_configs(
-                    [device.value for device in CAN_DEVICE if device not in unavailable_devices]
+                    [device.value for device in CAN_DEVICE if device not in unavailable_devices],
                 )
                 + self._get_available_kvaser_devices()
             )
