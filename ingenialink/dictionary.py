@@ -18,11 +18,6 @@ from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, RegCyc
 
 logger = ingenialogger.get_logger(__name__)
 
-# Dictionary constants guide:
-# Each constant has this structure: DICT_ORIGIN_END
-# ORIGIN: The start point of the path
-# END: The end point of the path
-# ORIGIN: LABELS
 DICT_LABELS = "./Labels"
 DICT_LABELS_LABEL = f"{DICT_LABELS}/Label"
 
@@ -1101,11 +1096,6 @@ class DictionaryV3(Dictionary):
 class DictionaryV2(Dictionary):
     """Class to represent a Dictionary V2."""
 
-    # Dictionary constants guide:
-    # Each constant has this structure: DICT_ORIGIN_END
-    # ORIGIN: The start point of the path
-    # END: The end point of the path
-    # ORIGIN: ROOT
     __DICT_ROOT = "."
     __DICT_ROOT_HEADER = f"{__DICT_ROOT}/Header"
     __DICT_ROOT_VERSION = f"{__DICT_ROOT_HEADER}/Version"
@@ -1119,12 +1109,9 @@ class DictionaryV2(Dictionary):
     __DICT_ROOT_AXIS = f"{__DICT_ROOT_AXES}/Axis"
     __DICT_ROOT_REGISTERS = f"{__DICT_ROOT_DEVICE}/Registers"
     __DICT_ROOT_REGISTER = f"{__DICT_ROOT_REGISTERS}/Register"
-    # ORIGIN: REGISTERS
     __DICT_REGISTERS = "./Registers"
     __DICT_REGISTERS_REGISTER = f"{__DICT_REGISTERS}/Register"
-    # ORIGIN: RANGE
     __DICT_RANGE = "./Range"
-    # ORIGIN: ENUMERATIONS
     __DICT_ENUMERATIONS = "./Enumerations"
     __DICT_ENUMERATIONS_ENUMERATION = f"{__DICT_ENUMERATIONS}/Enum"
     __DICT_IMAGE = "DriveImage"
