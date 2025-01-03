@@ -11,6 +11,7 @@ ignore = [
     "C90", # mccabe complexity
     "D100", # Missing docstring in public module
     "D104", # Missing docstring in public package
+    "D107", # Missing docstring in __init__
     "FA100", # Missing `from __future__ import annotations`
     "FIX002", # TODO comment
     "G004", # Logging statement uses f-string

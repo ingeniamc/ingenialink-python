@@ -119,6 +119,8 @@ class DictionaryCategories:
 
 @dataclass
 class DictionaryError:
+    """Class to store a dictionary error."""
+
     id: int
     """The error ID."""
 
@@ -132,12 +134,15 @@ class DictionaryError:
     """The error description."""
 
     def __iter__(self) -> Iterator[Union[str, None]]:
+        """Iterator method."""
         id_hex_string = f"0x{self.id:08X}"
         return iter((id_hex_string, self.affected_module, self.error_type, self.description))
 
 
 @dataclass
 class DictionaryDescriptor:
+    """Class to store a dictionary descriptor."""
+
     firmware_version: Optional[str] = None
     """Firmware version declared in the dictionary."""
     product_code: Optional[int] = None
@@ -469,6 +474,8 @@ class Dictionary(ABC):
 
 
 class DictionaryV3(Dictionary):
+    """Class to represent a Dictionary V3."""
+
     __DRIVE_IMAGE_ELEMENT = "DriveImage"
 
     __HEADER_ELEMENT = "Header"
@@ -1090,6 +1097,8 @@ class DictionaryV3(Dictionary):
 
 
 class DictionaryV2(Dictionary):
+    """Class to represent a Dictionary V2."""
+
     # Dictionary constants guide:
     # Each constant has this structure: DICT_ORIGIN_END
     # ORIGIN: The start point of the path

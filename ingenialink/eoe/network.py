@@ -19,6 +19,8 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class EoECommand(Enum):
+    """EoE command enum."""
+
     INIT = 0
     DEINIT = 1
     SCAN = 2
@@ -165,6 +167,7 @@ class EoENetwork(EthernetNetwork):
                 logger.exception(e)
 
     def __del__(self) -> None:
+        """Delete method."""
         self._eoe_socket.shutdown(socket.SHUT_RDWR)
         self._eoe_socket.close()
 

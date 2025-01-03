@@ -52,6 +52,8 @@ class NET_TRANS_PROT(Enum):
 
 @dataclass
 class SlaveInfo:
+    """Class to store slave information."""
+
     product_code: Optional[int] = None
     revision_number: Optional[int] = None
 
