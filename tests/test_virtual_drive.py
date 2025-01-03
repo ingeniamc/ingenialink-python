@@ -45,7 +45,7 @@ def test_connect_to_virtual(virtual_drive):
 
 
 @pytest.mark.parametrize(
-    "reg, value, subnode", [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)],
+    ("reg", "value", "subnode"), [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)],
 )
 @pytest.mark.no_connection()
 def test_virtual_drive_write_read(virtual_drive, reg, value, subnode):
@@ -73,7 +73,7 @@ def test_virtual_drive_write_wrong_enum(virtual_drive):
 
 @pytest.mark.ethernet()
 @pytest.mark.parametrize(
-    "reg, value, subnode", [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)],
+    ("reg", "value", "subnode"), [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)],
 )
 def test_virtual_drive_write_read_compare_responses(
     connect_to_slave, virtual_drive, reg, value, subnode,
@@ -169,7 +169,7 @@ def test_virtual_motor_enable_disable(virtual_drive):
 
 @pytest.mark.no_connection()
 @pytest.mark.parametrize(
-    "plant_name,dist_reg,monit_regs,op_mode",
+    ("plant_name", "dist_reg", "monit_regs", "op_mode"),
     [
         (
             "_plant_open_loop_rl_d",

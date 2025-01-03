@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import bitarray
 
@@ -43,7 +43,8 @@ class PDOMapItem:
     ) -> None:
         if register is None:
             if size_bits is None:
-                raise ValueError("The size bits must be set when creating padding items.")
+                msg = "The size bits must be set when creating padding items."
+                raise ValueError(msg)
             register = EthercatRegister(
                 identifier=PADDING_REGISTER_IDENTIFIER,
                 units="",
@@ -66,9 +67,12 @@ class PDOMapItem:
             ILError: Tf the register is not mappable.
         """
         if self.register.cyclic not in [self.ACCEPTED_CYCLIC, RegCyclicType.TXRX]:
-            raise ILError(
+            msg = (
                 f"Incorrect cyclic. It should be {self.ACCEPTED_CYCLIC} or {RegCyclicType.TXRX},"
-                f" obtained: {self.register.cyclic}",
+                f" obtained: {self.register.cyclic}"
+            )
+            raise ILError(
+                msg,
             )
 
     @property
@@ -83,15 +87,18 @@ class PDOMapItem:
 
         """
         if self._raw_data_bits is None:
-            raise ILError("Raw data is empty.")
+            msg = "Raw data is empty."
+            raise ILError(msg)
         return self._raw_data_bits
 
     @raw_data_bits.setter
     def raw_data_bits(self, data: bitarray.bitarray) -> None:
         if len(data) != self.size_bits:
-            raise ILError(f"Wrong size. Expected {self.size_bits}, obtained {len(data)}")
+            msg = f"Wrong size. Expected {self.size_bits}, obtained {len(data)}"
+            raise ILError(msg)
         if data.endian() != BIT_ENDIAN:
-            raise ILError("Bitarray should be little endian.")
+            msg = "Bitarray should be little endian."
+            raise ILError(msg)
         self._raw_data_bits = data
 
     @property
@@ -106,7 +113,8 @@ class PDOMapItem:
 
         """
         if self._raw_data_bits is None:
-            raise ILError("Raw data is empty.")
+            msg = "Raw data is empty."
+            raise ILError(msg)
         return self._raw_data_bits.tobytes()
 
     @raw_data_bytes.setter
@@ -130,15 +138,17 @@ class PDOMapItem:
         """
         value: Union[bool, int, float, str, bytes]
         if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
+            msg = "The register value must be read by the raw_data_bytes attribute."
             raise NotImplementedError(
-                "The register value must be read by the raw_data_bytes attribute.",
+                msg,
             )
         if self.register.dtype == REG_DTYPE.BOOL:
             value = self.raw_data_bits.any()
         else:
             value = convert_bytes_to_dtype(self.raw_data_bytes, self.register.dtype)
         if not isinstance(value, (int, float, bool)):
-            raise ILError("Wrong register value type")
+            msg = "Wrong register value type"
+            raise ILError(msg)
         return value
 
     @property
@@ -174,8 +184,9 @@ class RPDOMapItem(PDOMapItem):
     @value.setter
     def value(self, value: Union[int, float, bool]) -> None:
         if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
+            msg = "The register value must be set by the raw_data_bytes attribute."
             raise NotImplementedError(
-                "The register value must be set by the raw_data_bytes attribute.",
+                msg,
             )
         if isinstance(value, bool):
             raw_data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
@@ -198,7 +209,7 @@ class PDOMap:
     _PDO_MAP_ITEM_CLASS = PDOMapItem
 
     def __init__(self) -> None:
-        self.__items: List[PDOMapItem] = []
+        self.__items: list[PDOMapItem] = []
         self.__map_register_address: Optional[int] = None
 
     def create_item(
@@ -213,8 +224,7 @@ class PDOMap:
         Returns:
             PDO Map item.
         """
-        item = self._PDO_MAP_ITEM_CLASS(register, size_bits)
-        return item
+        return self._PDO_MAP_ITEM_CLASS(register, size_bits)
 
     def add_item(self, item: PDOMapItem) -> None:
         """Append a new item.
@@ -227,7 +237,7 @@ class PDOMap:
     def add_registers(
         self,
         registers: Union[
-            Union[EthercatRegister, CanopenRegister], List[Union[EthercatRegister, CanopenRegister]],
+            Union[EthercatRegister, CanopenRegister], list[Union[EthercatRegister, CanopenRegister]],
         ],
     ) -> None:
         """Add a register or a list of registers in bulk.
@@ -244,7 +254,7 @@ class PDOMap:
             self.add_item(item)
 
     @property
-    def items(self) -> List[PDOMapItem]:
+    def items(self) -> list[PDOMapItem]:
         """List of items.
 
         Returns:
@@ -263,7 +273,8 @@ class PDOMap:
             ValueError: If map_register_index is None
         """
         if self.map_register_index is None:
-            raise ValueError("map_register_index is None")
+            msg = "map_register_index is None"
+            raise ValueError(msg)
         else:
             return self.map_register_index.to_bytes(2, "little")
 
@@ -320,9 +331,12 @@ class PDOMap:
             ILError: If the length of the received data does not coincide.
         """
         if len(data_bytes) != self.data_length_bytes:
-            raise ILError(
+            msg = (
                 f"The length of the data array is incorrect. Expected {self.data_length_bytes},"
-                f" obtained {len(data_bytes)}",
+                f" obtained {len(data_bytes)}"
+            )
+            raise ILError(
+                msg,
             )
         data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
         data_bits.frombytes(data_bytes)
@@ -347,12 +361,16 @@ class PDOMap:
             try:
                 data_bits += item.raw_data_bits
             except ILError:
-                raise ILError(f"PDO item {item.register.identifier} does not have data stored.")
+                msg = f"PDO item {item.register.identifier} does not have data stored."
+                raise ILError(msg)
 
         if len(data_bits) != self.data_length_bits:
-            raise ILError(
+            msg = (
                 "The length in bits of the data array is incorrect. Expected"
-                f" {self.data_length_bits}, obtained {len(data_bits)}",
+                f" {self.data_length_bits}, obtained {len(data_bits)}"
+            )
+            raise ILError(
+                msg,
             )
         return data_bits
 
@@ -404,8 +422,8 @@ class PDOServo(Servo):
         servo_status_listener: bool = False,
     ):
         super().__init__(target, dictionary_path, servo_status_listener)
-        self._rpdo_maps: List[RPDOMap] = []
-        self._tpdo_maps: List[TPDOMap] = []
+        self._rpdo_maps: list[RPDOMap] = []
+        self._tpdo_maps: list[TPDOMap] = []
 
     def reset_rpdo_mapping(self) -> None:
         """Delete the RPDO mapping stored in the servo slave."""
@@ -429,9 +447,12 @@ class PDOServo(Servo):
             ILError: If there are no available PDOs.
         """
         if len(self._rpdo_maps) > self.AVAILABLE_PDOS:
-            raise ILError(
+            msg = (
                 f"Could not map the RPDO maps, received {len(self._rpdo_maps)} PDOs and only"
-                f" {self.AVAILABLE_PDOS} are available",
+                f" {self.AVAILABLE_PDOS} are available"
+            )
+            raise ILError(
+                msg,
             )
         self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._rpdo_maps), subnode=0)
         custom_map_index = 0
@@ -446,7 +467,7 @@ class PDOServo(Servo):
         )
 
     def _set_rpdo_map_register(self, rpdo_map_register_index: int, rpdo_map: RPDOMap) -> None:
-        """Fill RPDO map register with PRDOMap object data
+        """Fill RPDO map register with PRDOMap object data.
 
         Args:
             rpdo_map_register_index: custom rpdo map register index
@@ -468,9 +489,12 @@ class PDOServo(Servo):
             self.RPDO_MAP_REGISTER_SUB_IDX_0[rpdo_map_register_index]
         ]
         if not isinstance(rpdo_map_register, EthercatRegister):
-            raise ValueError(
+            msg = (
                 "Error retrieving the RPDO Map register. Expected EthercatRegister, got:"
-                f" {type(rpdo_map_register)}",
+                f" {type(rpdo_map_register)}"
+            )
+            raise ValueError(
+                msg,
             )
         rpdo_map.map_register_index = rpdo_map_register.idx
 
@@ -482,9 +506,12 @@ class PDOServo(Servo):
             ILError: If there are no available PDOs.
         """
         if len(self._tpdo_maps) > self.AVAILABLE_PDOS:
-            raise ILError(
+            msg = (
                 f"Could not map the TPDO maps, received {len(self._tpdo_maps)} PDOs and only"
-                f" {self.AVAILABLE_PDOS} are available",
+                f" {self.AVAILABLE_PDOS} are available"
+            )
+            raise ILError(
+                msg,
             )
         self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, len(self._tpdo_maps), subnode=0)
         custom_map_index = 0
@@ -499,7 +526,7 @@ class PDOServo(Servo):
         )
 
     def _set_tpdo_map_register(self, tpdo_map_register_index: int, tpdo_map: TPDOMap) -> None:
-        """Fill TPDO map register with TRDOMap object data
+        """Fill TPDO map register with TRDOMap object data.
 
         Args:
             tpdo_map_register_index: custom tpdo map register index
@@ -521,9 +548,12 @@ class PDOServo(Servo):
             self.TPDO_MAP_REGISTER_SUB_IDX_0[tpdo_map_register_index]
         ]
         if not isinstance(tpdo_map_register, EthercatRegister):
-            raise ValueError(
+            msg = (
                 "Error retrieving the TPDO Map register. Expected EthercatRegister, got:"
-                f" {type(tpdo_map_register)}",
+                f" {type(tpdo_map_register)}"
+            )
+            raise ValueError(
+                msg,
             )
         tpdo_map.map_register_index = tpdo_map_register.idx
 
@@ -556,7 +586,8 @@ class PDOServo(Servo):
 
         """
         if rpdo_map_index is None and rpdo_map is None:
-            raise ValueError("The RPDOMap instance or the index should be provided.")
+            msg = "The RPDOMap instance or the index should be provided."
+            raise ValueError(msg)
         if rpdo_map is not None:
             self._rpdo_maps.remove(rpdo_map)
             return
@@ -578,14 +609,15 @@ class PDOServo(Servo):
 
         """
         if tpdo_map_index is None and tpdo_map is None:
-            raise ValueError("The TPDOMap instance or the index should be provided.")
+            msg = "The TPDOMap instance or the index should be provided."
+            raise ValueError(msg)
         if tpdo_map is not None:
             self._tpdo_maps.remove(tpdo_map)
             return
         if tpdo_map_index is not None:
             self._tpdo_maps.pop(tpdo_map_index)
 
-    def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
+    def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         """Callback called by the slave to configure the map.
 
         Args:

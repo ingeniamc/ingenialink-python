@@ -9,7 +9,7 @@ from ingenialink.utils.mcb import MCB
 
 @pytest.mark.no_connection()
 @pytest.mark.parametrize(
-    "cmd, subnode, address, data, reg_dtype, extended, result",
+    ("cmd", "subnode", "address", "data", "reg_dtype", "extended", "result"),
     [
         (MCB_CMD_READ, 1, 0x630, None, REG_DTYPE.FLOAT, False, "a100026300000000000000009fcc"),
         (MCB_CMD_WRITE, 1, 0x630, 25.5, REG_DTYPE.FLOAT, False, "a10004630000cc4100000000cab1"),
@@ -38,7 +38,7 @@ def test_build_mcb_frame(cmd, subnode, address, data, reg_dtype, extended, resul
 
 @pytest.mark.no_connection()
 @pytest.mark.parametrize(
-    "expected_address, data, reg_dtype, frame",
+    ("expected_address", "data", "reg_dtype", "frame"),
     [
         (
             0x6E5,
@@ -55,7 +55,7 @@ def test_read_mcb_frame(expected_address, data, reg_dtype, frame):
 
 
 @pytest.mark.no_connection()
-@pytest.mark.parametrize("expected_address, frame", [(0x630, "a10006630000704200000000dd71")])
+@pytest.mark.parametrize(("expected_address", "frame"), [(0x630, "a10006630000704200000000dd71")])
 def test_read_mcb_frame_wrong_crc(expected_address, frame):
     # replace CRC code with zeros
     frame = f"{frame[-4:]}0000"
@@ -66,7 +66,7 @@ def test_read_mcb_frame_wrong_crc(expected_address, frame):
 
 @pytest.mark.no_connection()
 @pytest.mark.parametrize(
-    "expected_address, frame, nack_error_code",
+    ("expected_address", "frame", "nack_error_code"),
     [
         (0x11, "a1001c0100000106000000009ad7", 0x06010000),
         (0x11, "a1001c01772f2f3a00004650608b", 0x3A2F2F77),
@@ -82,7 +82,7 @@ def test_read_mcb_frame_nack(expected_address, frame, nack_error_code):
 
 
 @pytest.mark.no_connection()
-@pytest.mark.parametrize("expected_address, frame", [(0x630, "a10006630000704200000000dd71")])
+@pytest.mark.parametrize(("expected_address", "frame"), [(0x630, "a10006630000704200000000dd71")])
 def test_read_mcb_frame_wrong_address(expected_address, frame):
     # Change expected address
     expected_address += 1

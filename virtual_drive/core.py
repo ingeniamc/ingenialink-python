@@ -5,7 +5,7 @@ import socket
 import time
 from enum import Enum, IntEnum
 from threading import Thread, Timer
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -24,7 +24,9 @@ from virtual_drive import constants
 
 from .environment import Environment
 from .gpios import Gpios
-from .signals import Signal
+
+if TYPE_CHECKING:
+    from .signals import Signal
 
 R_VALUE = 1.1
 L_VALUE = 3.9e-4
@@ -244,7 +246,7 @@ class BaseOpenLoopPlant(BasePlant):
         plant: Plant's discrete transfer function.
     """
 
-    def __init__(self, drive: "VirtualDrive", num: List[float], den: List[float]) -> None:
+    def __init__(self, drive: "VirtualDrive", num: list[float], den: list[float]) -> None:
         super().__init__(drive)
         self.plant = signal.TransferFunction(num, den).to_discrete(dt=1 / self.monitoring_frequency)
         self.drive.reg_noise_amplitude[self.REGISTER_VALUE] = 0.01
@@ -872,12 +874,12 @@ class VirtualMonDistBase:
         self.enabled = False
         self.disable()
         self.number_mapped_registers = 0
-        self.channels_data: Dict[int, List[Union[int, float]]] = {}
-        self.channels_dtype: Dict[int, REG_DTYPE] = {}
-        self.channels_address: Dict[int, int] = {}
-        self.channels_subnode: Dict[int, int] = {}
-        self.channels_size: Dict[int, int] = {}
-        self.channels_signal: Dict[int, List[Union[int, float]]] = {}
+        self.channels_data: dict[int, list[Union[int, float]]] = {}
+        self.channels_dtype: dict[int, REG_DTYPE] = {}
+        self.channels_address: dict[int, int] = {}
+        self.channels_subnode: dict[int, int] = {}
+        self.channels_size: dict[int, int] = {}
+        self.channels_signal: dict[int, list[Union[int, float]]] = {}
 
     def enable(self) -> None:
         """Enable Monitoring/Disturbance."""
@@ -957,7 +959,7 @@ class VirtualMonDistBase:
     def available_bytes(self, n_bytes: int) -> None:
         self.drive.set_value_by_id(0, self.AVAILABLE_BYTES_REG, n_bytes)
 
-    def get_mapped_register(self, channel: int) -> Tuple[int, int, int, int]:
+    def get_mapped_register(self, channel: int) -> tuple[int, int, int, int]:
         """Decodes the register with the information of a mapped register.
 
         Args:
@@ -973,7 +975,8 @@ class VirtualMonDistBase:
         register_id = self.MAP_REG_CFG.format(channel)
         data = self.drive.get_value_by_id(0, register_id)
         if not isinstance(data, int):
-            raise ValueError("Wrong register type")
+            msg = "Wrong register type"
+            raise ValueError(msg)
         data_h = data >> 16
         data_l = data & 0x0000FFFF
         subnode = data_h >> 12
@@ -985,7 +988,7 @@ class VirtualMonDistBase:
     def map_registers(self) -> None:
         """Creates the channels attribute based on mapped registers."""
         self.bytes_per_block = 0
-        empty_list: List[float] = []
+        empty_list: list[float] = []
         for channel in range(self.number_mapped_registers):
             subnode, address, dtype, size = self.get_mapped_register(channel)
             self.channels_data[channel] = empty_list.copy()
@@ -1239,14 +1242,14 @@ class VirtualDrive(Thread):
     PATH_DICTIONARY_RELATIVE = "./resources/virtual_drive.xdf"
 
     def __init__(self, port: int, dictionary_path: Optional[str] = None) -> None:
-        super(VirtualDrive, self).__init__()
+        super().__init__()
         self.ip = self.IP_ADDRESS
         self.port = port
 
         self.environment = Environment()
         self.__gpios = Gpios(self.environment)
 
-        self.__register_signals: Dict[str, Signal[Any]] = {
+        self.__register_signals: dict[str, Signal[Any]] = {
             "IO_IN_VALUE": self.__gpios.value,
             "IO_IN_POLARITY": self.__gpios.polarity,
         }
@@ -1257,14 +1260,14 @@ class VirtualDrive(Thread):
         self.dictionary_path = dictionary_path or default_dictionary
         self.__stop = False
         self.device_info = None
-        self.__logger: List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]] = []
-        self.__reg_address_to_id: Dict[int, Dict[int, str]] = {}
+        self.__logger: list[dict[str, Union[float, bytes, str, tuple[str, int]]]] = []
+        self.__reg_address_to_id: dict[int, dict[int, str]] = {}
         self.__dictionary = DictionaryFactory.create_dictionary(
             self.dictionary_path, Interface.VIRTUAL,
         )
-        self.reg_signals: Dict[str, NDArray[np.float64]] = {}
-        self.reg_time: Dict[str, NDArray[np.float64]] = {}
-        self.reg_noise_amplitude: Dict[str, float] = {}
+        self.reg_signals: dict[str, NDArray[np.float64]] = {}
+        self.reg_time: dict[str, NDArray[np.float64]] = {}
+        self.reg_noise_amplitude: dict[str, float] = {}
         self.is_monitoring_available = EthernetServo.MONITORING_DATA in self.__dictionary.registers(
             0,
         )
@@ -1420,7 +1423,8 @@ class VirtualDrive(Thread):
             self.__reg_address_to_id[subnode] = {}
             for reg_id, reg in self.__dictionary.registers(subnode).items():
                 if not isinstance(reg, EthernetRegister):
-                    raise ValueError(f"Register {reg_id} is not an EthernetRegister")
+                    msg = f"Register {reg_id} is not an EthernetRegister"
+                    raise ValueError(msg)
                 self.__reg_address_to_id[subnode][reg.address] = reg_id
                 self.__dictionary.registers(subnode)[reg_id].storage_valid = True
 
@@ -1455,12 +1459,12 @@ class VirtualDrive(Thread):
     def _init_register_signals(self) -> None:
         """Init signals, vector time and noise amplitude for each register."""
         for subnode in self.__dictionary.subnodes:
-            for reg_id in self.__dictionary.registers(subnode).keys():
+            for reg_id in self.__dictionary.registers(subnode):
                 self.reg_signals[reg_id] = np.array([])
                 self.reg_time[reg_id] = np.array([])
                 self.reg_noise_amplitude[reg_id] = 0.0
 
-    def __send(self, response: bytes, address: Tuple[str, int]) -> None:
+    def __send(self, response: bytes, address: tuple[str, int]) -> None:
         """Send a message and update log.
 
         Args:
@@ -1490,7 +1494,7 @@ class VirtualDrive(Thread):
         self._monitoring.available_bytes = len(data_left)
         return response
 
-    def __log(self, ip_port: Tuple[str, int], message: bytes, msg_type: MSG_TYPE) -> None:
+    def __log(self, ip_port: tuple[str, int], message: bytes, msg_type: MSG_TYPE) -> None:
         """Updates log.
 
         Args:
@@ -1508,7 +1512,7 @@ class VirtualDrive(Thread):
         )
 
     @property
-    def log(self) -> List[Dict[str, Union[float, bytes, str, Tuple[str, int]]]]:
+    def log(self) -> list[dict[str, Union[float, bytes, str, tuple[str, int]]]]:
         """Dictionary containing log information."""
         return self.__logger
 
@@ -1636,7 +1640,8 @@ class VirtualDrive(Thread):
         """
         register = self.__dictionary.registers(subnode)[uid]
         if not isinstance(register, EthernetRegister):
-            raise ValueError(f"Register {uid} is not an EthernetRegister")
+            msg = f"Register {uid} is not an EthernetRegister"
+            raise ValueError(msg)
         return register.address
 
     def get_value_by_id(self, subnode: int, id: str) -> Union[int, float, str, bytes]:
@@ -1719,10 +1724,12 @@ class VirtualDrive(Thread):
         if address is not None:
             id = self.address_to_id(subnode, address)
         elif id is None:
-            raise ValueError("Register address or id should be passed")
+            msg = "Register address or id should be passed"
+            raise ValueError(msg)
         register = self.__dictionary.registers(subnode)[id]
         if not isinstance(register, EthernetRegister):
-            raise ValueError(f"Register {id} is not an EthernetRegister")
+            msg = f"Register {id} is not an EthernetRegister"
+            raise ValueError(msg)
         return register
 
     def __set_motor_enable(self) -> None:

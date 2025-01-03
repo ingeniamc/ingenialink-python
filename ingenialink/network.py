@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import ingenialogger
 
@@ -37,7 +37,7 @@ class NET_DEV_EVT(Enum):
 
 
 class EEPROM_FILE_FORMAT(Enum):
-    """EEPROM file format"""
+    """EEPROM file format."""
 
     BINARY = 0
     INTEL = 1
@@ -60,14 +60,14 @@ class Network(ABC):
     """Declaration of a general Network object."""
 
     def __init__(self) -> None:
-        self.servos: List[Any] = []
+        self.servos: list[Any] = []
         """List of the connected servos in the network."""
 
-        self._servos_state: Dict[Union[int, str], NET_STATE] = {}
+        self._servos_state: dict[Union[int, str], NET_STATE] = {}
         """Dictionary containing the state of the servos that are a part of the network."""
 
     @abstractmethod
-    def scan_slaves(self) -> List[int]:
+    def scan_slaves(self) -> list[int]:
         raise NotImplementedError
 
     @abstractmethod

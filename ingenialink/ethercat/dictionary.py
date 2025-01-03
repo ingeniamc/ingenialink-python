@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from typing import List, Optional
+from typing import Optional
 
 import ingenialogger
 
@@ -23,7 +23,7 @@ class EthercatDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: List[EthercatRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: list[EthercatRegister] = [
         EthercatRegister(
             identifier="MON_DATA_VALUE",
             units="",
@@ -46,7 +46,7 @@ class EthercatDictionaryV2(DictionaryV2):
         ),
     ]
 
-    __PDO_REGISTERS: List[EthercatRegister] = [
+    __PDO_REGISTERS: list[EthercatRegister] = [
         EthercatRegister(
             identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_0",
             units="",
@@ -158,7 +158,7 @@ class EthercatDictionaryV2(DictionaryV2):
             )
             subidx = 0x00
 
-            ethercat_register = EthercatRegister(
+            return EthercatRegister(
                 idx,
                 subidx,
                 current_read_register.dtype,
@@ -179,10 +179,9 @@ class EthercatDictionaryV2(DictionaryV2):
                 bitfields=current_read_register.bitfields,
             )
 
-            return ethercat_register
 
         except KeyError as ke:
-            logger.error(
+            logger.exception(
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}",
             )
             return None

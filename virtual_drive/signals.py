@@ -1,4 +1,4 @@
-from typing import Callable, Generic, List, TypeVar
+from typing import Callable, Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -14,7 +14,7 @@ class Signal(Generic[T]):
 
     def __init__(self, initial_value: T):
         self.__value = initial_value
-        self.__watchers: List[Callable[[], None]] = []
+        self.__watchers: list[Callable[[], None]] = []
 
     def get(self) -> T:
         """Get current value of the signal"""

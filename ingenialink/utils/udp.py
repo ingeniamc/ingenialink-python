@@ -26,7 +26,7 @@ class UDP:
         try:
             self.socket.close()
         except Exception as e:
-            logger.error("Socket already closed. Exception: %s", e)
+            logger.exception("Socket already closed. Exception: %s", e)
 
     def close(self) -> None:
         """Closes the socket."""
@@ -86,7 +86,8 @@ class UDP:
         crc = binascii.crc_hqx(in_frame[0:12], 0)
         crcread = struct.unpack("<H", in_frame[12:14])[0]
         if crcread != crc:
-            raise ILUDPException("CRC error")
+            msg = "CRC error"
+            raise ILUDPException(msg)
 
         return int(cmd)
 

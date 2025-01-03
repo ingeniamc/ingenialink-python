@@ -53,18 +53,18 @@ class EthernetServo(Servo):
             self.interface = Interface.EoE
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
-        super(EthernetServo, self).__init__(self.ip_address, dictionary_path, servo_status_listener)
+        super().__init__(self.ip_address, dictionary_path, servo_status_listener)
 
     def store_tcp_ip_parameters(self) -> None:
         """Stores the TCP/IP values. Affects IP address,
-        subnet mask and gateway
+        subnet mask and gateway.
         """
         self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Store TCP/IP successfully done.")
 
     def restore_tcp_ip_parameters(self) -> None:
         """Restores the TCP/IP values back to default. Affects
-        IP address, subnet mask and gateway
+        IP address, subnet mask and gateway.
         """
         self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Restore TCP/IP successfully done.")
@@ -73,7 +73,7 @@ class EthernetServo(Servo):
         self, ip_address: str, subnet_mask: str, gateway: str, mac_address: Optional[int] = None,
     ) -> None:
         """Stores the TCP/IP values. Affects IP address,
-        network mask and gateway
+        network mask and gateway.
 
         .. note::
             The drive needs a power cycle after this
@@ -99,8 +99,9 @@ class EthernetServo(Servo):
         net = ipaddress.IPv4Network(f"{drive_ip}/{subnet_mask}", strict=False)
 
         if gateway_ip not in net:
+            msg = f"Drive IP {ip_address} and Gateway IP {gateway} are not on the same network."
             raise ValueError(
-                f"Drive IP {ip_address} and Gateway IP {gateway} are not on the same network.",
+                msg,
             )
 
         int_ip_address = convert_ip_to_int(ip_address)
@@ -128,8 +129,9 @@ class EthernetServo(Servo):
         """
         mac_address = self.read(self.COMMS_ETH_MAC, subnode=0)
         if not isinstance(mac_address, int):
+            msg = f"Error retrieving the MAC address. Expected an int, got: {type(mac_address)}"
             raise ValueError(
-                f"Error retrieving the MAC address. Expected an int, got: {type(mac_address)}",
+                msg,
             )
         return mac_address
 
@@ -168,21 +170,22 @@ class EthernetServo(Servo):
             try:
                 self.socket.sendall(frame)
             except OSError as e:
-                raise ILIOError("Error sending data.") from e
+                msg = "Error sending data."
+                raise ILIOError(msg) from e
             try:
                 return self.__receive_mcb_frame(reg)
             except ILWrongRegisterError as e:
-                logger.error(e)
+                logger.exception(e)
                 return self.__receive_mcb_frame(reg)
             except ILTimeoutError as e:
-                logger.error(f"{e}. Retrying..")
+                logger.exception(f"{e}. Retrying..")
                 self.socket.sendall(frame)
                 return self.__receive_mcb_frame(reg)
         finally:
             self._lock.release()
 
     def __receive_mcb_frame(self, reg: int) -> bytes:
-        """Receive frame from socket and return MCB data
+        """Receive frame from socket and return MCB data.
 
         Args:
             reg: expected address
@@ -198,7 +201,9 @@ class EthernetServo(Servo):
         try:
             response = self.socket.recv(ETH_BUF_SIZE)
         except socket.timeout as e:
-            raise ILTimeoutError("Timeout while receiving data.") from e
+            msg = "Timeout while receiving data."
+            raise ILTimeoutError(msg) from e
         except OSError as e:
-            raise ILIOError("Error receiving data.") from e
+            msg = "Error receiving data."
+            raise ILIOError(msg) from e
         return MCB.read_mcb_data(reg, response)

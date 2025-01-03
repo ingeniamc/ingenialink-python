@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import canopen
 import ingenialogger
@@ -45,9 +45,9 @@ class CanopenServo(Servo):
         servo_status_listener: bool = False,
     ) -> None:
         self.__node = node
-        self.__emcy_observers: List[Callable[[EmergencyMessage], None]] = []
+        self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__node.emcy.add_callback(self._on_emcy)
-        super(CanopenServo, self).__init__(target, dictionary_path, servo_status_listener)
+        super().__init__(target, dictionary_path, servo_status_listener)
 
     def read(
         self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any,
@@ -77,7 +77,7 @@ class CanopenServo(Servo):
             self._lock.acquire()
             self.__node.sdo.download(reg.idx, reg.subidx, data)
         except Exception as e:
-            logger.error("Failed writing %s. Exception: %s", str(reg.identifier), e)
+            logger.exception("Failed writing %s. Exception: %s", str(reg.identifier), e)
             error_raised = f"Error writing {reg.identifier}"
             raise ILIOError(error_raised) from e
         finally:
@@ -88,7 +88,7 @@ class CanopenServo(Servo):
             self._lock.acquire()
             value = self.__node.sdo.upload(reg.idx, reg.subidx)
         except Exception as e:
-            logger.error("Failed reading %s. Exception: %s", str(reg.identifier), e)
+            logger.exception("Failed reading %s. Exception: %s", str(reg.identifier), e)
             error_raised = f"Error reading {reg.identifier}"
             raise ILIOError(error_raised)
         finally:

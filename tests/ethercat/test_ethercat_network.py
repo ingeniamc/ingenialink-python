@@ -1,7 +1,7 @@
-try:
+import contextlib
+
+with contextlib.suppress(ImportError):
     import pysoem
-except ImportError:
-    pass
 import pytest
 
 from ingenialink.ethercat.network import EthercatNetwork

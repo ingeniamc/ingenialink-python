@@ -12,10 +12,9 @@ test_channel = 0
 
 @pytest.fixture()
 def virtual_network():
-    net = CanopenNetwork(
+    return CanopenNetwork(
         device=CAN_DEVICE(test_bus), channel=test_channel, baudrate=CAN_BAUDRATE(test_baudrate),
     )
-    return net
 
 
 @pytest.mark.no_connection()
@@ -29,10 +28,12 @@ def test_getters_canopen(virtual_network):
 @pytest.mark.canopen()
 def test_connect_to_slave(connect_to_slave):
     servo, net = connect_to_slave
-    assert servo is not None and net is not None
+    assert servo is not None
+    assert net is not None
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
-    assert fw_version is not None and fw_version != ""
+    assert fw_version is not None
+    assert fw_version != ""
 
 
 @pytest.mark.canopen()
@@ -137,7 +138,8 @@ def test_setup_and_teardown_connection(virtual_network):
 def test_load_firmware(connect_to_slave, read_config):
     # TODO: Fix load_firmware method to work independently of status listeners
     servo, net = connect_to_slave
-    assert servo is not None and net is not None
+    assert servo is not None
+    assert net is not None
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
     protocol_contents = read_config["canopen"]

@@ -62,7 +62,7 @@ class VirtualDictionary(EthernetDictionaryV2):
             else:
                 reg_address = int(register.attrib["address"], 16)
 
-            ethernet_register = EthernetRegister(
+            return EthernetRegister(
                 reg_address,
                 current_read_register.dtype,
                 current_read_register.access,
@@ -82,10 +82,9 @@ class VirtualDictionary(EthernetDictionaryV2):
                 bitfields=current_read_register.bitfields,
             )
 
-            return ethernet_register
 
         except KeyError as ke:
-            logger.error(
+            logger.exception(
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}",
             )
             return None

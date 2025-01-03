@@ -1,5 +1,4 @@
 from collections.abc import Iterable
-from typing import Dict
 
 
 def _bit_mask(selected_bits: Iterable[int]) -> int:
@@ -42,7 +41,7 @@ class BitField:
         return cls(start=bit, end=bit)
 
     @staticmethod
-    def parse_bitfields(bitfields: Dict[str, "BitField"], value: int) -> Dict[str, int]:
+    def parse_bitfields(bitfields: dict[str, "BitField"], value: int) -> dict[str, int]:
         """Parse value into bitfields.
 
         Separates a integer value into a dictionary of values, where the key is the bitfield name
@@ -64,7 +63,7 @@ class BitField:
         }
 
     @staticmethod
-    def set_bitfields(bitfields: Dict[str, "BitField"], values: Dict[str, int], value: int) -> int:
+    def set_bitfields(bitfields: dict[str, "BitField"], values: dict[str, int], value: int) -> int:
         """Set bitfields to a value.
 
         Args:
@@ -84,13 +83,17 @@ class BitField:
         """
         for name, new_bitfields_value in values.items():
             if name not in bitfields:
-                raise KeyError(f"Bitfield {name} does not exist")
+                msg = f"Bitfield {name} does not exist"
+                raise KeyError(msg)
             bitfield = bitfields[name]
 
             if new_bitfields_value > bitfield._max_value:
-                raise ValueError(
+                msg = (
                     f"value {new_bitfields_value} cannot be set to bitfield {name}. "
-                    f"Max: {bitfield._max_value}",
+                    f"Max: {bitfield._max_value}"
+                )
+                raise ValueError(
+                    msg,
                 )
 
             # Clear bits

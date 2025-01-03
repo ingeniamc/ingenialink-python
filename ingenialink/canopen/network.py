@@ -8,7 +8,7 @@ from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import can
 import canopen
@@ -96,7 +96,7 @@ PROG_CTRL_STATE_FLASH = 0x80
 
 APPLICATION_LOADED_STATE = 402
 
-CAN_CHANNELS: Dict[str, Union[Tuple[int, int], Tuple[str, str]]] = {
+CAN_CHANNELS: dict[str, Union[tuple[int, int], tuple[str, str]]] = {
     "kvaser": (0, 1),
     "pcan": ("PCAN_USBBUS1", "PCAN_USBBUS2"),
     "ixxat": (0, 1),
@@ -167,7 +167,7 @@ class NetStatusListener(Thread):
     """
 
     def __init__(self, network: "CanopenNetwork"):
-        super(NetStatusListener, self).__init__()
+        super().__init__()
         self.__network = network
         self.__stop = False
 
@@ -220,14 +220,14 @@ class CanopenNetwork(Network):
         channel: int = 0,
         baudrate: CAN_BAUDRATE = CAN_BAUDRATE.Baudrate_1M,
     ):
-        super(CanopenNetwork, self).__init__()
-        self.servos: List[CanopenServo] = []
+        super().__init__()
+        self.servos: list[CanopenServo] = []
         self.__device = device.value
         self.__channel: Union[int, str] = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
         self._connection: Optional[NetworkLib] = None
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: Dict[int, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
+        self.__observers_net_state: dict[int, list[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
             list,
         )
 
@@ -239,7 +239,7 @@ class CanopenNetwork(Network):
         if self.__device == CAN_DEVICE.PCAN.value:
             self.__connection_args["auto_reset"] = True
 
-    def scan_slaves(self) -> List[int]:
+    def scan_slaves(self) -> list[int]:
         """Scans for nodes in the network.
 
         Returns:
@@ -247,9 +247,12 @@ class CanopenNetwork(Network):
 
         """
         if (self.__device, self.__channel) not in self.get_available_devices():
-            raise ILError(
+            msg = (
                 f"The {self.__device.upper()} transceiver is not detected. "
-                "Make sure that it's connected and its drivers are installed.",
+                "Make sure that it's connected and its drivers are installed."
+            )
+            raise ILError(
+                msg,
             )
         is_connection_created = False
         if self._connection is None:
@@ -267,7 +270,7 @@ class CanopenNetwork(Network):
         try:
             self._connection.scanner.search()
         except Exception as e:
-            logger.error(f"Error searching for nodes. Exception: {e}")
+            logger.exception(f"Error searching for nodes. Exception: {e}")
             logger.info("Resetting bus")
             if (
                 self._connection is not None
@@ -356,11 +359,13 @@ class CanopenNetwork(Network):
         """
         nodes = self.scan_slaves()
         if len(nodes) < 1:
-            raise ILError("Could not find any nodes in the network")
+            msg = "Could not find any nodes in the network"
+            raise ILError(msg)
 
         self._setup_connection()
         if self._connection is None:
-            raise ILError("Connection has not been established")
+            msg = "Connection has not been established"
+            raise ILError(msg)
         if target in nodes:
             try:
                 node = self._connection.add_node(target)
@@ -376,15 +381,19 @@ class CanopenNetwork(Network):
                     self.start_status_listener()
                 return servo
             except Exception as e:
-                logger.error("Failed connecting to node %i. Exception: %s", target, e)
-                raise ILError(
+                logger.exception("Failed connecting to node %i. Exception: %s", target, e)
+                msg = (
                     f"Failed connecting to node {target}. "
                     "Please check the connection settings and verify "
-                    "the transceiver is properly connected.",
+                    "the transceiver is properly connected."
+                )
+                raise ILError(
+                    msg,
                 )
         else:
             logger.error("Node id not found")
-            raise ILError(f"Node id {target} not found in the network.")
+            msg = f"Node id {target} not found in the network."
+            raise ILError(msg)
 
     def disconnect_from_slave(self, servo: CanopenServo) -> None:  # type: ignore [override]
         """Disconnects the slave from the network.
@@ -411,27 +420,30 @@ class CanopenNetwork(Network):
             try:
                 self._connection.connect(**self.__connection_args)
             except CanError as e:
-                logger.error(f"Transceiver not found in network. Exception: {e}")
-                raise ILError(
+                logger.exception(f"Transceiver not found in network. Exception: {e}")
+                msg = (
                     "Error connecting to the transceiver. "
                     "Please verify the transceiver "
-                    "is properly connected.",
+                    "is properly connected."
+                )
+                raise ILError(
+                    msg,
                 )
             except OSError as e:
-                logger.error(f"Transceiver drivers not properly installed. Exception: {e}")
+                logger.exception(f"Transceiver drivers not properly installed. Exception: {e}")
                 if hasattr(e, "winerror") and e.winerror == 126:
                     e.strerror = "Driver module not found. Drivers might not be properly installed."
                 raise ILError(e)
             except Exception as e:
                 error_message = f"Failed trying to connect. Exception: {e}"
-                logger.error(error_message)
+                logger.exception(error_message)
                 raise ILError(error_message)
         else:
             logger.info("Connection already established")
 
     def _teardown_connection(self) -> None:
         """Tears down the already established connection
-        and deletes the network interface
+        and deletes the network interface.
         """
         if self._connection is None:
             logger.warning("Can not disconnect. The connection is not established yet.")
@@ -439,7 +451,7 @@ class CanopenNetwork(Network):
         try:
             self._connection.disconnect()
         except (VCIError, CANLIBOperationError, PcanCanOperationError) as e:
-            logger.error(f"An exception occurred during the teardown connection. Exception: {e}")
+            logger.exception(f"An exception occurred during the teardown connection. Exception: {e}")
         self._connection = None
         logger.info("Tear down connection.")
 
@@ -450,11 +462,12 @@ class CanopenNetwork(Network):
             ILError: If the connection was not established yet.
         """
         if self._connection is None:
-            raise ILError("Can not reset connection. The connection is not established yet.")
+            msg = "Can not reset connection. The connection is not established yet."
+            raise ILError(msg)
         try:
             self._connection.disconnect()
         except BaseException as e:
-            logger.error(f"Disconnection failed. Exception: {e}")
+            logger.exception(f"Disconnection failed. Exception: {e}")
 
         try:
             for node in self._connection.scanner.nodes:
@@ -463,7 +476,7 @@ class CanopenNetwork(Network):
                 self._connection.bus.flush_tx_buffer()
                 logger.info("Bus flushed")
         except Exception as e:
-            logger.error(f"Could not stop guarding. Exception: {e}")
+            logger.exception(f"Could not stop guarding. Exception: {e}")
         if self.__device in [CAN_DEVICE.IXXAT.value, CAN_DEVICE.KVASER.value]:
             self._connection.listeners.append(CustomListener())
         try:
@@ -472,7 +485,7 @@ class CanopenNetwork(Network):
                 servo.node = self._connection.add_node(servo.target)
                 servo.node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
         except BaseException as e:
-            logger.error(f"Connection failed. Exception: {e}")
+            logger.exception(f"Connection failed. Exception: {e}")
 
     def load_firmware(
         self,
@@ -519,8 +532,9 @@ class CanopenNetwork(Network):
             self.__send_fw_file(fw_file, servo, callback_status_msg, callback_progress)
         except ILError as e:
             self.__send_fw_file_failure(servo)
+            msg = "An error occurred while downloading. Check firmware file is correct."
             raise ILFirmwareLoadError(
-                "An error occurred while downloading. Check firmware file is correct.",
+                msg,
             ) from e
         else:
             self.__program_control_to_stop(servo, callback_status_msg)
@@ -539,7 +553,7 @@ class CanopenNetwork(Network):
     def __load_fw_checks(
         self, target: int, fw_file: str, callback_status_msg: Optional[Callable[[str], None]] = None,
     ) -> CanopenServo:
-        """Checks prior to firmware upload and return the target CanopenServo instance
+        """Checks prior to firmware upload and return the target CanopenServo instance.
 
         Args:
             target: Targeted node ID to be loaded.
@@ -556,14 +570,16 @@ class CanopenNetwork(Network):
 
         """
         if not os.path.isfile(fw_file):
-            raise FileNotFoundError(f"Could not find {fw_file}.")
+            msg = f"Could not find {fw_file}."
+            raise FileNotFoundError(msg)
 
         servo = None
         for connected_servo in self.servos:
             if connected_servo.target == target:
                 servo = connected_servo
         if not servo:
-            raise ILFirmwareLoadError(f"Node {target} is not connected.")
+            msg = f"Node {target} is not connected."
+            raise ILFirmwareLoadError(msg)
 
         logger.info("Checking compatibility")
         if callback_status_msg:
@@ -571,15 +587,16 @@ class CanopenNetwork(Network):
         try:
             servo.read(PROG_STAT_1, subnode=0)
         except ILError as e:
+            msg = "Firmware and bootloader versions are not compatible. Use FTP Bootloader instead."
             raise ILFirmwareLoadError(
-                "Firmware and bootloader versions are not compatible. Use FTP Bootloader instead.",
+                msg,
             ) from e
         return servo
 
     def __force_boot(
         self, servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]],
     ) -> None:
-        """Force boot, if drive is already in boot, do nothing
+        """Force boot, if drive is already in boot, do nothing.
 
         Args:
             servo: target drive
@@ -590,7 +607,8 @@ class CanopenNetwork(Network):
 
         """
         if self._connection is None:
-            raise ILError("Can not force boot. The connection is not established yet.")
+            msg = "Can not force boot. The connection is not established yet."
+            raise ILError(msg)
         device_type = int(servo.read(CIA301_DRV_ID_DEVICE_TYPE, subnode=0))
         device_type = device_type & 0xFFFF
         if device_type == APPLICATION_LOADED_STATE:
@@ -645,7 +663,8 @@ class CanopenNetwork(Network):
         for target_status in target_status_list[status_index:]:
             servo.write(PROG_STAT_1, target_status, subnode=0)
             if not self.__wait_for_register_value(servo, 0, PROG_STAT_1, target_status):
-                raise ILFirmwareLoadError(f"Error setting program control to 0x{target_status:X}")
+                msg = f"Error setting program control to 0x{target_status:X}"
+                raise ILFirmwareLoadError(msg)
 
     @staticmethod
     def __wait_for_register_value(
@@ -672,9 +691,12 @@ class CanopenNetwork(Network):
             with contextlib.suppress(ILError):
                 value = servo.read(register, subnode=subnode)
             if isinstance(value, bytes):
-                raise ValueError(
+                msg = (
                     f"Error reading register {register.identifier}. Expected data type"
-                    f" {register.dtype}, got bytes.",
+                    f" {register.dtype}, got bytes."
+                )
+                raise ValueError(
+                    msg,
                 )
             if value == expected_value:
                 logger.debug(f"Success. Read value {value}. Num tries {num_tries}")
@@ -707,11 +729,13 @@ class CanopenNetwork(Network):
             servo.node.nmt.start_node_guarding(CANOPEN_BOTT_NODE_GUARDING_PERIOD)
         except VCIError as e:
             # This error is a specific error for ixxat transceivers
-            raise ILFirmwareLoadError("An error occurred when starting the node guarding.") from e
+            msg = "An error occurred when starting the node guarding."
+            raise ILFirmwareLoadError(msg) from e
         try:
             servo.node.nmt.wait_for_heartbeat(timeout=RECONNECTION_TIMEOUT)
         except canopen.nmt.NmtError as e:
-            raise ILFirmwareLoadError("Could not recover drive") from e
+            msg = "Could not recover drive"
+            raise ILFirmwareLoadError(msg) from e
         finally:
             servo.node.nmt.stop_node_guarding()
 
@@ -737,7 +761,8 @@ class CanopenNetwork(Network):
         try:
             servo.node.nmt.wait_for_bootup(timeout=RECONNECTION_TIMEOUT)
         except canopen.nmt.NmtError as e:
-            raise ILFirmwareLoadError("Could not recover drive") from e
+            msg = "Could not recover drive"
+            raise ILFirmwareLoadError(msg) from e
 
     @staticmethod
     def __optimize_firmware_file(
@@ -763,34 +788,33 @@ class CanopenNetwork(Network):
             callback_status_msg("Optimizing file")
         lfu_file_d, lfu_path = tempfile.mkstemp(suffix=".lfu", text=True)
         os.close(lfu_file_d)
-        with open(lfu_path, "wb") as lfu_file:
-            with open(sfu_file) as coco_in:
-                bin_node = ""
-                current_progress = 0
-                node = 10
-                for copy_process, line in enumerate(coco_in):
-                    if re.match(r"74 67 [0-4][0-4] 00 00 00 00 00 00 00", line) is not None:
-                        bin_node = line[6:8]
+        with open(lfu_path, "wb") as lfu_file, open(sfu_file) as coco_in:
+            bin_node = ""
+            current_progress = 0
+            node = 10
+            for copy_process, line in enumerate(coco_in):
+                if re.match(r"74 67 [0-4][0-4] 00 00 00 00 00 00 00", line) is not None:
+                    bin_node = line[6:8]
 
-                    newline = f"{bin_node} {line}"
-                    words = newline.split()
+                newline = f"{bin_node} {line}"
+                words = newline.split()
 
-                    # Get command and address
-                    subnode = int(words[0], 16)
-                    cmd = int(words[2] + words[1], 16)
-                    data = b""
-                    num = 3
-                    while num in range(3, len(words)):
-                        # load data MCB
-                        data += bytes([int(words[num], 16)])
-                        num += 1
+                # Get command and address
+                subnode = int(words[0], 16)
+                cmd = int(words[2] + words[1], 16)
+                data = b""
+                num = 3
+                while num in range(3, len(words)):
+                    # load data MCB
+                    data += bytes([int(words[num], 16)])
+                    num += 1
 
-                    # send message
-                    mcb.add_cmd(node, subnode, cmd, data, lfu_file)
-                    new_progress = int(copy_process * 100 / total_file_lines)
-                    if new_progress != current_progress:
-                        current_progress = new_progress
-                        logger.info(f"Optimizing firmware file in progress: {current_progress}%")
+                # send message
+                mcb.add_cmd(node, subnode, cmd, data, lfu_file)
+                new_progress = int(copy_process * 100 / total_file_lines)
+                if new_progress != current_progress:
+                    current_progress = new_progress
+                    logger.info(f"Optimizing firmware file in progress: {current_progress}%")
         logger.info("Converted to lfu")
         return lfu_path
 
@@ -801,7 +825,7 @@ class CanopenNetwork(Network):
         callback_status_msg: Optional[Callable[[str], None]],
         callback_progress: Optional[Callable[[int], None]],
     ) -> None:
-        """Send firmware file to drive with SDOs
+        """Send firmware file to drive with SDOs.
 
         Args:
             fw_file: target firmware file
@@ -862,7 +886,8 @@ class CanopenNetwork(Network):
 
         """
         if self._connection is None:
-            raise ValueError("The CAN connection has not been established yet.")
+            msg = "The CAN connection has not been established yet."
+            raise ValueError(msg)
 
         try:
             logger.debug("Switching LSS into CONFIGURATION state...")
@@ -878,7 +903,8 @@ class CanopenNetwork(Network):
 
                 self._lss_store_configuration()
             else:
-                raise ILError(f"Error switching lss to selective state. Error code: {r}")
+                msg = f"Error switching lss to selective state. Error code: {r}"
+                raise ILError(msg)
         finally:
             self._lss_reset_connection_nodes(target_node)
             logger.info(f"Baudrate changed to {new_target_baudrate}")
@@ -908,7 +934,8 @@ class CanopenNetwork(Network):
 
         """
         if self._connection is None:
-            raise ValueError("The CAN connection has not been established yet.")
+            msg = "The CAN connection has not been established yet."
+            raise ValueError(msg)
 
         try:
             logger.debug("Switching LSS into CONFIGURATION state...")
@@ -925,19 +952,21 @@ class CanopenNetwork(Network):
                 self._lss_store_configuration()
 
             else:
-                raise ILError(f"Error switching lss to selective state. Error code: {r}")
+                msg = f"Error switching lss to selective state. Error code: {r}"
+                raise ILError(msg)
         finally:
             self._lss_reset_connection_nodes(target_node)
             logger.info(f"Node ID changed to {new_target_node}")
 
     def _lss_store_configuration(self) -> None:
-        """Stores the current configuration of the LSS
+        """Stores the current configuration of the LSS.
 
         Raises:
             ILError: If the connection was not established yet.
         """
         if self._connection is None:
-            raise ILError("Can not store configuration. The connection is not established yet.")
+            msg = "Can not store configuration. The connection is not established yet."
+            raise ILError(msg)
         self._connection.lss.store_configuration()
         sleep(0.1)
         logger.info("Stored new configuration")
@@ -954,7 +983,8 @@ class CanopenNetwork(Network):
 
         """
         if self._connection is None:
-            raise ILError("Can not reset connection. The connection is not established yet.")
+            msg = "Can not reset connection. The connection is not established yet."
+            raise ILError(msg)
         self._connection.nodes[target_node].nmt.send_command(0x82)
 
         logger.debug("Wait until node is reset")
@@ -1015,10 +1045,10 @@ class CanopenNetwork(Network):
         if self._connection is None:
             return
         try:
-            for node_id, node_obj in self._connection.nodes.items():
+            for node_obj in self._connection.nodes.values():
                 node_obj.nmt.stop_node_guarding()
         except Exception as e:
-            logger.error("Could not stop node guarding. Exception: %s", str(e))
+            logger.exception("Could not stop node guarding. Exception: %s", str(e))
         if self.__listener_net_status is not None:
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
@@ -1061,7 +1091,8 @@ class CanopenNetwork(Network):
 
         """
         if not isinstance(servo_id, int):
-            raise ValueError("The servo ID must be an int.")
+            msg = "The servo ID must be an int."
+            raise ValueError(msg)
         return self._servos_state[servo_id]
 
     def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
@@ -1074,8 +1105,8 @@ class CanopenNetwork(Network):
         """
         self._servos_state[servo_id] = state
 
-    def get_available_devices(self) -> List[Tuple[str, Union[str, int]]]:
-        """Get the available CAN devices and their channels
+    def get_available_devices(self) -> list[tuple[str, Union[str, int]]]:
+        """Get the available CAN devices and their channels.
 
         Returns:
             List of tuples with device name and channel
@@ -1093,8 +1124,8 @@ class CanopenNetwork(Network):
             )
         ]
 
-    def _get_available_kvaser_devices(self) -> List[Dict[str, Any]]:
-        """Get the available Kvaser devices and their channels
+    def _get_available_kvaser_devices(self) -> list[dict[str, Any]]:
+        """Get the available Kvaser devices and their channels.
 
         Returns:
             List of dictionaries compatible with :func:`can.detect_available_configs` output.

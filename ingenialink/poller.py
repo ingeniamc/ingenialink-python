@@ -1,6 +1,6 @@
 import time
 from threading import Lock, Thread
-from typing import Dict, List, Tuple, Union
+from typing import Union
 
 import ingenialogger
 
@@ -29,11 +29,11 @@ class Poller(Thread):
         self.__samples_count = 0
         self.__samples_lost = False
         self.__running = False
-        self.__mappings: Dict[int, Register] = {}
-        self.__mappings_enabled: List[bool] = []
+        self.__mappings: dict[int, Register] = {}
+        self.__mappings_enabled: list[bool] = []
         self.__lock = Lock()
-        self.__acq_time: List[float] = []
-        self.__acq_data: List[Union[List[float], List[int]]] = []
+        self.__acq_time: list[float] = []
+        self.__acq_data: list[Union[list[float], list[int]]] = []
         self._reset_acq()
 
     def run(self) -> None:
@@ -66,7 +66,8 @@ class Poller(Thread):
 
         """
         if self.__running:
-            raise ILStateError("Poller is running")
+            msg = "Poller is running"
+            raise ILStateError(msg)
         # Configure data and sizes with empty data
         self._reset_acq()
         self.__sz = sz
@@ -99,16 +100,19 @@ class Poller(Thread):
 
         """
         if self.__running:
-            raise ILStateError("Poller is running")
+            msg = "Poller is running"
+            raise ILStateError(msg)
 
         if channel > self.num_channels:
-            raise ILValueError("Channel out of range")
+            msg = "Channel out of range"
+            raise ILValueError(msg)
 
         # Obtain register
         _reg = self.servo._get_reg(reg, subnode)
 
         if _reg.identifier is None:
-            raise TypeError("Register should have an identifier")
+            msg = "Register should have an identifier"
+            raise TypeError(msg)
 
         # Reg identifier obtained and set enabled
         self.__mappings[channel] = _reg
@@ -131,10 +135,12 @@ class Poller(Thread):
 
         """
         if self.__running:
-            raise ILStateError("Poller is running")
+            msg = "Poller is running"
+            raise ILStateError(msg)
 
         if channel > self.num_channels:
-            raise ILValueError("Channel out of range")
+            msg = "Channel out of range"
+            raise ILValueError(msg)
 
         # Set channel required as disabled
         self.__mappings_enabled[channel] = False
@@ -197,7 +203,7 @@ class Poller(Thread):
         self.__lock.release()
 
     @property
-    def data(self) -> Tuple[List[float], List[List[float]], bool]:
+    def data(self) -> tuple[list[float], list[list[float]], bool]:
         """Time vector, array of data vectors and a flag indicating if data was lost."""
         self.__lock.acquire()
         t = list(self.__acq_time[0 : self.__samples_count])

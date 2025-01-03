@@ -1,7 +1,7 @@
 import io
 import struct
 from binascii import crc_hqx
-from typing import Optional, Tuple, Type, TypeVar
+from typing import Optional, TypeVar
 
 from ingenialink.constants import MCB_CMD_ACK
 from ingenialink.exceptions import ILNACKError, ILWrongCRCError, ILWrongRegisterError
@@ -93,7 +93,7 @@ class MCB:
 
     @classmethod
     def build_mcb_frame(
-        cls: Type[T], cmd: int, subnode: int, address: int, data: Optional[bytes] = None,
+        cls: type[T], cmd: int, subnode: int, address: int, data: Optional[bytes] = None,
     ) -> bytes:
         """Build an MCB frame.
 
@@ -127,7 +127,7 @@ class MCB:
         return frame
 
     @classmethod
-    def read_mcb_data(cls: Type[T], expected_address: int, frame: bytes) -> bytes:
+    def read_mcb_data(cls: type[T], expected_address: int, frame: bytes) -> bytes:
         """Read an MCB frame and return its data.
 
         Args:
@@ -151,15 +151,18 @@ class MCB:
             err_code_little = int.from_bytes(data[: cls.ERR_CODE_SIZE], byteorder="little")
             raise ILNACKError(err_code_little)
         if expected_address != recv_add:
-            raise ILWrongRegisterError(
+            msg = (
                 f"Received address: {hex(recv_add)} does "
                 "not match expected address: "
-                f"{hex(expected_address)}",
+                f"{hex(expected_address)}"
+            )
+            raise ILWrongRegisterError(
+                msg,
             )
         return data
 
     @classmethod
-    def read_mcb_frame(cls: Type[T], frame: bytes) -> Tuple[int, int, int, bytes]:
+    def read_mcb_frame(cls: type[T], frame: bytes) -> tuple[int, int, int, bytes]:
         """Read an MCB frame and return its address, subnode, data and command.
 
         Args:

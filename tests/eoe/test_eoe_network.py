@@ -60,7 +60,7 @@ def test_eoe_disconnection(connect):
 
 
 @pytest.mark.parametrize(
-    "cmd, data",
+    ("cmd", "data"),
     [
         (EoECommand.EOE_START, None),
         (EoECommand.SCAN, None),

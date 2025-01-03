@@ -4,7 +4,7 @@ import threading
 import time
 import xml.etree.ElementTree as ET
 from abc import abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 from xml.dom import minidom
 
 import ingenialogger
@@ -56,7 +56,7 @@ OPERATION_TIME_OUT = -3
 
 class DictionaryFactory:
     """Dictionary factory, creates the appropriate dictionary instance according to
-    the file version and connection interface
+    the file version and connection interface.
     """
 
     _VERSION_ABSOLUTE_PATH = "Header/Version"
@@ -95,13 +95,14 @@ class DictionaryFactory:
                 return EthernetDictionaryV2(dictionary_path)
             if interface == Interface.VIRTUAL:
                 return VirtualDictionary(dictionary_path)
-        raise NotImplementedError(f"Dictionary version {major_version} is not supported")
+        msg = f"Dictionary version {major_version} is not supported"
+        raise NotImplementedError(msg)
 
     @classmethod
     def get_dictionary_description(
         cls, dictionary_path: str, interface: Interface,
     ) -> DictionaryDescriptor:
-        """Quick function to get target dictionary description
+        """Quick function to get target dictionary description.
 
         Args:
             dictionary_path: target dictionary path
@@ -120,10 +121,11 @@ class DictionaryFactory:
             return DictionaryV3.get_description(dictionary_path, interface)
         if major_version == 2:
             return DictionaryV2.get_description(dictionary_path, interface)
-        raise NotImplementedError(f"Dictionary version {major_version} is not supported")
+        msg = f"Dictionary version {major_version} is not supported"
+        raise NotImplementedError(msg)
 
     @classmethod
-    def __get_dictionary_version(cls, dictionary_path: str) -> Tuple[int, int]:
+    def __get_dictionary_version(cls, dictionary_path: str) -> tuple[int, int]:
         """Return dictionary version, major and minor version.
 
         Args:
@@ -143,16 +145,20 @@ class DictionaryFactory:
                 try:
                     tree = ET.parse(xdf_file)
                 except ET.ParseError:
-                    raise ILDictionaryParseError(f"File is not a xdf: {dictionary_path}")
+                    msg = f"File is not a xdf: {dictionary_path}"
+                    raise ILDictionaryParseError(msg)
         except FileNotFoundError:
-            raise FileNotFoundError(f"There is not any xdf file in the path: {dictionary_path}")
+            msg = f"There is not any xdf file in the path: {dictionary_path}"
+            raise FileNotFoundError(msg)
         version_element = tree.find(cls._VERSION_ABSOLUTE_PATH)
         if version_element is None or version_element.text is None:
-            raise ILDictionaryParseError("Version not found")
+            msg = "Version not found"
+            raise ILDictionaryParseError(msg)
         version_str = version_element.text.strip()
         version_match = re.match(cls._VERSION_REGEX, version_str)
         if version_match is None:
-            raise ILDictionaryParseError("Version has a wrong format")
+            msg = "Version has a wrong format"
+            raise ILDictionaryParseError(msg)
         major_version = int(version_match.group(cls._MAJOR_VERSION_GROUP))
         if version_match.group(cls._MINOR_VERSION_GROUP):
             minor_version = int(version_match.group(cls._MINOR_VERSION_GROUP))
@@ -170,13 +176,13 @@ class ServoStatusListener(threading.Thread):
     """
 
     def __init__(self, servo: "Servo") -> None:
-        super(ServoStatusListener, self).__init__()
+        super().__init__()
         self.__servo = servo
         self.__stop = False
 
     def run(self) -> None:
-        """Checks if the drive is alive by reading the status word register"""
-        previous_states: Dict[int, SERVO_STATE] = {}
+        """Checks if the drive is alive by reading the status word register."""
+        previous_states: dict[int, SERVO_STATE] = {}
         while not self.__stop:
             for subnode in self.__servo.subnodes:
                 if self.__servo.subnodes[subnode] != SubnodeType.MOTION:
@@ -187,11 +193,11 @@ class ServoStatusListener(threading.Thread):
                         previous_states[subnode] = current_state
                         self.__servo._notify_state(current_state, subnode)
                 except ILError as e:
-                    logger.error("Error getting drive status. Exception : %s", e)
+                    logger.exception("Error getting drive status. Exception : %s", e)
             time.sleep(1.5)
 
     def stop(self) -> None:
-        """Stops the loop that reads the status word register"""
+        """Stops the loop that reads the status word register."""
         self.__stop = True
 
 
@@ -279,15 +285,15 @@ class Servo:
         self.units_acc = None
         """SERVO_UNITS_ACC: Acceleration units."""
         self._lock = threading.Lock()
-        self.__observers_servo_state: List[Callable[[SERVO_STATE, int], Any]] = []
+        self.__observers_servo_state: list[Callable[[SERVO_STATE, int], Any]] = []
         self.__listener_servo_status: Optional[ServoStatusListener] = None
-        self.__monitoring_data: Dict[int, List[Union[int, float]]] = {}
-        self.__monitoring_size: Dict[int, int] = {}
-        self.__monitoring_dtype: Dict[int, REG_DTYPE] = {}
+        self.__monitoring_data: dict[int, list[Union[int, float]]] = {}
+        self.__monitoring_size: dict[int, int] = {}
+        self.__monitoring_dtype: dict[int, REG_DTYPE] = {}
         self.__disturbance_data = b""
-        self.__disturbance_size: Dict[int, int] = {}
-        self.__disturbance_dtype: Dict[int, str] = {}
-        self.__register_update_observers: List[
+        self.__disturbance_size: dict[int, int] = {}
+        self.__disturbance_dtype: dict[int, str] = {}
+        self.__register_update_observers: list[
             Callable[["Servo", Register, Union[int, float, str, bytes]], None]
         ] = []
         if servo_status_listener:
@@ -312,7 +318,7 @@ class Servo:
         self.__listener_servo_status = None
 
     def is_listener_started(self) -> bool:
-        """Check if servo listener is started
+        """Check if servo listener is started.
 
         Returns:
             True if listener is started, else False
@@ -338,20 +344,19 @@ class Servo:
 
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
-            raise ValueError("Invalid subnode")
+            msg = "Invalid subnode"
+            raise ValueError(msg)
         _, registers = self._read_configuration_file(config_file)
 
-        dest_subnodes = set(int(element.attrib["subnode"]) for element in registers)
+        dest_subnodes = {int(element.attrib["subnode"]) for element in registers}
         if subnode == 0 and subnode not in dest_subnodes:
-            raise ValueError(f"Cannot check {config_file} at subnode {subnode}")
+            msg = f"Cannot check {config_file} at subnode {subnode}"
+            raise ValueError(msg)
         cast_data = {"float": np.float32, "str": str}
-        registers_errored: List[str] = []
+        registers_errored: list[str] = []
         for element in registers:
             if "storage" in element.attrib:
-                if subnode is None:
-                    element_subnode = int(element.attrib["subnode"])
-                else:
-                    element_subnode = subnode
+                element_subnode = int(element.attrib["subnode"]) if subnode is None else subnode
                 reg_dtype = element.attrib["dtype"]
                 reg_data = element.attrib["storage"]
                 reg_id = element.attrib["id"]
@@ -362,7 +367,7 @@ class Servo:
                 except ILError as e:
                     reg_id = element.attrib["id"]
                     il_error = f"{reg_id} -- {e}"
-                    logger.error(
+                    logger.exception(
                         "Exception during check_configuration, register %s: %s",
                         str(reg_id),
                         e,
@@ -405,12 +410,14 @@ class Servo:
 
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
-            raise ValueError("Invalid subnode")
+            msg = "Invalid subnode"
+            raise ValueError(msg)
         _, registers = self._read_configuration_file(config_file)
 
-        dest_subnodes = set(int(element.attrib["subnode"]) for element in registers)
+        dest_subnodes = {int(element.attrib["subnode"]) for element in registers}
         if subnode == 0 and subnode not in dest_subnodes:
-            raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
+            msg = f"Cannot load {config_file} to subnode {subnode}"
+            raise ValueError(msg)
         cast_data = {"float": float, "str": str}
         writable_registers = [
             reg for reg in registers if "storage" in reg.attrib and reg.attrib["access"] == "rw"
@@ -432,7 +439,7 @@ class Servo:
                 )
                 if strict:
                     raise ILError(exception_message)
-                logger.error(exception_message)
+                logger.exception(exception_message)
 
     def save_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
         """Read all dictionary registers content and put it to the dictionary
@@ -444,7 +451,8 @@ class Servo:
 
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
-            raise ILError("Invalid subnode")
+            msg = "Invalid subnode"
+            raise ILError(msg)
 
         drive_info = self.info
         prod_code = drive_info["product_code"]
@@ -513,7 +521,7 @@ class Servo:
 
     def _registers_to_save_in_configuration_file(
         self, subnode: Optional[int],
-    ) -> Dict[int, List[Register]]:
+    ) -> dict[int, list[Register]]:
         """Generate the registers to be used in the configuration file.
 
         Args:
@@ -523,20 +531,17 @@ class Servo:
             A dictionary with a list of valid registers per subnode.
 
         """
-        if subnode is None:
-            subnodes = list(self.dictionary.subnodes)
-        else:
-            subnodes = [subnode]
-        registers: Dict[int, List[Register]] = {subnode: [] for subnode in subnodes}
+        subnodes = list(self.dictionary.subnodes) if subnode is None else [subnode]
+        registers: dict[int, list[Register]] = {subnode: [] for subnode in subnodes}
         for subnode in subnodes:
             registers_dict = self.dictionary.registers(subnode=subnode)
-            for reg_id, register in registers_dict.items():
+            for register in registers_dict.values():
                 if self._is_register_valid_for_configuration_file(register):
                     registers[subnode].append(register)
         return registers
 
     @staticmethod
-    def _read_configuration_file(config_file: str) -> Tuple[ET.Element, List[ET.Element]]:
+    def _read_configuration_file(config_file: str) -> tuple[ET.Element, list[ET.Element]]:
         """Read a configuration file. Returns the device metadata and the registers list.
 
         Args:
@@ -551,7 +556,8 @@ class Servo:
             ILIOError: If the configuration file does not have device information or registers.
         """
         if not os.path.isfile(config_file):
-            raise FileNotFoundError(f"Could not find {config_file}.")
+            msg = f"Could not find {config_file}."
+            raise FileNotFoundError(msg)
         with open(config_file, encoding="utf-8") as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -564,9 +570,11 @@ class Servo:
             # Single axis
             registers = root.findall("./Body/Device/Registers/Register")
         if not isinstance(device, ET.Element):
-            raise ILIOError("Configuration file does not have device information")
+            msg = "Configuration file does not have device information"
+            raise ILIOError(msg)
         if not isinstance(registers, list):
-            raise ILIOError("Configuration file does not have register list")
+            msg = "Configuration file does not have register list"
+            raise ILIOError(msg)
         return device, registers
 
     def restore_parameters(self, subnode: Optional[int] = None) -> None:
@@ -598,9 +606,12 @@ class Servo:
             )
             logger.info(f"Restore subnode {subnode} successfully done.")
         else:
-            raise ILError(
+            msg = (
                 f"The drive's configuration cannot be restored. The subnode value: {subnode} is"
-                " invalid.",
+                " invalid."
+            )
+            raise ILError(
+                msg,
             )
         time.sleep(1.5)
 
@@ -644,9 +655,12 @@ class Servo:
                 )
                 logger.info(f"Store axis {subnode} successfully done.")
             else:
-                raise ILError(
+                msg = (
                     f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
-                    " invalid.",
+                    " invalid."
+                )
+                raise ILError(
+                    msg,
                 )
         finally:
             time.sleep(1.5)
@@ -654,7 +668,7 @@ class Servo:
     def _get_drive_identification(
         self,
         subnode: Optional[int] = None,
-    ) -> Tuple[Optional[int], Optional[int]]:
+    ) -> tuple[Optional[int], Optional[int]]:
         """Gets the identification information of a given subnode.
 
         Args:
@@ -707,9 +721,12 @@ class Servo:
                 self.CONTROL_WORD_FAULT_RESET: 0,
             }
             if state == SERVO_STATE.FAULT:
-                raise ILStateError(
+                msg = (
                     f"The subnode {subnode} could not be enabled within {timeout} ms. "
-                    f"The current subnode state is {state}",
+                    f"The current subnode state is {state}"
+                )
+                raise ILStateError(
+                    msg,
                 )
             elif state == SERVO_STATE.NRDY:
                 cmd = {self.CONTROL_WORD_VOLTAGE_ENABLE: 0, self.CONTROL_WORD_FAULT_RESET: 0}
@@ -846,10 +863,9 @@ class Servo:
     def get_state(self, subnode: int = 1) -> SERVO_STATE:
         """Current drive state."""
         status_word = self.read_bitfields(self.STATUS_WORD_REGISTERS, subnode=subnode)
-        state = self.status_word_decode(status_word)
-        return state
+        return self.status_word_decode(status_word)
 
-    def status_word_decode(self, status_word: Dict[str, int]) -> SERVO_STATE:
+    def status_word_decode(self, status_word: dict[str, int]) -> SERVO_STATE:
         """Decodes the status word to a known value.
 
         Args:
@@ -979,7 +995,7 @@ class Servo:
 
     def monitoring_channel_data(
         self, channel: int, dtype: Optional[REG_DTYPE] = None,
-    ) -> List[float]:
+    ) -> list[float]:
         """Obtain processed monitoring data of a channel.
 
         Args:
@@ -1090,7 +1106,7 @@ class Servo:
             self.read(self.STATUS_WORD_REGISTERS)
         except ILError as e:
             _is_alive = False
-            logger.error(e)
+            logger.exception(e)
         return _is_alive
 
     def reload_errors(self, dictionary: str) -> None:
@@ -1121,12 +1137,15 @@ class Servo:
         elif isinstance(reg, str):
             _dict = self.dictionary
             if not _dict:
-                raise ValueError("No dictionary loaded")
+                msg = "No dictionary loaded"
+                raise ValueError(msg)
             if reg not in _dict.registers(subnode):
-                raise ILRegisterNotFoundError(f"Register {reg} not found.")
+                msg = f"Register {reg} not found."
+                raise ILRegisterNotFoundError(msg)
             return _dict.registers(subnode)[reg]
         else:
-            raise TypeError("Invalid register")
+            msg = "Invalid register"
+            raise TypeError(msg)
 
     def __update_register_dict(self, register: ET.Element, subnode: int) -> None:
         """Updates the register from a dictionary with the
@@ -1152,7 +1171,7 @@ class Servo:
             reg.storage = storage
             reg.storage_valid = True
         except BaseException as e:
-            logger.error(
+            logger.exception(
                 "Exception during save_configuration, register %s: %s",
                 str(register.attrib["id"]),
                 e,
@@ -1171,7 +1190,7 @@ class Servo:
 
     def __read_coco_moco_register(self, register_coco: str, register_moco: str) -> str:
         """Reads the COCO register and if it does not exist,
-        reads the MOCO register
+        reads the MOCO register.
 
         Args:
             register_coco: COCO Register ID to be read.
@@ -1188,7 +1207,8 @@ class Servo:
         try:
             return str(self.read(register_moco, subnode=1))
         except ILError:
-            raise ILError(f"Error reading register {register_moco} from MOCO.")
+            msg = f"Error reading register {register_moco} from MOCO."
+            raise ILError(msg)
 
     def __monitoring_map_register(self) -> str:
         """Get the first available Monitoring Mapped Register slot.
@@ -1227,7 +1247,7 @@ class Servo:
             subnode=0,
         )
 
-    def __monitoring_process_data(self, monitoring_data: List[bytes]) -> None:
+    def __monitoring_process_data(self, monitoring_data: list[bytes]) -> None:
         """Arrange monitoring data."""
         data_bytes = b""
         for i in range(len(monitoring_data)):
@@ -1270,11 +1290,11 @@ class Servo:
 
     def _disturbance_create_data_chunks(
         self,
-        channels: Union[int, List[int]],
-        dtypes: Union[REG_DTYPE, List[REG_DTYPE]],
-        data_arr: Union[List[Union[int, float]], List[List[Union[int, float]]]],
+        channels: Union[int, list[int]],
+        dtypes: Union[REG_DTYPE, list[REG_DTYPE]],
+        data_arr: Union[list[Union[int, float]], list[list[Union[int, float]]]],
         max_size: int,
-    ) -> Tuple[bytes, List[bytes]]:
+    ) -> tuple[bytes, list[bytes]]:
         """Divide disturbance data into chunks.
 
         Args:
@@ -1289,7 +1309,7 @@ class Servo:
         if not isinstance(dtypes, list):
             dtypes = [dtypes]
 
-        data_arr_aux: List[List[Union[int, float]]]
+        data_arr_aux: list[list[Union[int, float]]]
 
         if not isinstance(data_arr[0], list):
             num_samples = len(data_arr)
@@ -1329,11 +1349,9 @@ class Servo:
         _reg = self._get_reg(reg, subnode)
 
         if _reg.access == REG_ACCESS.RO:
-            raise ILAccessError("Register is Read-only")
-        if isinstance(data, bytes):
-            data_bytes = data
-        else:
-            data_bytes = convert_dtype_to_bytes(data, _reg.dtype)
+            msg = "Register is Read-only"
+            raise ILAccessError(msg)
+        data_bytes = data if isinstance(data, bytes) else convert_dtype_to_bytes(data, _reg.dtype)
         self._write_raw(_reg, data_bytes, **kwargs)
         self._notify_register_update(_reg, data)
 
@@ -1358,7 +1376,8 @@ class Servo:
         _reg = self._get_reg(reg, subnode)
         access = _reg.access
         if access == REG_ACCESS.WO:
-            raise ILAccessError("Register is Write-only")
+            msg = "Register is Write-only"
+            raise ILAccessError(msg)
 
         raw_read = self._read_raw(_reg, **kwargs)
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
@@ -1369,8 +1388,8 @@ class Servo:
         self,
         reg: Union[str, Register],
         subnode: int = 1,
-        bitfields: Optional[Dict[str, "BitField"]] = None,
-    ) -> Dict[str, int]:
+        bitfields: Optional[dict[str, "BitField"]] = None,
+    ) -> dict[str, int]:
         """Read bitfields of a register.
 
         Args:
@@ -1388,19 +1407,21 @@ class Servo:
 
         if bitfields is None:
             if _reg.bitfields is None:
-                raise ValueError(f"Register {_reg.identifier} does not have bitfields")
+                msg = f"Register {_reg.identifier} does not have bitfields"
+                raise ValueError(msg)
             bitfields = _reg.bitfields
         value = self.read(_reg, subnode)
         if not isinstance(value, int):
-            raise TypeError("Bitfield only work with integer registers")
+            msg = "Bitfield only work with integer registers"
+            raise TypeError(msg)
         return BitField.parse_bitfields(bitfields, value)
 
     def write_bitfields(
         self,
         reg: Union[str, Register],
-        values: Dict[str, int],
+        values: dict[str, int],
         subnode: int = 1,
-        bitfields: Optional[Dict[str, "BitField"]] = None,
+        bitfields: Optional[dict[str, "BitField"]] = None,
     ) -> None:
         """Write bitfields of a register.
 
@@ -1419,12 +1440,14 @@ class Servo:
         _reg = self._get_reg(reg, subnode)
         if bitfields is None:
             if _reg.bitfields is None:
-                raise ValueError(f"Register {_reg.identifier} does not have bitfields")
+                msg = f"Register {_reg.identifier} does not have bitfields"
+                raise ValueError(msg)
             bitfields = _reg.bitfields
 
         previous_value = self.read(_reg, subnode)
         if not isinstance(previous_value, int):
-            raise TypeError("Bitfield only work with integer registers")
+            msg = "Bitfield only work with integer registers"
+            raise TypeError(msg)
 
         new_value = BitField.set_bitfields(bitfields, values, previous_value)
         self.write(_reg, new_value, subnode)
@@ -1479,9 +1502,9 @@ class Servo:
 
     def disturbance_write_data(
         self,
-        channels: Union[int, List[int]],
-        dtypes: Union[REG_DTYPE, List[REG_DTYPE]],
-        data_arr: Union[List[Union[int, float]], List[List[Union[int, float]]]],
+        channels: Union[int, list[int]],
+        dtypes: Union[REG_DTYPE, list[REG_DTYPE]],
+        data_arr: Union[list[Union[int, float]], list[list[Union[int, float]]]],
     ) -> None:
         """Write disturbance data.
 
@@ -1496,7 +1519,8 @@ class Servo:
                 channels, dtypes, data_arr, self.MAX_WRITE_SIZE,
             )
         except OverflowError as e:
-            raise ILValueError("Disturbance data cannot be written.") from e
+            msg = "Disturbance data cannot be written."
+            raise ILValueError(msg) from e
         for chunk in chunks:
             self._disturbance_write_data(chunk)
         self.disturbance_data = data
@@ -1509,10 +1533,12 @@ class Servo:
 
         """
         if self.MONITORING_DATA not in self.dictionary.registers(0):
-            raise NotImplementedError("Monitoring is not supported by this device.")
+            msg = "Monitoring is not supported by this device."
+            raise NotImplementedError(msg)
         if not isinstance(data := self.read(self.MONITORING_DATA, subnode=0, **kwargs), bytes):
+            msg = f"Error reading monitoring data. Expected type bytes, got {type(data)}"
             raise ValueError(
-                f"Error reading monitoring data. Expected type bytes, got {type(data)}",
+                msg,
             )
         return data
 
@@ -1524,7 +1550,8 @@ class Servo:
 
         """
         if self.DIST_DATA not in self.dictionary.registers(0):
-            raise NotImplementedError("Disturbance is not supported by this device.")
+            msg = "Disturbance is not supported by this device."
+            raise NotImplementedError(msg)
         return self.write(self.DIST_DATA, subnode=0, data=data, **kwargs)
 
     @abstractmethod
@@ -1577,12 +1604,12 @@ class Servo:
 
     @property
     def dictionary(self) -> Dictionary:
-        """Returns dictionary object"""
+        """Returns dictionary object."""
         return self._dictionary
 
     @dictionary.setter
     def dictionary(self, dictionary: Dictionary) -> None:
-        """Sets the dictionary object"""
+        """Sets the dictionary object."""
         self._dictionary = dictionary
 
     @property
@@ -1595,27 +1622,26 @@ class Servo:
         self.__full_name = new_name
 
     @property
-    def status(self) -> Dict[int, SERVO_STATE]:
+    def status(self) -> dict[int, SERVO_STATE]:
         """Servo status."""
-        status = {
+        return {
             subnode: self.get_state(subnode)
             for subnode in self.subnodes
             if self.subnodes[subnode] == SubnodeType.MOTION
         }
-        return status
 
     @property
-    def subnodes(self) -> Dict[int, SubnodeType]:
-        """Dictionary of subnode ids and their type"""
+    def subnodes(self) -> dict[int, SubnodeType]:
+        """Dictionary of subnode ids and their type."""
         return self.dictionary.subnodes
 
     @property
-    def errors(self) -> Dict[int, DictionaryError]:
+    def errors(self) -> dict[int, DictionaryError]:
         """Errors."""
         return self.dictionary.errors
 
     @property
-    def info(self) -> Dict[str, Union[None, str, int]]:
+    def info(self) -> dict[str, Union[None, str, int]]:
         """Servo information."""
         try:
             serial_number = self.__read_coco_moco_register(

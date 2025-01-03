@@ -7,8 +7,7 @@ def arguments(read_config):
     ifname = protocol_contents["ifname"]
     slave_id = protocol_contents["slave"]
     dictionary = protocol_contents["dictionary"]
-    attrs = [f"--dictionary_path={dictionary}", f"--interface={ifname}", f"--slave_id={slave_id}"]
-    return attrs
+    return [f"--dictionary_path={dictionary}", f"--interface={ifname}", f"--slave_id={slave_id}"]
 
 
 @pytest.mark.ethercat()

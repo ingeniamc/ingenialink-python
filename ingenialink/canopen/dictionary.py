@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from typing import List, Optional
+from typing import Optional
 
 import ingenialogger
 
@@ -17,7 +17,7 @@ class CanopenDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: List[CanopenRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: list[CanopenRegister] = [
         CanopenRegister(
             identifier="MON_DATA_VALUE",
             idx=0x58B2,
@@ -49,7 +49,7 @@ class CanopenDictionaryV2(DictionaryV2):
             idx = aux_var >> 8
             subidx = aux_var & 0xFF
 
-            canopen_register = CanopenRegister(
+            return CanopenRegister(
                 idx,
                 subidx,
                 current_read_register.dtype,
@@ -70,10 +70,9 @@ class CanopenDictionaryV2(DictionaryV2):
                 bitfields=current_read_register.bitfields,
             )
 
-            return canopen_register
 
         except KeyError as ke:
-            logger.error(
+            logger.exception(
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}",
             )
             return None

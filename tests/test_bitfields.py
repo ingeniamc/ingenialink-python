@@ -12,7 +12,7 @@ BITFIELD_EXAMPLES = {
 
 @pytest.mark.no_connection()
 @pytest.mark.parametrize(
-    "value, values",
+    ("value", "values"),
     [
         (0b1111_1111, {"BIT_0": 1, "BIT_1": 1, "BITS_2_3": 0b11, "BIT_6": 1}),
         (0b0000_0000, {"BIT_0": 0, "BIT_1": 0, "BITS_2_3": 0, "BIT_6": 0}),
@@ -25,7 +25,7 @@ def test_parse_bitfields(value, values):
 
 
 @pytest.mark.parametrize(
-    "old_value, new_value, values",
+    ("old_value", "new_value", "values"),
     [
         (0b1101, 0b1111, {"BIT_1": 1}),  # Set bit
         (0b1111, 0b1111, {"BIT_1": 1}),  # Set already set bit
@@ -42,7 +42,7 @@ def test_set_bitfields(old_value, new_value, values):
 
 
 @pytest.mark.parametrize(
-    "values, error",
+    ("values", "error"),
     [
         ({"BIT_0": 0b10}, "value 2 cannot be set to bitfield BIT_0. Max: 1"),
         ({"BITS_2_3": 0b100}, "value 4 cannot be set to bitfield BITS_2_3. Max: 3"),

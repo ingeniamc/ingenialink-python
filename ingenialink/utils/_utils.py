@@ -4,7 +4,7 @@ import struct
 import warnings
 import xml.etree.ElementTree as ET
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import ingenialogger
 
@@ -16,7 +16,7 @@ logger = ingenialogger.get_logger(__name__)
 POLLING_MAX_TRIES = 5  # Seconds
 
 # Mapping type -> [Number of bytes, signedness]
-dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
+dtype_value: dict[REG_DTYPE, tuple[int, bool]] = {
     REG_DTYPE.U8: (1, False),
     REG_DTYPE.S8: (1, True),
     REG_DTYPE.U16: (2, False),
@@ -29,7 +29,7 @@ dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
     REG_DTYPE.BOOL: (1, False),
 }
 
-dtype_length_bits: Dict[REG_DTYPE, int] = {
+dtype_length_bits: dict[REG_DTYPE, int] = {
     REG_DTYPE.U8: 8,
     REG_DTYPE.S8: 8,
     REG_DTYPE.U16: 16,
@@ -97,7 +97,7 @@ def to_ms(s: Union[int, float]) -> int:
 
 
 def remove_xml_subelement(element: ET.Element, subelement: ET.Element) -> None:
-    """Removes a subelement from the given element the element contains the subelement
+    """Removes a subelement from the given element the element contains the subelement.
 
     Args:
         element: Element to be extracted from.
@@ -107,8 +107,8 @@ def remove_xml_subelement(element: ET.Element, subelement: ET.Element) -> None:
         element.remove(subelement)
 
 
-def pop_element(dictionary: Dict[str, Any], element: str) -> None:
-    """Pops an element from a dictionary only if it is contained in it
+def pop_element(dictionary: dict[str, Any], element: str) -> None:
+    """Pops an element from a dictionary only if it is contained in it.
 
     Args:
         dictionary: Dictionary containing all the elements
@@ -120,7 +120,7 @@ def pop_element(dictionary: Dict[str, Any], element: str) -> None:
 
 def cleanup_register(register: ET.Element) -> None:
     """Cleans a ElementTree register to remove all
-    unnecessary fields for a configuration file
+    unnecessary fields for a configuration file.
 
     Args:
         register: Register to be cleaned.
@@ -216,12 +216,14 @@ def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, s
     if dtype == REG_DTYPE.FLOAT:
         [value] = struct.unpack("f", data)
         if not isinstance(value, float):
-            raise ILValueError(f"Data could not be converted to float. Obtained: {value}")
+            msg = f"Data could not be converted to float. Obtained: {value}"
+            raise ILValueError(msg)
     elif dtype == REG_DTYPE.STR:
         try:
             value = data.split(b"\x00")[0].decode("utf-8")
         except UnicodeDecodeError as e:
-            raise ILValueError(f"Can't decode {e.object!r} to utf-8 string") from e
+            msg = f"Can't decode {e.object!r} to utf-8 string"
+            raise ILValueError(msg) from e
     elif dtype == REG_DTYPE.BYTE_ARRAY_512:
         return data
     else:
@@ -229,7 +231,8 @@ def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, s
     if dtype == REG_DTYPE.BOOL:
         value = bool(value)
     if not isinstance(value, (int, float, str)):
-        raise ILValueError(f"Bad data type: {type(value)}")
+        msg = f"Bad data type: {type(value)}"
+        raise ILValueError(msg)
     return value
 
 
@@ -250,21 +253,25 @@ def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: REG_DTYPE
         and data not in VALID_BIT_REGISTER_VALUES
         and not isinstance(data, bytes)
     ):
-        raise ValueError(f"Invalid value. Expected values: {VALID_BIT_REGISTER_VALUES}, got {data}")
+        msg = f"Invalid value. Expected values: {VALID_BIT_REGISTER_VALUES}, got {data}"
+        raise ValueError(msg)
     if dtype == REG_DTYPE.BYTE_ARRAY_512:
         if not isinstance(data, bytes):
-            raise ValueError(f"Expected data of type bytes, but got {type(data)}")
+            msg = f"Expected data of type bytes, but got {type(data)}"
+            raise ValueError(msg)
         return data
     if dtype == REG_DTYPE.FLOAT:
         if not isinstance(data, (float, int)):
-            raise ValueError(f"Expected data of type float, but got {type(data)}")
+            msg = f"Expected data of type float, but got {type(data)}"
+            raise ValueError(msg)
         return struct.pack("f", float(data))
     if dtype == REG_DTYPE.STR:
         if not isinstance(data, str):
-            raise ValueError(f"Expected data of type string, but  got {type(data)}")
+            msg = f"Expected data of type string, but  got {type(data)}"
+            raise ValueError(msg)
         return data.encode("utf_8")
     if not isinstance(data, int):
-        raise ValueError(f"Expected data of type int, but {type(data)}")
+        msg = f"Expected data of type int, but {type(data)}"
+        raise ValueError(msg)
     bytes_length, signed = dtype_value[dtype]
-    data_bytes = data.to_bytes(bytes_length, byteorder="little", signed=signed)
-    return data_bytes
+    return data.to_bytes(bytes_length, byteorder="little", signed=signed)

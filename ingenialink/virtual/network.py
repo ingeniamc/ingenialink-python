@@ -45,7 +45,8 @@ class VirtualNetwork(EthernetNetwork):
             servo.get_state()
         except ILError as e:
             servo.stop_status_listener()
-            raise ILError(f"Drive not found in IP {VirtualDrive.IP_ADDRESS}.") from e
+            msg = f"Drive not found in IP {VirtualDrive.IP_ADDRESS}."
+            raise ILError(msg) from e
         self.servos.append(servo)
         self._set_servo_state(VirtualDrive.IP_ADDRESS, NET_STATE.CONNECTED)
 

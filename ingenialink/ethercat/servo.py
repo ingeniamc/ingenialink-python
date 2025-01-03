@@ -1,7 +1,7 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import ingenialogger
 
@@ -78,9 +78,9 @@ class EthercatServo(PDOServo):
         self.__slave = slave
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
-        self.__emcy_observers: List[Callable[[EmergencyMessage], None]] = []
+        self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
-        super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
+        super().__init__(slave_id, dictionary_path, servo_status_listener)
 
     def store_parameters(
         self,
@@ -221,7 +221,8 @@ class EthercatServo(PDOServo):
             reason += error_description
         else:
             reason = str(exception)
-        raise ILIOError(f"{default_error_msg}. {reason}") from exception
+        msg = f"{default_error_msg}. {reason}"
+        raise ILIOError(msg) from exception
 
     def _monitoring_read_data(self, **kwargs: Any) -> bytes:
         """Read monitoring data frame."""
@@ -296,7 +297,7 @@ class EthercatServo(PDOServo):
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
-    def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
+    def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
                 self._rpdo_maps.append(rpdo_map)
@@ -346,7 +347,8 @@ class EthercatServo(PDOServo):
 
         """
         if length < 1:
-            raise ValueError("The minimum length is 1 byte.")
+            msg = "The minimum length is 1 byte."
+            raise ValueError(msg)
         data = b""
         while len(data) < length:
             data += self.slave.eeprom_read(address, timeout)
@@ -370,7 +372,8 @@ class EthercatServo(PDOServo):
 
         """
         if len(data) % 2 != 0:
-            raise ValueError("The data length must be a multiple of 2 bytes.")
+            msg = "The data length must be a multiple of 2 bytes."
+            raise ValueError(msg)
         start_address = address
         while data:
             self.slave.eeprom_write(start_address, data[:2], timeout)
@@ -388,12 +391,13 @@ class EthercatServo(PDOServo):
 
         """
         if not os.path.isfile(file_path):
-            raise FileNotFoundError(f"Could not find {file_path}.")
+            msg = f"Could not find {file_path}."
+            raise FileNotFoundError(msg)
         with open(file_path, "rb") as file:
             data = file.read()
         self._write_esc_eeprom(address=0, data=data)
 
     @property
     def slave(self) -> "CdefSlave":
-        """Ethercat slave"""
+        """Ethercat slave."""
         return self.__slave

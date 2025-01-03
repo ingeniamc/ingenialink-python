@@ -7,7 +7,7 @@ from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_by
 
 @pytest.mark.no_connection()
 @pytest.mark.parametrize(
-    "byts, value, dtype",
+    ("byts", "value", "dtype"),
     [
         (b"\x03", 3, REG_DTYPE.U8),
         (b"\x75\x00", 0x0075, REG_DTYPE.U16),

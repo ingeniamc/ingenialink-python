@@ -5,7 +5,7 @@ import time
 from collections import OrderedDict
 from enum import Enum
 from threading import Thread
-from typing import Dict, List, Optional
+from typing import Optional
 
 import ingenialogger
 
@@ -73,7 +73,7 @@ class EoENetwork(EthernetNetwork):
             self._deinitialize_eoe_service()
         self._eoe_service_init = False
         self._eoe_service_started = False
-        self._configured_slaves: Dict[str, int] = {}
+        self._configured_slaves: dict[str, int] = {}
 
     def connect_to_slave(  # type: ignore [override]
         self,
@@ -108,7 +108,8 @@ class EoENetwork(EthernetNetwork):
 
         """
         if ipaddress.ip_address(ip_address) not in self.ECAT_SERVICE_NETWORK:
-            raise ValueError("ip_address must be a subnetwork of 192.168.3.0/24")
+            msg = "ip_address must be a subnetwork of 192.168.3.0/24"
+            raise ValueError(msg)
         if not self._eoe_service_init:
             self._initialize_eoe_service()
         if self._eoe_service_started:
@@ -133,7 +134,7 @@ class EoENetwork(EthernetNetwork):
         )
 
     def __wait_eoe_starts(self) -> None:
-        """Wait until the EoE service starts the EoE or the timeout was reached"""
+        """Wait until the EoE service starts the EoE or the timeout was reached."""
         status = self._get_status_eoe_service()
         time_start = time.time()
         while not status & self.STATUS_EOE_BIT and time.time() - time_start < self.WAIT_EOE_TIMEOUT:
@@ -143,12 +144,12 @@ class EoENetwork(EthernetNetwork):
             logger.warning("Service did not starts the EoE")
 
     def __reconfigure_drives(self) -> None:
-        """Reconfigure all the slaves saved in the network"""
+        """Reconfigure all the slaves saved in the network."""
         for ip_addr, slave_id in self._configured_slaves.items():
             try:
                 self._configure_slave(slave_id, ip_addr)
             except ILError as e:
-                logger.error(e)
+                logger.exception(e)
 
     def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override]
         del self._configured_slaves[servo.ip_address]
@@ -159,13 +160,13 @@ class EoENetwork(EthernetNetwork):
             try:
                 self._deinitialize_eoe_service()
             except ILError as e:
-                logger.error(e)
+                logger.exception(e)
 
     def __del__(self) -> None:
         self._eoe_socket.shutdown(socket.SHUT_RDWR)
         self._eoe_socket.close()
 
-    def scan_slaves(self) -> List[int]:
+    def scan_slaves(self) -> list[int]:
         """Scan slaves connected to the network adapter.
 
         Returns:
@@ -184,8 +185,8 @@ class EoENetwork(EthernetNetwork):
             self._deinitialize_eoe_service()
         return result
 
-    def _scan_eoe_service(self) -> List[int]:
-        """Make the scan request to the EoE service
+    def _scan_eoe_service(self) -> list[int]:
+        """Make the scan request to the EoE service.
 
         Returns:
             List containing the ids of the connected slaves.
@@ -198,8 +199,9 @@ class EoENetwork(EthernetNetwork):
         try:
             r = self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
+            msg = "Failed to perform a network scan. Please verify the EoE service is running."
             raise ILError(
-                "Failed to perform a network scan. Please verify the EoE service is running.",
+                msg,
             ) from e
         return list(range(1, r + 1))
 
@@ -248,13 +250,16 @@ class EoENetwork(EthernetNetwork):
         try:
             self._eoe_socket.send(msg)
         except OSError as e:
-            raise ILIOError("Error sending message.") from e
+            msg = "Error sending message."
+            raise ILIOError(msg) from e
         try:
             response = self._eoe_socket.recv(1024)
         except socket.timeout as e:
-            raise ILTimeoutError("Timeout while receiving response.") from e
+            msg = "Timeout while receiving response."
+            raise ILTimeoutError(msg) from e
         except OSError as e:
-            raise ILIOError("Error receiving response.") from e
+            msg = "Error receiving response."
+            raise ILIOError(msg) from e
         return int.from_bytes(response, byteorder="little", signed=True)
 
     def _connect_to_eoe_service(self) -> None:
@@ -278,11 +283,13 @@ class EoENetwork(EthernetNetwork):
         try:
             r = self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
+            msg = "Failed to initialize the EoE service. Please verify it's running."
             raise ILError(
-                "Failed to initialize the EoE service. Please verify it's running.",
+                msg,
             ) from e
         if r < 0:
-            raise ILError(f"Failed to initialize the EoE service using interface {self.ifname}.")
+            msg = f"Failed to initialize the EoE service using interface {self.ifname}."
+            raise ILError(msg)
         self._eoe_socket.settimeout(self.__connection_timeout)
 
     def _deinitialize_eoe_service(self) -> None:
@@ -299,7 +306,8 @@ class EoENetwork(EthernetNetwork):
             self._send_command(msg)
             self._eoe_service_init = False
         except (ILIOError, ILTimeoutError) as e:
-            raise ILError("Failed to deinitialize the EoE service.") from e
+            msg = "Failed to deinitialize the EoE service."
+            raise ILError(msg) from e
 
     def _configure_slave(
         self, slave_id: int, ip_address: str, net_mask: str = "255.255.255.0",
@@ -324,10 +332,11 @@ class EoENetwork(EthernetNetwork):
         try:
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
-            raise ILError(f"Failed to configure slave {slave_id} with IP {ip_address}.") from e
+            msg = f"Failed to configure slave {slave_id} with IP {ip_address}."
+            raise ILError(msg) from e
 
     def _start_eoe_service(self) -> None:
-        """Starts the EoE service
+        """Starts the EoE service.
 
         Raises:
            ILError: If the EoE service fails to start.
@@ -338,10 +347,11 @@ class EoENetwork(EthernetNetwork):
         try:
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
-            raise ILError("Failed to start the EoE service.") from e
+            msg = "Failed to start the EoE service."
+            raise ILError(msg) from e
 
     def _stop_eoe_service(self) -> None:
-        """Stops the EoE service
+        """Stops the EoE service.
 
         Raises:
            ILError: If the EoE service fails to stop.
@@ -352,10 +362,11 @@ class EoENetwork(EthernetNetwork):
         try:
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
-            raise ILError("Failed to stop the EoE service.") from e
+            msg = "Failed to stop the EoE service."
+            raise ILError(msg) from e
 
     def _erase_config_eoe_service(self) -> None:
-        """Stops the EoE service
+        """Stops the EoE service.
 
         Raises:
            ILError: If the EoE service fails to stop.
@@ -365,7 +376,8 @@ class EoENetwork(EthernetNetwork):
         try:
             self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
-            raise ILError("Failed to stop the EoE service.") from e
+            msg = "Failed to stop the EoE service."
+            raise ILError(msg) from e
 
     def _get_status_eoe_service(self) -> int:
         """Get the EoE service status.
@@ -387,7 +399,8 @@ class EoENetwork(EthernetNetwork):
         try:
             r = self._send_command(msg)
         except (ILIOError, ILTimeoutError) as e:
-            raise ILError("Failed to get service status.") from e
+            msg = "Failed to get service status."
+            raise ILError(msg) from e
         return r
 
     def load_firmware_moco(self) -> None:  # type: ignore [override]

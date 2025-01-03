@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import ingenialogger
 
@@ -28,7 +28,7 @@ DICT_LABELS_LABEL = f"{DICT_LABELS}/Label"
 
 
 class Interface(enum.Enum):
-    """Connection Interfaces"""
+    """Connection Interfaces."""
 
     CAN = enum.auto()
     """CANopen"""
@@ -43,7 +43,7 @@ class Interface(enum.Enum):
 
 
 class SubnodeType(enum.Enum):
-    """Subnode types"""
+    """Subnode types."""
 
     COMMUNICATION = enum.auto()
     """Communication"""
@@ -55,17 +55,17 @@ class SubnodeType(enum.Enum):
 
 @dataclass
 class DictionarySafetyPDO:
-    """Safety PDOs dictionary descriptor"""
+    """Safety PDOs dictionary descriptor."""
 
     @dataclass
     class PDORegister:
-        """PDO register descriptor"""
+        """PDO register descriptor."""
 
         register: Optional[CanopenRegister]
         size: int
 
     index: int
-    entries: List[PDORegister]
+    entries: list[PDORegister]
 
 
 class DictionaryCategories:
@@ -76,10 +76,10 @@ class DictionaryCategories:
 
     """
 
-    def __init__(self, list_xdf_categories: List[ET.Element]) -> None:
+    def __init__(self, list_xdf_categories: list[ET.Element]) -> None:
         self._list_xdf_categories = list_xdf_categories
-        self._cat_ids: List[str] = []
-        self._categories: Dict[str, Dict[str, str]] = {}
+        self._cat_ids: list[str] = []
+        self._categories: dict[str, dict[str, str]] = {}
 
         self.load_cat_ids()
 
@@ -100,11 +100,11 @@ class DictionaryCategories:
             self._categories[element.attrib["id"]] = {"en_US": cat_id}
 
     @property
-    def category_ids(self) -> List[str]:
+    def category_ids(self) -> list[str]:
         """Category IDs."""
         return self._cat_ids
 
-    def labels(self, cat_id: str) -> Dict[str, str]:
+    def labels(self, cat_id: str) -> dict[str, str]:
         """Obtain labels for a certain category ID.
 
         Args:
@@ -206,23 +206,23 @@ class Dictionary(ABC):
     """Revision number declared in the dictionary."""
     interface: Interface
     """Interface declared in the dictionary."""
-    subnodes: Dict[int, SubnodeType]
+    subnodes: dict[int, SubnodeType]
     """Number of subnodes in the dictionary."""
     categories: DictionaryCategories
     """Instance of all the categories in the dictionary."""
-    errors: Dict[int, "DictionaryError"]
+    errors: dict[int, "DictionaryError"]
     """Instance of all the errors in the dictionary."""
     image: Optional[str] = None
     """Drive's encoded image."""
     is_safe: bool = False
     """True if has SafetyPDOs element, else False"""
-    _registers: Dict[int, Dict[str, Register]]
+    _registers: dict[int, dict[str, Register]]
     """Instance of all the registers in the dictionary"""
-    registers_group: Dict[int, Dict[str, List[Register]]]
+    registers_group: dict[int, dict[str, list[Register]]]
     """Registers group by subnode and UID"""
-    safety_rpdos: Dict[str, DictionarySafetyPDO]
+    safety_rpdos: dict[str, DictionarySafetyPDO]
     """Safety RPDOs by UID"""
-    safety_tpdos: Dict[str, DictionarySafetyPDO]
+    safety_tpdos: dict[str, DictionarySafetyPDO]
     """Safety TPDOs by UID"""
 
     def __init__(self, dictionary_path: str, interface: Interface) -> None:
@@ -237,12 +237,13 @@ class Dictionary(ABC):
         try:
             self.read_dictionary()
         except KeyError as e:
-            raise ILDictionaryParseError("The dictionary is not well-formed.") from e
+            msg = "The dictionary is not well-formed."
+            raise ILDictionaryParseError(msg) from e
 
     @classmethod
     @abstractmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
-        """Quick function to get target dictionary description
+        """Quick function to get target dictionary description.
 
         Args:
             dictionary_path: target dictionary path
@@ -262,12 +263,14 @@ class Dictionary(ABC):
 
         """
         if not isinstance(other_dict, type(self)):
+            msg = f"Cannot merge dictionaries. Expected type: {type(self)}, got: {type(other_dict)}"
             raise TypeError(
-                f"Cannot merge dictionaries. Expected type: {type(self)}, got: {type(other_dict)}",
+                msg,
             )
         if not other_dict.is_coco_dictionary and not self.is_coco_dictionary:
+            msg = "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary."
             raise ValueError(
-                "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary.",
+                msg,
             )
         self_dict_copy = copy.deepcopy(self)
         other_dict_copy = copy.deepcopy(other_dict)
@@ -277,7 +280,7 @@ class Dictionary(ABC):
         self_dict_copy._set_image(other_dict_copy)
         return self_dict_copy
 
-    def registers(self, subnode: int) -> Dict[str, Register]:
+    def registers(self, subnode: int) -> dict[str, Register]:
         """Gets the register dictionary to the targeted subnode.
 
         Args:
@@ -293,8 +296,8 @@ class Dictionary(ABC):
     def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
 
-    def child_registers(self, uid: str, subnode: int) -> List[Register]:
-        """Return group registers by an UID
+    def child_registers(self, uid: str, subnode: int) -> list[Register]:
+        """Return group registers by an UID.
 
         Args:
             uid: registers group UID
@@ -309,10 +312,11 @@ class Dictionary(ABC):
         """
         if subnode in self.registers_group and uid in self.registers_group[subnode]:
             return self.registers_group[subnode][uid]
-        raise KeyError(f"Registers group {uid} in subnode {subnode} not exist")
+        msg = f"Registers group {uid} in subnode {subnode} not exist"
+        raise KeyError(msg)
 
     def get_safety_rpdo(self, uid: str) -> DictionarySafetyPDO:
-        """Get Safe RPDO by uid
+        """Get Safe RPDO by uid.
 
         Args:
             uid: Safe RPDO uid
@@ -326,13 +330,15 @@ class Dictionary(ABC):
 
         """
         if not self.is_safe:
-            raise NotImplementedError("Safe PDOs are not implemented for this device")
+            msg = "Safe PDOs are not implemented for this device"
+            raise NotImplementedError(msg)
         if uid in self.safety_rpdos:
             return self.safety_rpdos[uid]
-        raise KeyError(f"Safe RPDO {uid} not exist")
+        msg = f"Safe RPDO {uid} not exist"
+        raise KeyError(msg)
 
     def get_safety_tpdo(self, uid: str) -> DictionarySafetyPDO:
-        """Get Safe TPDO by uid
+        """Get Safe TPDO by uid.
 
         Args:
             uid: Safe TPDO uid
@@ -346,10 +352,12 @@ class Dictionary(ABC):
 
         """
         if not self.is_safe:
-            raise NotImplementedError("Safe PDOs are not implemented for this device")
+            msg = "Safe PDOs are not implemented for this device"
+            raise NotImplementedError(msg)
         if uid in self.safety_tpdos:
             return self.safety_tpdos[uid]
-        raise KeyError(f"Safe TPDO {uid} not exist")
+        msg = f"Safe TPDO {uid} not exist"
+        raise KeyError(msg)
 
     def _merge_registers(self, other_dict: "Dictionary") -> None:
         """Add the registers from another dictionary to the dictionary instance.
@@ -400,7 +408,7 @@ class Dictionary(ABC):
             self.coco_product_code = other_dict.product_code
 
     def _read_errors(self, root: ET.Element, path: str) -> None:
-        """Process Errors element and set errors
+        """Process Errors element and set errors.
 
         Args:
             root: Errors element
@@ -410,7 +418,7 @@ class Dictionary(ABC):
         self._load_errors(error_list)
 
     @staticmethod
-    def _findall_and_check(root: ET.Element, path: str) -> List[ET.Element]:
+    def _findall_and_check(root: ET.Element, path: str) -> list[ET.Element]:
         """Return list of elements in the target root element if exist, else, raises an exception.
 
         Args:
@@ -426,11 +434,12 @@ class Dictionary(ABC):
         """
         element = root.findall(path)
         if not element:
-            raise ILDictionaryParseError(f"{path} element is not found")
+            msg = f"{path} element is not found"
+            raise ILDictionaryParseError(msg)
         return element
 
-    def _load_errors(self, error_list: List[ET.Element]) -> None:
-        """Parse and load the errors into the errors dictionary"""
+    def _load_errors(self, error_list: list[ET.Element]) -> None:
+        """Parse and load the errors into the errors dictionary."""
         self.errors = {}
         for element in error_list:
             label = element.find(DICT_LABELS_LABEL)
@@ -447,7 +456,7 @@ class Dictionary(ABC):
 
     @property
     def is_coco_dictionary(self) -> bool:
-        """Check if dictionary is a CoCo dictionary
+        """Check if dictionary is a CoCo dictionary.
 
         Returns:
             True if the dictionary is a CoCo dictionary. False otherwise.
@@ -543,8 +552,9 @@ class DictionaryV3(Dictionary):
             with open(dictionary_path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
+            msg = f"There is not any xdf file in the path: {dictionary_path}"
             raise FileNotFoundError(
-                f"There is not any xdf file in the path: {dictionary_path}",
+                msg,
             ) from e
         root = tree.getroot()
         device_path = (
@@ -552,7 +562,8 @@ class DictionaryV3(Dictionary):
         )
         device = root.find(device_path)
         if device is None:
-            raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
+            msg = "Dictionary cannot be used for the chosen communication"
+            raise ILDictionaryParseError(msg)
         firmware_version = device.attrib[cls.__DEVICE_FW_VERSION_ATTR]
         product_code = int(device.attrib[cls.__DEVICE_PRODUCT_CODE_ATTR])
         part_number = device.attrib[cls.__DEVICE_PART_NUMBER_ATTR]
@@ -576,7 +587,8 @@ class DictionaryV3(Dictionary):
         """
         element = root.find(path)
         if element is None:
-            raise ILDictionaryParseError(f"{path} element is not found")
+            msg = f"{path} element is not found"
+            raise ILDictionaryParseError(msg)
         return element
 
     def read_dictionary(self) -> None:
@@ -584,7 +596,8 @@ class DictionaryV3(Dictionary):
             with open(self.path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}") from e
+            msg = f"There is not any xdf file in the path: {self.path}"
+            raise FileNotFoundError(msg) from e
         root = tree.getroot()
         drive_image_element = self.__find_and_check(root, self.__DRIVE_IMAGE_ELEMENT)
         self.__read_drive_image(drive_image_element)
@@ -594,7 +607,7 @@ class DictionaryV3(Dictionary):
         self.__read_body(body_element)
 
     def __read_drive_image(self, drive_image: ET.Element) -> None:
-        """Process DriveImage element and set image
+        """Process DriveImage element and set image.
 
         Args:
             drive_image: DriveImage element
@@ -606,7 +619,7 @@ class DictionaryV3(Dictionary):
             self.image = None
 
     def __read_header(self, root: ET.Element) -> None:
-        """Process Header element
+        """Process Header element.
 
         Args:
             root: Header element
@@ -617,7 +630,7 @@ class DictionaryV3(Dictionary):
         # Dictionary localization not implemented
 
     def __read_version(self, root: ET.Element) -> None:
-        """Process Version element and set version
+        """Process Version element and set version.
 
         Args:
             root: Version element
@@ -627,11 +640,12 @@ class DictionaryV3(Dictionary):
 
         """
         if root.text is None:
-            raise ILDictionaryParseError("Version is empty")
+            msg = "Version is empty"
+            raise ILDictionaryParseError(msg)
         self.version = root.text.strip()
 
     def __read_body(self, root: ET.Element) -> None:
-        """Process Body element
+        """Process Body element.
 
         Args:
             root: Body element
@@ -643,7 +657,7 @@ class DictionaryV3(Dictionary):
         self.__read_devices(devices_element)
 
     def __read_categories(self, root: ET.Element) -> None:
-        """Process Categories element and set categories
+        """Process Categories element and set categories.
 
         Args:
             root: Categories element
@@ -653,7 +667,7 @@ class DictionaryV3(Dictionary):
         self.categories = DictionaryCategories(category_list)
 
     def __read_devices(self, root: ET.Element) -> None:
-        """Process Devices element
+        """Process Devices element.
 
         Args:
             root: Devices element
@@ -669,7 +683,8 @@ class DictionaryV3(Dictionary):
         else:
             device_element = root.find(self.__DEVICE_ELEMENT[self.interface])
         if device_element is None:
-            raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
+            msg = "Dictionary cannot be used for the chosen communication"
+            raise ILDictionaryParseError(msg)
         self.__read_device_attributes(device_element)
         if self.interface == Interface.ETH:
             self.__read_device_eth(device_element)
@@ -687,7 +702,7 @@ class DictionaryV3(Dictionary):
         self.revision_number = int(device.attrib[self.DEVICE_REVISION_NUMBER_ATTR])
 
     def __read_device_eoe(self, root: ET.Element) -> None:
-        """Process EoEDevice element
+        """Process EoEDevice element.
 
         Args:
             root: EoEDevice element
@@ -697,7 +712,7 @@ class DictionaryV3(Dictionary):
         self.__read_device_eth(root)
 
     def __read_device_eth(self, root: ET.Element) -> None:
-        """Process ETHDevice element
+        """Process ETHDevice element.
 
         Args:
             root: ETHDevice element
@@ -715,7 +730,7 @@ class DictionaryV3(Dictionary):
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
 
     def __read_device_ecat(self, root: ET.Element) -> None:
-        """Process ECATDevice element
+        """Process ECATDevice element.
 
         Args:
             root: ECATDevice element
@@ -736,7 +751,7 @@ class DictionaryV3(Dictionary):
             self.__read_safety_pdos(safety_pdos_element)
 
     def __read_device_can(self, root: ET.Element) -> None:
-        """Process CANDevice element
+        """Process CANDevice element.
 
         Args:
             root: CANDevice element
@@ -754,7 +769,7 @@ class DictionaryV3(Dictionary):
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
 
     def __read_subnodes(self, root: ET.Element) -> None:
-        """Process Subnodes element and fill subnodes
+        """Process Subnodes element and fill subnodes.
 
         Args:
             root: Subnodes element
@@ -766,13 +781,14 @@ class DictionaryV3(Dictionary):
         subnode_list = self._findall_and_check(root, self.__SUBNODE_ELEMENT)
         for subnode in subnode_list:
             if subnode.text is None:
-                raise ILDictionaryParseError("Subnode element text is None")
+                msg = "Subnode element text is None"
+                raise ILDictionaryParseError(msg)
             self.subnodes[
                 int(subnode.attrib[self.__SUBNODE_INDEX_ATTR])
             ] = self.subnode_xdf_options[subnode.text.strip()]
 
-    def __read_labels(self, root: ET.Element) -> Dict[str, str]:
-        """Process Labels element
+    def __read_labels(self, root: ET.Element) -> dict[str, str]:
+        """Process Labels element.
 
         Args:
             root: Labels element
@@ -788,8 +804,8 @@ class DictionaryV3(Dictionary):
             labels[key] = value
         return labels
 
-    def __read_label(self, label: ET.Element) -> Tuple[str, str]:
-        """Process Label element
+    def __read_label(self, label: ET.Element) -> tuple[str, str]:
+        """Process Label element.
 
         Args:
             label: Label element
@@ -802,13 +818,14 @@ class DictionaryV3(Dictionary):
 
         """
         if label.text is None:
-            raise ILDictionaryParseError("Label text is empty")
+            msg = "Label text is empty"
+            raise ILDictionaryParseError(msg)
         return label.attrib[self.__LABEL_LANG_ATTR], label.text.strip()
 
     def __read_range(
         self, range_elem: Optional[ET.Element],
-    ) -> Union[Tuple[None, None], Tuple[str, str]]:
-        """Process Range element
+    ) -> Union[tuple[None, None], tuple[str, str]]:
+        """Process Range element.
 
         Args:
             range_elem: Range element
@@ -825,8 +842,8 @@ class DictionaryV3(Dictionary):
 
     def __read_enumeration(
         self, enumerations_element: Optional[ET.Element],
-    ) -> Optional[Dict[str, int]]:
-        """Process Enumerations possible element
+    ) -> Optional[dict[str, int]]:
+        """Process Enumerations possible element.
 
         Args:
             enumerations_element: Enumerations element, also accepts None
@@ -846,8 +863,8 @@ class DictionaryV3(Dictionary):
 
     def __read_bitfields(
         self, bitfields_element: Optional[ET.Element],
-    ) -> Optional[Dict[str, BitField]]:
-        """Process Bitfields possible element
+    ) -> Optional[dict[str, BitField]]:
+        """Process Bitfields possible element.
 
         Args:
             bitfields_element: Bitfields element, also accepts None
@@ -869,7 +886,7 @@ class DictionaryV3(Dictionary):
         return None
 
     def __read_mcb_register(self, register: ET.Element) -> None:
-        """Process MCBRegister element and add it to _registers
+        """Process MCBRegister element and add it to _registers.
 
         Args:
             register: MCBRegister element
@@ -921,7 +938,7 @@ class DictionaryV3(Dictionary):
         self._registers[subnode][identifier] = ethernet_register
 
     def __read_canopen_object(self, root: ET.Element) -> None:
-        """Process CANopenObject element and add it to registers_group if has UID
+        """Process CANopenObject element and add it to registers_group if has UID.
 
         Args:
             root: CANopenObject element
@@ -944,7 +961,7 @@ class DictionaryV3(Dictionary):
     def __read_canopen_subitem(
         self, subitem: ET.Element, reg_index: int, subnode: int,
     ) -> CanopenRegister:
-        """Process Subitem element and add it to _registers
+        """Process Subitem element and add it to _registers.
 
         Args:
             subitem: CANopenObject element
@@ -1007,7 +1024,7 @@ class DictionaryV3(Dictionary):
         return canopen_register
 
     def __read_safety_pdos(self, root: ET.Element) -> None:
-        """Process SafetyPDOs element
+        """Process SafetyPDOs element.
 
         Args:
             root: MCBRegister element
@@ -1023,8 +1040,8 @@ class DictionaryV3(Dictionary):
             uid, safety_tpdo = self.__read_pdo(tpdo_element)
             self.safety_tpdos[uid] = safety_tpdo
 
-    def __read_pdo(self, pdo: ET.Element) -> Tuple[str, DictionarySafetyPDO]:
-        """Process RPDO and TPDO elements
+    def __read_pdo(self, pdo: ET.Element) -> tuple[str, DictionarySafetyPDO]:
+        """Process RPDO and TPDO elements.
 
         Args:
             pdo: MCBRegister element
@@ -1046,12 +1063,14 @@ class DictionaryV3(Dictionary):
             reg_uid = entry.text
             if reg_uid:
                 if not (reg_subnode in self._registers and reg_uid in self._registers[reg_subnode]):
+                    msg = f"PDO entry {reg_uid} subnode {reg_subnode} does not exist"
                     raise ILDictionaryParseError(
-                        f"PDO entry {reg_uid} subnode {reg_subnode} does not exist",
+                        msg,
                     )
                 entry_reg = self._registers[reg_subnode][reg_uid]
                 if not isinstance(entry_reg, CanopenRegister):
-                    raise ValueError(f"{reg_uid} subnode {reg_subnode} is not a CANopen register")
+                    msg = f"{reg_uid} subnode {reg_subnode} is not a CANopen register"
+                    raise ValueError(msg)
                 pdo_registers.append(DictionarySafetyPDO.PDORegister(entry_reg, size))
             else:
                 pdo_registers.append(DictionarySafetyPDO.PDORegister(None, size))
@@ -1092,10 +1111,10 @@ class DictionaryV2(Dictionary):
     __MON_DIST_STATUS_REGISTER = "MON_DIST_STATUS"
 
     _MONITORING_DISTURBANCE_REGISTERS: Union[
-        List[EthercatRegister], List[EthernetRegister], List[CanopenRegister],
+        list[EthercatRegister], list[EthernetRegister], list[CanopenRegister],
     ]
 
-    _KNOWN_REGISTER_BITFIELDS: Dict[str, Callable[[], Dict[str, BitField]]] = {
+    _KNOWN_REGISTER_BITFIELDS: dict[str, Callable[[], dict[str, BitField]]] = {
         "DRV_STATE_STATUS": lambda: {
             # https://drives.novantamotion.com/summit/0x011-status-word
             "READY_TO_SWITCH_ON": BitField.bit(0),
@@ -1152,18 +1171,21 @@ class DictionaryV2(Dictionary):
             with open(dictionary_path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
+            msg = f"There is not any xdf file in the path: {dictionary_path}"
             raise FileNotFoundError(
-                f"There is not any xdf file in the path: {dictionary_path}",
+                msg,
             ) from e
         root = tree.getroot()
         device = root.find(cls.__DICT_ROOT_DEVICE)
         if device is None:
+            msg = f"Could not load the dictionary {dictionary_path}. Device information is missing"
             raise ILDictionaryParseError(
-                f"Could not load the dictionary {dictionary_path}. Device information is missing",
+                msg,
             )
         dict_interface = device.attrib.get("Interface")
         if cls._INTERFACE_STR[interface] != dict_interface and dict_interface is not None:
-            raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
+            msg = "Dictionary cannot be used for the chosen communication"
+            raise ILDictionaryParseError(msg)
         firmware_version = device.attrib.get("firmwareVersion")
         product_code = device.attrib.get("ProductCode")
         if product_code is not None and product_code.isdecimal():
@@ -1183,13 +1205,15 @@ class DictionaryV2(Dictionary):
             with open(self.path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}") from e
+            msg = f"There is not any xdf file in the path: {self.path}"
+            raise FileNotFoundError(msg) from e
         root = tree.getroot()
 
         device = root.find(self.__DICT_ROOT_DEVICE)
         if device is None:
+            msg = f"Could not load the dictionary {self.path}. Device information is missing"
             raise ILDictionaryParseError(
-                f"Could not load the dictionary {self.path}. Device information is missing",
+                msg,
             )
 
         # Subnodes
@@ -1230,7 +1254,8 @@ class DictionaryV2(Dictionary):
             and self._INTERFACE_STR[self.interface] != self.dict_interface
             and self.dict_interface is not None
         ):
-            raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
+            msg = "Dictionary cannot be used for the chosen communication"
+            raise ILDictionaryParseError(msg)
 
         if root.findall(self.__DICT_ROOT_AXES):
             # For each axis
@@ -1249,7 +1274,7 @@ class DictionaryV2(Dictionary):
             if image is not None and image.text is not None and image.text.strip():
                 self.image = image.text
         except AttributeError:
-            logger.error(f"Dictionary {Path(self.path).name} has no image section.")
+            logger.exception(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
         xdf_file.close()
         self._append_missing_registers()
@@ -1274,7 +1299,7 @@ class DictionaryV2(Dictionary):
         try:
             identifier = register.attrib["id"]
         except KeyError as ke:
-            logger.error(f"The register doesn't have an identifier. Error caught: {ke}")
+            logger.exception(f"The register doesn't have an identifier. Error caught: {ke}")
             return None
 
         try:
@@ -1287,8 +1312,9 @@ class DictionaryV2(Dictionary):
             if dtype_aux in self.dtype_xdf_options:
                 dtype = self.dtype_xdf_options[dtype_aux]
             else:
+                msg = f"The data type {dtype_aux} does not exist for the register: {identifier}"
                 raise ILDictionaryParseError(
-                    f"The data type {dtype_aux} does not exist for the register: {identifier}",
+                    msg,
                 )
 
             # Access type
@@ -1297,8 +1323,9 @@ class DictionaryV2(Dictionary):
             if access_aux in self.access_xdf_options:
                 access = self.access_xdf_options[access_aux]
             else:
+                msg = f"The access type {access_aux} does not exist for the register: {identifier}"
                 raise ILDictionaryParseError(
-                    f"The access type {access_aux} does not exist for the register: {identifier}",
+                    msg,
                 )
 
             # Address type
@@ -1307,9 +1334,12 @@ class DictionaryV2(Dictionary):
             if address_type_aux in self.address_type_xdf_options:
                 address_type = self.address_type_xdf_options[address_type_aux]
             else:
-                raise ILDictionaryParseError(
+                msg = (
                     f"The address type {address_type_aux} does not exist for the register: "
-                    f"{identifier}",
+                    f"{identifier}"
+                )
+                raise ILDictionaryParseError(
+                    msg,
                 )
 
             subnode = int(register.attrib.get("subnode", 1))
@@ -1323,7 +1353,7 @@ class DictionaryV2(Dictionary):
 
             # Range
             range_elem = register.find(self.__DICT_RANGE)
-            reg_range: Union[Tuple[None, None], Tuple[str, str]] = (None, None)
+            reg_range: Union[tuple[None, None], tuple[str, str]] = (None, None)
             if range_elem is not None:
                 range_min = range_elem.attrib["min"]
                 range_max = range_elem.attrib["max"]
@@ -1338,7 +1368,7 @@ class DictionaryV2(Dictionary):
             if identifier in self._KNOWN_REGISTER_BITFIELDS:
                 bitfields = self._KNOWN_REGISTER_BITFIELDS[identifier]()
 
-            current_read_register = Register(
+            return Register(
                 dtype,
                 access,
                 identifier=identifier,
@@ -1355,17 +1385,16 @@ class DictionaryV2(Dictionary):
                 bitfields=bitfields,
             )
 
-            return current_read_register
 
         except KeyError as ke:
-            logger.error(f"Register with ID {identifier} has not attribute {ke}")
+            logger.exception(f"Register with ID {identifier} has not attribute {ke}")
             return None
 
     def _add_register_list(
         self,
         register: Register,
     ) -> None:
-        """Adds the current read register into the _registers list
+        """Adds the current read register into the _registers list.
 
         Args:
             register: the current read register it will be instanced

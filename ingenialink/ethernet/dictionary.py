@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from typing import List, Optional
+from typing import Optional
 
 import ingenialogger
 
@@ -17,7 +17,7 @@ class EthernetDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: List[EthernetRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: list[EthernetRegister] = [
         EthernetRegister(
             identifier="MON_DATA_VALUE",
             units="",
@@ -47,7 +47,7 @@ class EthernetDictionaryV2(DictionaryV2):
         try:
             reg_address = int(register.attrib["address"], 16)
 
-            ethernet_register = EthernetRegister(
+            return EthernetRegister(
                 reg_address,
                 current_read_register.dtype,
                 current_read_register.access,
@@ -67,10 +67,9 @@ class EthernetDictionaryV2(DictionaryV2):
                 bitfields=current_read_register.bitfields,
             )
 
-            return ethernet_register
 
         except KeyError as ke:
-            logger.error(
+            logger.exception(
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}",
             )
             return None

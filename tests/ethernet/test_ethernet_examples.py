@@ -7,8 +7,7 @@ def arguments(read_config):
     dictionary = protocol_contents["dictionary"]
     ip_address = protocol_contents["ip"]
     port = protocol_contents["port"]
-    attrs = [f"--dictionary_path={dictionary}", f"--ip_address={ip_address}", f"--port={port}"]
-    return attrs
+    return [f"--dictionary_path={dictionary}", f"--ip_address={ip_address}", f"--port={port}"]
 
 
 @pytest.mark.ethernet()

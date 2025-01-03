@@ -1,12 +1,11 @@
+import contextlib
 import json
 import time
 
 from bitarray import bitarray
 
-try:
+with contextlib.suppress(ImportError):
     import pysoem
-except ImportError:
-    pass
 import pytest
 
 from ingenialink import EthercatNetwork
@@ -28,8 +27,7 @@ SUBNODE = 1
 @pytest.fixture()
 def open_dictionary():
     dictionary = "./tests/resources/ethercat/test_dict_ethercat.xdf"
-    ethercat_dictionary = DictionaryFactory.create_dictionary(dictionary, Interface.ECAT)
-    return ethercat_dictionary
+    return DictionaryFactory.create_dictionary(dictionary, Interface.ECAT)
 
 
 @pytest.fixture()
@@ -115,7 +113,7 @@ def test_tpdo_item(open_dictionary):
 
 @pytest.mark.no_connection()
 @pytest.mark.parametrize(
-    "uid, expected_value",
+    ("uid", "expected_value"),
     [("CL_POS_FBK_VALUE", 0x20300020), ("CL_VEL_FBK_VALUE", 0x20310020)],
 )
 def test_pdo_item_register_mapping(open_dictionary, uid, expected_value):
@@ -268,7 +266,8 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
 def connect_to_all_slave(pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
     if protocol != "ethercat":
-        raise AssertionError("Wrong protocol")
+        msg = "Wrong protocol"
+        raise AssertionError(msg)
     config = "tests/config.json"
     with open(config, encoding="utf-8") as fp:
         contents = json.load(fp)

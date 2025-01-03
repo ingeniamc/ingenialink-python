@@ -23,7 +23,7 @@ PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
 
 
 @pytest.mark.parametrize(
-    "dict_path, interface, fw_version, product_code, part_number, revision_number",
+    ("dict_path", "interface", "fw_version", "product_code", "part_number", "revision_number"),
     [
         (
             f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf",
@@ -72,7 +72,7 @@ def test_dictionary_description(
 
 
 @pytest.mark.parametrize(
-    "dict_path, interface, raises",
+    ("dict_path", "interface", "raises"),
     [
         (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.ECAT, ILDictionaryParseError),
         (f"{PATH_RESOURCE}canopen/test_dict_can.xdf", Interface.ECAT, ILDictionaryParseError),
@@ -87,7 +87,7 @@ def test_dictionary_description_fail(dict_path, interface, raises):
 
 
 @pytest.mark.parametrize(
-    "dictionary_class, dictionary_path",
+    ("dictionary_class", "dictionary_path"),
     [
         (CanopenDictionaryV2, f"{PATH_RESOURCE}canopen/test_dict_can.xdf"),
         (EthernetDictionaryV2, f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf"),
@@ -100,7 +100,7 @@ def test_dictionary_v2_image(dictionary_class, dictionary_path):
 
 
 @pytest.mark.parametrize(
-    "dictionary_class, dictionary_path",
+    ("dictionary_class", "dictionary_path"),
     [
         (CanopenDictionaryV2, f"{PATH_RESOURCE}canopen/test_dict_can.xdf"),
         (EthernetDictionaryV2, f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf"),
@@ -126,7 +126,7 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
 
 @pytest.mark.no_connection()
 @pytest.mark.parametrize(
-    "dict_path, interface, dict_class",
+    ("dict_path", "interface", "dict_class"),
     [
         (f"{PATH_RESOURCE}canopen/test_dict_can.xdf", Interface.CAN, CanopenDictionaryV2),
         (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.CAN, DictionaryV3),
@@ -144,13 +144,12 @@ def test_dictionary_factory(dict_path, interface, dict_class):
 
 @pytest.mark.no_connection()
 @pytest.mark.parametrize(
-    "dict_path, interface, raises",
+    ("dict_path", "interface", "raises"),
     [
         (f"{PATH_RESOURCE}canopen/test_dict_can.xdf", Interface.ETH, ILDictionaryParseError),
         (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.ECAT, ILDictionaryParseError),
         (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.CAN, ILDictionaryParseError),
         (f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf", Interface.CAN, ILDictionaryParseError),
-        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.CAN, ILDictionaryParseError),
         (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.ETH, ILDictionaryParseError),
         (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.CAN, ILDictionaryParseError),
     ],
@@ -305,7 +304,7 @@ def test_merge_dictionaries_no_coco_exception():
 
 
 @pytest.mark.parametrize(
-    "xml_attribute, class_attribute",
+    ("xml_attribute", "class_attribute"),
     [
         ("firmwareVersion", "firmware_version"),
         ("ProductCode", "product_code"),

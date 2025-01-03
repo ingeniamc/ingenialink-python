@@ -9,14 +9,13 @@ def arguments(read_config):
     device = protocol_contents["device"]
     channel = protocol_contents["channel"]
     baudrate = protocol_contents["baudrate"]
-    attrs = [
+    return [
         f"--dictionary_path={dictionary}",
         f"--node_id={node_id}",
         f"--transceiver={device}",
         f"--baudrate={baudrate}",
         f"--channel={channel}",
     ]
-    return attrs
 
 
 @pytest.mark.canopen()

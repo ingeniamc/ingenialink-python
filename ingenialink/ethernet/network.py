@@ -6,16 +6,15 @@ from collections import OrderedDict, defaultdict
 from ftplib import FTP
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import ingenialogger
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NET_DEV_EVT, NET_STATE, Network, SlaveInfo
+from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
 from ingenialink.utils.udp import UDP
 
-from ..network import NET_PROT
 from .servo import EthernetServo
 
 logger = ingenialogger.get_logger(__name__)
@@ -39,7 +38,7 @@ class NetStatusListener(Thread):
     """
 
     def __init__(self, network: "EthernetNetwork", refresh_time: float = 0.25) -> None:
-        super(NetStatusListener, self).__init__()
+        super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
         self.__stop = False
@@ -74,9 +73,9 @@ class EthernetNetwork(Network):
     """Network for all Ethernet communications."""
 
     def __init__(self) -> None:
-        super(EthernetNetwork, self).__init__()
+        super().__init__()
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: Dict[str, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
+        self.__observers_net_state: dict[str, list[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
             list,
         )
 
@@ -102,7 +101,8 @@ class EthernetNetwork(Network):
 
         """
         if not os.path.isfile(fw_file):
-            raise FileNotFoundError(f"Could not find {fw_file}.")
+            msg = f"Could not find {fw_file}."
+            raise FileNotFoundError(msg)
 
         # Start a FTP session. Drive must be in BOOT mode.
         logger.info("Starting FTP session...")
@@ -110,16 +110,19 @@ class EthernetNetwork(Network):
             try:
                 ftp_output = ftp.connect(target)
             except ConnectionError as e:
-                raise ILFirmwareLoadError("Unable to create the FTP session") from e
+                msg = "Unable to create the FTP session"
+                raise ILFirmwareLoadError(msg) from e
             logger.info(ftp_output)
             if FTP_SESSION_OK_CODE not in ftp_output:
-                raise ILFirmwareLoadError("Unable to open the FTP session")
+                msg = "Unable to open the FTP session"
+                raise ILFirmwareLoadError(msg)
             # Login into FTP session.
             logger.info("Logging into FTP session...")
             ftp_output = ftp.login(ftp_user, ftp_pwd)
             logger.info(ftp_output)
             if FTP_LOGIN_OK_CODE not in ftp_output:
-                raise ILFirmwareLoadError("Unable to login the FTP session")
+                msg = "Unable to login the FTP session"
+                raise ILFirmwareLoadError(msg)
             # Load file through FTP.
             logger.info("Uploading firmware file...")
             ftp.set_pasv(False)
@@ -127,7 +130,8 @@ class EthernetNetwork(Network):
                 ftp_output = ftp.storbinary(f"STOR {os.path.basename(file.name)}", file)
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
-                raise ILFirmwareLoadError("Unable to load the FW file through FTP")
+                msg = "Unable to load the FW file through FTP"
+                raise ILFirmwareLoadError(msg)
         logger.info("FTP session closed.")
 
     @staticmethod
@@ -151,7 +155,8 @@ class EthernetNetwork(Network):
         upd = UDP(port, ip)
 
         if not moco_file or not os.path.isfile(moco_file):
-            raise ILFirmwareLoadError("File not found")
+            msg = "File not found"
+            raise ILFirmwareLoadError(msg)
         moco_in = open(moco_file)
 
         logger.info("Loading firmware...")
@@ -176,13 +181,15 @@ class EthernetNetwork(Network):
 
             logger.info("Bootload process succeeded")
         except ftplib.error_temp as e:
-            logger.error(e)
-            raise ILFirmwareLoadError("Firewall might be blocking the access.")
+            logger.exception(e)
+            msg = "Firewall might be blocking the access."
+            raise ILFirmwareLoadError(msg)
         except Exception as e:
-            logger.error(e)
-            raise ILFirmwareLoadError("Error during bootloader process.")
+            logger.exception(e)
+            msg = "Error during bootloader process."
+            raise ILFirmwareLoadError(msg)
 
-    def scan_slaves(self) -> List[int]:
+    def scan_slaves(self) -> list[int]:
         raise NotImplementedError
 
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
@@ -223,7 +230,8 @@ class EthernetNetwork(Network):
             servo.get_state()
         except ILError as e:
             servo.stop_status_listener()
-            raise ILError(f"Drive not found in IP {target}.") from e
+            msg = f"Drive not found in IP {target}."
+            raise ILError(msg) from e
         self.servos.append(servo)
         self._set_servo_state(target, NET_STATE.CONNECTED)
 
@@ -311,7 +319,8 @@ class EthernetNetwork(Network):
 
         """
         if not isinstance(servo_id, str):
-            raise ValueError("The servo ID must be a string.")
+            msg = "The servo ID must be a string."
+            raise ValueError(msg)
         return self._servos_state[servo_id]
 
     def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:

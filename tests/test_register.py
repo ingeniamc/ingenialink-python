@@ -139,7 +139,7 @@ def test_register_set_storage():
 
 
 @pytest.mark.parametrize(
-    "dtype, reg_range, expected_range, reg_type",
+    ("dtype", "reg_range", "expected_range", "reg_type"),
     [
         (REG_DTYPE.U8, (0, 100), (0, 100), int),
         (REG_DTYPE.FLOAT, (0.0, 1.0), (0.0, 1.0), float),
@@ -160,7 +160,7 @@ def test_register_range(dtype, reg_range, expected_range, reg_type):
 
 @pytest.mark.no_connection()
 @pytest.mark.parametrize(
-    "subnode, address, mapped_address_eth, mapped_address_can",
+    ("subnode", "address", "mapped_address_eth", "mapped_address_can"),
     [
         (0, 0x0000, 0x0000, 0x0000),
         (1, 0x0010, 0x0010, 0x0010),
@@ -192,7 +192,7 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
 
 
 @pytest.mark.parametrize(
-    "write_value, expected_read_value,",
+    ("write_value", "expected_read_value"),
     [
         (0, False),
         (1, True),

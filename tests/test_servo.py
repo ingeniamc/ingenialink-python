@@ -112,7 +112,8 @@ def create_disturbance(connect_to_slave, pytestconfig):
 @pytest.mark.ethercat()
 def test_save_configuration(connect_to_slave):
     servo, net = connect_to_slave
-    assert servo is not None and net is not None
+    assert servo is not None
+    assert net is not None
 
     filename = "temp_config"
 
@@ -176,7 +177,8 @@ def test_save_configuration(connect_to_slave):
 def test_check_configuration(virtual_drive, read_config, pytestconfig):
     server, servo = virtual_drive
 
-    assert servo is not None and server is not None
+    assert servo is not None
+    assert server is not None
 
     filename = "temp_config"
 
@@ -213,7 +215,8 @@ def test_check_configuration(virtual_drive, read_config, pytestconfig):
 @pytest.mark.ethercat()
 def test_load_configuration(connect_to_slave):
     servo, net = connect_to_slave
-    assert servo is not None and net is not None
+    assert servo is not None
+    assert net is not None
 
     filename = "temp_config"
 
@@ -287,7 +290,8 @@ def test_read_configuration_file():
 @pytest.mark.ethercat()
 def test_load_configuration_file_not_found(connect_to_slave):
     servo, net = connect_to_slave
-    assert servo is not None and net is not None
+    assert servo is not None
+    assert net is not None
 
     filename = "can_config.xdf"
     with pytest.raises(FileNotFoundError):
@@ -300,7 +304,8 @@ def test_load_configuration_file_not_found(connect_to_slave):
 @pytest.mark.ethercat()
 def test_load_configuration_invalid_subnode(read_config, pytestconfig, connect_to_slave, subnode):
     servo, net = connect_to_slave
-    assert servo is not None and net is not None
+    assert servo is not None
+    assert net is not None
 
     protocol = pytestconfig.getoption("--protocol")
     filename = read_config[protocol]["load_config_file"]
@@ -313,7 +318,8 @@ def test_load_configuration_invalid_subnode(read_config, pytestconfig, connect_t
 @pytest.mark.ethercat()
 def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_to_slave):
     servo, net = connect_to_slave
-    assert servo is not None and net is not None
+    assert servo is not None
+    assert net is not None
 
     protocol = pytestconfig.getoption("--protocol")
     filename = read_config[protocol]["load_config_file"]
@@ -398,7 +404,8 @@ def test_restore_parameters(connect_to_slave, connect_to_rack_service):
 @pytest.mark.ethercat()
 def test_read(connect_to_slave):
     servo, net = connect_to_slave
-    assert servo is not None and net is not None
+    assert servo is not None
+    assert net is not None
 
     value = servo.read("DRV_STATE_STATUS")
     assert value is not None
@@ -409,7 +416,8 @@ def test_read(connect_to_slave):
 @pytest.mark.ethercat()
 def test_write(connect_to_slave):
     servo, net = connect_to_slave
-    assert servo is not None and net is not None
+    assert servo is not None
+    assert net is not None
 
     reg = "CL_AUX_FBK_SENSOR"
     value = 4
@@ -663,7 +671,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):
 
 @pytest.mark.no_connection()
 @pytest.mark.parametrize(
-    "status_word, state",
+    ("status_word", "state"),
     [
         (
             {

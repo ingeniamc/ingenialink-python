@@ -14,10 +14,12 @@ RESOURCES_FOLDER = "virtual_drive/resources/"
 def test_connect_to_virtual_drive(virtual_drive_custom_dict):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
     server, net, servo = virtual_drive_custom_dict(dictionary)
-    assert servo is not None and net is not None
+    assert servo is not None
+    assert net is not None
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
-    assert fw_version is not None and fw_version != ""
+    assert fw_version is not None
+    assert fw_version != ""
 
 
 @pytest.mark.no_connection()
@@ -38,10 +40,12 @@ def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict, read_con
         if not os.path.exists(dictionary):
             continue
         server, net, servo = virtual_drive_custom_dict(dictionary)
-        assert servo is not None and net is not None
+        assert servo is not None
+        assert net is not None
         assert len(net.servos) == 1
         fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
-        assert fw_version is not None and fw_version != ""
+        assert fw_version is not None
+        assert fw_version != ""
 
         for reg_key, register in servo.dictionary.registers(1).items():
             if register.access in [REG_ACCESS.RO, REG_ACCESS.RW]:
