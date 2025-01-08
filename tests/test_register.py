@@ -1,4 +1,5 @@
 import os
+import re
 
 import pytest
 
@@ -221,9 +222,8 @@ def test_bit_register(connect_virtual_drive_with_bool_register, write_value, exp
 def test_bit_register_write_invalid_value(connect_virtual_drive_with_bool_register, write_value):
     dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
     servo, _ = connect_virtual_drive_with_bool_register(dictionary)
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(
+        ValueError,
+        match=re.escape(f"Invalid value. Expected values: [0, 1, True, False], got {write_value}"),
+    ):
         servo.write("TEST_BOOLEAN", write_value)
-    assert (
-        str(exc_info.value)
-        == f"Invalid value. Expected values: [0, 1, True, False], got {write_value}"
-    )

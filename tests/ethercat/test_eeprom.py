@@ -17,7 +17,7 @@ def test_eeprom_read(connect_to_slave):
 def test_eeprom_read_wrong_size(connect_to_slave):
     servo, _ = connect_to_slave
     product_code_address = 10
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="The minimum length is 1 byte."):
         servo._read_esc_eeprom(product_code_address, length=0)
 
 
@@ -40,5 +40,5 @@ def test_eeprom_write(connect_to_slave):
 def test_eeprom_wrong_size(connect_to_slave):
     servo, _ = connect_to_slave
     serial_number_address = 14
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="The data length must be a multiple of 2 bytes."):
         servo._write_esc_eeprom(serial_number_address, (0).to_bytes(3, "little"))

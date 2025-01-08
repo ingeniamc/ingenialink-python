@@ -49,10 +49,8 @@ def test_set_bitfields(old_value, new_value, values):
     ],
 )
 def test_set_bitfield_over_max_value(values, error):
-    with pytest.raises(ValueError) as ex:
+    with pytest.raises(ValueError, match=error):
         BitField.set_bitfields(BITFIELD_EXAMPLES, values, 0)
-
-    assert ex.value.args[0] == error
 
 
 @pytest.mark.no_connection()

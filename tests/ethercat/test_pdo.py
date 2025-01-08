@@ -485,7 +485,7 @@ def test_tpdo_padding():
 @pytest.mark.no_connection()
 def test_pdo_padding_exceptions():
     # Size bits not defined
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="The size bits must be set when creating padding items."):
         RPDOMapItem()
     padding_item = RPDOMapItem(size_bits=8)
     # Padding value cannot be set with the value attribute
@@ -545,9 +545,9 @@ def test_remove_rpdo_map_exceptions(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
     servo.set_pdo_map_to_slave([rpdo_map], [])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="The RPDOMap instance or the index should be provided."):
         servo.remove_rpdo_map()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         servo.remove_rpdo_map(tpdo_map)
     with pytest.raises(IndexError):
         servo.remove_rpdo_map(rpdo_map_index=1)
@@ -571,9 +571,9 @@ def test_remove_tpdo_map_exceptions(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
     servo.set_pdo_map_to_slave([rpdo_map], [])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="The RPDOMap instance or the index should be provided."):
         servo.remove_rpdo_map()
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         servo.remove_tpdo_map(rpdo_map)
     with pytest.raises(IndexError):
         servo.remove_tpdo_map(tpdo_map_index=1)

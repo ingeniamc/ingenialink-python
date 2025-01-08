@@ -301,12 +301,11 @@ def test_merge_dictionaries_no_coco_exception():
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
     moco_a_dict = EthernetDictionaryV2(moco_dict_path)
     moco_b_dict = EthernetDictionaryV2(moco_dict_path)
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(
+        ValueError,
+        match="Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary.",
+    ):
         moco_a_dict + moco_b_dict
-    assert (
-        str(exc_info.value)
-        == "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary."
-    )
 
 
 @pytest.mark.parametrize(

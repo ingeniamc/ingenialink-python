@@ -317,7 +317,7 @@ def test_load_configuration_invalid_subnode(read_config, pytestconfig, connect_t
 
     protocol = pytestconfig.getoption("--protocol")
     filename = read_config[protocol]["load_config_file"]
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         servo.load_configuration(filename, subnode=subnode)
 
 
@@ -348,7 +348,7 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
         for element in registers:
             element.attrib["subnode"] = "1"
         tree.write(modified_path)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         servo.load_configuration(str(modified_path), subnode=0)
 
 

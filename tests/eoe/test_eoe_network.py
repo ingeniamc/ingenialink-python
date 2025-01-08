@@ -42,7 +42,7 @@ def test_eoe_connection(connect_to_slave):
 def test_eoe_connection_wrong_ip_address(read_config):
     protocol_contents = read_config["eoe"]
     net = EoENetwork(protocol_contents["ifname"])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="ip_address must be a subnetwork of 192.168.3.0/24"):
         net.connect_to_slave(
             slave_id=protocol_contents["slave"],
             ip_address="192.168.2.22",

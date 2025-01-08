@@ -60,7 +60,7 @@ def test_load_firmware_not_implemented_error(mocker, read_config):
 @pytest.mark.parametrize("slave_id", [-1, "one", None])
 def test_connect_to_slave_invalid_id(read_config, slave_id):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Invalid slave ID value"):
         net.connect_to_slave(slave_id, read_config["ethercat"]["dictionary"])
 
 
