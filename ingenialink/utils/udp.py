@@ -4,7 +4,7 @@ import struct
 
 import ingenialogger
 
-from ingenialink.exceptions import ILUDPException
+from ingenialink.exceptions import ILUDPExceptionError
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -67,7 +67,7 @@ class UDP:
         ret_cmd = self.unmsg(rcv)
         if ret_cmd != self.ACK_COMMAND:
             self.socket.close()
-            raise ILUDPException("No ACK received (command received %d)" % ret_cmd)
+            raise ILUDPExceptionError("No ACK received (command received %d)" % ret_cmd)
         return ret_cmd
 
     @staticmethod
@@ -93,7 +93,7 @@ class UDP:
         crcread = struct.unpack("<H", in_frame[12:14])[0]
         if crcread != crc:
             msg = "CRC error"
-            raise ILUDPException(msg)
+            raise ILUDPExceptionError(msg)
 
         return int(cmd)
 
