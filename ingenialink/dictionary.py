@@ -1,11 +1,11 @@
 import copy
 import enum
-from xml.etree import ElementTree
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Union
+from xml.etree import ElementTree
 
 import ingenialogger
 

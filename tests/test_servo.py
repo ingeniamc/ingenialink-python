@@ -2,8 +2,8 @@ import os
 import re
 import shutil
 import time
-from xml.etree import ElementTree
 from pathlib import Path
+from xml.etree import ElementTree
 
 import pytest
 from packaging import version

@@ -2,9 +2,9 @@ import functools
 import logging
 import struct
 import warnings
-from xml.etree.ElementTree import Element
 from enum import Enum
 from typing import Any, Callable, Optional, Union
+from xml.etree.ElementTree import Element
 
 import ingenialogger
 

@@ -1,5 +1,5 @@
-from xml.etree.ElementTree import Element
 from typing import Optional
+from xml.etree.ElementTree import Element
 
 import ingenialogger
 

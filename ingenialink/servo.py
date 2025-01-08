@@ -2,11 +2,11 @@ import os
 import re
 import threading
 import time
-from xml.etree import ElementTree
 from abc import abstractmethod
 from enum import Enum
 from typing import Any, Callable, Optional, Union
 from xml.dom import minidom
+from xml.etree import ElementTree
 
 import ingenialogger
 import numpy as np

@@ -1,8 +1,8 @@
 import os
 import tempfile
-from xml.etree import ElementTree
 from os.path import join as join_path
 from xml.dom import minidom
+from xml.etree import ElementTree
 
 import pytest
 
