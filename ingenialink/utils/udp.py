@@ -67,7 +67,7 @@ class UDP:
         ret_cmd = self.unmsg(rcv)
         if ret_cmd != self.ACK_COMMAND:
             self.socket.close()
-            raise Exception("No ACK received (command received %d)" % ret_cmd)
+            raise ILUDPException("No ACK received (command received %d)" % ret_cmd)
         return ret_cmd
 
     @staticmethod
