@@ -1337,7 +1337,7 @@ class VirtualDrive(Thread):
         while not self.__stop:
             try:
                 frame, add = self.socket.recvfrom(ETH_BUF_SIZE)
-            except Exception:
+            except Exception:  # noqa: S112, BLE001
                 continue
             reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
             self.__log(add, frame, MSG_TYPE.RECEIVED)
@@ -1540,7 +1540,7 @@ class VirtualDrive(Thread):
         """Cleans log."""
         self.__logger = []
 
-    def __decode_msg(self, reg_add: int, subnode: int, data: bytes) -> None:
+    def __decode_msg(self, reg_add: int, subnode: int, data: bytes) -> None:  # noqa: PLR0915
         """Decodes received messages and run specific methods if needed.
 
         Args:

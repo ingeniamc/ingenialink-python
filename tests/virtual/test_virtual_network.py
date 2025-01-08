@@ -55,7 +55,7 @@ def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict, read_con
             if register.access in [REG_ACCESS.WO, REG_ACCESS.RW]:
                 if register.enums_count > 0:
                     continue
-                value = random.uniform(0, 100)
+                value = random.uniform(0, 100)  # noqa: S311
                 if register.dtype != REG_DTYPE.FLOAT:
                     value = int(value)
                 servo.write(reg_key, value)

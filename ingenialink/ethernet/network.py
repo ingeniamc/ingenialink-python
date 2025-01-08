@@ -111,7 +111,7 @@ class EthernetNetwork(Network):
 
         # Start a FTP session. Drive must be in BOOT mode.
         logger.info("Starting FTP session...")
-        with FTP() as ftp:
+        with FTP() as ftp:  # noqa: S321
             try:
                 ftp_output = ftp.connect(target)
             except ConnectionError as e:
