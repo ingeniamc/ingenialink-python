@@ -1,6 +1,9 @@
 line-length = 100
 target-version = "py39"
 
+[lint.pylint]
+max-args = 10
+
 [lint]
 pydocstyle.convention = "google"
 select = [

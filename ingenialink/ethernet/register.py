@@ -44,7 +44,7 @@ class EthernetRegister(Register):
 
     MAP_ADDRESS_OFFSET = 0x800
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         address: int,
         dtype: REG_DTYPE,
