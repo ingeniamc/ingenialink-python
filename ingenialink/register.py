@@ -25,7 +25,7 @@ dtypes_ranges: dict[REG_DTYPE, dict[str, Union[int, float]]] = {
 }
 
 
-class Register(ABC):
+class Register:
     """Register Base class.
 
     Args:
