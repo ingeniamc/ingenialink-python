@@ -137,7 +137,7 @@ class EthernetServo(Servo):
         mac_address = self.read(self.COMMS_ETH_MAC, subnode=0)
         if not isinstance(mac_address, int):
             msg = f"Error retrieving the MAC address. Expected an int, got: {type(mac_address)}"
-            raise ValueError(
+            raise TypeError(
                 msg,
             )
         return mac_address

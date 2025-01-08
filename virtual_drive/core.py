@@ -981,7 +981,7 @@ class VirtualMonDistBase:
         data = self.drive.get_value_by_id(0, register_id)
         if not isinstance(data, int):
             msg = "Wrong register type"
-            raise ValueError(msg)
+            raise TypeError(msg)
         data_h = data >> 16
         data_l = data & 0x0000FFFF
         subnode = data_h >> 12
@@ -1436,7 +1436,7 @@ class VirtualDrive(Thread):
             for reg_id, reg in self.__dictionary.registers(subnode).items():
                 if not isinstance(reg, EthernetRegister):
                     msg = f"Register {reg_id} is not an EthernetRegister"
-                    raise ValueError(msg)
+                    raise TypeError(msg)
                 self.__reg_address_to_id[subnode][reg.address] = reg_id
                 self.__dictionary.registers(subnode)[reg_id].storage_valid = True
 
@@ -1455,7 +1455,7 @@ class VirtualDrive(Thread):
         }
         for register_id, reg in custom_regs.items():
             if not isinstance(reg, EthernetRegister):
-                raise ValueError
+                raise TypeError
             register = EthernetRegister(
                 reg.address,
                 REG_DTYPE.BYTE_ARRAY_512,
@@ -1653,7 +1653,7 @@ class VirtualDrive(Thread):
         register = self.__dictionary.registers(subnode)[uid]
         if not isinstance(register, EthernetRegister):
             msg = f"Register {uid} is not an EthernetRegister"
-            raise ValueError(msg)
+            raise TypeError(msg)
         return register.address
 
     def get_value_by_id(self, subnode: int, register_id: str) -> Union[int, float, str, bytes]:
@@ -1747,7 +1747,7 @@ class VirtualDrive(Thread):
         register = self.__dictionary.registers(subnode)[register_id]
         if not isinstance(register, EthernetRegister):
             msg = f"Register {register_id} is not an EthernetRegister"
-            raise ValueError(msg)
+            raise TypeError(msg)
         return register
 
     def __set_motor_enable(self) -> None:

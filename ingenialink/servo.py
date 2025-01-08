@@ -1596,7 +1596,7 @@ class Servo:
             raise NotImplementedError(msg)
         if not isinstance(data := self.read(self.MONITORING_DATA, subnode=0, **kwargs), bytes):
             msg = f"Error reading monitoring data. Expected type bytes, got {type(data)}"
-            raise ValueError(
+            raise TypeError(
                 msg,
             )
         return data

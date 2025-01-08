@@ -476,7 +476,7 @@ class EthercatNetwork(Network):
         """
         if not isinstance(boot_in_app, bool):
             msg = "The boot_in_app argument should be a boolean."
-            raise AttributeError(msg)
+            raise TypeError(msg)
 
         if not os.path.isfile(fw_file):
             msg = f"Could not find {fw_file}."
@@ -564,7 +564,7 @@ class EthercatNetwork(Network):
         """
         if not isinstance(servo_id, int):
             msg = "The servo ID must be an int."
-            raise ValueError(msg)
+            raise TypeError(msg)
         return self._servos_state[servo_id]
 
     def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:

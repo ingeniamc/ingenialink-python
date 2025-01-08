@@ -277,6 +277,6 @@ def convert_dtype_to_bytes(data: Union[float, str, bytes], dtype: REG_DTYPE) -> 
         return data.encode("utf_8")
     if not isinstance(data, int):
         msg = f"Expected data of type int, but {type(data)}"
-        raise ValueError(msg)
+        raise TypeError(msg)
     bytes_length, signed = dtype_value[dtype]
     return data.to_bytes(bytes_length, byteorder="little", signed=signed)

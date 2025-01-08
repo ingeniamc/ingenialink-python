@@ -499,7 +499,7 @@ class PDOServo(Servo):
                 "Error retrieving the RPDO Map register. Expected EthercatRegister, got:"
                 f" {type(rpdo_map_register)}"
             )
-            raise ValueError(
+            raise TypeError(
                 msg,
             )
         rpdo_map.map_register_index = rpdo_map_register.idx
@@ -562,7 +562,7 @@ class PDOServo(Servo):
                 "Error retrieving the TPDO Map register. Expected EthercatRegister, got:"
                 f" {type(tpdo_map_register)}"
             )
-            raise ValueError(
+            raise TypeError(
                 msg,
             )
         tpdo_map.map_register_index = tpdo_map_register.idx

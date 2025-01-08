@@ -326,7 +326,7 @@ class EthernetNetwork(Network):
         """
         if not isinstance(servo_id, str):
             msg = "The servo ID must be a string."
-            raise ValueError(msg)
+            raise TypeError(msg)
         return self._servos_state[servo_id]
 
     def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
