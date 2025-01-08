@@ -8,7 +8,8 @@ def test_eeprom_read(connect_to_slave):
     product_code_address = 10
     for length in range(1, 5):
         assert product_code_bytes[:length] == servo._read_esc_eeprom(
-            product_code_address, length=length,
+            product_code_address,
+            length=length,
         )
 
 
@@ -29,7 +30,8 @@ def test_eeprom_write(connect_to_slave):
     new_serial_number_bytes = new_serial_number.to_bytes(4, "little")
     servo._write_esc_eeprom(serial_number_address, new_serial_number_bytes)
     assert new_serial_number == int.from_bytes(
-        servo._read_esc_eeprom(serial_number_address), "little",
+        servo._read_esc_eeprom(serial_number_address),
+        "little",
     )
     servo._write_esc_eeprom(serial_number_address, serial_number.to_bytes(4, "little"))
 

@@ -15,7 +15,10 @@ def connect_virtual_drive_with_bool_register(virtual_drive_custom_dict):
 
         boolean_reg_uid = "TEST_BOOLEAN"
         bool_register = EthernetRegister(
-            0x0200, REG_DTYPE.BOOL, REG_ACCESS.RW, identifier=boolean_reg_uid,
+            0x0200,
+            REG_DTYPE.BOOL,
+            REG_ACCESS.RW,
+            identifier=boolean_reg_uid,
         )
         server._VirtualDrive__dictionary._add_register_list(bool_register)
         server._VirtualDrive__dictionary.registers(bool_register.subnode)[

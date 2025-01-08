@@ -220,7 +220,8 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
         TPDO_REGISTERS,
     )
     value = servo._read_raw(
-        servo.dictionary.registers(0)[servo.TPDO_ASSIGN_REGISTER_SUB_IDX_0], complete_access=True,
+        servo.dictionary.registers(0)[servo.TPDO_ASSIGN_REGISTER_SUB_IDX_0],
+        complete_access=True,
     )
     assert int.to_bytes(0x1A00, 2, "little") == value[2:4]
 
@@ -235,7 +236,8 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
         RPDO_REGISTERS,
     )
     value = servo._read_raw(
-        servo.dictionary.registers(0)[servo.RPDO_ASSIGN_REGISTER_SUB_IDX_0], complete_access=True,
+        servo.dictionary.registers(0)[servo.RPDO_ASSIGN_REGISTER_SUB_IDX_0],
+        complete_access=True,
     )
     assert int.to_bytes(0x1600, 2, "little") == value[2:4]
 

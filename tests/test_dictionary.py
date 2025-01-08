@@ -60,7 +60,12 @@ PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
     ],
 )
 def test_dictionary_description(
-    dict_path, interface, fw_version, product_code, part_number, revision_number,
+    dict_path,
+    interface,
+    fw_version,
+    product_code,
+    part_number,
+    revision_number,
 ):
     dict_description = DictionaryFactory.get_dictionary_description(dict_path, interface)
     assert dict_description == DictionaryDescriptor(
@@ -113,7 +118,9 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
     root = tree.getroot()
     root.remove(root.find(DictionaryV2._DictionaryV2__DICT_IMAGE))
     xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
-        indent="  ", newl="", encoding="UTF-8",
+        indent="  ",
+        newl="",
+        encoding="UTF-8",
     )
     temp_file = join_path(PATH_RESOURCE, "temp.xdf")
     merged_file = open(temp_file, "wb")
@@ -320,7 +327,9 @@ def test_dictionary_no_product_code(xml_attribute, class_attribute):
     device = root.find(DictionaryV2._DictionaryV2__DICT_ROOT_DEVICE)
     device.attrib.pop(xml_attribute)
     xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
-        indent="  ", newl="", encoding="UTF-8",
+        indent="  ",
+        newl="",
+        encoding="UTF-8",
     )
     with tempfile.TemporaryDirectory() as tmp_dir:
         temp_file = join_path(tmp_dir, "temp.xdf")

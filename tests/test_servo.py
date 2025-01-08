@@ -79,7 +79,11 @@ def create_monitoring(connect_to_slave, pytestconfig):
         reg = servo._get_reg(key, subnode=1)
         address = _get_reg_address(reg, protocol)
         servo.monitoring_set_mapped_register(
-            idx, address, subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE,
+            idx,
+            address,
+            subnode,
+            reg.dtype.value,
+            MONITORING_CH_DATA_SIZE,
         )
     divisor = 1
     servo.write("MON_DIST_FREQ_DIV", divisor, subnode=0)
@@ -100,7 +104,11 @@ def create_disturbance(connect_to_slave, pytestconfig):
     reg = servo._get_reg("CL_POS_SET_POINT_VALUE", subnode=1)
     address = _get_reg_address(reg, protocol)
     servo.disturbance_set_mapped_register(
-        0, address, 1, REG_DTYPE.S32.value, DISTURBANCE_CH_DATA_SIZE,
+        0,
+        address,
+        1,
+        REG_DTYPE.S32.value,
+        DISTURBANCE_CH_DATA_SIZE,
     )
     servo.disturbance_write_data(0, REG_DTYPE.S32, data)
     yield servo, net
@@ -635,7 +643,11 @@ def test_disturbance_overflow(connect_to_slave, pytestconfig):
     reg = servo._get_reg("DRV_OP_CMD", subnode=1)
     address = _get_reg_address(reg, protocol)
     servo.disturbance_set_mapped_register(
-        0, address, 1, REG_DTYPE.U16.value, DISTURBANCE_CH_DATA_SIZE,
+        0,
+        address,
+        1,
+        REG_DTYPE.U16.value,
+        DISTURBANCE_CH_DATA_SIZE,
     )
     data = list(range(-10, 11))
     with pytest.raises(ILValueError):

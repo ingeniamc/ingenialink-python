@@ -5,7 +5,8 @@ import pytest
 
 @pytest.mark.ethernet()
 @pytest.mark.parametrize(
-    ("ip_address", "gateway"), [("192.168.2.xx", "192.168.2.1"), ("192.168.2.22", "192.168.3.1")],
+    ("ip_address", "gateway"),
+    [("192.168.2.xx", "192.168.2.1"), ("192.168.2.22", "192.168.3.1")],
 )
 def test_change_tcp_ip_parameters_value_error(connect_to_slave, ip_address, gateway):
     servo, net = connect_to_slave

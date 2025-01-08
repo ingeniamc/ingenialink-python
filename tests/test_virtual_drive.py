@@ -28,7 +28,11 @@ def create_monitoring_disturbance(servo, dist_reg, monit_regs, dist_data):
     for idx, key in enumerate(monit_regs):
         reg = servo._get_reg(key, subnode=1)
         servo.monitoring_set_mapped_register(
-            idx, reg.address, reg.subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE,
+            idx,
+            reg.address,
+            reg.subnode,
+            reg.dtype.value,
+            MONITORING_CH_DATA_SIZE,
         )
 
     servo.write("MON_DIST_FREQ_DIV", divisor, subnode=0)
@@ -45,7 +49,8 @@ def test_connect_to_virtual(virtual_drive):
 
 
 @pytest.mark.parametrize(
-    ("reg", "value", "subnode"), [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)],
+    ("reg", "value", "subnode"),
+    [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)],
 )
 @pytest.mark.no_connection()
 def test_virtual_drive_write_read(virtual_drive, reg, value, subnode):
@@ -73,10 +78,15 @@ def test_virtual_drive_write_wrong_enum(virtual_drive):
 
 @pytest.mark.ethernet()
 @pytest.mark.parametrize(
-    ("reg", "value", "subnode"), [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)],
+    ("reg", "value", "subnode"),
+    [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)],
 )
 def test_virtual_drive_write_read_compare_responses(
-    connect_to_slave, virtual_drive, reg, value, subnode,
+    connect_to_slave,
+    virtual_drive,
+    reg,
+    value,
+    subnode,
 ):
     servo, _ = connect_to_slave
     _, virtual_servo = virtual_drive
@@ -107,7 +117,11 @@ def test_virtual_monitoring(virtual_drive, divisor):
         reg = servo._get_reg(key, subnode=1)
         address = reg.address
         servo.monitoring_set_mapped_register(
-            idx, address, subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE,
+            idx,
+            address,
+            subnode,
+            reg.dtype.value,
+            MONITORING_CH_DATA_SIZE,
         )
 
     servo.write("MON_DIST_FREQ_DIV", divisor, subnode=0)
@@ -238,7 +252,9 @@ def test_plants(virtual_drive, plant_name, dist_reg, monit_regs, op_mode):
 
     assert np.allclose(command, dist_data)
     assert np.allclose(
-        np.abs(freq_response), np.abs(freq_response_est), atol=np.amax(np.abs(freq_response)) / 2,
+        np.abs(freq_response),
+        np.abs(freq_response_est),
+        atol=np.amax(np.abs(freq_response)) / 2,
     )
 
 

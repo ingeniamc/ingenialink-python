@@ -13,7 +13,9 @@ test_channel = 0
 @pytest.fixture()
 def virtual_network():
     return CanopenNetwork(
-        device=CAN_DEVICE(test_bus), channel=test_channel, baudrate=CAN_BAUDRATE(test_baudrate),
+        device=CAN_DEVICE(test_bus),
+        channel=test_channel,
+        baudrate=CAN_BAUDRATE(test_baudrate),
     )
 
 

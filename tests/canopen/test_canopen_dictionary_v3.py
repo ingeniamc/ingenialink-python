@@ -160,7 +160,8 @@ def test_safety_pdo_not_implemented():
 @pytest.mark.no_connection()
 def test_wrong_dictionary():
     with pytest.raises(
-        ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication",
+        ILDictionaryParseError,
+        match="Dictionary cannot be used for the chosen communication",
     ):
         DictionaryV3("./tests/resources/test_dict_ecat_eoe_v3.0.xdf", Interface.CAN)
 

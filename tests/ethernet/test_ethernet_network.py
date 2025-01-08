@@ -13,7 +13,9 @@ def connect(read_config):
     net = EthernetNetwork()
     protocol_contents = read_config["ethernet"]
     servo = net.connect_to_slave(
-        protocol_contents["ip"], protocol_contents["dictionary"], protocol_contents["port"],
+        protocol_contents["ip"],
+        protocol_contents["dictionary"],
+        protocol_contents["port"],
     )
     return servo, net
 
