@@ -681,8 +681,7 @@ class VirtualPhasing:
         """Initial angle."""
         if self.reference_feedback == SensorType.HALLS:
             return self.INITIAL_ANGLE_HALLS
-        else:
-            return self.INITIAL_ANGLE
+        return self.INITIAL_ANGLE
 
 
 class VirtualInternalGenerator:
@@ -813,19 +812,18 @@ class VirtualInternalGenerator:
         """Encoder resolution."""
         if self.position_encoder == SensorType.QEI:
             return INC_ENC1_RESOLUTION
-        elif self.position_encoder == SensorType.QEI2:
+        if self.position_encoder == SensorType.QEI2:
             return INC_ENC2_RESOLUTION
-        elif self.position_encoder == SensorType.HALLS:
+        if self.position_encoder == SensorType.HALLS:
             pole_pairs = int(self.drive.get_value_by_id(1, self.DIG_HALL_POLE_PAIRS_REGISTER))
             return pole_pairs * len(self.HALL_VALUES)
-        elif self.position_encoder == SensorType.ABS1:
+        if self.position_encoder == SensorType.ABS1:
             single_turn_bits = int(self.drive.get_value_by_id(1, self.ABS1_ST_BITS_REGISTER))
             return int(2**single_turn_bits)
-        elif self.position_encoder == SensorType.BISSC2:
+        if self.position_encoder == SensorType.BISSC2:
             single_turn_bits = int(self.drive.get_value_by_id(1, self.ABS2_ST_BITS_REGISTER))
             return int(2**single_turn_bits)
-        else:
-            return 1
+        return 1
 
     @property
     def position_encoder(self) -> int:
@@ -915,8 +913,7 @@ class VirtualMonDistBase:
         value = self.drive.get_value_by_id(0, self.FREQ_DIVIDER_REG)
         if isinstance(value, int):
             return value
-        else:
-            return 0
+        return 0
 
     @property
     def buffer_size(self) -> int:
@@ -924,8 +921,7 @@ class VirtualMonDistBase:
         value = self.drive.get_value_by_id(0, self.BUFFER_SIZE_REG)
         if isinstance(value, int):
             return value
-        else:
-            return 0
+        return 0
 
     @property
     def buffer_time(self) -> float:
@@ -938,8 +934,7 @@ class VirtualMonDistBase:
         value = self.drive.get_value_by_id(0, self.BYTES_PER_BLOCK_REG)
         if isinstance(value, int):
             return value
-        else:
-            return 0
+        return 0
 
     @bytes_per_block.setter
     def bytes_per_block(self, n_bytes: int) -> None:
@@ -951,8 +946,7 @@ class VirtualMonDistBase:
         value = self.drive.get_value_by_id(0, self.NUMBER_MAP_REGS)
         if isinstance(value, int):
             return value
-        else:
-            return 0
+        return 0
 
     @number_mapped_registers.setter
     def number_mapped_registers(self, value: int) -> None:
@@ -964,8 +958,7 @@ class VirtualMonDistBase:
         value = self.drive.get_value_by_id(0, self.AVAILABLE_BYTES_REG)
         if isinstance(value, int):
             return value
-        else:
-            return 0
+        return 0
 
     @available_bytes.setter
     def available_bytes(self, n_bytes: int) -> None:
@@ -1145,8 +1138,7 @@ class VirtualMonitoring(VirtualMonDistBase):
         value = self.drive.get_value_by_id(0, self.TRIGGER_TYPE_REG)
         if isinstance(value, int):
             return value
-        else:
-            return 0
+        return 0
 
 
 class VirtualDisturbance(VirtualMonDistBase):
@@ -1697,8 +1689,7 @@ class VirtualDrive(Thread):
         storage_value = self.__dictionary.registers(subnode)[register_id]._storage
         if isinstance(storage_value, (int, float, str, bytes)):
             return storage_value
-        else:
-            return 0
+        return 0
 
     def set_value_by_id(
         self, subnode: int, register_id: str, value: Union[float, str, bytes]

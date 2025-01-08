@@ -1178,7 +1178,7 @@ class Servo:
         if isinstance(reg, Register):
             return reg
 
-        elif isinstance(reg, str):
+        if isinstance(reg, str):
             _dict = self.dictionary
             if not _dict:
                 msg = "No dictionary loaded"
@@ -1187,9 +1187,8 @@ class Servo:
                 msg = f"Register {reg} not found."
                 raise ILRegisterNotFoundError(msg)
             return _dict.registers(subnode)[reg]
-        else:
-            msg = "Invalid register"
-            raise TypeError(msg)
+        msg = "Invalid register"
+        raise TypeError(msg)
 
     def __update_register_dict(self, register: ElementTree.Element, subnode: int) -> None:
         """Updates the register from a dictionary with the storage parameters.

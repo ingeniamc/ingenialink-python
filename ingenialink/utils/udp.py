@@ -126,14 +126,13 @@ class UDP:
                 + struct.pack("<H", binascii.crc_hqx(node_head_bytes + head + head_size, 0))
                 + data
             )
-        else:
-            head = struct.pack("<H", cmd)
-            return (
-                node_head_bytes
-                + head
-                + data
-                + struct.pack("<H", binascii.crc_hqx(node_head_bytes + head + data, 0))
-            )
+        head = struct.pack("<H", cmd)
+        return (
+            node_head_bytes
+            + head
+            + data
+            + struct.pack("<H", binascii.crc_hqx(node_head_bytes + head + data, 0))
+        )
 
     def raw_cmd(self, node: int, subnode: int, cmd: int, data: bytes) -> None:
         """Creates a frame message and sends it.

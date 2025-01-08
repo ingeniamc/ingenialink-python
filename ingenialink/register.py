@@ -129,10 +129,7 @@ class Register:
         if self.dtype not in dtypes_ranges:
             self._storage_valid = False
             return
-        elif self.dtype == REG_DTYPE.FLOAT:
-            cast_type = float
-        else:
-            cast_type = int
+        cast_type = float if self.dtype == REG_DTYPE.FLOAT else int
         reg_range_min = (
             cast_type(reg_range[0])
             if reg_range[0] is not None
@@ -200,8 +197,7 @@ class Register:
             REG_DTYPE.FLOAT,
         ]:
             return self._storage
-        else:
-            return None
+        return None
 
     @storage.setter
     def storage(self, value: Any) -> None:
