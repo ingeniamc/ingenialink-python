@@ -185,11 +185,11 @@ class EthernetServo(Servo):
                 raise ILIOError(msg) from e
             try:
                 return self.__receive_mcb_frame(reg)
-            except ILWrongRegisterError as e:
-                logger.exception(e)
+            except ILWrongRegisterError:
+                logger.exception("Error sending MCB frame.")
                 return self.__receive_mcb_frame(reg)
-            except ILTimeoutError as e:
-                logger.exception(f"{e}. Retrying..")
+            except ILTimeoutError:
+                logger.exception(f"Retrying..")
                 self.socket.sendall(frame)
                 return self.__receive_mcb_frame(reg)
         finally:

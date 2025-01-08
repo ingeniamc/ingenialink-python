@@ -1310,8 +1310,8 @@ class DictionaryV2(Dictionary):
         """
         try:
             identifier = register.attrib["id"]
-        except KeyError as ke:
-            logger.exception(f"The register doesn't have an identifier. Error caught: {ke}")
+        except KeyError:
+            logger.exception(f"The register doesn't have an identifier.")
             return None
 
         try:
@@ -1397,8 +1397,8 @@ class DictionaryV2(Dictionary):
                 bitfields=bitfields,
             )
 
-        except KeyError as ke:
-            logger.exception(f"Register with ID {identifier} has not attribute {ke}")
+        except KeyError:
+            logger.exception(f"Register with ID {identifier} has not attribute.")
             return None
 
     def _add_register_list(

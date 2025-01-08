@@ -185,12 +185,12 @@ class EthernetNetwork(Network):
                     sleep(1)
 
             logger.info("Bootload process succeeded")
-        except ftplib.error_temp as e:
-            logger.exception(e)
+        except ftplib.error_temp:
+            logger.exception("Error loading firmware.")
             msg = "Firewall might be blocking the access."
             raise ILFirmwareLoadError(msg)
-        except Exception as e:
-            logger.exception(e)
+        except Exception:
+            logger.exception("Error loading firmware.")
             msg = "Error during bootloader process."
             raise ILFirmwareLoadError(msg)
 

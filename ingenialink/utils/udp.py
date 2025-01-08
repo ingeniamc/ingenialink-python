@@ -32,7 +32,7 @@ class UDP:
         try:
             self.socket.close()
         except Exception as e:
-            logger.exception("Socket already closed. Exception: %s", e)
+            logger.exception("Socket already closed.")
 
     def close(self) -> None:
         """Closes the socket."""

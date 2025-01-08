@@ -80,7 +80,7 @@ class CanopenServo(Servo):
             self._lock.acquire()
             self.__node.sdo.download(reg.idx, reg.subidx, data)
         except Exception as e:
-            logger.exception("Failed writing %s. Exception: %s", str(reg.identifier), e)
+            logger.exception("Failed writing %s.", str(reg.identifier))
             error_raised = f"Error writing {reg.identifier}"
             raise ILIOError(error_raised) from e
         finally:
@@ -91,7 +91,7 @@ class CanopenServo(Servo):
             self._lock.acquire()
             value = self.__node.sdo.upload(reg.idx, reg.subidx)
         except Exception as e:
-            logger.exception("Failed reading %s. Exception: %s", str(reg.identifier), e)
+            logger.exception("Failed reading %s.", str(reg.identifier))
             error_raised = f"Error reading {reg.identifier}"
             raise ILIOError(error_raised)
         finally:

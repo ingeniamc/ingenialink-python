@@ -274,8 +274,8 @@ class CanopenNetwork(Network):
         self._connection.scanner.reset()
         try:
             self._connection.scanner.search()
-        except Exception as e:
-            logger.exception(f"Error searching for nodes. Exception: {e}")
+        except Exception:
+            logger.exception(f"Error searching for nodes.")
             logger.info("Resetting bus")
             if (
                 self._connection is not None
@@ -389,8 +389,8 @@ class CanopenNetwork(Network):
                 if net_status_listener:
                     self.start_status_listener()
                 return servo
-            except Exception as e:
-                logger.exception("Failed connecting to node %i. Exception: %s", target, e)
+            except Exception:
+                logger.exception("Failed connecting to node %i. Exception: %s", target)
                 msg = (
                     f"Failed connecting to node {target}. "
                     "Please check the connection settings and verify "
@@ -430,8 +430,8 @@ class CanopenNetwork(Network):
                 self._connection.listeners.append(CustomListener())
             try:
                 self._connection.connect(**self.__connection_args)
-            except CanError as e:
-                logger.exception(f"Transceiver not found in network. Exception: {e}")
+            except CanError:
+                logger.exception(f"Transceiver not found in network.")
                 msg = (
                     "Error connecting to the transceiver. "
                     "Please verify the transceiver "
@@ -441,7 +441,7 @@ class CanopenNetwork(Network):
                     msg,
                 )
             except OSError as e:
-                logger.exception(f"Transceiver drivers not properly installed. Exception: {e}")
+                logger.exception(f"Transceiver drivers not properly installed.")
                 if (
                     hasattr(e, "winerror")
                     and e.winerror == self.TRANSCEIVER_NOT_INSTALLED_ERROR_CODE
@@ -467,9 +467,9 @@ class CanopenNetwork(Network):
             return
         try:
             self._connection.disconnect()
-        except (VCIError, CANLIBOperationError, PcanCanOperationError) as e:
+        except (VCIError, CANLIBOperationError, PcanCanOperationError):
             logger.exception(
-                f"An exception occurred during the teardown connection. Exception: {e}",
+                f"An exception occurred during the teardown connection.",
             )
         self._connection = None
         logger.info("Tear down connection.")
@@ -485,8 +485,8 @@ class CanopenNetwork(Network):
             raise ILError(msg)
         try:
             self._connection.disconnect()
-        except BaseException as e:
-            logger.exception(f"Disconnection failed. Exception: {e}")
+        except BaseException:
+            logger.exception(f"Disconnection failed.")
 
         try:
             for node in self._connection.scanner.nodes:
@@ -494,8 +494,8 @@ class CanopenNetwork(Network):
             if self._connection.bus:
                 self._connection.bus.flush_tx_buffer()
                 logger.info("Bus flushed")
-        except Exception as e:
-            logger.exception(f"Could not stop guarding. Exception: {e}")
+        except Exception:
+            logger.exception(f"Could not stop guarding.")
         if self.__device in [CAN_DEVICE.IXXAT.value, CAN_DEVICE.KVASER.value]:
             self._connection.listeners.append(CustomListener())
         try:
@@ -503,8 +503,8 @@ class CanopenNetwork(Network):
             for servo in self.servos:
                 servo.node = self._connection.add_node(servo.target)
                 servo.node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
-        except BaseException as e:
-            logger.exception(f"Connection failed. Exception: {e}")
+        except BaseException:
+            logger.exception(f"Connection failed.")
 
     def load_firmware(
         self,
@@ -1075,8 +1075,8 @@ class CanopenNetwork(Network):
         try:
             for node_obj in self._connection.nodes.values():
                 node_obj.nmt.stop_node_guarding()
-        except Exception as e:
-            logger.exception("Could not stop node guarding. Exception: %s", str(e))
+        except Exception:
+            logger.exception("Could not stop node guarding.")
         if self.__listener_net_status is not None:
             self.__listener_net_status.stop()
             self.__listener_net_status.join()

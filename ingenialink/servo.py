@@ -206,8 +206,8 @@ class ServoStatusListener(threading.Thread):
                     if subnode not in previous_states or previous_states[subnode] != current_state:
                         previous_states[subnode] = current_state
                         self.__servo._notify_state(current_state, subnode)
-                except ILError as e:
-                    logger.exception("Error getting drive status. Exception : %s", e)
+                except ILError:
+                    logger.exception("Error getting drive status.")
             time.sleep(1.5)
 
     def stop(self) -> None:
@@ -385,9 +385,8 @@ class Servo:
                     reg_id = element.attrib["id"]
                     il_error = f"{reg_id} -- {e}"
                     logger.exception(
-                        "Exception during check_configuration, register %s: %s",
+                        "Exception during check_configuration, register %s:",
                         str(reg_id),
-                        e,
                     )
                     registers_errored.append(il_error)
                 else:
@@ -1149,7 +1148,7 @@ class Servo:
             self.read(self.STATUS_WORD_REGISTERS)
         except ILError as e:
             _is_alive = False
-            logger.exception(e)
+            logger.exception("Error checking if drive is alive.")
         return _is_alive
 
     def reload_errors(self, dictionary: str) -> None:
@@ -1215,9 +1214,8 @@ class Servo:
             reg.storage_valid = True
         except BaseException as e:
             logger.exception(
-                "Exception during save_configuration, register %s: %s",
+                "Exception during save_configuration, register %s:",
                 str(register.attrib["id"]),
-                e,
             )
 
     def _notify_state(self, state: SERVO_STATE, subnode: int) -> None:

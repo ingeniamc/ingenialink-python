@@ -70,8 +70,8 @@ class CanopenDictionaryV2(DictionaryV2):
                 bitfields=current_read_register.bitfields,
             )
 
-        except KeyError as ke:
+        except KeyError:
             logger.exception(
-                f"Register with ID {current_read_register.identifier} has not attribute {ke}",
+                f"Register with ID {current_read_register.identifier} has not attribute.",
             )
             return None

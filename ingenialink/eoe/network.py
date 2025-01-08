@@ -152,8 +152,8 @@ class EoENetwork(EthernetNetwork):
         for ip_addr, slave_id in self._configured_slaves.items():
             try:
                 self._configure_slave(slave_id, ip_addr)
-            except ILError as e:
-                logger.exception(e)
+            except ILError:
+                logger.exception("Error reconfiguring drives")
 
     def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override] # noqa: D102
         del self._configured_slaves[servo.ip_address]
@@ -163,8 +163,8 @@ class EoENetwork(EthernetNetwork):
             self._erase_config_eoe_service()
             try:
                 self._deinitialize_eoe_service()
-            except ILError as e:
-                logger.exception(e)
+            except ILError:
+                logger.exception("Error disconnection from the drive.")
 
     def __del__(self) -> None:
         """Delete method."""
