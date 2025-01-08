@@ -96,10 +96,10 @@ class EthercatNetwork(Network):
         "linux": {"64bit": "FoE/linux/FoEUpdateFirmware"},
     }
     FOE_ERRORS = {
-        1: "Can’t read the input file.",
-        2: "ECAT slave can’t reach the BOOT mode.",
+        1: "Can't read the input file.",
+        2: "ECAT slave can't reach the BOOT mode.",
         3: "No ECAT slave detected",
-        4: "Can’t initialize the network adapter",
+        4: "Can't initialize the network adapter",
         5: "Drive can't init. Ensure the FW file is right",
     }
     UNKNOWN_FOE_ERROR = "Unknown error"

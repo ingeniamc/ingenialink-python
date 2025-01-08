@@ -754,7 +754,7 @@ class Servo:
                 raise ILStateError(
                     msg,
                 )
-            elif state == SERVO_STATE.NRDY:
+            if state == SERVO_STATE.NRDY:
                 cmd = {self.CONTROL_WORD_VOLTAGE_ENABLE: 0, self.CONTROL_WORD_FAULT_RESET: 0}
             elif state == SERVO_STATE.DISABLED:
                 cmd = {

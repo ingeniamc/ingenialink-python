@@ -278,8 +278,7 @@ class PDOMap:
         if self.map_register_index is None:
             msg = "map_register_index is None"
             raise ValueError(msg)
-        else:
-            return self.map_register_index.to_bytes(2, "little")
+        return self.map_register_index.to_bytes(2, "little")
 
     @property
     def map_register_index(self) -> Optional[int]:
