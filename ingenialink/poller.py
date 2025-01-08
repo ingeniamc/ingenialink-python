@@ -189,7 +189,7 @@ class Poller(Thread):
             for channel in enabled_channel_indexes:
                 register = self.__mappings[channel]
                 try:
-                    self.__acq_data[channel][self.__samples_count] = self.servo.read(register)  # type: ignore
+                    self.__acq_data[channel][self.__samples_count] = self.servo.read(register)  # type: ignore[assignment]
                 except (ILTimeoutError, ILIOError):
                     reading_error = True
                     logger.warning(

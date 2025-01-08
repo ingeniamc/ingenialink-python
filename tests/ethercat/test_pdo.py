@@ -56,7 +56,7 @@ def test_rpdo_item(open_dictionary):
     assert rpdo_item.size_bits == dtype_length_bits[rpdo_item.register.dtype]
 
     with pytest.raises(ILError) as exc_info:
-        rpdo_item.value
+        _ = rpdo_item.value
     assert str(exc_info.value) == "Raw data is empty."
 
     rpdo_item.value = 15
@@ -101,7 +101,7 @@ def test_tpdo_item(open_dictionary):
     assert tpdo_item.size_bits == dtype_length_bits[tpdo_item.register.dtype]
 
     with pytest.raises(ILError) as exc_info:
-        tpdo_item.value
+        _ = tpdo_item.value
     assert str(exc_info.value) == "Raw data is empty."
 
     with pytest.raises(AttributeError):
@@ -410,7 +410,7 @@ def test_pdo_item_bool():
     assert rpdo_item.size_bits == 1
 
     with pytest.raises(ILError) as exc_info:
-        rpdo_item.value
+        _ = rpdo_item.value
     assert str(exc_info.value) == "Raw data is empty."
 
     rpdo_item.value = True
@@ -432,7 +432,7 @@ def test_pdo_item_custom_size(open_dictionary):
     assert tpdo_item.size_bits == 4
 
     with pytest.raises(ILError) as exc_info:
-        tpdo_item.value
+        _ = tpdo_item.value
     assert str(exc_info.value) == "Raw data is empty."
 
     tpdo_item.raw_data_bits = bitarray("1001")

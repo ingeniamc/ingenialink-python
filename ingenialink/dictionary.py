@@ -1212,7 +1212,7 @@ class DictionaryV2(Dictionary):
             revision_number = None
         return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
 
-    def read_dictionary(self) -> None:  # noqa: D102, PLR0915
+    def read_dictionary(self) -> None:  # noqa: D102, PLR0915, PLR0912
         try:
             with open(self.path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)

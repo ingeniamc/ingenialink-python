@@ -395,7 +395,7 @@ class Servo:
                     reg_data = cast_data.get(reg_dtype, int)(reg_data)
                     if reg_data != stored_data:
                         registers_errored.append(
-                            f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n",  # type: ignore
+                            f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n",  # type: ignore[str-bytes-safe]
                         )
 
         if registers_errored:
@@ -1146,7 +1146,7 @@ class Servo:
         _is_alive = True
         try:
             self.read(self.STATUS_WORD_REGISTERS)
-        except ILError as e:
+        except ILError:
             _is_alive = False
             logger.exception("Error checking if drive is alive.")
         return _is_alive
@@ -1210,7 +1210,7 @@ class Servo:
             reg = self.dictionary.registers(subnode)[register.attrib["id"]]
             reg.storage = storage
             reg.storage_valid = True
-        except BaseException as e:
+        except BaseException:
             logger.exception(
                 "Exception during save_configuration, register %s:",
                 str(register.attrib["id"]),

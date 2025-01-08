@@ -31,7 +31,7 @@ class UDP:
         """Delete method."""
         try:
             self.socket.close()
-        except Exception as e:
+        except Exception:
             logger.exception("Socket already closed.")
 
     def close(self) -> None:

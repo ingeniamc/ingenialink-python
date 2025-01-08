@@ -23,6 +23,8 @@ ignore = [
     "TRY003", # Avoid specifying long messages outside the exception class
     "COM812", # Trailing comma. Already enforced by the formatter.
     "ISC001", # Implicitly concatenated strings. Already enforced by the formatter.
+    "S602", # Subprocess call with shell enabled.
+    "S318", # Insecure XML parser.
 ]
 [lint.per-file-ignores]
 "ingenialink/network.py" = [
@@ -34,6 +36,7 @@ ignore = [
     "S101", # Use of assert keyword
     "PLR2004", # Magic value comparison
     "PT004", # Missing fixture name underscore
+    "INP001", # Missing __init__.py file
 ]
 "virtual_drive/*" = [
     "D", # Docstring rules

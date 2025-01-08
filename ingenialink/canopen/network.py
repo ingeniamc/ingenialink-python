@@ -292,7 +292,7 @@ class CanopenNetwork(Network):
 
         return nodes  # type: ignore [no-any-return]
 
-    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:  # noqa: PLR0912
         """Scans for nodes in the network and return an ordered dict with the slave information.
 
         Returns:

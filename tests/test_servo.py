@@ -182,7 +182,7 @@ def test_save_configuration(connect_to_slave):
 
 
 @pytest.mark.no_connection()
-def test_check_configuration(virtual_drive, read_config, pytestconfig):
+def test_check_configuration(virtual_drive):
     server, servo = virtual_drive
 
     assert servo is not None

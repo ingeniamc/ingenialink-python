@@ -41,7 +41,7 @@ def test_can_not_connect_to_salve(read_config):
 
 
 @pytest.mark.ethernet()
-def test_scan_slaves(read_config):
+def test_scan_slaves():
     # TODO: Not implemented
     # net = EthernetNetwork()
     # slaves = net.scan_slaves()
@@ -79,7 +79,7 @@ def test_load_firmware_file_not_found():
 
 
 @pytest.mark.no_connection()
-def test_load_firmware_no_connection(read_config):
+def test_load_firmware_no_connection():
     fw_file = "temp_file.lfu"
     with open(fw_file, "w"):
         pass

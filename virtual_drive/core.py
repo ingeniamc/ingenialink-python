@@ -133,9 +133,9 @@ class BasePlant:
         self.drive = drive
         self.monitoring_frequency = VirtualMonitoring.FREQUENCY
         self.plant: signal.TransferFunction
-        self.set_point_register = self.drive.get_register(1, id=self.REGISTER_SET_POINT)
-        self.command_register = self.drive.get_register(1, id=self.REGISTER_COMMAND)
-        self.value_register = self.drive.get_register(1, id=self.REGISTER_VALUE)
+        self.set_point_register = self.drive.get_register(1, register_id=self.REGISTER_SET_POINT)
+        self.command_register = self.drive.get_register(1, register_id=self.REGISTER_COMMAND)
+        self.value_register = self.drive.get_register(1, register_id=self.REGISTER_VALUE)
 
     def emulate_plant(self, from_disturbance: bool = True) -> None:
         """Emulate the plant by filtering the excitation signal with the plant's frequency response.
@@ -1205,8 +1205,8 @@ class VirtualDisturbance(VirtualMonDistBase):
             for _ in range(n_samples):
                 size = self.channels_size[channel]
                 dtype = self.channels_dtype[channel]
-                bytes = buffer[:size]
-                value = convert_bytes_to_dtype(bytes, dtype)
+                data_bytes = buffer[:size]
+                value = convert_bytes_to_dtype(data_bytes, dtype)
                 if isinstance(value, (int, float)):
                     self.channels_data[channel].append(value)
                 buffer = buffer[size:]
@@ -1461,20 +1461,20 @@ class VirtualDrive(Thread):
             ],
             EthernetServo.DIST_DATA: self.__dictionary.registers(0)[EthernetServo.DIST_DATA],
         }
-        for id, reg in custom_regs.items():
+        for register_id, reg in custom_regs.items():
             if not isinstance(reg, EthernetRegister):
                 raise ValueError
             register = EthernetRegister(
                 reg.address,
                 REG_DTYPE.BYTE_ARRAY_512,
                 reg.access,
-                identifier=id,
+                identifier=register_id,
                 subnode=reg.subnode,
             )
             self.__dictionary._add_register_list(register)
-            self.__dictionary.registers(reg.subnode)[id].storage_valid = True
+            self.__dictionary.registers(reg.subnode)[register_id].storage_valid = True
 
-            self.__reg_address_to_id[reg.subnode][reg.address] = id
+            self.__reg_address_to_id[reg.subnode][reg.address] = register_id
 
     def _init_register_signals(self) -> None:
         """Init signals, vector time and noise amplitude for each register."""
@@ -1540,7 +1540,7 @@ class VirtualDrive(Thread):
         """Cleans log."""
         self.__logger = []
 
-    def __decode_msg(self, reg_add: int, subnode: int, data: bytes) -> None:  # noqa: PLR0915
+    def __decode_msg(self, reg_add: int, subnode: int, data: bytes) -> None:  # noqa: PLR0915, PLR0912
         """Decodes received messages and run specific methods if needed.
 
         Args:
@@ -1664,79 +1664,83 @@ class VirtualDrive(Thread):
             raise ValueError(msg)
         return register.address
 
-    def get_value_by_id(self, subnode: int, id: str) -> Union[int, float, str, bytes]:
+    def get_value_by_id(self, subnode: int, register_id: str) -> Union[int, float, str, bytes]:
         """Returns a register value by its ID.
 
         Args:
             subnode: Subnode.
-            id: Register ID.
+            register_id: Register ID.
 
         Returns:
             Register value.
         """
-        if id in self.__register_signals:
-            return self.__register_signals[id].get()  # type: ignore
+        if register_id in self.__register_signals:
+            return self.__register_signals[register_id].get()  # type: ignore[no-any-return]
 
-        register = self.__dictionary.registers(subnode)[id]
+        register = self.__dictionary.registers(subnode)[register_id]
         value: Union[int, float]
-        if len(self.reg_signals[id]) > 0:
+        if len(self.reg_signals[register_id]) > 0:
             actual_time = time.time()
             if self._disturbance and self._disturbance.enabled:
                 time_diff = actual_time - self._disturbance.start_time
                 actual_time = self._disturbance.start_time + (
                     time_diff % self._disturbance.buffer_time
                 )
-            sample_index = np.argmin(np.abs(self.reg_time[id] - actual_time))
-            value = self.reg_signals[id][sample_index]
-            if self.reg_noise_amplitude[id] > 0:
-                value = value + self.reg_noise_amplitude[id] * np.random.uniform()  # noqa: NPY002
+            sample_index = np.argmin(np.abs(self.reg_time[register_id] - actual_time))
+            value = self.reg_signals[register_id][sample_index]
+            if self.reg_noise_amplitude[register_id] > 0:
+                value = value + self.reg_noise_amplitude[register_id] * np.random.uniform()  # noqa: NPY002
 
             if register.dtype != REG_DTYPE.FLOAT:
                 value = int(value)
             return value
-        storage_value = self.__dictionary.registers(subnode)[id]._storage
+        storage_value = self.__dictionary.registers(subnode)[register_id]._storage
         if isinstance(storage_value, (int, float, str, bytes)):
             return storage_value
         else:
             return 0
 
-    def set_value_by_id(self, subnode: int, id: str, value: Union[float, int, str, bytes]) -> None:
+    def set_value_by_id(
+        self, subnode: int, register_id: str, value: Union[float, int, str, bytes]
+    ) -> None:
         """Set a register value by its ID.
 
         Args:
             subnode: Subnode.
-            id: Register ID.
+            register_id: Register ID.
             value: Value to be set.
         """
-        if id in self.__register_signals:
-            self.__register_signals[id].set(value)
+        if register_id in self.__register_signals:
+            self.__register_signals[register_id].set(value)
 
-        self.__dictionary.registers(subnode)[id].storage = value
+        self.__dictionary.registers(subnode)[register_id].storage = value
 
-    def __register_exists(self, subnode: int, id: str) -> bool:
+    def __register_exists(self, subnode: int, register_id: str) -> bool:
         """Returns True if the register exists in the dictionary
 
         Args:
             subnode: Subnode.
-            id: Register ID.
+            register_id: Register ID.
 
         Returns:
             Register value.
         """
-        return subnode in self.__dictionary.subnodes and id in self.__dictionary.registers(subnode)
+        return subnode in self.__dictionary.subnodes and register_id in self.__dictionary.registers(
+            subnode
+        )
 
     def get_register(
         self,
         subnode: int,
         address: Optional[int] = None,
-        id: Optional[str] = None,
+        register_id: Optional[str] = None,
     ) -> EthernetRegister:
         """Returns a register by its address or ID.
 
         Args:
             subnode: Subnode.
             address: Register address. Default to None.
-            id: Register ID. Default to None.
+            register_id: Register ID. Default to None.
 
         Returns:
             Register instance.
@@ -1745,13 +1749,13 @@ class VirtualDrive(Thread):
             ValueError: If both address and id are None.
         """
         if address is not None:
-            id = self.address_to_id(subnode, address)
-        elif id is None:
+            register_id = self.address_to_id(subnode, address)
+        elif register_id is None:
             msg = "Register address or id should be passed"
             raise ValueError(msg)
-        register = self.__dictionary.registers(subnode)[id]
+        register = self.__dictionary.registers(subnode)[register_id]
         if not isinstance(register, EthernetRegister):
-            msg = f"Register {id} is not an EthernetRegister"
+            msg = f"Register {register_id} is not an EthernetRegister"
             raise ValueError(msg)
         return register
 
