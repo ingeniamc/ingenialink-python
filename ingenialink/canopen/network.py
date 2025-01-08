@@ -379,7 +379,7 @@ class CanopenNetwork(Network):
         try:
             node = self._connection.add_node(target)
             node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
-        except Exception:
+        except Exception as e:
             logger.exception("Failed connecting to node %i.", target)
             msg = (
                 f"Failed connecting to node {target}. "
@@ -388,7 +388,7 @@ class CanopenNetwork(Network):
             )
             raise ILError(
                 msg,
-            )
+            ) from e
         servo = CanopenServo(
             target,
             node,
@@ -427,7 +427,7 @@ class CanopenNetwork(Network):
                 self._connection.listeners.append(CustomListener())
             try:
                 self._connection.connect(**self.__connection_args)
-            except CanError:
+            except CanError as e:
                 logger.exception("Transceiver not found in network.")
                 msg = (
                     "Error connecting to the transceiver. "
@@ -436,7 +436,7 @@ class CanopenNetwork(Network):
                 )
                 raise ILError(
                     msg,
-                )
+                ) from e
             except OSError as e:
                 logger.exception("Transceiver drivers not properly installed.")
                 if (
@@ -444,11 +444,11 @@ class CanopenNetwork(Network):
                     and e.winerror == self.TRANSCEIVER_NOT_INSTALLED_ERROR_CODE
                 ):
                     e.strerror = "Driver module not found. Drivers might not be properly installed."
-                raise ILError(e)
+                raise ILError(e) from e
             except Exception as e:
                 error_message = f"Failed trying to connect. Exception: {e}"
                 logger.exception(error_message)
-                raise ILError(error_message)
+                raise ILError(error_message) from e
         else:
             logger.info("Connection already established")
 

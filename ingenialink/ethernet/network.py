@@ -185,14 +185,14 @@ class EthernetNetwork(Network):
                         sleep(1)
 
                 logger.info("Bootload process succeeded")
-            except ftplib.error_temp:
+            except ftplib.error_temp as e:
                 logger.exception("Error loading firmware.")
                 msg = "Firewall might be blocking the access."
-                raise ILFirmwareLoadError(msg)
-            except Exception:
+                raise ILFirmwareLoadError(msg) from e
+            except Exception as e:
                 logger.exception("Error loading firmware.")
                 msg = "Error during bootloader process."
-                raise ILFirmwareLoadError(msg)
+                raise ILFirmwareLoadError(msg) from e
 
     def scan_slaves(self) -> list[int]:  # noqa: D102
         raise NotImplementedError

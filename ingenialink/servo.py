@@ -158,12 +158,12 @@ class DictionaryFactory:
             with open(dictionary_path, encoding="utf-8") as xdf_file:
                 try:
                     tree = ElementTree.parse(xdf_file)
-                except ElementTree.ParseError:
+                except ElementTree.ParseError as e:
                     msg = f"File is not a xdf: {dictionary_path}"
-                    raise ILDictionaryParseError(msg)
-        except FileNotFoundError:
+                    raise ILDictionaryParseError(msg) from e
+        except FileNotFoundError as e:
             msg = f"There is not any xdf file in the path: {dictionary_path}"
-            raise FileNotFoundError(msg)
+            raise FileNotFoundError(msg) from e
         version_element = tree.find(cls._VERSION_ABSOLUTE_PATH)
         if version_element is None or version_element.text is None:
             msg = "Version not found"
@@ -457,7 +457,7 @@ class Servo:
                     f"register {element.attrib['id']!s}: {e}"
                 )
                 if strict:
-                    raise ILError(exception_message)
+                    raise ILError(exception_message) from e
                 logger.exception(exception_message)
 
     def save_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
@@ -1249,9 +1249,9 @@ class Servo:
             logger.warning(f"Error reading register {register_coco} from COCO. Trying MOCO")
         try:
             return str(self.read(register_moco, subnode=1))
-        except ILError:
+        except ILError as e:
             msg = f"Error reading register {register_moco} from MOCO."
-            raise ILError(msg)
+            raise ILError(msg) from e
 
     def __monitoring_map_register(self) -> str:
         """Get the first available Monitoring Mapped Register slot.

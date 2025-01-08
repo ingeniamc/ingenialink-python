@@ -362,9 +362,9 @@ class PDOMap:
         try:
             for item in self.items:
                 data_bits += item.raw_data_bits
-        except ILError:
+        except ILError as e:
             msg = f"PDO item {item.register.identifier} does not have data stored."
-            raise ILError(msg)
+            raise ILError(msg) from e
 
         if len(data_bits) != self.data_length_bits:
             msg = (
