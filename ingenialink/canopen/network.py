@@ -380,7 +380,7 @@ class CanopenNetwork(Network):
             node = self._connection.add_node(target)
             node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
         except Exception:
-            logger.exception("Failed connecting to node %i. Exception: %s", target)
+            logger.exception("Failed connecting to node %i.", target)
             msg = (
                 f"Failed connecting to node {target}. "
                 "Please check the connection settings and verify "
