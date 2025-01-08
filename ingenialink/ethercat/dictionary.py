@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import Element
 from typing import Optional
 
 import ingenialogger
@@ -148,7 +148,7 @@ class EthercatDictionaryV2(DictionaryV2):
             else CANOPEN_ADDRESS_OFFSET + MAP_ADDRESS_OFFSET * (subnode - 1)
         )
 
-    def _read_xdf_register(self, register: ET.Element) -> Optional[EthercatRegister]:
+    def _read_xdf_register(self, register: Element) -> Optional[EthercatRegister]:
         current_read_register = super()._read_xdf_register(register)
         if current_read_register is None:
             return None

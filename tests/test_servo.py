@@ -2,7 +2,7 @@ import os
 import re
 import shutil
 import time
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree
 from pathlib import Path
 
 import pytest
@@ -336,7 +336,7 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
     modified_path = Path(filename.replace(file, "config_0_test.xdf"))
     shutil.copy(path, modified_path)
     with open(modified_path, encoding="utf-8") as xml_file:
-        tree = ET.parse(xml_file)
+        tree = ElementTree.parse(xml_file)
         root = tree.getroot()
         axis = tree.findall("*/Device/Axes/Axis")
         if axis:

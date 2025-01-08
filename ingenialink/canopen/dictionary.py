@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import Element
 from typing import Optional
 
 import ingenialogger
@@ -40,7 +40,7 @@ class CanopenDictionaryV2(DictionaryV2):
 
     interface = Interface.CAN
 
-    def _read_xdf_register(self, register: ET.Element) -> Optional[CanopenRegister]:
+    def _read_xdf_register(self, register: Element) -> Optional[CanopenRegister]:
         current_read_register = super()._read_xdf_register(register)
         if current_read_register is None:
             return None

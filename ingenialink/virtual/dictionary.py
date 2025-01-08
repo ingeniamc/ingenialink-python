@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import Element
 from typing import Optional
 
 import ingenialogger
@@ -38,7 +38,7 @@ class VirtualDictionary(EthernetDictionaryV2):
         """
         return index - (0x2000 + (0x800 * (subnode - 1)))
 
-    def _read_xdf_register(self, register: ET.Element) -> Optional[EthernetRegister]:
+    def _read_xdf_register(self, register: Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)
 
         if current_read_register is None:

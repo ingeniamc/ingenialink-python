@@ -2,7 +2,7 @@ import os
 import re
 import threading
 import time
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree
 from abc import abstractmethod
 from enum import Enum
 from typing import Any, Callable, Optional, Union
@@ -157,8 +157,8 @@ class DictionaryFactory:
         try:
             with open(dictionary_path, encoding="utf-8") as xdf_file:
                 try:
-                    tree = ET.parse(xdf_file)
-                except ET.ParseError:
+                    tree = ElementTree.parse(xdf_file)
+                except ElementTree.ParseError:
                     msg = f"File is not a xdf: {dictionary_path}"
                     raise ILDictionaryParseError(msg)
         except FileNotFoundError:
@@ -480,16 +480,16 @@ class Servo:
         rev_number = drive_info["revision_number"]
         firmware_version = drive_info["firmware_version"]
 
-        tree = ET.Element("IngeniaDictionary")
-        header = ET.SubElement(tree, "Header")
-        version = ET.SubElement(header, "Version")
+        tree = ElementTree.Element("IngeniaDictionary")
+        header = ElementTree.SubElement(tree, "Header")
+        version = ElementTree.SubElement(header, "Version")
         version.text = "2"
-        default_language = ET.SubElement(header, "DefaultLanguage")
+        default_language = ElementTree.SubElement(header, "DefaultLanguage")
         default_language.text = "en_US"
 
-        body = ET.SubElement(tree, "Body")
-        device = ET.SubElement(body, "Device")
-        registers = ET.SubElement(device, "Registers")
+        body = ElementTree.SubElement(tree, "Body")
+        device = ElementTree.SubElement(body, "Device")
+        registers = ElementTree.SubElement(device, "Registers")
         interface = (
             self.DICTIONARY_INTERFACE_ATTR_CAN
             if self.dictionary.interface == Interface.CAN
@@ -513,14 +513,14 @@ class Servo:
             for configuration_register in configuration_registers:
                 if configuration_register.identifier is None:
                     continue
-                register_xml = ET.SubElement(registers, "Register")
+                register_xml = ElementTree.SubElement(registers, "Register")
                 register_xml.set("access", access_ops[configuration_register.access])
                 register_xml.set("dtype", dtype_ops[configuration_register.dtype])
                 register_xml.set("id", configuration_register.identifier)
                 self.__update_register_dict(register_xml, node)
                 register_xml.set("subnode", str(node))
 
-        dom = minidom.parseString(ET.tostring(tree, encoding="utf-8"))
+        dom = minidom.parseString(ElementTree.tostring(tree, encoding="utf-8"))
         with open(config_file, "wb") as f:
             f.write(dom.toprettyxml(indent="\t").encode())
 
@@ -563,7 +563,9 @@ class Servo:
         return registers
 
     @staticmethod
-    def _read_configuration_file(config_file: str) -> tuple[ET.Element, list[ET.Element]]:
+    def _read_configuration_file(
+        config_file: str,
+    ) -> tuple[ElementTree.Element, list[ElementTree.Element]]:
         """Read a configuration file. Returns the device metadata and the registers list.
 
         Args:
@@ -581,7 +583,7 @@ class Servo:
             msg = f"Could not find {config_file}."
             raise FileNotFoundError(msg)
         with open(config_file, encoding="utf-8") as xml_file:
-            tree = ET.parse(xml_file)
+            tree = ElementTree.parse(xml_file)
         root = tree.getroot()
         device = root.find("Body/Device")
         axis = tree.findall("*/Device/Axes/Axis")
@@ -591,7 +593,7 @@ class Servo:
         else:
             # Single axis
             registers = root.findall("./Body/Device/Registers/Register")
-        if not isinstance(device, ET.Element):
+        if not isinstance(device, ElementTree.Element):
             msg = "Configuration file does not have device information"
             raise ILIOError(msg)
         if not isinstance(registers, list):
@@ -1189,7 +1191,7 @@ class Servo:
             msg = "Invalid register"
             raise TypeError(msg)
 
-    def __update_register_dict(self, register: ET.Element, subnode: int) -> None:
+    def __update_register_dict(self, register: ElementTree.Element, subnode: int) -> None:
         """Updates the register from a dictionary with the storage parameters.
 
         Args:

@@ -2,7 +2,7 @@ import functools
 import logging
 import struct
 import warnings
-import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import Element
 from enum import Enum
 from typing import Any, Callable, Optional, Union
 
@@ -99,7 +99,7 @@ def to_ms(s: float) -> int:
     return int(s * 1e3)
 
 
-def remove_xml_subelement(element: ET.Element, subelement: ET.Element) -> None:
+def remove_xml_subelement(element: Element, subelement: Element) -> None:
     """Removes a subelement from the given element the element contains the subelement.
 
     Args:
@@ -121,7 +121,7 @@ def pop_element(dictionary: dict[str, Any], element: str) -> None:
         dictionary.pop(element)
 
 
-def cleanup_register(register: ET.Element) -> None:
+def cleanup_register(register: Element) -> None:
     """Clean a register element.
 
     Cleans a ElementTree register to remove all
