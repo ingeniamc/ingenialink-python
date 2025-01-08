@@ -1,3 +1,4 @@
+import re
 from ipaddress import NetmaskValueError
 
 import pytest
@@ -12,7 +13,9 @@ def test_change_tcp_ip_parameters_value_error(connect_to_slave, ip_address, gate
     servo, net = connect_to_slave
     with pytest.raises(
         ValueError,
-        match=f"Drive IP {ip_address} and Gateway IP {gateway} are not on the same network.",
+        match=re.escape(
+            f"Drive IP {ip_address} and Gateway IP {gateway} are not on the same network."
+        ),
     ):
         servo.change_tcp_ip_parameters(ip_address, "255.255.255.0", gateway)
 
