@@ -55,7 +55,7 @@ CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19 * * *''' : ""
 pipeline {
     agent none
     triggers {
-        parameterizedCron(CRON_SETTINGS)
+        cron(CRON_SETTINGS)
     }
     stages {
         stage("Set run python versions") {
