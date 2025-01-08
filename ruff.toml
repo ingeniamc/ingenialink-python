@@ -9,6 +9,7 @@ select = [
 ignore = [
     "ANN", # flake8-annotations
     "C90", # mccabe complexity
+    "PTH", # Will be fixed in INGK-1020
     "D100", # Missing docstring in public module
     "D104", # Missing docstring in public package
     "D107", # Missing docstring in __init__
