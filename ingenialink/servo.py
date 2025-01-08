@@ -1196,8 +1196,6 @@ class Servo:
             register: Register element to be updated.
             subnode: Target subnode.
 
-        Returns:
-
         """
         try:
             storage: Union[str, int, float, bytes, np.float32] = self.read(
