@@ -372,37 +372,34 @@ class CanopenNetwork(Network):
         if self._connection is None:
             msg = "Connection has not been established"
             raise ILError(msg)
-        if target in nodes:
-            try:
-                node = self._connection.add_node(target)
-
-                node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
-
-                servo = CanopenServo(
-                    target,
-                    node,
-                    dictionary,
-                    servo_status_listener=servo_status_listener,
-                )
-                self.servos.append(servo)
-                self._set_servo_state(target, NET_STATE.CONNECTED)
-                if net_status_listener:
-                    self.start_status_listener()
-                return servo
-            except Exception:
-                logger.exception("Failed connecting to node %i. Exception: %s", target)
-                msg = (
-                    f"Failed connecting to node {target}. "
-                    "Please check the connection settings and verify "
-                    "the transceiver is properly connected."
-                )
-                raise ILError(
-                    msg,
-                )
-        else:
+        if target not in nodes:
             logger.error("Node id not found")
             msg = f"Node id {target} not found in the network."
             raise ILError(msg)
+        try:
+            node = self._connection.add_node(target)
+            node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
+        except Exception:
+            logger.exception("Failed connecting to node %i. Exception: %s", target)
+            msg = (
+                f"Failed connecting to node {target}. "
+                "Please check the connection settings and verify "
+                "the transceiver is properly connected."
+            )
+            raise ILError(
+                msg,
+            )
+        servo = CanopenServo(
+            target,
+            node,
+            dictionary,
+            servo_status_listener=servo_status_listener,
+        )
+        self.servos.append(servo)
+        self._set_servo_state(target, NET_STATE.CONNECTED)
+        if net_status_listener:
+            self.start_status_listener()
+        return servo
 
     def disconnect_from_slave(self, servo: CanopenServo) -> None:  # type: ignore [override]
         """Disconnects the slave from the network.
