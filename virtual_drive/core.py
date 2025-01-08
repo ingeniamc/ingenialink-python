@@ -1429,7 +1429,7 @@ class VirtualDrive(Thread):
             for reg_id, reg in self.__dictionary.registers(subnode).items():
                 if reg._storage is not None:
                     continue
-                elif reg.enums_count > 0:
+                if reg.enums_count > 0:
                     value = next(iter(reg.enums.values()))
                 elif reg.dtype == REG_DTYPE.STR:
                     value = ""
