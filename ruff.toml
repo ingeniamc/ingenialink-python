@@ -29,6 +29,8 @@ ignore = [
     "ISC001", # Implicitly concatenated strings. Already enforced by the formatter.
     "S602", # Subprocess call with shell enabled.
     "S318", # Insecure XML parser.
+    "FBT001", # Boolean positional argument
+    "FBT002", # Boolean positional argument
 ]
 [lint.per-file-ignores]
 "ingenialink/network.py" = [
