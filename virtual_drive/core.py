@@ -5,7 +5,7 @@ import socket
 import time
 from enum import Enum, IntEnum
 from threading import Thread, Timer
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -706,9 +706,9 @@ class VirtualInternalGenerator:
     COMMUTATION_FEEDBACK_REGISTER = "COMMU_ANGLE_SENSOR"
     POSITION_FEEDBACK_REGISTER = "CL_POS_FBK_SENSOR"
 
-    HALL_VALUES = [1, 3, 2, 6, 4, 5]
+    HALL_VALUES: ClassVar[list[int]] = [1, 3, 2, 6, 4, 5]
 
-    ENCODER_REGISTERS = {
+    ENCODER_REGISTERS: ClassVar[dict[SensorType, str]] = {
         SensorType.QEI: "FBK_DIGENC1_VALUE",
         SensorType.QEI2: "FBK_DIGENC2_VALUE",
         SensorType.HALLS: "FBK_DIGHALL_VALUE",

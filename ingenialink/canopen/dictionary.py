@@ -17,7 +17,7 @@ class CanopenDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: list[CanopenRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: list[CanopenRegister] = [  # noqa: RUF012
         CanopenRegister(
             identifier="MON_DATA_VALUE",
             idx=0x58B2,

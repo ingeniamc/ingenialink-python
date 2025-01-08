@@ -4,7 +4,7 @@ import threading
 import time
 from abc import abstractmethod
 from enum import Enum
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, ClassVar, Optional, Union
 from xml.dom import minidom
 from xml.etree import ElementTree
 
@@ -248,10 +248,19 @@ class Servo:
     CONTROL_WORD_QUICK_STOP = "QUICK_STOP"
     CONTROL_WORD_ENABLE_OPERATION = "ENABLE_OPERATION"
     CONTROL_WORD_FAULT_RESET = "FAULT_RESET"
-    SERIAL_NUMBER_REGISTERS = ["DRV_ID_SERIAL_NUMBER_COCO", "DRV_ID_SERIAL_NUMBER"]
-    SOFTWARE_VERSION_REGISTERS = ["DRV_APP_COCO_VERSION", "DRV_ID_SOFTWARE_VERSION"]
-    PRODUCT_ID_REGISTERS = ["DRV_ID_PRODUCT_CODE_COCO", "DRV_ID_PRODUCT_CODE"]
-    REVISION_NUMBER_REGISTERS = ["DRV_ID_REVISION_NUMBER_COCO", "DRV_ID_REVISION_NUMBER"]
+    SERIAL_NUMBER_REGISTERS: ClassVar[list[str]] = [
+        "DRV_ID_SERIAL_NUMBER_COCO",
+        "DRV_ID_SERIAL_NUMBER",
+    ]
+    SOFTWARE_VERSION_REGISTERS: ClassVar[list[str]] = [
+        "DRV_APP_COCO_VERSION",
+        "DRV_ID_SOFTWARE_VERSION",
+    ]
+    PRODUCT_ID_REGISTERS: ClassVar[list[str]] = ["DRV_ID_PRODUCT_CODE_COCO", "DRV_ID_PRODUCT_CODE"]
+    REVISION_NUMBER_REGISTERS: ClassVar[list[str]] = [
+        "DRV_ID_REVISION_NUMBER_COCO",
+        "DRV_ID_REVISION_NUMBER",
+    ]
     MONITORING_DIST_ENABLE = "MON_DIST_ENABLE"
     MONITORING_REMOVE_DATA = "MON_REMOVE_DATA"
     MONITORING_NUMBER_MAPPED_REGISTERS = "MON_CFG_TOTAL_MAP"

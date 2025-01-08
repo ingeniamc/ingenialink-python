@@ -23,7 +23,7 @@ class EthercatDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: list[EthercatRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: list[EthercatRegister] = [  # noqa: RUF012
         EthercatRegister(
             identifier="MON_DATA_VALUE",
             units="",
@@ -46,7 +46,7 @@ class EthercatDictionaryV2(DictionaryV2):
         ),
     ]
 
-    __PDO_REGISTERS: list[EthercatRegister] = [
+    __PDO_REGISTERS: list[EthercatRegister] = [  # noqa: RUF012
         EthercatRegister(
             identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_0",
             units="",

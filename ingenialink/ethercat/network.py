@@ -7,7 +7,7 @@ import time
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, ClassVar, Optional, Union
 
 import ingenialogger
 
@@ -91,11 +91,11 @@ class EthercatNetwork(Network):
 
     """
 
-    FOE_APPLICATION = {
+    FOE_APPLICATION: ClassVar[dict[str, dict[str, str]]] = {
         "win32": {"64bit": "FoE/win_64x/FoEUpdateFirmware.exe"},
         "linux": {"64bit": "FoE/linux/FoEUpdateFirmware"},
     }
-    FOE_ERRORS = {
+    FOE_ERRORS: ClassVar[dict[int, str]] = {
         1: "Can't read the input file.",
         2: "ECAT slave can't reach the BOOT mode.",
         3: "No ECAT slave detected",

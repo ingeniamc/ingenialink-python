@@ -17,7 +17,7 @@ class EthernetDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: list[EthernetRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: list[EthernetRegister] = [  # noqa: RUF012
         EthernetRegister(
             identifier="MON_DATA_VALUE",
             units="",

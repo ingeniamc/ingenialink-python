@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Union
+from typing import ClassVar, Optional, Union
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -160,7 +160,7 @@ class Dictionary(ABC):
 
     """
 
-    dtype_xdf_options = {
+    dtype_xdf_options: ClassVar[dict[str, REG_DTYPE]] = {
         "float": REG_DTYPE.FLOAT,
         "s8": REG_DTYPE.S8,
         "u8": REG_DTYPE.U8,
@@ -175,9 +175,13 @@ class Dictionary(ABC):
         "byteArray512": REG_DTYPE.BYTE_ARRAY_512,
     }
 
-    access_xdf_options = {"r": REG_ACCESS.RO, "w": REG_ACCESS.WO, "rw": REG_ACCESS.RW}
+    access_xdf_options: ClassVar[dict[str, REG_ACCESS]] = {
+        "r": REG_ACCESS.RO,
+        "w": REG_ACCESS.WO,
+        "rw": REG_ACCESS.RW,
+    }
 
-    address_type_xdf_options = {
+    address_type_xdf_options: ClassVar[dict[str, REG_ADDRESS_TYPE]] = {
         "NVM": REG_ADDRESS_TYPE.NVM,
         "NVM_NONE": REG_ADDRESS_TYPE.NVM_NONE,
         "NVM_CFG": REG_ADDRESS_TYPE.NVM_CFG,
@@ -185,7 +189,7 @@ class Dictionary(ABC):
         "NVM_HW": REG_ADDRESS_TYPE.NVM_HW,
     }
 
-    subnode_xdf_options = {
+    subnode_xdf_options: ClassVar[dict[str, SubnodeType]] = {
         "Communication": SubnodeType.COMMUNICATION,
         "Motion": SubnodeType.MOTION,
         "Safety": SubnodeType.SAFETY,
@@ -485,7 +489,7 @@ class DictionaryV3(Dictionary):
     __CATEGORY_ELEMENT = "Category"
 
     __DEVICES_ELEMENT = "Devices"
-    __DEVICE_ELEMENT = {
+    __DEVICE_ELEMENT: ClassVar[dict[Interface, str]] = {
         Interface.CAN: "CANDevice",
         Interface.ETH: "ETHDevice",
         Interface.ECAT: "ECATDevice",
@@ -1127,7 +1131,7 @@ class DictionaryV2(Dictionary):
         list[CanopenRegister],
     ]
 
-    _KNOWN_REGISTER_BITFIELDS: dict[str, Callable[[], dict[str, BitField]]] = {
+    _KNOWN_REGISTER_BITFIELDS: ClassVar[dict[str, Callable[[], dict[str, BitField]]]] = {
         "DRV_STATE_STATUS": lambda: {
             # https://drives.novantamotion.com/summit/0x011-status-word
             "READY_TO_SWITCH_ON": BitField.bit(0),
@@ -1168,7 +1172,7 @@ class DictionaryV2(Dictionary):
         },
     }
 
-    _INTERFACE_STR = {
+    _INTERFACE_STR: ClassVar[dict[Interface, str]] = {
         Interface.CAN: "CAN",
         Interface.ECAT: "ETH",
         Interface.EoE: "ETH",
