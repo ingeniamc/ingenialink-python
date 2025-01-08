@@ -275,7 +275,7 @@ class CanopenNetwork(Network):
         try:
             self._connection.scanner.search()
         except Exception:
-            logger.exception(f"Error searching for nodes.")
+            logger.exception("Error searching for nodes.")
             logger.info("Resetting bus")
             if (
                 self._connection is not None
@@ -428,7 +428,7 @@ class CanopenNetwork(Network):
             try:
                 self._connection.connect(**self.__connection_args)
             except CanError:
-                logger.exception(f"Transceiver not found in network.")
+                logger.exception("Transceiver not found in network.")
                 msg = (
                     "Error connecting to the transceiver. "
                     "Please verify the transceiver "
@@ -438,7 +438,7 @@ class CanopenNetwork(Network):
                     msg,
                 )
             except OSError as e:
-                logger.exception(f"Transceiver drivers not properly installed.")
+                logger.exception("Transceiver drivers not properly installed.")
                 if (
                     hasattr(e, "winerror")
                     and e.winerror == self.TRANSCEIVER_NOT_INSTALLED_ERROR_CODE
@@ -466,7 +466,7 @@ class CanopenNetwork(Network):
             self._connection.disconnect()
         except (VCIError, CANLIBOperationError, PcanCanOperationError):
             logger.exception(
-                f"An exception occurred during the teardown connection.",
+                "An exception occurred during the teardown connection.",
             )
         self._connection = None
         logger.info("Tear down connection.")
@@ -483,7 +483,7 @@ class CanopenNetwork(Network):
         try:
             self._connection.disconnect()
         except BaseException:
-            logger.exception(f"Disconnection failed.")
+            logger.exception("Disconnection failed.")
 
         try:
             for node in self._connection.scanner.nodes:
@@ -492,7 +492,7 @@ class CanopenNetwork(Network):
                 self._connection.bus.flush_tx_buffer()
                 logger.info("Bus flushed")
         except Exception:
-            logger.exception(f"Could not stop guarding.")
+            logger.exception("Could not stop guarding.")
         if self.__device in [CAN_DEVICE.IXXAT.value, CAN_DEVICE.KVASER.value]:
             self._connection.listeners.append(CustomListener())
         try:
@@ -501,7 +501,7 @@ class CanopenNetwork(Network):
                 servo.node = self._connection.add_node(servo.target)
                 servo.node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
         except BaseException:
-            logger.exception(f"Connection failed.")
+            logger.exception("Connection failed.")
 
     def load_firmware(
         self,

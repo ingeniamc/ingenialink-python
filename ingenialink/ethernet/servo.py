@@ -189,7 +189,7 @@ class EthernetServo(Servo):
                 logger.exception("Error sending MCB frame.")
                 return self.__receive_mcb_frame(reg)
             except ILTimeoutError:
-                logger.exception(f"Retrying..")
+                logger.exception("Retrying..")
                 self.socket.sendall(frame)
                 return self.__receive_mcb_frame(reg)
         finally:

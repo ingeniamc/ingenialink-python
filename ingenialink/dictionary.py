@@ -1312,7 +1312,7 @@ class DictionaryV2(Dictionary):
         try:
             identifier = register.attrib["id"]
         except KeyError:
-            logger.exception(f"The register doesn't have an identifier.")
+            logger.exception("The register doesn't have an identifier.")
             return None
 
         try:
