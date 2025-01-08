@@ -25,7 +25,7 @@ def test_load_firmware_example(arguments, script_runner, mocker, read_config):
     script_path = "examples/ethercat/ecat_load_firmware.py"
     result = script_runner.run([script_path, *arguments])
     assert result.returncode == 0
-    mock.assert_called_once_with("dummy_file.lfu", False, slave_id=slave_id)
+    mock.assert_called_once_with("dummy_file.lfu", boot_in_app=False, slave_id=slave_id)
 
 
 @pytest.mark.ethercat()

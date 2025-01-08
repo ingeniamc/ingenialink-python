@@ -24,7 +24,7 @@ def test_raise_exception_if_not_winpcap():
 def test_load_firmware_file_not_found_error(read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     with pytest.raises(FileNotFoundError):
-        net.load_firmware("ethercat.sfu", True)
+        net.load_firmware("ethercat.sfu", boot_in_app=True)
 
 
 @pytest.mark.ethercat()
@@ -35,7 +35,7 @@ def test_load_firmware_no_slave_detected_error(mocker, read_config):
         ILFirmwareLoadError,
         match="The firmware file could not be loaded correctly. No ECAT slave detected",
     ):
-        net.load_firmware("dummy_file.lfu", False, slave_id=23)
+        net.load_firmware("dummy_file.lfu", boot_in_app=False, slave_id=23)
 
 
 @pytest.mark.ethercat()
@@ -53,7 +53,7 @@ def test_load_firmware_not_implemented_error(mocker, read_config):
     mocker.patch("os.path.isfile", return_value=True)
     mocker.patch("sys.platform", return_value="linux")
     with pytest.raises(NotImplementedError):
-        net.load_firmware("dummy_file.lfu", False)
+        net.load_firmware("dummy_file.lfu", boot_in_app=False)
 
 
 @pytest.mark.ethercat()
