@@ -182,7 +182,7 @@ class RPDOMapItem(PDOMapItem):
         return super().value
 
     @value.setter
-    def value(self, value: Union[int, float, bool]) -> None:
+    def value(self, value: Union[float, bool]) -> None:
         if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
             msg = "The register value must be set by the raw_data_bytes attribute."
             raise NotImplementedError(

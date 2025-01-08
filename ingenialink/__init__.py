@@ -1,6 +1,5 @@
 from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, REG_PHY
 from ingenialink.enums.servo import (
-    SERVO_FLAGS,
     SERVO_MODE,
     SERVO_STATE,
     SERVO_UNITS_ACC,

@@ -1375,7 +1375,7 @@ class Servo:
     def write(
         self,
         reg: Union[str, Register],
-        data: Union[int, float, str, bytes],
+        data: Union[float, str, bytes],
         subnode: int = 1,
         **kwargs: Any,
     ) -> None:
@@ -1529,7 +1529,7 @@ class Servo:
         """
         self.__register_update_observers.remove(callback)
 
-    def _notify_register_update(self, reg: Register, data: Union[int, float, str, bytes]) -> None:
+    def _notify_register_update(self, reg: Register, data: Union[float, str, bytes]) -> None:
         """Notify a register update to the observers.
 
         The updated value is stored in the register's storage attribute.

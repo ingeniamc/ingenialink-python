@@ -207,7 +207,7 @@ class BasePlant:
 
         return output_signal
 
-    def jog(self, new_value: Union[int, float]) -> None:
+    def jog(self, new_value: float) -> None:
         """Emulate jogs by disturbing the input register using a step signal.
 
         Args:
@@ -1701,7 +1701,7 @@ class VirtualDrive(Thread):
             return 0
 
     def set_value_by_id(
-        self, subnode: int, register_id: str, value: Union[float, int, str, bytes]
+        self, subnode: int, register_id: str, value: Union[float, str, bytes]
     ) -> None:
         """Set a register value by its ID.
 

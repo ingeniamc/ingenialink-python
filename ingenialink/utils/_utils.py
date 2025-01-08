@@ -87,7 +87,7 @@ class DisableLogger:
         logging.disable(logging.NOTSET)
 
 
-def to_ms(s: Union[int, float]) -> int:
+def to_ms(s: float) -> int:
     """Convert from seconds to milliseconds.
 
     Args:
@@ -198,7 +198,7 @@ class INT_SIZES(Enum):
     U64_MAX = 18446744073709551615
 
 
-def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, str, bytes]:
+def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, str, bytes]:
     """Convert data in bytes to corresponding dtype.
 
     Bytes have to be ordered in LSB.
@@ -241,7 +241,7 @@ def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, s
     return value
 
 
-def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: REG_DTYPE) -> bytes:
+def convert_dtype_to_bytes(data: Union[float, str, bytes], dtype: REG_DTYPE) -> bytes:
     """Convert data in dtype to bytes.
 
     Bytes will be ordered in LSB.

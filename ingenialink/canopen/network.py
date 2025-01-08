@@ -692,7 +692,7 @@ class CanopenNetwork(Network):
         servo: CanopenServo,
         subnode: int,
         register: CanopenRegister,
-        expected_value: Union[int, float, str],
+        expected_value: Union[float, str],
     ) -> bool:
         """Waits for the register to reach a value.
 
