@@ -53,7 +53,7 @@ class CanopenServo(Servo):
         self,
         reg: Union[str, Register],
         subnode: int = 1,
-        **kwargs: Any,
+        **kwargs: Any,  # noqa: ARG002
     ) -> Union[int, float, str, bytes]:
         value = super().read(reg, subnode=subnode)
         if isinstance(value, str):

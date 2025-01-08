@@ -325,6 +325,7 @@ class EoENetwork(EthernetNetwork):
         Args:
             slave_id: EtherCAT slave ID.
             ip_address: IP address to be set to the slave.
+            net_mask: The subnet mask.
 
         Raises:
             ILError: If the EoE service fails to configure a slave.

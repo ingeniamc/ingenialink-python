@@ -145,7 +145,6 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         buffer_size: int = 0,
         complete_access: bool = False,
-        start_time: Optional[float] = None,
     ) -> bytes:
         self._lock.acquire()
         try:
@@ -168,7 +167,6 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         data: bytes,
         complete_access: bool = False,
-        start_time: Optional[float] = None,
     ) -> None:
         self._lock.acquire()
         try:
@@ -227,14 +225,14 @@ class EthercatServo(PDOServo):
         msg = f"{default_error_msg}. {reason}"
         raise ILIOError(msg) from exception
 
-    def _monitoring_read_data(self, **kwargs: Any) -> bytes:
+    def _monitoring_read_data(self, **kwargs: Any) -> bytes:  # noqa: ARG002
         """Read monitoring data frame."""
         return super()._monitoring_read_data(
             buffer_size=self.MONITORING_DATA_BUFFER_SIZE,
             complete_access=True,
         )
 
-    def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
+    def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:  # noqa: ARG002
         """Write disturbance data."""
         super()._disturbance_write_data(data, complete_access=True)
 

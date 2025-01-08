@@ -413,7 +413,8 @@ class Dictionary(ABC):
         """Process Errors element and set errors.
 
         Args:
-            root: Errors element
+            root: Errors element.
+            path: target elements path.
 
         """
         error_list = self._findall_and_check(root, path)
