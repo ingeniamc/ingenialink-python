@@ -360,12 +360,12 @@ class PDOMap:
             Concatenated items raw data in bits.
         """
         data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
-        for item in self.items:
-            try:
+        try:
+            for item in self.items:
                 data_bits += item.raw_data_bits
-            except ILError:
-                msg = f"PDO item {item.register.identifier} does not have data stored."
-                raise ILError(msg)
+        except ILError:
+            msg = f"PDO item {item.register.identifier} does not have data stored."
+            raise ILError(msg)
 
         if len(data_bits) != self.data_length_bits:
             msg = (
