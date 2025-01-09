@@ -138,7 +138,6 @@ def test_setup_and_teardown_connection(virtual_network):
 
 @pytest.mark.skip()
 def test_load_firmware(connect_to_slave, read_config):
-    # TODO: Fix load_firmware method to work independently of status listeners
     servo, net = connect_to_slave
     assert servo is not None
     assert net is not None

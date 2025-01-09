@@ -893,7 +893,6 @@ class Servo:
             time_diff = current_time - start_time
             if time_diff > timeout:
                 raise ILTimeoutError
-            # TODO: Remove this try-except after CAP-924 is solved.
             try:
                 actual_state = self.get_state(subnode)
             except ILTimeoutError:

@@ -152,7 +152,6 @@ def test_save_configuration(connect_to_slave):
     assert version.parse(device.attrib.get("firmwareVersion")) == version.parse(
         servo.dictionary.firmware_version,
     )
-    # TODO: check name and family? These are not stored at the dictionary
 
     assert len(saved_registers) > 0
     for saved_register in saved_registers:
