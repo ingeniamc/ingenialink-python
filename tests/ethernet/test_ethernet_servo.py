@@ -29,7 +29,7 @@ def test_change_tcp_ip_parameters_invalid_ip(connect_to_slave, ip_address, gatew
     servo, net = connect_to_slave
     with pytest.raises(
         ValueError,
-        match=re.escape(f"{ip_address} does not appear to be an IPv4 or IPv6 address"),
+        match=f"'{ip_address}' does not appear to be an IPv4 or IPv6 address",
     ):
         servo.change_tcp_ip_parameters(ip_address, "255.255.255.0", gateway)
 
