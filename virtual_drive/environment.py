@@ -2,7 +2,7 @@ from .signals import Signal
 
 
 class Environment:
-    """Contains the physical values of connected, imposed or observed to the drive"""
+    """Contains the physical values of connected, imposed or observed to the drive."""
 
     def __init__(self) -> None:
         self.gpi_1_status = Signal[bool](initial_value=False)

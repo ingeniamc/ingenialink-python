@@ -17,14 +17,14 @@ class Signal(Generic[T]):
         self.__watchers: list[Callable[[], None]] = []
 
     def get(self) -> T:
-        """Get current value of the signal"""
+        """Get current value of the signal."""
         return self.__value
 
     def watch(self, callback: Callable[[], None]) -> None:
         """Watch signal.
 
         Args:
-            Callback. Will be called when signal changes
+            callback: Will be called when signal changes
         """
         self.__watchers.append(callback)
 

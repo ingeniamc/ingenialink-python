@@ -41,12 +41,14 @@ INC_ENC2_RESOLUTION = 2000
 
 
 class MSG_TYPE(Enum):
+    """Message type enum."""
+
     RECEIVED = "RECEIVED"
     SENT = "SENT"
 
 
 class OperationMode(IntEnum):
-    """Operation Mode Enum"""
+    """Operation Mode Enum."""
 
     VOLTAGE = 0x00
     CURRENT_AMPLIFIER = 0x01
@@ -67,7 +69,7 @@ class OperationMode(IntEnum):
 
 
 class PhasingMode(IntEnum):
-    """Phasing modes"""
+    """Phasing modes."""
 
     NON_FORCED = 0
     """Non forced"""
@@ -78,7 +80,7 @@ class PhasingMode(IntEnum):
 
 
 class SensorType(IntEnum):
-    """Summit series feedback type enum"""
+    """Summit series feedback type enum."""
 
     ABS1 = 1
     """Absolute encoder 1"""
@@ -97,7 +99,7 @@ class SensorType(IntEnum):
 
 
 class GeneratorMode(IntEnum):
-    """Generator modes"""
+    """Generator modes."""
 
     CONSTANT = 0
     """Constant"""
@@ -142,6 +144,7 @@ class BasePlant:
 
         Args:
             from_disturbance: If True the input signal is repeated to fit the monitoring window.
+
         """
         dist_signal = self.drive.reg_signals[self.REGISTER_SET_POINT]
         if len(dist_signal) == 0:
@@ -181,6 +184,7 @@ class BasePlant:
             input_signal: Signal to be filtered.
             use_fft_method: If True the FFT method is used.
             initial_value: Initial value.
+            plant: Plant's transfer function.
 
         Returns:
             Filtered signal.
@@ -308,6 +312,12 @@ class BaseClosedLoopPlant(BasePlant):
         self.plant = signal.TransferFunction(num, den, dt=1 / self.monitoring_frequency)
 
     def emulate_plant(self, from_disturbance: bool = True) -> None:
+        """Emulate the plant by filtering the excitation signal with the plant's frequency response.
+
+        Args:
+            from_disturbance: If True the input signal is repeated to fit the monitoring window.
+
+        """
         self.create_closed_loop_plant()
         super().emulate_plant(from_disturbance=from_disturbance)
         self.__obtain_command_signal()
@@ -384,6 +394,12 @@ class PlantClosedLoopRL(BaseClosedLoopPlant):
     OL_PLANT_INPUT = PlantOpenLoopRL.REGISTER_COMMAND
 
     def emulate_plant(self, from_disturbance: bool = True) -> None:
+        """Emulate the plant by filtering the excitation signal with the plant's frequency response.
+
+        Args:
+            from_disturbance: If True the input signal is repeated to fit the monitoring window.
+
+        """
         super().emulate_plant(from_disturbance)
 
 
@@ -1049,6 +1065,7 @@ class VirtualMonitoring(VirtualMonDistBase):
         super().__init__(drive)
 
     def enable(self) -> None:
+        """Enable the monitoring process."""
         super().map_registers()
         super().enable()
 
@@ -1057,6 +1074,7 @@ class VirtualMonitoring(VirtualMonDistBase):
         self.update_data()
 
     def update_data(self) -> None:
+        """Update the monitoring data."""
         self.__create_signals()
 
         # Store data
@@ -1164,6 +1182,7 @@ class VirtualDisturbance(VirtualMonDistBase):
         super().__init__(drive)
 
     def enable(self) -> None:
+        """Enable the disturbance process."""
         self.start_time = time.time()
         for channel in range(self.number_mapped_registers):
             subnode = self.channels_subnode[channel]
@@ -1173,6 +1192,7 @@ class VirtualDisturbance(VirtualMonDistBase):
         super().enable()
 
     def disable(self) -> None:
+        """Disable the disturbance process."""
         self.received_bytes = b""
         return super().disable()
 
@@ -1442,6 +1462,7 @@ class VirtualDrive(Thread):
 
     def _create_monitoring_disturbance_registers(self) -> None:
         """Create the monitoring and disturbance data registers.
+
         Only used for dictionaries V2 because V3 includes these registers.
 
         """
@@ -1641,7 +1662,7 @@ class VirtualDrive(Thread):
         return self.__reg_address_to_id[subnode][address]
 
     def id_to_address(self, subnode: int, uid: str) -> int:
-        """Return address of Register with the target subnode and UID
+        """Return address of Register with the target subnode and UID.
 
         Args:
             subnode: Subnode.
@@ -1707,7 +1728,7 @@ class VirtualDrive(Thread):
         self.__dictionary.registers(subnode)[register_id].storage = value
 
     def __register_exists(self, subnode: int, register_id: str) -> bool:
-        """Returns True if the register exists in the dictionary
+        """Returns True if the register exists in the dictionary.
 
         Args:
             subnode: Subnode.
@@ -1840,6 +1861,7 @@ class VirtualDrive(Thread):
 
     @property
     def status_word(self) -> int:
+        """Get the status word register."""
         return int(self.get_value_by_id(1, "DRV_STATE_STATUS"))
 
     @status_word.setter

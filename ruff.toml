@@ -44,7 +44,3 @@ ignore = [
     "PT004", # Missing fixture name underscore
     "INP001", # Missing __init__.py file
 ]
-"virtual_drive/*" = [
-    "D", # Docstring rules
-    "ERA001", # Commented-out code
-]
