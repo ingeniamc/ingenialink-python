@@ -33,9 +33,6 @@ ignore = [
     "FBT002", # Boolean positional argument
 ]
 [lint.per-file-ignores]
-"ingenialink/network.py" = [
-    "D102", # Missing docstring in public method
-]
 "tests/*" = [
     "D", # Docstring rules
     "ERA001", # Commented-out code
