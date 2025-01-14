@@ -1,4 +1,4 @@
-@Library('cicd-lib@CIT-296-evaluate-using-scp-for-publishing-to-distext') _
+@Library('cicd-lib@0.12') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
