@@ -123,8 +123,12 @@ class EthernetNetwork(Network):
             # Load file through FTP.
             logger.info("Uploading firmware file...")
             ftp.set_pasv(False)
-            with open(fw_file, "rb") as file:
-                ftp_output = ftp.storbinary(f"STOR {os.path.basename(file.name)}", file)
+            try:
+                with open(fw_file, "rb") as file:
+                    ftp_output = ftp.storbinary(f"STOR {os.path.basename(file.name)}", file)
+            except ftplib.error_temp:
+                logger.exception("An error occurred while transferring the firmware file.")
+                raise ILFirmwareLoadError("Unable to load the FW file through FTP.")
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
                 raise ILFirmwareLoadError("Unable to load the FW file through FTP")
