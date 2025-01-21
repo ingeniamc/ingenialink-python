@@ -135,7 +135,8 @@ class EthernetNetwork(Network):
                 with open(fw_file, "rb") as file:
                     ftp_output = ftp.storbinary(f"STOR {os.path.basename(file.name)}", file)
             except ftplib.error_temp as e:
-                raise ILFirmwareLoadError("Unable to load the FW file through FTP.") from e
+                msg = "Unable to load the FW file through FTP."
+                raise ILFirmwareLoadError(msg) from e
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
                 msg = "Unable to load the FW file through FTP"
