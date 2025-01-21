@@ -23,7 +23,6 @@ ignore = [
     "G004", # Logging statement uses f-string
     "S314", # Insecure XML parser,
     "SLF001", # Private member accessed
-    "TRY003", # Avoid specifying long messages outside the exception class
     "COM812", # Trailing comma. Already enforced by the formatter.
     "ISC001", # Implicitly concatenated strings. Already enforced by the formatter.
     "S602", # Subprocess call with shell enabled.
