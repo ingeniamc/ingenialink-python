@@ -4,6 +4,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink.emcy import EmergencyMessage
 
@@ -307,7 +308,8 @@ class EthercatServo(PDOServo):
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
-    def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:  # noqa: D102
+    @override
+    def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
                 self._rpdo_maps.append(rpdo_map)
@@ -316,10 +318,12 @@ class EthercatServo(PDOServo):
                 self._tpdo_maps.append(tpdo_map)
         self.slave.config_func = self.map_pdos
 
-    def process_pdo_inputs(self) -> None:  # noqa: D102
+    @override
+    def process_pdo_inputs(self) -> None:
         self._process_tpdo(self.__slave.input)
 
-    def generate_pdo_outputs(self) -> None:  # noqa: D102
+    @override
+    def generate_pdo_outputs(self) -> None:
         output = self._process_rpdo()
         if output is None:
             return

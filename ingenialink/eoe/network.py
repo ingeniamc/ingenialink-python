@@ -8,6 +8,7 @@ from threading import Thread
 from typing import Optional
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink import constants
 from ingenialink.ethernet.network import EthernetNetwork
@@ -155,7 +156,8 @@ class EoENetwork(EthernetNetwork):
         except ILError:
             logger.exception("Error reconfiguring drives")
 
-    def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override] # noqa: D102
+    @override
+    def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override]
         del self._configured_slaves[servo.ip_address]
         super().disconnect_from_slave(servo)
         if len(self.servos) == 0:
@@ -212,7 +214,8 @@ class EoENetwork(EthernetNetwork):
             ) from e
         return list(range(1, r + 1))
 
-    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:  # noqa: D102
+    @override
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         raise NotImplementedError
 
     @staticmethod
@@ -414,10 +417,12 @@ class EoENetwork(EthernetNetwork):
             raise ILError(error_msg) from e
         return r
 
-    def load_firmware_moco(self) -> None:  # type: ignore [override]   # noqa: D102
+    @override
+    def load_firmware_moco(self) -> None:  # type: ignore [override]
         raise NotImplementedError
 
-    def load_firmware(self) -> None:  # type: ignore [override]   # noqa: D102
+    @override
+    def load_firmware(self) -> None:  # type: ignore [override]
         raise NotImplementedError
 
     def _recover_from_power_cycle(self, status: NET_DEV_EVT) -> None:

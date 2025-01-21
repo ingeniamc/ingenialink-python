@@ -9,6 +9,7 @@ from time import sleep
 from typing import Any, Callable, Optional, Union
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
@@ -198,10 +199,12 @@ class EthernetNetwork(Network):
                 msg = "Error during bootloader process."
                 raise ILFirmwareLoadError(msg) from e
 
-    def scan_slaves(self) -> list[int]:  # noqa: D102
+    @override
+    def scan_slaves(self) -> list[int]:
         raise NotImplementedError
 
-    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:  # noqa: D102
+    @override
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         raise NotImplementedError
 
     def connect_to_slave(
