@@ -98,7 +98,7 @@ def test_dictionary_description_fail(dict_path, interface, raises):
         (EthernetDictionaryV2, f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf"),
     ],
 )
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_dictionary_v2_image(dictionary_class, dictionary_path):
     dictionary = dictionary_class(dictionary_path)
     assert isinstance(dictionary.image, str)
@@ -111,7 +111,7 @@ def test_dictionary_v2_image(dictionary_class, dictionary_path):
         (EthernetDictionaryV2, f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf"),
     ],
 )
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
     with open(dictionary_path, encoding="utf-8") as xdf_file:
         tree = ElementTree.parse(xdf_file)
@@ -130,7 +130,7 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
     assert dictionary.image is None
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     ("dict_path", "interface", "dict_class"),
     [
@@ -148,7 +148,7 @@ def test_dictionary_factory(dict_path, interface, dict_class):
     assert isinstance(test_dict, dict_class)
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     ("dict_path", "interface", "raises"),
     [
@@ -165,7 +165,7 @@ def test_dictionary_interface_mismatch(dict_path, interface, raises):
         DictionaryFactory.create_dictionary(dict_path, interface)
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_merge_dictionaries_registers():
     coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
@@ -186,7 +186,7 @@ def test_merge_dictionaries_registers():
     assert merged_dict_subnode_1_num_regs == coco_subnode_1_num_regs + moco_subnode_1_num_regs
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_merge_dictionaries_errors():
     coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
@@ -201,7 +201,7 @@ def test_merge_dictionaries_errors():
     assert merged_dict_num_errors == coco_num_errors + moco_num_errors
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_merge_dictionaries_attributes():
     coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
@@ -223,7 +223,7 @@ def test_merge_dictionaries_attributes():
     assert merged_dict.coco_product_code == 123456789
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_merge_dictionaries_image():
     coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
@@ -235,7 +235,7 @@ def test_merge_dictionaries_image():
     assert merged_dict.image == moco_dict.image
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_merge_dictionaries_new_instance():
     coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
@@ -264,7 +264,7 @@ def test_merge_dictionaries_new_instance():
     assert id(dict_b.interface) == id(dict_c.interface)
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_merge_dictionaries_order_invariant():
     coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
@@ -281,7 +281,7 @@ def test_merge_dictionaries_order_invariant():
     assert dict_a.coco_product_code == dict_b.coco_product_code
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_merge_dictionaries_type_exception():
     eth_v2_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
     can_v2_path = f"{PATH_RESOURCE}canopen/test_dict_can.xdf"
@@ -296,7 +296,7 @@ def test_merge_dictionaries_type_exception():
     )
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_merge_dictionaries_no_coco_exception():
     moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
     moco_a_dict = EthernetDictionaryV2(moco_dict_path)
@@ -317,7 +317,7 @@ def test_merge_dictionaries_no_coco_exception():
         ("PartNumber", "part_number"),
     ],
 )
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_dictionary_no_product_code(xml_attribute, class_attribute):
     with open(PATH_TO_DICTIONARY, encoding="utf-8") as xdf_file:
         tree = ElementTree.parse(xdf_file)

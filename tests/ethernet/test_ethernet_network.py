@@ -20,7 +20,7 @@ def connect(read_config):
     return servo, net
 
 
-@pytest.mark.ethernet()
+@pytest.mark.ethernet
 def test_connect_to_slave(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None
@@ -31,7 +31,7 @@ def test_connect_to_slave(connect_to_slave):
     assert fw_version != ""
 
 
-@pytest.mark.ethernet()
+@pytest.mark.ethernet
 def test_can_not_connect_to_salve(read_config):
     net = EthernetNetwork()
     wrong_ip = "34.56.125.234"
@@ -40,7 +40,7 @@ def test_can_not_connect_to_salve(read_config):
         net.connect_to_slave(wrong_ip, protocol_contents["dictionary"], protocol_contents["port"])
 
 
-@pytest.mark.ethernet()
+@pytest.mark.ethernet
 def test_scan_slaves():
     # net = EthernetNetwork()
     # slaves = net.scan_slaves()
@@ -48,7 +48,7 @@ def test_scan_slaves():
     pass
 
 
-@pytest.mark.ethernet()
+@pytest.mark.ethernet
 def test_ethernet_connection(connect_to_slave, read_config):
     servo, net = connect_to_slave
     family = servo.socket.family
@@ -61,7 +61,7 @@ def test_ethernet_connection(connect_to_slave, read_config):
     assert port == read_config["ethernet"]["port"]
 
 
-@pytest.mark.ethernet()
+@pytest.mark.ethernet
 def test_ethernet_disconnection(connect, read_config):
     servo, net = connect
     net.disconnect_from_slave(servo)
@@ -70,14 +70,14 @@ def test_ethernet_disconnection(connect, read_config):
     assert servo.socket._closed
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_load_firmware_file_not_found():
     virtual_net = EthernetNetwork()
     with pytest.raises(FileNotFoundError):
         virtual_net.load_firmware("no_file")
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_load_firmware_no_connection():
     fw_file = "temp_file.lfu"
     with open(fw_file, "w"):
@@ -88,19 +88,19 @@ def test_load_firmware_no_connection():
     os.remove(fw_file)
 
 
-@pytest.mark.skip()
-@pytest.mark.no_connection()
+@pytest.mark.skip
+@pytest.mark.no_connection
 def test_load_firmware_wrong_user_pwd():
     pass
 
 
-@pytest.mark.skip()
-@pytest.mark.no_connection()
+@pytest.mark.skip
+@pytest.mark.no_connection
 def test_load_firmware_error_during_loading():
     pass
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_net_status_listener_connection(virtual_drive):
     server, _ = virtual_drive
     net = EthernetNetwork()
@@ -119,13 +119,13 @@ def test_net_status_listener_connection(virtual_drive):
     assert status_list[0] == NET_DEV_EVT.ADDED
 
 
-@pytest.mark.skip()
-@pytest.mark.no_connection()
+@pytest.mark.skip
+@pytest.mark.no_connection
 def test_net_status_listener_disconnection():
     pass
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_unsubscribe_from_status(virtual_drive):
     server, _ = virtual_drive
     net = EthernetNetwork()

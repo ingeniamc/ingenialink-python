@@ -10,14 +10,14 @@ def arguments(read_config):
     return [f"--dictionary_path={dictionary}", f"--interface={ifname}", f"--slave_id={slave_id}"]
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_connection_example(arguments, script_runner):
     script_path = "examples/ethercat/ecat_connection.py"
     result = script_runner.run([script_path, *arguments])
     assert result.returncode == 0
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_load_firmware_example(arguments, script_runner, mocker, read_config):
     slave_id = read_config["ethercat"]["slave"]
     mock = mocker.patch("ingenialink.ethercat.network.EthercatNetwork.load_firmware")
@@ -28,7 +28,7 @@ def test_load_firmware_example(arguments, script_runner, mocker, read_config):
     mock.assert_called_once_with("dummy_file.lfu", boot_in_app=False, slave_id=slave_id)
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_pdo_example(read_config, script_runner):
     protocol_contents = read_config["ethercat"]
     ifname = protocol_contents["ifname"]

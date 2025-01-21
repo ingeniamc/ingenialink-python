@@ -7,7 +7,7 @@ from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_by
 from ingenialink.utils.mcb import MCB
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     ("cmd", "subnode", "address", "data", "reg_dtype", "extended", "result"),
     [
@@ -36,7 +36,7 @@ def test_build_mcb_frame(cmd, subnode, address, data, reg_dtype, extended, resul
     assert result == frame.hex()
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     ("expected_address", "data", "reg_dtype", "frame"),
     [
@@ -54,7 +54,7 @@ def test_read_mcb_frame(expected_address, data, reg_dtype, frame):
     assert data == convert_bytes_to_dtype(data_bytes, reg_dtype)
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 @pytest.mark.parametrize(("expected_address", "frame"), [(0x630, "a10006630000704200000000dd71")])
 def test_read_mcb_frame_wrong_crc(expected_address, frame):
     # replace CRC code with zeros
@@ -64,7 +64,7 @@ def test_read_mcb_frame_wrong_crc(expected_address, frame):
         MCB.read_mcb_data(expected_address, frame_byte_arr)
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     ("expected_address", "frame", "nack_error_code"),
     [
@@ -81,7 +81,7 @@ def test_read_mcb_frame_nack(expected_address, frame, nack_error_code):
     assert e_info.value.args[0] == f"Communications error (NACK -> 0x{nack_error_code:08X})"
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 @pytest.mark.parametrize(("expected_address", "frame"), [(0x630, "a10006630000704200000000dd71")])
 def test_read_mcb_frame_wrong_address(expected_address, frame):
     # Change expected address

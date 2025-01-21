@@ -10,7 +10,7 @@ BITFIELD_EXAMPLES = {
 }
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     ("value", "values"),
     [
@@ -53,7 +53,7 @@ def test_set_bitfield_over_max_value(values, error):
         BitField.set_bitfields(BITFIELD_EXAMPLES, values, 0)
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_status_word_known_bitfields(virtual_drive):
     server, servo = virtual_drive
 
@@ -91,7 +91,7 @@ def test_read_status_word_known_bitfields(virtual_drive):
     }
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_write_control_word_known_bitfields(virtual_drive, mocker):
     server, servo = virtual_drive
 

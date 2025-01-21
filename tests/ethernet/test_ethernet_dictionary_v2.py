@@ -9,7 +9,7 @@ path_resources = "./tests/resources/ethernet/"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_dictionary():
     dictionary_path = join_path(path_resources, "test_dict_eth.xdf")
     expected_device_attr = {
@@ -29,7 +29,7 @@ def test_read_dictionary():
         assert getattr(ethernet_dict, attr) == value
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
@@ -37,7 +37,7 @@ def test_read_dictionary_file_not_found():
         EthernetDictionaryV2(dictionary_path)
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_dictionary_registers():
     dictionary_path = join_path(path_resources, "test_dict_eth.xdf")
     expected_regs_per_subnode = {
@@ -57,7 +57,7 @@ def test_read_dictionary_registers():
         assert expected_regs_per_subnode[subnode] == list(ethernet_dict.registers(subnode))
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_dictionary_registers_multiaxis():
     expected_num_registers_per_subnode = {0: 2, 1: 2, 2: 2}
     dictionary_path = join_path(path_resources, "test_dict_eth_axis.xdf")
@@ -74,7 +74,7 @@ def test_read_dictionary_registers_multiaxis():
         assert num_registers == expected_num_registers_per_subnode[subnode]
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_dictionary_categories():
     expected_categories = [
         "IDENTIFICATION",
@@ -90,7 +90,7 @@ def test_read_dictionary_categories():
     assert ethernet_dict.categories.category_ids == expected_categories
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_dictionary_errors():
     expected_errors = [
         0x00003280,
@@ -105,7 +105,7 @@ def test_read_dictionary_errors():
     assert list(ethernet_dict.errors) == expected_errors
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_xdf_register():
     dictionary_path = join_path(path_resources, "test_dict_eth.xdf")
     address = 0x000F
@@ -117,7 +117,7 @@ def test_read_xdf_register():
     assert ethernet_dict.registers(subnode)[reg_id].address == address
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_child_registers_not_exist():
     dictionary_path = join_path(path_resources, "test_dict_eth.xdf")
     ethernet_dict = EthernetDictionaryV2(dictionary_path)
@@ -125,7 +125,7 @@ def test_child_registers_not_exist():
         ethernet_dict.child_registers("NOT_EXISTING_UID", 0)
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_safety_pdo_not_implemented():
     dictionary_path = join_path(path_resources, "test_dict_eth.xdf")
     ethernet_dict = EthernetDictionaryV2(dictionary_path)

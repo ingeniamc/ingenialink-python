@@ -19,7 +19,7 @@ def virtual_network():
     )
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_getters_canopen(virtual_network):
     assert virtual_network.device == test_bus
     assert virtual_network.channel == test_channel
@@ -27,7 +27,7 @@ def test_getters_canopen(virtual_network):
     assert virtual_network.network is None
 
 
-@pytest.mark.canopen()
+@pytest.mark.canopen
 def test_connect_to_slave(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None
@@ -38,7 +38,7 @@ def test_connect_to_slave(connect_to_slave):
     assert fw_version != ""
 
 
-@pytest.mark.canopen()
+@pytest.mark.canopen
 def test_connect_to_slave_target_not_in_nodes(read_config):
     protocol_contents = read_config["canopen"]
     net = CanopenNetwork(
@@ -52,7 +52,7 @@ def test_connect_to_slave_target_not_in_nodes(read_config):
     net._teardown_connection()
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_connect_to_slave_none_nodes(virtual_network, read_config):
     net = virtual_network
     protocol_contents = read_config["canopen"]
@@ -60,7 +60,7 @@ def test_connect_to_slave_none_nodes(virtual_network, read_config):
         net.connect_to_slave(target=1, dictionary=protocol_contents["dictionary"])
 
 
-@pytest.mark.canopen()
+@pytest.mark.canopen
 def test_scan_slaves(read_config):
     net = CanopenNetwork(
         device=CAN_DEVICE(read_config["canopen"]["device"]),
@@ -71,7 +71,7 @@ def test_scan_slaves(read_config):
     assert len(slaves) > 0
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 @pytest.mark.parametrize("can_device", [CAN_DEVICE.PCAN, CAN_DEVICE.KVASER, CAN_DEVICE.IXXAT])
 def test_scan_slaves_missing_drivers(can_device):
     net = CanopenNetwork(
@@ -88,7 +88,7 @@ def test_scan_slaves_missing_drivers(can_device):
     )
 
 
-@pytest.mark.canopen()
+@pytest.mark.canopen
 def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
     net = CanopenNetwork(
         device=CAN_DEVICE(read_config["canopen"]["device"]),
@@ -106,7 +106,7 @@ def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
     assert slaves_info[read_config["canopen"]["node_id"]].revision_number == drive.revision_number
 
 
-@pytest.mark.canopen()
+@pytest.mark.canopen
 def test_disconnect_from_slave(read_config):
     protocol_contents = read_config["canopen"]
     net = CanopenNetwork(
@@ -125,7 +125,7 @@ def test_disconnect_from_slave(read_config):
     assert len(net.servos) == 0
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_setup_and_teardown_connection(virtual_network):
     if platform.system() != "Windows":
         pytest.skip("Only for window machines")
@@ -136,7 +136,7 @@ def test_setup_and_teardown_connection(virtual_network):
     assert virtual_network._connection is None
 
 
-@pytest.mark.skip()
+@pytest.mark.skip
 def test_load_firmware(connect_to_slave, read_config):
     servo, net = connect_to_slave
     assert servo is not None

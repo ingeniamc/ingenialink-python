@@ -10,7 +10,7 @@ dict_eoe_v3 = "test_dict_ecat_eoe_v3.0.xdf"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_dictionary():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
     expected_device_attr = {
@@ -32,7 +32,7 @@ def test_read_dictionary():
         assert getattr(ethercat_dict, attr) == value
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
@@ -40,7 +40,7 @@ def test_read_dictionary_file_not_found():
         DictionaryV3(dictionary_path, Interface.EoE)
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_dictionary_registers():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
     expected_regs_per_subnode = {
@@ -57,7 +57,7 @@ def test_read_dictionary_registers():
         assert expected_regs_per_subnode[subnode] == list(ethercat_dict.registers(subnode))
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_dictionary_categories():
     expected_categories = [
         "OTHERS",
@@ -70,7 +70,7 @@ def test_read_dictionary_categories():
     assert ethercat_dict.categories.category_ids == expected_categories
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_read_dictionary_errors():
     expected_errors = [
         0x00003280,
@@ -83,7 +83,7 @@ def test_read_dictionary_errors():
     assert list(ethercat_dict.errors) == expected_errors
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_child_registers_not_exist():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
     ethernet_dict = DictionaryV3(dictionary_path, Interface.EoE)
@@ -91,7 +91,7 @@ def test_child_registers_not_exist():
         ethernet_dict.child_registers("NOT_EXISTING_UID", 0)
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_safety_pdo_not_implemented():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
     ethernet_dict = DictionaryV3(dictionary_path, Interface.EoE)
@@ -101,7 +101,7 @@ def test_safety_pdo_not_implemented():
         ethernet_dict.get_safety_tpdo("NOT_EXISTING_UID")
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_register_default_values():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
     expected_defaults_per_subnode = {
@@ -119,7 +119,7 @@ def test_register_default_values():
             assert register.default == expected_defaults_per_subnode[subnode][register.identifier]
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_register_description():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
     expected_description_per_subnode = {

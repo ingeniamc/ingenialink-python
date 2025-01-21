@@ -10,7 +10,7 @@ from virtual_drive.core import VirtualDrive
 RESOURCES_FOLDER = "virtual_drive/resources/"
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_connect_to_virtual_drive(virtual_drive_custom_dict):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
     server, net, servo = virtual_drive_custom_dict(dictionary)
@@ -22,7 +22,7 @@ def test_connect_to_virtual_drive(virtual_drive_custom_dict):
     assert fw_version != ""
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
     server, net, servo = virtual_drive_custom_dict(dictionary)
@@ -32,7 +32,7 @@ def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     assert servo.socket._closed
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict, read_config):
     config = read_config
     for protocol in ["ethernet", "canopen"]:

@@ -46,7 +46,7 @@ def create_pdo_map(open_dictionary):
     return tpdo_map, rpdo_map
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_rpdo_item(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
@@ -65,7 +65,7 @@ def test_rpdo_item(open_dictionary):
     assert rpdo_item.raw_data_bits.to01() == "11110000000000000000000000000000"
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_rpdo_item_wrong_cyclic(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
@@ -78,7 +78,7 @@ def test_rpdo_item_wrong_cyclic(open_dictionary):
     )
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_tpdo_item_wrong_cyclic(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
@@ -91,7 +91,7 @@ def test_tpdo_item_wrong_cyclic(open_dictionary):
     )
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_tpdo_item(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
@@ -111,7 +111,7 @@ def test_tpdo_item(open_dictionary):
     assert tpdo_item.value == 15
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     ("uid", "expected_value"),
     [("CL_POS_FBK_VALUE", 0x20300020), ("CL_VEL_FBK_VALUE", 0x20310020)],
@@ -123,7 +123,7 @@ def test_pdo_item_register_mapping(open_dictionary, uid, expected_value):
     assert expected_value.to_bytes(4, "little") == tpdo_item.register_mapping
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_pdo_create_item(open_dictionary):
     ethercat_dictionary = open_dictionary
     rpdo_map = RPDOMap()
@@ -133,7 +133,7 @@ def test_pdo_create_item(open_dictionary):
     assert item.register == register
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_pdo_add_item(open_dictionary):
     ethercat_dictionary = open_dictionary
     rpdo_map = RPDOMap()
@@ -147,7 +147,7 @@ def test_pdo_add_item(open_dictionary):
     assert rpdo_map.items[0] == item
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_pdo_add_registers(open_dictionary):
     ethercat_dictionary = open_dictionary
     rpdo_map = RPDOMap()
@@ -169,7 +169,7 @@ def test_pdo_add_registers(open_dictionary):
     assert rpdo_map.items[2].register == register2
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_pdo_map(create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
 
@@ -195,7 +195,7 @@ def test_pdo_map(create_pdo_map):
     assert rpdo_map.map_register_index is None
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_servo_add_maps(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, _ = connect_to_slave
@@ -242,7 +242,7 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
     assert int.to_bytes(0x1600, 2, "little") == value[2:4]
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, _ = connect_to_slave
@@ -313,7 +313,7 @@ def start_stop_pdos(net):
         assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_start_stop_pdo(connect_to_all_slave):
     servos, net = connect_to_all_slave
     operation_mode_uid = "DRV_OP_CMD"
@@ -353,7 +353,7 @@ def test_start_stop_pdo(connect_to_all_slave):
     start_stop_pdos(net)
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_start_pdo_error_rpod_values_not_set(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
@@ -362,7 +362,7 @@ def test_start_pdo_error_rpod_values_not_set(connect_to_slave, create_pdo_map):
         net.start_pdos()
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_set_pdo_map_to_slave(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
@@ -401,7 +401,7 @@ def test_set_pdo_map_to_slave(connect_to_slave, create_pdo_map):
     assert servo._tpdo_maps[1] == new_tpdo_map
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_pdo_item_bool():
     register = EthercatRegister(0, 1, REG_DTYPE.BOOL, REG_ACCESS.RW, cyclic=RegCyclicType.RX)
     rpdo_item = RPDOMapItem(register)
@@ -422,7 +422,7 @@ def test_pdo_item_bool():
     assert rpdo_item.raw_data_bytes == b"\x00"
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_pdo_item_custom_size(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
@@ -439,7 +439,7 @@ def test_pdo_item_custom_size(open_dictionary):
     assert tpdo_item.raw_data_bytes == b"\x09"
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_pdo_item_custom_size_wrong_length(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
@@ -452,7 +452,7 @@ def test_pdo_item_custom_size_wrong_length(open_dictionary):
     assert str(exc_info.value) == "Wrong size. Expected 5, obtained 4"
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_rpdo_padding():
     size_bits = 3
     rpdo_item = RPDOMapItem(size_bits=size_bits)
@@ -467,7 +467,7 @@ def test_rpdo_padding():
     assert len(rpdo_item.raw_data_bits) == size_bits
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_tpdo_padding():
     size_bits = 4
     tpdo_item = TPDOMapItem(size_bits=size_bits)
@@ -482,7 +482,7 @@ def test_tpdo_padding():
     assert len(tpdo_item.raw_data_bits) == size_bits
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_pdo_padding_exceptions():
     # Size bits not defined
     with pytest.raises(ValueError, match="The size bits must be set when creating padding items."):
@@ -498,7 +498,7 @@ def test_pdo_padding_exceptions():
     assert str(exc_info.value) == "The register value must be read by the raw_data_bytes attribute."
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_map_pdo_with_bools(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
@@ -527,7 +527,7 @@ def test_map_pdo_with_bools(open_dictionary):
     assert rpdo_map.get_item_bytes() == b"\x88\x88\x88\x18-"
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_remove_rpdo_map(connect_to_slave, create_pdo_map):
     _, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
@@ -540,7 +540,7 @@ def test_remove_rpdo_map(connect_to_slave, create_pdo_map):
     assert len(servo._rpdo_maps) == 0
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_remove_rpdo_map_exceptions(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
@@ -553,7 +553,7 @@ def test_remove_rpdo_map_exceptions(connect_to_slave, create_pdo_map):
         servo.remove_rpdo_map(rpdo_map_index=1)
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_remove_tpdo_map(connect_to_slave, create_pdo_map):
     tpdo_map, _ = create_pdo_map
     servo, net = connect_to_slave
@@ -566,7 +566,7 @@ def test_remove_tpdo_map(connect_to_slave, create_pdo_map):
     assert len(servo._tpdo_maps) == 0
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_remove_tpdo_map_exceptions(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo, net = connect_to_slave
@@ -579,7 +579,7 @@ def test_remove_tpdo_map_exceptions(connect_to_slave, create_pdo_map):
         servo.remove_tpdo_map(tpdo_map_index=1)
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_rpdo_map_set_items_bytes(create_pdo_map):
     _, rpdo_map = create_pdo_map
     data_bytes = b""
@@ -590,7 +590,7 @@ def test_rpdo_map_set_items_bytes(create_pdo_map):
         assert item.value == idx
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_tpdo_map_set_items_bytes(create_pdo_map):
     tpdo_map, _ = create_pdo_map
     data_bytes = b""

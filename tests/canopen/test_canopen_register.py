@@ -11,7 +11,7 @@ from ingenialink.canopen.register import (
 from ingenialink.dictionary import Dictionary
 
 
-@pytest.mark.no_connection()
+@pytest.mark.no_connection
 def test_getters_canopen_register():
     reg_idx = 0x58F0
     reg_subidx = 0x00
@@ -64,7 +64,7 @@ def test_getters_canopen_register():
     assert register.is_node_id_dependent is True
 
 
-@pytest.mark.canopen()
+@pytest.mark.canopen
 def test_canopen_connection_register(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None

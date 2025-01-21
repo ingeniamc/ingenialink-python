@@ -1,7 +1,7 @@
 import pytest
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_eeprom_read(connect_to_slave):
     servo, _ = connect_to_slave
     product_code_bytes = servo.read("DRV_ID_PRODUCT_CODE").to_bytes(4, "little")
@@ -13,7 +13,7 @@ def test_eeprom_read(connect_to_slave):
         )
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_eeprom_read_wrong_size(connect_to_slave):
     servo, _ = connect_to_slave
     product_code_address = 10
@@ -21,7 +21,7 @@ def test_eeprom_read_wrong_size(connect_to_slave):
         servo._read_esc_eeprom(product_code_address, length=0)
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_eeprom_write(connect_to_slave):
     servo, _ = connect_to_slave
     serial_number_address = 14
@@ -36,7 +36,7 @@ def test_eeprom_write(connect_to_slave):
     servo._write_esc_eeprom(serial_number_address, serial_number.to_bytes(4, "little"))
 
 
-@pytest.mark.ethercat()
+@pytest.mark.ethercat
 def test_eeprom_wrong_size(connect_to_slave):
     servo, _ = connect_to_slave
     serial_number_address = 14

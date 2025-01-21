@@ -6,9 +6,11 @@ max-args = 10
 
 [lint]
 pydocstyle.convention = "google"
+
 select = [
     "ALL",
 ]
+
 ignore = [
     "ANN", # flake8-annotations
     "C90", # mccabe complexity
@@ -29,6 +31,7 @@ ignore = [
     "FBT001", # Boolean positional argument
     "FBT002", # Boolean positional argument
 ]
+
 [lint.per-file-ignores]
 "tests/*" = [
     "D", # Docstring rules
@@ -38,3 +41,7 @@ ignore = [
     "PT004", # Missing fixture name underscore
     "INP001", # Missing __init__.py file
 ]
+
+
+[lint.flake8-pytest-style]
+mark-parentheses = false

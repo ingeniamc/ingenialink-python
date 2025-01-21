@@ -19,7 +19,7 @@ def connect(read_config):
     return servo, net
 
 
-@pytest.mark.eoe()
+@pytest.mark.eoe
 def test_eoe_connection(connect_to_slave):
     eoe_service_ip = "127.0.0.1"
     eoe_service_port = 8888
@@ -38,7 +38,7 @@ def test_eoe_connection(connect_to_slave):
     assert port == eoe_service_port
 
 
-@pytest.mark.eoe()
+@pytest.mark.eoe
 def test_eoe_connection_wrong_ip_address(read_config):
     protocol_contents = read_config["eoe"]
     net = EoENetwork(protocol_contents["ifname"])
@@ -50,7 +50,7 @@ def test_eoe_connection_wrong_ip_address(read_config):
         )
 
 
-@pytest.mark.eoe()
+@pytest.mark.eoe
 def test_eoe_disconnection(connect):
     servo, net = connect
     net.disconnect_from_slave(servo)
@@ -68,7 +68,7 @@ def test_eoe_disconnection(connect):
         (EoECommand.CONFIG, b"\x01\x00\x16\x03\xa8\xc0\x00\xff\xff\xff"),
     ],
 )
-@pytest.mark.eoe()
+@pytest.mark.eoe
 def test_eoe_command_msg(cmd, data):
     data_bytes = b"" if data is None else data
     data_filling = EoENetwork.NULL_TERMINATOR * (EoENetwork.EOE_MSG_DATA_SIZE - len(data_bytes))
