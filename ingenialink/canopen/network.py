@@ -1107,13 +1107,13 @@ class CanopenNetwork(Network):
         return [
             {"interface": "kvaser", "channel": channel}
             for channel in range(num_channels.value)
-            if "Virtual" not in can.interfaces.kvaser.get_channel_info(channel)
+            if "Virtual" not in can.interfaces.kvaser.get_channel_info(channel)  # type: ignore[no-untyped-call]
         ]
 
     @staticmethod
     def _reload_kvaser_lib() -> None:
         """Reload the Kvaser library to refresh the connected transceivers."""
-        canUnLoadLibrary = get_canlib_function("canUnloadLibrary")
-        canInitializeLibrary = get_canlib_function("canInitializeLibrary")
+        canUnLoadLibrary = get_canlib_function("canUnloadLibrary")  # type: ignore[no-untyped-call]
+        canInitializeLibrary = get_canlib_function("canInitializeLibrary")  # type: ignore[no-untyped-call]
         canUnLoadLibrary()
         canInitializeLibrary()
