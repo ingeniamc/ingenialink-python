@@ -19,10 +19,9 @@ from can.interfaces.pcan.pcan import PcanCanOperationError
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
-from ingenialink.enums.register import RegCyclicType
+from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
-from ingenialink.register import REG_ACCESS, REG_DTYPE
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 

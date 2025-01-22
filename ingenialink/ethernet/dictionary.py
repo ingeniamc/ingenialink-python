@@ -4,7 +4,8 @@ from typing import List, Optional
 import ingenialogger
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.ethernet.register import REG_ACCESS, REG_DTYPE, EthernetRegister, RegCyclicType
+from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, RegCyclicType
+from ingenialink.ethernet.register import EthernetRegister
 
 logger = ingenialogger.get_logger(__name__)
 

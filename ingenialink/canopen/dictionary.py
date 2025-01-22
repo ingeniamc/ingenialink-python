@@ -3,8 +3,9 @@ from typing import List, Optional
 
 import ingenialogger
 
-from ingenialink.canopen.register import REG_ACCESS, REG_DTYPE, CanopenRegister, RegCyclicType
+from ingenialink.canopen.register import CanopenRegister
 from ingenialink.dictionary import DictionaryV2, Interface
+from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, RegCyclicType
 
 logger = ingenialogger.get_logger(__name__)
 

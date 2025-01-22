@@ -9,8 +9,8 @@ from ingenialink.constants import (
     MAP_ADDRESS_OFFSET,
 )
 from ingenialink.dictionary import DictionaryV2, Interface
+from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, RegCyclicType
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, RegCyclicType
 
 logger = ingenialogger.get_logger(__name__)
 
