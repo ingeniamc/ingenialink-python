@@ -22,7 +22,7 @@ logger = ingenialogger.get_logger(__name__)
 # Each constant has this structure: DICT_ORIGIN_END
 # ORIGIN: The start point of the path
 # END: The end point of the path
-# ORIGIN: LABELS
+# ORIGIN of LABELS
 DICT_LABELS = "./Labels"
 DICT_LABELS_LABEL = f"{DICT_LABELS}/Label"
 
@@ -1063,7 +1063,7 @@ class DictionaryV2(Dictionary):
     # Each constant has this structure: DICT_ORIGIN_END
     # ORIGIN: The start point of the path
     # END: The end point of the path
-    # ORIGIN: ROOT
+    # ORIGIN of ROOT
     __DICT_ROOT = "."
     __DICT_ROOT_HEADER = f"{__DICT_ROOT}/Header"
     __DICT_ROOT_VERSION = f"{__DICT_ROOT_HEADER}/Version"
@@ -1077,12 +1077,12 @@ class DictionaryV2(Dictionary):
     __DICT_ROOT_AXIS = f"{__DICT_ROOT_AXES}/Axis"
     __DICT_ROOT_REGISTERS = f"{__DICT_ROOT_DEVICE}/Registers"
     __DICT_ROOT_REGISTER = f"{__DICT_ROOT_REGISTERS}/Register"
-    # ORIGIN: REGISTERS
+    # ORIGIN of REGISTERS
     __DICT_REGISTERS = "./Registers"
     __DICT_REGISTERS_REGISTER = f"{__DICT_REGISTERS}/Register"
-    # ORIGIN: RANGE
+    # ORIGIN of RANGE
     __DICT_RANGE = "./Range"
-    # ORIGIN: ENUMERATIONS
+    # ORIGIN of ENUMERATIONS
     __DICT_ENUMERATIONS = "./Enumerations"
     __DICT_ENUMERATIONS_ENUMERATION = f"{__DICT_ENUMERATIONS}/Enum"
     __DICT_IMAGE = "DriveImage"
