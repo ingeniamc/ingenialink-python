@@ -3,6 +3,7 @@ target-version = "py39"
 
 [lint]
 pydocstyle.convention = "google"
+flake8-unused-arguments.ignore-variadic-names = true
 
 select = [
     "F", # Pyflakes

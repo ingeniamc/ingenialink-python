@@ -531,7 +531,7 @@ class PDOServo(Servo):
             )
         tpdo_map.map_register_index = tpdo_map_register.idx
 
-    def map_pdos(self, slave_index: int) -> None:
+    def map_pdos(self, slave_index: int) -> None:  # noqa: ARG002
         """Map RPDO and TPDO register into the slave.
 
         Args:

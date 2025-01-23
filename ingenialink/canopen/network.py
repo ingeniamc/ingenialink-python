@@ -489,7 +489,7 @@ class CanopenNetwork(Network):
         fw_file: str,
         callback_status_msg: Optional[Callable[[str], None]] = None,
         callback_progress: Optional[Callable[[int], None]] = None,
-        callback_errors_enabled: Optional[Callable[[bool], None]] = None,
+        callback_errors_enabled: Optional[Callable[[bool], None]] = None,  # noqa: ARG002
     ) -> None:
         """Loads a given firmware file to a target.
 

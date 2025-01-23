@@ -146,7 +146,6 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         buffer_size: int = 0,
         complete_access: bool = False,
-        start_time: Optional[float] = None,
     ) -> bytes:
         self._lock.acquire()
         try:
@@ -169,7 +168,6 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         data: bytes,
         complete_access: bool = False,
-        start_time: Optional[float] = None,
     ) -> None:
         self._lock.acquire()
         try:

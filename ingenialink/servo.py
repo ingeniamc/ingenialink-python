@@ -976,7 +976,9 @@ class Servo:
         self.__monitoring_process_data(monitoring_data)
 
     def monitoring_channel_data(
-        self, channel: int, dtype: Optional[REG_DTYPE] = None
+        self,
+        channel: int,
+        dtype: Optional[REG_DTYPE] = None,  # noqa: ARG002
     ) -> list[float]:
         """Obtain processed monitoring data of a channel.
 
