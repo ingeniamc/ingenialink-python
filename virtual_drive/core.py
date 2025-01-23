@@ -1097,7 +1097,8 @@ class VirtualMonitoring(VirtualMonDistBase):
                     )
                     self.channels_signal[channel] = self.channels_signal[channel][indexes]
                 if self.drive.reg_noise_amplitude[reg_id] > 0:
-                    noise = self.drive.reg_noise_amplitude[reg_id] * np.random.normal(
+                    rng = np.random.default_rng()
+                    noise = self.drive.reg_noise_amplitude[reg_id] * rng.normal(
                         size=len(self.channels_signal[channel])
                     )
                     self.channels_signal[channel] = self.channels_signal[channel] + noise
@@ -1677,7 +1678,8 @@ class VirtualDrive(Thread):
             sample_index = np.argmin(np.abs(self.reg_time[register_id] - actual_time))
             value = self.reg_signals[register_id][sample_index]
             if self.reg_noise_amplitude[register_id] > 0:
-                value = value + self.reg_noise_amplitude[register_id] * np.random.uniform()
+                rng = np.random.default_rng()
+                value = value + self.reg_noise_amplitude[register_id] * rng.uniform()
 
             if register.dtype != REG_DTYPE.FLOAT:
                 value = int(value)
