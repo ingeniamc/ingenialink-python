@@ -26,7 +26,7 @@ from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 logger = ingenialogger.get_logger(__name__)
 
 
-class SDO_OPERATION_MSG(Enum):
+class SDO_OPERATION_MSG(Enum):  # noqa: N801
     """Message for exceptions depending on the operation type."""
 
     READ = "reading"

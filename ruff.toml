@@ -48,6 +48,9 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
+"ingenialink/enums/*" = [
+    "N801", # Invalid class name
+]
 "tests/*" = [
     "D", # Docstring rules
     "ERA001", # Commented-out code

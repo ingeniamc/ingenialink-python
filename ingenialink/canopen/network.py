@@ -105,7 +105,7 @@ CAN_CHANNELS: dict[str, Union[tuple[int, int], tuple[str, str]]] = {
 }
 
 
-class CAN_DEVICE(Enum):
+class CAN_DEVICE(Enum):  # noqa: N801
     """CAN Device."""
 
     KVASER = "kvaser"
@@ -115,7 +115,7 @@ class CAN_DEVICE(Enum):
     SOCKETCAN = "socketcan"
 
 
-class CAN_BAUDRATE(Enum):
+class CAN_BAUDRATE(Enum):  # noqa: N801
     """Baudrates."""
 
     Baudrate_1M = 1000000

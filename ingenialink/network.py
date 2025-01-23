@@ -11,7 +11,7 @@ from ingenialink.servo import Servo
 logger = ingenialogger.get_logger(__name__)
 
 
-class NET_PROT(Enum):
+class NET_PROT(Enum):  # noqa: N801
     """Network Protocol."""
 
     EUSB = 0
@@ -21,7 +21,7 @@ class NET_PROT(Enum):
     CAN = 5
 
 
-class NET_STATE(Enum):
+class NET_STATE(Enum):  # noqa: N801
     """Network State."""
 
     CONNECTED = 0
@@ -29,7 +29,7 @@ class NET_STATE(Enum):
     FAULTY = 2
 
 
-class NET_DEV_EVT(Enum):
+class NET_DEV_EVT(Enum):  # noqa: N801
     """Device Event."""
 
     ADDED = 0
