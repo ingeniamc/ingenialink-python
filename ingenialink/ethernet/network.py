@@ -9,6 +9,7 @@ from time import sleep
 from typing import Any, Callable, Optional, Union
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
@@ -45,6 +46,7 @@ class NetStatusListener(Thread):
         self.__max_unsuccessful_pings = MAX_NUM_UNSUCCESSFUL_PINGS
 
     def run(self) -> None:
+        """Check the network status."""
         while not self.__stop:
             for servo in self.__network.servos:
                 unsuccessful_pings = 0
@@ -66,6 +68,7 @@ class NetStatusListener(Thread):
             time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
+        """Stop the listener."""
         self.__stop = True
 
 
@@ -183,9 +186,11 @@ class EthernetNetwork(Network):
                 logger.error(e)
                 raise ILFirmwareLoadError("Error during bootloader process.")
 
+    @override
     def scan_slaves(self) -> list[int]:
         raise NotImplementedError
 
+    @override
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         raise NotImplementedError
 

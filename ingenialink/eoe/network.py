@@ -8,6 +8,7 @@ from threading import Thread
 from typing import Optional
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink import constants
 from ingenialink.ethernet.network import EthernetNetwork
@@ -152,6 +153,7 @@ class EoENetwork(EthernetNetwork):
         except ILError as e:
             logger.error(e)
 
+    @override
     def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override]
         del self._configured_slaves[servo.ip_address]
         super().disconnect_from_slave(servo)
@@ -206,6 +208,7 @@ class EoENetwork(EthernetNetwork):
             ) from e
         return list(range(1, r + 1))
 
+    @override
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         raise NotImplementedError
 
@@ -394,9 +397,11 @@ class EoENetwork(EthernetNetwork):
             raise ILError("Failed to get service status.") from e
         return r
 
+    @override
     def load_firmware_moco(self) -> None:  # type: ignore [override]
         raise NotImplementedError
 
+    @override
     def load_firmware(self) -> None:  # type: ignore [override]
         raise NotImplementedError
 

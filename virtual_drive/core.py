@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 import numpy as np
 from numpy.typing import NDArray
 from scipy import signal
+from typing_extensions import override
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.dictionary import Interface
@@ -305,6 +306,7 @@ class BaseClosedLoopPlant(BasePlant):
 
         self.plant = signal.TransferFunction(num, den, dt=1 / self.monitoring_frequency)
 
+    @override
     def emulate_plant(self, from_disturbance: bool = True) -> None:
         self.create_closed_loop_plant()
         super().emulate_plant(from_disturbance=from_disturbance)
@@ -379,6 +381,7 @@ class PlantClosedLoopRL(BaseClosedLoopPlant):
     TUNING_OPERATION_MODE = OperationMode.CURRENT
     OL_PLANT_INPUT = PlantOpenLoopRL.REGISTER_COMMAND
 
+    @override
     def emulate_plant(self, from_disturbance: bool = True) -> None:
         super().emulate_plant(from_disturbance)
 
@@ -1045,6 +1048,7 @@ class VirtualMonitoring(VirtualMonDistBase):
         self.start_time = 0.0
         super().__init__(drive)
 
+    @override
     def enable(self) -> None:
         super().map_registers()
         super().enable()
@@ -1054,6 +1058,7 @@ class VirtualMonitoring(VirtualMonDistBase):
         self.update_data()
 
     def update_data(self) -> None:
+        """Update the monitoring data."""
         self.__create_signals()
 
         # Store data
@@ -1158,6 +1163,7 @@ class VirtualDisturbance(VirtualMonDistBase):
         self.received_bytes = b""
         super().__init__(drive)
 
+    @override
     def enable(self) -> None:
         self.start_time = time.time()
         for channel in range(self.number_mapped_registers):
@@ -1167,6 +1173,7 @@ class VirtualDisturbance(VirtualMonDistBase):
             self.drive.reg_time[str(reg.identifier)] += self.start_time
         super().enable()
 
+    @override
     def disable(self) -> None:
         self.received_bytes = b""
         return super().disable()
@@ -1826,6 +1833,7 @@ class VirtualDrive(Thread):
 
     @property
     def status_word(self) -> int:
+        """Get the status word register."""
         return int(self.get_value_by_id(1, "DRV_STATE_STATUS"))
 
     @status_word.setter

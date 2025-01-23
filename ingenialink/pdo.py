@@ -1,6 +1,7 @@
 from typing import Optional, Union
 
 import bitarray
+from typing_extensions import override
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, RegCyclicType
@@ -167,6 +168,7 @@ class RPDOMapItem(PDOMapItem):
     ) -> None:
         super().__init__(register, size_bits)
 
+    @override
     @property
     def value(self) -> Union[int, float, bytes]:
         return super().value

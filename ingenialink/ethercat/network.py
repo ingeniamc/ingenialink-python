@@ -54,6 +54,7 @@ class NetStatusListener(Thread):
         self._ecat_master = self.__network._ecat_master
 
     def run(self) -> None:
+        """Check the network status."""
         while not self.__stop:
             self._ecat_master.read_state()
             for servo in self.__network.servos:
@@ -73,6 +74,7 @@ class NetStatusListener(Thread):
                 time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
+        """Check the network status."""
         self.__stop = True
 
 

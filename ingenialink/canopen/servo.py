@@ -3,6 +3,7 @@ from typing import Any, Callable, Optional, Union
 import canopen
 import ingenialogger
 from canopen.emcy import EmcyError
+from typing_extensions import override
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.constants import CAN_MAX_WRITE_SIZE
@@ -49,6 +50,7 @@ class CanopenServo(Servo):
         self.__node.emcy.add_callback(self._on_emcy)
         super().__init__(target, dictionary_path, servo_status_listener)
 
+    @override
     def read(
         self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
     ) -> Union[int, float, str, bytes]:

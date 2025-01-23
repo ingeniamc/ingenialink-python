@@ -37,6 +37,7 @@ class Poller(Thread):
         self._reset_acq()
 
     def run(self) -> None:
+        """Start the poller."""
         self.__running = True
         self.__time_start = time.time()
         while self.__running:

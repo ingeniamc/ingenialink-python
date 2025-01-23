@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.register import CanopenRegister
@@ -546,6 +547,7 @@ class DictionaryV3(Dictionary):
     __PDO_ENTRY_SIZE_ATTR = "size"
     __PDO_ENTRY_SUBNODE_ATTR = "subnode"
 
+    @override
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
         try:
@@ -588,6 +590,7 @@ class DictionaryV3(Dictionary):
             raise ILDictionaryParseError(f"{path} element is not found")
         return element
 
+    @override
     def read_dictionary(self) -> None:
         try:
             with open(self.path, encoding="utf-8") as xdf_file:
@@ -1157,6 +1160,7 @@ class DictionaryV2(Dictionary):
     def __init__(self, dictionary_path: str) -> None:
         super().__init__(dictionary_path, self.interface)
 
+    @override
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
         try:
@@ -1189,6 +1193,7 @@ class DictionaryV2(Dictionary):
             revision_number = None
         return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
 
+    @override
     def read_dictionary(self) -> None:
         try:
             with open(self.path, encoding="utf-8") as xdf_file:

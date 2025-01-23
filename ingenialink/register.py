@@ -276,4 +276,5 @@ class Register(ABC):
 
     @property
     def bitfields(self) -> Optional[dict[str, BitField]]:
+        """Register bit fields."""
         return self.__bitfields

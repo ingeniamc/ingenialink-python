@@ -153,9 +153,10 @@ class CustomListener(can.Listener):
         super().__init__()
 
     def on_message_received(self, msg: can.Message) -> None:
-        pass
+        """On message received callback."""
 
     def on_error(self, exc: Exception) -> None:
+        """On error callback."""
         logger.error(f"An exception occurred with the IXXAT or KVASER connection. Exception: {exc}")
 
 
@@ -173,6 +174,7 @@ class NetStatusListener(Thread):
         self.__stop = False
 
     def run(self) -> None:
+        """Check the network status."""
         timestamps = {}
         if self.__network._connection is None:
             return
@@ -197,6 +199,7 @@ class NetStatusListener(Thread):
                     self.__network._set_servo_state(node_id, NET_STATE.DISCONNECTED)
 
     def stop(self) -> None:
+        """Stop the listener."""
         self.__stop = True
 
 
@@ -1006,6 +1009,7 @@ class CanopenNetwork(Network):
             callback(status)
 
     def is_listener_started(self) -> bool:
+        """Check if the listener has been started."""
         return self.__listener_net_status is not None
 
     def start_status_listener(self) -> None:
