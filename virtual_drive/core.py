@@ -1652,7 +1652,7 @@ class VirtualDrive(Thread):
             Register value.
         """
         if id in self.__register_signals:
-            return self.__register_signals[id].get()  # type: ignore
+            return self.__register_signals[id].get()  # type: ignore[no-any-return]
 
         register = self.__dictionary.registers(subnode)[id]
         value: Union[int, float]

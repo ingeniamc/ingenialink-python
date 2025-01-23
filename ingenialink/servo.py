@@ -371,7 +371,7 @@ class Servo:
                     reg_data = cast_data.get(reg_dtype, int)(reg_data)
                     if reg_data != stored_data:
                         registers_errored.append(
-                            f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"  # type: ignore
+                            f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"  # type: ignore[str-bytes-safe]
                         )
 
         if registers_errored:
