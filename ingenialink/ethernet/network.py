@@ -154,35 +154,34 @@ class EthernetNetwork(Network):
 
         if not moco_file or not os.path.isfile(moco_file):
             raise ILFirmwareLoadError("File not found")
-        moco_in = open(moco_file)
+        with open(moco_file) as moco_in:
+            logger.info("Loading firmware...")
+            try:
+                for line in moco_in:
+                    words = line.split()
 
-        logger.info("Loading firmware...")
-        try:
-            for line in moco_in:
-                words = line.split()
+                    # Get command and address
+                    cmd = int(words[1] + words[0], 16)
+                    data = b""
+                    data_start_byte = 2
+                    while data_start_byte in range(data_start_byte, len(words)):
+                        # Load UDP data
+                        data += bytes([int(words[data_start_byte], 16)])
+                        data_start_byte += 1
 
-                # Get command and address
-                cmd = int(words[1] + words[0], 16)
-                data = b""
-                data_start_byte = 2
-                while data_start_byte in range(data_start_byte, len(words)):
-                    # Load UDP data
-                    data += bytes([int(words[data_start_byte], 16)])
-                    data_start_byte += 1
+                    # Send message
+                    upd.raw_cmd(node, subnode, cmd, data)
 
-                # Send message
-                upd.raw_cmd(node, subnode, cmd, data)
+                    if cmd == CMD_CHANGE_CPU:
+                        sleep(1)
 
-                if cmd == CMD_CHANGE_CPU:
-                    sleep(1)
-
-            logger.info("Bootload process succeeded")
-        except ftplib.error_temp as e:
-            logger.error(e)
-            raise ILFirmwareLoadError("Firewall might be blocking the access.")
-        except Exception as e:
-            logger.error(e)
-            raise ILFirmwareLoadError("Error during bootloader process.")
+                logger.info("Bootload process succeeded")
+            except ftplib.error_temp as e:
+                logger.error(e)
+                raise ILFirmwareLoadError("Firewall might be blocking the access.")
+            except Exception as e:
+                logger.error(e)
+                raise ILFirmwareLoadError("Error during bootloader process.")
 
     def scan_slaves(self) -> list[int]:
         raise NotImplementedError

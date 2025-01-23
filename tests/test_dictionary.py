@@ -116,9 +116,8 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
         indent="  ", newl="", encoding="UTF-8"
     )
     temp_file = join_path(PATH_RESOURCE, "temp.xdf")
-    merged_file = open(temp_file, "wb")
-    merged_file.write(xml_str)
-    merged_file.close()
+    with open(temp_file, "wb") as merged_file:
+        merged_file.write(xml_str)
     dictionary = dictionary_class(temp_file)
     os.remove(temp_file)
     assert dictionary.image is None
