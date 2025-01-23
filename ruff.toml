@@ -33,6 +33,10 @@ select = [
     "NPY", # numpy rules
     "PERF", # perflint
     "DOC", # pydoclint
+    "COM", # Flake 8 trailing commas
+    "RUF005", # Ruff collection concatenation
+    "RUF008", # Ruff dataclasses mutable defaults
+    "RUF027", # Missing f-string syntax
 ]
 
 ignore = [
@@ -40,7 +44,7 @@ ignore = [
     "D100", # Missing docstring in public module
     "D104", # Missing docstring in public package
     "D107", # Missing docstring in __init__
-    "N801", # Missing docstring in __init__
+    "COM812", # Trailing comma. Already enforced by the formatter.
 ]
 
 [lint.per-file-ignores]
