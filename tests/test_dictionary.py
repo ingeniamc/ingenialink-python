@@ -1,4 +1,3 @@
-import io
 import os
 import tempfile
 import xml.etree.ElementTree as ET
@@ -109,7 +108,7 @@ def test_dictionary_v2_image(dictionary_class, dictionary_path):
 )
 @pytest.mark.no_connection
 def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
-    with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+    with open(dictionary_path, encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
     root.remove(root.find(DictionaryV2._DictionaryV2__DICT_IMAGE))
@@ -117,7 +116,7 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
         indent="  ", newl="", encoding="UTF-8"
     )
     temp_file = join_path(PATH_RESOURCE, "temp.xdf")
-    merged_file = io.open(temp_file, "wb")
+    merged_file = open(temp_file, "wb")
     merged_file.write(xml_str)
     merged_file.close()
     dictionary = dictionary_class(temp_file)
@@ -316,7 +315,7 @@ def test_merge_dictionaries_no_coco_exception():
 )
 @pytest.mark.no_connection
 def test_dictionary_no_product_code(xml_attribute, class_attribute):
-    with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
+    with open(PATH_TO_DICTIONARY, encoding="utf-8") as xdf_file:
         tree = ET.parse(xdf_file)
     root = tree.getroot()
     device = root.find(DictionaryV2._DictionaryV2__DICT_ROOT_DEVICE)

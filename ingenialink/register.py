@@ -272,7 +272,7 @@ class Register(ABC):
     @property
     def mapped_address(self) -> int:
         """Register mapped address used for monitoring/disturbance."""
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @property
     def bitfields(self) -> Optional[Dict[str, BitField]]:

@@ -321,7 +321,7 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
     file = filename.split("/")[-1]
     modified_path = Path(filename.replace(file, "config_0_test.xdf"))
     shutil.copy(path, modified_path)
-    with open(modified_path, "r", encoding="utf-8") as xml_file:
+    with open(modified_path, encoding="utf-8") as xml_file:
         tree = ET.parse(xml_file)
         root = tree.getroot()
         axis = tree.findall("*/Device/Axes/Axis")

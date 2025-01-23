@@ -62,7 +62,7 @@ def test_read_dictionary_registers():
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
 
-    for subnode in expected_regs_per_subnode.keys():
+    for subnode in expected_regs_per_subnode:
         assert expected_regs_per_subnode[subnode] == [
             reg for reg in ethercat_dict.registers(subnode)
         ]

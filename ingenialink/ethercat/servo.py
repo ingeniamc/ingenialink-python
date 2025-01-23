@@ -188,8 +188,7 @@ class EthercatServo(PDOServo):
     def _handle_sdo_exception(
         self, reg: EthercatRegister, operation_msg: SDO_OPERATION_MSG, exception: Exception
     ) -> None:
-        """
-        Handle the exceptions that occur when reading or writing SDOs.
+        """Handle the exceptions that occur when reading or writing SDOs.
 
         Args:
             reg: The register that was read or written.
@@ -348,7 +347,7 @@ class EthercatServo(PDOServo):
         """
         if length < 1:
             raise ValueError("The minimum length is 1 byte.")
-        data = bytes()
+        data = b""
         while len(data) < length:
             data += self.slave.eeprom_read(address, timeout)
             address += 2

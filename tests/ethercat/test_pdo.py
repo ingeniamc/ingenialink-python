@@ -270,7 +270,7 @@ def connect_to_all_slave(pytestconfig):
     if protocol != "ethercat":
         raise AssertionError("Wrong protocol")
     config = "tests/config.json"
-    with open(config, "r", encoding="utf-8") as fp:
+    with open(config, encoding="utf-8") as fp:
         contents = json.load(fp)
     protocol_contents = contents[protocol]
     servos = []
@@ -580,7 +580,7 @@ def test_remove_tpdo_map_exceptions(connect_to_slave, create_pdo_map):
 @pytest.mark.no_connection
 def test_rpdo_map_set_items_bytes(create_pdo_map):
     _, rpdo_map = create_pdo_map
-    data_bytes = bytes()
+    data_bytes = b""
     for idx, item in enumerate(rpdo_map.items):
         data_bytes += convert_dtype_to_bytes(idx, item.register.dtype)
     rpdo_map.set_item_bytes(data_bytes)
@@ -591,7 +591,7 @@ def test_rpdo_map_set_items_bytes(create_pdo_map):
 @pytest.mark.no_connection
 def test_tpdo_map_set_items_bytes(create_pdo_map):
     tpdo_map, _ = create_pdo_map
-    data_bytes = bytes()
+    data_bytes = b""
     for idx, item in enumerate(tpdo_map.items):
         data_bytes += convert_dtype_to_bytes(idx, item.register.dtype)
     tpdo_map.set_item_bytes(data_bytes)

@@ -57,7 +57,7 @@ class NetStatusListener(Thread):
             for servo in self.__network.servos:
                 slave_id = servo.slave_id
                 servo_state = self.__network.get_servo_state(slave_id)
-                is_servo_alive = not servo.slave.state == pysoem.NONE_STATE
+                is_servo_alive = servo.slave.state != pysoem.NONE_STATE
                 if not is_servo_alive and servo_state == NET_STATE.CONNECTED:
                     self.__network._notify_status(slave_id, NET_DEV_EVT.REMOVED)
                     self.__network._set_servo_state(slave_id, NET_STATE.DISCONNECTED)

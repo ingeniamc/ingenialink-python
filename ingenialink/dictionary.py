@@ -2,10 +2,10 @@ import copy
 import enum
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import ingenialogger
 
@@ -251,7 +251,6 @@ class Dictionary(ABC):
         Returns:
             Target dictionary description
         """
-        pass
 
     def __add__(self, other_dict: "Dictionary") -> "Dictionary":
         """Merge two dictionary instances.
@@ -293,7 +292,6 @@ class Dictionary(ABC):
     @abstractmethod
     def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
-        pass
 
     def child_registers(self, uid: str, subnode: int) -> List[Register]:
         """Return group registers by an UID
@@ -542,7 +540,7 @@ class DictionaryV3(Dictionary):
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
         try:
-            with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+            with open(dictionary_path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
             raise FileNotFoundError(
@@ -583,7 +581,7 @@ class DictionaryV3(Dictionary):
 
     def read_dictionary(self) -> None:
         try:
-            with open(self.path, "r", encoding="utf-8") as xdf_file:
+            with open(self.path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
             raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}") from e
@@ -1151,7 +1149,7 @@ class DictionaryV2(Dictionary):
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
         try:
-            with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+            with open(dictionary_path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
             raise FileNotFoundError(
@@ -1182,7 +1180,7 @@ class DictionaryV2(Dictionary):
 
     def read_dictionary(self) -> None:
         try:
-            with open(self.path, "r", encoding="utf-8") as xdf_file:
+            with open(self.path, encoding="utf-8") as xdf_file:
                 tree = ET.parse(xdf_file)
         except FileNotFoundError as e:
             raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}") from e

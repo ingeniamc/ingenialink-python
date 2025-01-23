@@ -94,7 +94,7 @@ class CanopenServo(Servo):
         finally:
             self._lock.release()
         if not isinstance(value, bytes):
-            return bytes()
+            return b""
         return value
 
     def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:

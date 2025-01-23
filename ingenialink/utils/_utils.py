@@ -53,15 +53,16 @@ def deprecated(
     this decorator instead of any deprecation library because all libraries raise
     a DeprecationWarning but since by default this warning is hidden, we use this
     decorator to manually activate DeprecationWarning and turning it off after
-    the warn has been done."""
+    the warn has been done.
+    """
 
     def wrap(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
         def wrapped_method(*args: Any, **kwargs: Any) -> Any:
             warnings.simplefilter("always", DeprecationWarning)  # Turn off filter
-            msg = 'Call to deprecated function "{}".'.format(func.__name__)
+            msg = f'Call to deprecated function "{func.__name__}".'
             if new_func_name:
-                msg += ' Please, use "{}" function instead.'.format(new_func_name)
+                msg += f' Please, use "{new_func_name}" function instead.'
             if custom_msg:
                 msg = custom_msg
             warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
@@ -170,7 +171,7 @@ def convert_int_to_ip(int_ip: int) -> str:
     drive_ip2 = (int_ip >> 16) & 0x000000FF
     drive_ip3 = (int_ip >> 8) & 0x000000FF
     drive_ip4 = int_ip & 0x000000FF
-    return "{}.{}.{}.{}".format(drive_ip1, drive_ip2, drive_ip3, drive_ip4)
+    return f"{drive_ip1}.{drive_ip2}.{drive_ip3}.{drive_ip4}"
 
 
 class INT_SIZES(Enum):

@@ -11,7 +11,8 @@ logger = ingenialogger.get_logger(__name__)
 
 class UDP:
     """UDP Contains all the basic operations for the lightweight data
-    transport protocol based off the MCB protocol."""
+    transport protocol based off the MCB protocol.
+    """
 
     def __init__(self, port: int, ip: str) -> None:
         self.port = port
@@ -99,6 +100,7 @@ class UDP:
             cmd: Command of the message.
             data: Data of the message.
             size: Size of the message.
+
         Returns:
             Message frame.
         """

@@ -267,7 +267,7 @@ class CanopenNetwork(Network):
         try:
             self._connection.scanner.search()
         except Exception as e:
-            logger.error("Error searching for nodes. Exception: {}".format(e))
+            logger.error(f"Error searching for nodes. Exception: {e}")
             logger.info("Resetting bus")
             if (
                 self._connection is not None
@@ -378,13 +378,13 @@ class CanopenNetwork(Network):
             except Exception as e:
                 logger.error("Failed connecting to node %i. Exception: %s", target, e)
                 raise ILError(
-                    "Failed connecting to node {}. "
+                    f"Failed connecting to node {target}. "
                     "Please check the connection settings and verify "
-                    "the transceiver is properly connected.".format(target)
+                    "the transceiver is properly connected."
                 )
         else:
             logger.error("Node id not found")
-            raise ILError("Node id {} not found in the network.".format(target))
+            raise ILError(f"Node id {target} not found in the network.")
 
     def disconnect_from_slave(self, servo: CanopenServo) -> None:  # type: ignore [override]
         """Disconnects the slave from the network.
@@ -431,7 +431,8 @@ class CanopenNetwork(Network):
 
     def _teardown_connection(self) -> None:
         """Tears down the already established connection
-        and deletes the network interface"""
+        and deletes the network interface
+        """
         if self._connection is None:
             logger.warning("Can not disconnect. The connection is not established yet.")
             return
@@ -753,7 +754,7 @@ class CanopenNetwork(Network):
 
         """
         mcb = MCB()
-        with open(sfu_file, "r") as temp_file:
+        with open(sfu_file) as temp_file:
             total_file_lines = sum(1 for _ in temp_file)
         # Convert the sfu file to lfu
         logger.info("Converting sfu to lfu...")
@@ -763,7 +764,7 @@ class CanopenNetwork(Network):
         lfu_file_d, lfu_path = tempfile.mkstemp(suffix=".lfu", text=True)
         os.close(lfu_file_d)
         with open(lfu_path, "wb") as lfu_file:
-            with open(sfu_file, "r") as coco_in:
+            with open(sfu_file) as coco_in:
                 bin_node = ""
                 current_progress = 0
                 node = 10
@@ -877,10 +878,10 @@ class CanopenNetwork(Network):
 
                 self._lss_store_configuration()
             else:
-                raise ILError("Error switching lss to selective state. Error code: {}".format(r))
+                raise ILError(f"Error switching lss to selective state. Error code: {r}")
         finally:
             self._lss_reset_connection_nodes(target_node)
-            logger.info("Baudrate changed to {}".format(new_target_baudrate))
+            logger.info(f"Baudrate changed to {new_target_baudrate}")
 
     def change_node_id(
         self,
@@ -924,10 +925,10 @@ class CanopenNetwork(Network):
                 self._lss_store_configuration()
 
             else:
-                raise ILError("Error switching lss to selective state. Error code: {}".format(r))
+                raise ILError(f"Error switching lss to selective state. Error code: {r}")
         finally:
             self._lss_reset_connection_nodes(target_node)
-            logger.info("Node ID changed to {}".format(new_target_node))
+            logger.info(f"Node ID changed to {new_target_node}")
 
     def _lss_store_configuration(self) -> None:
         """Stores the current configuration of the LSS

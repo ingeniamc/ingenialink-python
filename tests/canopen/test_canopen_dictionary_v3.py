@@ -62,7 +62,7 @@ def test_read_dictionary_registers():
 
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
 
-    for subnode in expected_regs_per_subnode.keys():
+    for subnode in expected_regs_per_subnode:
         assert expected_regs_per_subnode[subnode] == [
             reg for reg in canopen_dict.registers(subnode)
         ]
@@ -79,7 +79,7 @@ def test_read_dictionary_registers_multiaxis():
         1: SubnodeType.MOTION,
         2: SubnodeType.MOTION,
     }
-    for subnode in expected_num_registers_per_subnode.keys():
+    for subnode in expected_num_registers_per_subnode:
         num_registers = len(canopen_dict.registers(subnode))
         assert num_registers == expected_num_registers_per_subnode[subnode]
 

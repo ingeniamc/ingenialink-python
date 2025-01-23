@@ -69,7 +69,7 @@ def test_read_dictionary_registers():
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
-    for subnode in expected_regs_per_subnode.keys():
+    for subnode in expected_regs_per_subnode:
         assert expected_regs_per_subnode[subnode] == [
             reg for reg in ethercat_dict.registers(subnode)
         ]
@@ -87,7 +87,7 @@ def test_read_dictionary_registers_multiaxis():
         2: SubnodeType.MOTION,
     }
 
-    for subnode in expected_num_registers_per_subnode.keys():
+    for subnode in expected_num_registers_per_subnode:
         num_registers = len(ethercat_dict.registers(subnode))
         assert num_registers == expected_num_registers_per_subnode[subnode]
 

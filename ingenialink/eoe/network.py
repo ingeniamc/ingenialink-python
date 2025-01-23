@@ -136,7 +136,7 @@ class EoENetwork(EthernetNetwork):
         """Wait until the EoE service starts the EoE or the timeout was reached"""
         status = self._get_status_eoe_service()
         time_start = time.time()
-        while not status & self.STATUS_EOE_BIT and self.WAIT_EOE_TIMEOUT > time.time() - time_start:
+        while not status & self.STATUS_EOE_BIT and time.time() - time_start < self.WAIT_EOE_TIMEOUT:
             time.sleep(0.1)
             status = self._get_status_eoe_service()
         if not status & self.STATUS_EOE_BIT:
@@ -208,8 +208,7 @@ class EoENetwork(EthernetNetwork):
 
     @staticmethod
     def _build_eoe_command_msg(cmd: int, data: Optional[bytes] = None) -> bytes:
-        """
-        Build a message with the following format.
+        """Build a message with the following format.
 
         +----------+----------+
         |   cmd    |   data   |
@@ -226,14 +225,13 @@ class EoENetwork(EthernetNetwork):
 
         """
         if data is None:
-            data = bytes()
+            data = b""
         cmd_field = cmd.to_bytes(EoENetwork.EOE_MSG_CMD_SIZE, "little")
         data_field = data + EoENetwork.NULL_TERMINATOR * (EoENetwork.EOE_MSG_DATA_SIZE - len(data))
         return cmd_field + data_field
 
     def _send_command(self, msg: bytes) -> int:
-        """
-        Send command to EoE service.
+        """Send command to EoE service.
 
         Args:
             msg: Message to send.
@@ -249,13 +247,13 @@ class EoENetwork(EthernetNetwork):
         """
         try:
             self._eoe_socket.send(msg)
-        except socket.error as e:
+        except OSError as e:
             raise ILIOError("Error sending message.") from e
         try:
             response = self._eoe_socket.recv(1024)
         except socket.timeout as e:
             raise ILTimeoutError("Timeout while receiving response.") from e
-        except socket.error as e:
+        except OSError as e:
             raise ILIOError("Error receiving response.") from e
         return int.from_bytes(response, byteorder="little", signed=True)
 
@@ -306,8 +304,7 @@ class EoENetwork(EthernetNetwork):
     def _configure_slave(
         self, slave_id: int, ip_address: str, net_mask: str = "255.255.255.0"
     ) -> None:
-        """
-        Configure an EtherCAT slave with a given IP.
+        """Configure an EtherCAT slave with a given IP.
 
         Args:
             slave_id: EtherCAT slave ID.

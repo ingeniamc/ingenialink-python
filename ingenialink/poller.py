@@ -98,7 +98,6 @@ class Poller(Thread):
             TypeError: If the register is not valid.
 
         """
-
         if self.__running:
             raise ILStateError("Poller is running")
 
@@ -131,7 +130,6 @@ class Poller(Thread):
             Status code.
 
         """
-
         if self.__running:
             raise ILStateError("Poller is running")
 

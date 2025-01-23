@@ -166,11 +166,11 @@ class BasePlant:
 
     def _filter_signal(
         self,
-        input_signal: NDArray[np.float_],
+        input_signal: NDArray[np.float64],
         use_fft_method: bool = True,
         initial_value: float = 0.0,
         plant: Optional[signal.TransferFunction] = None,
-    ) -> NDArray[np.float_]:
+    ) -> NDArray[np.float64]:
         """Filter signal with the plant's frequency response.
 
         Args:
@@ -727,8 +727,8 @@ class VirtualInternalGenerator:
         n_samples = int(VirtualMonitoring.FREQUENCY * period * self.cycles)
         time_vector = self.start_time + np.linspace(0, period * self.cycles, n_samples)
 
-        signal_period: NDArray[np.float_] = self.offset + np.linspace(
-            0, self.gain, int(n_samples / self.cycles), dtype=np.float_
+        signal_period: NDArray[np.float64] = self.offset + np.linspace(
+            0, self.gain, int(n_samples / self.cycles), dtype=np.float64
         )
         pos_signal = np.tile(signal_period, self.cycles)
         initial_value = self.drive.get_value_by_id(1, self.ACTUAL_POSITION_REGISTER)
@@ -747,7 +747,7 @@ class VirtualInternalGenerator:
         self.drive.reg_signals[self.ACTUAL_POSITION_REGISTER] = pos_signal
         self.drive.reg_time[self.ACTUAL_POSITION_REGISTER] = time_vector
 
-    def __create_halls_encoder_signal(self, pos_signal: NDArray[np.float_]) -> NDArray[np.float_]:
+    def __create_halls_encoder_signal(self, pos_signal: NDArray[np.float64]) -> NDArray[np.float64]:
         """Create the halls encoder signal by discretizing the pos_signal using the hall values.
 
         Args:
@@ -772,7 +772,7 @@ class VirtualInternalGenerator:
             encoder_signal[sample_ix] = self.HALL_VALUES[hall_value_ix]
         return encoder_signal
 
-    def __create_abs_encoder_signal(self, pos_signal: NDArray[np.float_]) -> NDArray[np.float_]:
+    def __create_abs_encoder_signal(self, pos_signal: NDArray[np.float64]) -> NDArray[np.float64]:
         """Crete the absolute encoder signal by saturating the position signal.
 
         Args:
@@ -1107,7 +1107,7 @@ class VirtualMonitoring(VirtualMonDistBase):
 
     def _store_data_bytes(self) -> None:
         """Convert signals into a bytes and store it at MON_DATA register."""
-        byte_array = bytes()
+        byte_array = b""
         n_samples = len(self.channels_data[0])
         for sample in range(n_samples):
             for channel in range(self.number_mapped_registers):
@@ -1150,7 +1150,7 @@ class VirtualDisturbance(VirtualMonDistBase):
 
     def __init__(self, drive: "VirtualDrive") -> None:
         self.start_time = 0.0
-        self.received_bytes = bytes()
+        self.received_bytes = b""
         super().__init__(drive)
 
     def enable(self) -> None:
@@ -1163,7 +1163,7 @@ class VirtualDisturbance(VirtualMonDistBase):
         super().enable()
 
     def disable(self) -> None:
-        self.received_bytes = bytes()
+        self.received_bytes = b""
         return super().disable()
 
     def append_data(self, data: bytes) -> None:
@@ -1262,8 +1262,8 @@ class VirtualDrive(Thread):
         self.__dictionary = DictionaryFactory.create_dictionary(
             self.dictionary_path, Interface.VIRTUAL
         )
-        self.reg_signals: Dict[str, NDArray[np.float_]] = {}
-        self.reg_time: Dict[str, NDArray[np.float_]] = {}
+        self.reg_signals: Dict[str, NDArray[np.float64]] = {}
+        self.reg_time: Dict[str, NDArray[np.float64]] = {}
         self.reg_noise_amplitude: Dict[str, float] = {}
         self.is_monitoring_available = EthernetServo.MONITORING_DATA in self.__dictionary.registers(
             0

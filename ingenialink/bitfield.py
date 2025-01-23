@@ -1,4 +1,5 @@
-from typing import Dict, Iterable
+from collections.abc import Iterable
+from typing import Dict
 
 
 def _bit_mask(selected_bits: Iterable[int]) -> int:

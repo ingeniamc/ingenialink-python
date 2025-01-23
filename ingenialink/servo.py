@@ -56,7 +56,8 @@ OPERATION_TIME_OUT = -3
 
 class DictionaryFactory:
     """Dictionary factory, creates the appropriate dictionary instance according to
-    the file version and connection interface"""
+    the file version and connection interface
+    """
 
     _VERSION_ABSOLUTE_PATH = "Header/Version"
     _VERSION_REGEX = r"(\d+)\.*(\d*)"
@@ -138,7 +139,7 @@ class DictionaryFactory:
 
         """
         try:
-            with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
+            with open(dictionary_path, encoding="utf-8") as xdf_file:
                 try:
                     tree = ET.parse(xdf_file)
                 except ET.ParseError:
@@ -283,11 +284,11 @@ class Servo:
         self.__monitoring_data: Dict[int, List[Union[int, float]]] = {}
         self.__monitoring_size: Dict[int, int] = {}
         self.__monitoring_dtype: Dict[int, REG_DTYPE] = {}
-        self.__disturbance_data = bytes()
+        self.__disturbance_data = b""
         self.__disturbance_size: Dict[int, int] = {}
         self.__disturbance_dtype: Dict[int, str] = {}
         self.__register_update_observers: List[
-            Callable[["Servo", Register, Union[int, float, str, bytes]], None]
+            Callable[[Servo, Register, Union[int, float, str, bytes]], None]
         ] = []
         if servo_status_listener:
             self.start_status_listener()
@@ -551,7 +552,7 @@ class Servo:
         """
         if not os.path.isfile(config_file):
             raise FileNotFoundError(f"Could not find {config_file}.")
-        with open(config_file, "r", encoding="utf-8") as xml_file:
+        with open(config_file, encoding="utf-8") as xml_file:
             tree = ET.parse(xml_file)
         root = tree.getroot()
         device = root.find("Body/Device")
@@ -679,7 +680,7 @@ class Servo:
     def enable(self, subnode: int = 1, timeout: int = DEFAULT_PDS_TIMEOUT) -> None:
         """Enable PDS.
 
-         Args:
+        Args:
              subnode: Subnode of the drive.
              timeout: Timeout in milliseconds.
 
@@ -1007,7 +1008,7 @@ class Servo:
     def disturbance_remove_data(self) -> None:
         """Remove disturbance data."""
         self.write(self.DISTURBANCE_REMOVE_DATA, data=1, subnode=0)
-        self.disturbance_data = bytes()
+        self.disturbance_data = b""
 
     def disturbance_set_mapped_register(
         self, channel: int, address: int, subnode: int, dtype: int, size: int
@@ -1046,7 +1047,7 @@ class Servo:
             self.write(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, data=0, subnode=0)
         except ILAccessError:
             self.write(self.DISTURBANCE_REMOVE_REGISTERS_OLD, data=1, subnode=0)
-        self.__disturbance_data = bytes()
+        self.__disturbance_data = b""
         self.__disturbance_size = {}
         self.__disturbance_dtype = {}
 
@@ -1099,15 +1100,17 @@ class Servo:
             Dictionary.
 
         """
-        pass
 
     def _get_reg(self, reg: Union[str, Register], subnode: int = 1) -> Register:
         """Validates a register.
+
         Args:
             reg: Targeted register to validate.
             subnode: Subnode for the register.
+
         Returns:
             Instance of the desired register from the dictionary.
+
         Raises:
             ValueError: If the dictionary is not loaded.
             ILWrongRegisterError: If the register has invalid format.
@@ -1226,7 +1229,7 @@ class Servo:
 
     def __monitoring_process_data(self, monitoring_data: List[bytes]) -> None:
         """Arrange monitoring data."""
-        data_bytes = bytes()
+        data_bytes = b""
         for i in range(len(monitoring_data)):
             data_bytes += monitoring_data[i]
         bytes_per_block = self.monitoring_get_bytes_per_block()
@@ -1295,7 +1298,7 @@ class Servo:
             num_samples = len(data_arr[0])
             data_arr_aux = data_arr  # type: ignore [assignment]
         self.write(self.DIST_NUMBER_SAMPLES, num_samples, subnode=0)
-        data = bytes()
+        data = b""
         for sample_idx in range(num_samples):
             for channel in range(len(data_arr_aux)):
                 val = convert_dtype_to_bytes(data_arr_aux[channel][sample_idx], dtypes[channel])

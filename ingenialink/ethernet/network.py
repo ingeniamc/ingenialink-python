@@ -155,7 +155,7 @@ class EthernetNetwork(Network):
 
         if not moco_file or not os.path.isfile(moco_file):
             raise ILFirmwareLoadError("File not found")
-        moco_in = open(moco_file, "r")
+        moco_in = open(moco_file)
 
         logger.info("Loading firmware...")
         try:
