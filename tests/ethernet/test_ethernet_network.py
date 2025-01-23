@@ -75,7 +75,7 @@ def test_load_firmware_file_not_found():
 
 
 @pytest.mark.no_connection
-def test_load_firmware_no_connection(read_config):
+def test_load_firmware_no_connection():
     fw_file = "temp_file.lfu"
     with open(fw_file, "w"):
         pass
