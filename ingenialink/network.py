@@ -36,20 +36,6 @@ class NET_DEV_EVT(Enum):
     REMOVED = 1
 
 
-class EEPROM_FILE_FORMAT(Enum):
-    """EEPROM file format."""
-
-    BINARY = 0
-    INTEL = 1
-
-
-class NET_TRANS_PROT(Enum):
-    """Transmission protocol."""
-
-    TCP = 1
-    UDP = 2
-
-
 @dataclass
 class SlaveInfo:
     """Class to store slave information."""

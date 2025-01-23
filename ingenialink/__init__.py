@@ -17,14 +17,12 @@ from .canopen.servo import CanopenServo
 from .ethercat.network import EthercatNetwork
 from .ethernet.network import EthernetNetwork
 from .ethernet.servo import EthernetServo
-from .network import EEPROM_FILE_FORMAT, NET_DEV_EVT, NET_PROT, NET_STATE, NET_TRANS_PROT, Network
+from .network import NET_DEV_EVT, NET_PROT, NET_STATE, Network
 
 __all__ = [
-    "EEPROM_FILE_FORMAT",
     "NET_PROT",
     "NET_DEV_EVT",
     "NET_STATE",
-    "NET_TRANS_PROT",
     "SERVO_STATE",
     "SERVO_MODE",
     "SERVO_UNITS_TORQUE",

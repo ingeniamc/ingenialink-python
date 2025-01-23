@@ -3,7 +3,6 @@ import logging
 import struct
 import warnings
 import xml.etree.ElementTree as ET
-from enum import Enum
 from typing import Any, Callable, Optional, Union
 
 import ingenialogger
@@ -176,25 +175,6 @@ def convert_int_to_ip(int_ip: int) -> str:
     drive_ip3 = (int_ip >> 8) & 0x000000FF
     drive_ip4 = int_ip & 0x000000FF
     return f"{drive_ip1}.{drive_ip2}.{drive_ip3}.{drive_ip4}"
-
-
-class INT_SIZES(Enum):
-    """Integer sizes."""
-
-    S8_MIN = -128
-    S16_MIN = -32767 - 1
-    S32_MIN = -2147483647 - 1
-    S64_MIN = 9223372036854775807 - 1
-
-    S8_MAX = 127
-    S16_MAX = 32767
-    S32_MAX = 2147483647
-    S64_MAX = 9223372036854775807
-
-    U8_MAX = 255
-    U16_MAX = 65535
-    U32_MAX = 4294967295
-    U64_MAX = 18446744073709551615
 
 
 def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, str, bytes]:
