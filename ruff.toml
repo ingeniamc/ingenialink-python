@@ -2,10 +2,48 @@ line-length = 100
 target-version = "py39"
 
 [lint]
+pydocstyle.convention = "google"
+
 select = [
     "F", # Pyflakes
     "E", # pycodestyle
     "W", # pycodestyle
     "I", # isort
+    "N", # pep8-naming
+    "D", # pydocstyle
+    "UP", # pyupgrade
+    "T10", # Flake8 Debugger
+    "C4", # flake8 comprehensions
+    "A", # flake8 builtins shadowing
+    "ISC", # flake8 implicit string concatenation
+    "LOG", # flake8 logging
+    "PIE", # flake8 pie
+    "T20", # flake8 prints
+    "Q", # flake8 quotes
+    "RSE", # flake8 raise
+    "SIM", # flake8 simplify
+    "TID", # flake8 tidy imports
+    "TC", # flake8 type checking
+    "ARG", # flake8 unused arguments
+    "TD", # flake8 todos
+    "ERA", # eradicate commented out code
+    "PGH", # pygrep hooks
+    "FLY", # flyint f-strings
+    "NPY", # numpy rules
+    "PERF", # perflint
+    "DOC", # pydoclint
 ]
-pydocstyle.convention = "google"
+
+ignore = [
+    "C90", # mccabe complexity. Will be fixed in INGK-1020
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D107", # Missing docstring in __init__
+    "N801", # Missing docstring in __init__
+]
+
+[lint.per-file-ignores]
+"tests/*" = [
+    "D", # Docstring rules
+    "ERA001", # Commented-out code
+]
