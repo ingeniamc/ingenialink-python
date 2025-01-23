@@ -138,7 +138,10 @@ class CanopenServo(Servo):
             return is_register_valid
         # Exclude the RxPDO and TxPDO related registers
         # Check INGK-980
-        return not (register.identifier is not None and register.identifier.startswith(("CIA301_COMMS_TPDO", "CIA301_COMMS_RPDO")))
+        return not (
+            register.identifier is not None
+            and register.identifier.startswith(("CIA301_COMMS_TPDO", "CIA301_COMMS_RPDO"))
+        )
 
     @staticmethod
     def _monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:

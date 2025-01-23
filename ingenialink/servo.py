@@ -502,7 +502,9 @@ class Servo:
             True if the register can be used for the configuration file. False otherwise.
 
         """
-        return not (register.access != REG_ACCESS.RW or register.address_type == REG_ADDRESS_TYPE.NVM_NONE)
+        return not (
+            register.access != REG_ACCESS.RW or register.address_type == REG_ADDRESS_TYPE.NVM_NONE
+        )
 
     def _registers_to_save_in_configuration_file(
         self, subnode: Optional[int]
