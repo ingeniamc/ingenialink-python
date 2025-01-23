@@ -133,9 +133,9 @@ class BasePlant:
         self.drive = drive
         self.monitoring_frequency = VirtualMonitoring.FREQUENCY
         self.plant: signal.TransferFunction
-        self.set_point_register = self.drive.get_register(1, id=self.REGISTER_SET_POINT)
-        self.command_register = self.drive.get_register(1, id=self.REGISTER_COMMAND)
-        self.value_register = self.drive.get_register(1, id=self.REGISTER_VALUE)
+        self.set_point_register = self.drive.get_register(1, register_id=self.REGISTER_SET_POINT)
+        self.command_register = self.drive.get_register(1, register_id=self.REGISTER_COMMAND)
+        self.value_register = self.drive.get_register(1, register_id=self.REGISTER_VALUE)
 
     def emulate_plant(self, from_disturbance: bool = True) -> None:
         """Emulate the plant by filtering the excitation signal with the plant's frequency response.
@@ -1189,8 +1189,8 @@ class VirtualDisturbance(VirtualMonDistBase):
             for _ in range(n_samples):
                 size = self.channels_size[channel]
                 dtype = self.channels_dtype[channel]
-                bytes = buffer[:size]
-                value = convert_bytes_to_dtype(bytes, dtype)
+                data_bytes = buffer[:size]
+                value = convert_bytes_to_dtype(data_bytes, dtype)
                 if isinstance(value, (int, float)):
                     self.channels_data[channel].append(value)
                 buffer = buffer[size:]
@@ -1439,20 +1439,20 @@ class VirtualDrive(Thread):
             ],
             EthernetServo.DIST_DATA: self.__dictionary.registers(0)[EthernetServo.DIST_DATA],
         }
-        for id, reg in custom_regs.items():
+        for register_id, reg in custom_regs.items():
             if not isinstance(reg, EthernetRegister):
                 raise ValueError
             register = EthernetRegister(
                 reg.address,
                 REG_DTYPE.BYTE_ARRAY_512,
                 reg.access,
-                identifier=id,
+                identifier=register_id,
                 subnode=reg.subnode,
             )
             self.__dictionary._add_register_list(register)
-            self.__dictionary.registers(reg.subnode)[id].storage_valid = True
+            self.__dictionary.registers(reg.subnode)[register_id].storage_valid = True
 
-            self.__reg_address_to_id[reg.subnode][reg.address] = id
+            self.__reg_address_to_id[reg.subnode][reg.address] = register_id
 
     def _init_register_signals(self) -> None:
         """Init signals, vector time and noise amplitude for each register."""
@@ -1703,14 +1703,14 @@ class VirtualDrive(Thread):
         return subnode in self.__dictionary.subnodes and id in self.__dictionary.registers(subnode)
 
     def get_register(
-        self, subnode: int, address: Optional[int] = None, id: Optional[str] = None
+        self, subnode: int, address: Optional[int] = None, register_id: Optional[str] = None
     ) -> EthernetRegister:
         """Returns a register by its address or ID.
 
         Args:
             subnode: Subnode.
             address: Register address. Default to None.
-            id: Register ID. Default to None.
+            register_id: Register ID. Default to None.
 
         Returns:
             Register instance.
@@ -1719,13 +1719,13 @@ class VirtualDrive(Thread):
             ValueError: If both address and id are None.
         """
         if address is not None:
-            id = self.address_to_id(subnode, address)
+            register_id = self.address_to_id(subnode, address)
         else:
-            if id is None:
+            if register_id is None:
                 raise ValueError("Register address or id should be passed")
-        register = self.__dictionary.registers(subnode)[id]
+        register = self.__dictionary.registers(subnode)[register_id]
         if not isinstance(register, EthernetRegister):
-            raise ValueError(f"Register {id} is not an EthernetRegister")
+            raise ValueError(f"Register {register_id} is not an EthernetRegister")
         return register
 
     def __set_motor_enable(self) -> None:

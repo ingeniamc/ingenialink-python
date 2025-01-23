@@ -126,15 +126,15 @@ def cleanup_register(register: ET.Element) -> None:
         register: Register to be cleaned.
     """
     labels = register.find("./Labels")
-    range = register.find("./Range")
+    reg_range = register.find("./Range")
     enums = register.find("./Enumerations")
 
     if labels:
         remove_xml_subelement(register, labels)
     if enums:
         remove_xml_subelement(register, enums)
-    if range:
-        remove_xml_subelement(register, range)
+    if reg_range:
+        remove_xml_subelement(register, reg_range)
 
     pop_element(register.attrib, "desc")
     pop_element(register.attrib, "cat_id")
