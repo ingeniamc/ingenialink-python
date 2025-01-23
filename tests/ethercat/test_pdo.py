@@ -272,10 +272,11 @@ def connect_to_all_slave(pytestconfig):
     with open(config, encoding="utf-8") as fp:
         contents = json.load(fp)
     protocol_contents = contents[protocol]
-    servos = []
     net = EthercatNetwork(protocol_contents[0]["ifname"])
-    for slave_content in protocol_contents:
-        servos.append(net.connect_to_slave(slave_content["slave"], slave_content["dictionary"]))
+    servos = [
+        net.connect_to_slave(slave_content["slave"], slave_content["dictionary"])
+        for slave_content in protocol_contents
+    ]
     yield servos, net
     for servo in servos:
         net.disconnect_from_slave(servo)
