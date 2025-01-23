@@ -19,6 +19,8 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class EoECommand(Enum):
+    """EoE command enum."""
+
     INIT = 0
     DEINIT = 1
     SCAN = 2

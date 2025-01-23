@@ -41,6 +41,8 @@ INC_ENC2_RESOLUTION = 2000
 
 
 class MSG_TYPE(Enum):
+    """Message type enum."""
+
     RECEIVED = "RECEIVED"
     SENT = "SENT"
 

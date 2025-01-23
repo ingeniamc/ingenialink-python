@@ -26,6 +26,8 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class SlaveState(Enum):
+    """EtherCAT state enum."""
+
     NONE_STATE = 0
     INIT_STATE = 1
     PREOP_STATE = 2
