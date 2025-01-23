@@ -1641,66 +1641,70 @@ class VirtualDrive(Thread):
             raise ValueError(f"Register {uid} is not an EthernetRegister")
         return register.address
 
-    def get_value_by_id(self, subnode: int, id: str) -> Union[int, float, str, bytes]:
+    def get_value_by_id(self, subnode: int, register_id: str) -> Union[int, float, str, bytes]:
         """Returns a register value by its ID.
 
         Args:
             subnode: Subnode.
-            id: Register ID.
+            register_id: Register ID.
 
         Returns:
             Register value.
         """
-        if id in self.__register_signals:
-            return self.__register_signals[id].get()  # type: ignore[no-any-return]
+        if register_id in self.__register_signals:
+            return self.__register_signals[register_id].get()  # type: ignore[no-any-return]
 
-        register = self.__dictionary.registers(subnode)[id]
+        register = self.__dictionary.registers(subnode)[register_id]
         value: Union[int, float]
-        if len(self.reg_signals[id]) > 0:
+        if len(self.reg_signals[register_id]) > 0:
             actual_time = time.time()
             if self._disturbance and self._disturbance.enabled:
                 time_diff = actual_time - self._disturbance.start_time
                 actual_time = self._disturbance.start_time + (
                     time_diff % self._disturbance.buffer_time
                 )
-            sample_index = np.argmin(np.abs(self.reg_time[id] - actual_time))
-            value = self.reg_signals[id][sample_index]
-            if self.reg_noise_amplitude[id] > 0:
-                value = value + self.reg_noise_amplitude[id] * np.random.uniform()
+            sample_index = np.argmin(np.abs(self.reg_time[register_id] - actual_time))
+            value = self.reg_signals[register_id][sample_index]
+            if self.reg_noise_amplitude[register_id] > 0:
+                value = value + self.reg_noise_amplitude[register_id] * np.random.uniform()
 
             if register.dtype != REG_DTYPE.FLOAT:
                 value = int(value)
             return value
-        storage_value = self.__dictionary.registers(subnode)[id]._storage
+        storage_value = self.__dictionary.registers(subnode)[register_id]._storage
         if isinstance(storage_value, (int, float, str, bytes)):
             return storage_value
         else:
             return 0
 
-    def set_value_by_id(self, subnode: int, id: str, value: Union[float, int, str, bytes]) -> None:
+    def set_value_by_id(
+        self, subnode: int, register_id: str, value: Union[float, int, str, bytes]
+    ) -> None:
         """Set a register value by its ID.
 
         Args:
             subnode: Subnode.
-            id: Register ID.
+            register_id: Register ID.
             value: Value to be set.
         """
-        if id in self.__register_signals:
-            self.__register_signals[id].set(value)
+        if register_id in self.__register_signals:
+            self.__register_signals[register_id].set(value)
 
-        self.__dictionary.registers(subnode)[id].storage = value
+        self.__dictionary.registers(subnode)[register_id].storage = value
 
-    def __register_exists(self, subnode: int, id: str) -> bool:
+    def __register_exists(self, subnode: int, register_id: str) -> bool:
         """Returns True if the register exists in the dictionary.
 
         Args:
             subnode: Subnode.
-            id: Register ID.
+            register_id: Register ID.
 
         Returns:
             Register value.
         """
-        return subnode in self.__dictionary.subnodes and id in self.__dictionary.registers(subnode)
+        return subnode in self.__dictionary.subnodes and register_id in self.__dictionary.registers(
+            subnode
+        )
 
     def get_register(
         self, subnode: int, address: Optional[int] = None, register_id: Optional[str] = None
