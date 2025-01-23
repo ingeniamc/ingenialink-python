@@ -144,11 +144,11 @@ class EoENetwork(EthernetNetwork):
 
     def __reconfigure_drives(self) -> None:
         """Reconfigure all the slaves saved in the network."""
-        for ip_addr, slave_id in self._configured_slaves.items():
-            try:
+        try:
+            for ip_addr, slave_id in self._configured_slaves.items():
                 self._configure_slave(slave_id, ip_addr)
-            except ILError as e:
-                logger.error(e)
+        except ILError as e:
+            logger.error(e)
 
     def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override]
         del self._configured_slaves[servo.ip_address]
