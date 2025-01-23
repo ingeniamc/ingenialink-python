@@ -405,6 +405,7 @@ class Dictionary(ABC):
 
         Args:
             root: Errors element
+            path: The error path.
 
         """
         error_list = self._findall_and_check(root, path)

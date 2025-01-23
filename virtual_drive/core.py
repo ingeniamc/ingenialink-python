@@ -179,6 +179,7 @@ class BasePlant:
             input_signal: Signal to be filtered.
             use_fft_method: If True the FFT method is used.
             initial_value: Initial value.
+            plant: Plant's transfer function.
 
         Returns:
             Filtered signal.

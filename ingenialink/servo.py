@@ -1062,7 +1062,7 @@ class Servo:
         """Unsubscribe from state changes.
 
         Args:
-            Callback function.
+            callback: Callback function.
 
         """
         if callback not in self.__observers_servo_state:
@@ -1089,7 +1089,7 @@ class Servo:
         """Force to reload all dictionary errors.
 
         Args:
-            Dictionary.
+            dictionary: The dictionary path.
 
         """
 
@@ -1309,6 +1309,7 @@ class Servo:
             reg: Target register to be written.
             data: Data to be written.
             subnode: Target axis of the drive.
+            **kwargs: Keyword arguments.
 
         Raises:
             ILAccessError: Wrong access to the register.
@@ -1332,6 +1333,7 @@ class Servo:
         Args:
             reg: Register.
             subnode: Target axis of the drive.
+            **kwargs: Keyword arguments.
 
         Returns:
             int, float or Value stored in the register.

@@ -24,7 +24,7 @@ class Signal(Generic[T]):
         """Watch signal.
 
         Args:
-            Callback. Will be called when signal changes
+            callback: Will be called when signal changes
         """
         self.__watchers.append(callback)
 
