@@ -10,7 +10,9 @@ T = TypeVar("T", bound="MCB")
 
 
 class MCB:
-    """Motion Control Bus (MCB) is a high-speed serial protocol designed for getting low
+    """Class to create and process MCB frames.
+
+    Motion Control Bus (MCB) is a high-speed serial protocol designed for getting low
     latency and high determinism in motion control systems where control loops
     work at high update rates (tens of kHz).
     """

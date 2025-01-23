@@ -302,6 +302,7 @@ class EthernetNetwork(Network):
 
     def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
         """Get the state of a servo that's a part of network.
+
         The state indicates if the servo is connected or disconnected.
 
         Args:

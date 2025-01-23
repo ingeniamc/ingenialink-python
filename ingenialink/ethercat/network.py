@@ -134,7 +134,9 @@ class EthercatNetwork(Network):
         self.__last_init_nodes: list[int] = []
 
     def scan_slaves(self) -> list[int]:
-        """Scans for slaves in the network. Scanning of slaves cannot be done if a slave is already
+        """Scans for slaves in the network.
+
+        Scanning of slaves cannot be done if a slave is already
         connected to the network.
 
         Returns:
@@ -173,6 +175,7 @@ class EthercatNetwork(Network):
 
     def __init_nodes(self) -> None:
         """Init all the nodes and set already connected nodes to PreOp state.
+
         Also fill `__last_init_nodes` attribute.
         """
         nodes = self._ecat_master.config_init()
@@ -512,6 +515,7 @@ class EthercatNetwork(Network):
 
     def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
         """Get the state of a servo that's a part of network.
+
         The state indicates if the servo is connected or disconnected.
 
         Args:
@@ -542,6 +546,7 @@ class EthercatNetwork(Network):
 
     def _recover_from_disconnection(self) -> bool:
         """Recover the CoE communication after a disconnection.
+
         All the connected slaves need to transitioned to the PreOp state.
 
         Returns:

@@ -55,7 +55,9 @@ OPERATION_TIME_OUT = -3
 
 
 class DictionaryFactory:
-    """Dictionary factory, creates the appropriate dictionary instance according to
+    """Dictionary factory.
+
+    Creates the appropriate dictionary instance according to
     the file version and connection interface.
     """
 
@@ -66,8 +68,10 @@ class DictionaryFactory:
 
     @classmethod
     def create_dictionary(cls, dictionary_path: str, interface: Interface) -> Dictionary:
-        """Creates a dictionary instance choosing the class depending on dictionary version and
-         connection interface.
+        """Creates a dictionary instance.
+
+        Choosing the class depending on dictionary version and
+        connection interface.
 
         Args:
             dictionary_path: target dictionary path
@@ -322,6 +326,7 @@ class Servo:
 
     def check_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
         """Check if the drive is configured in the same way as the given configuration file.
+
         Compares the value of each register in the given file with the corresponding value in the
         drive.
 
@@ -432,7 +437,9 @@ class Servo:
                 logger.error(exception_message)
 
     def save_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
-        """Read all dictionary registers content and put it to the dictionary
+        """Save a drive configuration.
+
+        Read all dictionary registers content and put it to the dictionary
         storage.
 
         Args:
@@ -1120,8 +1127,7 @@ class Servo:
             raise TypeError("Invalid register")
 
     def __update_register_dict(self, register: ET.Element, subnode: int) -> None:
-        """Updates the register from a dictionary with the
-        storage parameters.
+        """Updates the register from a dictionary with the storage parameters.
 
         Args:
             register: Register element to be updated.
@@ -1159,8 +1165,9 @@ class Servo:
             callback(state, subnode)
 
     def __read_coco_moco_register(self, register_coco: str, register_moco: str) -> str:
-        """Reads the COCO register and if it does not exist,
-        reads the MOCO register.
+        """Read a register from COCO or MOCO.
+
+        if it does not exist, reads the MOCO register.
 
         Args:
             register_coco: COCO Register ID to be read.
@@ -1421,6 +1428,7 @@ class Servo:
         self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None]
     ) -> None:
         """Subscribe to register updates.
+
         The callback will be called when a read/write operation occurs.
 
         Args:
@@ -1442,6 +1450,7 @@ class Servo:
 
     def _notify_register_update(self, reg: Register, data: Union[int, float, str, bytes]) -> None:
         """Notify a register update to the observers.
+
         The updated value is stored in the register's storage attribute.
 
         Args:

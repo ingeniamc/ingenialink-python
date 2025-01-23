@@ -423,6 +423,7 @@ class PDOServo(Servo):
 
     def map_rpdos(self) -> None:
         """Map the RPDO registers into the servo slave.
+
         It takes the first available RPDO assignment slot of the slave.
 
         Raises:
@@ -476,6 +477,7 @@ class PDOServo(Servo):
 
     def map_tpdos(self) -> None:
         """Map the TPDO registers into the servo slave.
+
         It takes the first available TPDO assignment slot of the slave.
 
         Raises:
