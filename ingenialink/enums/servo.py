@@ -22,31 +22,6 @@ class SERVO_STATE(Enum):
     """Fault."""
 
 
-class SERVO_FLAGS(Enum):
-    """Status Flags."""
-
-    TGT_REACHED = 0x01
-    """Target reached."""
-    ILIM_ACTIVE = 0x02
-    """Internal limit active."""
-    HOMING_ATT = 0x04
-    """(Homing) attained."""
-    HOMING_ERR = 0x08
-    """(Homing) error."""
-    PV_VZERO = 0x04
-    """(PV) Vocity speed is zero."""
-    PP_SPACK = 0x04
-    """(PP) SP acknowledge."""
-    IP_ACTIVE = 0x04
-    """(IP) active."""
-    CS_FOLLOWS = 0x04
-    """(CST/CSV/CSP) follow command value."""
-    FERR = 0x08
-    """(CST/CSV/CSP/PV) following error."""
-    IANGLE_DET = 0x10
-    """Initial angle determination finished."""
-
-
 class SERVO_MODE(Enum):
     """Operation Mode."""
 
