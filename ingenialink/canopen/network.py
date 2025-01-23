@@ -217,7 +217,7 @@ class CanopenNetwork(Network):
     PRODUCT_CODE_SUB_IX = 2
     REVISION_NUMBER_SUB_IX = 3
     NODE_GUARDING_PERIOD_S = 1
-    TRANSCEIVER_NOT_INSTALLED_ERROR_CODE = 126
+    __TRANSCEIVER_NOT_INSTALLED_ERROR_CODE = 126
 
     def __init__(
         self,
@@ -441,7 +441,7 @@ class CanopenNetwork(Network):
                 logger.exception("Transceiver drivers not properly installed.")
                 if (
                     hasattr(e, "winerror")
-                    and e.winerror == self.TRANSCEIVER_NOT_INSTALLED_ERROR_CODE
+                    and e.winerror == self.__TRANSCEIVER_NOT_INSTALLED_ERROR_CODE
                 ):
                     e.strerror = "Driver module not found. Drivers might not be properly installed."
                 raise ILError(e) from e
