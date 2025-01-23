@@ -38,7 +38,6 @@ def test_can_not_connect_to_salve(read_config):
 
 @pytest.mark.ethernet
 def test_scan_slaves(read_config):
-    # TODO: Not implemented
     # net = EthernetNetwork()
     # slaves = net.scan_slaves()
     # assert len(slaves) > 0
@@ -88,14 +87,12 @@ def test_load_firmware_no_connection():
 @pytest.mark.skip
 @pytest.mark.no_connection
 def test_load_firmware_wrong_user_pwd():
-    # TODO: implement
     pass
 
 
 @pytest.mark.skip
 @pytest.mark.no_connection
 def test_load_firmware_error_during_loading():
-    # TODO: implement
     pass
 
 
@@ -121,7 +118,6 @@ def test_net_status_listener_connection(virtual_drive):
 @pytest.mark.skip
 @pytest.mark.no_connection
 def test_net_status_listener_disconnection():
-    # TODO: implement
     pass
 
 
