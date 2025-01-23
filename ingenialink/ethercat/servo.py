@@ -1,7 +1,7 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import ingenialogger
 
@@ -78,9 +78,9 @@ class EthercatServo(PDOServo):
         self.__slave = slave
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
-        self.__emcy_observers: List[Callable[[EmergencyMessage], None]] = []
+        self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
-        super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
+        super().__init__(slave_id, dictionary_path, servo_status_listener)
 
     def store_parameters(
         self,
@@ -296,7 +296,7 @@ class EthercatServo(PDOServo):
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
-    def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
+    def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
                 self._rpdo_maps.append(rpdo_map)
@@ -395,5 +395,5 @@ class EthercatServo(PDOServo):
 
     @property
     def slave(self) -> "CdefSlave":
-        """Ethercat slave"""
+        """Ethercat slave."""
         return self.__slave

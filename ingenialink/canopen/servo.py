@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import canopen
 import ingenialogger
@@ -45,9 +45,9 @@ class CanopenServo(Servo):
         servo_status_listener: bool = False,
     ) -> None:
         self.__node = node
-        self.__emcy_observers: List[Callable[[EmergencyMessage], None]] = []
+        self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__node.emcy.add_callback(self._on_emcy)
-        super(CanopenServo, self).__init__(target, dictionary_path, servo_status_listener)
+        super().__init__(target, dictionary_path, servo_status_listener)
 
     def read(
         self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
@@ -138,11 +138,7 @@ class CanopenServo(Servo):
             return is_register_valid
         # Exclude the RxPDO and TxPDO related registers
         # Check INGK-980
-        if register.identifier is not None and register.identifier.startswith(
-            ("CIA301_COMMS_TPDO", "CIA301_COMMS_RPDO")
-        ):
-            return False
-        return True
+        return not (register.identifier is not None and register.identifier.startswith(("CIA301_COMMS_TPDO", "CIA301_COMMS_RPDO")))
 
     @staticmethod
     def _monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:

@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import bitarray
 
@@ -198,7 +198,7 @@ class PDOMap:
     _PDO_MAP_ITEM_CLASS = PDOMapItem
 
     def __init__(self) -> None:
-        self.__items: List[PDOMapItem] = []
+        self.__items: list[PDOMapItem] = []
         self.__map_register_address: Optional[int] = None
 
     def create_item(
@@ -227,7 +227,7 @@ class PDOMap:
     def add_registers(
         self,
         registers: Union[
-            Union[EthercatRegister, CanopenRegister], List[Union[EthercatRegister, CanopenRegister]]
+            Union[EthercatRegister, CanopenRegister], list[Union[EthercatRegister, CanopenRegister]]
         ],
     ) -> None:
         """Add a register or a list of registers in bulk.
@@ -244,7 +244,7 @@ class PDOMap:
             self.add_item(item)
 
     @property
-    def items(self) -> List[PDOMapItem]:
+    def items(self) -> list[PDOMapItem]:
         """List of items.
 
         Returns:
@@ -404,8 +404,8 @@ class PDOServo(Servo):
         servo_status_listener: bool = False,
     ):
         super().__init__(target, dictionary_path, servo_status_listener)
-        self._rpdo_maps: List[RPDOMap] = []
-        self._tpdo_maps: List[TPDOMap] = []
+        self._rpdo_maps: list[RPDOMap] = []
+        self._tpdo_maps: list[TPDOMap] = []
 
     def reset_rpdo_mapping(self) -> None:
         """Delete the RPDO mapping stored in the servo slave."""
@@ -446,7 +446,7 @@ class PDOServo(Servo):
         )
 
     def _set_rpdo_map_register(self, rpdo_map_register_index: int, rpdo_map: RPDOMap) -> None:
-        """Fill RPDO map register with PRDOMap object data
+        """Fill RPDO map register with PRDOMap object data.
 
         Args:
             rpdo_map_register_index: custom rpdo map register index
@@ -499,7 +499,7 @@ class PDOServo(Servo):
         )
 
     def _set_tpdo_map_register(self, tpdo_map_register_index: int, tpdo_map: TPDOMap) -> None:
-        """Fill TPDO map register with TRDOMap object data
+        """Fill TPDO map register with TRDOMap object data.
 
         Args:
             tpdo_map_register_index: custom tpdo map register index
@@ -585,7 +585,7 @@ class PDOServo(Servo):
         if tpdo_map_index is not None:
             self._tpdo_maps.pop(tpdo_map_index)
 
-    def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
+    def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         """Callback called by the slave to configure the map.
 
         Args:

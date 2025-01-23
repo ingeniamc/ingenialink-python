@@ -1,12 +1,11 @@
+import contextlib
 import json
 import time
 
 from bitarray import bitarray
 
-try:
+with contextlib.suppress(ImportError):
     import pysoem
-except ImportError:
-    pass
 import pytest
 
 from ingenialink import EthercatNetwork

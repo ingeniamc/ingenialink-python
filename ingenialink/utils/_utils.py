@@ -4,7 +4,7 @@ import struct
 import warnings
 import xml.etree.ElementTree as ET
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import ingenialogger
 
@@ -16,7 +16,7 @@ logger = ingenialogger.get_logger(__name__)
 POLLING_MAX_TRIES = 5  # Seconds
 
 # Mapping type -> [Number of bytes, signedness]
-dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
+dtype_value: dict[REG_DTYPE, tuple[int, bool]] = {
     REG_DTYPE.U8: (1, False),
     REG_DTYPE.S8: (1, True),
     REG_DTYPE.U16: (2, False),
@@ -29,7 +29,7 @@ dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
     REG_DTYPE.BOOL: (1, False),
 }
 
-dtype_length_bits: Dict[REG_DTYPE, int] = {
+dtype_length_bits: dict[REG_DTYPE, int] = {
     REG_DTYPE.U8: 8,
     REG_DTYPE.S8: 8,
     REG_DTYPE.U16: 16,
@@ -97,7 +97,7 @@ def to_ms(s: Union[int, float]) -> int:
 
 
 def remove_xml_subelement(element: ET.Element, subelement: ET.Element) -> None:
-    """Removes a subelement from the given element the element contains the subelement
+    """Removes a subelement from the given element the element contains the subelement.
 
     Args:
         element: Element to be extracted from.
@@ -107,8 +107,8 @@ def remove_xml_subelement(element: ET.Element, subelement: ET.Element) -> None:
         element.remove(subelement)
 
 
-def pop_element(dictionary: Dict[str, Any], element: str) -> None:
-    """Pops an element from a dictionary only if it is contained in it
+def pop_element(dictionary: dict[str, Any], element: str) -> None:
+    """Pops an element from a dictionary only if it is contained in it.
 
     Args:
         dictionary: Dictionary containing all the elements
@@ -120,7 +120,7 @@ def pop_element(dictionary: Dict[str, Any], element: str) -> None:
 
 def cleanup_register(register: ET.Element) -> None:
     """Cleans a ElementTree register to remove all
-    unnecessary fields for a configuration file
+    unnecessary fields for a configuration file.
 
     Args:
         register: Register to be cleaned.

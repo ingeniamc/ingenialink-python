@@ -36,7 +36,6 @@ def pytest_addoption(parser):
 @pytest.fixture(scope="session")
 def read_config(request):
     config = "tests/config.json"
-    print("current config file:", config)
     with open(config, encoding="utf-8") as fp:
         contents = json.load(fp)
     slave = request.config.getoption("--slave")

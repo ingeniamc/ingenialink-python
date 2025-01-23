@@ -70,9 +70,7 @@ def test_read_dictionary_registers():
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
     for subnode in expected_regs_per_subnode:
-        assert expected_regs_per_subnode[subnode] == [
-            reg for reg in ethercat_dict.registers(subnode)
-        ]
+        assert expected_regs_per_subnode[subnode] == list(ethercat_dict.registers(subnode))
 
 
 @pytest.mark.no_connection
@@ -120,7 +118,7 @@ def test_read_dictionary_errors():
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
-    assert [error for error in ethercat_dict.errors] == expected_errors
+    assert list(ethercat_dict.errors) == expected_errors
 
 
 @pytest.mark.no_connection

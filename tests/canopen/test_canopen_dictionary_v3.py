@@ -63,9 +63,7 @@ def test_read_dictionary_registers():
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
 
     for subnode in expected_regs_per_subnode:
-        assert expected_regs_per_subnode[subnode] == [
-            reg for reg in canopen_dict.registers(subnode)
-        ]
+        assert expected_regs_per_subnode[subnode] == list(canopen_dict.registers(subnode))
 
 
 @pytest.mark.no_connection
@@ -107,7 +105,7 @@ def test_read_dictionary_errors():
 
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
 
-    assert [error for error in canopen_dict.errors] == expected_errors
+    assert list(canopen_dict.errors) == expected_errors
 
 
 @pytest.mark.no_connection
@@ -230,7 +228,7 @@ def test_register_bitfields():
     dictionary_path = join_path(path_resources, dict_can_v3)
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
 
-    for subnode, registers in canopen_dict._registers.items():
+    for registers in canopen_dict._registers.values():
         for register in registers.values():
             if register.identifier == "DRV_STATE_CONTROL":
                 assert register.bitfields == {

@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from typing import List, Optional
+from typing import Optional
 
 import ingenialogger
 
@@ -17,7 +17,7 @@ class CanopenDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: List[CanopenRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: list[CanopenRegister] = [
         CanopenRegister(
             identifier="MON_DATA_VALUE",
             idx=0x58B2,

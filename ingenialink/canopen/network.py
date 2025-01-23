@@ -8,7 +8,7 @@ from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import can
 import canopen
@@ -96,7 +96,7 @@ PROG_CTRL_STATE_FLASH = 0x80
 
 APPLICATION_LOADED_STATE = 402
 
-CAN_CHANNELS: Dict[str, Union[Tuple[int, int], Tuple[str, str]]] = {
+CAN_CHANNELS: dict[str, Union[tuple[int, int], tuple[str, str]]] = {
     "kvaser": (0, 1),
     "pcan": ("PCAN_USBBUS1", "PCAN_USBBUS2"),
     "ixxat": (0, 1),
@@ -167,7 +167,7 @@ class NetStatusListener(Thread):
     """
 
     def __init__(self, network: "CanopenNetwork"):
-        super(NetStatusListener, self).__init__()
+        super().__init__()
         self.__network = network
         self.__stop = False
 
@@ -220,14 +220,14 @@ class CanopenNetwork(Network):
         channel: int = 0,
         baudrate: CAN_BAUDRATE = CAN_BAUDRATE.Baudrate_1M,
     ):
-        super(CanopenNetwork, self).__init__()
-        self.servos: List[CanopenServo] = []
+        super().__init__()
+        self.servos: list[CanopenServo] = []
         self.__device = device.value
         self.__channel: Union[int, str] = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
         self._connection: Optional[NetworkLib] = None
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: Dict[int, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
+        self.__observers_net_state: dict[int, list[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
             list
         )
 
@@ -239,7 +239,7 @@ class CanopenNetwork(Network):
         if self.__device == CAN_DEVICE.PCAN.value:
             self.__connection_args["auto_reset"] = True
 
-    def scan_slaves(self) -> List[int]:
+    def scan_slaves(self) -> list[int]:
         """Scans for nodes in the network.
 
         Returns:
@@ -431,7 +431,7 @@ class CanopenNetwork(Network):
 
     def _teardown_connection(self) -> None:
         """Tears down the already established connection
-        and deletes the network interface
+        and deletes the network interface.
         """
         if self._connection is None:
             logger.warning("Can not disconnect. The connection is not established yet.")
@@ -539,7 +539,7 @@ class CanopenNetwork(Network):
     def __load_fw_checks(
         self, target: int, fw_file: str, callback_status_msg: Optional[Callable[[str], None]] = None
     ) -> CanopenServo:
-        """Checks prior to firmware upload and return the target CanopenServo instance
+        """Checks prior to firmware upload and return the target CanopenServo instance.
 
         Args:
             target: Targeted node ID to be loaded.
@@ -579,7 +579,7 @@ class CanopenNetwork(Network):
     def __force_boot(
         self, servo: CanopenServo, callback_status_msg: Optional[Callable[[str], None]]
     ) -> None:
-        """Force boot, if drive is already in boot, do nothing
+        """Force boot, if drive is already in boot, do nothing.
 
         Args:
             servo: target drive
@@ -763,34 +763,33 @@ class CanopenNetwork(Network):
             callback_status_msg("Optimizing file")
         lfu_file_d, lfu_path = tempfile.mkstemp(suffix=".lfu", text=True)
         os.close(lfu_file_d)
-        with open(lfu_path, "wb") as lfu_file:
-            with open(sfu_file) as coco_in:
-                bin_node = ""
-                current_progress = 0
-                node = 10
-                for copy_process, line in enumerate(coco_in):
-                    if re.match(r"74 67 [0-4][0-4] 00 00 00 00 00 00 00", line) is not None:
-                        bin_node = line[6:8]
+        with open(lfu_path, "wb") as lfu_file, open(sfu_file) as coco_in:
+            bin_node = ""
+            current_progress = 0
+            node = 10
+            for copy_process, line in enumerate(coco_in):
+                if re.match(r"74 67 [0-4][0-4] 00 00 00 00 00 00 00", line) is not None:
+                    bin_node = line[6:8]
 
-                    newline = f"{bin_node} {line}"
-                    words = newline.split()
+                newline = f"{bin_node} {line}"
+                words = newline.split()
 
-                    # Get command and address
-                    subnode = int(words[0], 16)
-                    cmd = int(words[2] + words[1], 16)
-                    data = b""
-                    num = 3
-                    while num in range(3, len(words)):
-                        # load data MCB
-                        data += bytes([int(words[num], 16)])
-                        num += 1
+                # Get command and address
+                subnode = int(words[0], 16)
+                cmd = int(words[2] + words[1], 16)
+                data = b""
+                num = 3
+                while num in range(3, len(words)):
+                    # load data MCB
+                    data += bytes([int(words[num], 16)])
+                    num += 1
 
-                    # send message
-                    mcb.add_cmd(node, subnode, cmd, data, lfu_file)
-                    new_progress = int(copy_process * 100 / total_file_lines)
-                    if new_progress != current_progress:
-                        current_progress = new_progress
-                        logger.info(f"Optimizing firmware file in progress: {current_progress}%")
+                # send message
+                mcb.add_cmd(node, subnode, cmd, data, lfu_file)
+                new_progress = int(copy_process * 100 / total_file_lines)
+                if new_progress != current_progress:
+                    current_progress = new_progress
+                    logger.info(f"Optimizing firmware file in progress: {current_progress}%")
         logger.info("Converted to lfu")
         return lfu_path
 
@@ -801,7 +800,7 @@ class CanopenNetwork(Network):
         callback_status_msg: Optional[Callable[[str], None]],
         callback_progress: Optional[Callable[[int], None]],
     ) -> None:
-        """Send firmware file to drive with SDOs
+        """Send firmware file to drive with SDOs.
 
         Args:
             fw_file: target firmware file
@@ -931,7 +930,7 @@ class CanopenNetwork(Network):
             logger.info(f"Node ID changed to {new_target_node}")
 
     def _lss_store_configuration(self) -> None:
-        """Stores the current configuration of the LSS
+        """Stores the current configuration of the LSS.
 
         Raises:
             ILError: If the connection was not established yet.
@@ -1015,7 +1014,7 @@ class CanopenNetwork(Network):
         if self._connection is None:
             return
         try:
-            for node_id, node_obj in self._connection.nodes.items():
+            for node_obj in self._connection.nodes.values():
                 node_obj.nmt.stop_node_guarding()
         except Exception as e:
             logger.error("Could not stop node guarding. Exception: %s", str(e))
@@ -1074,8 +1073,8 @@ class CanopenNetwork(Network):
         """
         self._servos_state[servo_id] = state
 
-    def get_available_devices(self) -> List[Tuple[str, Union[str, int]]]:
-        """Get the available CAN devices and their channels
+    def get_available_devices(self) -> list[tuple[str, Union[str, int]]]:
+        """Get the available CAN devices and their channels.
 
         Returns:
             List of tuples with device name and channel
@@ -1093,8 +1092,8 @@ class CanopenNetwork(Network):
             )
         ]
 
-    def _get_available_kvaser_devices(self) -> List[Dict[str, Any]]:
-        """Get the available Kvaser devices and their channels
+    def _get_available_kvaser_devices(self) -> list[dict[str, Any]]:
+        """Get the available Kvaser devices and their channels.
 
         Returns:
             List of dictionaries compatible with :func:`can.detect_available_configs` output.

@@ -6,16 +6,15 @@ from collections import OrderedDict, defaultdict
 from ftplib import FTP
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import ingenialogger
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NET_DEV_EVT, NET_STATE, Network, SlaveInfo
+from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
 from ingenialink.utils.udp import UDP
 
-from ..network import NET_PROT
 from .servo import EthernetServo
 
 logger = ingenialogger.get_logger(__name__)
@@ -39,7 +38,7 @@ class NetStatusListener(Thread):
     """
 
     def __init__(self, network: "EthernetNetwork", refresh_time: float = 0.25) -> None:
-        super(NetStatusListener, self).__init__()
+        super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
         self.__stop = False
@@ -74,9 +73,9 @@ class EthernetNetwork(Network):
     """Network for all Ethernet communications."""
 
     def __init__(self) -> None:
-        super(EthernetNetwork, self).__init__()
+        super().__init__()
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: Dict[str, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
+        self.__observers_net_state: dict[str, list[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
             list
         )
 
@@ -185,7 +184,7 @@ class EthernetNetwork(Network):
             logger.error(e)
             raise ILFirmwareLoadError("Error during bootloader process.")
 
-    def scan_slaves(self) -> List[int]:
+    def scan_slaves(self) -> list[int]:
         raise NotImplementedError
 
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:

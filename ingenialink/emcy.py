@@ -39,7 +39,7 @@ class EmergencyMessage:
             raise NotImplementedError
 
     def get_desc(self) -> Optional[str]:
-        """Get the error description from the servo's dictionary"""
+        """Get the error description from the servo's dictionary."""
         if (
             self.servo.dictionary.errors is None
             or self.error_code not in self.servo.dictionary.errors

@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 from ingenialink import exceptions as exc
 from ingenialink.bitfield import BitField
@@ -12,7 +12,7 @@ from ingenialink.enums.register import (
 )
 from ingenialink.utils._utils import convert_bytes_to_dtype
 
-dtypes_ranges: Dict[REG_DTYPE, Dict[str, Union[int, float]]] = {
+dtypes_ranges: dict[REG_DTYPE, dict[str, Union[int, float]]] = {
     REG_DTYPE.U8: {"max": 255, "min": 0},
     REG_DTYPE.S8: {"max": 127, "min": -128},
     REG_DTYPE.U16: {"max": 65535, "min": 0},
@@ -66,17 +66,17 @@ class Register(ABC):
         subnode: int = 1,
         storage: Any = None,
         reg_range: Union[
-            Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]
+            tuple[None, None], tuple[int, int], tuple[float, float], tuple[str, str]
         ] = (None, None),
-        labels: Optional[Dict[str, str]] = None,
-        enums: Optional[Dict[str, int]] = None,
+        labels: Optional[dict[str, str]] = None,
+        enums: Optional[dict[str, int]] = None,
         cat_id: Optional[str] = None,
         scat_id: Optional[str] = None,
         internal_use: int = 0,
         address_type: Optional[REG_ADDRESS_TYPE] = None,
         description: Optional[str] = None,
         default: Optional[bytes] = None,
-        bitfields: Optional[Dict[str, BitField]] = None,
+        bitfields: Optional[dict[str, BitField]] = None,
     ) -> None:
         if labels is None:
             labels = {}
@@ -93,7 +93,7 @@ class Register(ABC):
         self._phy = phy.value
         self._subnode = subnode
         self._storage = storage
-        self._range = (None, None) if not reg_range else reg_range
+        self._range = reg_range if reg_range else (None, None)
         self._labels = labels
         self._cat_id = cat_id
         self._scat_id = scat_id
@@ -118,7 +118,7 @@ class Register(ABC):
 
     def __config_range(
         self,
-        reg_range: Union[Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]],
+        reg_range: Union[tuple[None, None], tuple[int, int], tuple[float, float], tuple[str, str]],
     ) -> None:
         cast_type: Union[type[int], type[float]]
         if self.dtype not in dtypes_ranges:
@@ -216,19 +216,19 @@ class Register(ABC):
     @property
     def range(
         self,
-    ) -> Union[Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]]:
+    ) -> Union[tuple[None, None], tuple[int, int], tuple[float, float], tuple[str, str]]:
         """tuple: Containing the minimum and the maximum values of the register."""
         if self._range:
             return self._range
         return (None, None)
 
     @property
-    def labels(self) -> Dict[str, str]:
+    def labels(self) -> dict[str, str]:
         """Containing the labels of the register."""
         return self._labels
 
     @property
-    def enums(self) -> Dict[str, int]:
+    def enums(self) -> dict[str, int]:
         """Containing all the enums for the register."""
         return self._enums
 
@@ -239,12 +239,12 @@ class Register(ABC):
 
     @property
     def cat_id(self) -> Optional[str]:
-        """Category ID"""
+        """Category ID."""
         return self._cat_id
 
     @property
     def scat_id(self) -> Optional[str]:
-        """Sub-Category ID"""
+        """Sub-Category ID."""
         return self._scat_id
 
     @property
@@ -264,7 +264,7 @@ class Register(ABC):
 
     @property
     def default(self) -> Union[None, int, float, str, bytes]:
-        """Register default value"""
+        """Register default value."""
         if self._default is None:
             return self._default
         return convert_bytes_to_dtype(self._default, self.dtype)
@@ -275,5 +275,5 @@ class Register(ABC):
         raise NotImplementedError
 
     @property
-    def bitfields(self) -> Optional[Dict[str, BitField]]:
+    def bitfields(self) -> Optional[dict[str, BitField]]:
         return self.__bitfields
