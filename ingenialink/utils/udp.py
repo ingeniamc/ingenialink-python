@@ -23,6 +23,7 @@ class UDP:
         self.socket.connect((ip, port))
 
     def __del__(self) -> None:
+        """Delete method."""
         try:
             self.socket.close()
         except Exception as e:

@@ -51,6 +51,7 @@ class EmergencyMessage:
         return error_description
 
     def __str__(self) -> str:
+        """String representation."""
         text = f"Error code 0x{self.error_code:04X}"
         description = self.get_desc()
         if description is not None:

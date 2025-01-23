@@ -162,6 +162,7 @@ class EoENetwork(EthernetNetwork):
                 logger.error(e)
 
     def __del__(self) -> None:
+        """Delete method."""
         self._eoe_socket.shutdown(socket.SHUT_RDWR)
         self._eoe_socket.close()
 
