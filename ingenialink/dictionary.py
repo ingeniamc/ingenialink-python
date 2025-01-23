@@ -769,9 +769,9 @@ class DictionaryV3(Dictionary):
         for subnode in subnode_list:
             if subnode.text is None:
                 raise ILDictionaryParseError("Subnode element text is None")
-            self.subnodes[
-                int(subnode.attrib[self.__SUBNODE_INDEX_ATTR])
-            ] = self.subnode_xdf_options[subnode.text.strip()]
+            self.subnodes[int(subnode.attrib[self.__SUBNODE_INDEX_ATTR])] = (
+                self.subnode_xdf_options[subnode.text.strip()]
+            )
 
     def __read_labels(self, root: ET.Element) -> Dict[str, str]:
         """Process Labels element
