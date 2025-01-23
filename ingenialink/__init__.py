@@ -1,6 +1,5 @@
 from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, REG_PHY
 from ingenialink.enums.servo import (
-    SERVO_FLAGS,
     SERVO_MODE,
     SERVO_STATE,
     SERVO_UNITS_ACC,
@@ -27,7 +26,6 @@ __all__ = [
     "NET_STATE",
     "NET_TRANS_PROT",
     "SERVO_STATE",
-    "SERVO_FLAGS",
     "SERVO_MODE",
     "SERVO_UNITS_TORQUE",
     "SERVO_UNITS_POS",
