@@ -65,4 +65,3 @@ def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):
     server, net, servo = virtual_drive_custom_dict(dictionary)
     assert servo is not None and net is not None
     assert server._monitoring is None and server._disturbance is None
-
