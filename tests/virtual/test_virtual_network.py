@@ -64,3 +64,5 @@ def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):
     dictionary = os.path.join(TESTS_RESOURCES_FOLDER, "ethercat/test_dict_ethercat_old_dist.xdf")
     server, net, servo = virtual_drive_custom_dict(dictionary)
     assert servo is not None and net is not None
+    assert server._monitoring is None and server._disturbance is None
+
