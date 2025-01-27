@@ -20,7 +20,7 @@ except ImportError as ex:
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILWrongWorkingCount
-from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
+from ingenialink.network import NET_DEV_EVT, NET_STATE, NetProt, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -504,9 +504,9 @@ class EthercatNetwork(Network):
         self.__is_master_running = True
 
     @property
-    def protocol(self) -> NET_PROT:
-        """NET_PROT: Obtain network protocol."""
-        return NET_PROT.ECAT
+    def protocol(self) -> NetProt:
+        """NetProt: Obtain network protocol."""
+        return NetProt.ECAT
 
     def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
         """Get the state of a servo that's a part of network.

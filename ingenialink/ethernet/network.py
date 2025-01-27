@@ -15,7 +15,7 @@ from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NET_DEV_EVT, NET_STATE, Network, SlaveInfo
 from ingenialink.utils.udp import UDP
 
-from ..network import NET_PROT
+from ..network import NetProt
 from .servo import EthernetServo
 
 logger = ingenialogger.get_logger(__name__)
@@ -328,6 +328,6 @@ class EthernetNetwork(Network):
         self._servos_state[servo_id] = state
 
     @property
-    def protocol(self) -> NET_PROT:
+    def protocol(self) -> NetProt:
         """Obtain network protocol."""
-        return NET_PROT.ETH
+        return NetProt.ETH

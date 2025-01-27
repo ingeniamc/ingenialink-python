@@ -21,7 +21,7 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
+from ingenialink.network import NET_DEV_EVT, NET_STATE, NetProt, Network, SlaveInfo
 from ingenialink.register import REG_ACCESS, REG_DTYPE
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
@@ -105,6 +105,7 @@ CAN_CHANNELS: Dict[str, Union[Tuple[int, int], Tuple[str, str]]] = {
 }
 
 
+# FIXME: INGK-1022
 class CAN_DEVICE(Enum):
     """CAN Device."""
 
@@ -115,6 +116,7 @@ class CAN_DEVICE(Enum):
     SOCKETCAN = "socketcan"
 
 
+# FIXME: INGK-1022
 class CAN_BAUDRATE(Enum):
     """Baudrates."""
 
@@ -1044,9 +1046,9 @@ class CanopenNetwork(Network):
         return self._connection
 
     @property
-    def protocol(self) -> NET_PROT:
+    def protocol(self) -> NetProt:
         """Obtain network protocol."""
-        return NET_PROT.CAN
+        return NetProt.CAN
 
     def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
         """Get the state of a servo that's a part of network.

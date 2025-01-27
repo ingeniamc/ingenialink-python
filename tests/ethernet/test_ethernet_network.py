@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from ingenialink.ethernet.network import NET_DEV_EVT, NET_PROT, NET_STATE, EthernetNetwork
+from ingenialink.ethernet.network import NET_DEV_EVT, NET_STATE, EthernetNetwork, NetProt
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 
 
@@ -51,7 +51,7 @@ def test_ethernet_connection(connect_to_slave, read_config):
     family = servo.socket.family
     ip, port = servo.socket.getpeername()
     assert net.get_servo_state(read_config["ethernet"]["ip"]) == NET_STATE.CONNECTED
-    assert net.protocol == NET_PROT.ETH
+    assert net.protocol == NetProt.ETH
     assert family == socket.AF_INET
     assert servo.socket.type == socket.SOCK_DGRAM
     assert ip == read_config["ethernet"]["ip"]
