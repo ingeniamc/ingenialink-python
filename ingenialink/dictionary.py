@@ -14,7 +14,7 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILDictionaryParseError
-from ingenialink.register import REG_ADDRESS_TYPE, RegAccess, RegCyclicType, RegDtype, Register
+from ingenialink.register import RegAccess, RegAddressType, RegCyclicType, RegDtype, Register
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -178,11 +178,11 @@ class Dictionary(ABC):
     access_xdf_options = {"r": RegAccess.RO, "w": RegAccess.WO, "rw": RegAccess.RW}
 
     address_type_xdf_options = {
-        "NVM": REG_ADDRESS_TYPE.NVM,
-        "NVM_NONE": REG_ADDRESS_TYPE.NVM_NONE,
-        "NVM_CFG": REG_ADDRESS_TYPE.NVM_CFG,
-        "NVM_LOCK": REG_ADDRESS_TYPE.NVM_LOCK,
-        "NVM_HW": REG_ADDRESS_TYPE.NVM_HW,
+        "NVM": RegAddressType.NVM,
+        "NVM_NONE": RegAddressType.NVM_NONE,
+        "NVM_CFG": RegAddressType.NVM_CFG,
+        "NVM_LOCK": RegAddressType.NVM_LOCK,
+        "NVM_HW": RegAddressType.NVM_HW,
     }
 
     subnode_xdf_options = {

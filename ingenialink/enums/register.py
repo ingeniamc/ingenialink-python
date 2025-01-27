@@ -60,8 +60,7 @@ class RegPhy(Enum):
     """Radians."""
 
 
-# FIXME: INGK-1022
-class REG_ADDRESS_TYPE(Enum):
+class RegAddressType(Enum):
     """Address Type."""
 
     NVM = 0

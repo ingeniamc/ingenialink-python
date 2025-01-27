@@ -1,7 +1,7 @@
 import pytest
 
 from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.register import REG_ADDRESS_TYPE, RegAccess, RegDtype, RegPhy
+from ingenialink.register import RegAccess, RegAddressType, RegDtype, RegPhy
 
 
 @pytest.mark.no_connection
@@ -22,7 +22,7 @@ def test_getters_ethernet_register():
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",
-        "address_type": REG_ADDRESS_TYPE.NVM,
+        "address_type": RegAddressType.NVM,
     }
 
     register = EthernetRegister(reg_address, reg_dtype, reg_access, **reg_kwargs)

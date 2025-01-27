@@ -30,7 +30,7 @@ from ingenialink.dictionary import (
     SubnodeType,
 )
 from ingenialink.emcy import EmergencyMessage
-from ingenialink.enums.register import REG_ADDRESS_TYPE, RegAccess, RegDtype
+from ingenialink.enums.register import RegAccess, RegAddressType, RegDtype
 from ingenialink.enums.servo import SERVO_STATE
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
@@ -504,9 +504,7 @@ class Servo:
             True if the register can be used for the configuration file. False otherwise.
 
         """
-        if (register.access != RegAccess.RW) or (
-            register.address_type == REG_ADDRESS_TYPE.NVM_NONE
-        ):
+        if (register.access != RegAccess.RW) or (register.address_type == RegAddressType.NVM_NONE):
             return False
         return True
 

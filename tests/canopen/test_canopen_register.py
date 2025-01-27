@@ -1,9 +1,9 @@
 import pytest
 
 from ingenialink.canopen.register import (
-    REG_ADDRESS_TYPE,
     CanopenRegister,
     RegAccess,
+    RegAddressType,
     RegCyclicType,
     RegDtype,
     RegPhy,
@@ -30,7 +30,7 @@ def test_getters_canopen_register():
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",
-        "address_type": REG_ADDRESS_TYPE.NVM,
+        "address_type": RegAddressType.NVM,
         "is_node_id_dependent": True,
     }
 

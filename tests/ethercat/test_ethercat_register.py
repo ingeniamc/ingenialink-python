@@ -1,7 +1,7 @@
 import pytest
 
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.register import REG_ADDRESS_TYPE, RegAccess, RegDtype, RegPhy
+from ingenialink.register import RegAccess, RegAddressType, RegDtype, RegPhy
 
 
 @pytest.mark.no_connection
@@ -23,7 +23,7 @@ def test_getters_ethercat_register():
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",
-        "address_type": REG_ADDRESS_TYPE.NVM,
+        "address_type": RegAddressType.NVM,
     }
 
     register = EthercatRegister(

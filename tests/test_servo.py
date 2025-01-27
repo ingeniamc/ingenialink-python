@@ -18,7 +18,7 @@ from ingenialink.exceptions import (
     ILTimeoutError,
     ILValueError,
 )
-from ingenialink.register import REG_ADDRESS_TYPE
+from ingenialink.register import RegAddressType
 from ingenialink.servo import SERVO_STATE, Servo
 from tests.virtual.test_virtual_network import RESOURCES_FOLDER
 
@@ -167,7 +167,7 @@ def test_save_configuration(connect_to_slave):
         assert registers[reg_id].dtype == servo.dictionary.dtype_xdf_options[dtype]
 
         assert access == "rw"
-        assert registers[reg_id].address_type != REG_ADDRESS_TYPE.NVM_NONE
+        assert registers[reg_id].address_type != RegAddressType.NVM_NONE
 
     _clean(filename)
 

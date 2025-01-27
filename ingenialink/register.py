@@ -4,8 +4,8 @@ from typing import Any, Dict, Optional, Tuple, Union
 from ingenialink import exceptions as exc
 from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
-    REG_ADDRESS_TYPE,
     RegAccess,
+    RegAddressType,
     RegCyclicType,
     RegDtype,
     RegPhy,
@@ -73,7 +73,7 @@ class Register(ABC):
         cat_id: Optional[str] = None,
         scat_id: Optional[str] = None,
         internal_use: int = 0,
-        address_type: Optional[REG_ADDRESS_TYPE] = None,
+        address_type: Optional[RegAddressType] = None,
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[Dict[str, BitField]] = None,
@@ -253,9 +253,9 @@ class Register(ABC):
         return self._internal_use
 
     @property
-    def address_type(self) -> Optional[REG_ADDRESS_TYPE]:
+    def address_type(self) -> Optional[RegAddressType]:
         """Address type of the register."""
-        return REG_ADDRESS_TYPE(self._address_type)
+        return RegAddressType(self._address_type)
 
     @property
     def description(self) -> Optional[str]:
