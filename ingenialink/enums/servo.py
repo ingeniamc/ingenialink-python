@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class SERVO_STATE(Enum):
+class ServoState(Enum):
     """Servo states."""
 
     NRDY = 0
@@ -22,6 +22,7 @@ class SERVO_STATE(Enum):
     """Fault."""
 
 
+# FIXME: INGK-1022
 class SERVO_FLAGS(Enum):
     """Status Flags."""
 
@@ -47,6 +48,7 @@ class SERVO_FLAGS(Enum):
     """Initial angle determination finished."""
 
 
+# FIXME: INGK-1022
 class SERVO_MODE(Enum):
     """Operation Mode."""
 
@@ -74,6 +76,7 @@ class SERVO_MODE(Enum):
     """Cyclic sync torque mode."""
 
 
+# FIXME: INGK-1022
 class SERVO_UNITS_TORQUE(Enum):
     """Torque Units."""
 
@@ -85,6 +88,7 @@ class SERVO_UNITS_TORQUE(Enum):
     """Newtons*meter."""
 
 
+# FIXME: INGK-1022
 class SERVO_UNITS_POS(Enum):
     """Position Units."""
 
@@ -104,6 +108,7 @@ class SERVO_UNITS_POS(Enum):
     """Meters."""
 
 
+# FIXME: INGK-1022
 class SERVO_UNITS_VEL(Enum):
     """Velocity Units."""
 
@@ -125,6 +130,7 @@ class SERVO_UNITS_VEL(Enum):
     """Meters/second."""
 
 
+# FIXME: INGK-1022
 class SERVO_UNITS_ACC(Enum):
     """Acceleration Units."""
 

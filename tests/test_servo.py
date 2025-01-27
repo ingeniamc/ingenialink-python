@@ -19,7 +19,7 @@ from ingenialink.exceptions import (
     ILValueError,
 )
 from ingenialink.register import RegAddressType
-from ingenialink.servo import SERVO_STATE, Servo
+from ingenialink.servo import Servo, ServoState
 from tests.virtual.test_virtual_network import RESOURCES_FOLDER
 
 MONITORING_CH_DATA_SIZE = 4
@@ -576,9 +576,9 @@ def test_disturbance_data_size(create_disturbance):
 def test_enable_disable(connect_to_slave):
     servo, net = connect_to_slave
     servo.enable()
-    assert servo.status[1] == SERVO_STATE.ENABLED
+    assert servo.status[1] == ServoState.ENABLED
     servo.disable()
-    assert servo.status[1] == SERVO_STATE.DISABLED
+    assert servo.status[1] == ServoState.DISABLED
 
 
 @pytest.mark.canopen
@@ -591,7 +591,7 @@ def test_fault_reset(connect_to_slave):
     with pytest.raises(ILStateError):
         servo.enable()
     servo.fault_reset()
-    assert servo.status[1] != SERVO_STATE.FAULT
+    assert servo.status[1] != ServoState.FAULT
     servo.write("DRV_PROT_USER_OVER_VOLT", data=prev_val, subnode=1)
 
 
@@ -679,7 +679,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.NRDY,
+            ServoState.NRDY,
         ),
         (
             {
@@ -695,7 +695,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.DISABLED,
+            ServoState.DISABLED,
         ),
         (
             {
@@ -711,7 +711,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.RDY,
+            ServoState.RDY,
         ),
         (
             {
@@ -727,7 +727,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.ON,
+            ServoState.ON,
         ),
         (
             {
@@ -743,7 +743,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.ENABLED,
+            ServoState.ENABLED,
         ),
         (
             {
@@ -759,7 +759,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.QSTOP,
+            ServoState.QSTOP,
         ),
         (
             {
@@ -775,7 +775,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.FAULTR,
+            ServoState.FAULTR,
         ),
         (
             {
@@ -791,7 +791,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.FAULT,
+            ServoState.FAULT,
         ),
     ],
 )

@@ -5,7 +5,7 @@ import pytest
 from scipy import signal
 
 from ingenialink.enums.register import RegDtype
-from ingenialink.enums.servo import SERVO_STATE
+from ingenialink.enums.servo import ServoState
 from virtual_drive.core import OperationMode
 
 MONITORING_CH_DATA_SIZE = 4
@@ -160,11 +160,11 @@ def test_virtual_disturbance(virtual_drive, register_key):
 def test_virtual_motor_enable_disable(virtual_drive):
     _, servo = virtual_drive
 
-    assert servo.get_state() == SERVO_STATE.RDY
+    assert servo.get_state() == ServoState.RDY
     servo.enable()
-    assert servo.get_state() == SERVO_STATE.ENABLED
+    assert servo.get_state() == ServoState.ENABLED
     servo.disable()
-    assert servo.get_state() == SERVO_STATE.DISABLED
+    assert servo.get_state() == ServoState.DISABLED
 
 
 @pytest.mark.no_connection

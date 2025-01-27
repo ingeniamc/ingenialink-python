@@ -31,7 +31,7 @@ from ingenialink.dictionary import (
 )
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.enums.register import RegAccess, RegAddressType, RegDtype
-from ingenialink.enums.servo import SERVO_STATE
+from ingenialink.enums.servo import ServoState
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.exceptions import (
@@ -175,7 +175,7 @@ class ServoStatusListener(threading.Thread):
 
     def run(self) -> None:
         """Checks if the drive is alive by reading the status word register"""
-        previous_states: Dict[int, SERVO_STATE] = {}
+        previous_states: Dict[int, ServoState] = {}
         while not self.__stop:
             for subnode in self.__servo.subnodes:
                 if self.__servo.subnodes[subnode] != SubnodeType.MOTION:
@@ -278,7 +278,7 @@ class Servo:
         self.units_acc = None
         """SERVO_UNITS_ACC: Acceleration units."""
         self._lock = threading.Lock()
-        self.__observers_servo_state: List[Callable[[SERVO_STATE, int], Any]] = []
+        self.__observers_servo_state: List[Callable[[ServoState, int], Any]] = []
         self.__listener_servo_status: Optional[ServoStatusListener] = None
         self.__monitoring_data: Dict[int, List[Union[int, float]]] = {}
         self.__monitoring_size: Dict[int, int] = {}
@@ -295,14 +295,14 @@ class Servo:
             self.stop_status_listener()
 
     def start_status_listener(self) -> None:
-        """Start listening for servo status events (SERVO_STATE)."""
+        """Start listening for servo status events (ServoState)."""
         if self.__listener_servo_status is not None:
             return
         self.__listener_servo_status = ServoStatusListener(self)
         self.__listener_servo_status.start()
 
     def stop_status_listener(self) -> None:
-        """Stop listening for servo status events (SERVO_STATE)."""
+        """Stop listening for servo status events (ServoState)."""
         if self.__listener_servo_status is None:
             return
         if self.__listener_servo_status.is_alive():
@@ -688,13 +688,13 @@ class Servo:
         """
         # Try fault reset if faulty
         if self.get_state(subnode) in [
-            SERVO_STATE.FAULT,
-            SERVO_STATE.FAULTR,
+            ServoState.FAULT,
+            ServoState.FAULTR,
         ]:
             self.fault_reset(subnode=subnode)
 
         state = self.get_state(subnode)
-        while state != SERVO_STATE.ENABLED:
+        while state != ServoState.ENABLED:
             # Check state and command action to reach enabled
             cmd = {
                 self.CONTROL_WORD_SWITCH_ON: 1,
@@ -703,21 +703,21 @@ class Servo:
                 self.CONTROL_WORD_ENABLE_OPERATION: 1,
                 self.CONTROL_WORD_FAULT_RESET: 0,
             }
-            if state == SERVO_STATE.FAULT:
+            if state == ServoState.FAULT:
                 raise ILStateError(
                     f"The subnode {subnode} could not be enabled within {timeout} ms. "
                     f"The current subnode state is {state}"
                 )
-            elif state == SERVO_STATE.NRDY:
+            elif state == ServoState.NRDY:
                 cmd = {self.CONTROL_WORD_VOLTAGE_ENABLE: 0, self.CONTROL_WORD_FAULT_RESET: 0}
-            elif state == SERVO_STATE.DISABLED:
+            elif state == ServoState.DISABLED:
                 cmd = {
                     self.CONTROL_WORD_SWITCH_ON: 0,
                     self.CONTROL_WORD_VOLTAGE_ENABLE: 1,
                     self.CONTROL_WORD_QUICK_STOP: 1,
                     self.CONTROL_WORD_FAULT_RESET: 0,
                 }
-            elif state == SERVO_STATE.RDY:
+            elif state == ServoState.RDY:
                 cmd = {
                     self.CONTROL_WORD_SWITCH_ON: 1,
                     self.CONTROL_WORD_VOLTAGE_ENABLE: 1,
@@ -744,10 +744,10 @@ class Servo:
 
         """
         state = self.get_state(subnode)
-        while state != SERVO_STATE.DISABLED:
+        while state != ServoState.DISABLED:
             if state in [
-                SERVO_STATE.FAULT,
-                SERVO_STATE.FAULTR,
+                ServoState.FAULT,
+                ServoState.FAULTR,
             ]:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
@@ -774,8 +774,8 @@ class Servo:
         """
         state = self.get_state(subnode=subnode)
         if state in [
-            SERVO_STATE.FAULT,
-            SERVO_STATE.FAULTR,
+            ServoState.FAULT,
+            ServoState.FAULTR,
         ]:
             # Check if faulty, if so try to reset (0->1)
             self.write_bitfields(
@@ -809,7 +809,7 @@ class Servo:
                 raise ILTimeoutError
             actual_status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
 
-    def state_wait_change(self, state: SERVO_STATE, timeout: int, subnode: int = 1) -> SERVO_STATE:
+    def state_wait_change(self, state: ServoState, timeout: int, subnode: int = 1) -> ServoState:
         """Waits for a state change.
 
         Args:
@@ -840,13 +840,13 @@ class Servo:
 
         return actual_state
 
-    def get_state(self, subnode: int = 1) -> SERVO_STATE:
+    def get_state(self, subnode: int = 1) -> ServoState:
         """Current drive state."""
         status_word = self.read_bitfields(self.STATUS_WORD_REGISTERS, subnode=subnode)
         state = self.status_word_decode(status_word)
         return state
 
-    def status_word_decode(self, status_word: Dict[str, int]) -> SERVO_STATE:
+    def status_word_decode(self, status_word: Dict[str, int]) -> ServoState:
         """Decodes the status word to a known value.
 
         Args:
@@ -864,23 +864,23 @@ class Servo:
         sw_sod = status_word[self.STATUS_WORD_SWITCH_ON_DISABLED]
 
         if not (sw_rtso | sw_so | sw_oe | sw_f | sw_sod):
-            state = SERVO_STATE.NRDY
+            state = ServoState.NRDY
         elif not (sw_rtso | sw_so | sw_oe | sw_f) and sw_sod:
-            state = SERVO_STATE.DISABLED
+            state = ServoState.DISABLED
         elif not (sw_so | sw_oe | sw_f | sw_sod) and (sw_rtso & sw_qs):
-            state = SERVO_STATE.RDY
+            state = ServoState.RDY
         elif not (sw_oe | sw_f | sw_sod) and (sw_rtso & sw_so & sw_qs):
-            state = SERVO_STATE.ON
+            state = ServoState.ON
         elif not (sw_f | sw_sod) and (sw_rtso & sw_so & sw_oe & sw_qs):
-            state = SERVO_STATE.ENABLED
+            state = ServoState.ENABLED
         elif not (sw_f | sw_qs | sw_sod) and (sw_rtso & sw_so & sw_oe):
-            state = SERVO_STATE.QSTOP
+            state = ServoState.QSTOP
         elif not sw_sod and (sw_rtso & sw_so & sw_oe & sw_f):
-            state = SERVO_STATE.FAULTR
+            state = ServoState.FAULTR
         elif not (sw_rtso | sw_so | sw_oe | sw_sod) and sw_f:
-            state = SERVO_STATE.FAULT
+            state = ServoState.FAULT
         else:
-            state = SERVO_STATE.NRDY
+            state = ServoState.NRDY
         return state
 
     def monitoring_enable(self) -> None:
@@ -1048,7 +1048,7 @@ class Servo:
         self.__disturbance_size = {}
         self.__disturbance_dtype = {}
 
-    def subscribe_to_status(self, callback: Callable[[SERVO_STATE, int], Any]) -> None:
+    def subscribe_to_status(self, callback: Callable[[ServoState, int], Any]) -> None:
         """Subscribe to state changes.
 
         Args:
@@ -1063,7 +1063,7 @@ class Servo:
             return
         self.__observers_servo_state.append(callback)
 
-    def unsubscribe_from_status(self, callback: Callable[[SERVO_STATE, int], Any]) -> None:
+    def unsubscribe_from_status(self, callback: Callable[[ServoState, int], Any]) -> None:
         """Unsubscribe from state changes.
 
         Args:
@@ -1153,7 +1153,7 @@ class Servo:
                 e,
             )
 
-    def _notify_state(self, state: SERVO_STATE, subnode: int) -> None:
+    def _notify_state(self, state: ServoState, subnode: int) -> None:
         """Notify the state to the observers.
 
         Args:
@@ -1590,7 +1590,7 @@ class Servo:
         self.__full_name = new_name
 
     @property
-    def status(self) -> Dict[int, SERVO_STATE]:
+    def status(self) -> Dict[int, ServoState]:
         """Servo status."""
         status = {
             subnode: self.get_state(subnode)

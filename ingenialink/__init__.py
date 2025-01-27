@@ -2,11 +2,11 @@ from ingenialink.enums.register import RegAccess, RegDtype, RegPhy
 from ingenialink.enums.servo import (
     SERVO_FLAGS,
     SERVO_MODE,
-    SERVO_STATE,
     SERVO_UNITS_ACC,
     SERVO_UNITS_POS,
     SERVO_UNITS_TORQUE,
     SERVO_UNITS_VEL,
+    ServoState,
 )
 from ingenialink.poller import Poller
 from ingenialink.servo import Servo
@@ -29,6 +29,7 @@ NET_TRANS_PROT = NetTransProt
 REG_DTYPE = RegDtype
 REG_ACCESS = RegAccess
 REG_PHY = RegPhy
+SERVO_STATE = ServoState
 
 __all__ = [
     "EEPROM_FILE_FORMAT",  # WARNING: deprecated
@@ -41,7 +42,8 @@ __all__ = [
     "NetState",
     "NET_TRANS_PROT",  # WARNING: deprecated
     "NetTransProt",
-    "SERVO_STATE",
+    "SERVO_STATE",  # WARNING: deprecated
+    "ServoState",
     "SERVO_FLAGS",
     "SERVO_MODE",
     "SERVO_UNITS_TORQUE",
