@@ -53,5 +53,4 @@ ignore = [
 ]
 "tests/*" = [
     "D", # Docstring rules
-    "ERA001", # Commented-out code
 ]

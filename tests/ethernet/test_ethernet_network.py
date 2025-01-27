@@ -38,9 +38,7 @@ def test_can_not_connect_to_salve(read_config):
 
 @pytest.mark.ethernet
 def test_scan_slaves(read_config):
-    # net = EthernetNetwork()
-    # slaves = net.scan_slaves()
-    # assert len(slaves) > 0
+    # It will be implemented in INGK-1042
     pass
 
 
