@@ -496,12 +496,15 @@ class EthercatNetwork(Network):
             != pysoem.PREOP_STATE
         ):
             raise ILFirmwareLoadError("The slave cannot be forced to boot mode.")
-        slave.sdo_write(
-            self.__FORCE_COCO_BOOT_IDX,
-            self.__FORCE_COCO_BOOT_SUBIDX,
-            self.__FORCE_BOOT_PASSWORD.to_bytes(4, "little"),
-            False,
-        )
+        try:
+            slave.sdo_write(
+                self.__FORCE_COCO_BOOT_IDX,
+                self.__FORCE_COCO_BOOT_SUBIDX,
+                self.__FORCE_BOOT_PASSWORD.to_bytes(4, "little"),
+                False,
+            )
+        except pysoem.WkcError as e:
+            raise ILFirmwareLoadError("Error writing to the Boot mode register.") from e
         slave.state = pysoem.INIT_STATE
         slave.write_state()
         slave.state = pysoem.BOOT_STATE
