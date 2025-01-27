@@ -83,6 +83,14 @@ class EthercatNetwork(Network):
 
     """
 
+    __FOE_ERRORS = {
+        -3: "Unexpected mailbox received",
+        -5: "FoE error",
+        -6: "Buffer too small",
+        -7: "Packet number error",
+        -10: "File not found",
+    }
+
     MANUAL_STATE_CHANGE = 1
 
     DEFAULT_ECAT_CONNECTION_TIMEOUT_S = 1
@@ -447,9 +455,12 @@ class EthercatNetwork(Network):
         foe_result = self._write_foe(slave, fw_file, password)
 
         if foe_result < 0:
-            raise ILFirmwareLoadError(
-                f"The firmware file could not be loaded correctly. Error code: {foe_result}."
-            )
+            error_message = "The firmware file could not be loaded correctly."
+            if foe_result in self.__FOE_ERRORS:
+                error_message += f" {self.__FOE_ERRORS[foe_result]}."
+            else:
+                error_message += f" Error code: {foe_result}."
+            raise ILFirmwareLoadError(error_message)
         self.__init_nodes()
         logger.info("Firmware updated successfully")
 
