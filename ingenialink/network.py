@@ -50,14 +50,6 @@ class NetTransProt(Enum):
     UDP = 2
 
 
-# WARNING: Deprecated aliases
-NET_PROT = NetProt
-NET_STATE = NetState
-NET_DEV_EVT = NetDevEvt
-EEPROM_FILE_FORMAT = EepromFileFormat
-NET_TRANS_PROT = NetTransProt
-
-
 @dataclass
 class SlaveInfo:
     product_code: Optional[int] = None

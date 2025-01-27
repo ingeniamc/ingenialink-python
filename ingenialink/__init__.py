@@ -1,4 +1,4 @@
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, REG_PHY, RegAccess, RegDtype, RegPhy
+from ingenialink.enums.register import RegAccess, RegDtype, RegPhy
 from ingenialink.enums.servo import (
     SERVO_FLAGS,
     SERVO_MODE,
@@ -18,19 +18,17 @@ from .canopen.servo import CanopenServo
 from .ethercat.network import EthercatNetwork
 from .ethernet.network import EthernetNetwork
 from .ethernet.servo import EthernetServo
-from .network import (
-    EEPROM_FILE_FORMAT,
-    NET_DEV_EVT,
-    NET_PROT,
-    NET_STATE,
-    NET_TRANS_PROT,
-    EepromFileFormat,
-    NetDevEvt,
-    NetProt,
-    NetState,
-    NetTransProt,
-    Network,
-)
+from .network import EepromFileFormat, NetDevEvt, NetProt, NetState, NetTransProt, Network
+
+# WARNING: Deprecated aliases
+NET_PROT = NetProt
+NET_STATE = NetState
+NET_DEV_EVT = NetDevEvt
+EEPROM_FILE_FORMAT = EepromFileFormat
+NET_TRANS_PROT = NetTransProt
+REG_DTYPE = RegDtype
+REG_ACCESS = RegAccess
+REG_PHY = RegPhy
 
 __all__ = [
     "EEPROM_FILE_FORMAT",  # WARNING: deprecated

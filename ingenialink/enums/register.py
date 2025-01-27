@@ -77,9 +77,3 @@ class RegCyclicType(Enum):
     TX = "CYCLIC_TX"
     TXRX = "CYCLIC_TXRX"
     CONFIG = "CONFIG"
-
-
-# WARNING: Deprecated aliases
-REG_DTYPE = RegDtype
-REG_ACCESS = RegAccess
-REG_PHY = RegPhy
