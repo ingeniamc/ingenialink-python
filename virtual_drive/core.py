@@ -1278,7 +1278,9 @@ class VirtualDrive(Thread):
 
         self._monitoring: Optional[VirtualMonitoring] = None
         self._disturbance: Optional[VirtualDisturbance] = None
-        if self.__register_exists(0, VirtualMonitoring.STATUS_REGISTER):
+        if self.__register_exists(0, VirtualMonitoring.STATUS_REGISTER) and self.__register_exists(
+            0, VirtualDisturbance.STATUS_REGISTER
+        ):
             self._monitoring = VirtualMonitoring(self)
             self._disturbance = VirtualDisturbance(self)
 

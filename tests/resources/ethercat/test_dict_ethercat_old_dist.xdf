@@ -1,0 +1,444 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<IngeniaDictionary>
+  <Header>
+    <Version>2</Version>
+    <DefaultLanguage>en_US</DefaultLanguage>
+  </Header>
+  <Body>
+    <Device family="Summit" firmwareVersion="2.0.1" ProductCode="57745409" PartNumber="CAP-NET-E" RevisionNumber="196635" Interface="ETH" name="Generic">
+      <Categories>
+        <Category id="IDENTIFICATION">
+          <Labels>
+            <Label lang="en_US">Product Identification</Label>
+          </Labels>
+        </Category>
+        <Category id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Commutation</Label>
+          </Labels>
+        </Category>
+        <Category id="COMMUNICATIONS">
+          <Labels>
+            <Label lang="en_US">Communications</Label>
+          </Labels>
+        </Category>
+        <Category id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Reporting</Label>
+          </Labels>
+        </Category>
+        <Category id="MONITORING">
+          <Labels>
+            <Label lang="en_US">Monitoring</Label>
+          </Labels>
+        </Category>
+      </Categories>
+      <Registers>
+        <Register access="r" address_type="NVM_NONE" address="0x000F" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" units="-" subnode="0" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Last error</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x0090" dtype="u32" id="DIST_CFG_REG0_MAP" units="-" subnode="0" cyclic="CONFIG" desc="This register allows configuring the disturbance mapped register 0." cat_id="MONITORING">
+          <Labels>
+            <Label lang="en_US">Disturbance mapped register 0</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM" address="0x00A1" dtype="u32" id="COMMS_ETH_IP" units="-" subnode="0" cyclic="CONFIG" desc="" cat_id="COMMUNICATIONS">
+          <Labels>
+            <Label lang="en_US">IP Address</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM" address="0x00A2" dtype="u32" id="COMMS_ETH_NET_MASK" units="-" subnode="0" cyclic="CONFIG" desc="" cat_id="COMMUNICATIONS">
+          <Labels>
+            <Label lang="en_US">Netmask</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x00AA" dtype="str" id="DRV_BOOT_COCO_VERSION" units="-" subnode="0" cyclic="CONFIG" desc="" cat_id="IDENTIFICATION">
+          <Labels>
+            <Label lang="en_US">Bootloader version</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x00B0" dtype="u32" id="MON_DIST_STATUS" units="none" subnode="0" cyclic="CONFIG" desc="" cat_id="MONITORING">
+          <Labels>
+            <Label lang="en_US">Monitoring status</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x00F1" dtype="u16" id="MON_CFG_EOC_TYPE" units="none" subnode="0" cyclic="CONFIG" desc="" cat_id="MONITORING">
+          <Labels>
+            <Label lang="en_US">Monitor trigger config</Label>
+          </Labels>
+          <Enumerations>
+            <Enum value="0">TRIGGER_CONFIG_RISING_OR_FALLING</Enum>
+            <Enum value="1">TRIGGER_CONFIG_RISING</Enum>
+            <Enum value="2">TRIGGER_CONFIG_FALLING</Enum>
+          </Enumerations>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0011" dtype="u16" id="DRV_STATE_STATUS" units="-" subnode="1" cyclic="CYCLIC_TX" desc="" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Status word</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x0019" dtype="float" id="CL_VOL_D_SET_POINT" units="V" subnode="1" cyclic="CYCLIC_RX" desc="User direct voltage set-point" cat_id="TARGET">
+          <Labels>
+            <Label lang="en_US">Voltage direct set-point</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x001A" dtype="float" id="CL_CUR_Q_SET_POINT" units="A" subnode="1" cyclic="CYCLIC_RX" desc="User set-point of quadrature current in Amperes" cat_id="TARGET">
+          <Labels>
+            <Label lang="en_US">Current quadrature set-point</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x0020" dtype="s32" id="CL_POS_SET_POINT_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_RX" desc="User position set-point in counts" cat_id="TARGET">
+          <Labels>
+            <Label lang="en_US">Position set-point</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x0021" dtype="float" id="CL_VEL_SET_POINT_VALUE" units="rev/s" subnode="1" cyclic="CYCLIC_RX" desc="User velocity set-point for velocity modes" cat_id="TARGET">
+          <Labels>
+            <Label lang="en_US">Velocity set-point</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0030" dtype="s32" id="CL_POS_FBK_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Position obtained from position feedback sensor in counts" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Actual position</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x0021" dtype="float" id="CL_VEL_SET_POINT_VALUE" units="rev/s" subnode="1" cyclic="CYCLIC_RX" desc="User velocity set-point for velocity modes" cat_id="TARGET">
+          <Labels>
+            <Label lang="en_US">Velocity set-point</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0030" dtype="s32" id="CL_POS_FBK_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Position obtained from position feedback sensor in counts" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Actual position</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0031" dtype="float" id="CL_VEL_FBK_VALUE" units="rev/s" subnode="1" cyclic="CYCLIC_TX" desc="Velocity obtained from velocity feedback sensor in revolution per second" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Actual velocity</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0038" dtype="float" id="FBK_CUR_A_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Current reading of phase A in Amperes" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Current A value</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0039" dtype="float" id="FBK_CUR_B_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Current readings of phase B in Amperes." cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Current B value</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x003A" dtype="float" id="FBK_CUR_C_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Current readings of current C in Amperes" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Current C value</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x003B" dtype="float" id="CL_CUR_Q_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Readings of quadrature current in Amperes" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Current quadrature value</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0040" dtype="float" id="COMMU_ANGLE_VALUE" units="rev" subnode="1" cyclic="CYCLIC_TX" desc="Angle readings in revolutions from commutation feedback after applying angle offset parameter" cat_id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Commutation angle value</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0041" dtype="float" id="COMMU_ANGLE_REF_VALUE" units="rev" subnode="1" cyclic="CYCLIC_TX" desc="Angle read by the reference angle sensor in revolutions" cat_id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Reference angle value</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x006E" dtype="float" id="CL_VOL_D_CMD" units="V" subnode="1" cyclic="CYCLIC_TX" desc="Commanded direct voltage value" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Voltage direct command</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x003C" dtype="float" id="CL_CUR_D_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Readings of direct current in Amperes" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Current direct value</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x001B" dtype="float" id="CL_CUR_D_SET_POINT" units="A" subnode="1" cyclic="CYCLIC_RX" desc="User set-point of direct current in Amperes" cat_id="TARGET">
+          <Labels>
+            <Label lang="en_US">Current direct set-point</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0071" dtype="float" id="CL_VOL_D_REF_VALUE" units="V" subnode="1" cyclic="CYCLIC_TX" desc="Internal direct voltage set-point that enters to the space vector modulation module" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Voltage direct demand</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0072" dtype="float" id="CL_CUR_Q_REF_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Internal set-point of quadrature current sent to drive PI controller in Amperes" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Current quadrature demand</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0073" dtype="float" id="CL_CUR_D_REF_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Internal set-point of direct current sent to drive PI controller in Amperes" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Current direct demand</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0076" dtype="float" id="FBK_CUR_MODULE_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Current vector module in Amperes" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Current actual value</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0077" dtype="float" id="CL_CUR_CMD_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Commanded current vector module" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Current command value</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0078" dtype="s32" id="CL_POS_REF_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Internal position set-point that enters to the position drive controller" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Position demand</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0079" dtype="float" id="CL_VEL_REF_VALUE" units="rev/s" subnode="1" cyclic="CYCLIC_TX" desc="Internal velocity set-point that enters to the velocity drive controller" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Velocity demand</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0097" dtype="float" id="CL_VEL_CMD_VALUE" units="rev/s" subnode="1" cyclic="CYCLIC_TX" desc="Velocity command in velocity control loop." cat_id="CONTROL">
+          <Labels>
+            <Label lang="en_US">Velocity loop control command</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0098" dtype="float" id="CL_CUR_Q_CMD_VALUE" units="A" subnode="1" cyclic="CYCLIC_TX" desc="Current command in current quadrature and current A control loop." cat_id="CONTROL">
+          <Labels>
+            <Label lang="en_US">Current quadrature / A control loop command</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0106" dtype="s16" id="MOT_PAIR_POLES" units="-" subnode="1" cyclic="CONFIG" desc="Pole pairs of the actuator" cat_id="MOTOR">
+          <Labels>
+            <Label lang="en_US">Motor pole pairs</Label>
+          </Labels>
+          <Range min="0" max="32767"/>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0150" dtype="float" id="COMMU_ANGLE_OFFSET" units="rev" subnode="1" cyclic="CONFIG" desc="Angle offset between the reference feedback vs commutation feedback in revolutions." cat_id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Commutation angle offset</Label>
+          </Labels>
+          <Range min="0.0" max="1.0"/>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0151" dtype="u16" id="COMMU_ANGLE_SENSOR" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the sensor used for angle readings" cat_id="COMMUTATION">
+            <Labels>
+                <Label lang="en_US">Commutation feedback sensor</Label>
+            </Labels>
+            <Enumerations>
+                <Enum value="1">BiSS-C / SSI - slave 1</Enum>
+                <Enum value="3">Internal generator</Enum>
+                <Enum value="4">Digital encoder 1</Enum>
+                <Enum value="5">Digital halls</Enum>
+                <Enum value="6">Secondary SSI encoder</Enum>
+                <Enum value="7">BiSS-C slave 2</Enum>
+                <Enum value="8">Digital encoder 2</Enum>
+            </Enumerations>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0152" dtype="float" id="COMMU_ANGLE_REF_OFFSET" units="rev" subnode="1" cyclic="CONFIG" desc="Offset between the generated 0 angle position of the drive and the value read by the reference feedback sensor. It is computed automatically by a forced phasing method." cat_id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Reference angle offset</Label>
+          </Labels>
+          <Range min="0.0" max="1.0"/>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0153" dtype="u16" id="COMMU_ANGLE_REF_SENSOR" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the reference angle sensor used for angle readings." cat_id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Reference feedback sensor</Label>
+          </Labels>
+          <Enumerations>
+            <Enum value="1">BiSS-C / SSI - slave 1</Enum>
+            <Enum value="3">Internal generator</Enum>
+            <Enum value="4">Incremental encoder 1</Enum>
+            <Enum value="5">Digital halls</Enum>
+            <Enum value="6">Secondary BiSS-C / SSI slave 1</Enum>
+            <Enum value="7">BiSS-C slave 2</Enum>
+            <Enum value="8">Incremental encoder 2</Enum>
+          </Enumerations>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0154" dtype="u16" id="COMMU_PHASING_MODE" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the method of actuator alignment" cat_id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Phasing mode</Label>
+          </Labels>
+          <Enumerations>
+            <Enum value="0">Non-forced</Enum>
+            <Enum value="1">Forced</Enum>
+            <Enum value="2">No phasing</Enum>
+          </Enumerations>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0155" dtype="float" id="COMMU_PHASING_MAX_CURRENT" units="A" subnode="1" cyclic="CONFIG" desc="Maximum allowed current during phasing sequence" cat_id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Max. current on phasing sequence</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0156" dtype="u16" id="COMMU_PHASING_TIMEOUT" units="ms" subnode="1" cyclic="CONFIG" desc="Indicates the maximum time that a step is applied in the forced method if the next step condition is not reached." cat_id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Phasing timeout</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0157" dtype="u16" id="COMMU_PHASING_ACCURACY" units="mº" subnode="1" cyclic="CONFIG" desc="Determines the number of steps, the minimum displacement distance and the steps discretization of the binary search method" cat_id="COMMUTATION">
+          <Labels>
+            <Label lang="en_US">Phasing accuracy</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0361" dtype="u16" id="CL_POS_FBK_SENSOR" units="-" subnode="1" cyclic="CONFIG" desc="Selects the position feedback sensor" cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Position feedback sensor</Label>
+          </Labels>
+          <Enumerations>
+            <Enum value="1">BiSS-C / SSI - slave 1</Enum>
+            <Enum value="3">Internal generator</Enum>
+            <Enum value="4">Incremental encoder 1</Enum>
+            <Enum value="5">Digital halls</Enum>
+            <Enum value="6">Secondary BiSS-C / SSI slave 1</Enum>
+            <Enum value="7">BiSS-C slave 2</Enum>
+            <Enum value="8">Incremental encoder 2</Enum>
+          </Enumerations>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0364" dtype="float" id="PROF_POS_VEL_RATIO" units="-" subnode="1" cyclic="CONFIG" desc="Ratio between revolutions in position sensor against revolutions in velocity sensor [revs in position sensor / revs in velocity sensor]&#13;&#10;&#13;&#10;For instance, if 1 revolution at the position sensor locations equals 50 revolutions where the velocity sensor is located, the ratio should be 1/50." cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Position to velocity sensor ratio</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0376" dtype="u16" id="FBK_BISS1_SSI1_POS_ST_BITS" units="-" subnode="1" cyclic="CONFIG" desc="Defines the size in bits of the single-turn information inside the position block of the serial absolute feedback frame" cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Primary Absolute Slave 1 - Single-turn bits</Label>
+          </Labels>
+          <Range min="10" max="32"/>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0380" dtype="u16" id="FBK_GEN_MODE" units="-" subnode="1" cyclic="CONFIG" desc="Waveform to be injected as input feedback value" cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Generator mode</Label>
+          </Labels>
+          <Enumerations>
+            <Enum value="0">Constant</Enum>
+            <Enum value="1">Saw tooth</Enum>
+            <Enum value="2">Square</Enum>
+          </Enumerations>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0381" dtype="float" id="FBK_GEN_FREQ" units="Hz" subnode="1" cyclic="CONFIG" desc="Frequency applied to the generated waveform" cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Generator frequency</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0382" dtype="float" id="FBK_GEN_GAIN" units="-" subnode="1" cyclic="CYCLIC_RX" desc="Gain applied to the generated waveform" cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Generator gain</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0383" dtype="float" id="FBK_GEN_OFFSET" units="-" subnode="1" cyclic="CYCLIC_RX" desc="Offset applied to the generated waveform" cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Generator offset</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0384" dtype="u32" id="FBK_GEN_CYCLES" units="-" subnode="1" cyclic="CONFIG" desc="Number of cycles that the selected waveform is applied" cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Generator cycle number</Label>
+          </Labels>
+        </Register>
+        <Register access="w" address_type="NVM_NONE" address="0x0385" dtype="u16" id="FBK_GEN_REARM" units="-" subnode="1" cyclic="CONFIG" desc="Rearms the generator to start injecting the selected waveform" cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Generator rearm</Label>
+          </Labels>
+          <Enumerations>
+            <Enum value="1">Rearm generator</Enum>
+          </Enumerations>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0388" dtype="u32" id="FBK_DIGENC1_RESOLUTION" units="cnt" subnode="1" cyclic="CONFIG" desc="Number of counts per 1 mechanical revolution of the incremental encoder sensor" cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Incremental encoder 1 - Resolution</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0392" dtype="u16" id="FBK_DIGHALL_PAIRPOLES" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the number of pole pairs  of the digital halls" cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Dig. hall pole pairs</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0406" dtype="u16" id="FBK_BISS2_POS_ST_BITS" units="-" subnode="1" cyclic="CONFIG" desc="Defines the size in bits of the single-turn information inside the position block of the serial absolute feedback frame" cat_id="FEEDBACK">
+          <Labels>
+            <Label lang="en_US">Primary Absolute Slave 2 (daisy chain) - Single-turn bits</Label>
+          </Labels>
+          <Range min="10" max="32"/>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0500" dtype="float" id="CL_CUR_Q_KP" units="V/A" subnode="1" cyclic="CONFIG" desc="" cat_id="CONTROL">
+          <Labels>
+            <Label lang="en_US">Current quadrature loop Kp</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0501" dtype="float" id="CL_CUR_Q_KI" units="Hz" subnode="1" cyclic="CONFIG" desc="Integral gain of the quadrature current PI controller." cat_id="CONTROL">
+          <Labels>
+            <Label lang="en_US">Current quadrature loop Ki</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0505" dtype="float" id="CL_CUR_D_KP" units="V/A" subnode="1" cyclic="CONFIG" desc="Proportional gain of the direct current PI controller" cat_id="CONTROL">
+          <Labels>
+            <Label lang="en_US">Current direct loop Kp</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0506" dtype="float" id="CL_CUR_D_KI" units="Hz" subnode="1" cyclic="CONFIG" desc="Integral gain of the direct current PI controller." cat_id="CONTROL">
+          <Labels>
+            <Label lang="en_US">Current direct loop Ki</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x050A" dtype="float" id="CL_VEL_PID_KP" units="Nm/(rev/s)" subnode="1" cyclic="CYCLIC_RX" desc="Proportional gain of the velocity PID controller" cat_id="CONTROL">
+          <Labels>
+            <Label lang="en_US">Velocity loop Kp</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x050B" dtype="float" id="CL_VEL_PID_KI" units="Hz" subnode="1" cyclic="CYCLIC_RX" desc="Integral gain of the velocity PID controller" cat_id="CONTROL">
+          <Labels>
+            <Label lang="en_US">Velocity loop Ki</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0511" dtype="float" id="CL_POS_PID_KP" units="(rev/s)/cnt" subnode="1" cyclic="CYCLIC_RX" desc="Proportional gain of the position PID controller" cat_id="CONTROL">
+          <Labels>
+            <Label lang="en_US">Position loop Kp</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_CFG" address="0x0512" dtype="float" id="CL_POS_PID_KI" units="Hz" subnode="1" cyclic="CYCLIC_RX" desc="Integral gain of the position PID controller" cat_id="CONTROL">
+          <Labels>
+            <Label lang="en_US">Position loop Ki</Label>
+          </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x0018" dtype="float" id="CL_VOL_Q_SET_POINT" units="V" subnode="1" cyclic="CYCLIC_RX" desc="User quadrature voltage set-point" cat_id="TARGET">
+          <Labels>
+            <Label lang="en_US">Voltage quadrature set-point</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x006F" dtype="float" id="CL_VOL_Q_CMD" units="V" subnode="1" cyclic="CYCLIC_TX" desc="Commanded quadrature voltage value" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Voltage quadrature command</Label>
+          </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x0070" dtype="float" id="CL_VOL_Q_REF_VALUE" units="V" subnode="1" cyclic="CYCLIC_TX" desc="Internal quadrature voltage set-point that enters to the space vector modulation module" cat_id="REPORTING">
+          <Labels>
+            <Label lang="en_US">Voltage quadrature demand</Label>
+          </Labels>
+        </Register>
+      </Registers>
+    </Device>
+    <Errors>
+      <Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">STO Active and Power stage is shutdown</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00007380" affected_module="Feedback" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Too many error bits or invalid position flags detected in absolute encoder</Label>
+        </Labels>
+      </Error>
+      <Error id="0x00007385" affected_module="Control Loops" error_type="cyclic">
+        <Labels>
+          <Label lang="en_US">Position out of limits out of position modes</Label>
+        </Labels>
+      </Error>
+      <Error id="0x06010000" affected_module="Register dictionary" error_type="configuration">
+        <Labels>
+          <Label lang="en_US">Incorrect access type</Label>
+        </Labels>
+      </Error>
+    </Errors>
+  </Body>
+  <DriveImage encoding="xs:base64Binary">
+  </DriveImage>
+</IngeniaDictionary>
