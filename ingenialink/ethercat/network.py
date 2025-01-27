@@ -1,8 +1,4 @@
-import inspect
 import os
-import platform
-import subprocess
-import sys
 import time
 from collections import OrderedDict, defaultdict
 from enum import Enum
@@ -17,7 +13,6 @@ except ImportError as ex:
     pysoem = None
     pysoem_import_error = ex
 
-from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILWrongWorkingCount
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
@@ -29,6 +24,7 @@ class SlaveState(Enum):
     NONE_STATE = 0
     INIT_STATE = 1
     PREOP_STATE = 2
+    BOOT_STATE = 3
     SAFEOP_STATE = 4
     OP_STATE = 8
     ERROR_STATE = 16
@@ -86,6 +82,7 @@ class EthercatNetwork(Network):
         ImportError: WinPcap is not installed
 
     """
+
     MANUAL_STATE_CHANGE = 1
 
     DEFAULT_ECAT_CONNECTION_TIMEOUT_S = 1
@@ -95,6 +92,11 @@ class EthercatNetwork(Network):
     EXPECTED_WKC_PROCESS_DATA = 3
 
     DEFAULT_FOE_PASSWORD = 0x70636675
+
+    __FORCE_BOOT_PASSWORD = 0x424F4F54
+    __FORCE_COCO_BOOT_IDX = 0x5EDE
+    __FORCE_COCO_BOOT_SUBIDX = 0x00
+    __FORCE_BOOT_SLEEP_TIME_S = 5
 
     def __init__(
         self,
@@ -434,7 +436,86 @@ class EthercatNetwork(Network):
 
         if password is None:
             password = self.DEFAULT_FOE_PASSWORD
+
+        self._check_slave_id(slave_id)
+
+        slave = self._ecat_master.slaves[slave_id - 1]
+        if not boot_in_app:
+            self._force_boot_mode(slave)
+        self._switch_to_boot_state(slave)
+
+        foe_result = self._write_foe(slave, fw_file, password)
+
+        if foe_result < 0:
+            raise ILFirmwareLoadError(
+                f"The firmware file could not be loaded correctly. Error code: {foe_result}."
+            )
+        self.__init_nodes()
         logger.info("Firmware updated successfully")
+
+    def _check_slave_id(self, slave_id: int) -> None:
+        """Check if the slave ID is valid and that it is detected.
+
+        Args:
+            slave_id: The slave ID.
+
+        """
+        if not isinstance(slave_id, int) or slave_id < 0:
+            raise ValueError("Invalid slave ID value")
+        if not self.__is_master_running:
+            self._start_master()
+        nodes = self._ecat_master.config_init()
+        if nodes == 0:
+            raise ILError("Could not find any slaves in the network.")
+        if nodes > slave_id:
+            raise ILError(f"Slave {slave_id} was not found.")
+
+    @staticmethod
+    def _switch_to_boot_state(slave: pysoem.CdefSlave) -> None:
+        """Request the transition to the boot state."""
+        slave.state = pysoem.BOOT_STATE
+        slave.write_state()
+
+    def _force_boot_mode(self, slave: pysoem.CdefSlave) -> None:
+        """COCO MOCO drives need to be forced to boot mode."""
+        slave.state = pysoem.PREOP_STATE
+        slave.write_state()
+        if (
+            slave.state_check(pysoem.PREOP_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
+            != pysoem.PREOP_STATE
+        ):
+            raise ILFirmwareLoadError("The slave cannot be forced to boot mode.")
+        slave.sdo_write(
+            self.__FORCE_COCO_BOOT_IDX,
+            self.__FORCE_COCO_BOOT_SUBIDX,
+            self.__FORCE_BOOT_PASSWORD.to_bytes(4, "little"),
+            False,
+        )
+        slave.state = pysoem.INIT_STATE
+        slave.write_state()
+        slave.state = pysoem.BOOT_STATE
+        slave.write_state()
+        time.sleep(self.__FORCE_BOOT_SLEEP_TIME_S)
+        self._ecat_master.config_init()
+
+    @staticmethod
+    def _write_foe(slave: pysoem.CdefSlave, file_path: str, password: int) -> int:
+        """Write the firmware file via FoE.
+
+        Args:
+            slave: The pysoem slave object.
+            file_path: The firmware file path.
+            password: The firmware password.
+
+        Returns:
+            The FOE operation result.
+
+        """
+        with open(file_path, "rb") as file:
+            file_data = file.read()
+            file_name = os.path.basename(file_path)
+            r: int = slave.foe_write(file_name, password, file_data)
+        return r
 
     def _start_master(self) -> None:
         """Start the EtherCAT master"""
