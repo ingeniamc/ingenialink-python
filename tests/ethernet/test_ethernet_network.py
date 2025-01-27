@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from ingenialink.ethernet.network import NET_DEV_EVT, EthernetNetwork, NetProt, NetState
+from ingenialink.ethernet.network import EthernetNetwork, NetDevEvt, NetProt, NetState
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 
 
@@ -115,7 +115,7 @@ def test_net_status_listener_connection(virtual_drive):
     net.stop_status_listener()
 
     assert len(status_list) == 1
-    assert status_list[0] == NET_DEV_EVT.ADDED
+    assert status_list[0] == NetDevEvt.ADDED
 
 
 @pytest.mark.skip

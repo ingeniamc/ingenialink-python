@@ -21,7 +21,7 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NET_DEV_EVT, NetProt, NetState, Network, SlaveInfo
+from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 from ingenialink.register import REG_ACCESS, REG_DTYPE
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
@@ -188,13 +188,13 @@ class NetStatusListener(Thread):
                 servo_state = self.__network.get_servo_state(node_id)
                 if is_alive:
                     if servo_state != NetState.CONNECTED:
-                        self.__network._notify_status(node_id, NET_DEV_EVT.ADDED)
+                        self.__network._notify_status(node_id, NetDevEvt.ADDED)
                         self.__network._set_servo_state(node_id, NetState.CONNECTED)
                     timestamps[node_id] = node.nmt.timestamp
                 elif servo_state == NetState.DISCONNECTED:
                     self.__network._reset_connection()
                 else:
-                    self.__network._notify_status(node_id, NET_DEV_EVT.REMOVED)
+                    self.__network._notify_status(node_id, NetDevEvt.REMOVED)
                     self.__network._set_servo_state(node_id, NetState.DISCONNECTED)
 
     def stop(self) -> None:
@@ -229,9 +229,7 @@ class CanopenNetwork(Network):
         self.__baudrate = baudrate.value
         self._connection: Optional[NetworkLib] = None
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: Dict[int, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
-            list
-        )
+        self.__observers_net_state: Dict[int, List[Callable[[NetDevEvt], Any]]] = defaultdict(list)
 
         self.__connection_args = {
             "interface": self.__device,
@@ -970,7 +968,7 @@ class CanopenNetwork(Network):
 
         self._connection.nodes[target_node].nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
-    def subscribe_to_status(self, node_id: int, callback: Callable[[NET_DEV_EVT], Any]) -> None:  # type: ignore [override]
+    def subscribe_to_status(self, node_id: int, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
         """Subscribe to network state changes.
 
         Args:
@@ -983,7 +981,7 @@ class CanopenNetwork(Network):
             return
         self.__observers_net_state[node_id].append(callback)
 
-    def unsubscribe_from_status(self, node_id: int, callback: Callable[[NET_DEV_EVT], Any]) -> None:  # type: ignore [override]
+    def unsubscribe_from_status(self, node_id: int, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
         """Unsubscribe from network state changes.
 
         Args:
@@ -996,7 +994,7 @@ class CanopenNetwork(Network):
             return
         self.__observers_net_state[node_id].remove(callback)
 
-    def _notify_status(self, node_id: int, status: NET_DEV_EVT) -> None:
+    def _notify_status(self, node_id: int, status: NetDevEvt) -> None:
         """Notify subscribers of a network state change."""
         for callback in self.__observers_net_state[node_id]:
             callback(status)

@@ -11,7 +11,6 @@ from ingenialink.servo import Servo
 logger = ingenialogger.get_logger(__name__)
 
 
-# FIXME: INGK-1022
 class NetProt(Enum):
     """Network Protocol."""
 
@@ -22,7 +21,6 @@ class NetProt(Enum):
     CAN = 5
 
 
-# FIXME: INGK-1022
 class NetState(Enum):
     """Network State."""
 
@@ -31,17 +29,17 @@ class NetState(Enum):
     FAULTY = 2
 
 
-# WARNING: Deprecated aliases
-NET_PROT = NetProt
-NET_STATE = NetState
-
-
-# FIXME: INGK-1022
-class NET_DEV_EVT(Enum):
+class NetDevEvt(Enum):
     """Device Event."""
 
     ADDED = 0
     REMOVED = 1
+
+
+# WARNING: Deprecated aliases
+NET_PROT = NetProt
+NET_STATE = NetState
+NET_DEV_EVT = NetDevEvt
 
 
 # FIXME: INGK-1022
@@ -98,13 +96,13 @@ class Network(ABC):
 
     @abstractmethod
     def subscribe_to_status(
-        self, target: Union[int, str], callback: Callable[[NET_DEV_EVT], Any]
+        self, target: Union[int, str], callback: Callable[[NetDevEvt], Any]
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def unsubscribe_from_status(
-        self, target: Union[int, str], callback: Callable[[NET_DEV_EVT], Any]
+        self, target: Union[int, str], callback: Callable[[NetDevEvt], Any]
     ) -> None:
         raise NotImplementedError
 

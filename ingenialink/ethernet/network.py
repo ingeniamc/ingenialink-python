@@ -12,7 +12,7 @@ import ingenialogger
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NET_DEV_EVT, NetState, Network, SlaveInfo
+from ingenialink.network import NetDevEvt, NetState, Network, SlaveInfo
 from ingenialink.utils.udp import UDP
 
 from ..network import NetProt
@@ -59,10 +59,10 @@ class NetStatusListener(Thread):
                         break
                 ping_response = unsuccessful_pings != self.__max_unsuccessful_pings
                 if servo_state == NetState.CONNECTED and not ping_response:
-                    self.__network._notify_status(servo_ip, NET_DEV_EVT.REMOVED)
+                    self.__network._notify_status(servo_ip, NetDevEvt.REMOVED)
                     self.__network._set_servo_state(servo_ip, NetState.DISCONNECTED)
                 if servo_state == NetState.DISCONNECTED and ping_response:
-                    self.__network._notify_status(servo_ip, NET_DEV_EVT.ADDED)
+                    self.__network._notify_status(servo_ip, NetDevEvt.ADDED)
                     self.__network._set_servo_state(servo_ip, NetState.CONNECTED)
             time.sleep(self.__refresh_time)
 
@@ -76,9 +76,7 @@ class EthernetNetwork(Network):
     def __init__(self) -> None:
         super(EthernetNetwork, self).__init__()
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: Dict[str, List[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
-            list
-        )
+        self.__observers_net_state: Dict[str, List[Callable[[NetDevEvt], Any]]] = defaultdict(list)
 
     @staticmethod
     def load_firmware(
@@ -271,12 +269,12 @@ class EthernetNetwork(Network):
             self.__listener_net_status.join()
         self.__listener_net_status = None
 
-    def _notify_status(self, ip: str, status: NET_DEV_EVT) -> None:
+    def _notify_status(self, ip: str, status: NetDevEvt) -> None:
         """Notify subscribers of a network state change."""
         for callback in self.__observers_net_state[ip]:
             callback(status)
 
-    def subscribe_to_status(self, ip: str, callback: Callable[[NET_DEV_EVT], Any]) -> None:  # type: ignore [override]
+    def subscribe_to_status(self, ip: str, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
         """Subscribe to network state changes.
 
         Args:
@@ -289,7 +287,7 @@ class EthernetNetwork(Network):
             return
         self.__observers_net_state[ip].append(callback)
 
-    def unsubscribe_from_status(self, ip: str, callback: Callable[[NET_DEV_EVT], Any]) -> None:  # type: ignore [override]
+    def unsubscribe_from_status(self, ip: str, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
         """Unsubscribe from network state changes.
 
         Args:

@@ -20,7 +20,7 @@ except ImportError as ex:
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILWrongWorkingCount
-from ingenialink.network import NET_DEV_EVT, NetProt, NetState, Network, SlaveInfo
+from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -59,14 +59,14 @@ class NetStatusListener(Thread):
                 servo_state = self.__network.get_servo_state(slave_id)
                 is_servo_alive = not servo.slave.state == pysoem.NONE_STATE
                 if not is_servo_alive and servo_state == NetState.CONNECTED:
-                    self.__network._notify_status(slave_id, NET_DEV_EVT.REMOVED)
+                    self.__network._notify_status(slave_id, NetDevEvt.REMOVED)
                     self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
                 if (
                     is_servo_alive
                     and servo_state == NetState.DISCONNECTED
                     and self.__network._recover_from_disconnection()
                 ):
-                    self.__network._notify_status(slave_id, NET_DEV_EVT.ADDED)
+                    self.__network._notify_status(slave_id, NetDevEvt.ADDED)
                     self.__network._set_servo_state(slave_id, NetState.CONNECTED)
                 time.sleep(self.__refresh_time)
 
@@ -376,7 +376,7 @@ class EthercatNetwork(Network):
         )
 
     def subscribe_to_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[NET_DEV_EVT], None]
+        self, slave_id: int, callback: Callable[[NetDevEvt], None]
     ) -> None:
         """Subscribe to network state changes.
 
@@ -391,7 +391,7 @@ class EthercatNetwork(Network):
         self.__observers_net_state[slave_id].append(callback)
 
     def unsubscribe_from_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[str, NET_DEV_EVT], None]
+        self, slave_id: int, callback: Callable[[str, NetDevEvt], None]
     ) -> None:
         """Unsubscribe from network state changes.
 
@@ -533,7 +533,7 @@ class EthercatNetwork(Network):
         """
         self._servos_state[servo_id] = state
 
-    def _notify_status(self, slave_id: int, status: NET_DEV_EVT) -> None:
+    def _notify_status(self, slave_id: int, status: NetDevEvt) -> None:
         """Notify subscribers of a network state change."""
         for callback in self.__observers_net_state[slave_id]:
             callback(status)
