@@ -4,7 +4,7 @@ import json
 import pytest
 import rpyc
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
 from ingenialink.eoe.network import EoENetwork
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethernet.network import EthernetNetwork
@@ -60,7 +60,7 @@ def pytest_collection_modifyitems(config, items):
 
 def connect_canopen(protocol_contents):
     net = CanopenNetwork(
-        device=CAN_DEVICE(protocol_contents["device"]),
+        device=CanDevice(protocol_contents["device"]),
         channel=protocol_contents["channel"],
         baudrate=CAN_BAUDRATE(protocol_contents["baudrate"]),
     )

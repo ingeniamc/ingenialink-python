@@ -2,7 +2,7 @@ import platform
 
 import pytest
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
 from ingenialink.exceptions import ILError
 
 test_bus = "virtual"
@@ -13,7 +13,7 @@ test_channel = 0
 @pytest.fixture
 def virtual_network():
     net = CanopenNetwork(
-        device=CAN_DEVICE(test_bus), channel=test_channel, baudrate=CAN_BAUDRATE(test_baudrate)
+        device=CanDevice(test_bus), channel=test_channel, baudrate=CAN_BAUDRATE(test_baudrate)
     )
     return net
 
@@ -39,7 +39,7 @@ def test_connect_to_slave(connect_to_slave):
 def test_connect_to_slave_target_not_in_nodes(read_config):
     protocol_contents = read_config["canopen"]
     net = CanopenNetwork(
-        device=CAN_DEVICE(protocol_contents["device"]),
+        device=CanDevice(protocol_contents["device"]),
         channel=protocol_contents["channel"],
         baudrate=CAN_BAUDRATE(protocol_contents["baudrate"]),
     )
@@ -60,7 +60,7 @@ def test_connect_to_slave_none_nodes(virtual_network, read_config):
 @pytest.mark.canopen
 def test_scan_slaves(read_config):
     net = CanopenNetwork(
-        device=CAN_DEVICE(read_config["canopen"]["device"]),
+        device=CanDevice(read_config["canopen"]["device"]),
         channel=read_config["canopen"]["channel"],
         baudrate=CAN_BAUDRATE(read_config["canopen"]["baudrate"]),
     )
@@ -69,7 +69,7 @@ def test_scan_slaves(read_config):
 
 
 @pytest.mark.no_connection
-@pytest.mark.parametrize("can_device", [CAN_DEVICE.PCAN, CAN_DEVICE.KVASER, CAN_DEVICE.IXXAT])
+@pytest.mark.parametrize("can_device", [CanDevice.PCAN, CanDevice.KVASER, CanDevice.IXXAT])
 def test_scan_slaves_missing_drivers(can_device):
     net = CanopenNetwork(
         device=can_device,
@@ -88,7 +88,7 @@ def test_scan_slaves_missing_drivers(can_device):
 @pytest.mark.canopen
 def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
     net = CanopenNetwork(
-        device=CAN_DEVICE(read_config["canopen"]["device"]),
+        device=CanDevice(read_config["canopen"]["device"]),
         channel=read_config["canopen"]["channel"],
         baudrate=CAN_BAUDRATE(read_config["canopen"]["baudrate"]),
     )
@@ -107,7 +107,7 @@ def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
 def test_disconnect_from_slave(read_config):
     protocol_contents = read_config["canopen"]
     net = CanopenNetwork(
-        device=CAN_DEVICE(protocol_contents["device"]),
+        device=CanDevice(protocol_contents["device"]),
         channel=protocol_contents["channel"],
         baudrate=CAN_BAUDRATE(protocol_contents["baudrate"]),
     )

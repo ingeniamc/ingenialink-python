@@ -2,7 +2,7 @@ import argparse
 import math
 from typing import List, Union, cast
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
 from ingenialink.exceptions import ILRegisterNotFoundError
 from ingenialink.register import RegDtype
 
@@ -60,7 +60,7 @@ def disturbance_example(args: argparse.Namespace) -> None:
         ],
     )
 
-    can_device = CAN_DEVICE(args.transceiver)
+    can_device = CanDevice(args.transceiver)
     can_baudrate = CAN_BAUDRATE(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
     servo = net.connect_to_slave(target=args.node_id, dictionary=args.dictionary_path)

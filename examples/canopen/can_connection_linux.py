@@ -1,6 +1,6 @@
 import argparse
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
 
 
 def connection_example(args: argparse.Namespace) -> None:
@@ -11,7 +11,7 @@ def connection_example(args: argparse.Namespace) -> None:
         dict_path: Path to the dictionary
     """
     can_baudrate = CAN_BAUDRATE(args.baudrate)
-    net = CanopenNetwork(device=CAN_DEVICE.SOCKETCAN, channel=args.channel, baudrate=can_baudrate)
+    net = CanopenNetwork(device=CanDevice.SOCKETCAN, channel=args.channel, baudrate=can_baudrate)
     nodes = net.scan_slaves()
     print(nodes)
 

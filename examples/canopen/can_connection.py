@@ -1,12 +1,12 @@
 import argparse
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
 
 
 def connection_example(args: argparse.Namespace) -> None:
     """Scans for nodes in a network, connects to the first found node, reads
     a register and disconnects the found servo from the network."""
-    can_device = CAN_DEVICE(args.transceiver)
+    can_device = CanDevice(args.transceiver)
     can_baudrate = CAN_BAUDRATE(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
     nodes = net.scan_slaves()

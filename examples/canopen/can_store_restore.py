@@ -1,12 +1,12 @@
 import argparse
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
 
 
 def store_restore_example(args: argparse.Namespace) -> None:
     """Connects to the first scanned drive and store and restores the
     current configuration."""
-    can_device = CAN_DEVICE(args.transceiver)
+    can_device = CanDevice(args.transceiver)
     can_baudrate = CAN_BAUDRATE(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
     nodes = net.scan_slaves()
@@ -22,21 +22,21 @@ def store_restore_example(args: argparse.Namespace) -> None:
         try:
             servo.store_parameters()
             print("Stored all parameters successfully")
-        except Exception as e:
+        except Exception:
             print("Error storing all parameters")
 
         # Store axis 1
         try:
             servo.store_parameters(subnode=1)
             print("Stored axis 1 parameters successfully")
-        except Exception as e:
+        except Exception:
             print("Error storing parameters axis 1")
 
         # Restore all
         try:
             servo.restore_parameters()
             print("Restored all parameters successfully")
-        except Exception as e:
+        except Exception:
             print("Error restoring all parameters")
 
         net.disconnect_from_slave(servo)

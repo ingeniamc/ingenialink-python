@@ -105,8 +105,7 @@ CAN_CHANNELS: Dict[str, Union[Tuple[int, int], Tuple[str, str]]] = {
 }
 
 
-# FIXME: INGK-1022
-class CAN_DEVICE(Enum):
+class CanDevice(Enum):
     """CAN Device."""
 
     KVASER = "kvaser"
@@ -218,7 +217,7 @@ class CanopenNetwork(Network):
 
     def __init__(
         self,
-        device: CAN_DEVICE,
+        device: CanDevice,
         channel: int = 0,
         baudrate: CAN_BAUDRATE = CAN_BAUDRATE.Baudrate_1M,
     ):
@@ -236,7 +235,7 @@ class CanopenNetwork(Network):
             "channel": self.__channel,
             "bitrate": self.__baudrate,
         }
-        if self.__device == CAN_DEVICE.PCAN.value:
+        if self.__device == CanDevice.PCAN.value:
             self.__connection_args["auto_reset"] = True
 
     def scan_slaves(self) -> List[int]:
@@ -406,7 +405,7 @@ class CanopenNetwork(Network):
         """
         if self._connection is None:
             self._connection = canopen.Network()
-            if self.__device in [CAN_DEVICE.IXXAT.value, CAN_DEVICE.KVASER.value]:
+            if self.__device in [CanDevice.IXXAT.value, CanDevice.KVASER.value]:
                 self._connection.listeners.append(CustomListener())
             try:
                 self._connection.connect(**self.__connection_args)
@@ -463,7 +462,7 @@ class CanopenNetwork(Network):
                 logger.info("Bus flushed")
         except Exception as e:
             logger.error(f"Could not stop guarding. Exception: {e}")
-        if self.__device in [CAN_DEVICE.IXXAT.value, CAN_DEVICE.KVASER.value]:
+        if self.__device in [CanDevice.IXXAT.value, CanDevice.KVASER.value]:
             self._connection.listeners.append(CustomListener())
         try:
             self._connection.connect(**self.__connection_args)
@@ -1079,14 +1078,14 @@ class CanopenNetwork(Network):
         Returns:
             List of tuples with device name and channel
         """
-        unavailable_devices = [CAN_DEVICE.KVASER, CAN_DEVICE.VIRTUAL]
+        unavailable_devices = [CanDevice.KVASER, CanDevice.VIRTUAL]
         if platform.system() == "Windows":
-            unavailable_devices.append(CAN_DEVICE.SOCKETCAN)
+            unavailable_devices.append(CanDevice.SOCKETCAN)
         return [
             (available_device["interface"], available_device["channel"])
             for available_device in (
                 can.detect_available_configs(
-                    [device.value for device in CAN_DEVICE if device not in unavailable_devices]
+                    [device.value for device in CanDevice if device not in unavailable_devices]
                 )
                 + self._get_available_kvaser_devices()
             )
@@ -1100,7 +1099,7 @@ class CanopenNetwork(Network):
         """
         if not KVASER_DRIVER_INSTALLED:
             return []
-        if self.__device == CAN_DEVICE.KVASER.value and not self.servos:
+        if self.__device == CanDevice.KVASER.value and not self.servos:
             self._reload_kvaser_lib()
         num_channels = ctypes.c_int(0)
         with contextlib.suppress(CANLIBError, NameError):

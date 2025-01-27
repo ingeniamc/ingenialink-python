@@ -1,11 +1,11 @@
 import argparse
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
 from ingenialink.canopen.servo import CanopenServo
 
 
 def connect_slave(args: argparse.Namespace) -> tuple[CanopenServo, CanopenNetwork]:
-    can_device = CAN_DEVICE(args.transceiver)
+    can_device = CanDevice(args.transceiver)
     can_baudrate = CAN_BAUDRATE(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
 

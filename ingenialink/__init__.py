@@ -12,7 +12,7 @@ from ingenialink.poller import Poller
 from ingenialink.servo import Servo
 
 from .canopen.dictionary import CanopenDictionaryV2
-from .canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from .canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
 from .canopen.register import CanopenRegister
 from .canopen.servo import CanopenServo
 from .ethercat.network import EthercatNetwork
@@ -36,6 +36,7 @@ SERVO_UNITS_TORQUE = ServoUnitsTorque
 SERVO_UNITS_POS = ServoUnitsPos
 SERVO_UNITS_VEL = ServoUnitsVel
 SERVO_UNITS_ACC = ServoUnitsAcc
+CAN_DEVICE = CanDevice
 
 __all__ = [
     "EEPROM_FILE_FORMAT",  # WARNING: deprecated
@@ -74,7 +75,8 @@ __all__ = [
     "EthernetServo",
     "EthernetNetwork",
     "CanopenNetwork",
-    "CAN_DEVICE",
+    "CAN_DEVICE",  # WARNING: deprecated
+    "CanDevice",
     "CAN_BAUDRATE",
     "CanopenServo",
     "CanopenRegister",
