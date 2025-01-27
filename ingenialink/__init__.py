@@ -18,14 +18,31 @@ from .canopen.servo import CanopenServo
 from .ethercat.network import EthercatNetwork
 from .ethernet.network import EthernetNetwork
 from .ethernet.servo import EthernetServo
-from .network import EEPROM_FILE_FORMAT, NET_DEV_EVT, NET_PROT, NET_STATE, NET_TRANS_PROT, Network
+from .network import (
+    EEPROM_FILE_FORMAT,
+    NET_DEV_EVT,
+    NET_PROT,
+    NET_STATE,
+    NET_TRANS_PROT,
+    EepromFileFormat,
+    NetDevEvt,
+    NetProt,
+    NetState,
+    NetTransProt,
+    Network,
+)
 
 __all__ = [
-    "EEPROM_FILE_FORMAT",
-    "NET_PROT",
-    "NET_DEV_EVT",
-    "NET_STATE",
-    "NET_TRANS_PROT",
+    "EEPROM_FILE_FORMAT",  # WARNING: deprecated
+    "EepromFileFormat",
+    "NET_PROT",  # WARNING: deprecated
+    "NetProt",
+    "NET_DEV_EVT",  # WARNING: deprecated
+    "NetDevEvt",
+    "NET_STATE",  # WARNING: deprecated
+    "NetState",
+    "NET_TRANS_PROT",  # WARNING: deprecated
+    "NetTransProt",
     "SERVO_STATE",
     "SERVO_FLAGS",
     "SERVO_MODE",
