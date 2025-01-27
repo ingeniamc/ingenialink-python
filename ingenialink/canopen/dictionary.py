@@ -3,7 +3,7 @@ from typing import List, Optional
 
 import ingenialogger
 
-from ingenialink.canopen.register import REG_ACCESS, CanopenRegister, RegCyclicType, RegDtype
+from ingenialink.canopen.register import CanopenRegister, RegAccess, RegCyclicType, RegDtype
 from ingenialink.dictionary import DictionaryV2, Interface
 
 logger = ingenialogger.get_logger(__name__)
@@ -24,7 +24,7 @@ class CanopenDictionaryV2(DictionaryV2):
             subidx=0x00,
             cyclic=RegCyclicType.CONFIG,
             dtype=RegDtype.BYTE_ARRAY_512,
-            access=REG_ACCESS.RO,
+            access=RegAccess.RO,
             subnode=0,
         ),
         CanopenRegister(
@@ -33,7 +33,7 @@ class CanopenDictionaryV2(DictionaryV2):
             subidx=0x00,
             cyclic=RegCyclicType.CONFIG,
             dtype=RegDtype.BYTE_ARRAY_512,
-            access=REG_ACCESS.WO,
+            access=RegAccess.WO,
             subnode=0,
         ),
     ]

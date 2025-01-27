@@ -22,7 +22,7 @@ from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
-from ingenialink.register import REG_ACCESS, RegDtype
+from ingenialink.register import RegAccess, RegDtype
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 
@@ -50,7 +50,7 @@ PROG_STAT_1 = CanopenRegister(
     subidx=0x01,
     cyclic=RegCyclicType.CONFIG,
     dtype=RegDtype.U8,
-    access=REG_ACCESS.RW,
+    access=RegAccess.RW,
     identifier="CIA302_BL_PROGRAM_CONTROL_1",
     subnode=0,
 )
@@ -59,7 +59,7 @@ PROG_DL_1 = CanopenRegister(
     subidx=0x01,
     cyclic=RegCyclicType.CONFIG,
     dtype=RegDtype.BYTE_ARRAY_512,
-    access=REG_ACCESS.RW,
+    access=RegAccess.RW,
     identifier="CIA302_BL_PROGRAM_DATA",
     subnode=0,
 )
@@ -68,7 +68,7 @@ FORCE_BOOT = CanopenRegister(
     subidx=0x00,
     cyclic=RegCyclicType.CONFIG,
     dtype=RegDtype.U32,
-    access=REG_ACCESS.WO,
+    access=RegAccess.WO,
     identifier="DRV_BOOT_COCO_FORCE",
     subnode=0,
 )
@@ -78,7 +78,7 @@ CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
     subidx=0x00,
     cyclic=RegCyclicType.CONFIG,
     dtype=RegDtype.U32,
-    access=REG_ACCESS.RO,
+    access=RegAccess.RO,
     identifier="",
     subnode=0,
 )

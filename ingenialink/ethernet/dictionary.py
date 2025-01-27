@@ -4,7 +4,7 @@ from typing import List, Optional
 import ingenialogger
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.ethernet.register import REG_ACCESS, EthernetRegister, RegCyclicType, RegDtype
+from ingenialink.ethernet.register import EthernetRegister, RegAccess, RegCyclicType, RegDtype
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -25,7 +25,7 @@ class EthernetDictionaryV2(DictionaryV2):
             address=0x00B2,
             cyclic=RegCyclicType.CONFIG,
             dtype=RegDtype.BYTE_ARRAY_512,
-            access=REG_ACCESS.RO,
+            access=RegAccess.RO,
         ),
         EthernetRegister(
             identifier="DIST_DATA_VALUE",
@@ -34,7 +34,7 @@ class EthernetDictionaryV2(DictionaryV2):
             address=0x00B4,
             cyclic=RegCyclicType.CONFIG,
             dtype=RegDtype.BYTE_ARRAY_512,
-            access=REG_ACCESS.WO,
+            access=RegAccess.WO,
         ),
     ]
 

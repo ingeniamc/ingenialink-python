@@ -2,9 +2,9 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
-    REG_ACCESS,
     REG_ADDRESS_TYPE,
     REG_PHY,
+    RegAccess,
     RegCyclicType,
     RegDtype,
 )
@@ -48,7 +48,7 @@ class CanopenRegister(Register):
         idx: int,
         subidx: int,
         dtype: RegDtype,
-        access: REG_ACCESS,
+        access: RegAccess,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
         cyclic: RegCyclicType = RegCyclicType.CONFIG,

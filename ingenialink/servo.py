@@ -30,7 +30,7 @@ from ingenialink.dictionary import (
     SubnodeType,
 )
 from ingenialink.emcy import EmergencyMessage
-from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, RegDtype
+from ingenialink.enums.register import REG_ADDRESS_TYPE, RegAccess, RegDtype
 from ingenialink.enums.servo import SERVO_STATE
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
@@ -504,7 +504,7 @@ class Servo:
             True if the register can be used for the configuration file. False otherwise.
 
         """
-        if (register.access != REG_ACCESS.RW) or (
+        if (register.access != RegAccess.RW) or (
             register.address_type == REG_ADDRESS_TYPE.NVM_NONE
         ):
             return False
@@ -1325,7 +1325,7 @@ class Servo:
         """
         _reg = self._get_reg(reg, subnode)
 
-        if _reg.access == REG_ACCESS.RO:
+        if _reg.access == RegAccess.RO:
             raise ILAccessError("Register is Read-only")
         if isinstance(data, bytes):
             data_bytes = data
@@ -1354,7 +1354,7 @@ class Servo:
         """
         _reg = self._get_reg(reg, subnode)
         access = _reg.access
-        if access == REG_ACCESS.WO:
+        if access == RegAccess.WO:
             raise ILAccessError("Register is Write-only")
 
         raw_read = self._read_raw(_reg, **kwargs)

@@ -4,9 +4,9 @@ from typing import Any, Dict, Optional, Tuple, Union
 from ingenialink import exceptions as exc
 from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
-    REG_ACCESS,
     REG_ADDRESS_TYPE,
     REG_PHY,
+    RegAccess,
     RegCyclicType,
     RegDtype,
 )
@@ -58,7 +58,7 @@ class Register(ABC):
     def __init__(
         self,
         dtype: RegDtype,
-        access: REG_ACCESS,
+        access: RegAccess,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
         cyclic: RegCyclicType = RegCyclicType.CONFIG,
@@ -106,11 +106,11 @@ class Register(ABC):
         self.__bitfields = bitfields
         self.__config_range(reg_range)
 
-    def __type_errors(self, dtype: RegDtype, access: REG_ACCESS, phy: REG_PHY) -> None:
+    def __type_errors(self, dtype: RegDtype, access: RegAccess, phy: REG_PHY) -> None:
         if not isinstance(dtype, RegDtype):
             raise exc.ILValueError("Invalid data type")
 
-        if not isinstance(access, REG_ACCESS):
+        if not isinstance(access, RegAccess):
             raise exc.ILAccessError("Invalid access type")
 
         if not isinstance(phy, REG_PHY):
@@ -148,9 +148,9 @@ class Register(ABC):
         return RegDtype(self._dtype)
 
     @property
-    def access(self) -> REG_ACCESS:
+    def access(self) -> RegAccess:
         """Access type of the register."""
-        return REG_ACCESS(self._access)
+        return RegAccess(self._access)
 
     @property
     def identifier(self) -> Optional[str]:

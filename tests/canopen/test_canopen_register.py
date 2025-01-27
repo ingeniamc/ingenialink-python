@@ -1,10 +1,10 @@
 import pytest
 
 from ingenialink.canopen.register import (
-    REG_ACCESS,
     REG_ADDRESS_TYPE,
     REG_PHY,
     CanopenRegister,
+    RegAccess,
     RegCyclicType,
     RegDtype,
 )
@@ -16,7 +16,7 @@ def test_getters_canopen_register():
     reg_idx = 0x58F0
     reg_subidx = 0x00
     reg_dtype = RegDtype.U32
-    reg_access = REG_ACCESS.RW
+    reg_access = RegAccess.RW
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
         "units": "none",
@@ -83,7 +83,7 @@ def test_canopen_connection_register(connect_to_slave):
     assert register.units == "-"
     assert register.cyclic == RegCyclicType.RX
     assert register.dtype == RegDtype.U16
-    assert register.access, REG_ACCESS.RW
+    assert register.access, RegAccess.RW
     assert register.idx == 0x2014
     assert register.subidx == 0
     assert register.phy == REG_PHY.NONE

@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 import bitarray
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import REG_ACCESS, RegCyclicType, RegDtype
+from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILError
 from ingenialink.servo import Servo
@@ -52,7 +52,7 @@ class PDOMapItem:
                 subidx=0x00,
                 cyclic=self.ACCEPTED_CYCLIC,
                 dtype=RegDtype.STR,
-                access=REG_ACCESS.RW,
+                access=RegAccess.RW,
             )
         self.register = register
         self.size_bits = size_bits or dtype_length_bits[register.dtype]

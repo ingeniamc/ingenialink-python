@@ -30,8 +30,7 @@ class RegDtype(Enum):
     """Boolean."""
 
 
-# FIXME: INGK-1022
-class REG_ACCESS(Enum):
+class RegAccess(Enum):
     """Access Type."""
 
     RW = 0
@@ -84,3 +83,4 @@ class RegCyclicType(Enum):
 
 # WARNING: Deprecated aliases
 REG_DTYPE = RegDtype
+REG_ACCESS = RegAccess

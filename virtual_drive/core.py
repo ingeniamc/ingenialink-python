@@ -13,7 +13,7 @@ from scipy import signal
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.dictionary import Interface
-from ingenialink.enums.register import REG_ACCESS, RegDtype
+from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.servo import DictionaryFactory
@@ -1342,7 +1342,7 @@ class VirtualDrive(Thread):
             bytes: Response to be sent.
         """
         response = MCB.build_mcb_frame(self.ACK_CMD, register.subnode, register.address, data[:8])
-        if register.access in [REG_ACCESS.RW, REG_ACCESS.WO]:
+        if register.access in [RegAccess.RW, RegAccess.WO]:
             value = convert_bytes_to_dtype(data, register.dtype)
             self.__decode_msg(register.address, register.subnode, data)
             self.set_value_by_id(register.subnode, str(register.identifier), value)
