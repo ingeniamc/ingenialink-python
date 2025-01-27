@@ -3,7 +3,7 @@ import time
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 import ingenialogger
 
@@ -12,6 +12,9 @@ try:
 except ImportError as ex:
     pysoem = None
     pysoem_import_error = ex
+
+if TYPE_CHECKING:
+    from pysoem import CdefSlave
 
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILWrongWorkingCount
@@ -482,12 +485,12 @@ class EthercatNetwork(Network):
             raise ILError(f"Slave {slave_id} was not found.")
 
     @staticmethod
-    def _switch_to_boot_state(slave: pysoem.CdefSlave) -> None:
+    def _switch_to_boot_state(slave: "CdefSlave") -> None:
         """Request the transition to the boot state."""
         slave.state = pysoem.BOOT_STATE
         slave.write_state()
 
-    def _force_boot_mode(self, slave: pysoem.CdefSlave) -> None:
+    def _force_boot_mode(self, slave: "CdefSlave") -> None:
         """COCO MOCO drives need to be forced to boot mode."""
         slave.state = pysoem.PREOP_STATE
         slave.write_state()
@@ -513,7 +516,7 @@ class EthercatNetwork(Network):
         self._ecat_master.config_init()
 
     @staticmethod
-    def _write_foe(slave: pysoem.CdefSlave, file_path: str, password: int) -> int:
+    def _write_foe(slave: "CdefSlave", file_path: str, password: int) -> int:
         """Write the firmware file via FoE.
 
         Args:
