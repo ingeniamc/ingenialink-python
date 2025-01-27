@@ -1,13 +1,13 @@
 import pytest
 
 from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY
+from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_PHY, RegDtype
 
 
 @pytest.mark.no_connection
 def test_getters_ethernet_register():
     reg_address = 0x58F0
-    reg_dtype = REG_DTYPE.U32
+    reg_dtype = RegDtype.U32
     reg_access = REG_ACCESS.RW
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
@@ -18,7 +18,7 @@ def test_getters_ethernet_register():
         "storage": 1,
         "reg_range": (-20, 20),
         "labels": "Monitoring trigger type",
-        "enums": {"TRIGGER_EVENT_AUTO": 0, "TRIGGER_EVENT_FORCED": 1},
+        "enums": {"TRIGGER_EVENT_AUTO": 0, "TRIGGER_EVENT_FORCED": 1},  # FIXME: INGK-1022
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",

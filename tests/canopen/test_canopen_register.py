@@ -3,10 +3,10 @@ import pytest
 from ingenialink.canopen.register import (
     REG_ACCESS,
     REG_ADDRESS_TYPE,
-    REG_DTYPE,
     REG_PHY,
     CanopenRegister,
     RegCyclicType,
+    RegDtype,
 )
 from ingenialink.dictionary import Dictionary
 
@@ -15,7 +15,7 @@ from ingenialink.dictionary import Dictionary
 def test_getters_canopen_register():
     reg_idx = 0x58F0
     reg_subidx = 0x00
-    reg_dtype = REG_DTYPE.U32
+    reg_dtype = RegDtype.U32
     reg_access = REG_ACCESS.RW
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
@@ -26,7 +26,7 @@ def test_getters_canopen_register():
         "storage": 1,
         "reg_range": (-20, 20),
         "labels": "Monitoring trigger type",
-        "enums": {"TRIGGER_EVENT_AUTO": 0, "TRIGGER_EVENT_FORCED": 1},
+        "enums": {"TRIGGER_EVENT_AUTO": 0, "TRIGGER_EVENT_FORCED": 1},  # FIXME: INGK-1022
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",
@@ -82,7 +82,7 @@ def test_canopen_connection_register(connect_to_slave):
     assert register.identifier == "DRV_OP_CMD"
     assert register.units == "-"
     assert register.cyclic == RegCyclicType.RX
-    assert register.dtype == REG_DTYPE.U16
+    assert register.dtype == RegDtype.U16
     assert register.access, REG_ACCESS.RW
     assert register.idx == 0x2014
     assert register.subidx == 0

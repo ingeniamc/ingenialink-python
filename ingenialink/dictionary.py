@@ -14,7 +14,7 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILDictionaryParseError
-from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, RegCyclicType, Register
+from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, RegCyclicType, RegDtype, Register
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -161,18 +161,18 @@ class Dictionary(ABC):
     """
 
     dtype_xdf_options = {
-        "float": REG_DTYPE.FLOAT,
-        "s8": REG_DTYPE.S8,
-        "u8": REG_DTYPE.U8,
-        "s16": REG_DTYPE.S16,
-        "u16": REG_DTYPE.U16,
-        "s32": REG_DTYPE.S32,
-        "u32": REG_DTYPE.U32,
-        "s64": REG_DTYPE.S64,
-        "u64": REG_DTYPE.U64,
-        "str": REG_DTYPE.STR,
-        "bool": REG_DTYPE.BOOL,
-        "byteArray512": REG_DTYPE.BYTE_ARRAY_512,
+        "float": RegDtype.FLOAT,
+        "s8": RegDtype.S8,
+        "u8": RegDtype.U8,
+        "s16": RegDtype.S16,
+        "u16": RegDtype.U16,
+        "s32": RegDtype.S32,
+        "u32": RegDtype.U32,
+        "s64": RegDtype.S64,
+        "u64": RegDtype.U64,
+        "str": RegDtype.STR,
+        "bool": RegDtype.BOOL,
+        "byteArray512": RegDtype.BYTE_ARRAY_512,
     }
 
     access_xdf_options = {"r": REG_ACCESS.RO, "w": REG_ACCESS.WO, "rw": REG_ACCESS.RW}
@@ -769,9 +769,9 @@ class DictionaryV3(Dictionary):
         for subnode in subnode_list:
             if subnode.text is None:
                 raise ILDictionaryParseError("Subnode element text is None")
-            self.subnodes[
-                int(subnode.attrib[self.__SUBNODE_INDEX_ATTR])
-            ] = self.subnode_xdf_options[subnode.text.strip()]
+            self.subnodes[int(subnode.attrib[self.__SUBNODE_INDEX_ATTR])] = (
+                self.subnode_xdf_options[subnode.text.strip()]
+            )
 
     def __read_labels(self, root: ET.Element) -> Dict[str, str]:
         """Process Labels element

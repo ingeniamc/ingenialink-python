@@ -13,7 +13,7 @@ from scipy import signal
 
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.dictionary import Interface
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
+from ingenialink.enums.register import REG_ACCESS, RegDtype
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.servo import DictionaryFactory
@@ -38,6 +38,7 @@ INC_ENC1_RESOLUTION = 4096
 INC_ENC2_RESOLUTION = 2000
 
 
+# FIXME: INGK-1022
 class MSG_TYPE(Enum):
     RECEIVED = "RECEIVED"
     SENT = "SENT"
@@ -154,7 +155,7 @@ class BasePlant:
         initial_value = (
             self.set_point_register.storage if self.set_point_register.storage > 0 else 0
         )
-        use_fft_method = self.value_register.dtype == REG_DTYPE.FLOAT
+        use_fft_method = self.value_register.dtype == RegDtype.FLOAT
         mon_signal = self._filter_signal(
             dist_signal, use_fft_method=use_fft_method, initial_value=initial_value
         )
@@ -873,7 +874,7 @@ class VirtualMonDistBase:
         self.disable()
         self.number_mapped_registers = 0
         self.channels_data: Dict[int, List[Union[int, float]]] = {}
-        self.channels_dtype: Dict[int, REG_DTYPE] = {}
+        self.channels_dtype: Dict[int, RegDtype] = {}
         self.channels_address: Dict[int, int] = {}
         self.channels_subnode: Dict[int, int] = {}
         self.channels_size: Dict[int, int] = {}
@@ -989,7 +990,7 @@ class VirtualMonDistBase:
         for channel in range(self.number_mapped_registers):
             subnode, address, dtype, size = self.get_mapped_register(channel)
             self.channels_data[channel] = empty_list.copy()
-            self.channels_dtype[channel] = REG_DTYPE(dtype)
+            self.channels_dtype[channel] = RegDtype(dtype)
             self.channels_address[channel] = address
             self.channels_subnode[channel] = subnode
             self.channels_size[channel] = size
@@ -1094,7 +1095,7 @@ class VirtualMonitoring(VirtualMonDistBase):
                 continue
 
             start_value = address + subnode
-            if self.channels_dtype[channel] == REG_DTYPE.FLOAT:
+            if self.channels_dtype[channel] == RegDtype.FLOAT:
                 signal = [
                     float(start_value + i)
                     for i in range(0, self.buffer_size * self.divider, self.divider)
@@ -1113,7 +1114,7 @@ class VirtualMonitoring(VirtualMonDistBase):
             for channel in range(self.number_mapped_registers):
                 value = self.channels_data[channel][sample]
                 size = self.channels_size[channel]
-                if self.channels_dtype[channel] != REG_DTYPE.FLOAT:
+                if self.channels_dtype[channel] != RegDtype.FLOAT:
                     value = int(value)
                 sample_bytes = convert_dtype_to_bytes(value, self.channels_dtype[channel])
                 if len(sample_bytes) < size:
@@ -1408,7 +1409,7 @@ class VirtualDrive(Thread):
                     continue
                 elif reg.enums_count > 0:
                     value = next(iter(reg.enums.values()))
-                elif reg.dtype == REG_DTYPE.STR:
+                elif reg.dtype == RegDtype.STR:
                     value = ""
                 else:
                     value = 0
@@ -1442,7 +1443,7 @@ class VirtualDrive(Thread):
                 raise ValueError
             register = EthernetRegister(
                 reg.address,
-                REG_DTYPE.BYTE_ARRAY_512,
+                RegDtype.BYTE_ARRAY_512,
                 reg.access,
                 identifier=id,
                 subnode=reg.subnode,
@@ -1666,7 +1667,7 @@ class VirtualDrive(Thread):
             if self.reg_noise_amplitude[id] > 0:
                 value = value + self.reg_noise_amplitude[id] * np.random.uniform()
 
-            if register.dtype != REG_DTYPE.FLOAT:
+            if register.dtype != RegDtype.FLOAT:
                 value = int(value)
             return value
         storage_value = self.__dictionary.registers(subnode)[id]._storage

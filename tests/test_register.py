@@ -5,7 +5,7 @@ import pytest
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
-from ingenialink.register import REG_ACCESS, REG_DTYPE, REG_PHY, Register
+from ingenialink.register import REG_ACCESS, REG_PHY, RegDtype, Register
 
 
 @pytest.fixture
@@ -15,15 +15,15 @@ def connect_virtual_drive_with_bool_register(virtual_drive_custom_dict):
 
         boolean_reg_uid = "TEST_BOOLEAN"
         bool_register = EthernetRegister(
-            0x0200, REG_DTYPE.BOOL, REG_ACCESS.RW, identifier=boolean_reg_uid
+            0x0200, RegDtype.BOOL, REG_ACCESS.RW, identifier=boolean_reg_uid
         )
         server._VirtualDrive__dictionary._add_register_list(bool_register)
         server._VirtualDrive__dictionary.registers(bool_register.subnode)[
             boolean_reg_uid
         ].storage_valid = True
-        server._VirtualDrive__reg_address_to_id[bool_register.subnode][
-            bool_register.address
-        ] = boolean_reg_uid
+        server._VirtualDrive__reg_address_to_id[bool_register.subnode][bool_register.address] = (
+            boolean_reg_uid
+        )
         server.reg_signals[boolean_reg_uid] = []
         servo.dictionary.registers(1)[boolean_reg_uid] = bool_register
 
@@ -34,7 +34,7 @@ def connect_virtual_drive_with_bool_register(virtual_drive_custom_dict):
 
 @pytest.mark.no_connection
 def test_getters_register():
-    reg_dtype = REG_DTYPE.U32
+    reg_dtype = RegDtype.U32
     reg_access = REG_ACCESS.RW
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
@@ -45,7 +45,7 @@ def test_getters_register():
         "storage": 1,
         "reg_range": (-20, 20),
         "labels": "Monitoring trigger type",
-        "enums": {"TRIGGER_EVENT_AUTO": 0, "TRIGGER_EVENT_FORCED": 1},
+        "enums": {"TRIGGER_EVENT_AUTO": 0, "TRIGGER_EVENT_FORCED": 1},  # FIXME: INGK-1022
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": 1,
@@ -77,12 +77,12 @@ def test_register_type_errors():
     with pytest.raises(ILValueError):
         Register(dtype, access)
 
-    dtype = REG_DTYPE.FLOAT
+    dtype = RegDtype.FLOAT
     access = "False access"
     with pytest.raises(ILAccessError):
         Register(dtype, access)
 
-    dtype = REG_DTYPE.FLOAT
+    dtype = RegDtype.FLOAT
     access = REG_ACCESS.RW
     with pytest.raises(ILValueError):
         Register(dtype, access, phy="False Phy")
@@ -93,32 +93,32 @@ def test_register_get_storage():
     access = REG_ACCESS.RW
 
     # invalid storage
-    dtype = REG_DTYPE.STR
+    dtype = RegDtype.STR
     register = Register(dtype, access, storage=1)
     assert register.storage_valid == 0
     assert register.storage is None
 
     # no storage
-    dtype = REG_DTYPE.FLOAT
+    dtype = RegDtype.FLOAT
     register = Register(dtype, access)
     assert register.storage_valid == 0
     assert register.storage is None
 
     # float storage
-    dtype = REG_DTYPE.FLOAT
+    dtype = RegDtype.FLOAT
     storage = 12.34
     register = Register(dtype, access, storage=storage)
     assert register.storage_valid == 1
     assert register.storage == storage
 
     # parse float storage
-    dtype = REG_DTYPE.FLOAT
+    dtype = RegDtype.FLOAT
     storage = 123
     register = Register(dtype, access, storage=storage)
     assert isinstance(register.storage, float)
 
     # parse int storage
-    dtype = REG_DTYPE.U8
+    dtype = RegDtype.U8
     storage = 123.1
     register = Register(dtype, access, storage=storage)
     assert isinstance(register.storage, int)
@@ -128,7 +128,7 @@ def test_register_get_storage():
 @pytest.mark.no_connection
 def test_register_set_storage():
     access = REG_ACCESS.RW
-    dtype = REG_DTYPE.FLOAT
+    dtype = RegDtype.FLOAT
     storage = 20.0
     register = Register(dtype, access, storage=storage)
     assert register.storage == storage
@@ -141,12 +141,12 @@ def test_register_set_storage():
 @pytest.mark.parametrize(
     "dtype, reg_range, expected_range, reg_type",
     [
-        (REG_DTYPE.U8, (0, 100), (0, 100), int),
-        (REG_DTYPE.FLOAT, (0.0, 1.0), (0.0, 1.0), float),
-        (REG_DTYPE.S16, (-100, None), (-100, 32767), int),
-        (REG_DTYPE.U32, (None, 100), (0, 100), int),
-        (REG_DTYPE.S32, (None, None), (-2147483648, 2147483647), int),
-        (REG_DTYPE.FLOAT, (None, None), (-3.4e38, 3.4e38), float),
+        (RegDtype.U8, (0, 100), (0, 100), int),
+        (RegDtype.FLOAT, (0.0, 1.0), (0.0, 1.0), float),
+        (RegDtype.S16, (-100, None), (-100, 32767), int),
+        (RegDtype.U32, (None, 100), (0, 100), int),
+        (RegDtype.S32, (None, None), (-2147483648, 2147483647), int),
+        (RegDtype.FLOAT, (None, None), (-3.4e38, 3.4e38), float),
     ],
 )
 @pytest.mark.no_connection
@@ -172,14 +172,14 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
     ethernet_param_dict = {
         "subnode": subnode,
         "address": address,
-        "dtype": REG_DTYPE.U16,
+        "dtype": RegDtype.U16,
         "access": REG_ACCESS.RW,
     }
     canopen_param_dict = {
         "subnode": subnode,
         "idx": address,
         "subidx": 0x00,
-        "dtype": REG_DTYPE.U16,
+        "dtype": RegDtype.U16,
         "access": REG_ACCESS.RW,
         "identifier": "",
         "units": "",

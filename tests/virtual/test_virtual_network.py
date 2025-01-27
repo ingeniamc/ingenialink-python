@@ -3,7 +3,7 @@ import random
 
 import pytest
 
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
+from ingenialink.enums.register import REG_ACCESS, RegDtype
 from ingenialink.network import NetState
 from virtual_drive.core import VirtualDrive
 
@@ -52,7 +52,7 @@ def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict, read_con
                 if register.enums_count > 0:
                     continue
                 value = random.uniform(0, 100)
-                if register.dtype != REG_DTYPE.FLOAT:
+                if register.dtype != RegDtype.FLOAT:
                     value = int(value)
                 servo.write(reg_key, value)
                 assert pytest.approx(value) == server.get_value_by_id(1, reg_key)

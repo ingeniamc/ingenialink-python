@@ -22,7 +22,7 @@ from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
-from ingenialink.register import REG_ACCESS, REG_DTYPE
+from ingenialink.register import REG_ACCESS, RegDtype
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 
@@ -49,7 +49,7 @@ PROG_STAT_1 = CanopenRegister(
     idx=0x1F51,
     subidx=0x01,
     cyclic=RegCyclicType.CONFIG,
-    dtype=REG_DTYPE.U8,
+    dtype=RegDtype.U8,
     access=REG_ACCESS.RW,
     identifier="CIA302_BL_PROGRAM_CONTROL_1",
     subnode=0,
@@ -58,7 +58,7 @@ PROG_DL_1 = CanopenRegister(
     idx=0x1F50,
     subidx=0x01,
     cyclic=RegCyclicType.CONFIG,
-    dtype=REG_DTYPE.BYTE_ARRAY_512,
+    dtype=RegDtype.BYTE_ARRAY_512,
     access=REG_ACCESS.RW,
     identifier="CIA302_BL_PROGRAM_DATA",
     subnode=0,
@@ -67,7 +67,7 @@ FORCE_BOOT = CanopenRegister(
     idx=0x5EDE,
     subidx=0x00,
     cyclic=RegCyclicType.CONFIG,
-    dtype=REG_DTYPE.U32,
+    dtype=RegDtype.U32,
     access=REG_ACCESS.WO,
     identifier="DRV_BOOT_COCO_FORCE",
     subnode=0,
@@ -77,7 +77,7 @@ CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
     idx=0x1000,
     subidx=0x00,
     cyclic=RegCyclicType.CONFIG,
-    dtype=REG_DTYPE.U32,
+    dtype=RegDtype.U32,
     access=REG_ACCESS.RO,
     identifier="",
     subnode=0,
@@ -317,11 +317,11 @@ class CanopenNetwork(Network):
                 node = connected_slaves[slave_id]
             try:
                 product_code = convert_bytes_to_dtype(
-                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), REG_DTYPE.U32
+                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), RegDtype.U32
                 )
                 revision_number = convert_bytes_to_dtype(
                     node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX),
-                    REG_DTYPE.U32,
+                    RegDtype.U32,
                 )
             except canopen.sdo.exceptions.SdoError as e:
                 logger.warning(

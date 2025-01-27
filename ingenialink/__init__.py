@@ -1,4 +1,4 @@
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, REG_PHY
+from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, REG_PHY, RegDtype
 from ingenialink.enums.servo import (
     SERVO_FLAGS,
     SERVO_MODE,
@@ -35,7 +35,8 @@ __all__ = [
     "SERVO_UNITS_ACC",
     "Network",
     "Servo",
-    "REG_DTYPE",
+    "REG_DTYPE",  # WARNING: deprecated
+    "RegDtype",
     "REG_ACCESS",
     "REG_PHY",
     "EthercatNetwork",

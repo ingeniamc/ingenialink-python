@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 import bitarray
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, RegCyclicType
+from ingenialink.enums.register import REG_ACCESS, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILError
 from ingenialink.servo import Servo
@@ -51,7 +51,7 @@ class PDOMapItem:
                 idx=0x0000,
                 subidx=0x00,
                 cyclic=self.ACCEPTED_CYCLIC,
-                dtype=REG_DTYPE.STR,
+                dtype=RegDtype.STR,
                 access=REG_ACCESS.RW,
             )
         self.register = register
@@ -133,7 +133,7 @@ class PDOMapItem:
             raise NotImplementedError(
                 "The register value must be read by the raw_data_bytes attribute."
             )
-        if self.register.dtype == REG_DTYPE.BOOL:
+        if self.register.dtype == RegDtype.BOOL:
             value = self.raw_data_bits.any()
         else:
             value = convert_bytes_to_dtype(self.raw_data_bytes, self.register.dtype)

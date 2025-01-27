@@ -1,4 +1,4 @@
-from ingenialink.register import REG_DTYPE
+from ingenialink.register import RegDtype
 
 DIST_FRAME_SIZE_BYTES = 128
 DIST_FRAME_SIZE = 512
@@ -25,15 +25,15 @@ CAN_MONITORING_MAPPED_REGISTERS_START_ADD = 0x58D000
 MONITORING_BUFFER_SIZE = 512
 
 data_type_size = {
-    REG_DTYPE.U8: 1,
-    REG_DTYPE.S8: 1,
-    REG_DTYPE.U16: 2,
-    REG_DTYPE.S16: 2,
-    REG_DTYPE.U32: 4,
-    REG_DTYPE.S32: 4,
-    REG_DTYPE.U64: 8,
-    REG_DTYPE.S64: 8,
-    REG_DTYPE.FLOAT: 4,
+    RegDtype.U8: 1,
+    RegDtype.S8: 1,
+    RegDtype.U16: 2,
+    RegDtype.S16: 2,
+    RegDtype.U32: 4,
+    RegDtype.S32: 4,
+    RegDtype.U64: 8,
+    RegDtype.S64: 8,
+    RegDtype.FLOAT: 4,
 }
 
 CAN_MAX_WRITE_SIZE = 512

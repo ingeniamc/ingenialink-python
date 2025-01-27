@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from scipy import signal
 
-from ingenialink.enums.register import REG_DTYPE
+from ingenialink.enums.register import RegDtype
 from ingenialink.enums.servo import SERVO_STATE
 from virtual_drive.core import OperationMode
 
@@ -144,7 +144,7 @@ def test_virtual_disturbance(virtual_drive, register_key):
     address = reg.address
     servo.disturbance_set_mapped_register(0, address, subnode, reg.dtype.value, 4)
     data_arr = []
-    if reg.dtype == REG_DTYPE.FLOAT:
+    if reg.dtype == RegDtype.FLOAT:
         data_arr.append([0.0, -1.0, 2.0, 3.0])
     else:
         data_arr.append([0, -1, 2, 3])

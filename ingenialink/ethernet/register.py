@@ -4,9 +4,9 @@ from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
     REG_ACCESS,
     REG_ADDRESS_TYPE,
-    REG_DTYPE,
     REG_PHY,
     RegCyclicType,
+    RegDtype,
 )
 from ingenialink.register import Register
 
@@ -47,7 +47,7 @@ class EthernetRegister(Register):
     def __init__(
         self,
         address: int,
-        dtype: REG_DTYPE,
+        dtype: RegDtype,
         access: REG_ACCESS,
         identifier: Optional[str] = None,
         units: Optional[str] = None,

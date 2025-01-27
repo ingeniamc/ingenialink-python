@@ -10,7 +10,7 @@ from ingenialink.constants import (
 )
 from ingenialink.dictionary import DictionaryV2, Interface
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, RegCyclicType
+from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, RegCyclicType, RegDtype
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -31,7 +31,7 @@ class EthercatDictionaryV2(DictionaryV2):
             idx=0x58B2,
             subidx=0x01,
             cyclic=RegCyclicType.CONFIG,
-            dtype=REG_DTYPE.BYTE_ARRAY_512,
+            dtype=RegDtype.BYTE_ARRAY_512,
             access=REG_ACCESS.RO,
         ),
         EthercatRegister(
@@ -41,7 +41,7 @@ class EthercatDictionaryV2(DictionaryV2):
             idx=0x58B4,
             subidx=0x01,
             cyclic=RegCyclicType.CONFIG,
-            dtype=REG_DTYPE.BYTE_ARRAY_512,
+            dtype=RegDtype.BYTE_ARRAY_512,
             access=REG_ACCESS.WO,
         ),
     ]
@@ -53,7 +53,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x1C12,
             subidx=0x00,
-            dtype=REG_DTYPE.S32,
+            dtype=RegDtype.S32,
             access=REG_ACCESS.RW,
             address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
@@ -63,7 +63,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x1C12,
             subidx=0x01,
-            dtype=REG_DTYPE.S32,
+            dtype=RegDtype.S32,
             access=REG_ACCESS.RW,
             address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
@@ -73,7 +73,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x1600,
             subidx=0x00,
-            dtype=REG_DTYPE.S32,
+            dtype=RegDtype.S32,
             access=REG_ACCESS.RW,
             address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
@@ -83,7 +83,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x1600,
             subidx=0x01,
-            dtype=REG_DTYPE.STR,
+            dtype=RegDtype.STR,
             access=REG_ACCESS.RW,
             address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
@@ -93,7 +93,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x1C13,
             subidx=0x00,
-            dtype=REG_DTYPE.S32,
+            dtype=RegDtype.S32,
             access=REG_ACCESS.RW,
             address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
@@ -103,7 +103,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x1C13,
             subidx=0x01,
-            dtype=REG_DTYPE.S32,
+            dtype=RegDtype.S32,
             access=REG_ACCESS.RW,
             address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
@@ -113,7 +113,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x1A00,
             subidx=0x00,
-            dtype=REG_DTYPE.S32,
+            dtype=RegDtype.S32,
             access=REG_ACCESS.RW,
             address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),
@@ -123,7 +123,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subnode=0,
             idx=0x1A00,
             subidx=0x01,
-            dtype=REG_DTYPE.STR,
+            dtype=RegDtype.STR,
             access=REG_ACCESS.RW,
             address_type=REG_ADDRESS_TYPE.NVM_NONE,
         ),

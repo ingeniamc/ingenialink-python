@@ -30,7 +30,7 @@ from ingenialink.dictionary import (
     SubnodeType,
 )
 from ingenialink.emcy import EmergencyMessage
-from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
+from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, RegDtype
 from ingenialink.enums.servo import SERVO_STATE
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
@@ -282,7 +282,7 @@ class Servo:
         self.__listener_servo_status: Optional[ServoStatusListener] = None
         self.__monitoring_data: Dict[int, List[Union[int, float]]] = {}
         self.__monitoring_size: Dict[int, int] = {}
-        self.__monitoring_dtype: Dict[int, REG_DTYPE] = {}
+        self.__monitoring_dtype: Dict[int, RegDtype] = {}
         self.__disturbance_data = bytes()
         self.__disturbance_size: Dict[int, int] = {}
         self.__disturbance_dtype: Dict[int, str] = {}
@@ -911,7 +911,7 @@ class Servo:
 
         """
         self.__monitoring_data[channel] = []
-        self.__monitoring_dtype[channel] = REG_DTYPE(dtype)
+        self.__monitoring_dtype[channel] = RegDtype(dtype)
         self.__monitoring_size[channel] = size
         data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
         try:
@@ -977,7 +977,7 @@ class Servo:
         self.__monitoring_process_data(monitoring_data)
 
     def monitoring_channel_data(
-        self, channel: int, dtype: Optional[REG_DTYPE] = None
+        self, channel: int, dtype: Optional[RegDtype] = None
     ) -> List[float]:
         """Obtain processed monitoring data of a channel.
 
@@ -1023,7 +1023,7 @@ class Servo:
 
         """
         self.__disturbance_size[channel] = size
-        self.__disturbance_dtype[channel] = REG_DTYPE(dtype).name
+        self.__disturbance_dtype[channel] = RegDtype(dtype).name
         data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
         try:
             self.write(self.__disturbance_map_register(), data=data, subnode=0)
@@ -1268,7 +1268,7 @@ class Servo:
     def _disturbance_create_data_chunks(
         self,
         channels: Union[int, List[int]],
-        dtypes: Union[REG_DTYPE, List[REG_DTYPE]],
+        dtypes: Union[RegDtype, List[RegDtype]],
         data_arr: Union[List[Union[int, float]], List[List[Union[int, float]]]],
         max_size: int,
     ) -> Tuple[bytes, List[bytes]]:
@@ -1477,7 +1477,7 @@ class Servo:
     def disturbance_write_data(
         self,
         channels: Union[int, List[int]],
-        dtypes: Union[REG_DTYPE, List[REG_DTYPE]],
+        dtypes: Union[RegDtype, List[RegDtype]],
         data_arr: Union[List[Union[int, float]], List[List[Union[int, float]]]],
     ) -> None:
         """Write disturbance data.

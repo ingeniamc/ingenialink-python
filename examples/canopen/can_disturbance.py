@@ -4,7 +4,7 @@ from typing import List, Union, cast
 
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.exceptions import ILRegisterNotFoundError
-from ingenialink.register import REG_DTYPE
+from ingenialink.register import RegDtype
 
 
 def disturbance_example(args: argparse.Namespace) -> None:
@@ -71,15 +71,15 @@ def disturbance_example(args: argparse.Namespace) -> None:
         print("Disturbance is not available for this drive")
     else:
         servo.disturbance_remove_all_mapped_registers()
-        servo.disturbance_set_mapped_register(0, 0x2021, 1, REG_DTYPE.FLOAT.value, 4)
-        servo.disturbance_set_mapped_register(1, 0x2020, 1, REG_DTYPE.S32.value, 4)
-        servo.disturbance_set_mapped_register(2, 0x201A, 1, REG_DTYPE.FLOAT.value, 4)
-        servo.disturbance_set_mapped_register(3, 0x201B, 1, REG_DTYPE.FLOAT.value, 4)
-        servo.disturbance_set_mapped_register(4, 0x2024, 1, REG_DTYPE.U16.value, 2)
+        servo.disturbance_set_mapped_register(0, 0x2021, 1, RegDtype.FLOAT.value, 4)
+        servo.disturbance_set_mapped_register(1, 0x2020, 1, RegDtype.S32.value, 4)
+        servo.disturbance_set_mapped_register(2, 0x201A, 1, RegDtype.FLOAT.value, 4)
+        servo.disturbance_set_mapped_register(3, 0x201B, 1, RegDtype.FLOAT.value, 4)
+        servo.disturbance_set_mapped_register(4, 0x2024, 1, RegDtype.U16.value, 2)
 
         servo.disturbance_write_data(
             [0, 1, 2, 3, 4],
-            [REG_DTYPE.FLOAT, REG_DTYPE.S32, REG_DTYPE.FLOAT, REG_DTYPE.FLOAT, REG_DTYPE.U16],
+            [RegDtype.FLOAT, RegDtype.S32, RegDtype.FLOAT, RegDtype.FLOAT, RegDtype.U16],
             [data_vel, data_pos, data_curr_q, data_curr_d, data_positioning_opt],
         )
         servo.disturbance_enable()

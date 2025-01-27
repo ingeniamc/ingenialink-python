@@ -6,22 +6,22 @@ from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
     REG_ACCESS,
     REG_ADDRESS_TYPE,
-    REG_DTYPE,
     REG_PHY,
     RegCyclicType,
+    RegDtype,
 )
 from ingenialink.utils._utils import convert_bytes_to_dtype
 
-dtypes_ranges: Dict[REG_DTYPE, Dict[str, Union[int, float]]] = {
-    REG_DTYPE.U8: {"max": 255, "min": 0},
-    REG_DTYPE.S8: {"max": 127, "min": -128},
-    REG_DTYPE.U16: {"max": 65535, "min": 0},
-    REG_DTYPE.S16: {"max": 32767, "min": -32767 - 1},
-    REG_DTYPE.U32: {"max": 4294967295, "min": 0},
-    REG_DTYPE.S32: {"max": 2147483647, "min": -2147483647 - 1},
-    REG_DTYPE.U64: {"max": 18446744073709551615, "min": 0},
-    REG_DTYPE.S64: {"max": 9223372036854775807, "min": 9223372036854775807 - 1},
-    REG_DTYPE.FLOAT: {"max": 3.4e38, "min": -3.4e38},
+dtypes_ranges: Dict[RegDtype, Dict[str, Union[int, float]]] = {
+    RegDtype.U8: {"max": 255, "min": 0},
+    RegDtype.S8: {"max": 127, "min": -128},
+    RegDtype.U16: {"max": 65535, "min": 0},
+    RegDtype.S16: {"max": 32767, "min": -32767 - 1},
+    RegDtype.U32: {"max": 4294967295, "min": 0},
+    RegDtype.S32: {"max": 2147483647, "min": -2147483647 - 1},
+    RegDtype.U64: {"max": 18446744073709551615, "min": 0},
+    RegDtype.S64: {"max": 9223372036854775807, "min": 9223372036854775807 - 1},
+    RegDtype.FLOAT: {"max": 3.4e38, "min": -3.4e38},
 }
 
 
@@ -57,7 +57,7 @@ class Register(ABC):
 
     def __init__(
         self,
-        dtype: REG_DTYPE,
+        dtype: RegDtype,
         access: REG_ACCESS,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
@@ -106,8 +106,8 @@ class Register(ABC):
         self.__bitfields = bitfields
         self.__config_range(reg_range)
 
-    def __type_errors(self, dtype: REG_DTYPE, access: REG_ACCESS, phy: REG_PHY) -> None:
-        if not isinstance(dtype, REG_DTYPE):
+    def __type_errors(self, dtype: RegDtype, access: REG_ACCESS, phy: REG_PHY) -> None:
+        if not isinstance(dtype, RegDtype):
             raise exc.ILValueError("Invalid data type")
 
         if not isinstance(access, REG_ACCESS):
@@ -124,7 +124,7 @@ class Register(ABC):
         if self.dtype not in dtypes_ranges:
             self._storage_valid = False
             return
-        elif self.dtype == REG_DTYPE.FLOAT:
+        elif self.dtype == RegDtype.FLOAT:
             cast_type = float
         else:
             cast_type = int
@@ -143,9 +143,9 @@ class Register(ABC):
             self._storage = cast_type(self.storage)
 
     @property
-    def dtype(self) -> REG_DTYPE:
+    def dtype(self) -> RegDtype:
         """Data type of the register."""
-        return REG_DTYPE(self._dtype)
+        return RegDtype(self._dtype)
 
     @property
     def access(self) -> REG_ACCESS:
@@ -184,15 +184,15 @@ class Register(ABC):
             return None
 
         if self.dtype in [
-            REG_DTYPE.S8,
-            REG_DTYPE.U8,
-            REG_DTYPE.S16,
-            REG_DTYPE.U16,
-            REG_DTYPE.S32,
-            REG_DTYPE.U32,
-            REG_DTYPE.S64,
-            REG_DTYPE.U64,
-            REG_DTYPE.FLOAT,
+            RegDtype.S8,
+            RegDtype.U8,
+            RegDtype.S16,
+            RegDtype.U16,
+            RegDtype.S32,
+            RegDtype.U32,
+            RegDtype.S64,
+            RegDtype.U64,
+            RegDtype.FLOAT,
         ]:
             return self._storage
         else:

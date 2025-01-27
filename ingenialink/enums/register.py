@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class REG_DTYPE(Enum):
+class RegDtype(Enum):
     """Data Type."""
 
     U8 = 0
@@ -30,6 +30,7 @@ class REG_DTYPE(Enum):
     """Boolean."""
 
 
+# FIXME: INGK-1022
 class REG_ACCESS(Enum):
     """Access Type."""
 
@@ -41,6 +42,7 @@ class REG_ACCESS(Enum):
     """Write-only."""
 
 
+# FIXME: INGK-1022
 class REG_PHY(Enum):
     """Physical Units."""
 
@@ -60,6 +62,7 @@ class REG_PHY(Enum):
     """Radians."""
 
 
+# FIXME: INGK-1022
 class REG_ADDRESS_TYPE(Enum):
     """Address Type."""
 
@@ -77,3 +80,7 @@ class RegCyclicType(Enum):
     TX = "CYCLIC_TX"
     TXRX = "CYCLIC_TXRX"
     CONFIG = "CONFIG"
+
+
+# WARNING: Deprecated aliases
+REG_DTYPE = RegDtype

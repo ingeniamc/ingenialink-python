@@ -9,7 +9,7 @@ import pytest
 from packaging import version
 
 from ingenialink.canopen.servo import CanopenServo
-from ingenialink.ethernet.register import REG_DTYPE
+from ingenialink.ethernet.register import RegDtype
 from ingenialink.exceptions import (
     ILConfigurationError,
     ILError,
@@ -100,9 +100,9 @@ def create_disturbance(connect_to_slave, pytestconfig):
     reg = servo._get_reg("CL_POS_SET_POINT_VALUE", subnode=1)
     address = _get_reg_address(reg, protocol)
     servo.disturbance_set_mapped_register(
-        0, address, 1, REG_DTYPE.S32.value, DISTURBANCE_CH_DATA_SIZE
+        0, address, 1, RegDtype.S32.value, DISTURBANCE_CH_DATA_SIZE
     )
-    servo.disturbance_write_data(0, REG_DTYPE.S32, data)
+    servo.disturbance_write_data(0, RegDtype.S32, data)
     yield servo, net
     servo.disturbance_disable()
 
@@ -627,11 +627,11 @@ def test_disturbance_overflow(connect_to_slave, pytestconfig):
     reg = servo._get_reg("DRV_OP_CMD", subnode=1)
     address = _get_reg_address(reg, protocol)
     servo.disturbance_set_mapped_register(
-        0, address, 1, REG_DTYPE.U16.value, DISTURBANCE_CH_DATA_SIZE
+        0, address, 1, RegDtype.U16.value, DISTURBANCE_CH_DATA_SIZE
     )
     data = list(range(-10, 11))
     with pytest.raises(ILValueError):
-        servo.disturbance_write_data(0, REG_DTYPE.U16, data)
+        servo.disturbance_write_data(0, RegDtype.U16, data)
 
 
 @pytest.mark.no_connection
