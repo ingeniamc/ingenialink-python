@@ -45,7 +45,7 @@ def test_getters_register():
         "storage": 1,
         "reg_range": (-20, 20),
         "labels": "Monitoring trigger type",
-        "enums": {"TRIGGER_EVENT_AUTO": 0, "TRIGGER_EVENT_FORCED": 1},  # FIXME: INGK-1022
+        "enums": {"TRIGGER_EVENT_AUTO": 0, "TRIGGER_EVENT_FORCED": 1},
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": 1,
