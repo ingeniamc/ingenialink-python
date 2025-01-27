@@ -36,18 +36,18 @@ class NetDevEvt(Enum):
     REMOVED = 1
 
 
-# WARNING: Deprecated aliases
-NET_PROT = NetProt
-NET_STATE = NetState
-NET_DEV_EVT = NetDevEvt
-
-
-# FIXME: INGK-1022
-class EEPROM_FILE_FORMAT(Enum):
+class EepromFileFormat(Enum):
     """EEPROM file format"""
 
     BINARY = 0
     INTEL = 1
+
+
+# WARNING: Deprecated aliases
+NET_PROT = NetProt
+NET_STATE = NetState
+NET_DEV_EVT = NetDevEvt
+EEPROM_FILE_FORMAT = EepromFileFormat
 
 
 # FIXME: INGK-1022
