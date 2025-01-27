@@ -464,7 +464,7 @@ class EthercatNetwork(Network):
             else:
                 error_message += f" Error code: {foe_result}."
             raise ILFirmwareLoadError(error_message)
-        self.__init_nodes()
+        self._ecat_master.config_init()
         logger.info("Firmware updated successfully")
 
     def _check_slave_id(self, slave_id: int) -> None:
@@ -496,18 +496,17 @@ class EthercatNetwork(Network):
         slave.write_state()
         if (
             slave.state_check(pysoem.PREOP_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
-            != pysoem.PREOP_STATE
+            == pysoem.PREOP_STATE
         ):
-            raise ILFirmwareLoadError("The slave cannot be forced to boot mode.")
-        try:
-            slave.sdo_write(
-                self.__FORCE_COCO_BOOT_IDX,
-                self.__FORCE_COCO_BOOT_SUBIDX,
-                self.__FORCE_BOOT_PASSWORD.to_bytes(4, "little"),
-                False,
-            )
-        except pysoem.WkcError as e:
-            raise ILFirmwareLoadError("Error writing to the Boot mode register.") from e
+            try:
+                slave.sdo_write(
+                    self.__FORCE_COCO_BOOT_IDX,
+                    self.__FORCE_COCO_BOOT_SUBIDX,
+                    self.__FORCE_BOOT_PASSWORD.to_bytes(4, "little"),
+                    False,
+                )
+            except pysoem.WkcError as e:
+                raise ILFirmwareLoadError("Error writing to the Boot mode register.") from e
         slave.state = pysoem.INIT_STATE
         slave.write_state()
         slave.state = pysoem.BOOT_STATE
