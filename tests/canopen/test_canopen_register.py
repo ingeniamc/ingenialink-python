@@ -2,11 +2,11 @@ import pytest
 
 from ingenialink.canopen.register import (
     REG_ADDRESS_TYPE,
-    REG_PHY,
     CanopenRegister,
     RegAccess,
     RegCyclicType,
     RegDtype,
+    RegPhy,
 )
 from ingenialink.dictionary import Dictionary
 
@@ -21,7 +21,7 @@ def test_getters_canopen_register():
         "identifier": "MON_CFG_SOC_TYPE",
         "units": "none",
         "cyclic": RegCyclicType.CONFIG,
-        "phy": REG_PHY.NONE,
+        "phy": RegPhy.NONE,
         "subnode": 0,
         "storage": 1,
         "reg_range": (-20, 20),
@@ -86,7 +86,7 @@ def test_canopen_connection_register(connect_to_slave):
     assert register.access, RegAccess.RW
     assert register.idx == 0x2014
     assert register.subidx == 0
-    assert register.phy == REG_PHY.NONE
+    assert register.phy == RegPhy.NONE
     assert register.subnode == 1
     assert register.storage is None
     assert not register.storage_valid

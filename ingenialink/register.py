@@ -5,10 +5,10 @@ from ingenialink import exceptions as exc
 from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
     REG_ADDRESS_TYPE,
-    REG_PHY,
     RegAccess,
     RegCyclicType,
     RegDtype,
+    RegPhy,
 )
 from ingenialink.utils._utils import convert_bytes_to_dtype
 
@@ -62,7 +62,7 @@ class Register(ABC):
         identifier: Optional[str] = None,
         units: Optional[str] = None,
         cyclic: RegCyclicType = RegCyclicType.CONFIG,
-        phy: REG_PHY = REG_PHY.NONE,
+        phy: RegPhy = RegPhy.NONE,
         subnode: int = 1,
         storage: Any = None,
         reg_range: Union[
@@ -106,14 +106,14 @@ class Register(ABC):
         self.__bitfields = bitfields
         self.__config_range(reg_range)
 
-    def __type_errors(self, dtype: RegDtype, access: RegAccess, phy: REG_PHY) -> None:
+    def __type_errors(self, dtype: RegDtype, access: RegAccess, phy: RegPhy) -> None:
         if not isinstance(dtype, RegDtype):
             raise exc.ILValueError("Invalid data type")
 
         if not isinstance(access, RegAccess):
             raise exc.ILAccessError("Invalid access type")
 
-        if not isinstance(phy, REG_PHY):
+        if not isinstance(phy, RegPhy):
             raise exc.ILValueError("Invalid physical units type")
 
     def __config_range(
@@ -168,9 +168,9 @@ class Register(ABC):
         return self._cyclic
 
     @property
-    def phy(self) -> REG_PHY:
+    def phy(self) -> RegPhy:
         """Physical units of the register."""
-        return REG_PHY(self._phy)
+        return RegPhy(self._phy)
 
     @property
     def subnode(self) -> int:

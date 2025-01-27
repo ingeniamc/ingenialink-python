@@ -1,7 +1,7 @@
 import pytest
 
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.register import REG_ADDRESS_TYPE, REG_PHY, RegAccess, RegDtype
+from ingenialink.register import REG_ADDRESS_TYPE, RegAccess, RegDtype, RegPhy
 
 
 @pytest.mark.no_connection
@@ -14,7 +14,7 @@ def test_getters_ethercat_register():
         "identifier": "MON_CFG_SOC_TYPE",
         "units": "none",
         "cyclic": "CONFIG",
-        "phy": REG_PHY.NONE,
+        "phy": RegPhy.NONE,
         "subnode": 0,
         "storage": 1,
         "reg_range": (-20, 20),

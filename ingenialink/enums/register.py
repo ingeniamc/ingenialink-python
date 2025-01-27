@@ -41,8 +41,7 @@ class RegAccess(Enum):
     """Write-only."""
 
 
-# FIXME: INGK-1022
-class REG_PHY(Enum):
+class RegPhy(Enum):
     """Physical Units."""
 
     NONE = 0
@@ -84,3 +83,4 @@ class RegCyclicType(Enum):
 # WARNING: Deprecated aliases
 REG_DTYPE = RegDtype
 REG_ACCESS = RegAccess
+REG_PHY = RegPhy

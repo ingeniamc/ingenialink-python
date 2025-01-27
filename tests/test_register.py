@@ -5,7 +5,7 @@ import pytest
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
-from ingenialink.register import REG_PHY, RegAccess, RegDtype, Register
+from ingenialink.register import RegAccess, RegDtype, Register, RegPhy
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def test_getters_register():
         "identifier": "MON_CFG_SOC_TYPE",
         "units": "none",
         "cyclic": "CONFIG",
-        "phy": REG_PHY.NONE,
+        "phy": RegPhy.NONE,
         "subnode": 0,
         "storage": 1,
         "reg_range": (-20, 20),
