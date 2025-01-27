@@ -43,19 +43,19 @@ class EepromFileFormat(Enum):
     INTEL = 1
 
 
+class NetTransProt(Enum):
+    """Transmission protocol."""
+
+    TCP = 1
+    UDP = 2
+
+
 # WARNING: Deprecated aliases
 NET_PROT = NetProt
 NET_STATE = NetState
 NET_DEV_EVT = NetDevEvt
 EEPROM_FILE_FORMAT = EepromFileFormat
-
-
-# FIXME: INGK-1022
-class NET_TRANS_PROT(Enum):
-    """Transmission protocol."""
-
-    TCP = 1
-    UDP = 2
+NET_TRANS_PROT = NetTransProt
 
 
 @dataclass
