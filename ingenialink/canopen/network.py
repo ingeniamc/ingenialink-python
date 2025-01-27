@@ -115,8 +115,7 @@ class CanDevice(Enum):
     SOCKETCAN = "socketcan"
 
 
-# FIXME: INGK-1022
-class CAN_BAUDRATE(Enum):
+class CanBaudrate(Enum):
     """Baudrates."""
 
     Baudrate_1M = 1000000
@@ -134,12 +133,12 @@ class CAN_BAUDRATE(Enum):
 
 
 CAN_BIT_TIMMING = {
-    CAN_BAUDRATE.Baudrate_1M: 0,
-    CAN_BAUDRATE.Baudrate_500K: 2,
-    CAN_BAUDRATE.Baudrate_250K: 3,
-    CAN_BAUDRATE.Baudrate_125K: 4,
-    CAN_BAUDRATE.Baudrate_100K: 5,
-    CAN_BAUDRATE.Baudrate_50K: 6,
+    CanBaudrate.Baudrate_1M: 0,
+    CanBaudrate.Baudrate_500K: 2,
+    CanBaudrate.Baudrate_250K: 3,
+    CanBaudrate.Baudrate_125K: 4,
+    CanBaudrate.Baudrate_100K: 5,
+    CanBaudrate.Baudrate_50K: 6,
 }
 
 
@@ -219,7 +218,7 @@ class CanopenNetwork(Network):
         self,
         device: CanDevice,
         channel: int = 0,
-        baudrate: CAN_BAUDRATE = CAN_BAUDRATE.Baudrate_1M,
+        baudrate: CanBaudrate = CanBaudrate.Baudrate_1M,
     ):
         super(CanopenNetwork, self).__init__()
         self.servos: List[CanopenServo] = []
@@ -836,7 +835,7 @@ class CanopenNetwork(Network):
     def change_baudrate(
         self,
         target_node: int,
-        new_target_baudrate: CAN_BAUDRATE,
+        new_target_baudrate: CanBaudrate,
         vendor_id: int,
         product_code: int,
         rev_number: int,

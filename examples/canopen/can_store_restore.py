@@ -1,13 +1,13 @@
 import argparse
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
+from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 
 
 def store_restore_example(args: argparse.Namespace) -> None:
     """Connects to the first scanned drive and store and restores the
     current configuration."""
     can_device = CanDevice(args.transceiver)
-    can_baudrate = CAN_BAUDRATE(args.baudrate)
+    can_baudrate = CanBaudrate(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
     nodes = net.scan_slaves()
     print(nodes)

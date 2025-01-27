@@ -1,6 +1,6 @@
 import argparse
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
+from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 
 
 def print_status_message(msg: str) -> None:
@@ -26,7 +26,7 @@ def print_errors_enabled(value: int) -> None:
 def load_firmware_example(args: argparse.Namespace) -> None:
     """Loads a firmware to an already connected drive."""
     can_device = CanDevice(args.transceiver)
-    can_baudrate = CAN_BAUDRATE(args.baudrate)
+    can_baudrate = CanBaudrate(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
 
     nodes = net.scan_slaves()
@@ -56,7 +56,7 @@ def load_firmware_example(args: argparse.Namespace) -> None:
 
 def load_firmware_example_disconnected() -> None:
     """Loads a firmware to a disconnected drive."""
-    net = CanopenNetwork(device=CanDevice.IXXAT, channel=0, baudrate=CAN_BAUDRATE.Baudrate_1M)
+    net = CanopenNetwork(device=CanDevice.IXXAT, channel=0, baudrate=CanBaudrate.Baudrate_1M)
     net.load_firmware(
         32,
         "../../resources/firmware/eve-net-c_1.8.1.sfu",

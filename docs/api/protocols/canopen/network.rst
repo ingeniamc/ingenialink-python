@@ -2,7 +2,7 @@
 Network
 =======
 
-.. autoclass:: ingenialink.canopen.network.CAN_BAUDRATE
+.. autoclass:: ingenialink.canopen.network.CanBaudrate
     :members:
 
 .. autoclass:: ingenialink.canopen.network.CanDevice

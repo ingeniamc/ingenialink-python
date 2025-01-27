@@ -2,7 +2,7 @@ import platform
 
 import pytest
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
+from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.exceptions import ILError
 
 test_bus = "virtual"
@@ -13,7 +13,7 @@ test_channel = 0
 @pytest.fixture
 def virtual_network():
     net = CanopenNetwork(
-        device=CanDevice(test_bus), channel=test_channel, baudrate=CAN_BAUDRATE(test_baudrate)
+        device=CanDevice(test_bus), channel=test_channel, baudrate=CanBaudrate(test_baudrate)
     )
     return net
 
@@ -41,7 +41,7 @@ def test_connect_to_slave_target_not_in_nodes(read_config):
     net = CanopenNetwork(
         device=CanDevice(protocol_contents["device"]),
         channel=protocol_contents["channel"],
-        baudrate=CAN_BAUDRATE(protocol_contents["baudrate"]),
+        baudrate=CanBaudrate(protocol_contents["baudrate"]),
     )
 
     with pytest.raises(ILError):
@@ -62,7 +62,7 @@ def test_scan_slaves(read_config):
     net = CanopenNetwork(
         device=CanDevice(read_config["canopen"]["device"]),
         channel=read_config["canopen"]["channel"],
-        baudrate=CAN_BAUDRATE(read_config["canopen"]["baudrate"]),
+        baudrate=CanBaudrate(read_config["canopen"]["baudrate"]),
     )
     slaves = net.scan_slaves()
     assert len(slaves) > 0
@@ -74,7 +74,7 @@ def test_scan_slaves_missing_drivers(can_device):
     net = CanopenNetwork(
         device=can_device,
         channel=0,
-        baudrate=CAN_BAUDRATE.Baudrate_1M,
+        baudrate=CanBaudrate.Baudrate_1M,
     )
     with pytest.raises(ILError) as exc_info:
         net.scan_slaves()
@@ -90,7 +90,7 @@ def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
     net = CanopenNetwork(
         device=CanDevice(read_config["canopen"]["device"]),
         channel=read_config["canopen"]["channel"],
-        baudrate=CAN_BAUDRATE(read_config["canopen"]["baudrate"]),
+        baudrate=CanBaudrate(read_config["canopen"]["baudrate"]),
     )
     slaves_info = net.scan_slaves_info()
 
@@ -109,7 +109,7 @@ def test_disconnect_from_slave(read_config):
     net = CanopenNetwork(
         device=CanDevice(protocol_contents["device"]),
         channel=protocol_contents["channel"],
-        baudrate=CAN_BAUDRATE(protocol_contents["baudrate"]),
+        baudrate=CanBaudrate(protocol_contents["baudrate"]),
     )
 
     servo = net.connect_to_slave(

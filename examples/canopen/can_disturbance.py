@@ -2,7 +2,7 @@ import argparse
 import math
 from typing import List, Union, cast
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
+from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.exceptions import ILRegisterNotFoundError
 from ingenialink.register import RegDtype
 
@@ -12,7 +12,8 @@ def disturbance_example(args: argparse.Namespace) -> None:
     divider = 100
     # Calculate time between disturbance samples
     sample_period = divider / 20000
-    # The disturbance signal will be a simple harmonic motion (SHM) with frequency 0.5Hz and 2000 counts of amplitude
+    # The disturbance signal will be a simple harmonic motion (SHM)
+    # with frequency 0.5Hz and 2000 counts of amplitude
     signal_frequency = 0.5
     signal_amplitude = 1
     # Calculate number of samples to load a complete oscillation
@@ -61,7 +62,7 @@ def disturbance_example(args: argparse.Namespace) -> None:
     )
 
     can_device = CanDevice(args.transceiver)
-    can_baudrate = CAN_BAUDRATE(args.baudrate)
+    can_baudrate = CanBaudrate(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
     servo = net.connect_to_slave(target=args.node_id, dictionary=args.dictionary_path)
 

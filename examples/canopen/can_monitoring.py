@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 from numpy.typing import NDArray
 
-from ingenialink.canopen.network import CAN_BAUDRATE, CanDevice, CanopenNetwork
+from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.exceptions import ILRegisterNotFoundError
 
@@ -15,7 +15,7 @@ def monitoring_example(args: argparse.Namespace) -> List[NDArray[np.float_]]:
     ]
 
     can_device = CanDevice(args.transceiver)
-    can_baudrate = CAN_BAUDRATE(args.baudrate)
+    can_baudrate = CanBaudrate(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
     servo = net.connect_to_slave(target=args.node_id, dictionary=args.dictionary_path)
     # Monitoring
