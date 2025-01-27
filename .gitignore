@@ -30,6 +30,9 @@ Pipfile.lock
 pyproject.toml
 venv
 
+# Test files
+pytest_reports/
+
 # Documentation
 _docs
 
