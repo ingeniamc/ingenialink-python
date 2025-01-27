@@ -12,7 +12,7 @@ import ingenialogger
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NET_DEV_EVT, NET_STATE, Network, SlaveInfo
+from ingenialink.network import NET_DEV_EVT, NetState, Network, SlaveInfo
 from ingenialink.utils.udp import UDP
 
 from ..network import NetProt
@@ -58,12 +58,12 @@ class NetStatusListener(Thread):
                     else:
                         break
                 ping_response = unsuccessful_pings != self.__max_unsuccessful_pings
-                if servo_state == NET_STATE.CONNECTED and not ping_response:
+                if servo_state == NetState.CONNECTED and not ping_response:
                     self.__network._notify_status(servo_ip, NET_DEV_EVT.REMOVED)
-                    self.__network._set_servo_state(servo_ip, NET_STATE.DISCONNECTED)
-                if servo_state == NET_STATE.DISCONNECTED and ping_response:
+                    self.__network._set_servo_state(servo_ip, NetState.DISCONNECTED)
+                if servo_state == NetState.DISCONNECTED and ping_response:
                     self.__network._notify_status(servo_ip, NET_DEV_EVT.ADDED)
-                    self.__network._set_servo_state(servo_ip, NET_STATE.CONNECTED)
+                    self.__network._set_servo_state(servo_ip, NetState.CONNECTED)
             time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
@@ -228,7 +228,7 @@ class EthernetNetwork(Network):
             servo.stop_status_listener()
             raise ILError(f"Drive not found in IP {target}.") from e
         self.servos.append(servo)
-        self._set_servo_state(target, NET_STATE.CONNECTED)
+        self._set_servo_state(target, NetState.CONNECTED)
 
         if net_status_listener:
             self.start_status_listener()
@@ -247,7 +247,7 @@ class EthernetNetwork(Network):
         self.servos.remove(servo)
         servo.stop_status_listener()
         self.close_socket(servo.socket)
-        self._set_servo_state(servo.ip_address, NET_STATE.DISCONNECTED)
+        self._set_servo_state(servo.ip_address, NetState.DISCONNECTED)
         if len(self.servos) == 0:
             self.stop_status_listener()
 
@@ -302,7 +302,7 @@ class EthernetNetwork(Network):
             return
         self.__observers_net_state[ip].remove(callback)
 
-    def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
+    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
         """Get the state of a servo that's a part of network.
         The state indicates if the servo is connected or disconnected.
 
@@ -317,7 +317,7 @@ class EthernetNetwork(Network):
             raise ValueError("The servo ID must be a string.")
         return self._servos_state[servo_id]
 
-    def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
+    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
         """Set the state of a servo that's a part of network.
 
         Args:

@@ -4,7 +4,7 @@ import random
 import pytest
 
 from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
-from ingenialink.network import NET_STATE
+from ingenialink.network import NetState
 from virtual_drive.core import VirtualDrive
 
 RESOURCES_FOLDER = "virtual_drive/resources/"
@@ -25,7 +25,7 @@ def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
     server, net, servo = virtual_drive_custom_dict(dictionary)
     net.disconnect_from_slave(servo)
-    assert net.get_servo_state(VirtualDrive.IP_ADDRESS) == NET_STATE.DISCONNECTED
+    assert net.get_servo_state(VirtualDrive.IP_ADDRESS) == NetState.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
 

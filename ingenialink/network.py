@@ -22,17 +22,18 @@ class NetProt(Enum):
     CAN = 5
 
 
-# WARNING: Deprecated aliases
-NET_PROT = NetProt
-
-
 # FIXME: INGK-1022
-class NET_STATE(Enum):
+class NetState(Enum):
     """Network State."""
 
     CONNECTED = 0
     DISCONNECTED = 1
     FAULTY = 2
+
+
+# WARNING: Deprecated aliases
+NET_PROT = NetProt
+NET_STATE = NetState
 
 
 # FIXME: INGK-1022
@@ -72,7 +73,7 @@ class Network(ABC):
         self.servos: List[Any] = []
         """List of the connected servos in the network."""
 
-        self._servos_state: Dict[Union[int, str], NET_STATE] = {}
+        self._servos_state: Dict[Union[int, str], NetState] = {}
         """Dictionary containing the state of the servos that are a part of the network."""
 
     @abstractmethod
@@ -116,11 +117,11 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
+    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
         return self._servos_state[servo_id]
 
     @abstractmethod
-    def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
+    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
         self._servos_state[servo_id] = state
 
     @property

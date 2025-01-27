@@ -21,7 +21,7 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NET_DEV_EVT, NET_STATE, NetProt, Network, SlaveInfo
+from ingenialink.network import NET_DEV_EVT, NetProt, NetState, Network, SlaveInfo
 from ingenialink.register import REG_ACCESS, REG_DTYPE
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
@@ -187,15 +187,15 @@ class NetStatusListener(Thread):
                 is_alive = current_timestamp != timestamps[node_id]
                 servo_state = self.__network.get_servo_state(node_id)
                 if is_alive:
-                    if servo_state != NET_STATE.CONNECTED:
+                    if servo_state != NetState.CONNECTED:
                         self.__network._notify_status(node_id, NET_DEV_EVT.ADDED)
-                        self.__network._set_servo_state(node_id, NET_STATE.CONNECTED)
+                        self.__network._set_servo_state(node_id, NetState.CONNECTED)
                     timestamps[node_id] = node.nmt.timestamp
-                elif servo_state == NET_STATE.DISCONNECTED:
+                elif servo_state == NetState.DISCONNECTED:
                     self.__network._reset_connection()
                 else:
                     self.__network._notify_status(node_id, NET_DEV_EVT.REMOVED)
-                    self.__network._set_servo_state(node_id, NET_STATE.DISCONNECTED)
+                    self.__network._set_servo_state(node_id, NetState.DISCONNECTED)
 
     def stop(self) -> None:
         self.__stop = True
@@ -373,7 +373,7 @@ class CanopenNetwork(Network):
                     target, node, dictionary, servo_status_listener=servo_status_listener
                 )
                 self.servos.append(servo)
-                self._set_servo_state(target, NET_STATE.CONNECTED)
+                self._set_servo_state(target, NetState.CONNECTED)
                 if net_status_listener:
                     self.start_status_listener()
                 return servo
@@ -1050,7 +1050,7 @@ class CanopenNetwork(Network):
         """Obtain network protocol."""
         return NetProt.CAN
 
-    def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
+    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
         """Get the state of a servo that's a part of network.
         The state indicates if the servo is connected or disconnected.
 
@@ -1065,7 +1065,7 @@ class CanopenNetwork(Network):
             raise ValueError("The servo ID must be an int.")
         return self._servos_state[servo_id]
 
-    def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
+    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
         """Set the state of a servo that's a part of network.
 
         Args:

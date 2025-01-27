@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from ingenialink.ethernet.network import NET_DEV_EVT, NET_STATE, EthernetNetwork, NetProt
+from ingenialink.ethernet.network import NET_DEV_EVT, EthernetNetwork, NetProt, NetState
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 
 
@@ -50,7 +50,7 @@ def test_ethernet_connection(connect_to_slave, read_config):
     servo, net = connect_to_slave
     family = servo.socket.family
     ip, port = servo.socket.getpeername()
-    assert net.get_servo_state(read_config["ethernet"]["ip"]) == NET_STATE.CONNECTED
+    assert net.get_servo_state(read_config["ethernet"]["ip"]) == NetState.CONNECTED
     assert net.protocol == NetProt.ETH
     assert family == socket.AF_INET
     assert servo.socket.type == socket.SOCK_DGRAM
@@ -62,7 +62,7 @@ def test_ethernet_connection(connect_to_slave, read_config):
 def test_ethernet_disconnection(connect, read_config):
     servo, net = connect
     net.disconnect_from_slave(servo)
-    assert net.get_servo_state(read_config["ethernet"]["ip"]) == NET_STATE.DISCONNECTED
+    assert net.get_servo_state(read_config["ethernet"]["ip"]) == NetState.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
 
@@ -109,7 +109,7 @@ def test_net_status_listener_connection(virtual_drive):
     status_list = []
     net.subscribe_to_status(server.ip, status_list.append)
     # Emulate a disconnection. TODO: disconnect from the virtual drive
-    net._set_servo_state(server.ip, NET_STATE.DISCONNECTED)
+    net._set_servo_state(server.ip, NetState.DISCONNECTED)
     net.start_status_listener()
     time.sleep(2)
     net.stop_status_listener()
@@ -138,7 +138,7 @@ def test_unsubscribe_from_status(virtual_drive):
     net.unsubscribe_from_status(server.ip, status_list.append)
 
     # Emulate a disconnection. TODO: disconnect from the virtual drive
-    net._set_servo_state(server.ip, NET_STATE.DISCONNECTED)
+    net._set_servo_state(server.ip, NetState.DISCONNECTED)
     net.start_status_listener()
     time.sleep(2)
     net.stop_status_listener()

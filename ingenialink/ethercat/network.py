@@ -20,7 +20,7 @@ except ImportError as ex:
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILWrongWorkingCount
-from ingenialink.network import NET_DEV_EVT, NET_STATE, NetProt, Network, SlaveInfo
+from ingenialink.network import NET_DEV_EVT, NetProt, NetState, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -58,16 +58,16 @@ class NetStatusListener(Thread):
                 slave_id = servo.slave_id
                 servo_state = self.__network.get_servo_state(slave_id)
                 is_servo_alive = not servo.slave.state == pysoem.NONE_STATE
-                if not is_servo_alive and servo_state == NET_STATE.CONNECTED:
+                if not is_servo_alive and servo_state == NetState.CONNECTED:
                     self.__network._notify_status(slave_id, NET_DEV_EVT.REMOVED)
-                    self.__network._set_servo_state(slave_id, NET_STATE.DISCONNECTED)
+                    self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
                 if (
                     is_servo_alive
-                    and servo_state == NET_STATE.DISCONNECTED
+                    and servo_state == NetState.DISCONNECTED
                     and self.__network._recover_from_disconnection()
                 ):
                     self.__network._notify_status(slave_id, NET_DEV_EVT.ADDED)
-                    self.__network._set_servo_state(slave_id, NET_STATE.CONNECTED)
+                    self.__network._set_servo_state(slave_id, NetState.CONNECTED)
                 time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
@@ -221,7 +221,7 @@ class EthercatNetwork(Network):
             raise ILStateError("Slave can not reach PreOp state")
         servo.reset_pdo_mapping()
         self.servos.append(servo)
-        self._set_servo_state(slave_id, NET_STATE.CONNECTED)
+        self._set_servo_state(slave_id, NetState.CONNECTED)
         if net_status_listener:
             self.start_status_listener()
         return servo
@@ -508,7 +508,7 @@ class EthercatNetwork(Network):
         """NetProt: Obtain network protocol."""
         return NetProt.ECAT
 
-    def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
+    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
         """Get the state of a servo that's a part of network.
         The state indicates if the servo is connected or disconnected.
 
@@ -523,7 +523,7 @@ class EthercatNetwork(Network):
             raise ValueError("The servo ID must be an int.")
         return self._servos_state[servo_id]
 
-    def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
+    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
         """Set the state of a servo that's a part of network.
 
         Args:
