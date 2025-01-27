@@ -11,7 +11,8 @@ from ingenialink.servo import Servo
 logger = ingenialogger.get_logger(__name__)
 
 
-class NET_PROT(Enum):
+# FIXME: INGK-1022
+class NetProt(Enum):
     """Network Protocol."""
 
     EUSB = 0
@@ -21,6 +22,11 @@ class NET_PROT(Enum):
     CAN = 5
 
 
+# WARNING: Deprecated aliases
+NET_PROT = NetProt
+
+
+# FIXME: INGK-1022
 class NET_STATE(Enum):
     """Network State."""
 
@@ -29,6 +35,7 @@ class NET_STATE(Enum):
     FAULTY = 2
 
 
+# FIXME: INGK-1022
 class NET_DEV_EVT(Enum):
     """Device Event."""
 
@@ -36,6 +43,7 @@ class NET_DEV_EVT(Enum):
     REMOVED = 1
 
 
+# FIXME: INGK-1022
 class EEPROM_FILE_FORMAT(Enum):
     """EEPROM file format"""
 
@@ -43,6 +51,7 @@ class EEPROM_FILE_FORMAT(Enum):
     INTEL = 1
 
 
+# FIXME: INGK-1022
 class NET_TRANS_PROT(Enum):
     """Transmission protocol."""
 
@@ -115,5 +124,5 @@ class Network(ABC):
         self._servos_state[servo_id] = state
 
     @property
-    def protocol(self) -> NET_PROT:
+    def protocol(self) -> NetProt:
         raise NotImplementedError
