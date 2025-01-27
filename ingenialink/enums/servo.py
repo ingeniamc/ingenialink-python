@@ -22,8 +22,7 @@ class ServoState(Enum):
     """Fault."""
 
 
-# FIXME: INGK-1022
-class SERVO_FLAGS(Enum):
+class ServoFlags(Enum):
     """Status Flags."""
 
     TGT_REACHED = 0x01
@@ -48,8 +47,7 @@ class SERVO_FLAGS(Enum):
     """Initial angle determination finished."""
 
 
-# FIXME: INGK-1022
-class SERVO_MODE(Enum):
+class ServoMode(Enum):
     """Operation Mode."""
 
     OLV = 0
@@ -76,8 +74,7 @@ class SERVO_MODE(Enum):
     """Cyclic sync torque mode."""
 
 
-# FIXME: INGK-1022
-class SERVO_UNITS_TORQUE(Enum):
+class ServoUnitsTorque(Enum):
     """Torque Units."""
 
     NATIVE = 0
@@ -88,8 +85,7 @@ class SERVO_UNITS_TORQUE(Enum):
     """Newtons*meter."""
 
 
-# FIXME: INGK-1022
-class SERVO_UNITS_POS(Enum):
+class ServoUnitsPos(Enum):
     """Position Units."""
 
     NATIVE = 0
@@ -108,8 +104,7 @@ class SERVO_UNITS_POS(Enum):
     """Meters."""
 
 
-# FIXME: INGK-1022
-class SERVO_UNITS_VEL(Enum):
+class ServoUnitsVel(Enum):
     """Velocity Units."""
 
     NATIVE = 0
@@ -130,8 +125,7 @@ class SERVO_UNITS_VEL(Enum):
     """Meters/second."""
 
 
-# FIXME: INGK-1022
-class SERVO_UNITS_ACC(Enum):
+class ServoUnitsAcc(Enum):
     """Acceleration Units."""
 
     NATIVE = 0

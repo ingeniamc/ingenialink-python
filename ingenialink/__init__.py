@@ -1,12 +1,12 @@
 from ingenialink.enums.register import RegAccess, RegDtype, RegPhy
 from ingenialink.enums.servo import (
-    SERVO_FLAGS,
-    SERVO_MODE,
-    SERVO_UNITS_ACC,
-    SERVO_UNITS_POS,
-    SERVO_UNITS_TORQUE,
-    SERVO_UNITS_VEL,
+    ServoFlags,
+    ServoMode,
     ServoState,
+    ServoUnitsAcc,
+    ServoUnitsPos,
+    ServoUnitsTorque,
+    ServoUnitsVel,
 )
 from ingenialink.poller import Poller
 from ingenialink.servo import Servo
@@ -30,6 +30,12 @@ REG_DTYPE = RegDtype
 REG_ACCESS = RegAccess
 REG_PHY = RegPhy
 SERVO_STATE = ServoState
+SERVO_FLAGS = ServoFlags
+SERVO_MODE = ServoMode
+SERVO_UNITS_TORQUE = ServoUnitsTorque
+SERVO_UNITS_POS = ServoUnitsPos
+SERVO_UNITS_VEL = ServoUnitsVel
+SERVO_UNITS_ACC = ServoUnitsAcc
 
 __all__ = [
     "EEPROM_FILE_FORMAT",  # WARNING: deprecated
@@ -44,12 +50,18 @@ __all__ = [
     "NetTransProt",
     "SERVO_STATE",  # WARNING: deprecated
     "ServoState",
-    "SERVO_FLAGS",
-    "SERVO_MODE",
-    "SERVO_UNITS_TORQUE",
-    "SERVO_UNITS_POS",
-    "SERVO_UNITS_VEL",
-    "SERVO_UNITS_ACC",
+    "SERVO_FLAGS",  # WARNING: deprecated
+    "ServoFlags",
+    "SERVO_MODE",  # WARNING: deprecated
+    "ServoMode",
+    "SERVO_UNITS_TORQUE",  # WARNING: deprecated
+    "ServoUnitsTorque",
+    "SERVO_UNITS_POS",  # WARNING: deprecated
+    "ServoUnitsPos",
+    "SERVO_UNITS_VEL",  # WARNING: deprecated
+    "ServoUnitsVel",
+    "SERVO_UNITS_ACC",  # WARNING: deprecated
+    "ServoUnitsAcc",
     "Network",
     "Servo",
     "REG_DTYPE",  # WARNING: deprecated

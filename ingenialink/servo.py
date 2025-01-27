@@ -270,13 +270,13 @@ class Servo:
         self.full_name = f"{prod_name} {self.name} ({self.target})"
         """Obtains the servo full name."""
         self.units_torque = None
-        """SERVO_UNITS_TORQUE: Torque units."""
+        """ServoUnitsTorque: Torque units."""
         self.units_pos = None
-        """SERVO_UNITS_POS: Position units."""
+        """ServoUnitsPos: Position units."""
         self.units_vel = None
-        """SERVO_UNITS_VEL: Velocity units."""
+        """ServoUnitsVel: Velocity units."""
         self.units_acc = None
-        """SERVO_UNITS_ACC: Acceleration units."""
+        """ServoUnitsAcc: Acceleration units."""
         self._lock = threading.Lock()
         self.__observers_servo_state: List[Callable[[ServoState, int], Any]] = []
         self.__listener_servo_status: Optional[ServoStatusListener] = None
