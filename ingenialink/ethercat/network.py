@@ -86,19 +86,6 @@ class EthercatNetwork(Network):
         ImportError: WinPcap is not installed
 
     """
-
-    FOE_APPLICATION = {
-        "win32": {"64bit": "FoE/win_64x/FoEUpdateFirmware.exe"},
-        "linux": {"64bit": "FoE/linux/FoEUpdateFirmware"},
-    }
-    FOE_ERRORS = {
-        1: "Can’t read the input file.",
-        2: "ECAT slave can’t reach the BOOT mode.",
-        3: "No ECAT slave detected",
-        4: "Can’t initialize the network adapter",
-        5: "Drive can't init. Ensure the FW file is right",
-    }
-    UNKNOWN_FOE_ERROR = "Unknown error"
     MANUAL_STATE_CHANGE = 1
 
     DEFAULT_ECAT_CONNECTION_TIMEOUT_S = 1
@@ -447,55 +434,6 @@ class EthercatNetwork(Network):
 
         if password is None:
             password = self.DEFAULT_FOE_PASSWORD
-
-        arch = platform.architecture()[0]
-        sys_name = sys.platform
-        app_path = self.FOE_APPLICATION.get(sys_name, {}).get(arch, None)
-        if app_path is None:
-            raise NotImplementedError(
-                "Load FW by ECAT is not implemented for this OS and architecture:"
-                f" {sys_name} {arch}"
-            )
-        exec_path = os.path.join(os.path.dirname(inspect.getfile(bin_module)), app_path)
-        logger.debug(f"Call FoE application for {sys_name}-{arch}")
-        if sys_name == "linux":
-            try:
-                subprocess.run(
-                    f"chmod 777 {exec_path}",
-                    check=True,
-                    shell=True,
-                    encoding="utf-8",
-                )
-            except subprocess.CalledProcessError as e:
-                raise ILFirmwareLoadError("Could not change the FoE binary permissions.") from e
-        try:
-            if sys_name == "linux":
-                subprocess.run(
-                    f"{exec_path} {self.interface_name} {slave_id} {fw_file} "
-                    f"{int(boot_in_app)} {password}",
-                    check=True,
-                    shell=True,
-                    encoding="utf-8",
-                )
-            else:
-                subprocess.run(
-                    [
-                        exec_path,
-                        self.interface_name,
-                        f"{slave_id}",
-                        fw_file,
-                        f"{int(boot_in_app)}",
-                        f"{password}",
-                    ],
-                    check=True,
-                    shell=True,
-                    encoding="utf-8",
-                )
-        except subprocess.CalledProcessError as e:
-            foe_return_error = self.FOE_ERRORS.get(e.returncode, self.UNKNOWN_FOE_ERROR)
-            raise ILFirmwareLoadError(
-                f"The firmware file could not be loaded correctly. {foe_return_error}"
-            ) from e
         logger.info("Firmware updated successfully")
 
     def _start_master(self) -> None:

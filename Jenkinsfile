@@ -10,12 +10,6 @@ def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.5"
 def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.6"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
-def DIST_FOE_APP_PATH = "ECAT-tools"
-def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
-def FOE_APP_NAME = "FoEUpdateFirmware.exe"
-def FOE_APP_NAME_LINUX = "FoEUpdateFirmware"
-def FOE_APP_VERSION = ""
-
 DEFAULT_PYTHON_VERSION = "3.9"
 
 ALL_PYTHON_VERSIONS = "py39,py310,py311,py312"
@@ -74,22 +68,6 @@ pipeline {
             }
         }
 
-        stage('Get FoE application') {
-            agent {
-                docker {
-                    label "worker"
-                    image PUBLISHER_DOCKER_IMAGE
-                }
-            }
-            steps {
-                script {
-                    FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FoE; print(FoE.__version__)"', returnStdout: true).trim()
-                }
-                copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
-                sh "mv FoEUpdateFirmwareLinux $FOE_APP_NAME_LINUX"
-                stash includes: "$FOE_APP_NAME,$FOE_APP_NAME_LINUX", name: 'foe_app'
-            }
-        }
         stage('Build and Tests') {
             parallel {
                 stage('Build and publish') {
@@ -110,13 +88,6 @@ pipeline {
                                 stage('Format checking') {
                                     steps {
                                         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                                    }
-                                }
-                                stage('Get FoE application') {
-                                    steps {
-                                        unstash 'foe_app'
-                                        bat "XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\"
-                                        bat "XCOPY $FOE_APP_NAME_LINUX $LIB_FOE_APP_PATH\\linux\\"
                                     }
                                 }
                                 stage('Build') {
@@ -225,15 +196,6 @@ pipeline {
                         label ECAT_NODE
                     }
                     stages {
-                        stage('Get FoE application') {
-                            steps {
-                                unstash 'foe_app'
-                                bat """
-                                    XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
-                                    XCOPY $FOE_APP_NAME_LINUX $LIB_FOE_APP_PATH\\linux\\
-                                """
-                            }
-                        }
                         stage('EtherCAT Everest') {
                             steps {
                                 runTest("ethercat", 0)
