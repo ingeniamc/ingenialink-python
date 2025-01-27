@@ -38,8 +38,7 @@ INC_ENC1_RESOLUTION = 4096
 INC_ENC2_RESOLUTION = 2000
 
 
-# FIXME: INGK-1022
-class MSG_TYPE(Enum):
+class MsgType(Enum):
     RECEIVED = "RECEIVED"
     SENT = "SENT"
 
@@ -1319,7 +1318,7 @@ class VirtualDrive(Thread):
             except Exception:
                 continue
             reg_add, subnode, cmd, data = MCB.read_mcb_frame(frame)
-            self.__log(add, frame, MSG_TYPE.RECEIVED)
+            self.__log(add, frame, MsgType.RECEIVED)
             register = self.get_register(subnode, reg_add)
             if cmd == self.WRITE_CMD:
                 response = self.__get_response_to_write_command(register, data)
@@ -1469,7 +1468,7 @@ class VirtualDrive(Thread):
             address: IP address and port.
         """
         self.socket.sendto(response, address)
-        self.__log(address, response, MSG_TYPE.SENT)
+        self.__log(address, response, MsgType.SENT)
 
     def _response_monitoring_data(self, data: bytes) -> bytes:
         """Creates a response for monitoring data.
@@ -1491,7 +1490,7 @@ class VirtualDrive(Thread):
         self._monitoring.available_bytes = len(data_left)
         return response
 
-    def __log(self, ip_port: Tuple[str, int], message: bytes, msg_type: MSG_TYPE) -> None:
+    def __log(self, ip_port: Tuple[str, int], message: bytes, msg_type: MsgType) -> None:
         """Updates log.
 
         Args:

@@ -173,8 +173,7 @@ def convert_int_to_ip(int_ip: int) -> str:
     return "{}.{}.{}.{}".format(drive_ip1, drive_ip2, drive_ip3, drive_ip4)
 
 
-# FIXME: INGK-1022
-class INT_SIZES(Enum):
+class IntSizes(Enum):
     """Integer sizes."""
 
     S8_MIN = -128
