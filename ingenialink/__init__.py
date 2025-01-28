@@ -3,7 +3,6 @@ from typing import Any
 
 from ingenialink.enums.register import RegAccess, RegDtype, RegPhy
 from ingenialink.enums.servo import (
-    ServoFlags,
     ServoMode,
     ServoState,
     ServoUnitsAcc,
@@ -28,7 +27,6 @@ __all__ = [
     "NetDevEvt",
     "NetState",
     "ServoState",
-    "ServoFlags",
     "ServoMode",
     "ServoUnitsTorque",
     "ServoUnitsPos",
@@ -57,13 +55,10 @@ _DEPRECATED = {
     "NET_PROT": "NetProt",
     "NET_STATE": "NetState",
     "NET_DEV_EVT": "NetDevEvt",
-    "EEPROM_FILE_FORMAT": "EepromFileFormat",
-    "NET_TRANS_PROT": "NetTransProt",
     "REG_DTYPE": "RegDtype",
     "REG_ACCESS": "RegAccess",
     "REG_PHY": "RegPhy",
     "SERVO_STATE": "ServoState",
-    "SERVO_FLAGS": "ServoFlags",
     "SERVO_MODE": "ServoMode",
     "SERVO_UNITS_TORQUE": "ServoUnitsTorque",
     "SERVO_UNITS_POS": "ServoUnitsPos",
