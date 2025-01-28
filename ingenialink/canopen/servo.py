@@ -18,6 +18,18 @@ logger = ingenialogger.get_logger(__name__)
 CANOPEN_SDO_RESPONSE_TIMEOUT = 0.3
 
 
+class CanopenEmergencyMessage(EmergencyMessage):
+    """Canopen emergency message class.
+
+    Args:
+        servo: The servo that generated the emergency error.
+        emergency_msg: The emergency message instance from canopen.
+    """
+
+    def __init__(self, servo: Servo, emergency_msg: EmcyError):
+        super().__init__(servo, emergency_msg.code, emergency_msg.register, emergency_msg.data)
+
+
 class CanopenServo(Servo):
     """CANopen Servo instance.
 
@@ -118,15 +130,15 @@ class CanopenServo(Servo):
         self.__emcy_observers.remove(callback)
 
     def _on_emcy(self, emergency_msg: EmcyError) -> None:
-        """Receive an emergency message from canopen and transform it to a EmergencyMessage.
+        """Receive an emergency message from canopen and transform it to a CanopenEmergencyMessage.
 
-        Afterward, send the EmergencyMessage to all the subscribed callbacks.
+        Afterward, send the CanopenEmergencyMessage to all the subscribed callbacks.
 
         Args:
             emergency_msg: The EmcyError instance.
 
         """
-        emergency_message = EmergencyMessage(self, emergency_msg)
+        emergency_message = CanopenEmergencyMessage(self, emergency_msg)
         logger.warning(f"Emergency message received from node {self.target}: {emergency_message}")
         for callback in self.__emcy_observers:
             callback(emergency_message)
