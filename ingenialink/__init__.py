@@ -1,4 +1,5 @@
 import warnings
+from typing import Any
 
 from ingenialink.enums.register import RegAccess, RegDtype, RegPhy
 from ingenialink.enums.servo import (
@@ -75,7 +76,7 @@ _DEPRECATED = {
 }
 
 
-def __getattr__(name):
+def __getattr__(name: str) -> Any:
     if name in _DEPRECATED:
         warnings.warn(
             f"{name} is deprecated, use {_DEPRECATED[name]} instead",
