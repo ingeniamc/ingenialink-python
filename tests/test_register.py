@@ -21,9 +21,9 @@ def connect_virtual_drive_with_bool_register(virtual_drive_custom_dict):
         server._VirtualDrive__dictionary.registers(bool_register.subnode)[
             boolean_reg_uid
         ].storage_valid = True
-        server._VirtualDrive__reg_address_to_id[bool_register.subnode][bool_register.address] = (
-            boolean_reg_uid
-        )
+        server._VirtualDrive__reg_address_to_id[bool_register.subnode][
+            bool_register.address
+        ] = boolean_reg_uid
         server.reg_signals[boolean_reg_uid] = []
         servo.dictionary.registers(1)[boolean_reg_uid] = bool_register
 
