@@ -5,7 +5,7 @@ with contextlib.suppress(ImportError):
 import pytest
 
 from ingenialink.ethercat.network import EthercatNetwork
-from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from ingenialink.exceptions import ILError
 
 
 @pytest.mark.docker
@@ -33,7 +33,7 @@ def test_load_firmware_no_slave_detected_error(mocker, read_config):
     mocker.patch("os.path.isfile", return_value=True)
     slave_id = 23
     with pytest.raises(
-        ILFirmwareLoadError,
+        ILError,
         match=f"Slave {slave_id} was not found.",
     ):
         net.load_firmware("dummy_file.lfu", False, slave_id=slave_id)

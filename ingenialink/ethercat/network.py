@@ -208,16 +208,7 @@ class EthercatNetwork(Network):
             ILStateError: If slave can not reach PreOp state
 
         """
-        if not isinstance(slave_id, int) or slave_id < 0:
-            raise ValueError("Invalid slave ID value")
-        if not self.__is_master_running:
-            self._start_master()
-        if slave_id not in self.__last_init_nodes:
-            self.__init_nodes()
-        if len(self.__last_init_nodes) == 0:
-            raise ILError("Could not find any slaves in the network.")
-        if slave_id not in self.__last_init_nodes:
-            raise ILError(f"Slave {slave_id} was not found.")
+        self._check_slave_id(slave_id)
         slave = self._ecat_master.slaves[slave_id - 1]
         servo = EthercatServo(
             slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
@@ -485,17 +476,22 @@ class EthercatNetwork(Network):
             raise ValueError("Invalid slave ID value")
         if not self.__is_master_running:
             self._start_master()
-        nodes = self._ecat_master.config_init()
-        if nodes == 0:
-            raise ILFirmwareLoadError("Could not find any slaves in the network.")
-        if slave_id > nodes:
-            raise ILFirmwareLoadError(f"Slave {slave_id} was not found.")
+        if slave_id not in self.__last_init_nodes:
+            self.__init_nodes()
+        if len(self.__last_init_nodes) == 0:
+            raise ILError("Could not find any slaves in the network.")
+        if slave_id not in self.__last_init_nodes:
+            raise ILError(f"Slave {slave_id} was not found.")
 
-    @staticmethod
-    def _switch_to_boot_state(slave: "CdefSlave") -> None:
+    def _switch_to_boot_state(self, slave: "CdefSlave") -> None:
         """Request the transition to the boot state."""
         slave.state = pysoem.BOOT_STATE
         slave.write_state()
+        if (
+            slave.state_check(pysoem.BOOT_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
+            != pysoem.BOOT_STATE
+        ):
+            raise ILFirmwareLoadError("The drive cannot reach the boot state.")
 
     def _force_boot_mode(self, slave: "CdefSlave") -> None:
         """COMOCO drives need to be forced to boot mode."""
