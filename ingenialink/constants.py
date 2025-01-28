@@ -1,4 +1,4 @@
-from ingenialink.register import RegDtype
+from ingenialink.enums.register import RegDtype
 
 DIST_FRAME_SIZE_BYTES = 128
 DIST_FRAME_SIZE = 512

@@ -3,8 +3,9 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
-from ingenialink.canopen.register import CanopenRegister, RegAccess, RegCyclicType, RegDtype
+from ingenialink.canopen.register import CanopenRegister
 from ingenialink.dictionary import DictionaryV2, Interface
+from ingenialink.enums.register import RegCyclicType
 
 logger = ingenialogger.get_logger(__name__)
 

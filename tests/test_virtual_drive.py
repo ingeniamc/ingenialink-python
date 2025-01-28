@@ -143,17 +143,16 @@ def test_virtual_disturbance(virtual_drive, register_key):
     reg = servo._get_reg(register_key, subnode=1)
     address = reg.address
     servo.disturbance_set_mapped_register(0, address, subnode, reg.dtype.value, 4)
-    data_arr = []
     if reg.dtype == RegDtype.FLOAT:
-        data_arr.append([0.0, -1.0, 2.0, 3.0])
+        data_arr = [0.0, -1.0, 2.0, 3.0]
     else:
-        data_arr.append([0, -1, 2, 3])
+        data_arr = [0, -1, 2, 3]
 
     channels = [0]
     servo.disturbance_write_data(channels, [reg.dtype], data_arr)
     servo.disturbance_enable()
 
-    assert server._disturbance.channels_data[0] == data_arr[0]
+    assert np.array_equal(server._disturbance.channels_data[0], data_arr)
 
 
 @pytest.mark.no_connection

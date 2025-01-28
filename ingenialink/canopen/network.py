@@ -22,7 +22,6 @@ from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
 from ingenialink.enums.register import RegCyclicType
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
-from ingenialink.register import RegAccess, RegDtype
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 
@@ -30,7 +29,7 @@ if platform.system() == "Windows":
     with DisableLogger():
         from can.interfaces.ixxat.exceptions import VCIError
 else:
-    VCIError = None
+    VCIError = None  # type: ignore
 from canopen import Network as NetworkLib
 
 KVASER_DRIVER_INSTALLED = True
@@ -1117,13 +1116,13 @@ class CanopenNetwork(Network):
         return [
             {"interface": "kvaser", "channel": channel}
             for channel in range(num_channels.value)
-            if "Virtual" not in can.interfaces.kvaser.get_channel_info(channel)
+            if "Virtual" not in can.interfaces.kvaser.get_channel_info(channel)  # type: ignore[no-untyped-call]
         ]
 
     @staticmethod
     def _reload_kvaser_lib() -> None:
         """Reload the Kvaser library to refresh the connected transceivers."""
-        can_unload_library = get_canlib_function("canUnloadLibrary")
-        can_initialize_library = get_canlib_function("canInitializeLibrary")
+        can_unload_library = get_canlib_function("canUnloadLibrary")  # type: ignore[no-untyped-call]
+        can_initialize_library = get_canlib_function("canInitializeLibrary")  # type: ignore[no-untyped-call]
         can_unload_library()
         can_initialize_library()

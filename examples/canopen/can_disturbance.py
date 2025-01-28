@@ -3,8 +3,8 @@ import math
 from typing import List, Union, cast
 
 from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
+from ingenialink.enums.register import RegDtype
 from ingenialink.exceptions import ILRegisterNotFoundError
-from ingenialink.register import RegDtype
 
 
 def disturbance_example(args: argparse.Namespace) -> None:

@@ -12,10 +12,11 @@ from typing_extensions import override
 
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.register import CanopenRegister
+from ingenialink.enums.register import RegCyclicType
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILDictionaryParseError
-from ingenialink.register import RegAccess, RegAddressType, RegCyclicType, RegDtype, Register
+from ingenialink.register import Register
 
 logger = ingenialogger.get_logger(__name__)
 

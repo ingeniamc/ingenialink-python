@@ -50,8 +50,8 @@ def monitoring_example(args: argparse.Namespace) -> List[NDArray[np.float_]]:
         mapped_reg = reg.idx
         dtype_value = servo.dictionary.registers(1)[key].dtype.value
         servo.monitoring_set_mapped_register(idx, mapped_reg, 1, dtype_value, 4)
-        tmp_mon_data.append([])
-        monitor_data.append([])
+        tmp_mon_data.append(np.ndarray([]))
+        monitor_data.append(np.ndarray([]))
     # Configure monitoring SOC as forced
     servo.write("MON_CFG_SOC_TYPE", 0, subnode=0)
     # Configure monitoring EoC as number of samples
