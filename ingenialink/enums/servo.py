@@ -1,4 +1,6 @@
+import warnings
 from enum import Enum
+from typing import Any
 
 
 class ServoState(Enum):
@@ -117,3 +119,25 @@ class ServoUnitsAcc(Enum):
     """Millimeters/second^2."""
     M_S2 = 6
     """Meters/second^2."""
+
+
+# WARNING: Deprecated aliases
+_DEPRECATED = {
+    "SERVO_STATE": "ServoState",
+    "SERVO_MODE": "ServoMode",
+    "SERVO_UNITS_TORQUE": "ServoUnitsTorque",
+    "SERVO_UNITS_POS": "ServoUnitsPos",
+    "SERVO_UNITS_VEL": "ServoUnitsVel",
+    "SERVO_UNITS_ACC": "ServoUnitsAcc",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _DEPRECATED:
+        warnings.warn(
+            f"{name} is deprecated, use {_DEPRECATED[name]} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return globals()[_DEPRECATED[name]]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

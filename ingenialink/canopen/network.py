@@ -4,6 +4,7 @@ import os
 import platform
 import re
 import tempfile
+import warnings
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
@@ -1126,3 +1127,21 @@ class CanopenNetwork(Network):
         can_initialize_library = get_canlib_function("canInitializeLibrary")  # type: ignore[no-untyped-call]
         can_unload_library()
         can_initialize_library()
+
+
+# WARNING: Deprecated aliases
+_DEPRECATED = {
+    "CAN_DEVICE": "CanDevice",
+    "CAN_BAUDRATE": "CanBaudrate",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _DEPRECATED:
+        warnings.warn(
+            f"{name} is deprecated, use {_DEPRECATED[name]} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return globals()[_DEPRECATED[name]]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

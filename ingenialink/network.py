@@ -1,3 +1,4 @@
+import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -160,3 +161,22 @@ class Network(ABC):
     def protocol(self) -> NetProt:
         """NET_PROT: Obtain network protocol."""
         raise NotImplementedError
+
+
+# WARNING: Deprecated aliases
+_DEPRECATED = {
+    "NET_PROT": "NetProt",
+    "NET_STATE": "NetState",
+    "NET_DEV_EVT": "NetDevEvt",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _DEPRECATED:
+        warnings.warn(
+            f"{name} is deprecated, use {_DEPRECATED[name]} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return globals()[_DEPRECATED[name]]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
