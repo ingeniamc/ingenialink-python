@@ -4,7 +4,7 @@ from typing import List, Union, cast
 
 from ingenialink.canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
 from ingenialink.exceptions import ILRegisterNotFoundError
-from ingenialink.register import REG_DTYPE
+from ingenialink.enums.register import REG_DTYPE
 
 
 def disturbance_example(args: argparse.Namespace) -> None:

@@ -187,6 +187,7 @@ class BasePlant:
         Returns:
             Filtered signal.
         """
+        output_signal: NDArray[np.float_]
         plant = plant or self.plant
         if len(plant.num) == 1 and len(plant.den) == 1:
             gain = plant.num[0] / plant.den[0]
@@ -880,12 +881,12 @@ class VirtualMonDistBase:
         self.enabled = False
         self.disable()
         self.number_mapped_registers = 0
-        self.channels_data: dict[int, list[Union[int, float]]] = {}
+        self.channels_data: dict[int, NDArray[np.float_]] = {}
         self.channels_dtype: dict[int, REG_DTYPE] = {}
         self.channels_address: dict[int, int] = {}
         self.channels_subnode: dict[int, int] = {}
         self.channels_size: dict[int, int] = {}
-        self.channels_signal: dict[int, list[Union[int, float]]] = {}
+        self.channels_signal: dict[int, NDArray[np.float_]] = {}
 
     def enable(self) -> None:
         """Enable Monitoring/Disturbance."""
@@ -993,15 +994,14 @@ class VirtualMonDistBase:
     def map_registers(self) -> None:
         """Creates the channels attribute based on mapped registers."""
         self.bytes_per_block = 0
-        empty_list: list[float] = []
         for channel in range(self.number_mapped_registers):
             subnode, address, dtype, size = self.get_mapped_register(channel)
-            self.channels_data[channel] = empty_list.copy()
+            self.channels_data[channel] = np.array([])
             self.channels_dtype[channel] = REG_DTYPE(dtype)
             self.channels_address[channel] = address
             self.channels_subnode[channel] = subnode
             self.channels_size[channel] = size
-            self.channels_signal[channel] = empty_list.copy()
+            self.channels_signal[channel] = np.array([])
             self.bytes_per_block += size
 
     def get_channel_index(self, reg_id: str) -> Optional[int]:
@@ -1114,7 +1114,7 @@ class VirtualMonitoring(VirtualMonDistBase):
                 signal = [
                     start_value + i for i in range(0, self.buffer_size * self.divider, self.divider)
                 ]
-            self.channels_signal[channel] = signal
+            self.channels_signal[channel] = np.array(signal)
 
     def _store_data_bytes(self) -> None:
         """Convert signals into a bytes and store it at MON_DATA register."""
@@ -1203,7 +1203,7 @@ class VirtualDisturbance(VirtualMonDistBase):
                 data_bytes = buffer[:size]
                 value = convert_bytes_to_dtype(data_bytes, dtype)
                 if isinstance(value, (int, float)):
-                    self.channels_data[channel].append(value)
+                    self.channels_data[channel] = np.append(self.channels_data[channel], value)
                 buffer = buffer[size:]
 
             dist_signal = np.array(self.channels_data[channel])

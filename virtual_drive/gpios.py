@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from .environment import Signal
+from .signals import Signal
 
 if TYPE_CHECKING:
     from .environment import Environment
