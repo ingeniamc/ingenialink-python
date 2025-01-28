@@ -38,8 +38,7 @@ class CanopenDictionaryV2(DictionaryV2):
         ),
     ]
 
-    def __init__(self, dictionary_path: str):
-        super().__init__(dictionary_path, Interface.CAN)
+    interface = Interface.CAN
 
     def _read_xdf_register(self, register: ET.Element) -> Optional[CanopenRegister]:
         current_read_register = super()._read_xdf_register(register)

@@ -17,11 +17,10 @@ from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.servo import DictionaryFactory
-from ingenialink.utils import constants
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
-from ingenialink.utils.constants import IL_MC_CW_EO
 from ingenialink.utils.mcb import MCB
 from ingenialink.virtual.dictionary import VirtualDictionary
+from virtual_drive import constants
 
 from .environment import Environment
 from .gpios import Gpios
@@ -1279,7 +1278,9 @@ class VirtualDrive(Thread):
 
         self._monitoring: Optional[VirtualMonitoring] = None
         self._disturbance: Optional[VirtualDisturbance] = None
-        if self.__register_exists(0, VirtualMonitoring.STATUS_REGISTER):
+        if self.__register_exists(0, VirtualMonitoring.STATUS_REGISTER) and self.__register_exists(
+            0, VirtualDisturbance.STATUS_REGISTER
+        ):
             self._monitoring = VirtualMonitoring(self)
             self._disturbance = VirtualDisturbance(self)
 
@@ -1553,11 +1554,19 @@ class VirtualDrive(Thread):
         if reg_id == "DRV_OP_CMD":
             self.operation_mode = int(value)
             self.__clean_plant_signals()
-        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (int(value) & IL_MC_CW_EO):
+        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (int(value) & constants.IL_MC_CW_EO):
             self.__set_motor_enable()
-        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_DV):
+        if (
+            reg_id == "DRV_STATE_CONTROL"
+            and subnode == 1
+            and (int(value) & constants.IL_MC_PDS_CMD_DV_MSK == constants.IL_MC_PDS_CMD_DV)
+        ):
             self.__set_motor_disable()
-        if reg_id == "DRV_STATE_CONTROL" and subnode == 1 and (value == constants.IL_MC_PDS_CMD_SD):
+        if (
+            reg_id == "DRV_STATE_CONTROL"
+            and subnode == 1
+            and (int(value) & constants.IL_MC_PDS_CMD_MSK == constants.IL_MC_PDS_CMD_SD)
+        ):
             self.__set_motor_ready_to_switch_on()
         if reg_id == "COMMU_ANGLE_SENSOR" and subnode == 1:
             self.phasing.clear_phasing_bit()

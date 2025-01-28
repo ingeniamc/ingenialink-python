@@ -3,6 +3,7 @@ from typing import Optional
 
 import ingenialogger
 
+from ingenialink.dictionary import Interface
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.ethernet.register import EthernetRegister
 
@@ -18,6 +19,8 @@ class VirtualDictionary(EthernetDictionaryV2):
         dictionary_path: Path to the Ingenia dictionary.
 
     """
+
+    interface = Interface.VIRTUAL
 
     def _transform_canopen_index_to_mcb_address(self, index: int, subnode: int) -> int:
         """CANopen index is an uint16 but MCB address only has 12 bits, so,

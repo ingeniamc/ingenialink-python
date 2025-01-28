@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Callable, List, Optional
 
 import ingenialogger
 
+from ingenialink import Servo
 from ingenialink.emcy import EmergencyMessage
 
 try:
@@ -30,6 +31,23 @@ class SDO_OPERATION_MSG(Enum):
 
     READ = "reading"
     WRITE = "writing"
+
+
+class EthercatEmergencyMessage(EmergencyMessage):
+    """Ethercat emergency message class.
+
+    Args:
+        servo: The servo that generated the emergency error.
+        emergency_msg: The emergency message instance from PySOEM.
+    """
+
+    def __init__(self, servo: Servo, emergency_msg: "pysoem.Emergency"):
+        data = (
+            emergency_msg.b1.to_bytes(1, "little")
+            + emergency_msg.w1.to_bytes(2, "little")
+            + emergency_msg.w2.to_bytes(2, "little")
+        )
+        super().__init__(servo, emergency_msg.error_code, emergency_msg.error_reg, data)
 
 
 class EthercatServo(PDOServo):
@@ -285,21 +303,25 @@ class EthercatServo(PDOServo):
         self.__emcy_observers.remove(callback)
 
     def _on_emcy(self, emergency_msg: "pysoem.Emergency") -> None:
-        """Receive an emergency message from PySOEM and transform it to a EmergencyMessage.
-        Afterward, send the EmergencyMessage to all the subscribed callbacks.
+        """Receive an emergency message from PySOEM and transform it to a EthercatEmergencyMessage.
+        Afterward, send the EthercatEmergencyMessage to all the subscribed callbacks.
 
         Args:
             emergency_msg: The pysoem.Emergency instance.
 
         """
-        emergency_message = EmergencyMessage(self, emergency_msg)
+        emergency_message = EthercatEmergencyMessage(self, emergency_msg)
         logger.warning(f"Emergency message received from slave {self.target}: {emergency_message}")
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
     def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
-        self._rpdo_maps.extend(rpdo_maps)
-        self._tpdo_maps.extend(tpdo_maps)
+        for rpdo_map in rpdo_maps:
+            if rpdo_map not in self._rpdo_maps:
+                self._rpdo_maps.append(rpdo_map)
+        for tpdo_map in tpdo_maps:
+            if tpdo_map not in self._tpdo_maps:
+                self._tpdo_maps.append(tpdo_map)
         self.slave.config_func = self.map_pdos
 
     def process_pdo_inputs(self) -> None:

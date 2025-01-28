@@ -8,6 +8,7 @@ from ingenialink.network import NET_STATE
 from virtual_drive.core import VirtualDrive
 
 RESOURCES_FOLDER = "virtual_drive/resources/"
+TESTS_RESOURCES_FOLDER = "tests/resources/"
 
 
 @pytest.mark.no_connection
@@ -56,3 +57,11 @@ def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict, read_con
                     value = int(value)
                 servo.write(reg_key, value)
                 assert pytest.approx(value) == server.get_value_by_id(1, reg_key)
+
+
+@pytest.mark.no_connection
+def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):
+    dictionary = os.path.join(TESTS_RESOURCES_FOLDER, "ethercat/test_dict_ethercat_old_dist.xdf")
+    server, net, servo = virtual_drive_custom_dict(dictionary)
+    assert servo is not None and net is not None
+    assert server._monitoring is None and server._disturbance is None

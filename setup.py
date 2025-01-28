@@ -20,6 +20,7 @@ setuptools.setup(
     },
     description="IngeniaLink Communications Library",
     long_description=open("README.rst").read(),
+    long_description_content_type="text/x-rst",
     author="Novanta",
     author_email="support@ingeniamc.com",
     url="https://www.ingeniamc.com",

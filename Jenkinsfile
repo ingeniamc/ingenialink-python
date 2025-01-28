@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.11') _
+@Library('cicd-lib@0.12') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -49,8 +49,14 @@ def runTest(protocol, slave = 0) {
     }
 }
 
+/* Build develop everyday at 19:00 UTC (21:00 Barcelona Time), running all tests */
+CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19 * * *''' : ""
+
 pipeline {
     agent none
+    triggers {
+        cron(CRON_SETTINGS)
+    }
     stages {
         stage("Set run python versions") {
             steps {
@@ -86,60 +92,76 @@ pipeline {
         }
         stage('Build and Tests') {
             parallel {
-                stage('Typing and formatting') {
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
+                stage('Build and publish') {
                     stages {
-                         stage('Type checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                        stage('Build') {
+                            agent {
+                                docker {
+                                    label SW_NODE
+                                    image WIN_DOCKER_IMAGE
+                                }
+                            }
+                            stages {
+                                stage('Type checking') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                                    }
+                                }
+                                stage('Format checking') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                                    }
+                                }
+                                stage('Get FoE application') {
+                                    steps {
+                                        unstash 'foe_app'
+                                        bat "XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\"
+                                        bat "XCOPY $FOE_APP_NAME_LINUX $LIB_FOE_APP_PATH\\linux\\"
+                                    }
+                                }
+                                stage('Build') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
+                                        stash includes: 'dist\\*', name: 'build'
+                                    }
+                                }
+                                stage('Generate documentation') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                                        bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
+                                        stash includes: 'docs.zip', name: 'docs'
+                                    }
+                                }
                             }
                         }
-                        stage('Format checking') {
+                        stage('Publish documentation') {
+                            when {
+                                beforeAgent true
+                                branch BRANCH_NAME_MASTER
+                            }
+                            agent {
+                                label 'worker'
+                            }
                             steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                                unstash 'docs'
+                                unzip zipFile: 'docs.zip', dir: '.'
+                                publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                             }
                         }
-                    }
-                }
-                stage('Build wheels and documentation') {
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage('Get FoE application') {
-                            steps {
-                                unstash 'foe_app'
-                                bat """
-                                    XCOPY $FOE_APP_NAME $LIB_FOE_APP_PATH\\win_64x\\
-                                    XCOPY $FOE_APP_NAME_LINUX $LIB_FOE_APP_PATH\\linux\\
-                                """
+                        stage('Publish to pypi') {
+                            when {
+                                beforeAgent true
+                                branch BRANCH_NAME_MASTER
                             }
-                        }
-                        stage('Build wheels') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
+                            agent {
+                                docker {
+                                    label 'worker'
+                                    image PUBLISHER_DOCKER_IMAGE
+                                }
                             }
-                        }
-                        stage('Generate documentation') {
                             steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
-                            }
-                        }
-                        stage('Archive') {
-                            steps {
-                                bat """
-                                    "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
-                                """
-                                stash includes: 'dist\\*, docs.zip', name: 'publish_files'
-                                archiveArtifacts artifacts: "dist\\*, docs.zip"
+                                unstash 'build'
+                                publishPyPi("dist/*")
                             }
                         }
                     }
@@ -280,25 +302,6 @@ pipeline {
                 }
                 recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
                 archiveArtifacts artifacts: '*.xml'
-            }
-        }
-        stage('Publish wheels and documentation') {
-            agent {
-                docker {
-                    label "worker"
-                    image PUBLISHER_DOCKER_IMAGE
-                }
-            }
-            when {
-                beforeAgent true
-                branch BRANCH_NAME_MASTER
-            }
-            steps {
-                unstash 'publish_files'
-                unzip zipFile: 'docs.zip', dir: '.'
-                // Pending distext migration
-                // publishDistExt("_docs", DISTEXT_PROJECT_DIR, true)
-                publishPyPi("dist/*")
             }
         }
     }
