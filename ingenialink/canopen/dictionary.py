@@ -5,7 +5,7 @@ import ingenialogger
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.enums.register import RegCyclicType
+from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 
 logger = ingenialogger.get_logger(__name__)
 

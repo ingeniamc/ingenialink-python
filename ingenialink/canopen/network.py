@@ -19,7 +19,7 @@ from can.interfaces.pcan.pcan import PcanCanOperationError
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
-from ingenialink.enums.register import RegCyclicType
+from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
@@ -29,7 +29,7 @@ if platform.system() == "Windows":
     with DisableLogger():
         from can.interfaces.ixxat.exceptions import VCIError
 else:
-    VCIError = None  # type: ignore
+    VCIError = None  # noqa: PGH003
 from canopen import Network as NetworkLib
 
 KVASER_DRIVER_INSTALLED = True

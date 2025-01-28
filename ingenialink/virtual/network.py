@@ -5,6 +5,7 @@ import ingenialogger
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.exceptions import ILError
+from ingenialink.network import NetState
 from ingenialink.virtual.servo import VirtualServo
 from virtual_drive.core import VirtualDrive
 

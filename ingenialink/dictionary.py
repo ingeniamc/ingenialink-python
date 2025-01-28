@@ -12,7 +12,7 @@ from typing_extensions import override
 
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import RegCyclicType
+from ingenialink.enums.register import RegAccess, RegAddressType, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILDictionaryParseError
