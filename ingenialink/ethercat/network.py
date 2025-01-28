@@ -462,7 +462,7 @@ class EthercatNetwork(Network):
             else:
                 error_message += f" Error code: {foe_result}."
             raise ILFirmwareLoadError(error_message)
-        self._ecat_master.config_init()
+        self.__init_nodes()
         logger.info("Firmware updated successfully")
 
     def _check_slave_id(self, slave_id: int) -> None:
