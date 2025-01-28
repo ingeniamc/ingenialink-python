@@ -1,14 +1,6 @@
-from typing import TYPE_CHECKING, Optional, Union
-
-try:
-    import pysoem
-except ImportError:
-    pysoem = None
-from canopen.emcy import EmcyError
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from pysoem import Emergency
-
     from ingenialink import Servo
 
 
@@ -17,26 +9,16 @@ class EmergencyMessage:
 
     Args:
         servo: The servo that generated the emergency error.
-        emergency_msg: The emergency message instance from PySOEM or canopen.
-
+        error_code: EMCY code
+        register: Error register
+        data: Vendor specific data
     """
 
-    def __init__(self, servo: "Servo", emergency_msg: Union["Emergency", EmcyError]):
+    def __init__(self, servo: "Servo", error_code: int, register: int, data: bytes):
         self.servo = servo
-        if isinstance(emergency_msg, pysoem.Emergency):
-            self.error_code = emergency_msg.error_code
-            self.register = emergency_msg.error_reg
-            self.data = (
-                emergency_msg.b1.to_bytes(1, "little")
-                + emergency_msg.w1.to_bytes(2, "little")
-                + emergency_msg.w2.to_bytes(2, "little")
-            )
-        elif isinstance(emergency_msg, EmcyError):
-            self.error_code = emergency_msg.code
-            self.register = emergency_msg.register
-            self.data = emergency_msg.data
-        else:
-            raise NotImplementedError
+        self.error_code = error_code
+        self.register = register
+        self.data = data
 
     def get_desc(self) -> Optional[str]:
         """Get the error description from the servo's dictionary."""

@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.4.1] - 2025-01-28
 ### Fixed
 - Avoid mapping a PDO map twice.
 - Recover from a disconnection while PDOs were active.
@@ -9,7 +9,7 @@
 ### Changed
 - Virtual monitoring and disturbance disabled for old disturbance. 
 
-## [7.4.0] - 2025-12-3
+## [7.4.0] - 2024-12-3
 ### Added
 - Method to subscribe to emergency messages.
 - Method to subscribe to register value updates.
@@ -28,7 +28,7 @@
 - Remove an unnecessary argument for a servo status listener callback.
 - DictionaryV2 raises an exception if the interface does not match.
 
-## [7.3.5] - 2025-08-23
+## [7.3.5] - 2024-08-23
 
 ### Added
 - Coco product code attribute to the Dictionary class.

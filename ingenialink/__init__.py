@@ -80,4 +80,34 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 
-__version__ = "7.4.0"
+# WARNING: Deprecated aliases
+_DEPRECATED = {
+    "NET_PROT": "NetProt",
+    "NET_STATE": "NetState",
+    "NET_DEV_EVT": "NetDevEvt",
+    "REG_DTYPE": "RegDtype",
+    "REG_ACCESS": "RegAccess",
+    "REG_PHY": "RegPhy",
+    "SERVO_STATE": "ServoState",
+    "SERVO_MODE": "ServoMode",
+    "SERVO_UNITS_TORQUE": "ServoUnitsTorque",
+    "SERVO_UNITS_POS": "ServoUnitsPos",
+    "SERVO_UNITS_VEL": "ServoUnitsVel",
+    "SERVO_UNITS_ACC": "ServoUnitsAcc",
+    "CAN_DEVICE": "CanDevice",
+    "CAN_BAUDRATE": "CanBaudrate",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _DEPRECATED:
+        warnings.warn(
+            f"{name} is deprecated, use {_DEPRECATED[name]} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return globals()[_DEPRECATED[name]]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+
+__version__ = "7.4.1"
