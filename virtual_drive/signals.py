@@ -1,4 +1,4 @@
-from typing import Callable, Generic, List, TypeVar
+from typing import Callable, Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -14,17 +14,17 @@ class Signal(Generic[T]):
 
     def __init__(self, initial_value: T):
         self.__value = initial_value
-        self.__watchers: List[Callable[[], None]] = []
+        self.__watchers: list[Callable[[], None]] = []
 
     def get(self) -> T:
-        """Get current value of the signal"""
+        """Get current value of the signal."""
         return self.__value
 
     def watch(self, callback: Callable[[], None]) -> None:
         """Watch signal.
 
         Args:
-            Callback. Will be called when signal changes
+            callback: Will be called when signal changes
         """
         self.__watchers.append(callback)
 

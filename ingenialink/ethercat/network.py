@@ -3,7 +3,7 @@ import time
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import ingenialogger
 
@@ -24,6 +24,8 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class SlaveState(Enum):
+    """EtherCAT state enum."""
+
     NONE_STATE = 0
     INIT_STATE = 1
     PREOP_STATE = 2
@@ -44,19 +46,20 @@ class NetStatusListener(Thread):
     """
 
     def __init__(self, network: "EthercatNetwork", refresh_time: float = 0.25):
-        super(NetStatusListener, self).__init__()
+        super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
         self.__stop = False
         self._ecat_master = self.__network._ecat_master
 
     def run(self) -> None:
+        """Check the network status."""
         while not self.__stop:
             self._ecat_master.read_state()
             for servo in self.__network.servos:
                 slave_id = servo.slave_id
                 servo_state = self.__network.get_servo_state(slave_id)
-                is_servo_alive = not servo.slave.state == pysoem.NONE_STATE
+                is_servo_alive = servo.slave.state != pysoem.NONE_STATE
                 if not is_servo_alive and servo_state == NET_STATE.CONNECTED:
                     self.__network._notify_status(slave_id, NET_DEV_EVT.REMOVED)
                     self.__network._set_servo_state(slave_id, NET_STATE.DISCONNECTED)
@@ -70,6 +73,7 @@ class NetStatusListener(Thread):
                 time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
+        """Check the network status."""
         self.__stop = True
 
 
@@ -117,11 +121,11 @@ class EthercatNetwork(Network):
     ):
         if not pysoem:
             raise pysoem_import_error
-        super(EthercatNetwork, self).__init__()
+        super().__init__()
         self.interface_name: str = interface_name
-        self.servos: List[EthercatServo] = []
+        self.servos: list[EthercatServo] = []
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: Dict[int, List[Any]] = defaultdict(list)
+        self.__observers_net_state: dict[int, list[Any]] = defaultdict(list)
         self._connection_timeout: float = connection_timeout
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
         self._ecat_master.sdo_read_timeout = int(1_000_000 * self._connection_timeout)
@@ -129,10 +133,12 @@ class EthercatNetwork(Network):
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
         self._overlapping_io_map = overlapping_io_map
         self.__is_master_running = False
-        self.__last_init_nodes: List[int] = []
+        self.__last_init_nodes: list[int] = []
 
-    def scan_slaves(self) -> List[int]:
-        """Scans for slaves in the network. Scanning of slaves cannot be done if a slave is already
+    def scan_slaves(self) -> list[int]:
+        """Scans for slaves in the network.
+
+        Scanning of slaves cannot be done if a slave is already
         connected to the network.
 
         Returns:
@@ -171,6 +177,7 @@ class EthercatNetwork(Network):
 
     def __init_nodes(self) -> None:
         """Init all the nodes and set already connected nodes to PreOp state.
+
         Also fill `__last_init_nodes` attribute.
         """
         nodes = self._ecat_master.config_init()
@@ -288,7 +295,7 @@ class EthercatNetwork(Network):
                 raise ILStateError("Drives can not reach Op state")
 
     def stop_pdos(self) -> None:
-        """For all slaves in OP or SafeOp state, set state to PreOp"""
+        """For all slaves in OP or SafeOp state, set state to PreOp."""
         self._ecat_master.read_state()
         op_servo_list = [
             servo
@@ -302,7 +309,7 @@ class EthercatNetwork(Network):
         self.__init_nodes()
 
     def send_receive_processdata(self, timeout: float = ECAT_PROCESSDATA_TIMEOUT_S) -> None:
-        """Send and receive PDOs
+        """Send and receive PDOs.
 
         Args:
             timeout: receive processdata timeout in seconds, 0.1 seconds by default.
@@ -338,9 +345,9 @@ class EthercatNetwork(Network):
             servo.process_pdo_inputs()
 
     def _change_nodes_state(
-        self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int
+        self, nodes: Union["EthercatServo", list["EthercatServo"]], target_state: int
     ) -> bool:
-        """Set ECAT state to target state for all nodes in list
+        """Set ECAT state to target state for all nodes in list.
 
         Args:
             nodes: target node or list of nodes
@@ -356,9 +363,9 @@ class EthercatNetwork(Network):
         return self._check_node_state(nodes, target_state)
 
     def _check_node_state(
-        self, nodes: Union["EthercatServo", List["EthercatServo"]], target_state: int
+        self, nodes: Union["EthercatServo", list["EthercatServo"]], target_state: int
     ) -> bool:
-        """Check ECAT state for all nodes in list
+        """Check ECAT state for all nodes in list.
 
         Args:
             nodes: target node or list of nodes
@@ -534,7 +541,7 @@ class EthercatNetwork(Network):
         return r
 
     def _start_master(self) -> None:
-        """Start the EtherCAT master"""
+        """Start the EtherCAT master."""
         self._ecat_master.open(self.interface_name)
         self.__is_master_running = True
 
@@ -545,6 +552,7 @@ class EthercatNetwork(Network):
 
     def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
         """Get the state of a servo that's a part of network.
+
         The state indicates if the servo is connected or disconnected.
 
         Args:
@@ -575,6 +583,7 @@ class EthercatNetwork(Network):
 
     def _recover_from_disconnection(self) -> bool:
         """Recover the CoE communication after a disconnection.
+
         All the connected slaves need to transitioned to the PreOp state.
 
         Returns:
