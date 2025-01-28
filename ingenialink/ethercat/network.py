@@ -515,7 +515,7 @@ class EthercatNetwork(Network):
         slave.state = pysoem.BOOT_STATE
         slave.write_state()
         time.sleep(self.__FORCE_BOOT_SLEEP_TIME_S)
-        self._ecat_master.config_init()
+        self.__init_nodes()
 
     @staticmethod
     def _write_foe(slave: "CdefSlave", file_path: str, password: int) -> int:
