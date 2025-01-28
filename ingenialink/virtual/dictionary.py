@@ -23,7 +23,9 @@ class VirtualDictionary(EthernetDictionaryV2):
     interface = Interface.VIRTUAL
 
     def _transform_canopen_index_to_mcb_address(self, index: int, subnode: int) -> int:
-        """CANopen index is an uint16 but MCB address only has 12 bits, so,
+        """Transfrom CANopen index to MCB address.
+
+        CANopen index is an uint16 but MCB address only has 12 bits, so,
         some index makes overflow in MCB frame.
 
         Args:

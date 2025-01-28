@@ -53,25 +53,30 @@ class EthernetServo(Servo):
             self.interface = Interface.EoE
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
-        super(EthernetServo, self).__init__(self.ip_address, dictionary_path, servo_status_listener)
+        super().__init__(self.ip_address, dictionary_path, servo_status_listener)
 
     def store_tcp_ip_parameters(self) -> None:
-        """Stores the TCP/IP values. Affects IP address,
-        subnet mask and gateway"""
+        """Stores the TCP/IP values.
+
+        Affects IP address, subnet mask, gateway and mac_address.
+        """
         self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Store TCP/IP successfully done.")
 
     def restore_tcp_ip_parameters(self) -> None:
-        """Restores the TCP/IP values back to default. Affects
-        IP address, subnet mask and gateway"""
+        """Restores the TCP/IP values back to default.
+
+        Affects IP address, subnet mask and gateway.
+        """
         self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Restore TCP/IP successfully done.")
 
     def change_tcp_ip_parameters(
         self, ip_address: str, subnet_mask: str, gateway: str, mac_address: Optional[int] = None
     ) -> None:
-        """Stores the TCP/IP values. Affects IP address,
-        network mask and gateway
+        """Stores the TCP/IP values.
+
+        Affects IP address, network mask ,gateway and mac_address.
 
         .. note::
             The drive needs a power cycle after this
@@ -165,7 +170,7 @@ class EthernetServo(Servo):
         try:
             try:
                 self.socket.sendall(frame)
-            except socket.error as e:
+            except OSError as e:
                 raise ILIOError("Error sending data.") from e
             try:
                 return self.__receive_mcb_frame(reg)
@@ -180,7 +185,7 @@ class EthernetServo(Servo):
             self._lock.release()
 
     def __receive_mcb_frame(self, reg: int) -> bytes:
-        """Receive frame from socket and return MCB data
+        """Receive frame from socket and return MCB data.
 
         Args:
             reg: expected address
@@ -197,6 +202,6 @@ class EthernetServo(Servo):
             response = self.socket.recv(ETH_BUF_SIZE)
         except socket.timeout as e:
             raise ILTimeoutError("Timeout while receiving data.") from e
-        except socket.error as e:
+        except OSError as e:
             raise ILIOError("Error receiving data.") from e
         return MCB.read_mcb_data(reg, response)

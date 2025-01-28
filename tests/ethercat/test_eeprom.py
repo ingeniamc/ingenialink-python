@@ -39,4 +39,4 @@ def test_eeprom_wrong_size(connect_to_slave):
     servo, _ = connect_to_slave
     serial_number_address = 14
     with pytest.raises(ValueError):
-        servo._write_esc_eeprom(serial_number_address, int(0).to_bytes(3, "little"))
+        servo._write_esc_eeprom(serial_number_address, (0).to_bytes(3, "little"))

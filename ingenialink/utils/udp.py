@@ -10,8 +10,11 @@ logger = ingenialogger.get_logger(__name__)
 
 
 class UDP:
-    """UDP Contains all the basic operations for the lightweight data
-    transport protocol based off the MCB protocol."""
+    """Class to create a UDP connection.
+
+    UDP Contains all the basic operations for the lightweight data
+    transport protocol based off the MCB protocol.
+    """
 
     def __init__(self, port: int, ip: str) -> None:
         self.port = port
@@ -22,6 +25,7 @@ class UDP:
         self.socket.connect((ip, port))
 
     def __del__(self) -> None:
+        """Delete method."""
         try:
             self.socket.close()
         except Exception as e:
@@ -60,7 +64,7 @@ class UDP:
         ret_cmd = self.unmsg(rcv)
         if ret_cmd != 3:
             self.socket.close()
-            raise Exception("No ACK received (command received %d)" % ret_cmd)
+            raise Exception(f"No ACK received (command received {ret_cmd})")
         return ret_cmd
 
     @staticmethod
@@ -99,6 +103,7 @@ class UDP:
             cmd: Command of the message.
             data: Data of the message.
             size: Size of the message.
+
         Returns:
             Message frame.
         """

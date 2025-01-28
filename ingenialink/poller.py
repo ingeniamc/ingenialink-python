@@ -1,6 +1,6 @@
 import time
 from threading import Lock, Thread
-from typing import Dict, List, Tuple, Union
+from typing import Union
 
 import ingenialogger
 
@@ -29,14 +29,15 @@ class Poller(Thread):
         self.__samples_count = 0
         self.__samples_lost = False
         self.__running = False
-        self.__mappings: Dict[int, Register] = {}
-        self.__mappings_enabled: List[bool] = []
+        self.__mappings: dict[int, Register] = {}
+        self.__mappings_enabled: list[bool] = []
         self.__lock = Lock()
-        self.__acq_time: List[float] = []
-        self.__acq_data: List[Union[List[float], List[int]]] = []
+        self.__acq_time: list[float] = []
+        self.__acq_data: list[Union[list[float], list[int]]] = []
         self._reset_acq()
 
     def run(self) -> None:
+        """Start the poller."""
         self.__running = True
         self.__time_start = time.time()
         while self.__running:
@@ -98,7 +99,6 @@ class Poller(Thread):
             TypeError: If the register is not valid.
 
         """
-
         if self.__running:
             raise ILStateError("Poller is running")
 
@@ -131,7 +131,6 @@ class Poller(Thread):
             Status code.
 
         """
-
         if self.__running:
             raise ILStateError("Poller is running")
 
@@ -184,7 +183,7 @@ class Poller(Thread):
             for channel in enabled_channel_indexes:
                 register = self.__mappings[channel]
                 try:
-                    self.__acq_data[channel][self.__samples_count] = self.servo.read(register)  # type: ignore
+                    self.__acq_data[channel][self.__samples_count] = self.servo.read(register)  # type: ignore[assignment]
                 except (ILTimeoutError, ILIOError):
                     reading_error = True
                     logger.warning(
@@ -199,7 +198,7 @@ class Poller(Thread):
         self.__lock.release()
 
     @property
-    def data(self) -> Tuple[List[float], List[List[float]], bool]:
+    def data(self) -> tuple[list[float], list[list[float]], bool]:
         """Time vector, array of data vectors and a flag indicating if data was lost."""
         self.__lock.acquire()
         t = list(self.__acq_time[0 : self.__samples_count])
