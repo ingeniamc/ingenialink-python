@@ -481,7 +481,7 @@ class EthercatNetwork(Network):
         nodes = self._ecat_master.config_init()
         if nodes == 0:
             raise ILError("Could not find any slaves in the network.")
-        if nodes > slave_id:
+        if slave_id > nodes:
             raise ILError(f"Slave {slave_id} was not found.")
 
     @staticmethod
@@ -491,7 +491,7 @@ class EthercatNetwork(Network):
         slave.write_state()
 
     def _force_boot_mode(self, slave: "CdefSlave") -> None:
-        """COCO MOCO drives need to be forced to boot mode."""
+        """COMOCO drives need to be forced to boot mode."""
         slave.state = pysoem.PREOP_STATE
         slave.write_state()
         if (
