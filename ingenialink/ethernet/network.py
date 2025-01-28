@@ -13,7 +13,7 @@ from typing_extensions import override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NetDevEvt, NetState, Network, SlaveInfo, NetProt
+from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 from ingenialink.utils.udp import UDP
 
 from .servo import EthernetServo

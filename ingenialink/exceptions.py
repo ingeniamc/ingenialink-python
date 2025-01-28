@@ -6,7 +6,6 @@ class ILConfigurationError(ILError):
     """IngeniaLink configuration error."""
 
 
-
 class ILUDPError(ILError):
     """Ingenialink exception on UDP action."""
 
@@ -57,7 +56,6 @@ class ILNACKError(ILError):
 
 class ILDictionaryParseError(ILError):
     """IngeniaLink dictionary parse error."""
-
 
 
 class ILWrongWorkingCountError(ILError):

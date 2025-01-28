@@ -2,9 +2,6 @@ line-length = 100
 target-version = "py39"
 
 [lint]
-pydocstyle.convention = "google"
-flake8-unused-arguments.ignore-variadic-names = true
-
 select = [
     "F", # Pyflakes
     "E", # pycodestyle
@@ -38,6 +35,8 @@ select = [
     "RUF008", # Ruff dataclasses mutable defaults
     "RUF027", # Missing f-string syntax
 ]
+pydocstyle.convention = "google"
+flake8-unused-arguments.ignore-variadic-names = true
 
 ignore = [
     "C90", # mccabe complexity. Will be fixed in INGK-1020
