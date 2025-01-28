@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -23,7 +23,7 @@ class EthercatDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: List[EthercatRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: list[EthercatRegister] = [
         EthercatRegister(
             identifier="MON_DATA_VALUE",
             units="",
@@ -46,7 +46,7 @@ class EthercatDictionaryV2(DictionaryV2):
         ),
     ]
 
-    __PDO_REGISTERS: List[EthercatRegister] = [
+    __PDO_REGISTERS: list[EthercatRegister] = [
         EthercatRegister(
             identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_0",
             units="",

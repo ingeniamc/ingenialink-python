@@ -1,6 +1,7 @@
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import bitarray
+from typing_extensions import override
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
@@ -167,6 +168,7 @@ class RPDOMapItem(PDOMapItem):
     ) -> None:
         super().__init__(register, size_bits)
 
+    @override
     @property
     def value(self) -> Union[int, float, bytes]:
         return super().value
@@ -198,7 +200,7 @@ class PDOMap:
     _PDO_MAP_ITEM_CLASS = PDOMapItem
 
     def __init__(self) -> None:
-        self.__items: List[PDOMapItem] = []
+        self.__items: list[PDOMapItem] = []
         self.__map_register_address: Optional[int] = None
 
     def create_item(
@@ -227,7 +229,7 @@ class PDOMap:
     def add_registers(
         self,
         registers: Union[
-            Union[EthercatRegister, CanopenRegister], List[Union[EthercatRegister, CanopenRegister]]
+            Union[EthercatRegister, CanopenRegister], list[Union[EthercatRegister, CanopenRegister]]
         ],
     ) -> None:
         """Add a register or a list of registers in bulk.
@@ -244,7 +246,7 @@ class PDOMap:
             self.add_item(item)
 
     @property
-    def items(self) -> List[PDOMapItem]:
+    def items(self) -> list[PDOMapItem]:
         """List of items.
 
         Returns:
@@ -343,11 +345,11 @@ class PDOMap:
             Concatenated items raw data in bits.
         """
         data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
-        for item in self.items:
-            try:
+        try:
+            for item in self.items:
                 data_bits += item.raw_data_bits
-            except ILError:
-                raise ILError(f"PDO item {item.register.identifier} does not have data stored.")
+        except ILError:
+            raise ILError(f"PDO item {item.register.identifier} does not have data stored.")
 
         if len(data_bits) != self.data_length_bits:
             raise ILError(
@@ -404,8 +406,8 @@ class PDOServo(Servo):
         servo_status_listener: bool = False,
     ):
         super().__init__(target, dictionary_path, servo_status_listener)
-        self._rpdo_maps: List[RPDOMap] = []
-        self._tpdo_maps: List[TPDOMap] = []
+        self._rpdo_maps: list[RPDOMap] = []
+        self._tpdo_maps: list[TPDOMap] = []
 
     def reset_rpdo_mapping(self) -> None:
         """Delete the RPDO mapping stored in the servo slave."""
@@ -423,6 +425,7 @@ class PDOServo(Servo):
 
     def map_rpdos(self) -> None:
         """Map the RPDO registers into the servo slave.
+
         It takes the first available RPDO assignment slot of the slave.
 
         Raises:
@@ -446,7 +449,7 @@ class PDOServo(Servo):
         )
 
     def _set_rpdo_map_register(self, rpdo_map_register_index: int, rpdo_map: RPDOMap) -> None:
-        """Fill RPDO map register with PRDOMap object data
+        """Fill RPDO map register with PRDOMap object data.
 
         Args:
             rpdo_map_register_index: custom rpdo map register index
@@ -476,6 +479,7 @@ class PDOServo(Servo):
 
     def map_tpdos(self) -> None:
         """Map the TPDO registers into the servo slave.
+
         It takes the first available TPDO assignment slot of the slave.
 
         Raises:
@@ -499,7 +503,7 @@ class PDOServo(Servo):
         )
 
     def _set_tpdo_map_register(self, tpdo_map_register_index: int, tpdo_map: TPDOMap) -> None:
-        """Fill TPDO map register with TRDOMap object data
+        """Fill TPDO map register with TRDOMap object data.
 
         Args:
             tpdo_map_register_index: custom tpdo map register index
@@ -527,7 +531,7 @@ class PDOServo(Servo):
             )
         tpdo_map.map_register_index = tpdo_map_register.idx
 
-    def map_pdos(self, slave_index: int) -> None:
+    def map_pdos(self, slave_index: int) -> None:  # noqa: ARG002
         """Map RPDO and TPDO register into the slave.
 
         Args:
@@ -585,7 +589,7 @@ class PDOServo(Servo):
         if tpdo_map_index is not None:
             self._tpdo_maps.pop(tpdo_map_index)
 
-    def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
+    def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         """Callback called by the slave to configure the map.
 
         Args:

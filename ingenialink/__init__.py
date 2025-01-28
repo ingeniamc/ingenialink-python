@@ -21,14 +21,12 @@ from .canopen.servo import CanopenServo
 from .ethercat.network import EthercatNetwork
 from .ethernet.network import EthernetNetwork
 from .ethernet.servo import EthernetServo
-from .network import EepromFileFormat, NetDevEvt, NetProt, NetState, NetTransProt, Network
+from .network import NetDevEvt, NetProt, NetState, Network
 
 __all__ = [
-    "EepromFileFormat",
     "NetProt",
     "NetDevEvt",
     "NetState",
-    "NetTransProt",
     "ServoState",
     "ServoFlags",
     "ServoMode",

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
@@ -56,17 +56,17 @@ class CanopenRegister(Register):
         subnode: int = 1,
         storage: Any = None,
         reg_range: Union[
-            Tuple[None, None], Tuple[int, int], Tuple[float, float], Tuple[str, str]
+            tuple[None, None], tuple[int, int], tuple[float, float], tuple[str, str]
         ] = (None, None),
-        labels: Optional[Dict[str, str]] = None,
-        enums: Optional[Dict[str, int]] = None,
+        labels: Optional[dict[str, str]] = None,
+        enums: Optional[dict[str, int]] = None,
         cat_id: Optional[str] = None,
         scat_id: Optional[str] = None,
         internal_use: int = 0,
         address_type: Optional[RegAddressType] = None,
         description: Optional[str] = None,
         default: Optional[bytes] = None,
-        bitfields: Optional[Dict[str, BitField]] = None,
+        bitfields: Optional[dict[str, BitField]] = None,
         is_node_id_dependent: bool = False,
     ):
         super().__init__(
@@ -111,5 +111,5 @@ class CanopenRegister(Register):
 
     @property
     def is_node_id_dependent(self) -> bool:
-        """True if register values depends on Node Id"""
+        """True if register values depends on Node Id."""
         return self.__is_node_id_dependent

@@ -2,4 +2,4 @@ from ingenialink.canopen.register import CanopenRegister
 
 
 class EthercatRegister(CanopenRegister):
-    pass
+    """Class to represent an EtherCAT register."""

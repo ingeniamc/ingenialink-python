@@ -53,10 +53,8 @@ def test_read_dictionary_registers():
 
     ethernet_dict = EthernetDictionaryV2(dictionary_path)
 
-    for subnode in expected_regs_per_subnode.keys():
-        assert expected_regs_per_subnode[subnode] == [
-            reg for reg in ethernet_dict.registers(subnode)
-        ]
+    for subnode in expected_regs_per_subnode:
+        assert expected_regs_per_subnode[subnode] == list(ethernet_dict.registers(subnode))
 
 
 @pytest.mark.no_connection
@@ -71,7 +69,7 @@ def test_read_dictionary_registers_multiaxis():
         2: SubnodeType.MOTION,
     }
 
-    for subnode in expected_num_registers_per_subnode.keys():
+    for subnode in expected_num_registers_per_subnode:
         num_registers = len(ethernet_dict.registers(subnode))
         assert num_registers == expected_num_registers_per_subnode[subnode]
 
@@ -104,7 +102,7 @@ def test_read_dictionary_errors():
 
     ethernet_dict = EthernetDictionaryV2(dictionary_path)
 
-    assert [error for error in ethernet_dict.errors] == expected_errors
+    assert list(ethernet_dict.errors) == expected_errors
 
 
 @pytest.mark.no_connection

@@ -6,16 +6,16 @@ from collections import OrderedDict, defaultdict
 from ftplib import FTP
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NetDevEvt, NetState, Network, SlaveInfo
+from ingenialink.network import NetDevEvt, NetState, Network, SlaveInfo, NetProt
 from ingenialink.utils.udp import UDP
 
-from ..network import NetProt
 from .servo import EthernetServo
 
 logger = ingenialogger.get_logger(__name__)
@@ -39,20 +39,21 @@ class NetStatusListener(Thread):
     """
 
     def __init__(self, network: "EthernetNetwork", refresh_time: float = 0.25) -> None:
-        super(NetStatusListener, self).__init__()
+        super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
         self.__stop = False
         self.__max_unsuccessful_pings = MAX_NUM_UNSUCCESSFUL_PINGS
 
     def run(self) -> None:
+        """Check the network status."""
         while not self.__stop:
             for servo in self.__network.servos:
                 unsuccessful_pings = 0
                 servo_ip = servo.ip_address
                 servo_state = self.__network.get_servo_state(servo_ip)
                 while unsuccessful_pings < self.__max_unsuccessful_pings:
-                    response = servo.is_alive()  # TODO: Use ping after CAP-924 is fixed
+                    response = servo.is_alive()
                     if not response:
                         unsuccessful_pings += 1
                     else:
@@ -67,6 +68,7 @@ class NetStatusListener(Thread):
             time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
+        """Stop the listener."""
         self.__stop = True
 
 
@@ -74,9 +76,9 @@ class EthernetNetwork(Network):
     """Network for all Ethernet communications."""
 
     def __init__(self) -> None:
-        super(EthernetNetwork, self).__init__()
+        super().__init__()
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: Dict[str, List[Callable[[NetDevEvt], Any]]] = defaultdict(list)
+        self.__observers_net_state: dict[str, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
 
     @staticmethod
     def load_firmware(
@@ -153,39 +155,40 @@ class EthernetNetwork(Network):
 
         if not moco_file or not os.path.isfile(moco_file):
             raise ILFirmwareLoadError("File not found")
-        moco_in = open(moco_file, "r")
+        with open(moco_file) as moco_in:
+            logger.info("Loading firmware...")
+            try:
+                for line in moco_in:
+                    words = line.split()
 
-        logger.info("Loading firmware...")
-        try:
-            for line in moco_in:
-                words = line.split()
+                    # Get command and address
+                    cmd = int(words[1] + words[0], 16)
+                    data = b""
+                    data_start_byte = 2
+                    while data_start_byte in range(data_start_byte, len(words)):
+                        # Load UDP data
+                        data += bytes([int(words[data_start_byte], 16)])
+                        data_start_byte += 1
 
-                # Get command and address
-                cmd = int(words[1] + words[0], 16)
-                data = b""
-                data_start_byte = 2
-                while data_start_byte in range(data_start_byte, len(words)):
-                    # Load UDP data
-                    data += bytes([int(words[data_start_byte], 16)])
-                    data_start_byte += 1
+                    # Send message
+                    upd.raw_cmd(node, subnode, cmd, data)
 
-                # Send message
-                upd.raw_cmd(node, subnode, cmd, data)
+                    if cmd == CMD_CHANGE_CPU:
+                        sleep(1)
 
-                if cmd == CMD_CHANGE_CPU:
-                    sleep(1)
+                logger.info("Bootload process succeeded")
+            except ftplib.error_temp as e:
+                logger.error(e)
+                raise ILFirmwareLoadError("Firewall might be blocking the access.")
+            except Exception as e:
+                logger.error(e)
+                raise ILFirmwareLoadError("Error during bootloader process.")
 
-            logger.info("Bootload process succeeded")
-        except ftplib.error_temp as e:
-            logger.error(e)
-            raise ILFirmwareLoadError("Firewall might be blocking the access.")
-        except Exception as e:
-            logger.error(e)
-            raise ILFirmwareLoadError("Error during bootloader process.")
-
-    def scan_slaves(self) -> List[int]:
+    @override
+    def scan_slaves(self) -> list[int]:
         raise NotImplementedError
 
+    @override
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         raise NotImplementedError
 
@@ -302,6 +305,7 @@ class EthernetNetwork(Network):
 
     def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
         """Get the state of a servo that's a part of network.
+
         The state indicates if the servo is connected or disconnected.
 
         Args:

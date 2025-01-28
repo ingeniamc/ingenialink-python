@@ -6,6 +6,9 @@
 - Recover from a disconnection while PDOs were active.
 - Changed `Enums` names to follow CapWords convention. Old names are still supported, but will soon be deprecated.
 
+### Changed
+- Virtual monitoring and disturbance disabled for old disturbance. 
+
 ## [7.4.0] - 2025-12-3
 ### Added
 - Method to subscribe to emergency messages.

@@ -1,9 +1,10 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink.emcy import EmergencyMessage
 
@@ -78,9 +79,9 @@ class EthercatServo(PDOServo):
         self.__slave = slave
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
-        self.__emcy_observers: List[Callable[[EmergencyMessage], None]] = []
+        self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
-        super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
+        super().__init__(slave_id, dictionary_path, servo_status_listener)
 
     def store_parameters(
         self,
@@ -145,7 +146,6 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         buffer_size: int = 0,
         complete_access: bool = False,
-        start_time: Optional[float] = None,
     ) -> bytes:
         self._lock.acquire()
         try:
@@ -168,7 +168,6 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         data: bytes,
         complete_access: bool = False,
-        start_time: Optional[float] = None,
     ) -> None:
         self._lock.acquire()
         try:
@@ -188,8 +187,7 @@ class EthercatServo(PDOServo):
     def _handle_sdo_exception(
         self, reg: EthercatRegister, operation_msg: SdoOperationMsg, exception: Exception
     ) -> None:
-        """
-        Handle the exceptions that occur when reading or writing SDOs.
+        """Handle the exceptions that occur when reading or writing SDOs.
 
         Args:
             reg: The register that was read or written.
@@ -286,6 +284,7 @@ class EthercatServo(PDOServo):
 
     def _on_emcy(self, emergency_msg: "pysoem.Emergency") -> None:
         """Receive an emergency message from PySOEM and transform it to a EmergencyMessage.
+
         Afterward, send the EmergencyMessage to all the subscribed callbacks.
 
         Args:
@@ -297,7 +296,8 @@ class EthercatServo(PDOServo):
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
-    def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
+    @override
+    def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
                 self._rpdo_maps.append(rpdo_map)
@@ -306,9 +306,11 @@ class EthercatServo(PDOServo):
                 self._tpdo_maps.append(tpdo_map)
         self.slave.config_func = self.map_pdos
 
+    @override
     def process_pdo_inputs(self) -> None:
         self._process_tpdo(self.__slave.input)
 
+    @override
     def generate_pdo_outputs(self) -> None:
         output = self._process_rpdo()
         if output is None:
@@ -348,7 +350,7 @@ class EthercatServo(PDOServo):
         """
         if length < 1:
             raise ValueError("The minimum length is 1 byte.")
-        data = bytes()
+        data = b""
         while len(data) < length:
             data += self.slave.eeprom_read(address, timeout)
             address += 2
@@ -396,5 +398,5 @@ class EthercatServo(PDOServo):
 
     @property
     def slave(self) -> "CdefSlave":
-        """Ethercat slave"""
+        """Ethercat slave."""
         return self.__slave
