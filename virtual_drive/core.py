@@ -187,7 +187,7 @@ class BasePlant:
         Returns:
             Filtered signal.
         """
-        output_signal: NDArray[np.float_]
+        output_signal: NDArray[np.float64]
         plant = plant or self.plant
         if len(plant.num) == 1 and len(plant.den) == 1:
             gain = plant.num[0] / plant.den[0]
@@ -881,12 +881,12 @@ class VirtualMonDistBase:
         self.enabled = False
         self.disable()
         self.number_mapped_registers = 0
-        self.channels_data: dict[int, NDArray[np.float_]] = {}
+        self.channels_data: dict[int, NDArray[np.float64]] = {}
         self.channels_dtype: dict[int, REG_DTYPE] = {}
         self.channels_address: dict[int, int] = {}
         self.channels_subnode: dict[int, int] = {}
         self.channels_size: dict[int, int] = {}
-        self.channels_signal: dict[int, NDArray[np.float_]] = {}
+        self.channels_signal: dict[int, NDArray[np.float64]] = {}
 
     def enable(self) -> None:
         """Enable Monitoring/Disturbance."""
