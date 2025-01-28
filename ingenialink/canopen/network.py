@@ -1112,7 +1112,7 @@ class CanopenNetwork(Network):
     @staticmethod
     def _reload_kvaser_lib() -> None:
         """Reload the Kvaser library to refresh the connected transceivers."""
-        canUnLoadLibrary = get_canlib_function("canUnloadLibrary")
-        canInitializeLibrary = get_canlib_function("canInitializeLibrary")
-        canUnLoadLibrary()
-        canInitializeLibrary()
+        can_unload_library = get_canlib_function("canUnloadLibrary")
+        can_initialize_library = get_canlib_function("canInitializeLibrary")
+        can_unload_library()
+        can_initialize_library()

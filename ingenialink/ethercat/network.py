@@ -19,7 +19,12 @@ except ImportError as ex:
 
 from ingenialink import bin as bin_module
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILWrongWorkingCount
+from ingenialink.exceptions import (
+    ILError,
+    ILFirmwareLoadError,
+    ILStateError,
+    ILWrongWorkingCountError,
+)
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
@@ -308,7 +313,7 @@ class EthercatNetwork(Network):
             timeout: receive processdata timeout in seconds, 0.1 seconds by default.
 
         Raises:
-            ILWrongWorkingCount: If processdata working count is wrong
+            ILWrongWorkingCountError: If processdata working count is wrong
 
         """
         for servo in self.servos:
@@ -330,7 +335,7 @@ class EthercatNetwork(Network):
                     servos_state_msg += f", AL status {al_status}."
                 else:
                     servos_state_msg += ". "
-            raise ILWrongWorkingCount(
+            raise ILWrongWorkingCountError(
                 f"Processdata working count is wrong, expected: {self._ecat_master.expected_wkc},"
                 f" real: {processdata_wkc}. {servos_state_msg}"
             )

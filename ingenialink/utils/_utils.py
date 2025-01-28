@@ -2,9 +2,9 @@ import functools
 import logging
 import struct
 import warnings
-import xml.etree.ElementTree as ET
 from enum import Enum
 from typing import Any, Callable, Dict, Optional, Tuple, Union
+from xml.etree import ElementTree
 
 import ingenialogger
 
@@ -95,7 +95,7 @@ def to_ms(s: Union[int, float]) -> int:
     return int(s * 1e3)
 
 
-def remove_xml_subelement(element: ET.Element, subelement: ET.Element) -> None:
+def remove_xml_subelement(element: ElementTree.Element, subelement: ElementTree.Element) -> None:
     """Removes a subelement from the given element the element contains the subelement
 
     Args:
@@ -117,7 +117,7 @@ def pop_element(dictionary: Dict[str, Any], element: str) -> None:
         dictionary.pop(element)
 
 
-def cleanup_register(register: ET.Element) -> None:
+def cleanup_register(register: ElementTree.Element) -> None:
     """Cleans a ElementTree register to remove all
     unnecessary fields for a configuration file
 

@@ -10,7 +10,7 @@ class ILConfigurationError(ILError):
     pass
 
 
-class ILUDPException(ILError):
+class ILUDPError(ILError):
     """Ingenialink exception on UDP action."""
 
     pass
@@ -84,7 +84,7 @@ class ILDictionaryParseError(ILError):
     pass
 
 
-class ILWrongWorkingCount(ILError):
+class ILWrongWorkingCountError(ILError):
     """PDOs process data working count expected and received differ."""
 
     pass
