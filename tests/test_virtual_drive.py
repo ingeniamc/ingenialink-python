@@ -143,10 +143,7 @@ def test_virtual_disturbance(virtual_drive, register_key):
     reg = servo._get_reg(register_key, subnode=1)
     address = reg.address
     servo.disturbance_set_mapped_register(0, address, subnode, reg.dtype.value, 4)
-    if reg.dtype == REG_DTYPE.FLOAT:
-        data_arr = [0.0, -1.0, 2.0, 3.0]
-    else:
-        data_arr = [0, -1, 2, 3]
+    data_arr = [0.0, -1.0, 2.0, 3.0] if reg.dtype == REG_DTYPE.FLOAT else [0, -1, 2, 3]
 
     channels = [0]
     servo.disturbance_write_data(channels, [reg.dtype], data_arr)

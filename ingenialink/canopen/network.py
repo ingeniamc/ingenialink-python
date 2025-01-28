@@ -29,7 +29,7 @@ if platform.system() == "Windows":
     with DisableLogger():
         from can.interfaces.ixxat.exceptions import VCIError
 else:
-    VCIError = None  # type: ignore
+    VCIError = None  # type: ignore  # noqa: PGH003
 from canopen import Network as NetworkLib
 
 KVASER_DRIVER_INSTALLED = True
