@@ -480,9 +480,9 @@ class EthercatNetwork(Network):
             self._start_master()
         nodes = self._ecat_master.config_init()
         if nodes == 0:
-            raise ILError("Could not find any slaves in the network.")
+            raise ILFirmwareLoadError("Could not find any slaves in the network.")
         if slave_id > nodes:
-            raise ILError(f"Slave {slave_id} was not found.")
+            raise ILFirmwareLoadError(f"Slave {slave_id} was not found.")
 
     @staticmethod
     def _switch_to_boot_state(slave: "CdefSlave") -> None:
