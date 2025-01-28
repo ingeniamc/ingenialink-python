@@ -1,6 +1,6 @@
 # Changelog
 
-## [7.4.1] - 2025-01-xx
+## [7.4.1] - 2025-01-28
 ### Fixed
 - Avoid mapping a PDO map twice.
 - Recover from a disconnection while PDOs were active.
