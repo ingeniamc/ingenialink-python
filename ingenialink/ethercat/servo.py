@@ -41,7 +41,7 @@ class EthercatEmergencyMessage(EmergencyMessage):
         emergency_msg: The emergency message instance from PySOEM.
     """
 
-    def __init__(self, servo: Servo, emergency_msg: pysoem.Emergency):
+    def __init__(self, servo: Servo, emergency_msg: "pysoem.Emergency"):
         data = (
             emergency_msg.b1.to_bytes(1, "little")
             + emergency_msg.w1.to_bytes(2, "little")
