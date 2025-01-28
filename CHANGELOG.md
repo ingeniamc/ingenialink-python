@@ -5,6 +5,9 @@
 - Avoid mapping a PDO map twice.
 - Recover from a disconnection while PDOs were active.
 
+### Changed
+- Virtual monitoring and disturbance disabled for old disturbance. 
+
 ## [7.4.0] - 2025-12-3
 ### Added
 - Method to subscribe to emergency messages.

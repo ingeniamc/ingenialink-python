@@ -143,7 +143,6 @@ def test_save_configuration(connect_to_slave):
     assert version.parse(device.attrib.get("firmwareVersion")) == version.parse(
         servo.dictionary.firmware_version
     )
-    # TODO: check name and family? These are not stored at the dictionary
 
     assert len(saved_registers) > 0
     for saved_register in saved_registers:
@@ -173,7 +172,7 @@ def test_save_configuration(connect_to_slave):
 
 
 @pytest.mark.no_connection
-def test_check_configuration(virtual_drive, read_config, pytestconfig):
+def test_check_configuration(virtual_drive):
     server, servo = virtual_drive
 
     assert servo is not None and server is not None
@@ -321,7 +320,7 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
     file = filename.split("/")[-1]
     modified_path = Path(filename.replace(file, "config_0_test.xdf"))
     shutil.copy(path, modified_path)
-    with open(modified_path, "r", encoding="utf-8") as xml_file:
+    with open(modified_path, encoding="utf-8") as xml_file:
         tree = ET.parse(xml_file)
         root = tree.getroot()
         axis = tree.findall("*/Device/Axes/Axis")

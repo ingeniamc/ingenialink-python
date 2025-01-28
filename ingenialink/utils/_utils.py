@@ -3,8 +3,7 @@ import logging
 import struct
 import warnings
 import xml.etree.ElementTree as ET
-from enum import Enum
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import ingenialogger
 
@@ -16,7 +15,7 @@ logger = ingenialogger.get_logger(__name__)
 POLLING_MAX_TRIES = 5  # Seconds
 
 # Mapping type -> [Number of bytes, signedness]
-dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
+dtype_value: dict[REG_DTYPE, tuple[int, bool]] = {
     REG_DTYPE.U8: (1, False),
     REG_DTYPE.S8: (1, True),
     REG_DTYPE.U16: (2, False),
@@ -29,7 +28,7 @@ dtype_value: Dict[REG_DTYPE, Tuple[int, bool]] = {
     REG_DTYPE.BOOL: (1, False),
 }
 
-dtype_length_bits: Dict[REG_DTYPE, int] = {
+dtype_length_bits: dict[REG_DTYPE, int] = {
     REG_DTYPE.U8: 8,
     REG_DTYPE.S8: 8,
     REG_DTYPE.U16: 16,
@@ -48,20 +47,23 @@ VALID_BIT_REGISTER_VALUES = [0, 1, True, False]
 def deprecated(
     custom_msg: Optional[str] = None, new_func_name: Optional[str] = None
 ) -> Callable[..., Any]:
-    """This is a decorator which can be used to mark functions as deprecated.
+    """Deprecated decorator.
+
+    This is a decorator which can be used to mark functions as deprecated.
     It will result in a warning being emitted when the function is used. We use
     this decorator instead of any deprecation library because all libraries raise
     a DeprecationWarning but since by default this warning is hidden, we use this
     decorator to manually activate DeprecationWarning and turning it off after
-    the warn has been done."""
+    the warn has been done.
+    """
 
     def wrap(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
         def wrapped_method(*args: Any, **kwargs: Any) -> Any:
             warnings.simplefilter("always", DeprecationWarning)  # Turn off filter
-            msg = 'Call to deprecated function "{}".'.format(func.__name__)
+            msg = f'Call to deprecated function "{func.__name__}".'
             if new_func_name:
-                msg += ' Please, use "{}" function instead.'.format(new_func_name)
+                msg += f' Please, use "{new_func_name}" function instead.'
             if custom_msg:
                 msg = custom_msg
             warnings.warn(msg, category=DeprecationWarning, stacklevel=2)
@@ -96,7 +98,7 @@ def to_ms(s: Union[int, float]) -> int:
 
 
 def remove_xml_subelement(element: ET.Element, subelement: ET.Element) -> None:
-    """Removes a subelement from the given element the element contains the subelement
+    """Removes a subelement from the given element the element contains the subelement.
 
     Args:
         element: Element to be extracted from.
@@ -106,8 +108,8 @@ def remove_xml_subelement(element: ET.Element, subelement: ET.Element) -> None:
         element.remove(subelement)
 
 
-def pop_element(dictionary: Dict[str, Any], element: str) -> None:
-    """Pops an element from a dictionary only if it is contained in it
+def pop_element(dictionary: dict[str, Any], element: str) -> None:
+    """Pops an element from a dictionary only if it is contained in it.
 
     Args:
         dictionary: Dictionary containing all the elements
@@ -118,22 +120,24 @@ def pop_element(dictionary: Dict[str, Any], element: str) -> None:
 
 
 def cleanup_register(register: ET.Element) -> None:
-    """Cleans a ElementTree register to remove all
-    unnecessary fields for a configuration file
+    """Clean a register element.
+
+    Cleans a ElementTree register to remove all
+    unnecessary fields for a configuration file.
 
     Args:
         register: Register to be cleaned.
     """
     labels = register.find("./Labels")
-    range = register.find("./Range")
+    reg_range = register.find("./Range")
     enums = register.find("./Enumerations")
 
     if labels:
         remove_xml_subelement(register, labels)
     if enums:
         remove_xml_subelement(register, enums)
-    if range:
-        remove_xml_subelement(register, range)
+    if reg_range:
+        remove_xml_subelement(register, reg_range)
 
     pop_element(register.attrib, "desc")
     pop_element(register.attrib, "cat_id")
@@ -170,26 +174,7 @@ def convert_int_to_ip(int_ip: int) -> str:
     drive_ip2 = (int_ip >> 16) & 0x000000FF
     drive_ip3 = (int_ip >> 8) & 0x000000FF
     drive_ip4 = int_ip & 0x000000FF
-    return "{}.{}.{}.{}".format(drive_ip1, drive_ip2, drive_ip3, drive_ip4)
-
-
-class INT_SIZES(Enum):
-    """Integer sizes."""
-
-    S8_MIN = -128
-    S16_MIN = -32767 - 1
-    S32_MIN = -2147483647 - 1
-    S64_MIN = 9223372036854775807 - 1
-
-    S8_MAX = 127
-    S16_MAX = 32767
-    S32_MAX = 2147483647
-    S64_MAX = 9223372036854775807
-
-    U8_MAX = 255
-    U16_MAX = 65535
-    U32_MAX = 4294967295
-    U64_MAX = 18446744073709551615
+    return f"{drive_ip1}.{drive_ip2}.{drive_ip3}.{drive_ip4}"
 
 
 def convert_bytes_to_dtype(data: bytes, dtype: REG_DTYPE) -> Union[float, int, str, bytes]:

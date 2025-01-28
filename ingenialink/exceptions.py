@@ -1,73 +1,49 @@
 class ILError(Exception):
     """IngeniaLink generic error."""
 
-    pass
-
 
 class ILConfigurationError(ILError):
     """IngeniaLink configuration error."""
 
-    pass
 
-
-class ILUDPException(ILError):
+class ILUDPException(ILError):  # noqa: N818
     """Ingenialink exception on UDP action."""
-
-    pass
 
 
 class ILFirmwareLoadError(ILError):
     """IngeniaLink error while loading a firmware."""
 
-    pass
-
 
 class ILValueError(ILError):
     """IngeniaLink value error."""
-
-    pass
 
 
 class ILTimeoutError(ILError):
     """IngeniaLink timeout error."""
 
-    pass
-
 
 class ILAccessError(ILError):
     """IngeniaLink access error."""
-
-    pass
 
 
 class ILStateError(ILError):
     """IngeniaLink state error."""
 
-    pass
-
 
 class ILIOError(ILError):
     """IngeniaLink I/O error."""
-
-    pass
 
 
 class ILWrongRegisterError(ILError):
     """IngeniaLink Wrong register error."""
 
-    pass
-
 
 class ILRegisterNotFoundError(ILError):
     """IngeniaLink register not found in dictionary."""
 
-    pass
-
 
 class ILWrongCRCError(ILError):
     """IngeniaLink Wrong CRC error."""
-
-    pass
 
 
 class ILNACKError(ILError):
@@ -81,10 +57,6 @@ class ILNACKError(ILError):
 class ILDictionaryParseError(ILError):
     """IngeniaLink dictionary parse error."""
 
-    pass
 
-
-class ILWrongWorkingCount(ILError):
+class ILWrongWorkingCount(ILError):  # noqa: N818
     """PDOs process data working count expected and received differ."""
-
-    pass

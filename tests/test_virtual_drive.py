@@ -241,13 +241,11 @@ def test_plants(virtual_drive, plant_name, dist_reg, monit_regs, op_mode):
     )
 
 
-# TODO: INGK-779 Use ingeniamotion to test the phasing
 @pytest.mark.skip
 def test_phasing():
     pass
 
 
-# TODO: INGK-779 Use ingeniamotion to test the feedbacks
 @pytest.mark.skip
 def test_feedbacks():
     pass

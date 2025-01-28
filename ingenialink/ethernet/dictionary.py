@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-from typing import List, Optional
+from typing import Optional
 
 import ingenialogger
 
@@ -18,7 +18,7 @@ class EthernetDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: List[EthernetRegister] = [
+    _MONITORING_DISTURBANCE_REGISTERS: list[EthernetRegister] = [
         EthernetRegister(
             identifier="MON_DATA_VALUE",
             units="",
