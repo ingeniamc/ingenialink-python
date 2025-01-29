@@ -89,6 +89,7 @@ class EthercatNetwork(Network):
         ImportError: WinPcap is not installed
 
     """
+
     # Error codes taken from SOEM source code.
     # https://github.com/OpenEtherCATsociety/SOEM/blob/v1.4.0/soem/ethercatfoe.c#L199
     __FOE_ERRORS = {
@@ -209,7 +210,7 @@ class EthercatNetwork(Network):
             ILStateError: If slave can not reach PreOp state
 
         """
-        self._check_slave_id(slave_id)
+        self._validate_slave_id(slave_id)
         slave = self._ecat_master.slaves[slave_id - 1]
         servo = EthercatServo(
             slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
@@ -447,7 +448,7 @@ class EthercatNetwork(Network):
         if password is None:
             password = self.DEFAULT_FOE_PASSWORD
 
-        self._check_slave_id(slave_id)
+        self._validate_slave_id(slave_id)
 
         slave = self._ecat_master.slaves[slave_id - 1]
         if not boot_in_app:
@@ -466,8 +467,8 @@ class EthercatNetwork(Network):
         self.__init_nodes()
         logger.info("Firmware updated successfully")
 
-    def _check_slave_id(self, slave_id: int) -> None:
-        """Check if the slave ID is valid and that it is detected.
+    def _validate_slave_id(self, slave_id: int) -> None:
+        """Check if the slave ID is valid and that it's detected.
 
         Args:
             slave_id: The slave ID.
