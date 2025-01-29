@@ -89,7 +89,8 @@ class EthercatNetwork(Network):
         ImportError: WinPcap is not installed
 
     """
-
+    # Error codes taken from SOEM source code.
+    # https://github.com/OpenEtherCATsociety/SOEM/blob/v1.4.0/soem/ethercatfoe.c#L199
     __FOE_ERRORS = {
         -3: "Unexpected mailbox received",
         -5: "FoE error",
