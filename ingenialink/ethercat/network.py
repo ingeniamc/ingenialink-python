@@ -484,7 +484,7 @@ class EthercatNetwork(Network):
             raise ILError(f"Slave {slave_id} was not found.")
 
     def _switch_to_boot_state(self, slave: "CdefSlave") -> None:
-        """Request the transition to the boot state."""
+        """Transitions the slave to the boot state."""
         slave.state = pysoem.BOOT_STATE
         slave.write_state()
         if (
