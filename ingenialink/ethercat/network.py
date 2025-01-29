@@ -212,7 +212,16 @@ class EthercatNetwork(Network):
             ILStateError: If slave can not reach PreOp state
 
         """
-        self._validate_slave_id(slave_id)
+        if not isinstance(slave_id, int) or slave_id < 0:
+            raise ValueError("Invalid slave ID value")
+        if not self.__is_master_running:
+            self._start_master()
+        if slave_id not in self.__last_init_nodes:
+            self.__init_nodes()
+        if len(self.__last_init_nodes) == 0:
+            raise ILError("Could not find any slaves in the network.")
+        if slave_id not in self.__last_init_nodes:
+            raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
         servo = EthercatServo(
             slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
@@ -450,7 +459,15 @@ class EthercatNetwork(Network):
         if password is None:
             password = self.DEFAULT_FOE_PASSWORD
 
-        self._validate_slave_id(slave_id)
+        if not isinstance(slave_id, int) or slave_id < 0:
+            raise ValueError("Invalid slave ID value")
+        if not self.__is_master_running:
+            self._start_master()
+            self.__init_nodes()
+        if len(self.__last_init_nodes) == 0:
+            raise ILError("Could not find any slaves in the network.")
+        if slave_id not in self.__last_init_nodes:
+            raise ILError(f"Slave {slave_id} was not found.")
 
         slave = self._ecat_master.slaves[slave_id - 1]
         if not boot_in_app:
@@ -468,24 +485,6 @@ class EthercatNetwork(Network):
             raise ILFirmwareLoadError(error_message)
         self.__init_nodes()
         logger.info("Firmware updated successfully")
-
-    def _validate_slave_id(self, slave_id: int) -> None:
-        """Check if the slave ID is valid and that it's detected.
-
-        Args:
-            slave_id: The slave ID.
-
-        """
-        if not isinstance(slave_id, int) or slave_id < 0:
-            raise ValueError("Invalid slave ID value")
-        if not self.__is_master_running:
-            self._start_master()
-        if slave_id not in self.__last_init_nodes:
-            self.__init_nodes()
-        if len(self.__last_init_nodes) == 0:
-            raise ILError("Could not find any slaves in the network.")
-        if slave_id not in self.__last_init_nodes:
-            raise ILError(f"Slave {slave_id} was not found.")
 
     def _switch_to_boot_state(self, slave: "CdefSlave") -> None:
         """Transitions the slave to the boot state."""
