@@ -101,7 +101,7 @@ class EthercatNetwork(Network):
     MANUAL_STATE_CHANGE = 1
 
     DEFAULT_ECAT_CONNECTION_TIMEOUT_S = 1
-    ECAT_STATE_CHANGE_TIMEOUT_NS = 50_000
+    ECAT_STATE_CHANGE_TIMEOUT_US = 50_000
     ECAT_PROCESSDATA_TIMEOUT_S = 0.1
 
     EXPECTED_WKC_PROCESS_DATA = 3
@@ -369,7 +369,7 @@ class EthercatNetwork(Network):
         self._ecat_master.read_state()
 
         return all(
-            target_state == drive.slave.state_check(target_state, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
+            target_state == drive.slave.state_check(target_state, self.ECAT_STATE_CHANGE_TIMEOUT_US)
             for drive in node_list
         )
 
@@ -488,7 +488,7 @@ class EthercatNetwork(Network):
         slave.state = pysoem.BOOT_STATE
         slave.write_state()
         if (
-            slave.state_check(pysoem.BOOT_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
+            slave.state_check(pysoem.BOOT_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_US)
             != pysoem.BOOT_STATE
         ):
             raise ILFirmwareLoadError("The drive cannot reach the boot state.")
@@ -498,7 +498,7 @@ class EthercatNetwork(Network):
         slave.state = pysoem.PREOP_STATE
         slave.write_state()
         if (
-            slave.state_check(pysoem.PREOP_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
+            slave.state_check(pysoem.PREOP_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_US)
             == pysoem.PREOP_STATE
         ):
             try:
