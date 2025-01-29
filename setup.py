@@ -15,7 +15,7 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=["tests*", "examples*"]),
     include_package_data=True,
     package_data={
-        "ingenialink": ["bin/FoE/*/*", "py.typed"],
+        "ingenialink": ["py.typed"],
         "virtual_drive": ["py.typed", "resources/*"],
     },
     description="IngeniaLink Communications Library",
@@ -45,7 +45,7 @@ setuptools.setup(
         "python-can==4.4.2",
         "ingenialogger>=0.2.1",
         "ping3==4.0.3",
-        "pysoem>=1.1.7, <1.2.0",
+        "pysoem>=1.1.10, <1.2.0",
         "numpy>=1.26.0",
         "scipy==1.12.0",
         "bitarray==2.9.2",

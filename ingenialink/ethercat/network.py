@@ -1,13 +1,9 @@
-import inspect
 import os
-import platform
-import subprocess
-import sys
 import time
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
-from typing import Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import ingenialogger
 
@@ -17,7 +13,9 @@ except ImportError as ex:
     pysoem = None
     pysoem_import_error = ex
 
-from ingenialink import bin as bin_module
+if TYPE_CHECKING:
+    from pysoem import CdefSlave
+
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError, ILWrongWorkingCount
 from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
@@ -31,6 +29,7 @@ class SlaveState(Enum):
     NONE_STATE = 0
     INIT_STATE = 1
     PREOP_STATE = 2
+    BOOT_STATE = 3
     SAFEOP_STATE = 4
     OP_STATE = 8
     ERROR_STATE = 16
@@ -91,27 +90,32 @@ class EthercatNetwork(Network):
 
     """
 
-    FOE_APPLICATION = {
-        "win32": {"64bit": "FoE/win_64x/FoEUpdateFirmware.exe"},
-        "linux": {"64bit": "FoE/linux/FoEUpdateFirmware"},
+    # Error codes taken from SOEM source code.
+    # https://github.com/OpenEtherCATsociety/SOEM/blob/v1.4.0/soem/ethercatfoe.c#L199
+    __FOE_ERRORS = {
+        -3: "Unexpected mailbox received",
+        -5: "FoE error",
+        -6: "Buffer too small",
+        -7: "Packet number error",
+        -10: "File not found",
     }
-    FOE_ERRORS = {
-        1: "Can’t read the input file.",
-        2: "ECAT slave can’t reach the BOOT mode.",
-        3: "No ECAT slave detected",
-        4: "Can’t initialize the network adapter",
-        5: "Drive can't init. Ensure the FW file is right",
-    }
-    UNKNOWN_FOE_ERROR = "Unknown error"
+
     MANUAL_STATE_CHANGE = 1
 
     DEFAULT_ECAT_CONNECTION_TIMEOUT_S = 1
-    ECAT_STATE_CHANGE_TIMEOUT_NS = 50_000
+    ECAT_STATE_CHANGE_TIMEOUT_US = 50_000
     ECAT_PROCESSDATA_TIMEOUT_S = 0.1
 
     EXPECTED_WKC_PROCESS_DATA = 3
 
     DEFAULT_FOE_PASSWORD = 0x70636675
+
+    __FORCE_BOOT_PASSWORD = 0x424F4F54
+    __FORCE_COCO_BOOT_IDX = 0x5EDE
+    __FORCE_COCO_BOOT_SUBIDX = 0x00
+    __FORCE_BOOT_SLEEP_TIME_S = 5
+
+    __DEFAULT_FOE_FILE_NAME = "firmware_file"
 
     def __init__(
         self,
@@ -378,7 +382,7 @@ class EthercatNetwork(Network):
         self._ecat_master.read_state()
 
         return all(
-            target_state == drive.slave.state_check(target_state, self.ECAT_STATE_CHANGE_TIMEOUT_NS)
+            target_state == drive.slave.state_check(target_state, self.ECAT_STATE_CHANGE_TIMEOUT_US)
             for drive in node_list
         )
 
@@ -455,55 +459,82 @@ class EthercatNetwork(Network):
         if password is None:
             password = self.DEFAULT_FOE_PASSWORD
 
-        arch = platform.architecture()[0]
-        sys_name = sys.platform
-        app_path = self.FOE_APPLICATION.get(sys_name, {}).get(arch, None)
-        if app_path is None:
-            raise NotImplementedError(
-                "Load FW by ECAT is not implemented for this OS and architecture:"
-                f" {sys_name} {arch}"
-            )
-        exec_path = os.path.join(os.path.dirname(inspect.getfile(bin_module)), app_path)
-        logger.debug(f"Call FoE application for {sys_name}-{arch}")
-        if sys_name == "linux":
-            try:
-                subprocess.run(
-                    f"chmod 777 {exec_path}",
-                    check=True,
-                    shell=True,
-                    encoding="utf-8",
-                )
-            except subprocess.CalledProcessError as e:
-                raise ILFirmwareLoadError("Could not change the FoE binary permissions.") from e
-        try:
-            if sys_name == "linux":
-                subprocess.run(
-                    f"{exec_path} {self.interface_name} {slave_id} {fw_file} "
-                    f"{int(boot_in_app)} {password}",
-                    check=True,
-                    shell=True,
-                    encoding="utf-8",
-                )
+        if not isinstance(slave_id, int) or slave_id < 0:
+            raise ValueError("Invalid slave ID value")
+        if not self.__is_master_running:
+            self._start_master()
+            self.__init_nodes()
+        if len(self.__last_init_nodes) == 0:
+            raise ILError("Could not find any slaves in the network.")
+        if slave_id not in self.__last_init_nodes:
+            raise ILError(f"Slave {slave_id} was not found.")
+
+        slave = self._ecat_master.slaves[slave_id - 1]
+        if not boot_in_app:
+            self._force_boot_mode(slave)
+        self._switch_to_boot_state(slave)
+
+        foe_result = self._write_foe(slave, fw_file, password)
+
+        if foe_result < 0:
+            error_message = "The firmware file could not be loaded correctly."
+            if foe_result in self.__FOE_ERRORS:
+                error_message += f" {self.__FOE_ERRORS[foe_result]}."
             else:
-                subprocess.run(
-                    [
-                        exec_path,
-                        self.interface_name,
-                        f"{slave_id}",
-                        fw_file,
-                        f"{int(boot_in_app)}",
-                        f"{password}",
-                    ],
-                    check=True,
-                    shell=True,
-                    encoding="utf-8",
-                )
-        except subprocess.CalledProcessError as e:
-            foe_return_error = self.FOE_ERRORS.get(e.returncode, self.UNKNOWN_FOE_ERROR)
-            raise ILFirmwareLoadError(
-                f"The firmware file could not be loaded correctly. {foe_return_error}"
-            ) from e
+                error_message += f" Error code: {foe_result}."
+            raise ILFirmwareLoadError(error_message)
+        self.__init_nodes()
         logger.info("Firmware updated successfully")
+
+    def _switch_to_boot_state(self, slave: "CdefSlave") -> None:
+        """Transitions the slave to the boot state."""
+        slave.state = pysoem.BOOT_STATE
+        slave.write_state()
+        if (
+            slave.state_check(pysoem.BOOT_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_US)
+            != pysoem.BOOT_STATE
+        ):
+            raise ILFirmwareLoadError("The drive cannot reach the boot state.")
+
+    def _force_boot_mode(self, slave: "CdefSlave") -> None:
+        """COMOCO drives need to be forced to boot mode."""
+        slave.state = pysoem.PREOP_STATE
+        slave.write_state()
+        if (
+            slave.state_check(pysoem.PREOP_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_US)
+            == pysoem.PREOP_STATE
+        ):
+            try:
+                slave.sdo_write(
+                    self.__FORCE_COCO_BOOT_IDX,
+                    self.__FORCE_COCO_BOOT_SUBIDX,
+                    self.__FORCE_BOOT_PASSWORD.to_bytes(4, "little"),
+                )
+            except pysoem.WkcError as e:
+                raise ILFirmwareLoadError("Error writing to the Boot mode register.") from e
+        slave.state = pysoem.INIT_STATE
+        slave.write_state()
+        slave.state = pysoem.BOOT_STATE
+        slave.write_state()
+        time.sleep(self.__FORCE_BOOT_SLEEP_TIME_S)
+        self.__init_nodes()
+
+    def _write_foe(self, slave: "CdefSlave", file_path: str, password: int) -> int:
+        """Write the firmware file via FoE.
+
+        Args:
+            slave: The pysoem slave object.
+            file_path: The firmware file path.
+            password: The firmware password.
+
+        Returns:
+            The FOE operation result.
+
+        """
+        with open(file_path, "rb") as file:
+            file_data = file.read()
+            r: int = slave.foe_write(self.__DEFAULT_FOE_FILE_NAME, password, file_data)
+        return r
 
     def _start_master(self) -> None:
         """Start the EtherCAT master."""

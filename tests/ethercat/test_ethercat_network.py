@@ -5,7 +5,7 @@ with contextlib.suppress(ImportError):
 import pytest
 
 from ingenialink.ethercat.network import EthercatNetwork
-from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from ingenialink.exceptions import ILError
 
 
 @pytest.mark.docker
@@ -31,11 +31,12 @@ def test_load_firmware_file_not_found_error(read_config):
 def test_load_firmware_no_slave_detected_error(mocker, read_config):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     mocker.patch("os.path.isfile", return_value=True)
+    slave_id = 23
     with pytest.raises(
-        ILFirmwareLoadError,
-        match="The firmware file could not be loaded correctly. No ECAT slave detected",
+        ILError,
+        match=f"Slave {slave_id} was not found.",
     ):
-        net.load_firmware("dummy_file.lfu", False, slave_id=23)
+        net.load_firmware("dummy_file.lfu", False, slave_id=slave_id)
 
 
 @pytest.mark.ethercat
@@ -45,15 +46,6 @@ def test_wrong_interface_name_error(read_config):
         slave_id = 1
         dictionary = read_config["ethernet"]["dictionary"]
         net.connect_to_slave(slave_id, dictionary)
-
-
-@pytest.mark.ethercat
-def test_load_firmware_not_implemented_error(mocker, read_config):
-    net = EthercatNetwork(read_config["ethercat"]["ifname"])
-    mocker.patch("os.path.isfile", return_value=True)
-    mocker.patch("sys.platform", return_value="linux")
-    with pytest.raises(NotImplementedError):
-        net.load_firmware("dummy_file.lfu", False)
 
 
 @pytest.mark.ethercat

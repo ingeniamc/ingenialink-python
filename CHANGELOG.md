@@ -6,7 +6,8 @@
 - Recover from a disconnection while PDOs were active.
 
 ### Changed
-- Virtual monitoring and disturbance disabled for old disturbance. 
+- Virtual monitoring and disturbance disabled for old disturbance.
+- FoE using PySOEM.
 
 ## [7.4.0] - 2024-12-3
 ### Added
