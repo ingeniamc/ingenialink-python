@@ -115,6 +115,8 @@ class EthercatNetwork(Network):
     __FORCE_COCO_BOOT_SUBIDX = 0x00
     __FORCE_BOOT_SLEEP_TIME_S = 5
 
+    __DEFAULT_FOE_FILE_NAME = "firmware_file"
+
     def __init__(
         self,
         interface_name: str,
@@ -518,8 +520,7 @@ class EthercatNetwork(Network):
         time.sleep(self.__FORCE_BOOT_SLEEP_TIME_S)
         self.__init_nodes()
 
-    @staticmethod
-    def _write_foe(slave: "CdefSlave", file_path: str, password: int) -> int:
+    def _write_foe(self, slave: "CdefSlave", file_path: str, password: int) -> int:
         """Write the firmware file via FoE.
 
         Args:
@@ -533,8 +534,7 @@ class EthercatNetwork(Network):
         """
         with open(file_path, "rb") as file:
             file_data = file.read()
-            file_name = os.path.basename(file_path)
-            r: int = slave.foe_write(file_name, password, file_data)
+            r: int = slave.foe_write(self.__DEFAULT_FOE_FILE_NAME, password, file_data)
         return r
 
     def _start_master(self) -> None:
