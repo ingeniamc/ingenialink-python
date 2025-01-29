@@ -506,7 +506,6 @@ class EthercatNetwork(Network):
                     self.__FORCE_COCO_BOOT_IDX,
                     self.__FORCE_COCO_BOOT_SUBIDX,
                     self.__FORCE_BOOT_PASSWORD.to_bytes(4, "little"),
-                    False,
                 )
             except pysoem.WkcError as e:
                 raise ILFirmwareLoadError("Error writing to the Boot mode register.") from e
