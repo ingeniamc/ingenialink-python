@@ -1,11 +1,11 @@
-import xml.etree.ElementTree as ET
 from typing import Optional
+from xml.etree import ElementTree
 
 import ingenialogger
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, RegCyclicType
+from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -24,8 +24,8 @@ class CanopenDictionaryV2(DictionaryV2):
             idx=0x58B2,
             subidx=0x00,
             cyclic=RegCyclicType.CONFIG,
-            dtype=REG_DTYPE.BYTE_ARRAY_512,
-            access=REG_ACCESS.RO,
+            dtype=RegDtype.BYTE_ARRAY_512,
+            access=RegAccess.RO,
             subnode=0,
         ),
         CanopenRegister(
@@ -33,15 +33,15 @@ class CanopenDictionaryV2(DictionaryV2):
             idx=0x58B4,
             subidx=0x00,
             cyclic=RegCyclicType.CONFIG,
-            dtype=REG_DTYPE.BYTE_ARRAY_512,
-            access=REG_ACCESS.WO,
+            dtype=RegDtype.BYTE_ARRAY_512,
+            access=RegAccess.WO,
             subnode=0,
         ),
     ]
 
     interface = Interface.CAN
 
-    def _read_xdf_register(self, register: ET.Element) -> Optional[CanopenRegister]:
+    def _read_xdf_register(self, register: ElementTree.Element) -> Optional[CanopenRegister]:
         current_read_register = super()._read_xdf_register(register)
         if current_read_register is None:
             return None

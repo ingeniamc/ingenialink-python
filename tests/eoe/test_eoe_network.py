@@ -3,7 +3,7 @@ import socket
 import pytest
 
 from ingenialink.eoe.network import EoECommand, EoENetwork
-from ingenialink.ethernet.network import NET_PROT
+from ingenialink.ethernet.network import NetProt
 from ingenialink.ethernet.servo import EthernetServo
 
 
@@ -31,7 +31,7 @@ def test_eoe_connection(connect_to_slave):
     assert isinstance(servo, EthernetServo)
     assert net._eoe_service_init
     assert net._eoe_service_started
-    assert net.protocol == NET_PROT.ETH
+    assert net.protocol == NetProt.ETH
     assert net_socket.family == socket.AF_INET
     assert net_socket.type == socket.SOCK_DGRAM
     assert ip == eoe_service_ip

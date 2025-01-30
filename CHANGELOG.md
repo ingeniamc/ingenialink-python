@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Deprecated
+- Changed `Enums` names to follow CapWords convention. Old names are still supported, but will soon be deprecated.
+
 ## [7.4.1] - 2025-01-28
 ### Fixed
 - Avoid mapping a PDO map twice.

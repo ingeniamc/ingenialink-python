@@ -3,8 +3,8 @@ import random
 
 import pytest
 
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE
-from ingenialink.network import NET_STATE
+from ingenialink.enums.register import RegAccess, RegDtype
+from ingenialink.network import NetState
 from virtual_drive.core import VirtualDrive
 
 RESOURCES_FOLDER = "virtual_drive/resources/"
@@ -26,7 +26,7 @@ def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
     server, net, servo = virtual_drive_custom_dict(dictionary)
     net.disconnect_from_slave(servo)
-    assert net.get_servo_state(VirtualDrive.IP_ADDRESS) == NET_STATE.DISCONNECTED
+    assert net.get_servo_state(VirtualDrive.IP_ADDRESS) == NetState.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
 
@@ -45,15 +45,15 @@ def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict, read_con
         assert fw_version is not None and fw_version != ""
 
         for reg_key, register in servo.dictionary.registers(1).items():
-            if register.access in [REG_ACCESS.RO, REG_ACCESS.RW]:
+            if register.access in [RegAccess.RO, RegAccess.RW]:
                 value = servo.read(reg_key)
                 assert pytest.approx(server.get_value_by_id(1, reg_key), abs=0.02) == value
 
-            if register.access in [REG_ACCESS.WO, REG_ACCESS.RW]:
+            if register.access in [RegAccess.WO, RegAccess.RW]:
                 if register.enums_count > 0:
                     continue
                 value = random.uniform(0, 100)
-                if register.dtype != REG_DTYPE.FLOAT:
+                if register.dtype != RegDtype.FLOAT:
                     value = int(value)
                 servo.write(reg_key, value)
                 assert pytest.approx(value) == server.get_value_by_id(1, reg_key)

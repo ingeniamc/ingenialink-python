@@ -1,20 +1,20 @@
 import pytest
 
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE, REG_PHY
+from ingenialink.register import RegAccess, RegAddressType, RegDtype, RegPhy
 
 
 @pytest.mark.no_connection
 def test_getters_ethercat_register():
     reg_idx = 0x58F0
     reg_subidx = 0x00
-    reg_dtype = REG_DTYPE.U32
-    reg_access = REG_ACCESS.RW
+    reg_dtype = RegDtype.U32
+    reg_access = RegAccess.RW
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
         "units": "none",
         "cyclic": "CONFIG",
-        "phy": REG_PHY.NONE,
+        "phy": RegPhy.NONE,
         "subnode": 0,
         "storage": 1,
         "reg_range": (-20, 20),
@@ -23,7 +23,7 @@ def test_getters_ethercat_register():
         "cat_id": "MONITORING",
         "scat_id": "SUB_CATEGORY_TEST",
         "internal_use": "No description (invent here)",
-        "address_type": REG_ADDRESS_TYPE.NVM,
+        "address_type": RegAddressType.NVM,
     }
 
     register = EthercatRegister(

@@ -14,7 +14,7 @@ from ingenialink import constants
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError
-from ingenialink.network import NET_DEV_EVT, SlaveInfo
+from ingenialink.network import NetDevEvt, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -405,14 +405,14 @@ class EoENetwork(EthernetNetwork):
     def load_firmware(self) -> None:  # type: ignore [override]
         raise NotImplementedError
 
-    def _recover_from_power_cycle(self, status: NET_DEV_EVT) -> None:
+    def _recover_from_power_cycle(self, status: NetDevEvt) -> None:
         """Recover the connection after a power cycle.
 
         Args:
             status: The network status.
 
         """
-        if status == NET_DEV_EVT.REMOVED:
+        if status == NetDevEvt.REMOVED:
             connection_recovery_thread = Thread(target=self._connection_recovery)
             connection_recovery_thread.start()
 

@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 from scipy import signal
 
-from ingenialink.enums.register import REG_DTYPE
-from ingenialink.enums.servo import SERVO_STATE
+from ingenialink.enums.register import RegDtype
+from ingenialink.enums.servo import ServoState
 from virtual_drive.core import OperationMode
 
 MONITORING_CH_DATA_SIZE = 4
@@ -143,7 +143,7 @@ def test_virtual_disturbance(virtual_drive, register_key):
     reg = servo._get_reg(register_key, subnode=1)
     address = reg.address
     servo.disturbance_set_mapped_register(0, address, subnode, reg.dtype.value, 4)
-    data_arr = [0.0, -1.0, 2.0, 3.0] if reg.dtype == REG_DTYPE.FLOAT else [0, -1, 2, 3]
+    data_arr = [0.0, -1.0, 2.0, 3.0] if reg.dtype == RegDtype.FLOAT else [0, -1, 2, 3]
 
     channels = [0]
     servo.disturbance_write_data(channels, [reg.dtype], data_arr)
@@ -156,11 +156,11 @@ def test_virtual_disturbance(virtual_drive, register_key):
 def test_virtual_motor_enable_disable(virtual_drive):
     _, servo = virtual_drive
 
-    assert servo.get_state() == SERVO_STATE.RDY
+    assert servo.get_state() == ServoState.RDY
     servo.enable()
-    assert servo.get_state() == SERVO_STATE.ENABLED
+    assert servo.get_state() == ServoState.ENABLED
     servo.disable()
-    assert servo.get_state() == SERVO_STATE.DISABLED
+    assert servo.get_state() == ServoState.DISABLED
 
 
 @pytest.mark.no_connection

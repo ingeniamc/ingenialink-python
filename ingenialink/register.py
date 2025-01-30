@@ -4,24 +4,24 @@ from typing import Any, Optional, Union
 from ingenialink import exceptions as exc
 from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
-    REG_ACCESS,
-    REG_ADDRESS_TYPE,
-    REG_DTYPE,
-    REG_PHY,
+    RegAccess,
+    RegAddressType,
     RegCyclicType,
+    RegDtype,
+    RegPhy,
 )
 from ingenialink.utils._utils import convert_bytes_to_dtype
 
-dtypes_ranges: dict[REG_DTYPE, dict[str, Union[int, float]]] = {
-    REG_DTYPE.U8: {"max": 255, "min": 0},
-    REG_DTYPE.S8: {"max": 127, "min": -128},
-    REG_DTYPE.U16: {"max": 65535, "min": 0},
-    REG_DTYPE.S16: {"max": 32767, "min": -32767 - 1},
-    REG_DTYPE.U32: {"max": 4294967295, "min": 0},
-    REG_DTYPE.S32: {"max": 2147483647, "min": -2147483647 - 1},
-    REG_DTYPE.U64: {"max": 18446744073709551615, "min": 0},
-    REG_DTYPE.S64: {"max": 9223372036854775807, "min": 9223372036854775807 - 1},
-    REG_DTYPE.FLOAT: {"max": 3.4e38, "min": -3.4e38},
+dtypes_ranges: dict[RegDtype, dict[str, Union[int, float]]] = {
+    RegDtype.U8: {"max": 255, "min": 0},
+    RegDtype.S8: {"max": 127, "min": -128},
+    RegDtype.U16: {"max": 65535, "min": 0},
+    RegDtype.S16: {"max": 32767, "min": -32767 - 1},
+    RegDtype.U32: {"max": 4294967295, "min": 0},
+    RegDtype.S32: {"max": 2147483647, "min": -2147483647 - 1},
+    RegDtype.U64: {"max": 18446744073709551615, "min": 0},
+    RegDtype.S64: {"max": 9223372036854775807, "min": 9223372036854775807 - 1},
+    RegDtype.FLOAT: {"max": 3.4e38, "min": -3.4e38},
 }
 
 
@@ -57,12 +57,12 @@ class Register(ABC):
 
     def __init__(
         self,
-        dtype: REG_DTYPE,
-        access: REG_ACCESS,
+        dtype: RegDtype,
+        access: RegAccess,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
         cyclic: RegCyclicType = RegCyclicType.CONFIG,
-        phy: REG_PHY = REG_PHY.NONE,
+        phy: RegPhy = RegPhy.NONE,
         subnode: int = 1,
         storage: Any = None,
         reg_range: Union[
@@ -73,7 +73,7 @@ class Register(ABC):
         cat_id: Optional[str] = None,
         scat_id: Optional[str] = None,
         internal_use: int = 0,
-        address_type: Optional[REG_ADDRESS_TYPE] = None,
+        address_type: Optional[RegAddressType] = None,
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
@@ -106,14 +106,14 @@ class Register(ABC):
         self.__bitfields = bitfields
         self.__config_range(reg_range)
 
-    def __type_errors(self, dtype: REG_DTYPE, access: REG_ACCESS, phy: REG_PHY) -> None:
-        if not isinstance(dtype, REG_DTYPE):
+    def __type_errors(self, dtype: RegDtype, access: RegAccess, phy: RegPhy) -> None:
+        if not isinstance(dtype, RegDtype):
             raise exc.ILValueError("Invalid data type")
 
-        if not isinstance(access, REG_ACCESS):
+        if not isinstance(access, RegAccess):
             raise exc.ILAccessError("Invalid access type")
 
-        if not isinstance(phy, REG_PHY):
+        if not isinstance(phy, RegPhy):
             raise exc.ILValueError("Invalid physical units type")
 
     def __config_range(
@@ -124,7 +124,7 @@ class Register(ABC):
         if self.dtype not in dtypes_ranges:
             self._storage_valid = False
             return
-        elif self.dtype == REG_DTYPE.FLOAT:
+        elif self.dtype == RegDtype.FLOAT:
             cast_type = float
         else:
             cast_type = int
@@ -143,14 +143,14 @@ class Register(ABC):
             self._storage = cast_type(self.storage)
 
     @property
-    def dtype(self) -> REG_DTYPE:
+    def dtype(self) -> RegDtype:
         """Data type of the register."""
-        return REG_DTYPE(self._dtype)
+        return RegDtype(self._dtype)
 
     @property
-    def access(self) -> REG_ACCESS:
+    def access(self) -> RegAccess:
         """Access type of the register."""
-        return REG_ACCESS(self._access)
+        return RegAccess(self._access)
 
     @property
     def identifier(self) -> Optional[str]:
@@ -168,9 +168,9 @@ class Register(ABC):
         return self._cyclic
 
     @property
-    def phy(self) -> REG_PHY:
+    def phy(self) -> RegPhy:
         """Physical units of the register."""
-        return REG_PHY(self._phy)
+        return RegPhy(self._phy)
 
     @property
     def subnode(self) -> int:
@@ -184,15 +184,15 @@ class Register(ABC):
             return None
 
         if self.dtype in [
-            REG_DTYPE.S8,
-            REG_DTYPE.U8,
-            REG_DTYPE.S16,
-            REG_DTYPE.U16,
-            REG_DTYPE.S32,
-            REG_DTYPE.U32,
-            REG_DTYPE.S64,
-            REG_DTYPE.U64,
-            REG_DTYPE.FLOAT,
+            RegDtype.S8,
+            RegDtype.U8,
+            RegDtype.S16,
+            RegDtype.U16,
+            RegDtype.S32,
+            RegDtype.U32,
+            RegDtype.S64,
+            RegDtype.U64,
+            RegDtype.FLOAT,
         ]:
             return self._storage
         else:
@@ -253,9 +253,9 @@ class Register(ABC):
         return self._internal_use
 
     @property
-    def address_type(self) -> Optional[REG_ADDRESS_TYPE]:
+    def address_type(self) -> Optional[RegAddressType]:
         """Address type of the register."""
-        return REG_ADDRESS_TYPE(self._address_type)
+        return RegAddressType(self._address_type)
 
     @property
     def description(self) -> Optional[str]:

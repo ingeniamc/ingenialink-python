@@ -10,7 +10,7 @@ import pytest
 
 from ingenialink import EthercatNetwork
 from ingenialink.dictionary import Interface
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, RegCyclicType
+from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILError
@@ -401,7 +401,7 @@ def test_set_pdo_map_to_slave(connect_to_slave, create_pdo_map):
 
 @pytest.mark.no_connection
 def test_pdo_item_bool():
-    register = EthercatRegister(0, 1, REG_DTYPE.BOOL, REG_ACCESS.RW, cyclic=RegCyclicType.RX)
+    register = EthercatRegister(0, 1, RegDtype.BOOL, RegAccess.RW, cyclic=RegCyclicType.RX)
     rpdo_item = RPDOMapItem(register)
 
     assert rpdo_item.register == register
@@ -460,7 +460,7 @@ def test_rpdo_padding():
     assert isinstance(padding_register, EthercatRegister)
     assert padding_register.idx == 0x0000
     assert padding_register.subidx == 0x00
-    assert padding_register.dtype == REG_DTYPE.STR
+    assert padding_register.dtype == RegDtype.STR
     rpdo_item.raw_data_bytes = int.to_bytes(0, 1, "little")
     assert len(rpdo_item.raw_data_bits) == size_bits
 
@@ -475,7 +475,7 @@ def test_tpdo_padding():
     assert isinstance(padding_register, EthercatRegister)
     assert padding_register.idx == 0x0000
     assert padding_register.subidx == 0x00
-    assert padding_register.dtype == REG_DTYPE.STR
+    assert padding_register.dtype == RegDtype.STR
     tpdo_item.raw_data_bytes = int.to_bytes(0, 1, "little")
     assert len(tpdo_item.raw_data_bits) == size_bits
 
@@ -502,7 +502,7 @@ def test_map_pdo_with_bools(open_dictionary):
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
     item1 = RPDOMapItem(register)
     item2 = RPDOMapItem(register, size_bits=4)
-    register = EthercatRegister(0, 1, REG_DTYPE.BOOL, REG_ACCESS.RW, cyclic=RegCyclicType.RX)
+    register = EthercatRegister(0, 1, RegDtype.BOOL, RegAccess.RW, cyclic=RegCyclicType.RX)
     item3 = RPDOMapItem(register)
     item4 = RPDOMapItem(register)
 

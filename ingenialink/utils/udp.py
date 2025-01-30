@@ -4,7 +4,7 @@ import struct
 
 import ingenialogger
 
-from ingenialink.exceptions import ILUDPException
+from ingenialink.exceptions import ILUDPError
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -89,7 +89,7 @@ class UDP:
         crc = binascii.crc_hqx(in_frame[0:12], 0)
         crcread = struct.unpack("<H", in_frame[12:14])[0]
         if crcread != crc:
-            raise ILUDPException("CRC error")
+            raise ILUDPError("CRC error")
 
         return int(cmd)
 

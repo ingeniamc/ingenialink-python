@@ -2,11 +2,11 @@ from typing import Any, Optional, Union
 
 from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
-    REG_ACCESS,
-    REG_ADDRESS_TYPE,
-    REG_DTYPE,
-    REG_PHY,
+    RegAccess,
+    RegAddressType,
     RegCyclicType,
+    RegDtype,
+    RegPhy,
 )
 from ingenialink.register import Register
 
@@ -47,12 +47,12 @@ class EthernetRegister(Register):
     def __init__(
         self,
         address: int,
-        dtype: REG_DTYPE,
-        access: REG_ACCESS,
+        dtype: RegDtype,
+        access: RegAccess,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
         cyclic: RegCyclicType = RegCyclicType.CONFIG,
-        phy: REG_PHY = REG_PHY.NONE,
+        phy: RegPhy = RegPhy.NONE,
         subnode: int = 1,
         storage: Any = None,
         reg_range: Union[
@@ -63,7 +63,7 @@ class EthernetRegister(Register):
         cat_id: Optional[str] = None,
         scat_id: Optional[str] = None,
         internal_use: int = 0,
-        address_type: Optional[REG_ADDRESS_TYPE] = None,
+        address_type: Optional[RegAddressType] = None,
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,

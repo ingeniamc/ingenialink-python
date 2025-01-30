@@ -6,7 +6,7 @@ class ILConfigurationError(ILError):
     """IngeniaLink configuration error."""
 
 
-class ILUDPException(ILError):  # noqa: N818
+class ILUDPError(ILError):
     """Ingenialink exception on UDP action."""
 
 
@@ -58,5 +58,5 @@ class ILDictionaryParseError(ILError):
     """IngeniaLink dictionary parse error."""
 
 
-class ILWrongWorkingCount(ILError):  # noqa: N818
+class ILWrongWorkingCountError(ILError):
     """PDOs process data working count expected and received differ."""

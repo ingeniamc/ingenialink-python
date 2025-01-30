@@ -2,10 +2,10 @@ import os
 import re
 import threading
 import time
-import xml.etree.ElementTree as ET
 from abc import abstractmethod
 from typing import Any, Callable, Optional, Union
 from xml.dom import minidom
+from xml.etree import ElementTree
 
 import ingenialogger
 import numpy as np
@@ -30,8 +30,8 @@ from ingenialink.dictionary import (
     SubnodeType,
 )
 from ingenialink.emcy import EmergencyMessage
-from ingenialink.enums.register import REG_ACCESS, REG_ADDRESS_TYPE, REG_DTYPE
-from ingenialink.enums.servo import SERVO_STATE
+from ingenialink.enums.register import RegAccess, RegAddressType, RegDtype
+from ingenialink.enums.servo import ServoState
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.exceptions import (
@@ -145,8 +145,8 @@ class DictionaryFactory:
         try:
             with open(dictionary_path, encoding="utf-8") as xdf_file:
                 try:
-                    tree = ET.parse(xdf_file)
-                except ET.ParseError:
+                    tree = ElementTree.parse(xdf_file)
+                except ElementTree.ParseError:
                     raise ILDictionaryParseError(f"File is not a xdf: {dictionary_path}")
         except FileNotFoundError:
             raise FileNotFoundError(f"There is not any xdf file in the path: {dictionary_path}")
@@ -180,7 +180,7 @@ class ServoStatusListener(threading.Thread):
 
     def run(self) -> None:
         """Checks if the drive is alive by reading the status word register."""
-        previous_states: dict[int, SERVO_STATE] = {}
+        previous_states: dict[int, ServoState] = {}
         while not self.__stop:
             for subnode in self.__servo.subnodes:
                 if self.__servo.subnodes[subnode] != SubnodeType.MOTION:
@@ -275,19 +275,19 @@ class Servo:
         self.full_name = f"{prod_name} {self.name} ({self.target})"
         """Obtains the servo full name."""
         self.units_torque = None
-        """SERVO_UNITS_TORQUE: Torque units."""
+        """ServoUnitsTorque: Torque units."""
         self.units_pos = None
-        """SERVO_UNITS_POS: Position units."""
+        """ServoUnitsPos: Position units."""
         self.units_vel = None
-        """SERVO_UNITS_VEL: Velocity units."""
+        """ServoUnitsVel: Velocity units."""
         self.units_acc = None
-        """SERVO_UNITS_ACC: Acceleration units."""
+        """ServoUnitsAcc: Acceleration units."""
         self._lock = threading.Lock()
-        self.__observers_servo_state: list[Callable[[SERVO_STATE, int], Any]] = []
+        self.__observers_servo_state: list[Callable[[ServoState, int], Any]] = []
         self.__listener_servo_status: Optional[ServoStatusListener] = None
         self.__monitoring_data: dict[int, list[Union[int, float]]] = {}
         self.__monitoring_size: dict[int, int] = {}
-        self.__monitoring_dtype: dict[int, REG_DTYPE] = {}
+        self.__monitoring_dtype: dict[int, RegDtype] = {}
         self.__disturbance_data = b""
         self.__disturbance_size: dict[int, int] = {}
         self.__disturbance_dtype: dict[int, str] = {}
@@ -300,14 +300,14 @@ class Servo:
             self.stop_status_listener()
 
     def start_status_listener(self) -> None:
-        """Start listening for servo status events (SERVO_STATE)."""
+        """Start listening for servo status events (ServoState)."""
         if self.__listener_servo_status is not None:
             return
         self.__listener_servo_status = ServoStatusListener(self)
         self.__listener_servo_status.start()
 
     def stop_status_listener(self) -> None:
-        """Stop listening for servo status events (SERVO_STATE)."""
+        """Stop listening for servo status events (ServoState)."""
         if self.__listener_servo_status is None:
             return
         if self.__listener_servo_status.is_alive():
@@ -455,16 +455,16 @@ class Servo:
         rev_number = drive_info["revision_number"]
         firmware_version = drive_info["firmware_version"]
 
-        tree = ET.Element("IngeniaDictionary")
-        header = ET.SubElement(tree, "Header")
-        version = ET.SubElement(header, "Version")
+        tree = ElementTree.Element("IngeniaDictionary")
+        header = ElementTree.SubElement(tree, "Header")
+        version = ElementTree.SubElement(header, "Version")
         version.text = "2"
-        default_language = ET.SubElement(header, "DefaultLanguage")
+        default_language = ElementTree.SubElement(header, "DefaultLanguage")
         default_language.text = "en_US"
 
-        body = ET.SubElement(tree, "Body")
-        device = ET.SubElement(body, "Device")
-        registers = ET.SubElement(device, "Registers")
+        body = ElementTree.SubElement(tree, "Body")
+        device = ElementTree.SubElement(body, "Device")
+        registers = ElementTree.SubElement(device, "Registers")
         interface = (
             self.DICTIONARY_INTERFACE_ATTR_CAN
             if self.dictionary.interface == Interface.CAN
@@ -488,14 +488,14 @@ class Servo:
             for configuration_register in configuration_registers:
                 if configuration_register.identifier is None:
                     continue
-                register_xml = ET.SubElement(registers, "Register")
+                register_xml = ElementTree.SubElement(registers, "Register")
                 register_xml.set("access", access_ops[configuration_register.access])
                 register_xml.set("dtype", dtype_ops[configuration_register.dtype])
                 register_xml.set("id", configuration_register.identifier)
                 self.__update_register_dict(register_xml, node)
                 register_xml.set("subnode", str(node))
 
-        dom = minidom.parseString(ET.tostring(tree, encoding="utf-8"))
+        dom = minidom.parseString(ElementTree.tostring(tree, encoding="utf-8"))
         with open(config_file, "wb") as f:
             f.write(dom.toprettyxml(indent="\t").encode())
 
@@ -510,7 +510,7 @@ class Servo:
 
         """
         return not (
-            register.access != REG_ACCESS.RW or register.address_type == REG_ADDRESS_TYPE.NVM_NONE
+            register.access != RegAccess.RW or register.address_type == RegAddressType.NVM_NONE
         )
 
     def _registers_to_save_in_configuration_file(
@@ -535,7 +535,9 @@ class Servo:
         return registers
 
     @staticmethod
-    def _read_configuration_file(config_file: str) -> tuple[ET.Element, list[ET.Element]]:
+    def _read_configuration_file(
+        config_file: str,
+    ) -> tuple[ElementTree.Element, list[ElementTree.Element]]:
         """Read a configuration file. Returns the device metadata and the registers list.
 
         Args:
@@ -552,7 +554,7 @@ class Servo:
         if not os.path.isfile(config_file):
             raise FileNotFoundError(f"Could not find {config_file}.")
         with open(config_file, encoding="utf-8") as xml_file:
-            tree = ET.parse(xml_file)
+            tree = ElementTree.parse(xml_file)
         root = tree.getroot()
         device = root.find("Body/Device")
         axis = tree.findall("*/Device/Axes/Axis")
@@ -562,7 +564,7 @@ class Servo:
         else:
             # Single axis
             registers = root.findall("./Body/Device/Registers/Register")
-        if not isinstance(device, ET.Element):
+        if not isinstance(device, ElementTree.Element):
             raise ILIOError("Configuration file does not have device information")
         if not isinstance(registers, list):
             raise ILIOError("Configuration file does not have register list")
@@ -690,13 +692,13 @@ class Servo:
         """
         # Try fault reset if faulty
         if self.get_state(subnode) in [
-            SERVO_STATE.FAULT,
-            SERVO_STATE.FAULTR,
+            ServoState.FAULT,
+            ServoState.FAULTR,
         ]:
             self.fault_reset(subnode=subnode)
 
         state = self.get_state(subnode)
-        while state != SERVO_STATE.ENABLED:
+        while state != ServoState.ENABLED:
             # Check state and command action to reach enabled
             cmd = {
                 self.CONTROL_WORD_SWITCH_ON: 1,
@@ -705,21 +707,21 @@ class Servo:
                 self.CONTROL_WORD_ENABLE_OPERATION: 1,
                 self.CONTROL_WORD_FAULT_RESET: 0,
             }
-            if state == SERVO_STATE.FAULT:
+            if state == ServoState.FAULT:
                 raise ILStateError(
                     f"The subnode {subnode} could not be enabled within {timeout} ms. "
                     f"The current subnode state is {state}"
                 )
-            elif state == SERVO_STATE.NRDY:
+            elif state == ServoState.NRDY:
                 cmd = {self.CONTROL_WORD_VOLTAGE_ENABLE: 0, self.CONTROL_WORD_FAULT_RESET: 0}
-            elif state == SERVO_STATE.DISABLED:
+            elif state == ServoState.DISABLED:
                 cmd = {
                     self.CONTROL_WORD_SWITCH_ON: 0,
                     self.CONTROL_WORD_VOLTAGE_ENABLE: 1,
                     self.CONTROL_WORD_QUICK_STOP: 1,
                     self.CONTROL_WORD_FAULT_RESET: 0,
                 }
-            elif state == SERVO_STATE.RDY:
+            elif state == ServoState.RDY:
                 cmd = {
                     self.CONTROL_WORD_SWITCH_ON: 1,
                     self.CONTROL_WORD_VOLTAGE_ENABLE: 1,
@@ -746,10 +748,10 @@ class Servo:
 
         """
         state = self.get_state(subnode)
-        while state != SERVO_STATE.DISABLED:
+        while state != ServoState.DISABLED:
             if state in [
-                SERVO_STATE.FAULT,
-                SERVO_STATE.FAULTR,
+                ServoState.FAULT,
+                ServoState.FAULTR,
             ]:
                 # Try fault reset if faulty
                 self.fault_reset(subnode=subnode)
@@ -776,8 +778,8 @@ class Servo:
         """
         state = self.get_state(subnode=subnode)
         if state in [
-            SERVO_STATE.FAULT,
-            SERVO_STATE.FAULTR,
+            ServoState.FAULT,
+            ServoState.FAULTR,
         ]:
             # Check if faulty, if so try to reset (0->1)
             self.write_bitfields(
@@ -811,7 +813,7 @@ class Servo:
                 raise ILTimeoutError
             actual_status_word = self.read(self.STATUS_WORD_REGISTERS, subnode=subnode)
 
-    def state_wait_change(self, state: SERVO_STATE, timeout: int, subnode: int = 1) -> SERVO_STATE:
+    def state_wait_change(self, state: ServoState, timeout: int, subnode: int = 1) -> ServoState:
         """Waits for a state change.
 
         Args:
@@ -841,13 +843,13 @@ class Servo:
 
         return actual_state
 
-    def get_state(self, subnode: int = 1) -> SERVO_STATE:
+    def get_state(self, subnode: int = 1) -> ServoState:
         """Current drive state."""
         status_word = self.read_bitfields(self.STATUS_WORD_REGISTERS, subnode=subnode)
         state = self.status_word_decode(status_word)
         return state
 
-    def status_word_decode(self, status_word: dict[str, int]) -> SERVO_STATE:
+    def status_word_decode(self, status_word: dict[str, int]) -> ServoState:
         """Decodes the status word to a known value.
 
         Args:
@@ -865,23 +867,23 @@ class Servo:
         sw_sod = status_word[self.STATUS_WORD_SWITCH_ON_DISABLED]
 
         if not (sw_rtso | sw_so | sw_oe | sw_f | sw_sod):
-            state = SERVO_STATE.NRDY
+            state = ServoState.NRDY
         elif not (sw_rtso | sw_so | sw_oe | sw_f) and sw_sod:
-            state = SERVO_STATE.DISABLED
+            state = ServoState.DISABLED
         elif not (sw_so | sw_oe | sw_f | sw_sod) and (sw_rtso & sw_qs):
-            state = SERVO_STATE.RDY
+            state = ServoState.RDY
         elif not (sw_oe | sw_f | sw_sod) and (sw_rtso & sw_so & sw_qs):
-            state = SERVO_STATE.ON
+            state = ServoState.ON
         elif not (sw_f | sw_sod) and (sw_rtso & sw_so & sw_oe & sw_qs):
-            state = SERVO_STATE.ENABLED
+            state = ServoState.ENABLED
         elif not (sw_f | sw_qs | sw_sod) and (sw_rtso & sw_so & sw_oe):
-            state = SERVO_STATE.QSTOP
+            state = ServoState.QSTOP
         elif not sw_sod and (sw_rtso & sw_so & sw_oe & sw_f):
-            state = SERVO_STATE.FAULTR
+            state = ServoState.FAULTR
         elif not (sw_rtso | sw_so | sw_oe | sw_sod) and sw_f:
-            state = SERVO_STATE.FAULT
+            state = ServoState.FAULT
         else:
-            state = SERVO_STATE.NRDY
+            state = ServoState.NRDY
         return state
 
     def monitoring_enable(self) -> None:
@@ -910,7 +912,7 @@ class Servo:
 
         """
         self.__monitoring_data[channel] = []
-        self.__monitoring_dtype[channel] = REG_DTYPE(dtype)
+        self.__monitoring_dtype[channel] = RegDtype(dtype)
         self.__monitoring_size[channel] = size
         data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
         try:
@@ -978,7 +980,7 @@ class Servo:
     def monitoring_channel_data(
         self,
         channel: int,
-        dtype: Optional[REG_DTYPE] = None,  # noqa: ARG002
+        dtype: Optional[RegDtype] = None,  # noqa: ARG002
     ) -> list[float]:
         """Obtain processed monitoring data of a channel.
 
@@ -1024,7 +1026,7 @@ class Servo:
 
         """
         self.__disturbance_size[channel] = size
-        self.__disturbance_dtype[channel] = REG_DTYPE(dtype).name
+        self.__disturbance_dtype[channel] = RegDtype(dtype).name
         data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
         try:
             self.write(self.__disturbance_map_register(), data=data, subnode=0)
@@ -1051,7 +1053,7 @@ class Servo:
         self.__disturbance_size = {}
         self.__disturbance_dtype = {}
 
-    def subscribe_to_status(self, callback: Callable[[SERVO_STATE, int], Any]) -> None:
+    def subscribe_to_status(self, callback: Callable[[ServoState, int], Any]) -> None:
         """Subscribe to state changes.
 
         Args:
@@ -1066,7 +1068,7 @@ class Servo:
             return
         self.__observers_servo_state.append(callback)
 
-    def unsubscribe_from_status(self, callback: Callable[[SERVO_STATE, int], Any]) -> None:
+    def unsubscribe_from_status(self, callback: Callable[[ServoState, int], Any]) -> None:
         """Unsubscribe from state changes.
 
         Args:
@@ -1128,7 +1130,7 @@ class Servo:
         else:
             raise TypeError("Invalid register")
 
-    def __update_register_dict(self, register: ET.Element, subnode: int) -> None:
+    def __update_register_dict(self, register: ElementTree.Element, subnode: int) -> None:
         """Updates the register from a dictionary with the storage parameters.
 
         Args:
@@ -1155,7 +1157,7 @@ class Servo:
                 e,
             )
 
-    def _notify_state(self, state: SERVO_STATE, subnode: int) -> None:
+    def _notify_state(self, state: ServoState, subnode: int) -> None:
         """Notify the state to the observers.
 
         Args:
@@ -1269,7 +1271,7 @@ class Servo:
     def _disturbance_create_data_chunks(
         self,
         channels: Union[int, list[int]],
-        dtypes: Union[REG_DTYPE, list[REG_DTYPE]],
+        dtypes: Union[RegDtype, list[RegDtype]],
         data_arr: Union[list[Union[int, float]], list[list[Union[int, float]]]],
         max_size: int,
     ) -> tuple[bytes, list[bytes]]:
@@ -1327,7 +1329,7 @@ class Servo:
         """
         _reg = self._get_reg(reg, subnode)
 
-        if _reg.access == REG_ACCESS.RO:
+        if _reg.access == RegAccess.RO:
             raise ILAccessError("Register is Read-only")
         data_bytes = data if isinstance(data, bytes) else convert_dtype_to_bytes(data, _reg.dtype)
         self._write_raw(_reg, data_bytes, **kwargs)
@@ -1354,7 +1356,7 @@ class Servo:
         """
         _reg = self._get_reg(reg, subnode)
         access = _reg.access
-        if access == REG_ACCESS.WO:
+        if access == RegAccess.WO:
             raise ILAccessError("Register is Write-only")
 
         raw_read = self._read_raw(_reg, **kwargs)
@@ -1479,7 +1481,7 @@ class Servo:
     def disturbance_write_data(
         self,
         channels: Union[int, list[int]],
-        dtypes: Union[REG_DTYPE, list[REG_DTYPE]],
+        dtypes: Union[RegDtype, list[RegDtype]],
         data_arr: Union[list[Union[int, float]], list[list[Union[int, float]]]],
     ) -> None:
         """Write disturbance data.
@@ -1594,7 +1596,7 @@ class Servo:
         self.__full_name = new_name
 
     @property
-    def status(self) -> dict[int, SERVO_STATE]:
+    def status(self) -> dict[int, ServoState]:
         """Servo status."""
         status = {
             subnode: self.get_state(subnode)

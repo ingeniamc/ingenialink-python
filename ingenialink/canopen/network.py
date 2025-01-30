@@ -4,6 +4,7 @@ import os
 import platform
 import re
 import tempfile
+import warnings
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
@@ -19,9 +20,9 @@ from can.interfaces.pcan.pcan import PcanCanOperationError
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, RegCyclicType
+from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NET_DEV_EVT, NET_PROT, NET_STATE, Network, SlaveInfo
+from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 
@@ -48,8 +49,8 @@ PROG_STAT_1 = CanopenRegister(
     idx=0x1F51,
     subidx=0x01,
     cyclic=RegCyclicType.CONFIG,
-    dtype=REG_DTYPE.U8,
-    access=REG_ACCESS.RW,
+    dtype=RegDtype.U8,
+    access=RegAccess.RW,
     identifier="CIA302_BL_PROGRAM_CONTROL_1",
     subnode=0,
 )
@@ -57,8 +58,8 @@ PROG_DL_1 = CanopenRegister(
     idx=0x1F50,
     subidx=0x01,
     cyclic=RegCyclicType.CONFIG,
-    dtype=REG_DTYPE.BYTE_ARRAY_512,
-    access=REG_ACCESS.RW,
+    dtype=RegDtype.BYTE_ARRAY_512,
+    access=RegAccess.RW,
     identifier="CIA302_BL_PROGRAM_DATA",
     subnode=0,
 )
@@ -66,8 +67,8 @@ FORCE_BOOT = CanopenRegister(
     idx=0x5EDE,
     subidx=0x00,
     cyclic=RegCyclicType.CONFIG,
-    dtype=REG_DTYPE.U32,
-    access=REG_ACCESS.WO,
+    dtype=RegDtype.U32,
+    access=RegAccess.WO,
     identifier="DRV_BOOT_COCO_FORCE",
     subnode=0,
 )
@@ -76,8 +77,8 @@ CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
     idx=0x1000,
     subidx=0x00,
     cyclic=RegCyclicType.CONFIG,
-    dtype=REG_DTYPE.U32,
-    access=REG_ACCESS.RO,
+    dtype=RegDtype.U32,
+    access=RegAccess.RO,
     identifier="",
     subnode=0,
 )
@@ -104,7 +105,7 @@ CAN_CHANNELS: dict[str, Union[tuple[int, int], tuple[str, str]]] = {
 }
 
 
-class CAN_DEVICE(Enum):  # noqa: N801
+class CanDevice(Enum):
     """CAN Device."""
 
     KVASER = "kvaser"
@@ -114,7 +115,7 @@ class CAN_DEVICE(Enum):  # noqa: N801
     SOCKETCAN = "socketcan"
 
 
-class CAN_BAUDRATE(Enum):  # noqa: N801
+class CanBaudrate(Enum):
     """Baudrates."""
 
     Baudrate_1M = 1000000
@@ -132,12 +133,12 @@ class CAN_BAUDRATE(Enum):  # noqa: N801
 
 
 CAN_BIT_TIMMING = {
-    CAN_BAUDRATE.Baudrate_1M: 0,
-    CAN_BAUDRATE.Baudrate_500K: 2,
-    CAN_BAUDRATE.Baudrate_250K: 3,
-    CAN_BAUDRATE.Baudrate_125K: 4,
-    CAN_BAUDRATE.Baudrate_100K: 5,
-    CAN_BAUDRATE.Baudrate_50K: 6,
+    CanBaudrate.Baudrate_1M: 0,
+    CanBaudrate.Baudrate_500K: 2,
+    CanBaudrate.Baudrate_250K: 3,
+    CanBaudrate.Baudrate_125K: 4,
+    CanBaudrate.Baudrate_100K: 5,
+    CanBaudrate.Baudrate_50K: 6,
 }
 
 
@@ -187,15 +188,15 @@ class NetStatusListener(Thread):
                 is_alive = current_timestamp != timestamps[node_id]
                 servo_state = self.__network.get_servo_state(node_id)
                 if is_alive:
-                    if servo_state != NET_STATE.CONNECTED:
-                        self.__network._notify_status(node_id, NET_DEV_EVT.ADDED)
-                        self.__network._set_servo_state(node_id, NET_STATE.CONNECTED)
+                    if servo_state != NetState.CONNECTED:
+                        self.__network._notify_status(node_id, NetDevEvt.ADDED)
+                        self.__network._set_servo_state(node_id, NetState.CONNECTED)
                     timestamps[node_id] = node.nmt.timestamp
-                elif servo_state == NET_STATE.DISCONNECTED:
+                elif servo_state == NetState.DISCONNECTED:
                     self.__network._reset_connection()
                 else:
-                    self.__network._notify_status(node_id, NET_DEV_EVT.REMOVED)
-                    self.__network._set_servo_state(node_id, NET_STATE.DISCONNECTED)
+                    self.__network._notify_status(node_id, NetDevEvt.REMOVED)
+                    self.__network._set_servo_state(node_id, NetState.DISCONNECTED)
 
     def stop(self) -> None:
         """Stop the listener."""
@@ -219,9 +220,9 @@ class CanopenNetwork(Network):
 
     def __init__(
         self,
-        device: CAN_DEVICE,
+        device: CanDevice,
         channel: int = 0,
-        baudrate: CAN_BAUDRATE = CAN_BAUDRATE.Baudrate_1M,
+        baudrate: CanBaudrate = CanBaudrate.Baudrate_1M,
     ):
         super().__init__()
         self.servos: list[CanopenServo] = []
@@ -230,16 +231,14 @@ class CanopenNetwork(Network):
         self.__baudrate = baudrate.value
         self._connection: Optional[NetworkLib] = None
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: dict[int, list[Callable[[NET_DEV_EVT], Any]]] = defaultdict(
-            list
-        )
+        self.__observers_net_state: dict[int, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
 
         self.__connection_args = {
             "interface": self.__device,
             "channel": self.__channel,
             "bitrate": self.__baudrate,
         }
-        if self.__device == CAN_DEVICE.PCAN.value:
+        if self.__device == CanDevice.PCAN.value:
             self.__connection_args["auto_reset"] = True
 
     def scan_slaves(self) -> list[int]:
@@ -320,11 +319,11 @@ class CanopenNetwork(Network):
                 node = connected_slaves[slave_id]
             try:
                 product_code = convert_bytes_to_dtype(
-                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), REG_DTYPE.U32
+                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), RegDtype.U32
                 )
                 revision_number = convert_bytes_to_dtype(
                     node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX),
-                    REG_DTYPE.U32,
+                    RegDtype.U32,
                 )
             except canopen.sdo.exceptions.SdoError as e:
                 logger.warning(
@@ -374,7 +373,7 @@ class CanopenNetwork(Network):
                     target, node, dictionary, servo_status_listener=servo_status_listener
                 )
                 self.servos.append(servo)
-                self._set_servo_state(target, NET_STATE.CONNECTED)
+                self._set_servo_state(target, NetState.CONNECTED)
                 if net_status_listener:
                     self.start_status_listener()
                 return servo
@@ -411,7 +410,7 @@ class CanopenNetwork(Network):
         """
         if self._connection is None:
             self._connection = canopen.Network()
-            if self.__device in [CAN_DEVICE.IXXAT.value, CAN_DEVICE.KVASER.value]:
+            if self.__device in [CanDevice.IXXAT.value, CanDevice.KVASER.value]:
                 self._connection.listeners.append(CustomListener())
             try:
                 self._connection.connect(**self.__connection_args)
@@ -472,7 +471,7 @@ class CanopenNetwork(Network):
                 logger.info("Bus flushed")
         except Exception as e:
             logger.error(f"Could not stop guarding. Exception: {e}")
-        if self.__device in [CAN_DEVICE.IXXAT.value, CAN_DEVICE.KVASER.value]:
+        if self.__device in [CanDevice.IXXAT.value, CanDevice.KVASER.value]:
             self._connection.listeners.append(CustomListener())
         try:
             self._connection.connect(**self.__connection_args)
@@ -845,7 +844,7 @@ class CanopenNetwork(Network):
     def change_baudrate(
         self,
         target_node: int,
-        new_target_baudrate: CAN_BAUDRATE,
+        new_target_baudrate: CanBaudrate,
         vendor_id: int,
         product_code: int,
         rev_number: int,
@@ -976,7 +975,7 @@ class CanopenNetwork(Network):
 
         self._connection.nodes[target_node].nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
-    def subscribe_to_status(self, node_id: int, callback: Callable[[NET_DEV_EVT], Any]) -> None:  # type: ignore [override]
+    def subscribe_to_status(self, node_id: int, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
         """Subscribe to network state changes.
 
         Args:
@@ -989,7 +988,7 @@ class CanopenNetwork(Network):
             return
         self.__observers_net_state[node_id].append(callback)
 
-    def unsubscribe_from_status(self, node_id: int, callback: Callable[[NET_DEV_EVT], Any]) -> None:  # type: ignore [override]
+    def unsubscribe_from_status(self, node_id: int, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
         """Unsubscribe from network state changes.
 
         Args:
@@ -1002,7 +1001,7 @@ class CanopenNetwork(Network):
             return
         self.__observers_net_state[node_id].remove(callback)
 
-    def _notify_status(self, node_id: int, status: NET_DEV_EVT) -> None:
+    def _notify_status(self, node_id: int, status: NetDevEvt) -> None:
         """Notify subscribers of a network state change."""
         for callback in self.__observers_net_state[node_id]:
             callback(status)
@@ -1053,11 +1052,11 @@ class CanopenNetwork(Network):
         return self._connection
 
     @property
-    def protocol(self) -> NET_PROT:
+    def protocol(self) -> NetProt:
         """Obtain network protocol."""
-        return NET_PROT.CAN
+        return NetProt.CAN
 
-    def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
+    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
         """Get the state of a servo that's a part of network.
 
         The state indicates if the servo is connected or disconnected.
@@ -1073,7 +1072,7 @@ class CanopenNetwork(Network):
             raise ValueError("The servo ID must be an int.")
         return self._servos_state[servo_id]
 
-    def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
+    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
         """Set the state of a servo that's a part of network.
 
         Args:
@@ -1089,14 +1088,14 @@ class CanopenNetwork(Network):
         Returns:
             List of tuples with device name and channel
         """
-        unavailable_devices = [CAN_DEVICE.KVASER, CAN_DEVICE.VIRTUAL]
+        unavailable_devices = [CanDevice.KVASER, CanDevice.VIRTUAL]
         if platform.system() == "Windows":
-            unavailable_devices.append(CAN_DEVICE.SOCKETCAN)
+            unavailable_devices.append(CanDevice.SOCKETCAN)
         return [
             (available_device["interface"], available_device["channel"])
             for available_device in (
                 can.detect_available_configs(
-                    [device.value for device in CAN_DEVICE if device not in unavailable_devices]
+                    [device.value for device in CanDevice if device not in unavailable_devices]
                 )
                 + self._get_available_kvaser_devices()
             )
@@ -1110,7 +1109,7 @@ class CanopenNetwork(Network):
         """
         if not KVASER_DRIVER_INSTALLED:
             return []
-        if self.__device == CAN_DEVICE.KVASER.value and not self.servos:
+        if self.__device == CanDevice.KVASER.value and not self.servos:
             self._reload_kvaser_lib()
         num_channels = ctypes.c_int(0)
         with contextlib.suppress(CANLIBError, NameError):
@@ -1128,3 +1127,21 @@ class CanopenNetwork(Network):
         can_initialize_library = get_canlib_function("canInitializeLibrary")  # type: ignore[no-untyped-call]
         can_unload_library()
         can_initialize_library()
+
+
+# WARNING: Deprecated aliases
+_DEPRECATED = {
+    "CAN_DEVICE": "CanDevice",
+    "CAN_BAUDRATE": "CanBaudrate",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _DEPRECATED:
+        warnings.warn(
+            f"{name} is deprecated, use {_DEPRECATED[name]} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return globals()[_DEPRECATED[name]]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

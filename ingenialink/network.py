@@ -1,3 +1,4 @@
+import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -11,7 +12,7 @@ from ingenialink.servo import Servo
 logger = ingenialogger.get_logger(__name__)
 
 
-class NET_PROT(Enum):  # noqa: N801
+class NetProt(Enum):
     """Network Protocol."""
 
     EUSB = 0
@@ -21,7 +22,7 @@ class NET_PROT(Enum):  # noqa: N801
     CAN = 5
 
 
-class NET_STATE(Enum):  # noqa: N801
+class NetState(Enum):
     """Network State."""
 
     CONNECTED = 0
@@ -29,7 +30,7 @@ class NET_STATE(Enum):  # noqa: N801
     FAULTY = 2
 
 
-class NET_DEV_EVT(Enum):  # noqa: N801
+class NetDevEvt(Enum):
     """Device Event."""
 
     ADDED = 0
@@ -51,7 +52,7 @@ class Network(ABC):
         self.servos: list[Any] = []
         """List of the connected servos in the network."""
 
-        self._servos_state: dict[Union[int, str], NET_STATE] = {}
+        self._servos_state: dict[Union[int, str], NetState] = {}
         """Dictionary containing the state of the servos that are a part of the network."""
 
     @abstractmethod
@@ -103,7 +104,7 @@ class Network(ABC):
 
     @abstractmethod
     def subscribe_to_status(
-        self, target: Union[int, str], callback: Callable[[NET_DEV_EVT], Any]
+        self, target: Union[int, str], callback: Callable[[NetDevEvt], Any]
     ) -> None:
         """Subscribe to network state changes.
 
@@ -116,7 +117,7 @@ class Network(ABC):
 
     @abstractmethod
     def unsubscribe_from_status(
-        self, target: Union[int, str], callback: Callable[[NET_DEV_EVT], Any]
+        self, target: Union[int, str], callback: Callable[[NetDevEvt], Any]
     ) -> None:
         """Unsubscribe from network state changes.
 
@@ -138,7 +139,7 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_servo_state(self, servo_id: Union[int, str]) -> NET_STATE:
+    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
         """Get the state of a servo that's a part of network.
 
         The state indicates if the servo is connected or disconnected.
@@ -153,10 +154,29 @@ class Network(ABC):
         return self._servos_state[servo_id]
 
     @abstractmethod
-    def _set_servo_state(self, servo_id: Union[int, str], state: NET_STATE) -> None:
+    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
         self._servos_state[servo_id] = state
 
     @property
-    def protocol(self) -> NET_PROT:
+    def protocol(self) -> NetProt:
         """NET_PROT: Obtain network protocol."""
         raise NotImplementedError
+
+
+# WARNING: Deprecated aliases
+_DEPRECATED = {
+    "NET_PROT": "NetProt",
+    "NET_STATE": "NetState",
+    "NET_DEV_EVT": "NetDevEvt",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _DEPRECATED:
+        warnings.warn(
+            f"{name} is deprecated, use {_DEPRECATED[name]} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return globals()[_DEPRECATED[name]]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

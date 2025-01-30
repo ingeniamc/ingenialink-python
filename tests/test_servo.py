@@ -2,14 +2,14 @@ import os
 import re
 import shutil
 import time
-import xml.etree.ElementTree as ET
 from pathlib import Path
+from xml.etree import ElementTree
 
 import pytest
 from packaging import version
 
 from ingenialink.canopen.servo import CanopenServo
-from ingenialink.ethernet.register import REG_DTYPE
+from ingenialink.ethernet.register import RegDtype
 from ingenialink.exceptions import (
     ILConfigurationError,
     ILError,
@@ -18,8 +18,8 @@ from ingenialink.exceptions import (
     ILTimeoutError,
     ILValueError,
 )
-from ingenialink.register import REG_ADDRESS_TYPE
-from ingenialink.servo import SERVO_STATE, Servo
+from ingenialink.register import RegAddressType
+from ingenialink.servo import Servo, ServoState
 from tests.virtual.test_virtual_network import RESOURCES_FOLDER
 
 MONITORING_CH_DATA_SIZE = 4
@@ -100,9 +100,9 @@ def create_disturbance(connect_to_slave, pytestconfig):
     reg = servo._get_reg("CL_POS_SET_POINT_VALUE", subnode=1)
     address = _get_reg_address(reg, protocol)
     servo.disturbance_set_mapped_register(
-        0, address, 1, REG_DTYPE.S32.value, DISTURBANCE_CH_DATA_SIZE
+        0, address, 1, RegDtype.S32.value, DISTURBANCE_CH_DATA_SIZE
     )
-    servo.disturbance_write_data(0, REG_DTYPE.S32, data)
+    servo.disturbance_write_data(0, RegDtype.S32, data)
     yield servo, net
     servo.disturbance_disable()
 
@@ -166,7 +166,7 @@ def test_save_configuration(connect_to_slave):
         assert registers[reg_id].dtype == servo.dictionary.dtype_xdf_options[dtype]
 
         assert access == "rw"
-        assert registers[reg_id].address_type != REG_ADDRESS_TYPE.NVM_NONE
+        assert registers[reg_id].address_type != RegAddressType.NVM_NONE
 
     _clean(filename)
 
@@ -321,7 +321,7 @@ def test_load_configuration_to_subnode_zero(read_config, pytestconfig, connect_t
     modified_path = Path(filename.replace(file, "config_0_test.xdf"))
     shutil.copy(path, modified_path)
     with open(modified_path, encoding="utf-8") as xml_file:
-        tree = ET.parse(xml_file)
+        tree = ElementTree.parse(xml_file)
         root = tree.getroot()
         axis = tree.findall("*/Device/Axes/Axis")
         if axis:
@@ -575,9 +575,9 @@ def test_disturbance_data_size(create_disturbance):
 def test_enable_disable(connect_to_slave):
     servo, net = connect_to_slave
     servo.enable()
-    assert servo.status[1] == SERVO_STATE.ENABLED
+    assert servo.status[1] == ServoState.ENABLED
     servo.disable()
-    assert servo.status[1] == SERVO_STATE.DISABLED
+    assert servo.status[1] == ServoState.DISABLED
 
 
 @pytest.mark.canopen
@@ -590,7 +590,7 @@ def test_fault_reset(connect_to_slave):
     with pytest.raises(ILStateError):
         servo.enable()
     servo.fault_reset()
-    assert servo.status[1] != SERVO_STATE.FAULT
+    assert servo.status[1] != ServoState.FAULT
     servo.write("DRV_PROT_USER_OVER_VOLT", data=prev_val, subnode=1)
 
 
@@ -626,11 +626,11 @@ def test_disturbance_overflow(connect_to_slave, pytestconfig):
     reg = servo._get_reg("DRV_OP_CMD", subnode=1)
     address = _get_reg_address(reg, protocol)
     servo.disturbance_set_mapped_register(
-        0, address, 1, REG_DTYPE.U16.value, DISTURBANCE_CH_DATA_SIZE
+        0, address, 1, RegDtype.U16.value, DISTURBANCE_CH_DATA_SIZE
     )
     data = list(range(-10, 11))
     with pytest.raises(ILValueError):
-        servo.disturbance_write_data(0, REG_DTYPE.U16, data)
+        servo.disturbance_write_data(0, RegDtype.U16, data)
 
 
 @pytest.mark.no_connection
@@ -678,7 +678,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.NRDY,
+            ServoState.NRDY,
         ),
         (
             {
@@ -694,7 +694,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.DISABLED,
+            ServoState.DISABLED,
         ),
         (
             {
@@ -710,7 +710,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.RDY,
+            ServoState.RDY,
         ),
         (
             {
@@ -726,7 +726,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.ON,
+            ServoState.ON,
         ),
         (
             {
@@ -742,7 +742,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.ENABLED,
+            ServoState.ENABLED,
         ),
         (
             {
@@ -758,7 +758,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.QSTOP,
+            ServoState.QSTOP,
         ),
         (
             {
@@ -774,7 +774,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.FAULTR,
+            ServoState.FAULTR,
         ),
         (
             {
@@ -790,7 +790,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
                 "SWITCH_LIMITS_ACTIVE": 0,
                 "COMMUTATION_FEEDBACK_ALIGNED": 0,
             },
-            SERVO_STATE.FAULT,
+            ServoState.FAULT,
         ),
     ],
 )

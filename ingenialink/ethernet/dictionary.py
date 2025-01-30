@@ -1,10 +1,10 @@
-import xml.etree.ElementTree as ET
 from typing import Optional
+from xml.etree import ElementTree
 
 import ingenialogger
 
 from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, RegCyclicType
+from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethernet.register import EthernetRegister
 
 logger = ingenialogger.get_logger(__name__)
@@ -25,8 +25,8 @@ class EthernetDictionaryV2(DictionaryV2):
             subnode=0,
             address=0x00B2,
             cyclic=RegCyclicType.CONFIG,
-            dtype=REG_DTYPE.BYTE_ARRAY_512,
-            access=REG_ACCESS.RO,
+            dtype=RegDtype.BYTE_ARRAY_512,
+            access=RegAccess.RO,
         ),
         EthernetRegister(
             identifier="DIST_DATA_VALUE",
@@ -34,14 +34,14 @@ class EthernetDictionaryV2(DictionaryV2):
             subnode=0,
             address=0x00B4,
             cyclic=RegCyclicType.CONFIG,
-            dtype=REG_DTYPE.BYTE_ARRAY_512,
-            access=REG_ACCESS.WO,
+            dtype=RegDtype.BYTE_ARRAY_512,
+            access=RegAccess.WO,
         ),
     ]
 
     interface = Interface.ETH
 
-    def _read_xdf_register(self, register: ET.Element) -> Optional[EthernetRegister]:
+    def _read_xdf_register(self, register: ElementTree.Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)
         if current_read_register is None:
             return None

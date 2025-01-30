@@ -27,7 +27,7 @@ from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 logger = ingenialogger.get_logger(__name__)
 
 
-class SDO_OPERATION_MSG(Enum):  # noqa: N801
+class SdoOperationMsg(Enum):
     """Message for exceptions depending on the operation type."""
 
     READ = "reading"
@@ -176,7 +176,7 @@ class EthercatServo(PDOServo):
             pysoem.WkcError,
             ILIOError,
         ) as e:
-            self._handle_sdo_exception(reg, SDO_OPERATION_MSG.READ, e)
+            self._handle_sdo_exception(reg, SdoOperationMsg.READ, e)
         finally:
             self._lock.release()
         return value
@@ -198,12 +198,12 @@ class EthercatServo(PDOServo):
             pysoem.WkcError,
             ILIOError,
         ) as e:
-            self._handle_sdo_exception(reg, SDO_OPERATION_MSG.WRITE, e)
+            self._handle_sdo_exception(reg, SdoOperationMsg.WRITE, e)
         finally:
             self._lock.release()
 
     def _handle_sdo_exception(
-        self, reg: EthercatRegister, operation_msg: SDO_OPERATION_MSG, exception: Exception
+        self, reg: EthercatRegister, operation_msg: SdoOperationMsg, exception: Exception
     ) -> None:
         """Handle the exceptions that occur when reading or writing SDOs.
 
