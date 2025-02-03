@@ -66,6 +66,22 @@ def skip_if_monitoring_is_not_available(servo):
         pytest.skip("Monitoring is not available")
 
 
+class SDOReadTimeoutManager:
+    def __init__(self, network, new_value):
+        self.__net = network
+        self.__new_value = new_value
+
+    def __enter__(self):
+        self.__set_sdo_read_timeout(self.__new_value)
+        return self
+
+    def __set_sdo_read_timeout(self, value_s):
+        self.__net._ecat_master.sdo_read_timeout = int(1_000_000 * value_s)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.__set_sdo_read_timeout(self.__net.DEFAULT_ECAT_CONNECTION_TIMEOUT_S)
+
+
 @pytest.fixture()
 def create_monitoring(connect_to_slave, pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
@@ -590,6 +606,23 @@ def test_fault_reset(connect_to_slave):
     with pytest.raises(ILStateError):
         servo.enable()
     servo.fault_reset()
+    assert servo.status[1] != ServoState.FAULT
+    servo.write("DRV_PROT_USER_OVER_VOLT", data=prev_val, subnode=1)
+
+
+@pytest.mark.ethercat
+def test_fault_reset_eve_xcr(connect_to_slave, get_configuration_from_rack_service):
+    drive_idx, config = get_configuration_from_rack_service
+    drive = config[drive_idx]
+    if drive.identifier != "eve-xcr-e":
+        pytest.skip("The test is only for the EVE-XCR-E")
+    servo, net = connect_to_slave
+    prev_val = servo.read("DRV_PROT_USER_OVER_VOLT", subnode=1)
+    servo.write("DRV_PROT_USER_OVER_VOLT", data=10.0, subnode=1)
+    with SDOReadTimeoutManager(network=net, new_value=net.DEFAULT_ECAT_CONNECTION_TIMEOUT_S * 2):
+        with pytest.raises(ILStateError):
+            servo.enable()
+        servo.fault_reset()
     assert servo.status[1] != ServoState.FAULT
     servo.write("DRV_PROT_USER_OVER_VOLT", data=prev_val, subnode=1)
 
