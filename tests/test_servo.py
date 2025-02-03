@@ -599,7 +599,11 @@ def test_enable_disable(connect_to_slave):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_fault_reset(connect_to_slave):
+def test_fault_reset(connect_to_slave, get_configuration_from_rack_service):
+    drive_idx, config = get_configuration_from_rack_service
+    drive = config[drive_idx]
+    if drive.identifier == "eve-xcr-e":
+        pytest.skip("There is a specific fault test for the EVE-XCR-E")
     servo, net = connect_to_slave
     prev_val = servo.read("DRV_PROT_USER_OVER_VOLT", subnode=1)
     servo.write("DRV_PROT_USER_OVER_VOLT", data=10.0, subnode=1)
