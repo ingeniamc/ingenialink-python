@@ -69,17 +69,15 @@ def skip_if_monitoring_is_not_available(servo):
 class SDOReadTimeoutManager:
     def __init__(self, network, new_value):
         self.__net = network
-        self.__new_value = new_value
+        self.__new_value = int(1_000_000 * new_value)
+        self.__initial_value = self.__net._ecat_master.sdo_read_timeout
 
     def __enter__(self):
-        self.__set_sdo_read_timeout(self.__new_value)
+        self.__net._ecat_master.sdo_read_timeout = self.__new_value
         return self
 
-    def __set_sdo_read_timeout(self, value_s):
-        self.__net._ecat_master.sdo_read_timeout = int(1_000_000 * value_s)
-
     def __exit__(self, exc_type, exc_value, traceback):
-        self.__set_sdo_read_timeout(self.__net.DEFAULT_ECAT_CONNECTION_TIMEOUT_S)
+        self.__net._ecat_master.sdo_read_timeout = self.__initial_value
 
 
 @pytest.fixture()
