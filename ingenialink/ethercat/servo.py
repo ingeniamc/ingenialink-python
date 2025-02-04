@@ -1,6 +1,7 @@
 import os
 import time
 from enum import Enum
+from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import ingenialogger
@@ -49,6 +50,16 @@ class EthercatEmergencyMessage(EmergencyMessage):
             + emergency_msg.w2.to_bytes(2, "little")
         )
         super().__init__(servo, emergency_msg.error_code, emergency_msg.error_reg, data)
+
+
+def _servo_not_operational(func: Callable[..., None]) -> Callable[..., None]:
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        if self.slave.state == pysoem.OP_STATE:
+            raise ILPDOOperationalError
+        return func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class EthercatServo(PDOServo):
@@ -314,19 +325,8 @@ class EthercatServo(PDOServo):
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
-    def __servo_not_operational():
-        def wrapper(func):
-            def wrapped(self, *args, **kwargs):
-                if self.slave.state == pysoem.OP_STATE:
-                    raise ILPDOOperationalError
-                return func(self, *args, **kwargs)
-
-            return wrapped
-
-        return wrapper
-
     @override
-    @__servo_not_operational()
+    @_servo_not_operational
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
