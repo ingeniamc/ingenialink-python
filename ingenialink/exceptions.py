@@ -60,3 +60,7 @@ class ILDictionaryParseError(ILError):
 
 class ILWrongWorkingCountError(ILError):
     """PDOs process data working count expected and received differ."""
+
+
+class ILPDOOperationalError(ILError):
+    """PDOs are attempted to be modified while they are in operational state."""

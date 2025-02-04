@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILIOError
+from ingenialink.exceptions import ILIOError, ILPDOOperationalError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
@@ -314,7 +314,19 @@ class EthercatServo(PDOServo):
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
+    def __servo_not_operational():
+        def wrapper(func):
+            def wrapped(self, *args, **kwargs):
+                if self.slave.state == pysoem.OP_STATE:
+                    raise ILPDOOperationalError
+                return func(self, *args, **kwargs)
+
+            return wrapped
+
+        return wrapper
+
     @override
+    @__servo_not_operational()
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:

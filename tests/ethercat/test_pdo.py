@@ -13,7 +13,7 @@ from ingenialink.dictionary import Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.exceptions import ILError
+from ingenialink.exceptions import ILError, ILPDOOperationalError
 from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
 from ingenialink.servo import DictionaryFactory
@@ -239,6 +239,23 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
         servo.dictionary.registers(0)[servo.RPDO_ASSIGN_REGISTER_SUB_IDX_0], complete_access=True
     )
     assert int.to_bytes(0x1600, 2, "little") == value[2:4]
+
+
+@pytest.mark.ethercat
+def test_servo_add_maps_with_wrong_pdo_state(connect_to_slave, create_pdo_map):
+    tpdo_map, rpdo_map = create_pdo_map
+    servo, _ = connect_to_slave
+
+    servo.reset_tpdo_mapping()
+    servo.reset_rpdo_mapping()
+
+    assert servo.slave.state == pysoem.PREOP_STATE
+    servo.slave.state = pysoem.OP_STATE
+    servo.slave.write_state()
+    assert servo.slave.state == pysoem.OP_STATE
+
+    with pytest.raises(ILPDOOperationalError):
+        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
 
 
 @pytest.mark.ethercat
