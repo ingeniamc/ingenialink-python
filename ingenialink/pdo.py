@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Optional, Union
+from abc import abstractmethod
+from typing import Optional, Union
 
 import bitarray
 from typing_extensions import override
@@ -6,16 +7,13 @@ from typing_extensions import override
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILError, ILPDOOperationalError
+from ingenialink.exceptions import ILError
 from ingenialink.servo import Servo
 from ingenialink.utils._utils import (
     convert_bytes_to_dtype,
     convert_dtype_to_bytes,
     dtype_length_bits,
 )
-
-if TYPE_CHECKING:
-    from pysoem import CdefSlave
 
 try:
     import pysoem
@@ -211,36 +209,20 @@ class PDOMap:
     def __init__(self) -> None:
         self.__items: list[PDOMapItem] = []
         self.__map_register_address: Optional[int] = None
-        self.__slave = None
+        self.__slave: Optional[PDOServo] = None
 
     @property
-    def slave(self) -> Optional["CdefSlave"]:
-        """Network state referece - allows to get the status of the network."""
+    def slave(self) -> Optional["PDOServo"]:
+        """Servo state referece - allows to get the status of the network."""
         return self.__slave
 
     @slave.setter
-    def slave(self, slave: Optional["CdefSlave"]) -> None:
+    def slave(self, slave: Optional["PDOServo"]) -> None:
         self.__slave = slave
 
-    @staticmethod
-    def check_servo_is_not_in_operational_state(slave: Optional["CdefSlave"]) -> None:
-        """Checks if the servo is in operational state.
-
-        Args:
-            slave: slave.
-
-        Raises:
-            ILPDOOperationalError: if the servo is in operational state.
-        """
-        if slave is None or not pysoem:
-            return
-        if (
-            slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
-            or slave.state_check(pysoem.SAFEOP_STATE) == pysoem.SAFEOP_STATE
-        ):
-            raise ILPDOOperationalError(
-                f"Servo is in {slave.state} state, PDOMap can not be modified."
-            )
+    def __check_servo_is_not_in_operational_state(self) -> None:
+        if self.slave is not None:
+            self.slave.check_servo_is_not_in_operational_state()
 
     def create_item(
         self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
@@ -256,7 +238,7 @@ class PDOMap:
         Returns:
             PDO Map item.
         """
-        PDOMap.check_servo_is_not_in_operational_state(slave=self.__slave)
+        self.__check_servo_is_not_in_operational_state()
         item = self._PDO_MAP_ITEM_CLASS(register, size_bits)
         return item
 
@@ -268,7 +250,7 @@ class PDOMap:
         Args:
             item: Item to be added.
         """
-        PDOMap.check_servo_is_not_in_operational_state(slave=self.__slave)
+        self.__check_servo_is_not_in_operational_state()
         self.__items.append(item)
 
     def add_registers(
@@ -286,7 +268,7 @@ class PDOMap:
         Args:
             registers: Register object or list of Registers.
         """
-        PDOMap.check_servo_is_not_in_operational_state(slave=self.__slave)
+        self.__check_servo_is_not_in_operational_state()
         if not isinstance(registers, list):
             registers = [registers]
         for register in registers:
@@ -452,19 +434,26 @@ class PDOServo(Servo):
         target: Union[int, str],
         dictionary_path: str,
         servo_status_listener: bool = False,
-        slave: Optional["CdefSlave"] = None,
     ):
         super().__init__(target, dictionary_path, servo_status_listener)
         self._rpdo_maps: list[RPDOMap] = []
         self._tpdo_maps: list[TPDOMap] = []
-        self.__slave = slave
+
+    @abstractmethod
+    def check_servo_is_not_in_operational_state(self) -> None:
+        """Checks if the servo is in operational state.
+
+        Raises:
+            ILPDOOperationalError: if servo is in operational state.
+        """
+        raise NotImplementedError
 
     def reset_rpdo_mapping(self) -> None:
         """Delete the RPDO mapping stored in the servo slave.
 
         WARNING: This operation can not be done if the servo is in operational state.
         """
-        PDOMap.check_servo_is_not_in_operational_state(slave=self.__slave)
+        self.check_servo_is_not_in_operational_state()
         self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, 0, subnode=0)
         for map_register in self.RPDO_MAP_REGISTER_SUB_IDX_0:
             self.write(map_register, 0, subnode=0)
@@ -475,7 +464,7 @@ class PDOServo(Servo):
 
         WARNING: This operation can not be done if the servo is in operational state.
         """
-        PDOMap.check_servo_is_not_in_operational_state(slave=self.__slave)
+        self.check_servo_is_not_in_operational_state()
         self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, 0, subnode=0)
         for map_register in self.TPDO_MAP_REGISTER_SUB_IDX_0:
             self.write(map_register, 0, subnode=0)
@@ -491,7 +480,7 @@ class PDOServo(Servo):
         Raises:
             ILError: If there are no available PDOs.
         """
-        PDOMap.check_servo_is_not_in_operational_state(slave=self.__slave)
+        self.check_servo_is_not_in_operational_state()
         if len(self._rpdo_maps) > self.AVAILABLE_PDOS:
             raise ILError(
                 f"Could not map the RPDO maps, received {len(self._rpdo_maps)} PDOs and only"
@@ -548,7 +537,7 @@ class PDOServo(Servo):
         Raises:
             ILError: If there are no available PDOs.
         """
-        PDOMap.check_servo_is_not_in_operational_state(slave=self.__slave)
+        self.check_servo_is_not_in_operational_state()
         if len(self._tpdo_maps) > self.AVAILABLE_PDOS:
             raise ILError(
                 f"Could not map the TPDO maps, received {len(self._tpdo_maps)} PDOs and only"
@@ -603,7 +592,7 @@ class PDOServo(Servo):
         Args:
             slave_index: salve index.
         """
-        PDOMap.check_servo_is_not_in_operational_state(slave=self.__slave)
+        self.check_servo_is_not_in_operational_state()
         self.map_tpdos()
         self.map_rpdos()
 
@@ -612,7 +601,7 @@ class PDOServo(Servo):
 
         WARNING: This operation can not be done if the servo is in operational state.
         """
-        PDOMap.check_servo_is_not_in_operational_state(slave=self.__slave)
+        self.check_servo_is_not_in_operational_state()
         self.reset_rpdo_mapping()
         self.reset_tpdo_mapping()
 
@@ -632,7 +621,7 @@ class PDOServo(Servo):
             IndexError: If the index is out of range.
 
         """
-        PDOMap.check_servo_is_not_in_operational_state(slave=self.__slave)
+        self.check_servo_is_not_in_operational_state()
         if rpdo_map_index is None and rpdo_map is None:
             raise ValueError("The RPDOMap instance or the index should be provided.")
         if rpdo_map is not None:

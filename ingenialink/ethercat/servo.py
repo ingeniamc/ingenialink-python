@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILIOError
+from ingenialink.exceptions import ILIOError, ILPDOOperationalError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
@@ -99,7 +99,23 @@ class EthercatServo(PDOServo):
         self._connection_timeout = connection_timeout
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
-        super().__init__(slave_id, dictionary_path, servo_status_listener, slave=self.__slave)
+        super().__init__(slave_id, dictionary_path, servo_status_listener)
+
+    def check_servo_is_not_in_operational_state(self) -> None:
+        """Checks if the servo is in operational state.
+
+        Raises:
+            ILPDOOperationalError: if servo is in operational state.
+        """
+        if self.slave is None or not pysoem:
+            return
+        if (
+            self.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+            or self.slave.state_check(pysoem.SAFEOP_STATE) == pysoem.SAFEOP_STATE
+        ):
+            raise ILPDOOperationalError(
+                f"Servo is in {self.slave.state} state, PDOMap can not be modified."
+            )
 
     def store_parameters(
         self,
@@ -318,11 +334,11 @@ class EthercatServo(PDOServo):
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
-                rpdo_map.slave = self.__slave
+                rpdo_map.slave = self
                 self._rpdo_maps.append(rpdo_map)
         for tpdo_map in tpdo_maps:
             if tpdo_map not in self._tpdo_maps:
-                tpdo_map.slave = self.__slave
+                tpdo_map.slave = self
                 self._tpdo_maps.append(tpdo_map)
         self.slave.config_func = self.map_pdos
 
