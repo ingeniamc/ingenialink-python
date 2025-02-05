@@ -109,10 +109,8 @@ class EthercatServo(PDOServo):
         """
         if self.slave is None or not pysoem:
             return
-        if (
-            self.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
-            or self.slave.state_check(pysoem.SAFEOP_STATE) == pysoem.SAFEOP_STATE
-        ):
+        self.slave.read_state()
+        if self.slave.state in [pysoem.OP_STATE, pysoem.SAFEOP_STATE]:
             raise ILPDOOperationalError(
                 f"Servo is in {self.slave.state} state, PDOMap can not be modified."
             )
