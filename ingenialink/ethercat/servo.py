@@ -100,7 +100,7 @@ class EthercatServo(PDOServo):
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
         super().__init__(
-            slave_id, dictionary_path, servo_status_listener, network_state=self.__slave.state
+            slave_id, dictionary_path, servo_status_listener, network_state=[self.__slave.state]
         )
 
     def store_parameters(
