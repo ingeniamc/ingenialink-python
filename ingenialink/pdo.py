@@ -16,7 +16,6 @@ from ingenialink.utils._utils import (
 
 try:
     import pysoem
-    from pysoem import CdefSlave
 except ImportError:
     pysoem = None
 
