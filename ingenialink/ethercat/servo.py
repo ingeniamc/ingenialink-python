@@ -94,14 +94,12 @@ class EthercatServo(PDOServo):
     ):
         if not pysoem:
             raise pysoem_import_error
-        self.__slave = slave
+        self.__slave: CdefSlave = slave
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
-        super().__init__(
-            slave_id, dictionary_path, servo_status_listener, network_state=[self.__slave.state]
-        )
+        super().__init__(slave_id, dictionary_path, servo_status_listener, slave=self.__slave)
 
     def store_parameters(
         self,
@@ -320,11 +318,11 @@ class EthercatServo(PDOServo):
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
-                rpdo_map.network_state = [self.__slave.state]
+                rpdo_map.slave = self.__slave
                 self._rpdo_maps.append(rpdo_map)
         for tpdo_map in tpdo_maps:
             if tpdo_map not in self._tpdo_maps:
-                tpdo_map.network_state = [self.__slave.state]
+                tpdo_map.slave = self.__slave
                 self._tpdo_maps.append(tpdo_map)
         self.slave.config_func = self.map_pdos
 
