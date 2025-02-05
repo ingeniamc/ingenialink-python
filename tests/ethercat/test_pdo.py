@@ -242,13 +242,25 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_modifying_pdos_prevented_if_servo_in_operational_state(connect_to_slave, create_pdo_map):
-    tpdo_map, rpdo_map = create_pdo_map
+def test_modifying_pdos_prevented_if_servo_in_operational_state(connect_to_slave):
     _, net = connect_to_slave
 
-    for servo in net.servos:
+    operation_mode_uid = "DRV_OP_CMD"
+    rpdo_registers = [operation_mode_uid]
+    operation_mode_display_uid = "DRV_OP_VALUE"
+    tpdo_registers = [operation_mode_display_uid]
+    default_operation_mode = 1
+    current_operation_mode = {}
+    new_operation_mode = {}
+    for index, servo in enumerate(net.servos):
+        current_operation_mode[index] = servo.read(operation_mode_uid)
+        new_operation_mode[index] = default_operation_mode
+        if current_operation_mode[index] == default_operation_mode:
+            new_operation_mode[index] += 1
+        rpdo_map, tpdo_map = create_pdo_maps(servo, rpdo_registers, tpdo_registers)
+        for item in rpdo_map.items:
+            item.value = new_operation_mode[index]
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
-        servo.map_pdos(1)
 
     net._ecat_master.read_state()
     for servo in net.servos:
