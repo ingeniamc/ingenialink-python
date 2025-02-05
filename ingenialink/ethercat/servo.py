@@ -1,7 +1,6 @@
 import os
 import time
 from enum import Enum
-from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import ingenialogger
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILIOError, ILPDOOperationalError
+from ingenialink.exceptions import ILIOError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
@@ -50,16 +49,6 @@ class EthercatEmergencyMessage(EmergencyMessage):
             + emergency_msg.w2.to_bytes(2, "little")
         )
         super().__init__(servo, emergency_msg.error_code, emergency_msg.error_reg, data)
-
-
-def _servo_not_operational(func: Callable[..., None]) -> Callable[..., None]:
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        if self.slave.state == pysoem.OP_STATE:
-            raise ILPDOOperationalError
-        return func(self, *args, **kwargs)
-
-    return wrapper
 
 
 class EthercatServo(PDOServo):
@@ -110,7 +99,7 @@ class EthercatServo(PDOServo):
         self._connection_timeout = connection_timeout
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
-        super().__init__(slave_id, dictionary_path, servo_status_listener)
+        super().__init__(slave_id, dictionary_path, servo_status_listener, slave)
 
     def store_parameters(
         self,
@@ -326,13 +315,14 @@ class EthercatServo(PDOServo):
             callback(emergency_message)
 
     @override
-    @_servo_not_operational
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
+                rpdo_map.servo = self
                 self._rpdo_maps.append(rpdo_map)
         for tpdo_map in tpdo_maps:
             if tpdo_map not in self._tpdo_maps:
+                tpdo_map.servo = self
                 self._tpdo_maps.append(tpdo_map)
         self.slave.config_func = self.map_pdos
 
