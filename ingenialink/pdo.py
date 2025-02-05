@@ -234,7 +234,10 @@ class PDOMap:
         """
         if slave is None or not pysoem:
             return
-        if slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE:
+        if (
+            slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+            or slave.state_check(pysoem.SAFEOP_STATE) == pysoem.SAFEOP_STATE
+        ):
             raise ILPDOOperationalError(
                 "Servo is in operational state, PDOMap can not be modified."
             )
