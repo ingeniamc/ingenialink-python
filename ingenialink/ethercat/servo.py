@@ -99,7 +99,9 @@ class EthercatServo(PDOServo):
         self._connection_timeout = connection_timeout
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
-        super().__init__(slave_id, dictionary_path, servo_status_listener, slave)
+        super().__init__(
+            slave_id, dictionary_path, servo_status_listener, network_state=self.__slave.state
+        )
 
     def store_parameters(
         self,
@@ -318,11 +320,11 @@ class EthercatServo(PDOServo):
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
-                rpdo_map.servo = self
+                rpdo_map.network_state = [self.__slave.state]
                 self._rpdo_maps.append(rpdo_map)
         for tpdo_map in tpdo_maps:
             if tpdo_map not in self._tpdo_maps:
-                tpdo_map.servo = self
+                tpdo_map.network_state = [self.__slave.state]
                 self._tpdo_maps.append(tpdo_map)
         self.slave.config_func = self.map_pdos
 

@@ -242,20 +242,40 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_servo_add_maps_with_wrong_pdo_state(connect_to_slave, create_pdo_map):
+def test_modifying_pdos_prevented_if_servo_in_operational_state(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
-    servo, _ = connect_to_slave
+    _, net = connect_to_slave
 
-    servo.reset_tpdo_mapping()
-    servo.reset_rpdo_mapping()
-
-    assert servo.slave.state == pysoem.PREOP_STATE
-    servo.slave.state = pysoem.OP_STATE
-    servo.slave.write_state()
-    assert servo.slave.state == pysoem.OP_STATE
-
-    with pytest.raises(ILPDOOperationalError):
+    for servo in net.servos:
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+        servo.map_pdos(1)
+
+    net._ecat_master.read_state()
+    for servo in net.servos:
+        assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+    net.start_pdos()
+    net._ecat_master.read_state()
+    start_time = time.time()
+    timeout = 1
+    while time.time() < start_time + timeout:
+        net.send_receive_processdata()
+    for servo in net.servos:
+        assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+
+    locked_methods = {
+        "reset_pdo_mapping": {"args": (), "kwargs": {}},
+        "reset_rpdo_mapping": {"args": (), "kwargs": {}},
+        "reset_tpdo_mapping": {"args": (), "kwargs": {}},
+        "map_pdos": {"args": (), "kwargs": {"slave_index": 1}},
+        "map_rpdos": {"args": (), "kwargs": {}},
+        "map_tpdos": {"args": (), "kwargs": {}},
+    }
+
+    for servo in net.servos:
+        for method, method_args in locked_methods.items():
+            with pytest.raises(ILPDOOperationalError):
+                getattr(servo, method)(*method_args["args"], **method_args["kwargs"])
+                servo.reset_pdo_mapping()
 
 
 @pytest.mark.ethercat
