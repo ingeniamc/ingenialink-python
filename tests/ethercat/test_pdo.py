@@ -275,19 +275,18 @@ def test_modifying_pdos_prevented_if_servo_in_operational_state(connect_to_slave
         assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
 
     locked_methods = {
-        "reset_pdo_mapping": {"args": (), "kwargs": {}},
-        "reset_rpdo_mapping": {"args": (), "kwargs": {}},
-        "reset_tpdo_mapping": {"args": (), "kwargs": {}},
-        "map_pdos": {"args": (), "kwargs": {"slave_index": 1}},
-        "map_rpdos": {"args": (), "kwargs": {}},
-        "map_tpdos": {"args": (), "kwargs": {}},
+        "reset_pdo_mapping": {"kwargs": {}},
+        "reset_rpdo_mapping": {"kwargs": {}},
+        "reset_tpdo_mapping": {"kwargs": {}},
+        "map_pdos": {"kwargs": {"slave_index": 1}},
+        "map_rpdos": {"kwargs": {}},
+        "map_tpdos": {"kwargs": {}},
     }
 
     for servo in net.servos:
         for method, method_args in locked_methods.items():
             with pytest.raises(ILPDOOperationalError):
-                getattr(servo, method)(*method_args["args"], **method_args["kwargs"])
-                servo.reset_pdo_mapping()
+                getattr(servo, method)(**method_args["kwargs"])
 
 
 @pytest.mark.ethercat
