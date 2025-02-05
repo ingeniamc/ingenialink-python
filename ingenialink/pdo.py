@@ -239,7 +239,7 @@ class PDOMap:
             or slave.state_check(pysoem.SAFEOP_STATE) == pysoem.SAFEOP_STATE
         ):
             raise ILPDOOperationalError(
-                "Servo is in operational state, PDOMap can not be modified."
+                f"Servo is in {slave.state} state, PDOMap can not be modified."
             )
 
     def create_item(
