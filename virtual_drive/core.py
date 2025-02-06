@@ -1245,6 +1245,7 @@ class VirtualDrive(Thread):
     IP_ADDRESS = "127.0.0.1"
 
     ACK_CMD = 3
+    NACK_CMD = 5
     WRITE_CMD = 2
     READ_CMD = 1
 
@@ -1381,6 +1382,18 @@ class VirtualDrive(Thread):
         ):
             self._monitoring.update_data()
             response = self._response_monitoring_data(value)
+        elif register.address == self.id_to_address(0, VirtualMonitoring.STATUS_REGISTER) and (
+            self._disturbance is None and self._monitoring is None
+        ):
+            # If a request to read the MON_DIST_STATUS register is made
+            # Respond with a read error
+            # This is done because the MONITORING_V1 is not supported by the virtual drive.
+            response = MCB.build_mcb_frame(
+                self.NACK_CMD,
+                register.subnode,
+                register.address,
+                convert_dtype_to_bytes(0, register.dtype),
+            )
         else:
             if not isinstance(value, bytes):
                 data = convert_dtype_to_bytes(value, register.dtype)
