@@ -262,8 +262,16 @@ class ConfigurationFile(XMLBase, ABC):
     _MINOR_VERSION_GROUP = 2
     _CHECK_FAIL_EXCEPTION = ILConfigurationFileParseError
 
+    __ROOT_ELEMENT = "IngeniaDictionary"
+    __HEADER_ELEMENT = "Header"
+    __VERSION_ELEMENT = "Version"
+    __BODY_ELEMENT = "Body"
+    __REGISTERS_ELEMENT = "Registers"
+
+    _SUPPORTED_MAJOR_VERSION = 2
+
     def __init__(self) -> None:
-        self.major_version = 2
+        self.major_version = self._SUPPORTED_MAJOR_VERSION
         self.minor_version = 1
         self.registers: list[ConfigRegister] = []
         self.device: Optional[Device] = None
@@ -308,16 +316,28 @@ class ConfigurationFile(XMLBase, ABC):
 
         Raises:
             FileNotFoundError: xcf_path file not found
+            NotImplementedError: Configuration file version not supported
         """
         if not os.path.isfile(xcf_path):
             raise FileNotFoundError(f"Could not find {xcf_path}.")
         with open(xcf_path, encoding="utf-8") as xml_file:
             tree = ElementTree.parse(xml_file)
         root = tree.getroot()
-        version = cls._find_and_check(root, "Header/Version")
-        device_element = cls._find_and_check(root, "Body/Device")
-        registers_element = cls._find_and_check(device_element, "Registers")
-        register_element_list = cls._findall_and_check(registers_element, "Register")
+        header = cls._find_and_check(root, cls.__HEADER_ELEMENT)
+        version = cls._find_and_check(header, cls.__VERSION_ELEMENT)
+        major_version, minor_version = cls.__read_version(version)
+        if major_version != cls._SUPPORTED_MAJOR_VERSION:
+            raise NotImplementedError(
+                f"Configuration file not supported: "
+                f"Supported version: {cls._SUPPORTED_MAJOR_VERSION}, "
+                f"File version: {major_version}"
+            )
+        body = cls._find_and_check(root, cls.__BODY_ELEMENT)
+        device_element = cls._find_and_check(body, Device.ELEMENT_NAME)
+        registers_element = cls._find_and_check(device_element, cls.__REGISTERS_ELEMENT)
+        register_element_list = cls._findall_and_check(
+            registers_element, ConfigRegister.ELEMENT_NAME
+        )
         conifg_registers: list[ConfigRegister] = []
         subnodes_set = set()
         for reg in register_element_list:
@@ -325,10 +345,9 @@ class ConfigurationFile(XMLBase, ABC):
                 config_reg = ConfigRegister.from_xcf(reg)
                 conifg_registers.append(config_reg)
                 subnodes_set.add(config_reg.subnode)
-            except (ValueError, KeyError) as e: # noqa: PERF203
+            except (ValueError, KeyError) as e:  # noqa: PERF203
                 logger.warning(f"{reg}: {e}")
         config_device = Device.from_xcf(device_element)
-        major_version, minor_version = cls.__read_version(version)
         xcf_instance = cls()
         xcf_instance.registers = conifg_registers
         xcf_instance.device = config_device
@@ -379,7 +398,7 @@ class ConfigurationFile(XMLBase, ABC):
         self.subnodes.add(config_register.subnode)
 
     def to_xcf(self, xcf_path: str) -> None:
-        """Save a file with the config file in the target path
+        """Save a file with the config file in the target path.
 
         Args:
             xcf_path: config file target path
@@ -389,13 +408,13 @@ class ConfigurationFile(XMLBase, ABC):
             raise TypeError("device is empty")
         if not self.registers:
             raise ValueError("registers is empty")
-        tree = ElementTree.Element("IngeniaDictionary")
-        header = ElementTree.SubElement(tree, "Header")
-        body = ElementTree.SubElement(tree, "Body")
-        version = ElementTree.SubElement(header, "Version")
+        tree = ElementTree.Element(self.__ROOT_ELEMENT)
+        header = ElementTree.SubElement(tree, self.__HEADER_ELEMENT)
+        body = ElementTree.SubElement(tree, self.__BODY_ELEMENT)
+        version = ElementTree.SubElement(header, self.__VERSION_ELEMENT)
         version.text = self.version
         device = self.device.to_xcf()
-        registers = ElementTree.SubElement(device, "Registers")
+        registers = ElementTree.SubElement(device, self.__REGISTERS_ELEMENT)
         for register in self.registers:
             registers.append(register.to_xcf())
         body.append(device)
@@ -405,7 +424,7 @@ class ConfigurationFile(XMLBase, ABC):
 
     @property
     def version(self) -> str:
-        """Version string"""
+        """Version string."""
         if self.minor_version != 0:
             return f"{self.major_version}.{self.minor_version}"
         else:

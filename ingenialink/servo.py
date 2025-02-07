@@ -9,9 +9,9 @@ from xml.etree import ElementTree
 import ingenialogger
 import numpy as np
 
-from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
+from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
     DEFAULT_PDS_TIMEOUT,
@@ -411,7 +411,7 @@ class Servo:
                     register.storage,
                     subnode=register.subnode,
                 )
-            except ILError as e: # noqa: PERF203
+            except ILError as e:  # noqa: PERF203
                 exception_message = (
                     f"Exception during load_configuration, register {register.uid}: {e}"
                 )
@@ -455,9 +455,9 @@ class Servo:
             firmware_version,
             node_id,
         )
-        for node, configuration_registers in self._registers_to_save_in_configuration_file(
+        for configuration_registers in self._registers_to_save_in_configuration_file(
             subnode
-        ).items():
+        ).values():
             for configuration_register in configuration_registers:
                 try:
                     storage = self.read(configuration_register)
@@ -466,11 +466,11 @@ class Servo:
                     configuration_register.storage = storage
                     configuration_register.storage_valid = True
                     xcf_instance.add_register(configuration_register, storage)
-                except (ILError, NotImplementedError) as ile: # noqa: PERF203
+                except (ILError, NotImplementedError) as e:  # noqa: PERF203
                     logger.error(
                         "Exception during save_configuration, register %s: %s",
                         str(configuration_register.identifier),
-                        ile,
+                        e,
                     )
         xcf_instance.to_xcf(config_file)
 
