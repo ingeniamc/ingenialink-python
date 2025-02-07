@@ -4,12 +4,12 @@ import threading
 import time
 from abc import abstractmethod
 from typing import Any, Callable, Optional, Union
-from xml.dom import minidom
 from xml.etree import ElementTree
 
 import ingenialogger
 import numpy as np
 
+from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
 from ingenialink.constants import (
@@ -344,40 +344,32 @@ class Servo:
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ValueError("Invalid subnode")
-        _, registers = self._read_configuration_file(config_file)
+        xcf_instance = ConfigurationFile.from_xcf(config_file)
 
-        dest_subnodes = {int(element.attrib["subnode"]) for element in registers}
-        if subnode == 0 and subnode not in dest_subnodes:
+        if subnode == 0 and subnode not in xcf_instance.subnodes:
             raise ValueError(f"Cannot check {config_file} at subnode {subnode}")
-        cast_data = {"float": np.float32, "str": str}
         registers_errored: list[str] = []
-        for element in registers:
-            if "storage" in element.attrib:
-                element_subnode = int(element.attrib["subnode"]) if subnode is None else subnode
-                reg_dtype = element.attrib["dtype"]
-                reg_data = element.attrib["storage"]
-                reg_id = element.attrib["id"]
-                try:
-                    stored_data: Union[str, int, float, bytes, np.float32] = self.read(
-                        reg_id, element_subnode
+        for register in xcf_instance.registers:
+            try:
+                stored_data = self.read(register.uid, register.subnode)
+            except ILError as e:  # noqa: PERF203
+                il_error = f"{register.uid} -- {e}"
+                logger.error(
+                    "Exception during check_configuration, register %s: %s",
+                    register.uid,
+                    e,
+                )
+                registers_errored.append(il_error)
+            else:
+                compare_conf: Union[int, float, str, bytes, bool, np.float32] = register.storage
+                compare_drive: Union[int, float, str, bytes, bool, np.float32] = stored_data
+                if isinstance(stored_data, float):
+                    compare_drive = np.float32(stored_data)
+                    compare_conf = np.float32(register.storage)
+                if compare_conf != compare_drive:
+                    registers_errored.append(
+                        f"{register.uid} --- Expected: {compare_conf} | Found: {compare_drive}\n"  # type: ignore[str-bytes-safe]
                     )
-                except ILError as e:
-                    reg_id = element.attrib["id"]
-                    il_error = f"{reg_id} -- {e}"
-                    logger.error(
-                        "Exception during check_configuration, register %s: %s",
-                        str(reg_id),
-                        e,
-                    )
-                    registers_errored.append(il_error)
-                else:
-                    if isinstance(stored_data, float):
-                        stored_data = np.float32(stored_data)
-                    reg_data = cast_data.get(reg_dtype, int)(reg_data)
-                    if reg_data != stored_data:
-                        registers_errored.append(
-                            f"{reg_id} --- Expected: {reg_data} | Found: {stored_data}\n"  # type: ignore[str-bytes-safe]
-                        )
 
         if registers_errored:
             error_message = "Configuration check failed for the following registers:\n"
@@ -408,29 +400,20 @@ class Servo:
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ValueError("Invalid subnode")
-        _, registers = self._read_configuration_file(config_file)
+        xcf_instance = ConfigurationFile.from_xcf(config_file)
 
-        dest_subnodes = {int(element.attrib["subnode"]) for element in registers}
-        if subnode == 0 and subnode not in dest_subnodes:
+        if subnode == 0 and subnode not in xcf_instance.subnodes:
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
-        cast_data = {"float": float, "str": str}
-        writable_registers = [
-            reg for reg in registers if "storage" in reg.attrib and reg.attrib["access"] == "rw"
-        ]
-        for element in writable_registers:
-            element_subnode = int(element.attrib["subnode"]) if subnode is None else subnode
-            reg_dtype = element.attrib["dtype"]
-            reg_data = element.attrib["storage"]
+        for register in xcf_instance.registers:
             try:
                 self.write(
-                    element.attrib["id"],
-                    cast_data.get(reg_dtype, int)(reg_data),
-                    subnode=element_subnode,
+                    register.uid,
+                    register.storage,
+                    subnode=register.subnode,
                 )
-            except ILError as e:
+            except ILError as e: # noqa: PERF203
                 exception_message = (
-                    "Exception during load_configuration, "
-                    f"register {str(element.attrib['id'])}: {e}"
+                    f"Exception during load_configuration, register {register.uid}: {e}"
                 )
                 if strict:
                     raise ILError(exception_message)
@@ -450,54 +433,46 @@ class Servo:
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ILError("Invalid subnode")
 
+        prod_code = None
+        rev_number = None
+        firmware_version = None
         drive_info = self.info
-        prod_code = drive_info["product_code"]
-        rev_number = drive_info["revision_number"]
-        firmware_version = drive_info["firmware_version"]
+        if drive_info["product_code"] is not None:
+            prod_code = int(drive_info["product_code"])
+        if drive_info["revision_number"] is not None:
+            rev_number = int(drive_info["revision_number"])
+        if drive_info["firmware_version"] is not None:
+            firmware_version = str(drive_info["firmware_version"])
+        node_id = None
+        if self.interface == Interface.CAN and isinstance(self.target, int):
+            node_id = self.target
 
-        tree = ElementTree.Element("IngeniaDictionary")
-        header = ElementTree.SubElement(tree, "Header")
-        version = ElementTree.SubElement(header, "Version")
-        version.text = "2"
-        default_language = ElementTree.SubElement(header, "DefaultLanguage")
-        default_language.text = "en_US"
-
-        body = ElementTree.SubElement(tree, "Body")
-        device = ElementTree.SubElement(body, "Device")
-        registers = ElementTree.SubElement(device, "Registers")
-        interface = (
-            self.DICTIONARY_INTERFACE_ATTR_CAN
-            if self.dictionary.interface == Interface.CAN
-            else self.DICTIONARY_INTERFACE_ATTR_ETH
+        xcf_instance = ConfigurationFile.create_xcf(
+            self.interface,
+            self.dictionary.part_number,
+            prod_code,
+            rev_number,
+            firmware_version,
+            node_id,
         )
-        device.set("Interface", interface)
-        if self.dictionary.part_number is not None:
-            device.set("PartNumber", self.dictionary.part_number)
-        if prod_code is not None:
-            device.set("ProductCode", str(prod_code))
-        if rev_number is not None:
-            device.set("RevisionNumber", str(rev_number))
-        if isinstance(firmware_version, str):
-            device.set("firmwareVersion", firmware_version)
-
-        access_ops = {value: key for key, value in self.dictionary.access_xdf_options.items()}
-        dtype_ops = {value: key for key, value in self.dictionary.dtype_xdf_options.items()}
         for node, configuration_registers in self._registers_to_save_in_configuration_file(
             subnode
         ).items():
             for configuration_register in configuration_registers:
-                if configuration_register.identifier is None:
-                    continue
-                register_xml = ElementTree.SubElement(registers, "Register")
-                register_xml.set("access", access_ops[configuration_register.access])
-                register_xml.set("dtype", dtype_ops[configuration_register.dtype])
-                register_xml.set("id", configuration_register.identifier)
-                self.__update_register_dict(register_xml, node)
-                register_xml.set("subnode", str(node))
-
-        dom = minidom.parseString(ElementTree.tostring(tree, encoding="utf-8"))
-        with open(config_file, "wb") as f:
-            f.write(dom.toprettyxml(indent="\t").encode())
+                try:
+                    storage = self.read(configuration_register)
+                    if isinstance(storage, bytes):
+                        raise NotImplementedError("bytes data not supported")
+                    configuration_register.storage = storage
+                    configuration_register.storage_valid = True
+                    xcf_instance.add_register(configuration_register, storage)
+                except (ILError, NotImplementedError) as ile: # noqa: PERF203
+                    logger.error(
+                        "Exception during save_configuration, register %s: %s",
+                        str(configuration_register.identifier),
+                        ile,
+                    )
+        xcf_instance.to_xcf(config_file)
 
     def _is_register_valid_for_configuration_file(self, register: Register) -> bool:
         """Check if a register is valid for the configuration file.
