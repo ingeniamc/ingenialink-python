@@ -1382,8 +1382,11 @@ class VirtualDrive(Thread):
         ):
             self._monitoring.update_data()
             response = self._response_monitoring_data(value)
-        elif register.address == self.id_to_address(0, VirtualMonitoring.STATUS_REGISTER) and (
-            self._disturbance is None and self._monitoring is None
+        elif (
+            self._disturbance is None
+            and self._monitoring is None
+            and self.__register_exists(0, VirtualMonitoring.STATUS_REGISTER)
+            and register.address == self.id_to_address(0, VirtualMonitoring.STATUS_REGISTER)
         ):
             # If a request to read the MON_DIST_STATUS register is made
             # Respond with a read error
