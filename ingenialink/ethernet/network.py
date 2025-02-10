@@ -1,4 +1,6 @@
+import contextlib
 import ftplib
+import ipaddress
 import os
 import socket
 import time
@@ -9,6 +11,7 @@ from time import sleep
 from typing import Any, Callable, Optional, Union
 
 import ingenialogger
+from multiping import multi_ping
 from typing_extensions import override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
@@ -28,6 +31,8 @@ FTP_CLOSE_OK_CODE = "221"
 CMD_CHANGE_CPU = 0x67E4
 
 MAX_NUM_UNSUCCESSFUL_PINGS = 3
+
+MAX_NUMBER_OF_SCAN_TRIES = 2
 
 
 class NetStatusListener(Thread):
@@ -73,10 +78,16 @@ class NetStatusListener(Thread):
 
 
 class EthernetNetwork(Network):
-    """Network for all Ethernet communications."""
+    """Network for all Ethernet communications.
 
-    def __init__(self) -> None:
+    Args:
+        subnet: The subnet in CIDR notation.
+
+    """
+
+    def __init__(self, subnet: Optional[str] = None) -> None:
         super().__init__()
+        self.__subnet = subnet
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: dict[str, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
 
@@ -185,8 +196,30 @@ class EthernetNetwork(Network):
                 raise ILFirmwareLoadError("Error during bootloader process.")
 
     @override
-    def scan_slaves(self) -> list[int]:
-        raise NotImplementedError
+    def scan_slaves(self) -> Union[list[int], list[str]]:
+        """Scan drives connected to the network.
+
+        Returns:
+            List containing the IPs of the detected drives.
+
+        """
+        if self.__subnet is None:
+            return []
+        gateway_ip, _ = self.__subnet.split("/")
+        hosts_ips = [
+            str(ip)
+            for ip in ipaddress.ip_network(self.__subnet, strict=False)
+            if str(ip) != gateway_ip
+        ]
+        # The scanning process can fail sometimes. Retry
+        # Check https://github.com/romana/multi-ping/issues/19
+        num_tries = 0
+        found_ips: dict[str, int] = {}
+        while len(found_ips) == 0 and num_tries < MAX_NUMBER_OF_SCAN_TRIES:
+            with contextlib.suppress(OSError):
+                found_ips, _ = multi_ping(hosts_ips, timeout=1, ignore_lookup_errors=True)
+            num_tries += 1
+        return list(found_ips.keys())
 
     @override
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
