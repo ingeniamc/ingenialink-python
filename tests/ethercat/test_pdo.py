@@ -242,37 +242,33 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_modifying_pdos_prevented_if_servo_in_operational_state(connect_to_slave):
-    _, net = connect_to_slave
+def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(connect_to_slave):
+    servo, net = connect_to_slave
 
     operation_mode_uid = "DRV_OP_CMD"
     rpdo_registers = [operation_mode_uid]
     operation_mode_display_uid = "DRV_OP_VALUE"
     tpdo_registers = [operation_mode_display_uid]
     default_operation_mode = 1
-    current_operation_mode = {}
-    new_operation_mode = {}
-    for index, servo in enumerate(net.servos):
-        current_operation_mode[index] = servo.read(operation_mode_uid)
-        new_operation_mode[index] = default_operation_mode
-        if current_operation_mode[index] == default_operation_mode:
-            new_operation_mode[index] += 1
-        rpdo_map, tpdo_map = create_pdo_maps(servo, rpdo_registers, tpdo_registers)
-        for item in rpdo_map.items:
-            item.value = new_operation_mode[index]
-        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+
+    current_operation_mode = servo.read(operation_mode_uid)
+    new_operation_mode = default_operation_mode
+    if current_operation_mode == default_operation_mode:
+        new_operation_mode += 1
+    rpdo_map, tpdo_map = create_pdo_maps(servo, rpdo_registers, tpdo_registers)
+    for item in rpdo_map.items:
+        item.value = new_operation_mode
+    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
 
     net._ecat_master.read_state()
-    for servo in net.servos:
-        assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
     net.start_pdos()
     net._ecat_master.read_state()
     start_time = time.time()
     timeout = 1
     while time.time() < start_time + timeout:
         net.send_receive_processdata()
-    for servo in net.servos:
-        assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+    assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
 
     locked_methods = {
         "reset_pdo_mapping": {"kwargs": {}},
@@ -283,10 +279,9 @@ def test_modifying_pdos_prevented_if_servo_in_operational_state(connect_to_slave
         "map_tpdos": {"kwargs": {}},
     }
 
-    for servo in net.servos:
-        for method, method_args in locked_methods.items():
-            with pytest.raises(ILPDOOperationalError):
-                getattr(servo, method)(**method_args["kwargs"])
+    for method, method_args in locked_methods.items():
+        with pytest.raises(ILPDOOperationalError):
+            getattr(servo, method)(**method_args["kwargs"])
 
 
 @pytest.mark.ethercat
