@@ -101,16 +101,15 @@ class EthercatServo(PDOServo):
         self.__slave.add_emergency_callback(self._on_emcy)
         super().__init__(slave_id, dictionary_path, servo_status_listener)
 
-    def check_servo_is_not_in_operational_state(self) -> None:
-        """Checks if the servo is in operational state.
+    def check_servo_is_in_preoperational_state(self) -> None:
+        """Checks if the servo is in preoperational state.
 
         Raises:
-            ILPDOOperationalError: if servo is in operational state.
+            ILPDOOperationalError: if servo is not in preoperational state.
         """
         if self.slave is None or not pysoem:
             return
-        self.slave.read_state()
-        if self.slave.state in [pysoem.OP_STATE, pysoem.SAFEOP_STATE]:
+        if self.slave.state != pysoem.PREOP_STATE:
             raise ILPDOOperationalError(
                 f"Servo is in {self.slave.state} state, PDOMap can not be modified."
             )

@@ -220,9 +220,9 @@ class PDOMap:
     def slave(self, slave: Optional["PDOServo"]) -> None:
         self.__slave = slave
 
-    def __check_servo_is_not_in_operational_state(self) -> None:
+    def __check_servo_is_in_preoperational_state(self) -> None:
         if self.slave is not None:
-            self.slave.check_servo_is_not_in_operational_state()
+            self.slave.check_servo_is_in_preoperational_state()
 
     def create_item(
         self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
@@ -238,7 +238,7 @@ class PDOMap:
         Returns:
             PDO Map item.
         """
-        self.__check_servo_is_not_in_operational_state()
+        self.__check_servo_is_in_preoperational_state()
         item = self._PDO_MAP_ITEM_CLASS(register, size_bits)
         return item
 
@@ -250,7 +250,7 @@ class PDOMap:
         Args:
             item: Item to be added.
         """
-        self.__check_servo_is_not_in_operational_state()
+        self.__check_servo_is_in_preoperational_state()
         self.__items.append(item)
 
     def add_registers(
@@ -268,7 +268,7 @@ class PDOMap:
         Args:
             registers: Register object or list of Registers.
         """
-        self.__check_servo_is_not_in_operational_state()
+        self.__check_servo_is_in_preoperational_state()
         if not isinstance(registers, list):
             registers = [registers]
         for register in registers:
@@ -440,11 +440,11 @@ class PDOServo(Servo):
         self._tpdo_maps: list[TPDOMap] = []
 
     @abstractmethod
-    def check_servo_is_not_in_operational_state(self) -> None:
-        """Checks if the servo is in operational state.
+    def check_servo_is_in_preoperational_state(self) -> None:
+        """Checks if the servo is in preoperational state.
 
         Raises:
-            ILPDOOperationalError: if servo is in operational state.
+            ILPDOOperationalError: if servo is not in preoperational state.
         """
         raise NotImplementedError
 
@@ -453,7 +453,7 @@ class PDOServo(Servo):
 
         WARNING: This operation can not be done if the servo is in operational state.
         """
-        self.check_servo_is_not_in_operational_state()
+        self.check_servo_is_in_preoperational_state()
         self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, 0, subnode=0)
         for map_register in self.RPDO_MAP_REGISTER_SUB_IDX_0:
             self.write(map_register, 0, subnode=0)
@@ -464,7 +464,7 @@ class PDOServo(Servo):
 
         WARNING: This operation can not be done if the servo is in operational state.
         """
-        self.check_servo_is_not_in_operational_state()
+        self.check_servo_is_in_preoperational_state()
         self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, 0, subnode=0)
         for map_register in self.TPDO_MAP_REGISTER_SUB_IDX_0:
             self.write(map_register, 0, subnode=0)
@@ -480,7 +480,7 @@ class PDOServo(Servo):
         Raises:
             ILError: If there are no available PDOs.
         """
-        self.check_servo_is_not_in_operational_state()
+        self.check_servo_is_in_preoperational_state()
         if len(self._rpdo_maps) > self.AVAILABLE_PDOS:
             raise ILError(
                 f"Could not map the RPDO maps, received {len(self._rpdo_maps)} PDOs and only"
@@ -537,7 +537,7 @@ class PDOServo(Servo):
         Raises:
             ILError: If there are no available PDOs.
         """
-        self.check_servo_is_not_in_operational_state()
+        self.check_servo_is_in_preoperational_state()
         if len(self._tpdo_maps) > self.AVAILABLE_PDOS:
             raise ILError(
                 f"Could not map the TPDO maps, received {len(self._tpdo_maps)} PDOs and only"
@@ -592,7 +592,7 @@ class PDOServo(Servo):
         Args:
             slave_index: salve index.
         """
-        self.check_servo_is_not_in_operational_state()
+        self.check_servo_is_in_preoperational_state()
         self.map_tpdos()
         self.map_rpdos()
 
@@ -601,7 +601,7 @@ class PDOServo(Servo):
 
         WARNING: This operation can not be done if the servo is in operational state.
         """
-        self.check_servo_is_not_in_operational_state()
+        self.check_servo_is_in_preoperational_state()
         self.reset_rpdo_mapping()
         self.reset_tpdo_mapping()
 
@@ -621,7 +621,7 @@ class PDOServo(Servo):
             IndexError: If the index is out of range.
 
         """
-        self.check_servo_is_not_in_operational_state()
+        self.check_servo_is_in_preoperational_state()
         if rpdo_map_index is None and rpdo_map is None:
             raise ValueError("The RPDOMap instance or the index should be provided.")
         if rpdo_map is not None:
