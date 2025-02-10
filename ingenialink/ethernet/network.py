@@ -34,6 +34,10 @@ MAX_NUM_UNSUCCESSFUL_PINGS = 3
 
 MAX_NUMBER_OF_SCAN_TRIES = 2
 
+VIRTUAL_DRIVE_DICTIONARY = os.path.join(
+    os.path.dirname(__file__), "..", "..", "virtual_drive", "resources", "virtual_drive.xdf"
+)
+
 
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
@@ -196,7 +200,7 @@ class EthernetNetwork(Network):
                 raise ILFirmwareLoadError("Error during bootloader process.")
 
     @override
-    def scan_slaves(self) -> Union[list[int], list[str]]:
+    def scan_slaves(self) -> list[str]:
         """Scan drives connected to the network.
 
         Returns:
@@ -222,8 +226,13 @@ class EthernetNetwork(Network):
         return list(found_ips.keys())
 
     @override
-    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
-        raise NotImplementedError
+    def scan_slaves_info(self) -> OrderedDict[str, SlaveInfo]:  # type: ignore [override]
+        slave_info: OrderedDict[str, SlaveInfo] = OrderedDict()
+        slaves = self.scan_slaves()
+        for slave_id in slaves:
+            with contextlib.suppress(ILError):
+                slave_info[slave_id] = self._get_servo_info(slave_id)
+        return slave_info
 
     def connect_to_slave(
         self,
@@ -361,6 +370,27 @@ class EthernetNetwork(Network):
 
         """
         self._servos_state[servo_id] = state
+
+    def _get_servo_info(self, ip_address: str) -> SlaveInfo:
+        servo = self.connect_to_slave(ip_address, VIRTUAL_DRIVE_DICTIONARY)
+        try:
+            product_code = servo.read("DRV_ID_PRODUCT_CODE")
+        except ILError:
+            logger.error(f"The product code cannot be read from the drive with IP: {ip_address}.")
+            product_code = None
+        if not isinstance(product_code, int):
+            raise TypeError(f"Expected product code type to be int, got {type(product_code)}")
+        try:
+            revision_number = servo.read("DRV_ID_REVISION_NUMBER")
+        except ILError:
+            logger.error(
+                f"The revision number cannot be read from the drive with IP: {ip_address}."
+            )
+            revision_number = None
+        if not isinstance(revision_number, int):
+            raise TypeError(f"Expected revision number type to be int, got {type(revision_number)}")
+        self.disconnect_from_slave(servo)
+        return SlaveInfo(product_code, revision_number)
 
     @property
     def protocol(self) -> NetProt:
