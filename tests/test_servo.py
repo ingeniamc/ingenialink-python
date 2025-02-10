@@ -8,7 +8,9 @@ from xml.etree import ElementTree
 import pytest
 from packaging import version
 
+from ingenialink import RegAccess
 from ingenialink.canopen.servo import CanopenServo
+from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.ethernet.register import RegDtype
 from ingenialink.exceptions import (
     ILConfigurationError,
@@ -134,52 +136,32 @@ def test_save_configuration(connect_to_slave):
 
     assert os.path.isfile(filename)
 
-    device, saved_registers = servo._read_configuration_file(filename)
+    config_file = ConfigurationFile.from_xcf(filename)
 
     prod_code, rev_number = servo._get_drive_identification()
-    if "ProductCode" in device.attrib and prod_code is not None:
-        assert int(device.attrib.get("ProductCode")) == prod_code
-    if "RevisionNumber" in device.attrib and rev_number is not None:
-        assert int(device.attrib.get("RevisionNumber")) == rev_number
+    assert config_file.device.product_code == prod_code
+    assert config_file.device.revision_number == rev_number
 
-    if servo.dictionary.part_number is None:
-        assert "PartNumber" not in device.attrib
-    else:
-        assert device.attrib["PartNumber"] == servo.dictionary.part_number
-    interface = (
-        servo.DICTIONARY_INTERFACE_ATTR_CAN
-        if isinstance(servo, CanopenServo)
-        else servo.DICTIONARY_INTERFACE_ATTR_ETH
-    )
-    assert device.attrib.get("Interface") == interface
+    assert config_file.device.part_number == servo.dictionary.part_number
+    interface = servo.DICTIONARY_INTERFACE_ATTR_CAN
+    assert config_file.device.interface == interface
     # The firmware version from the drive has trailing zeros
     # and the one from the dictionary does not
-    assert version.parse(device.attrib.get("firmwareVersion")) == version.parse(
+    assert version.parse(config_file.device.firmware_version) == version.parse(
         servo.dictionary.firmware_version
     )
 
-    assert len(saved_registers) > 0
-    for saved_register in saved_registers:
-        subnode = int(saved_register.attrib.get("subnode"))
+    assert len(config_file.registers) > 0
+    for saved_register in config_file.registers:
+        subnode = saved_register.subnode
 
-        reg_id = saved_register.attrib.get("id")
+        reg_id = saved_register.uid
         registers = servo.dictionary.registers(subnode=subnode)
-
         assert reg_id in registers
-
-        storage = saved_register.attrib.get("storage")
-        if storage is not None:
-            assert storage == str(registers[reg_id].storage)
-        else:
-            assert registers[reg_id].storage is None
-
-        access = saved_register.attrib.get("access")
-        assert registers[reg_id].access == servo.dictionary.access_xdf_options[access]
-
-        dtype = saved_register.attrib.get("dtype")
-        assert registers[reg_id].dtype == servo.dictionary.dtype_xdf_options[dtype]
-
-        assert access == "rw"
+        assert registers[reg_id].storage == saved_register.storage
+        assert registers[reg_id].access == saved_register.access
+        assert registers[reg_id].dtype == saved_register.dtype
+        assert saved_register.access == RegAccess.RW
         assert registers[reg_id].address_type != RegAddressType.NVM_NONE
 
     _clean(filename)

@@ -1,4 +1,3 @@
-import os
 import re
 import threading
 import time
@@ -39,7 +38,6 @@ from ingenialink.exceptions import (
     ILConfigurationError,
     ILDictionaryParseError,
     ILError,
-    ILIOError,
     ILRegisterNotFoundError,
     ILStateError,
     ILTimeoutError,
@@ -508,42 +506,6 @@ class Servo:
                 if self._is_register_valid_for_configuration_file(register):
                     registers[subnode].append(register)
         return registers
-
-    @staticmethod
-    def _read_configuration_file(
-        config_file: str,
-    ) -> tuple[ElementTree.Element, list[ElementTree.Element]]:
-        """Read a configuration file. Returns the device metadata and the registers list.
-
-        Args:
-            config_file: Path to the dictionary.
-
-        Returns:
-            device:
-            Register list.
-
-        Raises:
-            FileNotFoundError: If the configuration file cannot be found.
-            ILIOError: If the configuration file does not have device information or registers.
-        """
-        if not os.path.isfile(config_file):
-            raise FileNotFoundError(f"Could not find {config_file}.")
-        with open(config_file, encoding="utf-8") as xml_file:
-            tree = ElementTree.parse(xml_file)
-        root = tree.getroot()
-        device = root.find("Body/Device")
-        axis = tree.findall("*/Device/Axes/Axis")
-        if axis:
-            # Multiaxis
-            registers = root.findall("./Body/Device/Axes/Axis/Registers/Register")
-        else:
-            # Single axis
-            registers = root.findall("./Body/Device/Registers/Register")
-        if not isinstance(device, ElementTree.Element):
-            raise ILIOError("Configuration file does not have device information")
-        if not isinstance(registers, list):
-            raise ILIOError("Configuration file does not have register list")
-        return device, registers
 
     def restore_parameters(self, subnode: Optional[int] = None) -> None:
         """Restore all the current parameters of all the slave to default.
@@ -1104,33 +1066,6 @@ class Servo:
             return _dict.registers(subnode)[reg]
         else:
             raise TypeError("Invalid register")
-
-    def __update_register_dict(self, register: ElementTree.Element, subnode: int) -> None:
-        """Updates the register from a dictionary with the storage parameters.
-
-        Args:
-            register: Register element to be updated.
-            subnode: Target subnode.
-
-        """
-        try:
-            storage: Union[str, int, float, bytes, np.float32] = self.read(
-                register.attrib["id"], subnode=subnode
-            )
-            if isinstance(storage, float):
-                storage = np.float32(storage)
-            register.set("storage", str(storage))
-
-            # Update register object
-            reg = self.dictionary.registers(subnode)[register.attrib["id"]]
-            reg.storage = storage
-            reg.storage_valid = True
-        except BaseException as e:
-            logger.error(
-                "Exception during save_configuration, register %s: %s",
-                str(register.attrib["id"]),
-                e,
-            )
 
     def _notify_state(self, state: ServoState, subnode: int) -> None:
         """Notify the state to the observers.
