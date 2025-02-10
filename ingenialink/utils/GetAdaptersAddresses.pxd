@@ -4,7 +4,6 @@ Wrapper for GetAdaptersAddresses function (iphlpapi.h).
 from libc.time cimport time_t
 from libc.stdint cimport uint16_t, uint32_t, uint8_t, int32_t, uint64_t
 
-
 cdef extern from "winsock2.h":
     enum:
         IF_INDEX
@@ -49,7 +48,22 @@ cdef extern from "winsock2.h":
         uint32_t __ss_align
         char __ss_pad2[112]
 
+cdef extern from "ifdef.h":
+    # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/
+    ctypedef enum _IF_OPER_STATUS:
+        IfOperStatusUp = 1
+        IfOperStatusDown = 2
+        IfOperStatusTesting = 3
+        IfOperStatusUnknown = 4
+        IfOperStatusDormant = 5
+        IfOperStatusNotPresent = 6
+        IfOperStatusLowerLayerDown = 7
+    ctypedef _IF_OPER_STATUS IF_OPER_STATUS
+
 cdef extern from "iptypes.h":
+    enum:
+        MAX_ADAPTER_ADDRESS_LENGTH
+
     # https://learn.microsoft.com/en-us/windows/win32/api/ws2def/ns-ws2def-socket_address
     ctypedef struct _SOCKET_ADDRESS:
         LPSOCKADDR lpSockaddr
@@ -115,14 +129,65 @@ cdef extern from "iptypes.h":
     ctypedef _IP_ADAPTER_ANYCAST_ADDRESS_XP IP_ADAPTER_ANYCAST_ADDRESS_XP
     ctypedef _IP_ADAPTER_ANYCAST_ADDRESS_XP* PIP_ADAPTER_ANYCAST_ADDRESS_XP
 
+    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_multicast_address_xp
+    ctypedef struct _IP_ADAPTER_MULTICAST_ADDRESS_XP:
+        uint64_t Alignment
+        uint32_t Length
+        uint32_t Flags
+        _IP_ADAPTER_MULTICAST_ADDRESS_XP* Next
+        SOCKET_ADDRESS Address
+    ctypedef _IP_ADAPTER_MULTICAST_ADDRESS_XP IP_ADAPTER_MULTICAST_ADDRESS_XP
+    ctypedef _IP_ADAPTER_MULTICAST_ADDRESS_XP* PIP_ADAPTER_MULTICAST_ADDRESS_XP
+
+    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_dns_server_address_xp
+    ctypedef struct _IP_ADAPTER_DNS_SERVER_ADDRESS_XP:
+        uint64_t Alignment
+        uint32_t Length
+        uint32_t Flags
+        _IP_ADAPTER_DNS_SERVER_ADDRESS_XP* Next
+        SOCKET_ADDRESS Address
+    ctypedef _IP_ADAPTER_DNS_SERVER_ADDRESS_XP IP_ADAPTER_DNS_SERVER_ADDRESS_XP
+    ctypedef _IP_ADAPTER_DNS_SERVER_ADDRESS_XP* PIP_ADAPTER_DNS_SERVER_ADDRESS_XP
+
+    cdef struct _FLAGS_STRUCT:
+        uint32_t DdnsEnabled
+        uint32_t RegisterAdapterSuffix
+        uint32_t Dhcpv4Enabled
+        uint32_t ReceiveOnly
+        uint32_t NoMulticast
+        uint32_t Ipv6OtherStatefulConfig
+        uint32_t NetbiosOverTcpipEnabled
+        uint32_t Ipv4Enabled
+        uint32_t Ipv6Enabled
+        uint32_t Ipv6ManagedAddressConfigurationSupported
+
+    cdef union _FLAGS_UNION:
+        uint32_t Flags
+        _FLAGS_STRUCT BitFields
+
+
     # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_addresses_lh
     ctypedef struct _IP_ADAPTER_ADDRESSES_LH:
         uint64_t Alignment
         uint32_t Length
         uint32_t Flags
         _IP_ADAPTER_ADDRESSES_LH* Next
+        char* AdapterName
         PIP_ADAPTER_UNICAST_ADDRESS_LH FirstUnicastAddress
         PIP_ADAPTER_ANYCAST_ADDRESS_XP FirstAnycastAddress
+        PIP_ADAPTER_MULTICAST_ADDRESS_XP FirstMulticastAddress
+        PIP_ADAPTER_DNS_SERVER_ADDRESS_XP FirstDnsServerAddress
+        char* DnsSuffix
+        char* Description
+        char* FriendlyName
+        uint8_t PhysicalAddress[MAX_ADAPTER_ADDRESS_LENGTH]
+        uint32_t PhysicalAddressLength
+        _FLAGS_UNION FlagsUnion
+        uint32_t Mtu
+        uint32_t IfType # https://learn.microsoft.com/en-us/windows-hardware/drivers/network/ndis-interface-types
+        IF_OPER_STATUS OperStatus
+        uint32_t Ipv6IfIndex
+        uint32_t ZoneIndices[16]
     ctypedef _IP_ADAPTER_ADDRESSES_LH IP_ADAPTER_ADDRESSES_LH
     ctypedef _IP_ADAPTER_ADDRESSES_LH* PIP_ADAPTER_ADDRESSES_LH
 
