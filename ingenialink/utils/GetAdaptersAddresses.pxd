@@ -60,9 +60,39 @@ cdef extern from "ifdef.h":
         IfOperStatusLowerLayerDown = 7
     ctypedef _IF_OPER_STATUS IF_OPER_STATUS
 
+    # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/ns-ifdef-net_luid_lh
+    ctypedef union _NET_LUID_LH:
+        uint64_t Value
+        uint64_t Reserved
+        uint64_t NetLuidIndex
+        uint64_t IfType
+    ctypedef _NET_LUID_LH IF_LUID
+    ctypedef _NET_LUID_LH NET_LUID_LH
+
+    # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/ne-ifdef-net_if_connection_type
+    ctypedef enum _NET_IF_CONNECTION_TYPE:
+        NET_IF_CONNECTION_DEDICATED = 1
+        NET_IF_CONNECTION_PASSIVE = 2
+        NET_IF_CONNECTION_DEMAND = 3
+        NET_IF_CONNECTION_MAXIMUM = 4
+    ctypedef _NET_IF_CONNECTION_TYPE NET_IF_CONNECTION_TYPE
+
+    # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/ne-ifdef-tunnel_type
+    ctypedef enum _TUNNEL_TYPE:
+        TUNNEL_TYPE_NONE = 0
+        TUNNEL_TYPE_OTHER = 1
+        TUNNEL_TYPE_DIRECT = 2
+        TUNNEL_TYPE_6TO4 = 11
+        TUNNEL_TYPE_ISATAP = 13
+        TUNNEL_TYPE_TEREDO = 14
+        TUNNEL_TYPE_IPHTTPS = 15
+    ctypedef _TUNNEL_TYPE TUNNEL_TYPE
+
 cdef extern from "iptypes.h":
     enum:
         MAX_ADAPTER_ADDRESS_LENGTH
+        MAX_DNS_SUFFIX_STRING_LENGTH
+        MAX_DHCPV6_DUID_LENGTH
 
     # https://learn.microsoft.com/en-us/windows/win32/api/ws2def/ns-ws2def-socket_address
     ctypedef struct _SOCKET_ADDRESS:
@@ -149,6 +179,44 @@ cdef extern from "iptypes.h":
     ctypedef _IP_ADAPTER_DNS_SERVER_ADDRESS_XP IP_ADAPTER_DNS_SERVER_ADDRESS_XP
     ctypedef _IP_ADAPTER_DNS_SERVER_ADDRESS_XP* PIP_ADAPTER_DNS_SERVER_ADDRESS_XP
 
+    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_prefix_xp
+    ctypedef struct _IP_ADAPTER_PREFIX_XP:
+        uint64_t Alignment
+        uint32_t Length
+        uint32_t Flags
+        _IP_ADAPTER_PREFIX_XP* Next
+        SOCKET_ADDRESS Address
+        uint32_t PrefixLength
+    ctypedef _IP_ADAPTER_PREFIX_XP IP_ADAPTER_PREFIX_XP
+    ctypedef _IP_ADAPTER_PREFIX_XP* PIP_ADAPTER_PREFIX_XP
+
+    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_wins_server_address_lh
+    ctypedef struct _IP_ADAPTER_WINS_SERVER_ADDRESS_LH:
+        uint64_t Alignment
+        uint32_t Length
+        uint32_t Reserved
+        _IP_ADAPTER_WINS_SERVER_ADDRESS_LH* Next
+        SOCKET_ADDRESS Address
+    ctypedef _IP_ADAPTER_WINS_SERVER_ADDRESS_LH IP_ADAPTER_WINS_SERVER_ADDRESS_LH
+    ctypedef _IP_ADAPTER_WINS_SERVER_ADDRESS_LH* PIP_ADAPTER_WINS_SERVER_ADDRESS_LH
+
+    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_gateway_address_lh
+    ctypedef struct _IP_ADAPTER_GATEWAY_ADDRESS_LH:
+        uint64_t Alignment
+        uint32_t Length
+        uint32_t Reserved
+        _IP_ADAPTER_GATEWAY_ADDRESS_LH* Next
+        SOCKET_ADDRESS Address
+    ctypedef _IP_ADAPTER_GATEWAY_ADDRESS_LH IP_ADAPTER_GATEWAY_ADDRESS_LH
+    ctypedef _IP_ADAPTER_GATEWAY_ADDRESS_LH* PIP_ADAPTER_GATEWAY_ADDRESS_LH
+
+    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_dns_suffix
+    ctypedef struct _IP_ADAPTER_DNS_SUFFIX:
+        _IP_ADAPTER_DNS_SUFFIX* Next
+        char* String[MAX_DNS_SUFFIX_STRING_LENGTH]
+    ctypedef _IP_ADAPTER_DNS_SUFFIX IP_ADAPTER_DNS_SUFFIX
+    ctypedef _IP_ADAPTER_DNS_SUFFIX* PIP_ADAPTER_DNS_SUFFIX
+
     cdef struct _FLAGS_STRUCT:
         uint32_t DdnsEnabled
         uint32_t RegisterAdapterSuffix
@@ -165,6 +233,7 @@ cdef extern from "iptypes.h":
         uint32_t Flags
         _FLAGS_STRUCT BitFields
 
+    ctypedef uint8_t NET_IF_NETWORK_GUID[16]
 
     # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_addresses_lh
     ctypedef struct _IP_ADAPTER_ADDRESSES_LH:
@@ -188,6 +257,24 @@ cdef extern from "iptypes.h":
         IF_OPER_STATUS OperStatus
         uint32_t Ipv6IfIndex
         uint32_t ZoneIndices[16]
+        PIP_ADAPTER_PREFIX_XP FirstPrefix
+        uint64_t TransmitLinkSpeed
+        uint64_t ReceiveLinkSpeed
+        PIP_ADAPTER_WINS_SERVER_ADDRESS_LH FirstWinsServerAddress
+        PIP_ADAPTER_GATEWAY_ADDRESS_LH FirstGatewayAddress
+        uint32_t Ipv4Metric
+        uint32_t Ipv6Metric
+        IF_LUID Luid
+        SOCKET_ADDRESS  Dhcpv4Server
+        uint32_t CompartmentId
+        NET_IF_NETWORK_GUID NetworkGuid
+        NET_IF_CONNECTION_TYPE ConnectionType
+        TUNNEL_TYPE TunnelType
+        SOCKET_ADDRESS Dhcpv6Server
+        uint8_t  Dhcpv6ClientDuid[MAX_DHCPV6_DUID_LENGTH]
+        uint32_t Dhcpv6ClientDuidLength
+        uint32_t Dhcpv6Iaid
+        PIP_ADAPTER_DNS_SUFFIX FirstDnsSuffix
     ctypedef _IP_ADAPTER_ADDRESSES_LH IP_ADAPTER_ADDRESSES_LH
     ctypedef _IP_ADAPTER_ADDRESSES_LH* PIP_ADAPTER_ADDRESSES_LH
 
@@ -197,7 +284,7 @@ cdef extern from "iphlpapi.h":
         unsigned long Family,
         unsigned long Flags,
         void* Reserved,
-        #IP_ADAPTER_INFO* pAdapterInfo,
+        PIP_ADAPTER_ADDRESSES_LH* AdapterAddresses,
         unsigned long* pOutBufLen
     ) except +
 
