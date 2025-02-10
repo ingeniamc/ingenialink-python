@@ -70,6 +70,10 @@ class Device:
 
         Returns:
             Device instance filled with XML element data
+
+        Raises:
+            ValueError: wrong fields type
+            KeyError: a mandatory attribute is missing
         """
         interface = cls.INTERFACE_XCF_OPTIONS[element.attrib[cls.INTERFACE_ATTR]]
         part_number = element.attrib.get(cls.PART_NUMBER_ATTR)
@@ -402,6 +406,10 @@ class ConfigurationFile(XMLBase, ABC):
 
         Args:
             xcf_path: config file target path
+
+        Raises:
+            TypeError: the configuration has no device
+            ValueError: the configuration has no registers
 
         """
         if self.device is None:

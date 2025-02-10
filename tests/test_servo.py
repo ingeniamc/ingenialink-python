@@ -256,27 +256,6 @@ def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: 
     )
 
 
-@pytest.mark.no_connection
-def test_read_configuration_file():
-    test_file = "./tests/resources/test_config_file.xcf"
-    device, registers = CanopenServo._read_configuration_file(test_file)
-
-    assert device.attrib.get("PartNumber") == "EVE-NET-C"
-    assert device.attrib.get("Interface") == "CAN"
-    assert device.attrib.get("firmwareVersion") == "2.3.0"
-    assert device.attrib.get("ProductCode") == "493840"
-    assert device.attrib.get("RevisionNumber") == "196634"
-    assert device.attrib.get("family") == "Summit"
-    assert device.attrib.get("name") == "Generic"
-
-    assert len(registers) == 4
-    assert registers[0].get("id") == "DRV_DIAG_ERROR_LAST_COM"
-    assert registers[0].get("access") == "r"
-    assert registers[0].get("address") == "0x580F00"
-    assert registers[0].get("dtype") == "s32"
-    assert registers[0].get("subnode") == "0"
-
-
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
