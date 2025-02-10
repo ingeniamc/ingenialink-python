@@ -203,12 +203,11 @@ class EthernetNetwork(Network):
                 logger.error(e)
                 raise ILFirmwareLoadError("Error during bootloader process.")
 
-    @override
-    def scan_slaves(self) -> list[str]:  # type: ignore [override]
-        """Scan drives connected to the network.
+    def _scan_slaves(self) -> list[str]:
+        """Ping all the network IPs.
 
         Returns:
-            List containing the IPs of the detected drives.
+            List containing the IPs that responded to the ping request.
 
         """
         if self.__subnet is None:
@@ -217,20 +216,30 @@ class EthernetNetwork(Network):
         # The scanning process can fail sometimes. Retry
         # Check https://github.com/romana/multi-ping/issues/19
         num_tries = 0
-        found_ips: dict[str, int] = {}
-        while len(found_ips) == 0 and num_tries < MAX_NUMBER_OF_SCAN_TRIES:
+        ping_responses: dict[str, int] = {}
+        while len(ping_responses) == 0 and num_tries < MAX_NUMBER_OF_SCAN_TRIES:
             with contextlib.suppress(OSError):
-                found_ips, _ = multi_ping(hosts_ips, timeout=1, ignore_lookup_errors=True)
+                ping_responses, _ = multi_ping(hosts_ips, timeout=1, ignore_lookup_errors=True)
             num_tries += 1
-        return list(found_ips.keys())
+        return list(ping_responses.keys())
+
+    def scan_slaves(self) -> list[str]:  # type: ignore [override]
+        """Scan drives connected to the network.
+
+        Returns:
+            List containing the IPs of the detected drives.
+
+        """
+        detected_slaves = self.scan_slaves_info()
+        return list(detected_slaves.keys())
 
     @override
     def scan_slaves_info(self) -> OrderedDict[str, SlaveInfo]:  # type: ignore [override]
         slave_info: OrderedDict[str, SlaveInfo] = OrderedDict()
-        slaves = self.scan_slaves()
+        slaves = self._scan_slaves()
         for slave_id in slaves:
             with contextlib.suppress(ILError):
-                slave_info[slave_id] = self._get_servo_info(slave_id)
+                slave_info[slave_id] = self._get_servo_info_for_scan(slave_id)
         return slave_info
 
     def connect_to_slave(
@@ -370,7 +379,12 @@ class EthernetNetwork(Network):
         """
         self._servos_state[servo_id] = state
 
-    def _get_servo_info(self, ip_address: str) -> SlaveInfo:
+    def _get_servo_info_for_scan(self, ip_address: str) -> SlaveInfo:
+        """Get the product code and revision number of a drive.
+
+        It's used for the scan_slaves_info method.
+
+        """
         servo = self.connect_to_slave(ip_address, VIRTUAL_DRIVE_DICTIONARY)
         try:
             product_code = servo.read("DRV_ID_PRODUCT_CODE")
