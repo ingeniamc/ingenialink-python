@@ -204,7 +204,7 @@ class EthernetNetwork(Network):
                 raise ILFirmwareLoadError("Error during bootloader process.")
 
     @override
-    def scan_slaves(self) -> list[str]:
+    def scan_slaves(self) -> list[str]:  # type: ignore [override]
         """Scan drives connected to the network.
 
         Returns:

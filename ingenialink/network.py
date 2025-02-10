@@ -56,7 +56,7 @@ class Network(ABC):
         """Dictionary containing the state of the servos that are a part of the network."""
 
     @abstractmethod
-    def scan_slaves(self) -> Union[list[int], list[str]]:
+    def scan_slaves(self) -> list[int]:
         """Scans for drives in the network."""
         raise NotImplementedError
 
