@@ -2,86 +2,137 @@
 Wrapper for GetAdaptersAddresses function (iphlpapi.h).
 """
 from libc.time cimport time_t
-
-cdef extern from "windows.h":
-    pass
+from libc.stdint cimport uint16_t, uint32_t, uint8_t, int32_t, uint64_t
 
 
-cdef extern from "winerror.h":
+cdef extern from "winsock2.h":
     enum:
-        ERROR_BUFFER_OVERFLOW
-        NO_ERROR
+        IF_INDEX
+        AF_UNSPEC
+        GAA_FLAG_INCLUDE_PREFIX
 
+    # https://learn.microsoft.com/is-is/windows/win32/api/winsock2/ns-winsock2-in_addr
+    ctypedef struct in_addr:
+        uint32_t s_addr
 
-cdef extern from "ipifcons.h":
-    enum:
-        MIB_IF_TYPE_OTHER
-        MIB_IF_TYPE_ETHERNET
-        MIB_IF_TYPE_TOKENRING
-        MIB_IF_TYPE_FDDI
-        MIB_IF_TYPE_PPP
-        MIB_IF_TYPE_LOOPBACK
-        MIB_IF_TYPE_SLIP
+    ctypedef struct in6_addr:
+        uint8_t s6_addr[16]
+
+    # https://learn.microsoft.com/es-es/windows/win32/winsock/sockaddr-2
+    ctypedef struct sockaddr:
+        unsigned int sa_family
+        char sa_data[14]
+    ctypedef sockaddr SOCKADDR
+    ctypedef sockaddr* PSOCKADDR
+    ctypedef sockaddr* LPSOCKADDR
+    
+    ctypedef struct sockaddr_in:
+        uint16_t sin_family
+        uint16_t sin_port
+        in_addr sin_addr
+        char sin_zero[8]
+
+    ctypedef struct sockaddr_in6:
+        uint16_t sin6_family
+        uint16_t sin6_port
+        uint32_t sin6_flowinfo
+        in6_addr sin6_addr
+        uint32_t sin6_scope_id
+    ctypedef sockaddr_in6 SOCKADDR_IN6
+    ctypedef sockaddr_in6* PSOCKADDR_IN6
+    ctypedef sockaddr_in6* LPSOCKADDR_IN6
+
+    # https://learn.microsoft.com/en-us/previous-versions/windows/desktop/legacy/ms740504(v=vs.85)
+    ctypedef struct sockaddr_storage:
+        uint16_t ss_family
+        char __ss_pad1[6]
+        uint32_t __ss_align
+        char __ss_pad2[112]
 
 cdef extern from "iptypes.h":
-    # https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/NetworkManagement/IpHelper/index.html
-    # Use an enum -> they are defined as constants in "iptypes.h", but they can not be used in the struct (Not allowed in a constant expression)
-    enum:
-        MAX_ADAPTER_DESCRIPTION_LENGTH
-        MAX_ADAPTER_NAME_LENGTH
-        MAX_ADAPTER_ADDRESS_LENGTH
+    # https://learn.microsoft.com/en-us/windows/win32/api/ws2def/ns-ws2def-socket_address
+    ctypedef struct _SOCKET_ADDRESS:
+        LPSOCKADDR lpSockaddr
+        int32_t iSockaddrLength
+    ctypedef _SOCKET_ADDRESS SOCKET_ADDRESS
+    ctypedef _SOCKET_ADDRESS* PSOCKET_ADDRESS
+    ctypedef _SOCKET_ADDRESS* LPSOCKET_ADDRESS
 
-    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_addr_string
-    ctypedef struct _IP_ADDRESS_STRING:
-        char String[64]
+    # https://learn.microsoft.com/en-us/windows/win32/api/nldef/ne-nldef-nl_prefix_origin
+    ctypedef enum _IP_PREFIX_ORIGIN:
+        IpPrefixOriginOther
+        IpPrefixOriginManual
+        IpPrefixOriginWellKnown
+        IpPrefixOriginDhcp
+        IpPrefixOriginRouterAdvertisement
+    ctypedef _IP_PREFIX_ORIGIN IP_PREFIX_ORIGIN
 
-    ctypedef struct _IP_MASK_STRING:
-        char String[64]
+    # https://learn.microsoft.com/en-us/windows/win32/api/nldef/ne-nldef-nl_suffix_origin
+    ctypedef enum _IP_SUFFIX_ORIGIN:
+        IpSuffixOriginOther
+        IpSuffixOriginManual
+        IpSuffixOriginWellKnown
+        IpSuffixOriginDhcp
+        IpSuffixOriginLinkLayerAddress
+        IpSuffixOriginRandom
+    ctypedef _IP_SUFFIX_ORIGIN IP_SUFFIX_ORIGIN
 
-    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_addr_string
-    ctypedef struct _IP_ADDR_STRING:
-        _IP_ADDR_STRING* Next
-        _IP_ADDRESS_STRING IpAddress
-        _IP_MASK_STRING IpMask
-        unsigned long Context
+    # https://learn.microsoft.com/en-us/windows/win32/api/nldef/ne-nldef-nl_dad_state
+    ctypedef enum _IP_DAD_STATE:
+        IpDadStateInvalid
+        IpDadStateTentative
+        IpDadStateDuplicate
+        IpDadStateDeprecated
+        IpDadStatePreferred
+    ctypedef _IP_DAD_STATE IP_DAD_STATE
 
-    ctypedef _IP_ADDR_STRING IP_ADDR_STRING
-    ctypedef _IP_ADDR_STRING* PIP_ADDR_STRING
+    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_unicast_address_lh
+    ctypedef struct _IP_ADAPTER_UNICAST_ADDRESS_LH:
+        # flatten the union
+        uint64_t Alignment
+        uint32_t Length
+        uint32_t Flags
+        
+        _IP_ADAPTER_UNICAST_ADDRESS_LH* Next
+        SOCKET_ADDRESS Address
+        IP_PREFIX_ORIGIN PrefixOrigin
+        IP_SUFFIX_ORIGIN SuffixOrigin
+        IP_DAD_STATE DadState
+        uint32_t ValidLifetime
+        uint32_t PreferredLifetime
+        uint32_t LeaseLifetime
+        uint8_t OnLinkPrefixLength
+    ctypedef _IP_ADAPTER_UNICAST_ADDRESS_LH IP_ADAPTER_UNICAST_ADDRESS_LH
+    ctypedef _IP_ADAPTER_UNICAST_ADDRESS_LH* PIP_ADAPTER_UNICAST_ADDRESS_LH
 
-    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_info
-    ctypedef struct _IP_ADAPTER_INFO:
-        _IP_ADAPTER_INFO* Next
-        unsigned long ComboIndex
-        char AdapterName[MAX_ADAPTER_NAME_LENGTH + 4]
-        char Description[MAX_ADAPTER_DESCRIPTION_LENGTH + 4]
-        unsigned int AddressLength
-        unsigned char Address[MAX_ADAPTER_ADDRESS_LENGTH]
-        unsigned long Index
-        unsigned int Type
-        unsigned int DhcpEnabled
-        void* CurrentIpAddress
-        _IP_ADDR_STRING IpAddressList
-        _IP_ADDR_STRING GatewayList
-        _IP_ADDR_STRING DhcpServer
-        int HaveWins
-        _IP_ADDR_STRING PrimaryWinsServer
-        _IP_ADDR_STRING SecondaryWinsServer
-        time_t LeaseObtained
-        time_t LeaseExpires
+    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_anycast_address_xp
+    ctypedef struct _IP_ADAPTER_ANYCAST_ADDRESS_XP:
+        uint64_t Alignment
+        uint32_t Length
+        uint32_t Flags
+        _IP_ADAPTER_ANYCAST_ADDRESS_XP* Next
+        SOCKET_ADDRESS Address
+    ctypedef _IP_ADAPTER_ANYCAST_ADDRESS_XP IP_ADAPTER_ANYCAST_ADDRESS_XP
+    ctypedef _IP_ADAPTER_ANYCAST_ADDRESS_XP* PIP_ADAPTER_ANYCAST_ADDRESS_XP
 
-    ctypedef _IP_ADAPTER_INFO IP_ADAPTER_INFO
-    ctypedef _IP_ADAPTER_INFO* PIP_ADAPTER_INFO
+    # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_addresses_lh
+    ctypedef struct _IP_ADAPTER_ADDRESSES_LH:
+        uint64_t Alignment
+        uint32_t Length
+        uint32_t Flags
+        _IP_ADAPTER_ADDRESSES_LH* Next
+        PIP_ADAPTER_UNICAST_ADDRESS_LH FirstUnicastAddress
+        PIP_ADAPTER_ANYCAST_ADDRESS_XP FirstAnycastAddress
+    ctypedef _IP_ADAPTER_ADDRESSES_LH IP_ADAPTER_ADDRESSES_LH
+    ctypedef _IP_ADAPTER_ADDRESSES_LH* PIP_ADAPTER_ADDRESSES_LH
 
 # https://learn.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getadaptersinfo
 cdef extern from "iphlpapi.h":
-    enum:
-        GAA_FLAG_INCLUDE_PREFIX
-
     unsigned long GetAdaptersAddresses(
         unsigned long Family,
         unsigned long Flags,
         void* Reserved,
-        IP_ADAPTER_INFO* pAdapterInfo,
+        #IP_ADAPTER_INFO* pAdapterInfo,
         unsigned long* pOutBufLen
     ) except +
 
