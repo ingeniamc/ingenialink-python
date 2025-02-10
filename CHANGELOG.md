@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Implement the scan method for Ethernet networks.
+
 ### Deprecated
 - Changed `Enums` names to follow CapWords convention. Old names are still supported, but will soon be deprecated.
 
