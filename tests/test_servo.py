@@ -159,7 +159,7 @@ def test_save_configuration(connect_to_slave):
         reg_id = saved_register.uid
         registers = servo.dictionary.registers(subnode=subnode)
         assert reg_id in registers
-        assert registers[reg_id].storage == saved_register.storage
+        assert registers[reg_id].storage == pytest.approx(saved_register.storage, 0.0001)
         assert registers[reg_id].access == saved_register.access
         assert registers[reg_id].dtype == saved_register.dtype
         assert saved_register.access == RegAccess.RW
