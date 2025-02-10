@@ -277,9 +277,9 @@ class ConfigurationFile(XMLBase, ABC):
     def __init__(self, device: Device) -> None:
         self.major_version = self._SUPPORTED_MAJOR_VERSION
         self.minor_version = 1
-        self.registers: list[ConfigRegister] = []
+        self.__registers: list[ConfigRegister] = []
         self.__device: Device = device
-        self.subnodes: set[int] = set()
+        self.__subnodes: set[int] = set()
 
     @classmethod
     def __read_version(cls, version_element: ElementTree.Element) -> tuple[int, int]:
@@ -342,21 +342,15 @@ class ConfigurationFile(XMLBase, ABC):
         register_element_list = cls._findall_and_check(
             registers_element, ConfigRegister.ELEMENT_NAME
         )
-        conifg_registers: list[ConfigRegister] = []
-        subnodes_set = set()
-        for reg in register_element_list:
-            try:
-                config_reg = ConfigRegister.from_xcf(reg)
-                conifg_registers.append(config_reg)
-                subnodes_set.add(config_reg.subnode)
-            except (ValueError, KeyError) as e:  # noqa: PERF203
-                logger.warning(f"{reg}: {e}")
         config_device = Device.from_xcf(device_element)
         xcf_instance = cls(config_device)
-        xcf_instance.registers = conifg_registers
+        for reg in register_element_list:
+            try:
+                xcf_instance.add_config_register(ConfigRegister.from_xcf(reg))
+            except (ValueError, KeyError) as e:  # noqa: PERF203
+                logger.warning(f"{reg}: {e}")
         xcf_instance.major_version = major_version
         xcf_instance.minor_version = minor_version
-        xcf_instance.subnodes = subnodes_set
         return xcf_instance
 
     @classmethod
@@ -397,8 +391,16 @@ class ConfigurationFile(XMLBase, ABC):
 
         """
         config_register = ConfigRegister.from_register(register, value)
-        self.registers.append(config_register)
-        self.subnodes.add(config_register.subnode)
+        self.add_config_register(config_register)
+
+    def add_config_register(self, config_register: ConfigRegister) -> None:
+        """Add ConfigRegister to the XCF class.
+
+        Args:
+            config_register: register that will be added to the XCF
+        """
+        self.__registers.append(config_register)
+        self.__subnodes.add(config_register.subnode)
 
     def to_xcf(self, xcf_path: str) -> None:
         """Save a file with the config file in the target path.
@@ -418,9 +420,9 @@ class ConfigurationFile(XMLBase, ABC):
         version = ElementTree.SubElement(header, self.__VERSION_ELEMENT)
         version.text = self.version
         device = self.device.to_xcf()
-        registers = ElementTree.SubElement(device, self.__REGISTERS_ELEMENT)
+        registers_element = ElementTree.SubElement(device, self.__REGISTERS_ELEMENT)
         for register in self.registers:
-            registers.append(register.to_xcf())
+            registers_element.append(register.to_xcf())
         body.append(device)
         dom = minidom.parseString(ElementTree.tostring(tree, encoding="utf-8"))
         with open(xcf_path, "wb") as f:
@@ -438,3 +440,19 @@ class ConfigurationFile(XMLBase, ABC):
     def device(self) -> Device:
         """Configuration file device."""
         return self.__device
+
+    @property
+    def registers(self) -> list[ConfigRegister]:
+        """Configuration file registers."""
+        return self.__registers
+
+    def contains_node(self, subnode: int) -> bool:
+        """Check of configuration file contains register of the target subnode.
+
+        Args:
+            subnode: target subnode number
+
+        Returns:
+            True if contains target subnode registers, else False
+        """
+        return subnode in self.__subnodes
