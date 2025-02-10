@@ -3,10 +3,12 @@ Wrapper for GetAdaptersAddresses function (iphlpapi.h).
 """
 from libc.time cimport time_t
 from libc.stdint cimport uint16_t, uint32_t, uint8_t, int32_t, uint64_t
+from libc.stdint cimport uint16_t
 
 cdef extern from "winsock2.h":
     enum:
-        IF_INDEX
+        AF_INET
+        AF_INET6
         AF_UNSPEC
         GAA_FLAG_INCLUDE_PREFIX
 
@@ -47,6 +49,12 @@ cdef extern from "winsock2.h":
         char __ss_pad1[6]
         uint32_t __ss_align
         char __ss_pad2[112]
+
+cdef extern from "winerror.h":
+    enum:
+        ERROR_BUFFER_OVERFLOW
+        ERROR_NO_DATA
+        NO_ERROR
 
 cdef extern from "ifdef.h":
     # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/
@@ -239,16 +247,16 @@ cdef extern from "iptypes.h":
     ctypedef struct _IP_ADAPTER_ADDRESSES_LH:
         uint64_t Alignment
         uint32_t Length
-        uint32_t Flags
+        uint32_t IfIndex
         _IP_ADAPTER_ADDRESSES_LH* Next
         char* AdapterName
         PIP_ADAPTER_UNICAST_ADDRESS_LH FirstUnicastAddress
         PIP_ADAPTER_ANYCAST_ADDRESS_XP FirstAnycastAddress
         PIP_ADAPTER_MULTICAST_ADDRESS_XP FirstMulticastAddress
         PIP_ADAPTER_DNS_SERVER_ADDRESS_XP FirstDnsServerAddress
-        char* DnsSuffix
-        char* Description
-        char* FriendlyName
+        uint16_t* DnsSuffix
+        uint16_t* Description
+        uint16_t* FriendlyName
         uint8_t PhysicalAddress[MAX_ADAPTER_ADDRESS_LENGTH]
         uint32_t PhysicalAddressLength
         _FLAGS_UNION FlagsUnion
@@ -280,11 +288,11 @@ cdef extern from "iptypes.h":
 
 # https://learn.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getadaptersinfo
 cdef extern from "iphlpapi.h":
-    unsigned long GetAdaptersAddresses(
-        unsigned long Family,
-        unsigned long Flags,
+    uint32_t GetAdaptersAddresses(
+        uint32_t Family,
+        uint32_t Flags,
         void* Reserved,
-        PIP_ADAPTER_ADDRESSES_LH* AdapterAddresses,
+        PIP_ADAPTER_ADDRESSES_LH AdapterAddresses,
         unsigned long* pOutBufLen
     ) except +
 
