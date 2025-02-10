@@ -344,7 +344,7 @@ class Servo:
             raise ValueError("Invalid subnode")
         xcf_instance = ConfigurationFile.from_xcf(config_file)
 
-        if subnode == 0 and xcf_instance.contains_node(subnode):
+        if subnode == 0 and not xcf_instance.contains_node(subnode):
             raise ValueError(f"Cannot check {config_file} at subnode {subnode}")
         registers_errored: list[str] = []
         for register in xcf_instance.registers:
@@ -421,7 +421,7 @@ class Servo:
             raise ValueError("Invalid subnode")
         xcf_instance = ConfigurationFile.from_xcf(config_file)
 
-        if subnode == 0 and xcf_instance.contains_node(subnode):
+        if subnode == 0 and not xcf_instance.contains_node(subnode):
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
         for register in xcf_instance.registers:
             try:

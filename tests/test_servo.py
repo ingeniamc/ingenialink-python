@@ -210,36 +210,22 @@ def test_check_configuration(virtual_drive):
 def test_load_configuration(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
-
     filename = "temp_config"
-
     servo.save_configuration(filename)
-
     assert os.path.isfile(filename)
-
     servo.load_configuration(filename)
+    config_file = ConfigurationFile.from_xcf(filename)
 
-    _, loaded_registers = servo._read_configuration_file(filename)
-
-    for register in loaded_registers:
-        reg_id = register.attrib.get("id")
-        storage = register.attrib.get("storage")
-        subnode = int(register.attrib.get("subnode"))
-        dtype = register.attrib.get("dtype")
-
+    for register in config_file.registers:
         # Check if the register exists in the drive
         try:
-            value = servo.read(reg_id, subnode=subnode)
+            value = servo.read(register.uid, subnode=register.subnode)
         except ILIOError:
             continue
-
-        if dtype == "str":
-            assert value == storage
-        elif dtype == "float":
-            assert value == pytest.approx(float(storage), 0.0001)
+        if register.dtype == RegDtype.FLOAT:
+            assert value == pytest.approx(register.storage, 0.0001)
         else:
-            assert value == int(storage)
-
+            assert value == register.storage
     _clean(filename)
 
 
@@ -797,17 +783,19 @@ def test_status_word_decode(virtual_drive, status_word, state):
 
 
 @pytest.mark.parametrize(
-    "uid, value, node_id, dependent",
+    "uid, subnode, value, node_id, dependent",
     [
-        ("CIA301_COMMS_COBID_EMCY", 1000, 61, True),
-        ("DRV_STATE_CONTROL", 500, 76, False),
+        ("CIA301_COMMS_COBID_EMCY", 0, 1000, 61, True),
+        ("DRV_STATE_CONTROL", 1, 500, 76, False),
     ],
 )
 @pytest.mark.canopen
-def test__adapt_configuration_file_storage_value(connect_to_slave, uid, value, node_id, dependent):
+def test__adapt_configuration_file_storage_value(
+    connect_to_slave, uid, subnode, value, node_id, dependent
+):
     servo, net = connect_to_slave
     conf_file = ConfigurationFile.create_xcf(Interface.CAN, None, None, None, None, node_id)
-    node_id_reg = servo.dictionary.registers(0)[uid]
+    node_id_reg = servo.dictionary.registers(subnode)[uid]
     node_id_reg._CanopenRegister__is_node_id_dependent = dependent
     conf_file.add_register(node_id_reg, value)
     adapted_register = servo._adapt_configuration_file_storage_value(
