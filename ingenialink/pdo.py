@@ -213,7 +213,7 @@ class PDOMap:
 
     @property
     def slave(self) -> Optional["PDOServo"]:
-        """Servo state referece - allows to get the status of the network."""
+        """Servo to which this PDO is mapped, None if it's not mapped to any servo."""
         return self.__slave
 
     @slave.setter
@@ -229,7 +229,7 @@ class PDOMap:
     ) -> PDOMapItem:
         """Create a new PDOMapItem.
 
-        WARNING: This operation can not be done if the servo is in operational state.
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
 
         Args:
             register: Register object.
@@ -245,7 +245,7 @@ class PDOMap:
     def add_item(self, item: PDOMapItem) -> None:
         """Append a new item.
 
-        WARNING: This operation can not be done if the servo is in operational state.
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
 
         Args:
             item: Item to be added.
@@ -263,7 +263,7 @@ class PDOMap:
 
         It creates a new item for each register and adds it the items attribute.
 
-        WARNING: This operation can not be done if the servo is in operational state.
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
 
         Args:
             registers: Register object or list of Registers.
@@ -451,7 +451,7 @@ class PDOServo(Servo):
     def reset_rpdo_mapping(self) -> None:
         """Delete the RPDO mapping stored in the servo slave.
 
-        WARNING: This operation can not be done if the servo is in operational state.
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
         """
         self.check_servo_is_in_preoperational_state()
         self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, 0, subnode=0)
@@ -462,7 +462,7 @@ class PDOServo(Servo):
     def reset_tpdo_mapping(self) -> None:
         """Delete the TPDO mapping stored in the servo slave.
 
-        WARNING: This operation can not be done if the servo is in operational state.
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
         """
         self.check_servo_is_in_preoperational_state()
         self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, 0, subnode=0)
@@ -475,7 +475,7 @@ class PDOServo(Servo):
 
         It takes the first available RPDO assignment slot of the slave.
 
-        WARNING: This operation can not be done if the servo is in operational state.
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
 
         Raises:
             ILError: If there are no available PDOs.
@@ -532,7 +532,7 @@ class PDOServo(Servo):
 
         It takes the first available TPDO assignment slot of the slave.
 
-        WARNING: This operation can not be done if the servo is in operational state.
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
 
         Raises:
             ILError: If there are no available PDOs.
@@ -587,7 +587,7 @@ class PDOServo(Servo):
     def map_pdos(self, slave_index: int) -> None:  # noqa: ARG002
         """Map RPDO and TPDO register into the slave.
 
-        WARNING: This operation can not be done if the servo is in operational state.
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
 
         Args:
             slave_index: salve index.
@@ -599,7 +599,7 @@ class PDOServo(Servo):
     def reset_pdo_mapping(self) -> None:
         """Reset the RPDO and TPDO mapping in the slave.
 
-        WARNING: This operation can not be done if the servo is in operational state.
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
         """
         self.check_servo_is_in_preoperational_state()
         self.reset_rpdo_mapping()
@@ -610,7 +610,7 @@ class PDOServo(Servo):
     ) -> None:
         """Remove a RPDOMap from the RPDOMap list.
 
-        WARNING: This operation can not be done if the servo is in operational state.
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
 
         Args:
             rpdo_map: The RPDOMap instance to be removed.
