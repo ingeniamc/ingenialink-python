@@ -9,8 +9,8 @@ import pytest
 from packaging import version
 
 from ingenialink import RegAccess
-from ingenialink.canopen.servo import CanopenServo
 from ingenialink.configuration_file import ConfigurationFile
+from ingenialink.dictionary import Interface
 from ingenialink.ethernet.register import RegDtype
 from ingenialink.exceptions import (
     ILConfigurationError,
@@ -143,8 +143,9 @@ def test_save_configuration(connect_to_slave):
     assert config_file.device.revision_number == rev_number
 
     assert config_file.device.part_number == servo.dictionary.part_number
-    interface = servo.DICTIONARY_INTERFACE_ATTR_CAN
-    assert config_file.device.interface == interface
+    assert config_file.device.interface == servo.interface
+    if servo.interface == Interface.CAN:
+        assert config_file.device.node_id == servo.target
     # The firmware version from the drive has trailing zeros
     # and the one from the dictionary does not
     assert version.parse(config_file.device.firmware_version) == version.parse(
@@ -793,3 +794,26 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
 def test_status_word_decode(virtual_drive, status_word, state):
     server, servo = virtual_drive
     assert servo.status_word_decode(status_word) == state
+
+
+@pytest.mark.parametrize(
+    "uid, value, node_id, dependent",
+    [
+        ("CIA301_COMMS_COBID_EMCY", 1000, 61, True),
+        ("DRV_STATE_CONTROL", 500, 76, False),
+    ],
+)
+@pytest.mark.canopen
+def test__adapt_configuration_file_storage_value(connect_to_slave, uid, value, node_id, dependent):
+    servo, net = connect_to_slave
+    conf_file = ConfigurationFile.create_xcf(Interface.CAN, None, None, None, None, node_id)
+    node_id_reg = servo.dictionary.registers(0)[uid]
+    node_id_reg._CanopenRegister__is_node_id_dependent = dependent
+    conf_file.add_register(node_id_reg, value)
+    adapted_register = servo._adapt_configuration_file_storage_value(
+        conf_file, conf_file.registers[0]
+    )
+    if dependent:
+        assert adapted_register == (value - node_id + servo.target)
+    else:
+        assert adapted_register == value

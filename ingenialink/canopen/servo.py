@@ -5,7 +5,9 @@ import ingenialogger
 from canopen.emcy import EmcyError
 from typing_extensions import override
 
+from ingenialink import RegDtype
 from ingenialink.canopen.register import CanopenRegister
+from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
 from ingenialink.constants import CAN_MAX_WRITE_SIZE
 from ingenialink.dictionary import Interface
 from ingenialink.emcy import EmergencyMessage
@@ -157,6 +159,27 @@ class CanopenServo(Servo):
             register.identifier is not None
             and register.identifier.startswith(("CIA301_COMMS_TPDO", "CIA301_COMMS_RPDO"))
         )
+
+    def _adapt_configuration_file_storage_value(
+        self, configuration_file: ConfigurationFile, register: ConfigRegister
+    ) -> Union[int, float, str, bytes]:
+        target_register = self.dictionary.registers(register.subnode).get(register.uid)
+
+        if (
+            configuration_file.device.node_id is not None
+            and target_register is not None
+            and isinstance(target_register, CanopenRegister)
+            and target_register.dtype != RegDtype.STR
+            and target_register.is_node_id_dependent
+        ):
+            if not isinstance(register.storage, str):
+                return register.storage - configuration_file.device.node_id + int(self.target)
+            else:
+                raise ValueError(
+                    f"Illegal value for register with ID {register.uid}"
+                    f" and dtype {target_register.dtype}: {register.storage} is an string"
+                )
+        return register.storage
 
     @staticmethod
     def _monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:

@@ -274,11 +274,11 @@ class ConfigurationFile(XMLBase, ABC):
 
     _SUPPORTED_MAJOR_VERSION = 2
 
-    def __init__(self) -> None:
+    def __init__(self, device: Device) -> None:
         self.major_version = self._SUPPORTED_MAJOR_VERSION
         self.minor_version = 1
         self.registers: list[ConfigRegister] = []
-        self.device: Optional[Device] = None
+        self.__device: Device = device
         self.subnodes: set[int] = set()
 
     @classmethod
@@ -352,9 +352,8 @@ class ConfigurationFile(XMLBase, ABC):
             except (ValueError, KeyError) as e:  # noqa: PERF203
                 logger.warning(f"{reg}: {e}")
         config_device = Device.from_xcf(device_element)
-        xcf_instance = cls()
+        xcf_instance = cls(config_device)
         xcf_instance.registers = conifg_registers
-        xcf_instance.device = config_device
         xcf_instance.major_version = major_version
         xcf_instance.minor_version = minor_version
         xcf_instance.subnodes = subnodes_set
@@ -383,10 +382,10 @@ class ConfigurationFile(XMLBase, ABC):
         Returns:
             creates a XCF instance
         """
-        xcf_instance = cls()
-        xcf_instance.device = Device(
+        device = Device(
             interface, part_number, product_code, revision_number, firmware_version, node_id
         )
+        xcf_instance = cls(device)
         return xcf_instance
 
     def add_register(self, register: Register, value: Union[float, int, str, bool]) -> None:
@@ -408,12 +407,9 @@ class ConfigurationFile(XMLBase, ABC):
             xcf_path: config file target path
 
         Raises:
-            TypeError: the configuration has no device
             ValueError: the configuration has no registers
 
         """
-        if self.device is None:
-            raise TypeError("device is empty")
         if not self.registers:
             raise ValueError("registers is empty")
         tree = ElementTree.Element(self.__ROOT_ELEMENT)
@@ -437,3 +433,8 @@ class ConfigurationFile(XMLBase, ABC):
             return f"{self.major_version}.{self.minor_version}"
         else:
             return f"{self.major_version}"
+
+    @property
+    def device(self) -> Device:
+        """Configuration file device."""
+        return self.__device

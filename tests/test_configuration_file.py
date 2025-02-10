@@ -1,6 +1,6 @@
 import pytest
 
-from ingenialink import RegDtype, RegAccess
+from ingenialink import RegAccess, RegDtype
 from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.dictionary import Interface
 from ingenialink.register import Register
@@ -27,7 +27,7 @@ def test_from_xcf():
 
 @pytest.mark.no_connection
 def test_from_register():
-    conf_file = ConfigurationFile()
+    conf_file = ConfigurationFile.create_xcf(Interface.CAN, "a", 0, 0, "0.0.0")
     reg = Register(RegDtype.FLOAT, RegAccess.RW, "TEST_REG", subnode=2)
     conf_file.add_register(reg, 5.5)
     assert conf_file.registers[0].dtype == RegDtype.FLOAT
@@ -39,11 +39,6 @@ def test_from_register():
 
 @pytest.mark.no_connection
 def test_to_xcf_fail_no_device():
-    with pytest.raises(TypeError):
-        ConfigurationFile().to_xcf("random_path")
-
-@pytest.mark.no_connection
-def test_to_xcf_fail_no_device():
     with pytest.raises(ValueError):
-        conf = ConfigurationFile().create_xcf(Interface.CAN, "a", 0, 0, "0.0.0")
+        conf = ConfigurationFile.create_xcf(Interface.CAN, "a", 0, 0, "0.0.0")
         conf.to_xcf("test_path")

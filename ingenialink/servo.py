@@ -10,7 +10,7 @@ import numpy as np
 
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.dictionary import CanopenDictionaryV2
-from ingenialink.configuration_file import ConfigurationFile
+from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
     DEFAULT_PDS_TIMEOUT,
@@ -359,7 +359,9 @@ class Servo:
                 )
                 registers_errored.append(il_error)
             else:
-                compare_conf: Union[int, float, str, bytes, bool, np.float32] = register.storage
+                compare_conf: Union[int, float, str, bytes, bool, np.float32] = (
+                    self._adapt_configuration_file_storage_value(xcf_instance, register)
+                )
                 compare_drive: Union[int, float, str, bytes, bool, np.float32] = stored_data
                 if isinstance(stored_data, float):
                     compare_drive = np.float32(stored_data)
@@ -374,6 +376,25 @@ class Servo:
             for register_error in registers_errored:
                 error_message += register_error
             raise ILConfigurationError(error_message)
+
+    def _adapt_configuration_file_storage_value(
+        self,
+        configuration_file: ConfigurationFile,  # noqa: ARG002
+        register: ConfigRegister,
+    ) -> Union[int, float, str, bytes]:
+        """Adapt storage value to the current servo.
+
+        This function do nothing except when registers values depends on Node ID,
+        servo is a CANopen servo and XCF has the Node ID.
+
+        Args:
+            configuration_file: target configuration file
+            register: target register
+
+        Returns:
+            Adapted storage value
+        """
+        return register.storage
 
     def load_configuration(
         self, config_file: str, subnode: Optional[int] = None, strict: bool = False
@@ -404,9 +425,10 @@ class Servo:
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
         for register in xcf_instance.registers:
             try:
+                storage = self._adapt_configuration_file_storage_value(xcf_instance, register)
                 self.write(
                     register.uid,
-                    register.storage,
+                    storage,
                     subnode=register.subnode,
                 )
             except ILError as e:  # noqa: PERF203
