@@ -88,7 +88,7 @@ def test_child_registers_not_exist():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
     ethernet_dict = DictionaryV3(dictionary_path, Interface.EoE)
     with pytest.raises(KeyError):
-        ethernet_dict.child_registers("NOT_EXISTING_UID", 0)
+        ethernet_dict.get_object("NOT_EXISTING_UID", 0)
 
 
 @pytest.mark.no_connection

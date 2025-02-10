@@ -112,7 +112,7 @@ def test_read_xdf_register():
 def test_child_registers():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
-    reg_list = ethercat_dict.child_registers("CIA301_COMMS_RPDO1_MAP", 0)
+    reg_list = ethercat_dict.get_object("CIA301_COMMS_RPDO1_MAP", 0)
     reg_subindex = [0, 1]
     reg_uids = ["CIA301_COMMS_RPDO1_MAP", "CIA301_COMMS_RPDO1_MAP_1"]
     reg_index = [0x1600, 0x1600]
@@ -128,7 +128,7 @@ def test_child_registers_not_exist():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
     with pytest.raises(KeyError):
-        ethercat_dict.child_registers("NOT_EXISTING_UID", 0)
+        ethercat_dict.get_object("NOT_EXISTING_UID", 0)
 
 
 @pytest.mark.no_connection

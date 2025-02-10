@@ -154,7 +154,7 @@ def test_child_registers_not_exist():
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
     with pytest.raises(KeyError):
-        ethercat_dict.child_registers("NOT_EXISTING_UID", 0)
+        ethercat_dict.get_object("NOT_EXISTING_UID", 0)
 
 
 @pytest.mark.no_connection

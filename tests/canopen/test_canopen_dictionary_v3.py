@@ -128,11 +128,11 @@ def test_read_xdf_register():
 def test_child_registers():
     dictionary_path = join_path(path_resources, dict_can_v3)
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
-    reg_list = canopen_dict.child_registers("CIA301_COMMS_RPDO1_MAP", 0)
+    reg_list = canopen_dict.get_object("CIA301_COMMS_RPDO1_MAP", 0)
     reg_subindex = [0, 1]
     reg_uids = ["CIA301_COMMS_RPDO1_MAP", "CIA301_COMMS_RPDO1_MAP_1"]
     reg_index = [0x1600, 0x1600]
-    for index, reg in enumerate(reg_list):
+    for index, reg in enumerate(reg_list.registers):
         assert isinstance(reg, CanopenRegister)
         assert reg.idx == reg_index[index]
         assert reg.identifier == reg_uids[index]
@@ -144,7 +144,7 @@ def test_child_registers_not_exist():
     dictionary_path = join_path(path_resources, dict_can_v3)
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
     with pytest.raises(KeyError):
-        canopen_dict.child_registers("NOT_EXISTING_UID", 0)
+        canopen_dict.get_object("NOT_EXISTING_UID", 0)
 
 
 @pytest.mark.no_connection

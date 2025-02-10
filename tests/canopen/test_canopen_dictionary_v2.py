@@ -135,7 +135,7 @@ def test_child_registers_not_exist():
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
     canopen_dict = CanopenDictionaryV2(dictionary_path)
     with pytest.raises(KeyError):
-        canopen_dict.child_registers("NOT_EXISTING_UID", 0)
+        canopen_dict.get_object("NOT_EXISTING_UID", 0)
 
 
 @pytest.mark.no_connection
