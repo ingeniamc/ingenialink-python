@@ -150,7 +150,7 @@ def test_mcb_to_can_mapping(register_uid, subnode, idx):
 
 
 @pytest.mark.no_connection
-def test_child_registers_not_exist():
+def test_object_not_exist():
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
     with pytest.raises(KeyError):

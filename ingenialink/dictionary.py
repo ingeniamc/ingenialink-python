@@ -56,7 +56,7 @@ class SubnodeType(enum.Enum):
 
 
 class CanOpenObjectType(enum.Enum):
-    """CanOpen Object Type"""
+    """CanOpen Object Type."""
 
     VAR = enum.auto()
     """VAR object type"""
@@ -70,11 +70,15 @@ class CanOpenObjectType(enum.Enum):
 
 @dataclass()
 class CanOpenObject:
-    """CanOpenObject"""
+    """CanOpenObject."""
 
     uid: Optional[str]
     object_type: CanOpenObjectType
-    registers: List[CanopenRegister]
+    registers: list[CanopenRegister]
+
+    def __iter__(self) -> Iterator[CanopenRegister]:
+        """Iterator operator."""
+        return self.registers.__iter__()
 
 
 @dataclass
@@ -323,7 +327,7 @@ class Dictionary(ABC):
         """Reads the dictionary file and initializes all its components."""
 
     def get_object(self, uid: str, subnode: int) -> CanOpenObject:
-        """Return object by an UID and subnode
+        """Return object by an UID and subnode.
 
         Args:
             uid: object UID

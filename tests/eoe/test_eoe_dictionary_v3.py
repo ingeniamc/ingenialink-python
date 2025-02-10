@@ -84,7 +84,7 @@ def test_read_dictionary_errors():
 
 
 @pytest.mark.no_connection
-def test_child_registers_not_exist():
+def test_object_not_exist():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
     ethernet_dict = DictionaryV3(dictionary_path, Interface.EoE)
     with pytest.raises(KeyError):

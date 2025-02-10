@@ -118,7 +118,7 @@ def test_read_xdf_register():
 
 
 @pytest.mark.no_connection
-def test_child_registers_not_exist():
+def test_object_not_exist():
     dictionary_path = join_path(path_resources, "test_dict_eth.xdf")
     ethernet_dict = EthernetDictionaryV2(dictionary_path)
     with pytest.raises(KeyError):
