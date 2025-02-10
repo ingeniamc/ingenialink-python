@@ -91,7 +91,11 @@ class EthernetNetwork(Network):
 
     def __init__(self, subnet: Optional[str] = None) -> None:
         super().__init__()
-        self.__subnet = subnet
+        self.__subnet: Optional[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]
+        if subnet is not None:
+            self.__subnet = ipaddress.ip_network(subnet, strict=False)
+        else:
+            self.__subnet = None
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: dict[str, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
 
@@ -209,12 +213,7 @@ class EthernetNetwork(Network):
         """
         if self.__subnet is None:
             return []
-        gateway_ip, _ = self.__subnet.split("/")
-        hosts_ips = [
-            str(ip)
-            for ip in ipaddress.ip_network(self.__subnet, strict=False)
-            if str(ip) != gateway_ip
-        ]
+        hosts_ips = [str(ip) for ip in self.__subnet]
         # The scanning process can fail sometimes. Retry
         # Check https://github.com/romana/multi-ping/issues/19
         num_tries = 0

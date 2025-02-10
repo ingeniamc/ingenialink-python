@@ -1,3 +1,4 @@
+import ipaddress
 import os
 import socket
 import time
@@ -36,11 +37,42 @@ def test_can_not_connect_to_salve(read_config):
         net.connect_to_slave(wrong_ip, protocol_contents["dictionary"], protocol_contents["port"])
 
 
-@pytest.mark.skip
+@pytest.mark.ethernet
+def test_net_invalid_subnet():
+    with pytest.raises(ValueError):
+        EthernetNetwork("12345")
+
+
+@pytest.mark.ethernet
+def test_scan_slaves_no_subnet():
+    net = EthernetNetwork()
+    assert len(net.scan_slaves()) == 0
+
+
 @pytest.mark.ethernet
 def test_scan_slaves(read_config):
-    # It will be implemented in INGK-1042
-    pass
+    drive_ip = read_config["ethernet"]["ip"]
+    subnet = drive_ip + "/24"
+    net = EthernetNetwork(subnet)
+    detected_slaves = net.scan_slaves()
+    assert len(detected_slaves) > 0
+    assert drive_ip in detected_slaves
+
+
+@pytest.mark.ethernet
+def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
+    drive_ip = read_config["ethernet"]["ip"]
+    subnet = drive_ip + "/24"
+    net = EthernetNetwork(subnet)
+    slaves_info = net.scan_slaves_info()
+
+    drive_idx, config = get_configuration_from_rack_service
+    drive = config[drive_idx]
+
+    assert len(slaves_info) > 0
+    assert drive_ip in slaves_info
+    assert slaves_info[drive_ip].product_code == drive.product_code
+    assert slaves_info[drive_ip].revision_number == drive.revision_number
 
 
 @pytest.mark.ethernet
