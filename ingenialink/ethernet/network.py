@@ -387,14 +387,14 @@ class EthernetNetwork(Network):
         """
         servo = self.connect_to_slave(ip_address, VIRTUAL_DRIVE_DICTIONARY)
         try:
-            product_code = servo.read("DRV_ID_PRODUCT_CODE")
+            product_code = servo.read("DRV_ID_PRODUCT_CODE_COCO", subnode=0)
         except ILError:
             logger.error(f"The product code cannot be read from the drive with IP: {ip_address}.")
             product_code = None
         if not isinstance(product_code, int):
             raise TypeError(f"Expected product code type to be int, got {type(product_code)}")
         try:
-            revision_number = servo.read("DRV_ID_REVISION_NUMBER")
+            revision_number = servo.read("DRV_ID_REVISION_NUMBER_COCO", subnode=0)
         except ILError:
             logger.error(
                 f"The revision number cannot be read from the drive with IP: {ip_address}."
