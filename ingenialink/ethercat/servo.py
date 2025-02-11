@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILIOError, ILPDOOperationalError
+from ingenialink.exceptions import ILEcatStateError, ILIOError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
@@ -105,12 +105,12 @@ class EthercatServo(PDOServo):
         """Checks if the servo is in preoperational state.
 
         Raises:
-            ILPDOOperationalError: if servo is not in preoperational state.
+            ILEcatStateError: if servo is not in preoperational state.
         """
         if self.slave is None or not pysoem:
             return
         if self.slave.state_check(pysoem.PREOP_STATE) != pysoem.PREOP_STATE:
-            raise ILPDOOperationalError(
+            raise ILEcatStateError(
                 f"Servo is in {self.slave.state} state, PDOMap can not be modified."
             )
 
