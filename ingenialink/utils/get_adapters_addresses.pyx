@@ -27,12 +27,45 @@ cpdef enum ScanFlags:
 
 @cython.cclass
 @dataclasses.dataclass
+class CylpSockaddr:
+    sa_family: int | None
+    sa_data: bytes | None
+
+    def __init__(self, sa_family: int, sa_data: bytes):
+        self.sa_family = sa_family
+        if len(sa_data) != 14:
+            raise ValueError("sa_data must be exactly 14 bytes long")
+        self.sa_data = sa_data
+
+@cython.cclass
+@dataclasses.dataclass
+class CySocketAddress:
+    lpSockaddr: CylpSockaddr
+    iSockaddrLength: int
+
+@cython.cclass
+@dataclasses.dataclass
+class CyFirstUnicastAddress:
+    Alignment: int
+    Length: int
+    Flags: int
+    Address: CySocketAddress
+    PrefixOrigin: int
+    SuffixOrigin: int
+    DadState: int
+    ValidLifetime: int
+    PreferredLifetime: int
+    LeaseLifetime: int
+    OnLinkPrefixLength: int
+
+@cython.cclass
+@dataclasses.dataclass
 class CyAdapter:
     Alignment: int
     Length: int
     IfIndex: int
     AdapterName: str
-    # FirstUnicastAddress
+    FirstUnicastAddress: list[CyFirstUnicastAddress]
     # FirstAnycastAddress
     # FirstMulticastAddress
     # FirstDnsServerAddress
@@ -75,16 +108,48 @@ cdef _pwchar_to_str(PWCHAR wide_str):
         length += 1
     return (<char *>wide_str)[:length * 2].decode('utf-16le')
 
+cdef CySocketAddress _parse_socket_address(SOCKET_ADDRESS socket_address):
+    if socket_address.lpSockaddr == NULL:
+        lpSockaddr = CylpSockaddr(sa_data=None, sa_family=None)
+    else:
+        lpSockaddr = CylpSockaddr(sa_data=socket_address.lpSockaddr.sa_data[:14], sa_family=socket_address.lpSockaddr.sa_family)
+    return CySocketAddress(
+        lpSockaddr=lpSockaddr,
+        iSockaddrLength=socket_address.iSockaddrLength,
+    )
+
+cdef list[CyFirstUnicastAddress] _parse_unicast_address(IP_ADAPTER_UNICAST_ADDRESS_LH* data):
+    cdef IP_ADAPTER_UNICAST_ADDRESS_LH* current_data = data
+    parsed_data = []
+
+    while current_data:
+        unicast_address = CyFirstUnicastAddress(
+            Alignment=current_data.Alignment,
+            Length=current_data.Length,
+            Flags=current_data.Flags,
+            Address=_parse_socket_address(current_data.Address),
+            PrefixOrigin=<int>current_data.PrefixOrigin,
+            SuffixOrigin=<int>current_data.SuffixOrigin,
+            DadState=<int>current_data.DadState,
+            ValidLifetime=current_data.ValidLifetime,
+            PreferredLifetime=current_data.PreferredLifetime,
+            LeaseLifetime=current_data.LeaseLifetime,
+            OnLinkPrefixLength=current_data.OnLinkPrefixLength,
+        )
+        parsed_data.append(unicast_address)
+        current_data = current_data.Next
+    return parsed_data
+
 cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
     cdef PIP_ADAPTER_ADDRESSES_LH current_adapter = adapters_addresses
     adapters_list = []
-
     while current_adapter:
         parsed_adapter = CyAdapter(
             Alignment=current_adapter.Alignment,
             Length=current_adapter.Length,
             IfIndex=current_adapter.IfIndex,
             AdapterName=current_adapter.AdapterName.decode("utf-8"),
+            FirstUnicastAddress=_parse_unicast_address(current_adapter.FirstUnicastAddress),
             Description=_pwchar_to_str(current_adapter.Description),
             FriendlyName=_pwchar_to_str(current_adapter.FriendlyName),
             # PhysicalAddressLength=current_adapter.PhysicalAddressLength,
