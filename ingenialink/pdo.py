@@ -15,12 +15,6 @@ from ingenialink.utils._utils import (
     dtype_length_bits,
 )
 
-try:
-    import pysoem
-
-except ImportError:
-    pysoem = None
-
 BIT_ENDIAN = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
 
