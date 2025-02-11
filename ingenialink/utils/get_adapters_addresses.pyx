@@ -60,20 +60,36 @@ class CyFirstUnicastAddress:
 
 @cython.cclass
 @dataclasses.dataclass
+class CyFirstAnycastMulticastAddress:
+    Alignment: int
+    Length: int
+    Flags: int
+    Address: CySocketAddress
+
+@cython.cclass
+@dataclasses.dataclass
+class CyFirstDnsServerAddress:
+    Alignment: int
+    Length: int
+    Reserved: int
+    Address: CySocketAddress
+
+@cython.cclass
+@dataclasses.dataclass
 class CyAdapter:
     Alignment: int
     Length: int
     IfIndex: int
     AdapterName: str
     FirstUnicastAddress: list[CyFirstUnicastAddress]
-    # FirstAnycastAddress
-    # FirstMulticastAddress
-    # FirstDnsServerAddress
-    # DnsSuffix
+    FirstAnycastAddress: list[CyFirstAnycastMulticastAddress]
+    FirstMulticastAddress: list[CyFirstAnycastMulticastAddress]
+    FirstDnsServerAddress: list[CyFirstDnsServerAddress]
+    DnsSuffix: str
     Description: str
     FriendlyName: str
-    # PhysicalAddress
-    # PhysicalAddressLength
+    PhysicalAddress: str
+    PhysicalAddressLength: int
     # FlagsUnion
     Mtu: int
     IfType: int
@@ -140,6 +156,51 @@ cdef list[CyFirstUnicastAddress] _parse_unicast_address(IP_ADAPTER_UNICAST_ADDRE
         current_data = current_data.Next
     return parsed_data
 
+ctypedef fused AnycastMulticastAddress:
+    IP_ADAPTER_ANYCAST_ADDRESS_XP
+    IP_ADAPTER_MULTICAST_ADDRESS_XP
+
+cdef list[CyFirstAnycastMulticastAddress] _parse_anycast_multicast_address(AnycastMulticastAddress* data):
+    cdef AnycastMulticastAddress* current_data = data
+    parsed_data = []
+
+    while current_data:
+        unicast_address = CyFirstAnycastMulticastAddress(
+            Alignment=current_data.Alignment,
+            Length=current_data.Length,
+            Flags=current_data.Flags,
+            Address=_parse_socket_address(current_data.Address),
+        )
+        parsed_data.append(unicast_address)
+        current_data = current_data.Next
+    return parsed_data
+
+cdef list[CyFirstDnsServerAddress] _parse_dns_server_address(IP_ADAPTER_DNS_SERVER_ADDRESS_XP* data):
+    cdef IP_ADAPTER_DNS_SERVER_ADDRESS_XP* current_data = data
+    parsed_data = []
+
+    while current_data:
+        unicast_address = CyFirstDnsServerAddress(
+            Alignment=current_data.Alignment,
+            Length=current_data.Length,
+            Reserved=current_data.Reserved,
+            Address=_parse_socket_address(current_data.Address),
+        )
+        parsed_data.append(unicast_address)
+        current_data = current_data.Next
+    return parsed_data
+
+cdef str _parse_physical_address(uint8_t* physical_adress, uint32_t physical_adress_length):
+    if physical_adress_length == 0:
+        return ""
+    result = ""
+    for i in range(physical_adress_length):
+        if i == (physical_adress_length - 1):
+            result += "%.2X" % physical_adress[i]
+        else:
+            result += "%.2X-" % physical_adress[i]
+    return result
+
 cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
     cdef PIP_ADAPTER_ADDRESSES_LH current_adapter = adapters_addresses
     adapters_list = []
@@ -150,9 +211,14 @@ cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
             IfIndex=current_adapter.IfIndex,
             AdapterName=current_adapter.AdapterName.decode("utf-8"),
             FirstUnicastAddress=_parse_unicast_address(current_adapter.FirstUnicastAddress),
+            FirstAnycastAddress=_parse_anycast_multicast_address(current_adapter.FirstAnycastAddress),
+            FirstMulticastAddress=_parse_anycast_multicast_address(current_adapter.FirstMulticastAddress),
+            FirstDnsServerAddress=_parse_dns_server_address(current_adapter.FirstDnsServerAddress),
+            DnsSuffix=_pwchar_to_str(current_adapter.DnsSuffix),
             Description=_pwchar_to_str(current_adapter.Description),
             FriendlyName=_pwchar_to_str(current_adapter.FriendlyName),
-            # PhysicalAddressLength=current_adapter.PhysicalAddressLength,
+            PhysicalAddress=_parse_physical_address(current_adapter.PhysicalAddress, current_adapter.PhysicalAddressLength),
+            PhysicalAddressLength=current_adapter.PhysicalAddressLength,
             Mtu=current_adapter.Mtu,
             IfType=current_adapter.IfType,
             Ipv6IfIndex=current_adapter.Ipv6IfIndex,

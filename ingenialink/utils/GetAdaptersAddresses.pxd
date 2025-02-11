@@ -192,7 +192,7 @@ cdef extern from "iptypes.h":
     ctypedef struct _IP_ADAPTER_DNS_SERVER_ADDRESS_XP:
         uint64_t Alignment
         uint32_t Length
-        uint32_t Flags
+        uint32_t Reserved
         _IP_ADAPTER_DNS_SERVER_ADDRESS_XP* Next
         SOCKET_ADDRESS Address
     ctypedef _IP_ADAPTER_DNS_SERVER_ADDRESS_XP IP_ADAPTER_DNS_SERVER_ADDRESS_XP
