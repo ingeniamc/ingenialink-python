@@ -8,9 +8,22 @@ _MAX_TRIES = 3
 _WORKING_BUFFER_SIZE = 15000
 
 cpdef enum AdapterFamily:
-    INET = 0
-    INET6 = 1
-    UNSPEC = 2
+    INET = AF_INET
+    INET6 = AF_INET6
+    UNSPEC = AF_UNSPEC
+
+cpdef enum ScanFlags:
+    SKIP_UNICAST = GAA_FLAG_SKIP_UNICAST
+    SKIP_ANYCAST = GAA_FLAG_SKIP_ANYCAST
+    SKIP_MULTICAST = GAA_FLAG_SKIP_MULTICAST
+    SKIP_DNS_SERVER = GAA_FLAG_SKIP_DNS_SERVER
+    INCLUDE_PREFIX = GAA_FLAG_INCLUDE_PREFIX
+    SKIP_FRIENDLY_NAME = GAA_FLAG_SKIP_FRIENDLY_NAME
+    INCLUDE_WINS_INFO = GAA_FLAG_INCLUDE_WINS_INFO
+    INCLUDE_GATEWAYS = GAA_FLAG_INCLUDE_GATEWAYS
+    INCLUDE_ALL_INTERFACES = GAA_FLAG_INCLUDE_ALL_INTERFACES
+    INCLUDE_ALL_COMPARTMENTS = GAA_FLAG_INCLUDE_ALL_COMPARTMENTS
+    INCLUDE_TUNNEL_BINDINGORDER = GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER
 
 @cython.cclass
 @dataclasses.dataclass
@@ -45,12 +58,15 @@ cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
 
     return adapters_list
 
-def get_adapters_addresses(adapter_family: AdapterFamily = AdapterFamily.UNSPEC):
+def get_adapters_addresses(
+    adapter_family: AdapterFamily = AdapterFamily.UNSPEC,
+    scan_flags: ScanFlags = ScanFlags.INCLUDE_PREFIX,
+):
     cdef:
         unsigned long dwRetVal = 0
         unsigned int i = 0
-        unsigned long flags = GAA_FLAG_INCLUDE_PREFIX
-        unsigned long family = AF_UNSPEC
+        uint32_t flags = <uint32_t>  scan_flags
+        uint32_t family = <uint32_t> adapter_family
 
         PIP_ADAPTER_ADDRESSES_LH pAddresses = NULL
         unsigned long outBufLen = 0
@@ -62,11 +78,6 @@ def get_adapters_addresses(adapter_family: AdapterFamily = AdapterFamily.UNSPEC)
         PIP_ADAPTER_MULTICAST_ADDRESS_XP pMulticast = NULL
         IP_ADAPTER_DNS_SERVER_ADDRESS_XP *pDnServer = NULL
         IP_ADAPTER_PREFIX_XP* pPrefix = NULL
-    
-    if adapter_family == AdapterFamily.INET:
-        family = AF_INET
-    elif adapter_family == AdapterFamily.INET6:
-        family = AF_INET6
 
     outBufLen = _WORKING_BUFFER_SIZE
     while Iterations < _MAX_TRIES:

@@ -7,10 +7,21 @@ from libc.stdint cimport uint16_t
 
 cdef extern from "winsock2.h":
     enum:
+        # https://learn.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getadaptersaddresses#parameters
         AF_INET
         AF_INET6
         AF_UNSPEC
+        GAA_FLAG_SKIP_UNICAST
+        GAA_FLAG_SKIP_ANYCAST
+        GAA_FLAG_SKIP_MULTICAST
+        GAA_FLAG_SKIP_DNS_SERVER
         GAA_FLAG_INCLUDE_PREFIX
+        GAA_FLAG_SKIP_FRIENDLY_NAME
+        GAA_FLAG_INCLUDE_WINS_INFO
+        GAA_FLAG_INCLUDE_GATEWAYS
+        GAA_FLAG_INCLUDE_ALL_INTERFACES
+        GAA_FLAG_INCLUDE_ALL_COMPARTMENTS
+        GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER
 
     # https://learn.microsoft.com/is-is/windows/win32/api/winsock2/ns-winsock2-in_addr
     ctypedef struct in_addr:
