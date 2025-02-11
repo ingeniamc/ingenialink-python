@@ -58,9 +58,9 @@ cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
 
     return adapters_list
 
-def get_adapters_addresses(
-    adapter_family: AdapterFamily = AdapterFamily.UNSPEC,
-    scan_flags: list[ScanFlags] = [ScanFlags.INCLUDE_PREFIX],
+cdef _get_adapters_addresses_by_family(
+    adapter_family: AdapterFamily,
+    scan_flags: list[ScanFlags] | ScanFlags,
 ):
     cdef:
         unsigned long dwRetVal = 0
@@ -79,6 +79,8 @@ def get_adapters_addresses(
         IP_ADAPTER_DNS_SERVER_ADDRESS_XP *pDnServer = NULL
         IP_ADAPTER_PREFIX_XP* pPrefix = NULL
     
+    if not isinstance(scan_flags, list):
+        scan_flags = [scan_flags]
     for flag in scan_flags:
         flags |= <uint32_t> flag
 
@@ -105,4 +107,15 @@ def get_adapters_addresses(
 
     adapters = _parse_adapters(pAddresses)
     free(pAddresses)
+    return adapters
+
+def get_adapters_addresses(
+    adapter_families: list[AdapterFamily] | AdapterFamily = AdapterFamily.UNSPEC,
+    scan_flags: list[ScanFlags] | ScanFlags = ScanFlags.INCLUDE_PREFIX,
+) -> list[CyAdapter]:
+    adapters = []
+    if not isinstance(adapter_families, list):
+        adapter_families = [adapter_families]
+    for adapter_family in adapter_families:
+        adapters.extend(_get_adapters_addresses_by_family(adapter_family, scan_flags))
     return adapters
