@@ -60,12 +60,12 @@ cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
 
 def get_adapters_addresses(
     adapter_family: AdapterFamily = AdapterFamily.UNSPEC,
-    scan_flags: ScanFlags = ScanFlags.INCLUDE_PREFIX,
+    scan_flags: list[ScanFlags] = [ScanFlags.INCLUDE_PREFIX],
 ):
     cdef:
         unsigned long dwRetVal = 0
         unsigned int i = 0
-        uint32_t flags = <uint32_t>  scan_flags
+        uint32_t flags = 0
         uint32_t family = <uint32_t> adapter_family
 
         PIP_ADAPTER_ADDRESSES_LH pAddresses = NULL
@@ -78,6 +78,9 @@ def get_adapters_addresses(
         PIP_ADAPTER_MULTICAST_ADDRESS_XP pMulticast = NULL
         IP_ADAPTER_DNS_SERVER_ADDRESS_XP *pDnServer = NULL
         IP_ADAPTER_PREFIX_XP* pPrefix = NULL
+    
+    for flag in scan_flags:
+        flags |= <uint32_t> flag
 
     outBufLen = _WORKING_BUFFER_SIZE
     while Iterations < _MAX_TRIES:
