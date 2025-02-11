@@ -31,9 +31,9 @@ class CylpSockaddr:
     sa_family: int | None
     sa_data: bytes | None
 
-    def __init__(self, sa_family: int, sa_data: bytes):
+    def __init__(self, sa_family: int | None, sa_data: bytes | None):        
         self.sa_family = sa_family
-        if len(sa_data) != 14:
+        if sa_data is not None and len(sa_data) != 14:
             raise ValueError("sa_data must be exactly 14 bytes long")
         self.sa_data = sa_data
 
@@ -68,11 +68,25 @@ class CyFirstAnycastMulticastAddress:
 
 @cython.cclass
 @dataclasses.dataclass
-class CyFirstDnsServerAddress:
+class CyFirstAnyServerAddress:
     Alignment: int
     Length: int
     Reserved: int
     Address: CySocketAddress
+
+@cython.cclass
+@dataclasses.dataclass
+class CyFirstPrefix:
+    Alignment: int
+    Length: int
+    Flags: int
+    Address: CySocketAddress
+    PrefixLength: int
+
+@cython.cclass
+@dataclasses.dataclass
+class CyFirstDnsSuffix:
+    String: list[str]
 
 @cython.cclass
 @dataclasses.dataclass
@@ -84,38 +98,48 @@ class CyAdapter:
     FirstUnicastAddress: list[CyFirstUnicastAddress]
     FirstAnycastAddress: list[CyFirstAnycastMulticastAddress]
     FirstMulticastAddress: list[CyFirstAnycastMulticastAddress]
-    FirstDnsServerAddress: list[CyFirstDnsServerAddress]
+    FirstDnsServerAddress: list[CyFirstAnyServerAddress]
     DnsSuffix: str
     Description: str
     FriendlyName: str
     PhysicalAddress: str
     PhysicalAddressLength: int
-    # FlagsUnion
+    Flags: int
+    DdnsEnabled: int
+    RegisterAdapterSuffix: int
+    Dhcpv4Enabled: int
+    ReceiveOnly: int
+    NoMulticast: int
+    Ipv6OtherStatefulConfig: int
+    NetbiosOverTcpipEnabled: int
+    Ipv4Enabled: int
+    Ipv6Enabled: int
+    Ipv6ManagedAddressConfigurationSupported: int
     Mtu: int
     IfType: int
-    # OperStatus
+    OperStatus: int
     Ipv6IfIndex: int
-    #ZoneIndices
-    # FirstPrefix
+    ZoneIndices: str
+    FirstPrefix: list[CyFirstPrefix]
     TransmitLinkSpeed: int
     ReceiveLinkSpeed: int
-    # FirstWinsServerAddress
-    # FirstGatewayAddress
+    FirstWinsServerAddress: list[CyFirstAnyServerAddress]
+    FirstGatewayAddress: list[CyFirstAnyServerAddress]
     Ipv4Metric: int
     Ipv6Metric: int
-    # Luid
-    # Dhcpv4Server
+    Luid: int
+    Dhcpv4Server: CySocketAddress
     CompartmentId: int
-    # NetworkGuid
-    # ConnectionType
-    # TunnelType
-    # Dhcpv6Server
+    NetworkGuid: str
+    ConnectionType: int
+    TunnelType: int
+    Dhcpv6Server: CySocketAddress
     Dhcpv6ClientDuid: str
     Dhcpv6ClientDuidLength: int
     Dhcpv6Iaid: int
-    # FirstDnsSuffix
+    FirstDnsSuffix: list[CyFirstDnsSuffix]
 
-cdef _pwchar_to_str(PWCHAR wide_str):
+cdef _pwchar_to_str(WCHAR* wide_str):
     if wide_str is NULL:
         return None
     
@@ -139,7 +163,7 @@ cdef list[CyFirstUnicastAddress] _parse_unicast_address(IP_ADAPTER_UNICAST_ADDRE
     parsed_data = []
 
     while current_data:
-        unicast_address = CyFirstUnicastAddress(
+        address = CyFirstUnicastAddress(
             Alignment=current_data.Alignment,
             Length=current_data.Length,
             Flags=current_data.Flags,
@@ -152,7 +176,7 @@ cdef list[CyFirstUnicastAddress] _parse_unicast_address(IP_ADAPTER_UNICAST_ADDRE
             LeaseLifetime=current_data.LeaseLifetime,
             OnLinkPrefixLength=current_data.OnLinkPrefixLength,
         )
-        parsed_data.append(unicast_address)
+        parsed_data.append(address)
         current_data = current_data.Next
     return parsed_data
 
@@ -165,28 +189,62 @@ cdef list[CyFirstAnycastMulticastAddress] _parse_anycast_multicast_address(Anyca
     parsed_data = []
 
     while current_data:
-        unicast_address = CyFirstAnycastMulticastAddress(
+        address = CyFirstAnycastMulticastAddress(
             Alignment=current_data.Alignment,
             Length=current_data.Length,
             Flags=current_data.Flags,
             Address=_parse_socket_address(current_data.Address),
         )
-        parsed_data.append(unicast_address)
+        parsed_data.append(address)
         current_data = current_data.Next
     return parsed_data
 
-cdef list[CyFirstDnsServerAddress] _parse_dns_server_address(IP_ADAPTER_DNS_SERVER_ADDRESS_XP* data):
-    cdef IP_ADAPTER_DNS_SERVER_ADDRESS_XP* current_data = data
+ctypedef fused AnyServerAddress:
+    IP_ADAPTER_DNS_SERVER_ADDRESS_XP
+    IP_ADAPTER_WINS_SERVER_ADDRESS_LH
+    IP_ADAPTER_GATEWAY_ADDRESS_LH
+
+cdef list[CyFirstAnyServerAddress] _parse_any_server_address(AnyServerAddress* data):
+    cdef AnyServerAddress* current_data = data
     parsed_data = []
 
     while current_data:
-        unicast_address = CyFirstDnsServerAddress(
+        address = CyFirstAnyServerAddress(
             Alignment=current_data.Alignment,
             Length=current_data.Length,
             Reserved=current_data.Reserved,
             Address=_parse_socket_address(current_data.Address),
         )
-        parsed_data.append(unicast_address)
+        parsed_data.append(address)
+        current_data = current_data.Next
+    return parsed_data
+
+cdef list[CyFirstPrefix] _parse_adapter_prefix(IP_ADAPTER_PREFIX_XP* data):
+    cdef IP_ADAPTER_PREFIX_XP* current_data = data
+    parsed_data = []
+
+    while current_data:
+        prefix = CyFirstPrefix(
+            Alignment=current_data.Alignment,
+            Length=current_data.Length,
+            Flags=current_data.Flags,
+            Address=_parse_socket_address(current_data.Address),
+            PrefixLength=current_data.PrefixLength
+        )
+        parsed_data.append(prefix)
+        current_data = current_data.Next
+    return parsed_data
+
+cdef list[CyFirstDnsSuffix] _parse_dns_suffix(IP_ADAPTER_DNS_SUFFIX* data):
+    cdef IP_ADAPTER_DNS_SUFFIX* current_data = data
+    parsed_data = []
+
+    while current_data:
+        parsed_data.append(
+            CyFirstDnsSuffix(
+                String=[current_data.String[i].decode("utf-8") for i in range(MAX_DNS_SUFFIX_STRING_LENGTH) if current_data.String[i] is not None]
+            )
+        )
         current_data = current_data.Next
     return parsed_data
 
@@ -201,8 +259,15 @@ cdef str _parse_physical_address(uint8_t* physical_adress, uint32_t physical_adr
             result += "%.2X-" % physical_adress[i]
     return result
 
+cdef str _parse_network_guid(NET_IF_NETWORK_GUID guid):
+    parsed_guid = f"{guid.Data1:08x}-{guid.Data2:04x}-{guid.Data3:04x}-"
+    for i in range(8):
+        parsed_guid += f"{guid.Data4[i]:02x}"
+    return parsed_guid
+
 cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
     cdef PIP_ADAPTER_ADDRESSES_LH current_adapter = adapters_addresses
+    
     adapters_list = []
     while current_adapter:
         parsed_adapter = CyAdapter(
@@ -213,24 +278,46 @@ cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
             FirstUnicastAddress=_parse_unicast_address(current_adapter.FirstUnicastAddress),
             FirstAnycastAddress=_parse_anycast_multicast_address(current_adapter.FirstAnycastAddress),
             FirstMulticastAddress=_parse_anycast_multicast_address(current_adapter.FirstMulticastAddress),
-            FirstDnsServerAddress=_parse_dns_server_address(current_adapter.FirstDnsServerAddress),
+            FirstDnsServerAddress=_parse_any_server_address(current_adapter.FirstDnsServerAddress),
             DnsSuffix=_pwchar_to_str(current_adapter.DnsSuffix),
             Description=_pwchar_to_str(current_adapter.Description),
             FriendlyName=_pwchar_to_str(current_adapter.FriendlyName),
             PhysicalAddress=_parse_physical_address(current_adapter.PhysicalAddress, current_adapter.PhysicalAddressLength),
             PhysicalAddressLength=current_adapter.PhysicalAddressLength,
+            Flags=current_adapter.Flags,
+            DdnsEnabled=current_adapter.DdnsEnabled,
+            RegisterAdapterSuffix=current_adapter.RegisterAdapterSuffix,
+            Dhcpv4Enabled=current_adapter.Dhcpv4Enabled,
+            ReceiveOnly=current_adapter.ReceiveOnly,
+            NoMulticast=current_adapter.NoMulticast,
+            Ipv6OtherStatefulConfig=current_adapter.Ipv6OtherStatefulConfig,
+            NetbiosOverTcpipEnabled=current_adapter.NetbiosOverTcpipEnabled,
+            Ipv4Enabled=current_adapter.Ipv4Enabled,
+            Ipv6Enabled=current_adapter.Ipv6Enabled,
+            Ipv6ManagedAddressConfigurationSupported=current_adapter.Ipv6ManagedAddressConfigurationSupported,
             Mtu=current_adapter.Mtu,
             IfType=current_adapter.IfType,
+            OperStatus=<int>current_adapter.OperStatus,
             Ipv6IfIndex=current_adapter.Ipv6IfIndex,
-            # ZoneIndices=current_adapter.ZoneIndices,
+            ZoneIndices=' '.join('%lx' % current_adapter.ZoneIndices[i] for i in range(16)),
+            FirstPrefix=_parse_adapter_prefix(current_adapter.FirstPrefix),
             TransmitLinkSpeed=current_adapter.TransmitLinkSpeed,
             ReceiveLinkSpeed=current_adapter.ReceiveLinkSpeed,
+            FirstWinsServerAddress=_parse_any_server_address(current_adapter.FirstWinsServerAddress),
+            FirstGatewayAddress=_parse_any_server_address(current_adapter.FirstGatewayAddress),
             Ipv4Metric=current_adapter.Ipv4Metric,
             Ipv6Metric=current_adapter.Ipv6Metric,
+            Luid=current_adapter.Luid.Value,
+            Dhcpv4Server=_parse_socket_address(current_adapter.Dhcpv4Server),
             CompartmentId=current_adapter.CompartmentId,
+            NetworkGuid=_parse_network_guid(current_adapter.NetworkGuid),
+            ConnectionType=<int>current_adapter.ConnectionType,
+            TunnelType=<int>current_adapter.TunnelType,
+            Dhcpv6Server=_parse_socket_address(current_adapter.Dhcpv6Server),
             Dhcpv6ClientDuid=current_adapter.Dhcpv6ClientDuid.decode("utf-8"),
             Dhcpv6ClientDuidLength=current_adapter.Dhcpv6ClientDuidLength,
-            Dhcpv6Iaid=current_adapter.Dhcpv6Iaid
+            Dhcpv6Iaid=current_adapter.Dhcpv6Iaid,
+            FirstDnsSuffix=_parse_dns_suffix(current_adapter.FirstDnsSuffix)
         )
         adapters_list.append(parsed_adapter)
         current_adapter = current_adapter.Next

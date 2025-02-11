@@ -112,6 +112,9 @@ cdef extern from "iptypes.h":
         MAX_ADAPTER_ADDRESS_LENGTH
         MAX_DNS_SUFFIX_STRING_LENGTH
         MAX_DHCPV6_DUID_LENGTH
+    
+    ctypedef uint16_t WCHAR
+    ctypedef WCHAR* PWCHAR
 
     # https://learn.microsoft.com/en-us/windows/win32/api/ws2def/ns-ws2def-socket_address
     ctypedef struct _SOCKET_ADDRESS:
@@ -232,29 +235,18 @@ cdef extern from "iptypes.h":
     # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_dns_suffix
     ctypedef struct _IP_ADAPTER_DNS_SUFFIX:
         _IP_ADAPTER_DNS_SUFFIX* Next
-        char* String[MAX_DNS_SUFFIX_STRING_LENGTH]
+        WCHAR String[MAX_DNS_SUFFIX_STRING_LENGTH]
     ctypedef _IP_ADAPTER_DNS_SUFFIX IP_ADAPTER_DNS_SUFFIX
     ctypedef _IP_ADAPTER_DNS_SUFFIX* PIP_ADAPTER_DNS_SUFFIX
 
-    cdef struct _FLAGS_STRUCT:
-        uint32_t DdnsEnabled
-        uint32_t RegisterAdapterSuffix
-        uint32_t Dhcpv4Enabled
-        uint32_t ReceiveOnly
-        uint32_t NoMulticast
-        uint32_t Ipv6OtherStatefulConfig
-        uint32_t NetbiosOverTcpipEnabled
-        uint32_t Ipv4Enabled
-        uint32_t Ipv6Enabled
-        uint32_t Ipv6ManagedAddressConfigurationSupported
+    # https://learn.microsoft.com/en-us/windows/win32/api/guiddef/ns-guiddef-guid
+    ctypedef struct _GUID:
+        uint32_t Data1
+        uint16_t Data2
+        uint16_t Data3
+        uint8_t Data4[8]
+    ctypedef _GUID NET_IF_NETWORK_GUID
 
-    cdef union _FLAGS_UNION:
-        uint32_t Flags
-        _FLAGS_STRUCT BitFields
-
-    ctypedef uint8_t NET_IF_NETWORK_GUID[16]
-
-    ctypedef uint16_t* PWCHAR
 
     # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_addresses_lh
     ctypedef struct _IP_ADAPTER_ADDRESSES_LH:
@@ -272,7 +264,17 @@ cdef extern from "iptypes.h":
         PWCHAR FriendlyName
         uint8_t PhysicalAddress[MAX_ADAPTER_ADDRESS_LENGTH]
         uint32_t PhysicalAddressLength
-        _FLAGS_UNION FlagsUnion
+        uint32_t Flags
+        uint32_t DdnsEnabled
+        uint32_t RegisterAdapterSuffix
+        uint32_t Dhcpv4Enabled
+        uint32_t ReceiveOnly
+        uint32_t NoMulticast
+        uint32_t Ipv6OtherStatefulConfig
+        uint32_t NetbiosOverTcpipEnabled
+        uint32_t Ipv4Enabled
+        uint32_t Ipv6Enabled
+        uint32_t Ipv6ManagedAddressConfigurationSupported
         uint32_t Mtu
         uint32_t IfType # https://learn.microsoft.com/en-us/windows-hardware/drivers/network/ndis-interface-types
         IF_OPER_STATUS OperStatus
