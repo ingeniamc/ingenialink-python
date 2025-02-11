@@ -309,7 +309,7 @@ class ConfigurationFile(XMLBase, ABC):
         return major_version, minor_version
 
     @classmethod
-    def from_xcf(cls, xcf_path: str) -> "ConfigurationFile":
+    def load_from_xcf(cls, xcf_path: str) -> "ConfigurationFile":
         """Creates a XCF instance from a XCF file.
 
         Args:
@@ -354,7 +354,7 @@ class ConfigurationFile(XMLBase, ABC):
         return xcf_instance
 
     @classmethod
-    def create_xcf(
+    def create_empty_configuration(
         cls,
         interface: Interface,
         part_number: Optional[str],
@@ -402,7 +402,7 @@ class ConfigurationFile(XMLBase, ABC):
         self.__registers.append(config_register)
         self.__subnodes.add(config_register.subnode)
 
-    def to_xcf(self, xcf_path: str) -> None:
+    def save_to_xcf(self, xcf_path: str) -> None:
         """Save a file with the config file in the target path.
 
         Args:

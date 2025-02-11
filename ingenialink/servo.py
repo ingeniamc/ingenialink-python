@@ -342,7 +342,7 @@ class Servo:
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ValueError("Invalid subnode")
-        xcf_instance = ConfigurationFile.from_xcf(config_file)
+        xcf_instance = ConfigurationFile.load_from_xcf(config_file)
 
         if subnode == 0 and not xcf_instance.contains_node(subnode):
             raise ValueError(f"Cannot check {config_file} at subnode {subnode}")
@@ -419,7 +419,7 @@ class Servo:
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ValueError("Invalid subnode")
-        xcf_instance = ConfigurationFile.from_xcf(config_file)
+        xcf_instance = ConfigurationFile.load_from_xcf(config_file)
 
         if subnode == 0 and not xcf_instance.contains_node(subnode):
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
@@ -467,14 +467,10 @@ class Servo:
         if self.interface == Interface.CAN and isinstance(self.target, int):
             node_id = self.target
 
-        xcf_instance = ConfigurationFile.create_xcf(
-            self.interface,
-            self.dictionary.part_number,
-            prod_code,
-            rev_number,
-            firmware_version,
-            node_id,
-        )
+        xcf_instance = ConfigurationFile.create_empty_configuration(self.interface,
+                                                                    self.dictionary.part_number,
+                                                                    prod_code, rev_number,
+                                                                    firmware_version, node_id)
         for configuration_registers in self._registers_to_save_in_configuration_file(
             subnode
         ).values():
@@ -492,7 +488,7 @@ class Servo:
                         str(configuration_register.identifier),
                         e,
                     )
-        xcf_instance.to_xcf(config_file)
+        xcf_instance.save_to_xcf(config_file)
 
     def _is_register_valid_for_configuration_file(self, register: Register) -> bool:
         """Check if a register is valid for the configuration file.

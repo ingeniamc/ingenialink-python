@@ -1404,7 +1404,7 @@ class VirtualDrive(Thread):
         configuration_file = os.path.join(
             pathlib.Path(__file__).parent.resolve(), self.PATH_CONFIGURATION_RELATIVE
         )
-        conf_file = ConfigurationFile.from_xcf(configuration_file)
+        conf_file = ConfigurationFile.load_from_xcf(configuration_file)
         for conf_register in conf_file.registers:
             subnode = conf_register.subnode
             reg_data = conf_register.storage

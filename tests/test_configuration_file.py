@@ -9,7 +9,7 @@ from ingenialink.register import Register
 @pytest.mark.no_connection
 def test_from_xcf():
     test_file = "./tests/resources/test_config_file.xcf"
-    conf_file = ConfigurationFile.from_xcf(test_file)
+    conf_file = ConfigurationFile.load_from_xcf(test_file)
     assert conf_file.device.interface == Interface.CAN
     assert conf_file.device.part_number == "EVE-NET-C"
     assert conf_file.device.product_code == 493840
@@ -27,7 +27,7 @@ def test_from_xcf():
 
 @pytest.mark.no_connection
 def test_from_register():
-    conf_file = ConfigurationFile.create_xcf(Interface.CAN, "a", 0, 0, "0.0.0")
+    conf_file = ConfigurationFile.create_empty_configuration(Interface.CAN, "a", 0, 0, "0.0.0")
     reg = Register(RegDtype.FLOAT, RegAccess.RW, "TEST_REG", subnode=2)
     conf_file.add_register(reg, 5.5)
     assert conf_file.registers[0].dtype == RegDtype.FLOAT
@@ -40,5 +40,5 @@ def test_from_register():
 @pytest.mark.no_connection
 def test_to_xcf_fail_no_device():
     with pytest.raises(ValueError):
-        conf = ConfigurationFile.create_xcf(Interface.CAN, "a", 0, 0, "0.0.0")
-        conf.to_xcf("test_path")
+        conf = ConfigurationFile.create_empty_configuration(Interface.CAN, "a", 0, 0, "0.0.0")
+        conf.save_to_xcf("test_path")

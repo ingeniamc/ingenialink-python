@@ -136,7 +136,7 @@ def test_save_configuration(connect_to_slave):
 
     assert os.path.isfile(filename)
 
-    config_file = ConfigurationFile.from_xcf(filename)
+    config_file = ConfigurationFile.load_from_xcf(filename)
 
     prod_code, rev_number = servo._get_drive_identification()
     assert config_file.device.product_code == prod_code
@@ -214,7 +214,7 @@ def test_load_configuration(connect_to_slave):
     servo.save_configuration(filename)
     assert os.path.isfile(filename)
     servo.load_configuration(filename)
-    config_file = ConfigurationFile.from_xcf(filename)
+    config_file = ConfigurationFile.load_from_xcf(filename)
 
     for register in config_file.registers:
         # Check if the register exists in the drive
@@ -794,7 +794,8 @@ def test__adapt_configuration_file_storage_value(
     connect_to_slave, uid, subnode, value, node_id, dependent
 ):
     servo, net = connect_to_slave
-    conf_file = ConfigurationFile.create_xcf(Interface.CAN, None, None, None, None, node_id)
+    conf_file = ConfigurationFile.create_empty_configuration(Interface.CAN, None, None, None, None,
+                                                             node_id)
     node_id_reg = servo.dictionary.registers(subnode)[uid]
     node_id_reg._CanopenRegister__is_node_id_dependent = dependent
     conf_file.add_register(node_id_reg, value)
