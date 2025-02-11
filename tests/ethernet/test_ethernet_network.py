@@ -109,34 +109,35 @@ def test_net_status_listener(virtual_drive, mocker):
     mocker.patch("ingenialink.servo.Servo.is_alive", return_value=False)
     time.sleep(1)
 
+    # Assert that the net status callback is notified of net status change event
     assert len(status_list) == 1
     assert status_list[0] == NetDevEvt.REMOVED
 
-    # Undo the previous mock
+    # Mock a reconnection
     mocker.patch("ingenialink.servo.Servo.is_alive", return_value=True)
     time.sleep(1)
     net.stop_status_listener()
 
+    # Assert that the net status callback is notified of net status change event
     assert len(status_list) == 2
     assert status_list[1] == NetDevEvt.ADDED
 
 
 @pytest.mark.no_connection
-def test_unsubscribe_from_status(virtual_drive):
+def test_unsubscribe_from_status(virtual_drive, mocker):
     server, _ = virtual_drive
     net = EthernetNetwork()
-
-    status_list = []
-    net.connect_to_slave(server.ip, server.dictionary_path, port=server.port)
+    net.connect_to_slave(server.ip, dictionary=server.dictionary_path, port=server.port)
 
     status_list = []
     net.subscribe_to_status(server.ip, status_list.append)
+    net.start_status_listener()
     net.unsubscribe_from_status(server.ip, status_list.append)
 
-    # Emulate a disconnection. TODO: disconnect from the virtual drive
-    net._set_servo_state(server.ip, NetState.DISCONNECTED)
-    net.start_status_listener()
-    time.sleep(2)
+    # Mock a disconnection
+    mocker.patch("ingenialink.servo.Servo.is_alive", return_value=False)
+    time.sleep(1)
     net.stop_status_listener()
 
+    # Assert that the net status callback is not notified of net status change event
     assert len(status_list) == 0
