@@ -59,10 +59,10 @@ class Device:
         self.firmware_version = firmware_version
         self.node_id = node_id
 
-        self.interface_value_to_str = {
+        self.__interface_value_to_str = {
             value: key for key, value in self.INTERFACE_XCF_OPTIONS.items()
         }
-        self.interface_value_to_str[Interface.VIRTUAL] = "ETH"
+        self.__interface_value_to_str[Interface.VIRTUAL] = "ETH"
 
     @classmethod
     def from_xcf(cls, element: ElementTree.Element) -> "Device":
@@ -90,10 +90,10 @@ class Device:
         """Creates an XML element with class data.
 
         Returns:
-            XML element dilled with class data
+            XML element filled with class data
         """
         register_xml = ElementTree.Element(self.ELEMENT_NAME)
-        register_xml.set(self.INTERFACE_ATTR, self.interface_value_to_str[self.interface])
+        register_xml.set(self.INTERFACE_ATTR, self.__interface_value_to_str[self.interface])
         if self.firmware_version is not None:
             register_xml.set(self.FW_VERSION_ATTR, self.firmware_version)
         if self.product_code is not None:
@@ -131,10 +131,10 @@ class ConfigRegister:
         self.access = access
         self.storage = storage
 
-        self.access_value_to_str = {
+        self.__access_value_to_str = {
             value: key for key, value in Dictionary.access_xdf_options.items()
         }
-        self.dtype_value_to_str = {
+        self.__dtype_value_to_str = {
             value: key for key, value in Dictionary.dtype_xdf_options.items()
         }
 
@@ -179,7 +179,7 @@ class ConfigRegister:
     def from_register(
         cls, register: Register, value: Union[float, int, str, bool]
     ) -> "ConfigRegister":
-        """Creates a ConfigRegister from a register, and it's value.
+        """Creates a ConfigRegister from a register, and its value.
 
         Returns:
             ConfigRegister instance filled with register data
@@ -192,14 +192,14 @@ class ConfigRegister:
         return cls(register.identifier, register.subnode, register.dtype, register.access, value)
 
     def to_xcf(self) -> ElementTree.Element:
-        """Creates a XMl element from class data.
+        """Creates a XML element from class data.
 
         Returns:
             XML register element filled with class data
         """
         register_xml = ElementTree.Element(self.ELEMENT_NAME)
-        register_xml.set(self.ACCESS_ATTR, self.access_value_to_str[self.access])
-        register_xml.set(self.DTYPE_ATTR, self.dtype_value_to_str[self.dtype])
+        register_xml.set(self.ACCESS_ATTR, self.__access_value_to_str[self.access])
+        register_xml.set(self.DTYPE_ATTR, self.__dtype_value_to_str[self.dtype])
         register_xml.set(self.ID_ATTR, self.uid)
         register_xml.set(self.SUBNODE_ATTR, str(self.subnode))
         if isinstance(self.storage, float):

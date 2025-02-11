@@ -384,8 +384,8 @@ class Servo:
     ) -> Union[int, float, str, bytes]:
         """Adapt storage value to the current servo.
 
-        This function do nothing except when registers values depends on Node ID,
-        servo is a CANopen servo and XCF has the Node ID.
+        This function performs no action unless the register is a CanOpen subitem
+        that depend on the Node ID, and the XCF file indicates it.
 
         Args:
             configuration_file: target configuration file
