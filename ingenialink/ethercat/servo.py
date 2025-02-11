@@ -101,11 +101,11 @@ class EthercatServo(PDOServo):
         self.__slave.add_emergency_callback(self._on_emcy)
         super().__init__(slave_id, dictionary_path, servo_status_listener)
 
-    def delete_servo_reference_from_pdo_maps(self) -> None:
-        """Remove the servo reference.
+    def teardown(self) -> None:
+        """Perform the necessary actions for teardown."""
+        self.stop_status_listener()
 
-        Should be done on servo disconnection.
-        """
+        # Remove the servo reference from the pdo maps
         for rpdo_map in self._rpdo_maps:
             rpdo_map.slave = None
         for tpdo_map in self._tpdo_maps:
