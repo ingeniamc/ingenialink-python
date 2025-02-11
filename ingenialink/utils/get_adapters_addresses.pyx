@@ -1,8 +1,8 @@
 from GetAdaptersAddresses cimport *
 from libc.stdlib cimport malloc, free
-from libc.stdint cimport uint32_t
 import dataclasses
 import cython
+from libc.string cimport strlen
 
 _MAX_TRIES = 3
 _WORKING_BUFFER_SIZE = 15000
@@ -16,9 +16,18 @@ cpdef enum AdapterFamily:
 @dataclasses.dataclass
 class CyAdapter:
     IfIndex: int
-    #AdapterName: str
-    #Description: str
-    #FriendlyName: str
+    AdapterName: str
+    Description: str
+    FriendlyName: str
+
+cdef _pwchar_to_str(PWCHAR wide_str):
+    if wide_str is NULL:
+        return None
+    
+    cdef int length = 0
+    while wide_str[length] != 0:
+        length += 1
+    return (<char *>wide_str)[:length * 2].decode('utf-16le')
 
 cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
     cdef PIP_ADAPTER_ADDRESSES_LH current_adapter = adapters_addresses
@@ -27,12 +36,10 @@ cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
     while current_adapter:
         parsed_adapter = CyAdapter(
             IfIndex=current_adapter.IfIndex,
-            #AdapterName=current_adapter.AdapterName.decode("utf-8"),
-            #Description=current_adapter.Description.decode("utf-8"),
-            #FriendlyName=current_adapter.FriendlyName.decode("utf-8"),
+            AdapterName=current_adapter.AdapterName.decode("utf-8"),
+            Description=_pwchar_to_str(current_adapter.Description),
+            FriendlyName=_pwchar_to_str(current_adapter.FriendlyName),
         )
-        print(parsed_adapter)
-        print("-----------")
         adapters_list.append(parsed_adapter)
         current_adapter = current_adapter.Next
 
@@ -62,27 +69,18 @@ def get_adapters_addresses(adapter_family: AdapterFamily = AdapterFamily.UNSPEC)
         family = AF_INET6
 
     outBufLen = _WORKING_BUFFER_SIZE
-    dwRetVal = ERROR_BUFFER_OVERFLOW # TODO:check this magic
-
-    print(f"Checking {family=}")
-    print(f"{dwRetVal=}, {ERROR_BUFFER_OVERFLOW=}")
-
-    while (dwRetVal == ERROR_BUFFER_OVERFLOW) & (Iterations < _MAX_TRIES):
+    while Iterations < _MAX_TRIES:
         pAddresses = <PIP_ADAPTER_ADDRESSES_LH> malloc(outBufLen)
         if pAddresses == NULL:
             raise MemoryError("Memory allocation failed for IP_ADAPTER_ADDRESSES struct")
 
         dwRetVal = GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen)
         if dwRetVal == ERROR_BUFFER_OVERFLOW:
-            print(f"{Iterations=}: ERROR_BUFFER_OVERFLOW")
             free(pAddresses)
             pAddresses = NULL
         else:
-            print(f"Adapter addresses retrieved")
             break
         Iterations += 1
-
-    print(f"Finished: {dwRetVal=}")
 
     if dwRetVal != NO_ERROR:
         free(pAddresses)

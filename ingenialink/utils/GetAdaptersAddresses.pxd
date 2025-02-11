@@ -243,6 +243,8 @@ cdef extern from "iptypes.h":
 
     ctypedef uint8_t NET_IF_NETWORK_GUID[16]
 
+    ctypedef uint16_t* PWCHAR
+
     # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_addresses_lh
     ctypedef struct _IP_ADAPTER_ADDRESSES_LH:
         uint64_t Alignment
@@ -254,9 +256,9 @@ cdef extern from "iptypes.h":
         PIP_ADAPTER_ANYCAST_ADDRESS_XP FirstAnycastAddress
         PIP_ADAPTER_MULTICAST_ADDRESS_XP FirstMulticastAddress
         PIP_ADAPTER_DNS_SERVER_ADDRESS_XP FirstDnsServerAddress
-        uint16_t* DnsSuffix
-        uint16_t* Description
-        uint16_t* FriendlyName
+        PWCHAR DnsSuffix
+        PWCHAR Description
+        PWCHAR FriendlyName
         uint8_t PhysicalAddress[MAX_ADAPTER_ADDRESS_LENGTH]
         uint32_t PhysicalAddressLength
         _FLAGS_UNION FlagsUnion
