@@ -1151,15 +1151,16 @@ class DictionaryV2(Dictionary):
         },
     }
 
-    _INTERFACE_STR = {
-        Interface.CAN: "CAN",
-        Interface.ECAT: "ETH",
-        Interface.EoE: "ETH",
-        Interface.ETH: "ETH",
-    }
-
     def __init__(self, dictionary_path: str) -> None:
         super().__init__(dictionary_path, self.interface)
+
+    @staticmethod
+    def _interface_to_str(interface: Interface) -> str:
+        if interface is Interface.CAN:
+            return "CAN"
+        if interface in [Interface.ECAT, Interface.EoE, Interface.ETH]:
+            return "ETH"
+        raise AttributeError(f"{interface=} has no string associated.")
 
     @override
     @classmethod
@@ -1178,7 +1179,10 @@ class DictionaryV2(Dictionary):
                 f"Could not load the dictionary {dictionary_path}. Device information is missing"
             )
         dict_interface = device.attrib.get("Interface")
-        if cls._INTERFACE_STR[interface] != dict_interface and dict_interface is not None:
+        if (
+            DictionaryV2._interface_to_str(interface) != dict_interface
+            and dict_interface is not None
+        ):
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
         firmware_version = device.attrib.get("firmwareVersion")
         product_code = device.attrib.get("ProductCode")
@@ -1244,7 +1248,7 @@ class DictionaryV2(Dictionary):
         self.dict_interface = device.attrib.get("Interface")
         if (
             self.interface != Interface.VIRTUAL
-            and self._INTERFACE_STR[self.interface] != self.dict_interface
+            and DictionaryV2._interface_to_str(self.interface) != self.dict_interface
             and self.dict_interface is not None
         ):
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
