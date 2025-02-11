@@ -96,26 +96,7 @@ def test_load_firmware_error_during_loading():
 
 
 @pytest.mark.no_connection
-def test_net_status_listener_connection(virtual_drive):
-    server, _ = virtual_drive
-    net = EthernetNetwork()
-    status_list = []
-    net.connect_to_slave(server.ip, dictionary=server.dictionary_path, port=server.port)
-
-    status_list = []
-    net.subscribe_to_status(server.ip, status_list.append)
-    # Emulate a disconnection. TODO: disconnect from the virtual drive
-    net._set_servo_state(server.ip, NetState.DISCONNECTED)
-    net.start_status_listener()
-    time.sleep(2)
-    net.stop_status_listener()
-
-    assert len(status_list) == 1
-    assert status_list[0] == NetDevEvt.ADDED
-
-
-@pytest.mark.no_connection
-def test_net_status_listener_disconnection(virtual_drive, mocker):
+def test_net_status_listener(virtual_drive, mocker):
     server, _ = virtual_drive
     net = EthernetNetwork()
     net.connect_to_slave(server.ip, dictionary=server.dictionary_path, port=server.port)
@@ -124,13 +105,20 @@ def test_net_status_listener_disconnection(virtual_drive, mocker):
     net.subscribe_to_status(server.ip, status_list.append)
     net.start_status_listener()
 
-    time.sleep(1)
+    # Mock a disconnection
     mocker.patch("ingenialink.servo.Servo.is_alive", return_value=False)
     time.sleep(1)
-    net.stop_status_listener()
 
     assert len(status_list) == 1
     assert status_list[0] == NetDevEvt.REMOVED
+
+    # Undo the previous mock
+    mocker.patch("ingenialink.servo.Servo.is_alive", return_value=True)
+    time.sleep(1)
+    net.stop_status_listener()
+
+    assert len(status_list) == 2
+    assert status_list[1] == NetDevEvt.ADDED
 
 
 @pytest.mark.no_connection
