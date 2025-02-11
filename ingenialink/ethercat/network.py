@@ -249,6 +249,7 @@ class EthercatNetwork(Network):
             servo: Instance of the servo connected.
 
         """
+        servo.delete_servo_reference_from_pdo_maps()
         servo.stop_status_listener()
         if not self._change_nodes_state(servo, pysoem.INIT_STATE):
             logger.warning("Drive can not reach Init state")

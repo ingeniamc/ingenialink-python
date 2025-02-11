@@ -101,6 +101,17 @@ class EthercatServo(PDOServo):
         self.__slave.add_emergency_callback(self._on_emcy)
         super().__init__(slave_id, dictionary_path, servo_status_listener)
 
+    def delete_servo_reference_from_pdo_maps(self) -> None:
+        """Remove the servo reference.
+
+        Should be done on servo disconnection.
+        """
+        for rpdo_map in self._rpdo_maps:
+            rpdo_map.slave = None
+        for tpdo_map in self._tpdo_maps:
+            tpdo_map.slave = None
+        self.__slave = None
+
     def check_servo_is_in_preoperational_state(self) -> None:
         """Checks if the servo is in preoperational state.
 
