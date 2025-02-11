@@ -114,10 +114,23 @@ def test_net_status_listener_connection(virtual_drive):
     assert status_list[0] == NetDevEvt.ADDED
 
 
-@pytest.mark.skip
 @pytest.mark.no_connection
-def test_net_status_listener_disconnection():
-    pass
+def test_net_status_listener_disconnection(virtual_drive, mocker):
+    server, _ = virtual_drive
+    net = EthernetNetwork()
+    net.connect_to_slave(server.ip, dictionary=server.dictionary_path, port=server.port)
+
+    status_list = []
+    net.subscribe_to_status(server.ip, status_list.append)
+    net.start_status_listener()
+
+    time.sleep(1)
+    mocker.patch("ingenialink.servo.Servo.is_alive", return_value=False)
+    time.sleep(1)
+    net.stop_status_listener()
+
+    assert len(status_list) == 1
+    assert status_list[0] == NetDevEvt.REMOVED
 
 
 @pytest.mark.no_connection
