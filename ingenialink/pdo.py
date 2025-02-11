@@ -438,7 +438,7 @@ class PDOServo(Servo):
         """Checks if the servo is in preoperational state.
 
         Raises:
-            ILPDOOperationalError: if servo is not in preoperational state.
+            ILEcatStateError: if servo is not in preoperational state.
         """
         raise NotImplementedError
 

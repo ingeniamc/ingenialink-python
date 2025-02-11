@@ -13,7 +13,7 @@ from ingenialink.dictionary import Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.exceptions import ILError, ILPDOOperationalError
+from ingenialink.exceptions import ILEcatStateError, ILError
 from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
 from ingenialink.servo import DictionaryFactory
@@ -280,7 +280,7 @@ def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(connec
     }
 
     for method, method_args in locked_methods.items():
-        with pytest.raises(ILPDOOperationalError):
+        with pytest.raises(ILEcatStateError):
             getattr(servo, method)(**method_args["kwargs"])
 
 
