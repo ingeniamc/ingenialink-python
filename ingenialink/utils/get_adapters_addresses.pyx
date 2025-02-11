@@ -28,10 +28,43 @@ cpdef enum ScanFlags:
 @cython.cclass
 @dataclasses.dataclass
 class CyAdapter:
+    Alignment: int
+    Length: int
     IfIndex: int
     AdapterName: str
+    # FirstUnicastAddress
+    # FirstAnycastAddress
+    # FirstMulticastAddress
+    # FirstDnsServerAddress
+    # DnsSuffix
     Description: str
     FriendlyName: str
+    # PhysicalAddress
+    # PhysicalAddressLength
+    # FlagsUnion
+    Mtu: int
+    IfType: int
+    # OperStatus
+    Ipv6IfIndex: int
+    #ZoneIndices
+    # FirstPrefix
+    TransmitLinkSpeed: int
+    ReceiveLinkSpeed: int
+    # FirstWinsServerAddress
+    # FirstGatewayAddress
+    Ipv4Metric: int
+    Ipv6Metric: int
+    # Luid
+    # Dhcpv4Server
+    CompartmentId: int
+    # NetworkGuid
+    # ConnectionType
+    # TunnelType
+    # Dhcpv6Server
+    Dhcpv6ClientDuid: str
+    Dhcpv6ClientDuidLength: int
+    Dhcpv6Iaid: int
+    # FirstDnsSuffix
 
 cdef _pwchar_to_str(PWCHAR wide_str):
     if wide_str is NULL:
@@ -48,10 +81,25 @@ cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
 
     while current_adapter:
         parsed_adapter = CyAdapter(
+            Alignment=current_adapter.Alignment,
+            Length=current_adapter.Length,
             IfIndex=current_adapter.IfIndex,
             AdapterName=current_adapter.AdapterName.decode("utf-8"),
             Description=_pwchar_to_str(current_adapter.Description),
             FriendlyName=_pwchar_to_str(current_adapter.FriendlyName),
+            # PhysicalAddressLength=current_adapter.PhysicalAddressLength,
+            Mtu=current_adapter.Mtu,
+            IfType=current_adapter.IfType,
+            Ipv6IfIndex=current_adapter.Ipv6IfIndex,
+            # ZoneIndices=current_adapter.ZoneIndices,
+            TransmitLinkSpeed=current_adapter.TransmitLinkSpeed,
+            ReceiveLinkSpeed=current_adapter.ReceiveLinkSpeed,
+            Ipv4Metric=current_adapter.Ipv4Metric,
+            Ipv6Metric=current_adapter.Ipv6Metric,
+            CompartmentId=current_adapter.CompartmentId,
+            Dhcpv6ClientDuid=current_adapter.Dhcpv6ClientDuid.decode("utf-8"),
+            Dhcpv6ClientDuidLength=current_adapter.Dhcpv6ClientDuidLength,
+            Dhcpv6Iaid=current_adapter.Dhcpv6Iaid
         )
         adapters_list.append(parsed_adapter)
         current_adapter = current_adapter.Next
