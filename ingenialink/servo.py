@@ -467,10 +467,14 @@ class Servo:
         if self.interface == Interface.CAN and isinstance(self.target, int):
             node_id = self.target
 
-        xcf_instance = ConfigurationFile.create_empty_configuration(self.interface,
-                                                                    self.dictionary.part_number,
-                                                                    prod_code, rev_number,
-                                                                    firmware_version, node_id)
+        xcf_instance = ConfigurationFile.create_empty_configuration(
+            self.interface,
+            self.dictionary.part_number,
+            prod_code,
+            rev_number,
+            firmware_version,
+            node_id,
+        )
         for configuration_registers in self._registers_to_save_in_configuration_file(
             subnode
         ).values():

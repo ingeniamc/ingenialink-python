@@ -26,13 +26,13 @@ class Device:
     firmware_version: Optional[str]
     node_id: Optional[int] = None
 
-    ELEMENT_NAME = "Device"
-    INTERFACE_ATTR = "Interface"
-    FW_VERSION_ATTR = "firmwareVersion"
-    PRODUCT_CODE_ATTR = "ProductCode"
-    PART_NUMBER_ATTR = "PartNumber"
-    REVISION_NUMBER_ATTR = "RevisionNumber"
-    NODE_ID_ATTR = "NodeID"
+    _ELEMENT_NAME = "Device"
+    __INTERFACE_ATTR = "Interface"
+    __FW_VERSION_ATTR = "firmwareVersion"
+    __PRODUCT_CODE_ATTR = "ProductCode"
+    __PART_NUMBER_ATTR = "PartNumber"
+    __REVISION_NUMBER_ATTR = "RevisionNumber"
+    __NODE_ID_ATTR = "NodeID"
 
     INTERFACE_XCF_OPTIONS = {
         "CAN": Interface.CAN,
@@ -75,14 +75,14 @@ class Device:
             ValueError: wrong fields type
             KeyError: a mandatory attribute is missing
         """
-        interface = cls.INTERFACE_XCF_OPTIONS[element.attrib[cls.INTERFACE_ATTR]]
-        part_number = element.attrib.get(cls.PART_NUMBER_ATTR)
-        product_code_raw = element.attrib.get(cls.PRODUCT_CODE_ATTR)
+        interface = cls.INTERFACE_XCF_OPTIONS[element.attrib[cls.__INTERFACE_ATTR]]
+        part_number = element.attrib.get(cls.__PART_NUMBER_ATTR)
+        product_code_raw = element.attrib.get(cls.__PRODUCT_CODE_ATTR)
         product_code = int(product_code_raw) if product_code_raw else None
-        revision_number_raw = element.attrib.get(cls.REVISION_NUMBER_ATTR)
+        revision_number_raw = element.attrib.get(cls.__REVISION_NUMBER_ATTR)
         revision_number = int(revision_number_raw) if revision_number_raw else None
-        firmware_version = element.attrib.get(cls.FW_VERSION_ATTR)
-        node_id_raw = element.attrib.get(cls.NODE_ID_ATTR)
+        firmware_version = element.attrib.get(cls.__FW_VERSION_ATTR)
+        node_id_raw = element.attrib.get(cls.__NODE_ID_ATTR)
         node_id = int(node_id_raw) if node_id_raw else None
         return cls(interface, part_number, product_code, revision_number, firmware_version, node_id)
 
@@ -92,30 +92,30 @@ class Device:
         Returns:
             XML element filled with class data
         """
-        register_xml = ElementTree.Element(self.ELEMENT_NAME)
-        register_xml.set(self.INTERFACE_ATTR, self.__interface_value_to_str[self.interface])
+        register_xml = ElementTree.Element(self._ELEMENT_NAME)
+        register_xml.set(self.__INTERFACE_ATTR, self.__interface_value_to_str[self.interface])
         if self.firmware_version is not None:
-            register_xml.set(self.FW_VERSION_ATTR, self.firmware_version)
+            register_xml.set(self.__FW_VERSION_ATTR, self.firmware_version)
         if self.product_code is not None:
-            register_xml.set(self.PRODUCT_CODE_ATTR, str(self.product_code))
+            register_xml.set(self.__PRODUCT_CODE_ATTR, str(self.product_code))
         if self.part_number is not None:
-            register_xml.set(self.PART_NUMBER_ATTR, self.part_number)
+            register_xml.set(self.__PART_NUMBER_ATTR, self.part_number)
         if self.revision_number is not None:
-            register_xml.set(self.REVISION_NUMBER_ATTR, str(self.revision_number))
+            register_xml.set(self.__REVISION_NUMBER_ATTR, str(self.revision_number))
         if self.node_id is not None:
-            register_xml.set(self.NODE_ID_ATTR, str(self.node_id))
+            register_xml.set(self.__NODE_ID_ATTR, str(self.node_id))
         return register_xml
 
 
 class ConfigRegister:
     """Register class for ConfigurationFile (XCF) class."""
 
-    ELEMENT_NAME = "Register"
-    ACCESS_ATTR = "access"
-    DTYPE_ATTR = "dtype"
-    ID_ATTR = "id"
-    SUBNODE_ATTR = "subnode"
-    STORAGE_ATTR = "storage"
+    _ELEMENT_NAME = "Register"
+    __ACCESS_ATTR = "access"
+    __DTYPE_ATTR = "dtype"
+    __ID_ATTR = "id"
+    __SUBNODE_ATTR = "subnode"
+    __STORAGE_ATTR = "storage"
 
     def __init__(
         self,
@@ -149,13 +149,13 @@ class ConfigRegister:
             ValueError: wrong fields type
             KeyError: an attribute is missing
         """
-        uid = element.attrib[cls.ID_ATTR]
-        subnode = int(element.attrib[cls.SUBNODE_ATTR])
-        dtype = Dictionary.dtype_xdf_options[element.attrib[cls.DTYPE_ATTR]]
-        access = Dictionary.access_xdf_options[element.attrib[cls.ACCESS_ATTR]]
+        uid = element.attrib[cls.__ID_ATTR]
+        subnode = int(element.attrib[cls.__SUBNODE_ATTR])
+        dtype = Dictionary.dtype_xdf_options[element.attrib[cls.__DTYPE_ATTR]]
+        access = Dictionary.access_xdf_options[element.attrib[cls.__ACCESS_ATTR]]
         storage: Union[float, int, str, bool]
         if dtype == RegDtype.FLOAT:
-            storage = float(element.attrib[cls.STORAGE_ATTR])
+            storage = float(element.attrib[cls.__STORAGE_ATTR])
         elif dtype in [
             RegDtype.S8,
             RegDtype.U8,
@@ -166,11 +166,11 @@ class ConfigRegister:
             RegDtype.S64,
             RegDtype.U64,
         ]:
-            storage = int(element.attrib[cls.STORAGE_ATTR])
+            storage = int(element.attrib[cls.__STORAGE_ATTR])
         elif dtype == RegDtype.STR:
-            storage = element.attrib[cls.STORAGE_ATTR]
+            storage = element.attrib[cls.__STORAGE_ATTR]
         elif dtype == RegDtype.BOOL:
-            storage = bool(element.attrib[cls.STORAGE_ATTR])
+            storage = bool(element.attrib[cls.__STORAGE_ATTR])
         else:
             raise NotImplementedError
         return cls(uid, subnode, dtype, access, storage)
@@ -197,15 +197,15 @@ class ConfigRegister:
         Returns:
             XML register element filled with class data
         """
-        register_xml = ElementTree.Element(self.ELEMENT_NAME)
-        register_xml.set(self.ACCESS_ATTR, self.__access_value_to_str[self.access])
-        register_xml.set(self.DTYPE_ATTR, self.__dtype_value_to_str[self.dtype])
-        register_xml.set(self.ID_ATTR, self.uid)
-        register_xml.set(self.SUBNODE_ATTR, str(self.subnode))
+        register_xml = ElementTree.Element(self._ELEMENT_NAME)
+        register_xml.set(self.__ACCESS_ATTR, self.__access_value_to_str[self.access])
+        register_xml.set(self.__DTYPE_ATTR, self.__dtype_value_to_str[self.dtype])
+        register_xml.set(self.__ID_ATTR, self.uid)
+        register_xml.set(self.__SUBNODE_ATTR, str(self.subnode))
         if isinstance(self.storage, float):
-            register_xml.set(self.STORAGE_ATTR, str(np.float32(self.storage)))
+            register_xml.set(self.__STORAGE_ATTR, str(np.float32(self.storage)))
         else:
-            register_xml.set(self.STORAGE_ATTR, str(self.storage))
+            register_xml.set(self.__STORAGE_ATTR, str(self.storage))
         return register_xml
 
 
@@ -337,10 +337,10 @@ class ConfigurationFile(XMLBase, ABC):
                 f"File version: {major_version}"
             )
         body = cls._find_and_check(root, cls.__BODY_ELEMENT)
-        device_element = cls._find_and_check(body, Device.ELEMENT_NAME)
+        device_element = cls._find_and_check(body, Device._ELEMENT_NAME)
         registers_element = cls._find_and_check(device_element, cls.__REGISTERS_ELEMENT)
         register_element_list = cls._findall_and_check(
-            registers_element, ConfigRegister.ELEMENT_NAME
+            registers_element, ConfigRegister._ELEMENT_NAME
         )
         config_device = Device.from_xcf(device_element)
         xcf_instance = cls(config_device)

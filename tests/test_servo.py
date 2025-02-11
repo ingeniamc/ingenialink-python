@@ -794,8 +794,9 @@ def test__adapt_configuration_file_storage_value(
     connect_to_slave, uid, subnode, value, node_id, dependent
 ):
     servo, net = connect_to_slave
-    conf_file = ConfigurationFile.create_empty_configuration(Interface.CAN, None, None, None, None,
-                                                             node_id)
+    conf_file = ConfigurationFile.create_empty_configuration(
+        Interface.CAN, None, None, None, None, node_id
+    )
     node_id_reg = servo.dictionary.registers(subnode)[uid]
     node_id_reg._CanopenRegister__is_node_id_dependent = dependent
     conf_file.add_register(node_id_reg, value)
