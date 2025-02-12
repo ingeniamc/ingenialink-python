@@ -58,6 +58,10 @@ class ILDictionaryParseError(ILError):
     """IngeniaLink dictionary parse error."""
 
 
+class ILConfigurationFileParseError(ILError):
+    """IngeniaLink configuration file parse error."""
+
+
 class ILWrongWorkingCountError(ILError):
     """PDOs process data working count expected and received differ."""
 
