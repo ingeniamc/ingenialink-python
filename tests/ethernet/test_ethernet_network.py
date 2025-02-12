@@ -1,11 +1,41 @@
 import os
 import socket
 import time
+from threading import Thread
 
 import pytest
+from twisted.cred.checkers import (
+    AllowAnonymousAccess,
+    InMemoryUsernamePasswordDatabaseDontUse,
+)
+from twisted.cred.portal import Portal
+from twisted.internet import reactor
+from twisted.protocols.ftp import FTPFactory, FTPRealm
 
 from ingenialink.ethernet.network import EthernetNetwork, NetDevEvt, NetProt, NetState
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
+
+
+class FTPServer(Thread):
+    def __init__(
+        self, folder_path: str = "./", new_user: str = "user", new_password: str = "password"
+    ):
+        super().__init__()
+        self.fpt_checker = InMemoryUsernamePasswordDatabaseDontUse()
+        self.fpt_checker.addUser(new_user, new_password)
+        self.ftp_portal = Portal(
+            FTPRealm(folder_path, folder_path), [AllowAnonymousAccess(), self.fpt_checker]
+        )
+        self.ftp_factory = FTPFactory(self.ftp_portal)
+        reactor.listenTCP(21, self.ftp_factory)
+
+    def run(self) -> None:
+        """Run FTP server."""
+        reactor.run()
+
+    def stop(self) -> None:
+        """Stop FTP server."""
+        reactor.stop()
 
 
 @pytest.fixture()
@@ -83,10 +113,25 @@ def test_load_firmware_no_connection():
     os.remove(fw_file)
 
 
-@pytest.mark.skip
 @pytest.mark.no_connection
-def test_load_firmware_wrong_user_pwd():
-    pass
+def test_load_firmware_right_user_pwd():
+    """Testing correct ftp firmware load with fake FTP server."""
+    fw_file = "temp_file.lfu"
+    with open(fw_file, "w"):
+        pass
+    # User and password
+    fake_user = "user1"
+    fake_password = "1234"
+    fake_folder = os.getcwd()
+    # Create FTP server
+    server = FTPServer(folder_path=fake_folder, new_user=fake_user, new_password=fake_password)
+    server.start()
+    # Create Network
+    net = EthernetNetwork()
+    net.load_firmware(fw_file, target="localhost", ftp_user=fake_user, ftp_pwd=fake_password)
+    server.stop()
+    server.join()
+    os.remove(fw_file)
 
 
 @pytest.mark.skip
