@@ -192,12 +192,6 @@ class Dictionary(ABC):
         "NVM_HW": RegAddressType.NVM_HW,
     }
 
-    subnode_xdf_options = {
-        "Communication": SubnodeType.COMMUNICATION,
-        "Motion": SubnodeType.MOTION,
-        "Safety": SubnodeType.SAFETY,
-    }
-
     version: str
     """Version of the dictionary."""
     firmware_version: Optional[str] = None
@@ -245,6 +239,27 @@ class Dictionary(ABC):
             self.read_dictionary()
         except KeyError as e:
             raise ILDictionaryParseError("The dictionary is not well-formed.") from e
+
+    @staticmethod
+    def _get_subnode_xdf_options(subnode: str) -> SubnodeType:
+        """Returns the `SubnodeType` corresponding to a subnode string.
+
+        Args:
+            subnode (str): subnode.
+
+        Raises:
+            ValueError: if the provided subnode has no `SubnodeType` associated with.
+
+        Returns:
+            SubnodeType: string subnode type.
+        """
+        if subnode == "Communication":
+            return SubnodeType.COMMUNICATION
+        if subnode == "Motion":
+            return SubnodeType.MOTION
+        if subnode == "Safety":
+            return SubnodeType.SAFETY
+        raise ValueError(f"Unrecognized {subnode=}")
 
     @classmethod
     @abstractmethod
@@ -556,7 +571,6 @@ class DictionaryV3(Dictionary):
         Returns:
             str: device element.
         """
-        # TODO: finish this and add docstring to the previous function
         if interface is Interface.CAN:
             return "CANDevice"
         if interface is Interface.ETH:
@@ -801,7 +815,7 @@ class DictionaryV3(Dictionary):
             if subnode.text is None:
                 raise ILDictionaryParseError("Subnode element text is None")
             self.subnodes[int(subnode.attrib[self.__SUBNODE_INDEX_ATTR])] = (
-                self.subnode_xdf_options[subnode.text.strip()]
+                Dictionary._get_subnode_xdf_options(subnode.text.strip())
             )
 
     def __read_labels(self, root: ElementTree.Element) -> dict[str, str]:
