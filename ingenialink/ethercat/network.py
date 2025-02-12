@@ -95,16 +95,6 @@ class EthercatNetwork(Network):
 
     """
 
-    # Error codes taken from SOEM source code.
-    # https://github.com/OpenEtherCATsociety/SOEM/blob/v1.4.0/soem/ethercatfoe.c#L199
-    __FOE_ERRORS = {
-        -3: "Unexpected mailbox received",
-        -5: "FoE error",
-        -6: "Buffer too small",
-        -7: "Packet number error",
-        -10: "File not found",
-    }
-
     MANUAL_STATE_CHANGE = 1
 
     DEFAULT_ECAT_CONNECTION_TIMEOUT_S = 1
@@ -143,6 +133,30 @@ class EthercatNetwork(Network):
         self._overlapping_io_map = overlapping_io_map
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
+
+    @staticmethod
+    def __get_foe_error_message(error_code: int) -> str:
+        """Error message associated with an error code.
+
+        Args:
+            error_code: FoE error code.
+
+        Returns:
+            Error message.
+        """
+        # Error codes taken from SOEM source code.
+        # https://github.com/OpenEtherCATsociety/SOEM/blob/v1.4.0/soem/ethercatfoe.c#L199
+        if error_code == -3:
+            return "Unexpected mailbox received"
+        if error_code == -5:
+            return "FoE error"
+        if error_code == -6:
+            return "Buffer too small"
+        if error_code == -7:
+            return "Packet number error"
+        if error_code == -10:
+            return "File not found"
+        return f" Error code: {error_code}."
 
     def scan_slaves(self) -> list[int]:
         """Scans for slaves in the network.
@@ -482,11 +496,10 @@ class EthercatNetwork(Network):
         foe_result = self._write_foe(slave, fw_file, password)
 
         if foe_result < 0:
-            error_message = "The firmware file could not be loaded correctly."
-            if foe_result in self.__FOE_ERRORS:
-                error_message += f" {self.__FOE_ERRORS[foe_result]}."
-            else:
-                error_message += f" Error code: {foe_result}."
+            error_message = (
+                "The firmware file could not be loaded correctly."
+                f" {EthercatNetwork.__get_foe_error_message(error_code=foe_result)}"
+            )
             raise ILFirmwareLoadError(error_message)
         self.__init_nodes()
         logger.info("Firmware updated successfully")
