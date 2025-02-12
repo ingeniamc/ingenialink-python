@@ -1257,7 +1257,7 @@ class DictionaryV2(Dictionary):
             return self.__drv_op_cmd
         if register == "DRV_PROT_STO_STATUS":
             return self.__drv_prot_sto_status
-        return
+        return None
 
     @property
     @abstractmethod
