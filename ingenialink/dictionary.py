@@ -170,14 +170,6 @@ class Dictionary(ABC):
 
     access_xdf_options = {"r": RegAccess.RO, "w": RegAccess.WO, "rw": RegAccess.RW}
 
-    address_type_xdf_options = {
-        "NVM": RegAddressType.NVM,
-        "NVM_NONE": RegAddressType.NVM_NONE,
-        "NVM_CFG": RegAddressType.NVM_CFG,
-        "NVM_LOCK": RegAddressType.NVM_LOCK,
-        "NVM_HW": RegAddressType.NVM_HW,
-    }
-
     version: str
     """Version of the dictionary."""
     firmware_version: Optional[str] = None
@@ -226,6 +218,31 @@ class Dictionary(ABC):
         except KeyError as e:
             raise ILDictionaryParseError("The dictionary is not well-formed.") from e
 
+    @staticmethod
+    def _get_address_type_xdf_options(address_type: str) -> RegAddressType:
+        """Returns the address type associated with a string.
+
+        Args:
+            address_type: address type.
+
+        Raises:
+            ILDictionaryParseError: if the provided address type does not exist.
+
+        Returns:
+            Address type.
+        """
+        if address_type == "NVM":
+            return RegAddressType.NVM
+        if address_type == "NVM_NONE":
+            return RegAddressType.NVM_NONE
+        if address_type == "NVM_CFG":
+            return RegAddressType.NVM_CFG
+        if address_type == "NVM_LOCK":
+            return RegAddressType.NVM_LOCK
+        if address_type == "NVM_HW":
+            return RegAddressType.NVM_HW
+        raise ILDictionaryParseError(f"The address type {address_type} does not exist.")
+
     @cached_property
     def dtype_xdf_options(self) -> dict[str, RegDtype]:
         """Data type dictionary."""
@@ -252,10 +269,10 @@ class Dictionary(ABC):
             subnode: subnode.
 
         Raises:
-            ValueError: if the provided subnode has no `SubnodeType` associated with.
+            ILDictionaryParseError: if the provided subnode has no `SubnodeType` associated with.
 
         Returns:
-            SubnodeType: subnode type.
+            subnode type.
         """
         if subnode == "Communication":
             return SubnodeType.COMMUNICATION
@@ -263,7 +280,7 @@ class Dictionary(ABC):
             return SubnodeType.MOTION
         if subnode == "Safety":
             return SubnodeType.SAFETY
-        raise ValueError(f"{subnode=} has no SubnodeType associated.")
+        raise ILDictionaryParseError(f"{subnode=} does not exist.")
 
     @classmethod
     @abstractmethod
@@ -570,10 +587,10 @@ class DictionaryV3(Dictionary):
             interface: interface.
 
         Raises:
-            AttributeError: if the interface doesn't have any device element associated.
+            ILDictionaryParseError: if the interface doesn't have any device element associated.
 
         Returns:
-            str: device element.
+            Device element.
         """
         if interface is Interface.CAN:
             return "CANDevice"
@@ -583,7 +600,7 @@ class DictionaryV3(Dictionary):
             return "ECATDevice"
         if interface is Interface.EoE:
             return "EoEDevice"
-        raise AttributeError(f"{interface=} has no device element associated.")
+        raise ILDictionaryParseError(f"{interface=} has no device element associated.")
 
     @override
     @classmethod
@@ -928,7 +945,9 @@ class DictionaryV3(Dictionary):
         """
         reg_address = int(register.attrib[self.__ADDRESS_ATTR], 16)
         subnode = int(register.attrib[self.__SUBNODE_ATTR])
-        address_type = self.address_type_xdf_options[register.attrib[self.__ADDRESS_TYPE_ATTR]]
+        address_type = Dictionary._get_address_type_xdf_options(
+            register.attrib[self.__ADDRESS_TYPE_ATTR]
+        )
         access = self.access_xdf_options[register.attrib[self.__ACCESS_ATTR]]
         dtype = self.dtype_xdf_options[register.attrib[self.__DTYPE_ATTR]]
         identifier = register.attrib[self.__UID_ATTR]
@@ -1007,7 +1026,9 @@ class DictionaryV3(Dictionary):
 
         """
         reg_subindex = int(subitem.attrib[self.__SUBINDEX_ATTR])
-        address_type = self.address_type_xdf_options[subitem.attrib[self.__ADDRESS_TYPE_ATTR]]
+        address_type = Dictionary._get_address_type_xdf_options(
+            subitem.attrib[self.__ADDRESS_TYPE_ATTR]
+        )
         access = self.access_xdf_options[subitem.attrib[self.__ACCESS_ATTR]]
         dtype = self.dtype_xdf_options[subitem.attrib[self.__DTYPE_ATTR]]
         identifier = subitem.attrib[self.__UID_ATTR]
@@ -1200,16 +1221,16 @@ class DictionaryV2(Dictionary):
             interface: interface.
 
         Raises:
-            AttributeError: if the interface doesn't have any string associated.
+            ILDictionaryParseError: if the interface doesn't have any string associated.
 
         Returns:
-            str: string.
+            Interface string.
         """
         if interface is Interface.CAN:
             return "CAN"
         if interface in [Interface.ECAT, Interface.EoE, Interface.ETH]:
             return "ETH"
-        raise AttributeError(f"{interface=} has no string associated.")
+        raise ILDictionaryParseError(f"{interface=} has no string associated.")
 
     @override
     @classmethod
@@ -1337,7 +1358,6 @@ class DictionaryV2(Dictionary):
         Raises:
             ILDictionaryParseError: If the register data type is invalid.
             ILDictionaryParseError: If the register access type is invalid.
-            ILDictionaryParseError: If the register address type is invalid.
             KeyError: If some attribute is missing.
 
         """
@@ -1372,15 +1392,7 @@ class DictionaryV2(Dictionary):
                 )
 
             # Address type
-            address_type_aux = register.attrib["address_type"]
-
-            if address_type_aux in self.address_type_xdf_options:
-                address_type = self.address_type_xdf_options[address_type_aux]
-            else:
-                raise ILDictionaryParseError(
-                    f"The address type {address_type_aux} does not exist for the register: "
-                    f"{identifier}"
-                )
+            address_type = Dictionary._get_address_type_xdf_options(register.attrib["address_type"])
 
             subnode = int(register.attrib.get("subnode", 1))
             storage = register.attrib.get("storage")
