@@ -68,17 +68,6 @@ cdef extern from "winerror.h":
         NO_ERROR
 
 cdef extern from "ifdef.h":
-    # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/
-    ctypedef enum _IF_OPER_STATUS:
-        IfOperStatusUp = 1
-        IfOperStatusDown = 2
-        IfOperStatusTesting = 3
-        IfOperStatusUnknown = 4
-        IfOperStatusDormant = 5
-        IfOperStatusNotPresent = 6
-        IfOperStatusLowerLayerDown = 7
-    ctypedef _IF_OPER_STATUS IF_OPER_STATUS
-
     # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/ns-ifdef-net_luid_lh
     ctypedef union _NET_LUID_LH:
         uint64_t Value
@@ -88,24 +77,6 @@ cdef extern from "ifdef.h":
     ctypedef _NET_LUID_LH IF_LUID
     ctypedef _NET_LUID_LH NET_LUID_LH
 
-    # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/ne-ifdef-net_if_connection_type
-    ctypedef enum _NET_IF_CONNECTION_TYPE:
-        NET_IF_CONNECTION_DEDICATED = 1
-        NET_IF_CONNECTION_PASSIVE = 2
-        NET_IF_CONNECTION_DEMAND = 3
-        NET_IF_CONNECTION_MAXIMUM = 4
-    ctypedef _NET_IF_CONNECTION_TYPE NET_IF_CONNECTION_TYPE
-
-    # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/ne-ifdef-tunnel_type
-    ctypedef enum _TUNNEL_TYPE:
-        TUNNEL_TYPE_NONE = 0
-        TUNNEL_TYPE_OTHER = 1
-        TUNNEL_TYPE_DIRECT = 2
-        TUNNEL_TYPE_6TO4 = 11
-        TUNNEL_TYPE_ISATAP = 13
-        TUNNEL_TYPE_TEREDO = 14
-        TUNNEL_TYPE_IPHTTPS = 15
-    ctypedef _TUNNEL_TYPE TUNNEL_TYPE
 
 cdef extern from "iptypes.h":
     enum:
@@ -124,34 +95,6 @@ cdef extern from "iptypes.h":
     ctypedef _SOCKET_ADDRESS* PSOCKET_ADDRESS
     ctypedef _SOCKET_ADDRESS* LPSOCKET_ADDRESS
 
-    # https://learn.microsoft.com/en-us/windows/win32/api/nldef/ne-nldef-nl_prefix_origin
-    ctypedef enum _IP_PREFIX_ORIGIN:
-        IpPrefixOriginOther
-        IpPrefixOriginManual
-        IpPrefixOriginWellKnown
-        IpPrefixOriginDhcp
-        IpPrefixOriginRouterAdvertisement
-    ctypedef _IP_PREFIX_ORIGIN IP_PREFIX_ORIGIN
-
-    # https://learn.microsoft.com/en-us/windows/win32/api/nldef/ne-nldef-nl_suffix_origin
-    ctypedef enum _IP_SUFFIX_ORIGIN:
-        IpSuffixOriginOther
-        IpSuffixOriginManual
-        IpSuffixOriginWellKnown
-        IpSuffixOriginDhcp
-        IpSuffixOriginLinkLayerAddress
-        IpSuffixOriginRandom
-    ctypedef _IP_SUFFIX_ORIGIN IP_SUFFIX_ORIGIN
-
-    # https://learn.microsoft.com/en-us/windows/win32/api/nldef/ne-nldef-nl_dad_state
-    ctypedef enum _IP_DAD_STATE:
-        IpDadStateInvalid
-        IpDadStateTentative
-        IpDadStateDuplicate
-        IpDadStateDeprecated
-        IpDadStatePreferred
-    ctypedef _IP_DAD_STATE IP_DAD_STATE
-
     # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_unicast_address_lh
     ctypedef struct _IP_ADAPTER_UNICAST_ADDRESS_LH:
         # flatten the union
@@ -161,9 +104,9 @@ cdef extern from "iptypes.h":
         
         _IP_ADAPTER_UNICAST_ADDRESS_LH* Next
         SOCKET_ADDRESS Address
-        IP_PREFIX_ORIGIN PrefixOrigin
-        IP_SUFFIX_ORIGIN SuffixOrigin
-        IP_DAD_STATE DadState
+        uint8_t PrefixOrigin # https://learn.microsoft.com/en-us/windows/win32/api/nldef/ne-nldef-nl_prefix_origin
+        uint8_t SuffixOrigin # https://learn.microsoft.com/en-us/windows/win32/api/nldef/ne-nldef-nl_suffix_origin
+        uint8_t DadState # https://learn.microsoft.com/en-us/windows/win32/api/nldef/ne-nldef-nl_dad_state
         uint32_t ValidLifetime
         uint32_t PreferredLifetime
         uint32_t LeaseLifetime
@@ -247,7 +190,6 @@ cdef extern from "iptypes.h":
         uint8_t Data4[8]
     ctypedef _GUID NET_IF_NETWORK_GUID
 
-
     # https://learn.microsoft.com/en-us/windows/win32/api/iptypes/ns-iptypes-ip_adapter_addresses_lh
     ctypedef struct _IP_ADAPTER_ADDRESSES_LH:
         uint64_t Alignment
@@ -277,7 +219,7 @@ cdef extern from "iptypes.h":
         uint32_t Ipv6ManagedAddressConfigurationSupported
         uint32_t Mtu
         uint32_t IfType # https://learn.microsoft.com/en-us/windows-hardware/drivers/network/ndis-interface-types
-        IF_OPER_STATUS OperStatus
+        uint8_t OperStatus # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/
         uint32_t Ipv6IfIndex
         uint32_t ZoneIndices[16]
         PIP_ADAPTER_PREFIX_XP FirstPrefix
@@ -291,8 +233,8 @@ cdef extern from "iptypes.h":
         SOCKET_ADDRESS  Dhcpv4Server
         uint32_t CompartmentId
         NET_IF_NETWORK_GUID NetworkGuid
-        NET_IF_CONNECTION_TYPE ConnectionType
-        TUNNEL_TYPE TunnelType
+        uint8_t ConnectionType # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/ne-ifdef-net_if_connection_type
+        uint8_t TunnelType # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/ne-ifdef-tunnel_type
         SOCKET_ADDRESS Dhcpv6Server
         uint8_t  Dhcpv6ClientDuid[MAX_DHCPV6_DUID_LENGTH]
         uint32_t Dhcpv6ClientDuidLength
