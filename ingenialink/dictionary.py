@@ -1,7 +1,7 @@
 import copy
 import enum
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -1172,47 +1172,6 @@ class DictionaryV2(Dictionary):
         list[EthercatRegister], list[EthernetRegister], list[CanopenRegister]
     ]
 
-    _KNOWN_REGISTER_BITFIELDS: dict[str, Callable[[], dict[str, BitField]]] = {
-        "DRV_STATE_STATUS": lambda: {
-            # https://drives.novantamotion.com/summit/0x011-status-word
-            "READY_TO_SWITCH_ON": BitField.bit(0),
-            "SWITCHED_ON": BitField.bit(1),
-            "OPERATION_ENABLED": BitField.bit(2),
-            "FAULT": BitField.bit(3),
-            "VOLTAGE_ENABLED": BitField.bit(4),
-            "QUICK_STOP": BitField.bit(5),
-            "SWITCH_ON_DISABLED": BitField.bit(6),
-            "WARNING": BitField.bit(7),
-            "TARGET_REACHED": BitField.bit(10),
-            "SWITCH_LIMITS_ACTIVE": BitField.bit(11),
-            "COMMUTATION_FEEDBACK_ALIGNED": BitField.bit(14),
-        },
-        "DRV_STATE_CONTROL": lambda: {
-            # https://drives.novantamotion.com/summit/0x010-control-word
-            "SWITCH_ON": BitField.bit(0),
-            "VOLTAGE_ENABLE": BitField.bit(1),
-            "QUICK_STOP": BitField.bit(2),
-            "ENABLE_OPERATION": BitField.bit(3),
-            "RUN_SET_POINT_MANAGER": BitField.bit(4),
-            "FAULT_RESET": BitField.bit(7),
-        },
-        "DRV_OP_CMD": lambda: {
-            # https://drives.novantamotion.com/summit/0x014-operation-mode
-            "OPERATION_MODE": BitField(0, 3),
-            "PROFILER_MODE": BitField(4, 6),
-            "PTP_BUFFER": BitField.bit(7),
-            "HOMING": BitField.bit(8),
-        },
-        "DRV_PROT_STO_STATUS": lambda: {
-            # https://drives.novantamotion.com/summit/0x51a-sto-status
-            "STO1": BitField.bit(0),
-            "STO2": BitField.bit(1),
-            "STO_SUPPLY_FAULT": BitField.bit(2),
-            "STO_ABNORMAL_FAULT": BitField.bit(3),
-            "STO_REPORT": BitField.bit(4),
-        },
-    }
-
     def __init__(self, dictionary_path: str) -> None:
         super().__init__(dictionary_path, self.interface)
 
@@ -1234,6 +1193,75 @@ class DictionaryV2(Dictionary):
         if interface in [Interface.ECAT, Interface.EoE, Interface.ETH]:
             return "ETH"
         raise ILDictionaryParseError(f"{interface=} has no string associated.")
+
+    @cached_property
+    def __drv_state_status_known_bitfields(self) -> dict[str, BitField]:
+        return {
+            # https://drives.novantamotion.com/summit/0x011-status-word
+            "READY_TO_SWITCH_ON": BitField.bit(0),
+            "SWITCHED_ON": BitField.bit(1),
+            "OPERATION_ENABLED": BitField.bit(2),
+            "FAULT": BitField.bit(3),
+            "VOLTAGE_ENABLED": BitField.bit(4),
+            "QUICK_STOP": BitField.bit(5),
+            "SWITCH_ON_DISABLED": BitField.bit(6),
+            "WARNING": BitField.bit(7),
+            "TARGET_REACHED": BitField.bit(10),
+            "SWITCH_LIMITS_ACTIVE": BitField.bit(11),
+            "COMMUTATION_FEEDBACK_ALIGNED": BitField.bit(14),
+        }
+
+    @cached_property
+    def __drv_state_control(self) -> dict[str, BitField]:
+        return {
+            # https://drives.novantamotion.com/summit/0x010-control-word
+            "SWITCH_ON": BitField.bit(0),
+            "VOLTAGE_ENABLE": BitField.bit(1),
+            "QUICK_STOP": BitField.bit(2),
+            "ENABLE_OPERATION": BitField.bit(3),
+            "RUN_SET_POINT_MANAGER": BitField.bit(4),
+            "FAULT_RESET": BitField.bit(7),
+        }
+
+    @cached_property
+    def __drv_op_cmd(self) -> dict[str, BitField]:
+        return {
+            # https://drives.novantamotion.com/summit/0x014-operation-mode
+            "OPERATION_MODE": BitField(0, 3),
+            "PROFILER_MODE": BitField(4, 6),
+            "PTP_BUFFER": BitField.bit(7),
+            "HOMING": BitField.bit(8),
+        }
+
+    @cached_property
+    def __drv_prot_sto_status(self) -> dict[str, BitField]:
+        return {
+            # https://drives.novantamotion.com/summit/0x51a-sto-status
+            "STO1": BitField.bit(0),
+            "STO2": BitField.bit(1),
+            "STO_SUPPLY_FAULT": BitField.bit(2),
+            "STO_ABNORMAL_FAULT": BitField.bit(3),
+            "STO_REPORT": BitField.bit(4),
+        }
+
+    def _get_known_register_bitfields(self, register: str) -> Optional[dict[str, BitField]]:
+        """Gets the known register bitfields.
+
+        Args:
+            register: register.
+
+        Returns:
+            Register bitfields, None if the bitfields are unknown.
+        """
+        if register == "DRV_STATE_STATUS":
+            return self.__drv_state_status_known_bitfields
+        if register == "DRV_STATE_CONTROL":
+            return self.__drv_state_control
+        if register == "DRV_OP_CMD":
+            return self.__drv_op_cmd
+        if register == "DRV_PROT_STO_STATUS":
+            return self.__drv_prot_sto_status
+        return
 
     @override
     @classmethod
@@ -1419,9 +1447,7 @@ class DictionaryV2(Dictionary):
             enums = {str(enum.text): int(enum.attrib["value"]) for enum in enums_elem}
 
             # Known bitfields.
-            bitfields = None
-            if identifier in self._KNOWN_REGISTER_BITFIELDS:
-                bitfields = self._KNOWN_REGISTER_BITFIELDS[identifier]()
+            bitfields = self._get_known_register_bitfields(identifier)
 
             current_read_register = Register(
                 dtype,
