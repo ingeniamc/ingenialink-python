@@ -479,12 +479,7 @@ class DictionaryV3(Dictionary):
     __CATEGORY_ELEMENT = "Category"
 
     __DEVICES_ELEMENT = "Devices"
-    __DEVICE_ELEMENT = {
-        Interface.CAN: "CANDevice",
-        Interface.ETH: "ETHDevice",
-        Interface.ECAT: "ECATDevice",
-        Interface.EoE: "EoEDevice",
-    }
+
     __DEVICE_FW_VERSION_ATTR = "firmwareVersion"
     __DEVICE_PRODUCT_CODE_ATTR = "ProductCode"
     __DEVICE_PART_NUMBER_ATTR = "PartNumber"
@@ -548,6 +543,30 @@ class DictionaryV3(Dictionary):
     __PDO_ENTRY_SIZE_ATTR = "size"
     __PDO_ENTRY_SUBNODE_ATTR = "subnode"
 
+    @staticmethod
+    def _interface_to_device_element(interface: Interface) -> str:
+        """Returns the device element associated with each interface.
+
+        Args:
+            interface (Interface): interface.
+
+        Raises:
+            AttributeError: if the interface doesn't have any device element associated.
+
+        Returns:
+            str: device element.
+        """
+        # TODO: finish this and add docstring to the previous function
+        if interface is Interface.CAN:
+            return "CANDevice"
+        if interface is Interface.ETH:
+            return "ETHDevice"
+        if interface is Interface.ECAT:
+            return "ECATDevice"
+        if interface is Interface.EoE:
+            return "EoEDevice"
+        raise AttributeError(f"{interface=} has no device element associated.")
+
     @override
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
@@ -560,7 +579,8 @@ class DictionaryV3(Dictionary):
             ) from e
         root = tree.getroot()
         device_path = (
-            f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}/{cls.__DEVICE_ELEMENT[interface]}"
+            f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}/"
+            f"{DictionaryV3._interface_to_device_element(interface)}"
         )
         device = root.find(device_path)
         if device is None:
@@ -673,14 +693,14 @@ class DictionaryV3(Dictionary):
 
         """
         if self.interface == Interface.VIRTUAL:
-            device_element = root.find(self.__DEVICE_ELEMENT[Interface.ETH])
+            device_element = root.find(DictionaryV3._interface_to_device_element(Interface.ETH))
             if device_element is None:
-                device_element = root.find(self.__DEVICE_ELEMENT[Interface.EoE])
+                device_element = root.find(DictionaryV3._interface_to_device_element(Interface.EoE))
                 self.interface = Interface.EoE
             else:
                 self.interface = Interface.ETH
         else:
-            device_element = root.find(self.__DEVICE_ELEMENT[self.interface])
+            device_element = root.find(DictionaryV3._interface_to_device_element(self.interface))
         if device_element is None:
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
         self.__read_device_attributes(device_element)
@@ -1156,6 +1176,17 @@ class DictionaryV2(Dictionary):
 
     @staticmethod
     def _interface_to_str(interface: Interface) -> str:
+        """Returns the string associated with each interface.
+
+        Args:
+            interface (Interface): interface.
+
+        Raises:
+            AttributeError: if the interface doesn't have any string associated.
+
+        Returns:
+            str: string.
+        """
         if interface is Interface.CAN:
             return "CAN"
         if interface in [Interface.ECAT, Interface.EoE, Interface.ETH]:
