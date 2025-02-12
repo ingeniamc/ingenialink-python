@@ -24,30 +24,32 @@ class EthercatDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: list[EthercatRegister] = [
-        EthercatRegister(
-            identifier="MON_DATA_VALUE",
-            units="",
-            subnode=0,
-            idx=0x58B2,
-            subidx=0x01,
-            cyclic=RegCyclicType.CONFIG,
-            dtype=RegDtype.BYTE_ARRAY_512,
-            access=RegAccess.RO,
-        ),
-        EthercatRegister(
-            identifier="DIST_DATA_VALUE",
-            units="",
-            subnode=0,
-            idx=0x58B4,
-            subidx=0x01,
-            cyclic=RegCyclicType.CONFIG,
-            dtype=RegDtype.BYTE_ARRAY_512,
-            access=RegAccess.WO,
-        ),
-    ]
-
     interface = Interface.ECAT
+
+    @cached_property
+    def _monitoring_disturbance_registers(self) -> list[EthercatRegister]:
+        return [
+            EthercatRegister(
+                identifier="MON_DATA_VALUE",
+                units="",
+                subnode=0,
+                idx=0x58B2,
+                subidx=0x01,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.RO,
+            ),
+            EthercatRegister(
+                identifier="DIST_DATA_VALUE",
+                units="",
+                subnode=0,
+                idx=0x58B4,
+                subidx=0x01,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.WO,
+            ),
+        ]
 
     @cached_property
     def __pdo_registers(self) -> list[EthercatRegister]:

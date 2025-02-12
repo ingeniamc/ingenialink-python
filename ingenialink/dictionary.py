@@ -1168,10 +1168,6 @@ class DictionaryV2(Dictionary):
 
     __MON_DIST_STATUS_REGISTER = "MON_DIST_STATUS"
 
-    _MONITORING_DISTURBANCE_REGISTERS: Union[
-        list[EthercatRegister], list[EthernetRegister], list[CanopenRegister]
-    ]
-
     def __init__(self, dictionary_path: str) -> None:
         super().__init__(dictionary_path, self.interface)
 
@@ -1262,6 +1258,13 @@ class DictionaryV2(Dictionary):
         if register == "DRV_PROT_STO_STATUS":
             return self.__drv_prot_sto_status
         return
+
+    @property
+    @abstractmethod
+    def _monitoring_disturbance_registers(
+        self,
+    ) -> Union[list[EthercatRegister], list[EthernetRegister], list[CanopenRegister]]:
+        raise NotImplementedError
 
     @override
     @classmethod
@@ -1497,6 +1500,6 @@ class DictionaryV2(Dictionary):
 
         """
         if self.__MON_DIST_STATUS_REGISTER in self._registers[0]:
-            for register in self._MONITORING_DISTURBANCE_REGISTERS:
+            for register in self._monitoring_disturbance_registers:
                 if register.identifier is not None:
                     self._registers[register.subnode][register.identifier] = register
