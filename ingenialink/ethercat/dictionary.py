@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Optional
 from xml.etree import ElementTree
 
@@ -46,90 +47,92 @@ class EthercatDictionaryV2(DictionaryV2):
         ),
     ]
 
-    __PDO_REGISTERS: list[EthercatRegister] = [
-        EthercatRegister(
-            identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_0",
-            units="",
-            subnode=0,
-            idx=0x1C12,
-            subidx=0x00,
-            dtype=RegDtype.S32,
-            access=RegAccess.RW,
-            address_type=RegAddressType.NVM_NONE,
-        ),
-        EthercatRegister(
-            identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_1",
-            units="",
-            subnode=0,
-            idx=0x1C12,
-            subidx=0x01,
-            dtype=RegDtype.S32,
-            access=RegAccess.RW,
-            address_type=RegAddressType.NVM_NONE,
-        ),
-        EthercatRegister(
-            identifier="RPDO_MAP_REGISTER_SUB_IDX_0",
-            units="",
-            subnode=0,
-            idx=0x1600,
-            subidx=0x00,
-            dtype=RegDtype.S32,
-            access=RegAccess.RW,
-            address_type=RegAddressType.NVM_NONE,
-        ),
-        EthercatRegister(
-            identifier="RPDO_MAP_REGISTER_SUB_IDX_1",
-            units="",
-            subnode=0,
-            idx=0x1600,
-            subidx=0x01,
-            dtype=RegDtype.STR,
-            access=RegAccess.RW,
-            address_type=RegAddressType.NVM_NONE,
-        ),
-        EthercatRegister(
-            identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_0",
-            units="",
-            subnode=0,
-            idx=0x1C13,
-            subidx=0x00,
-            dtype=RegDtype.S32,
-            access=RegAccess.RW,
-            address_type=RegAddressType.NVM_NONE,
-        ),
-        EthercatRegister(
-            identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_1",
-            units="",
-            subnode=0,
-            idx=0x1C13,
-            subidx=0x01,
-            dtype=RegDtype.S32,
-            access=RegAccess.RW,
-            address_type=RegAddressType.NVM_NONE,
-        ),
-        EthercatRegister(
-            identifier="TPDO_MAP_REGISTER_SUB_IDX_0",
-            units="",
-            subnode=0,
-            idx=0x1A00,
-            subidx=0x00,
-            dtype=RegDtype.S32,
-            access=RegAccess.RW,
-            address_type=RegAddressType.NVM_NONE,
-        ),
-        EthercatRegister(
-            identifier="TPDO_MAP_REGISTER_SUB_IDX_1",
-            units="",
-            subnode=0,
-            idx=0x1A00,
-            subidx=0x01,
-            dtype=RegDtype.STR,
-            access=RegAccess.RW,
-            address_type=RegAddressType.NVM_NONE,
-        ),
-    ]
-
     interface = Interface.ECAT
+
+    @cached_property
+    def __pdo_registers(self) -> list[EthercatRegister]:
+        return [
+            EthercatRegister(
+                identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_0",
+                units="",
+                subnode=0,
+                idx=0x1C12,
+                subidx=0x00,
+                dtype=RegDtype.S32,
+                access=RegAccess.RW,
+                address_type=RegAddressType.NVM_NONE,
+            ),
+            EthercatRegister(
+                identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_1",
+                units="",
+                subnode=0,
+                idx=0x1C12,
+                subidx=0x01,
+                dtype=RegDtype.S32,
+                access=RegAccess.RW,
+                address_type=RegAddressType.NVM_NONE,
+            ),
+            EthercatRegister(
+                identifier="RPDO_MAP_REGISTER_SUB_IDX_0",
+                units="",
+                subnode=0,
+                idx=0x1600,
+                subidx=0x00,
+                dtype=RegDtype.S32,
+                access=RegAccess.RW,
+                address_type=RegAddressType.NVM_NONE,
+            ),
+            EthercatRegister(
+                identifier="RPDO_MAP_REGISTER_SUB_IDX_1",
+                units="",
+                subnode=0,
+                idx=0x1600,
+                subidx=0x01,
+                dtype=RegDtype.STR,
+                access=RegAccess.RW,
+                address_type=RegAddressType.NVM_NONE,
+            ),
+            EthercatRegister(
+                identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_0",
+                units="",
+                subnode=0,
+                idx=0x1C13,
+                subidx=0x00,
+                dtype=RegDtype.S32,
+                access=RegAccess.RW,
+                address_type=RegAddressType.NVM_NONE,
+            ),
+            EthercatRegister(
+                identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_1",
+                units="",
+                subnode=0,
+                idx=0x1C13,
+                subidx=0x01,
+                dtype=RegDtype.S32,
+                access=RegAccess.RW,
+                address_type=RegAddressType.NVM_NONE,
+            ),
+            EthercatRegister(
+                identifier="TPDO_MAP_REGISTER_SUB_IDX_0",
+                units="",
+                subnode=0,
+                idx=0x1A00,
+                subidx=0x00,
+                dtype=RegDtype.S32,
+                access=RegAccess.RW,
+                address_type=RegAddressType.NVM_NONE,
+            ),
+            EthercatRegister(
+                identifier="TPDO_MAP_REGISTER_SUB_IDX_1",
+                units="",
+                subnode=0,
+                idx=0x1A00,
+                subidx=0x01,
+                dtype=RegDtype.STR,
+                access=RegAccess.RW,
+                address_type=RegAddressType.NVM_NONE,
+            ),
+        ]
 
     @staticmethod
     def __get_cia_offset(subnode: int) -> int:
@@ -196,6 +199,6 @@ class EthercatDictionaryV2(DictionaryV2):
 
         """
         super()._append_missing_registers()
-        for register in self.__PDO_REGISTERS:
+        for register in self.__pdo_registers:
             if register.identifier is not None:
                 self._registers[register.subnode][register.identifier] = register
