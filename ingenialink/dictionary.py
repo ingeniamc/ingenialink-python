@@ -3,6 +3,7 @@ import enum
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 from typing import Optional, Union
 from xml.etree import ElementTree
@@ -167,21 +168,6 @@ class Dictionary(ABC):
 
     """
 
-    dtype_xdf_options = {
-        "float": RegDtype.FLOAT,
-        "s8": RegDtype.S8,
-        "u8": RegDtype.U8,
-        "s16": RegDtype.S16,
-        "u16": RegDtype.U16,
-        "s32": RegDtype.S32,
-        "u32": RegDtype.U32,
-        "s64": RegDtype.S64,
-        "u64": RegDtype.U64,
-        "str": RegDtype.STR,
-        "bool": RegDtype.BOOL,
-        "byteArray512": RegDtype.BYTE_ARRAY_512,
-    }
-
     access_xdf_options = {"r": RegAccess.RO, "w": RegAccess.WO, "rw": RegAccess.RW}
 
     address_type_xdf_options = {
@@ -240,18 +226,36 @@ class Dictionary(ABC):
         except KeyError as e:
             raise ILDictionaryParseError("The dictionary is not well-formed.") from e
 
+    @cached_property
+    def dtype_xdf_options(self) -> dict[str, RegDtype]:
+        """Data type dictionary."""
+        return {
+            "float": RegDtype.FLOAT,
+            "s8": RegDtype.S8,
+            "u8": RegDtype.U8,
+            "s16": RegDtype.S16,
+            "u16": RegDtype.U16,
+            "s32": RegDtype.S32,
+            "u32": RegDtype.U32,
+            "s64": RegDtype.S64,
+            "u64": RegDtype.U64,
+            "str": RegDtype.STR,
+            "bool": RegDtype.BOOL,
+            "byteArray512": RegDtype.BYTE_ARRAY_512,
+        }
+
     @staticmethod
     def _get_subnode_xdf_options(subnode: str) -> SubnodeType:
         """Returns the `SubnodeType` corresponding to a subnode string.
 
         Args:
-            subnode (str): subnode.
+            subnode: subnode.
 
         Raises:
             ValueError: if the provided subnode has no `SubnodeType` associated with.
 
         Returns:
-            SubnodeType: string subnode type.
+            SubnodeType: subnode type.
         """
         if subnode == "Communication":
             return SubnodeType.COMMUNICATION
@@ -259,7 +263,7 @@ class Dictionary(ABC):
             return SubnodeType.MOTION
         if subnode == "Safety":
             return SubnodeType.SAFETY
-        raise ValueError(f"Unrecognized {subnode=}")
+        raise ValueError(f"{subnode=} has no SubnodeType associated.")
 
     @classmethod
     @abstractmethod
@@ -563,7 +567,7 @@ class DictionaryV3(Dictionary):
         """Returns the device element associated with each interface.
 
         Args:
-            interface (Interface): interface.
+            interface: interface.
 
         Raises:
             AttributeError: if the interface doesn't have any device element associated.
@@ -1193,7 +1197,7 @@ class DictionaryV2(Dictionary):
         """Returns the string associated with each interface.
 
         Args:
-            interface (Interface): interface.
+            interface: interface.
 
         Raises:
             AttributeError: if the interface doesn't have any string associated.
