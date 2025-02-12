@@ -168,8 +168,6 @@ class Dictionary(ABC):
 
     """
 
-    access_xdf_options = {"r": RegAccess.RO, "w": RegAccess.WO, "rw": RegAccess.RW}
-
     version: str
     """Version of the dictionary."""
     firmware_version: Optional[str] = None
@@ -242,6 +240,11 @@ class Dictionary(ABC):
         if address_type == "NVM_HW":
             return RegAddressType.NVM_HW
         raise ILDictionaryParseError(f"The address type {address_type} does not exist.")
+
+    @cached_property
+    def access_xdf_options(self) -> dict[str, RegAccess]:
+        """Register access dictionary."""
+        return {"r": RegAccess.RO, "w": RegAccess.WO, "rw": RegAccess.RW}
 
     @cached_property
     def dtype_xdf_options(self) -> dict[str, RegDtype]:
