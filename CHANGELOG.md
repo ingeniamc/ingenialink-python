@@ -1,8 +1,14 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Implement the scan method for Ethernet networks.
+
 ### Deprecated
 - Changed `Enums` names to follow CapWords convention. Old names are still supported, but will soon be deprecated.
+
+### Added
+- Created ConfigurationFile class, used in load_configuration, save_configuration and check_configuration
 
 ## [7.4.1] - 2025-01-28
 ### Fixed

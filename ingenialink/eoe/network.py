@@ -170,7 +170,7 @@ class EoENetwork(EthernetNetwork):
         self._eoe_socket.shutdown(socket.SHUT_RDWR)
         self._eoe_socket.close()
 
-    def scan_slaves(self) -> list[int]:
+    def scan_slaves(self) -> list[int]:  # type: ignore [override]
         """Scan slaves connected to the network adapter.
 
         Returns:
@@ -209,7 +209,7 @@ class EoENetwork(EthernetNetwork):
         return list(range(1, r + 1))
 
     @override
-    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:  # type: ignore [override]
         raise NotImplementedError
 
     @staticmethod

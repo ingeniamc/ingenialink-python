@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILIOError
+from ingenialink.exceptions import ILEcatStateError, ILIOError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
@@ -94,12 +94,36 @@ class EthercatServo(PDOServo):
     ):
         if not pysoem:
             raise pysoem_import_error
-        self.__slave = slave
+        self.__slave: CdefSlave = slave
         self.slave_id = slave_id
         self._connection_timeout = connection_timeout
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
         super().__init__(slave_id, dictionary_path, servo_status_listener)
+
+    def teardown(self) -> None:
+        """Perform the necessary actions for teardown."""
+        self.stop_status_listener()
+
+        # Remove the servo reference from the pdo maps
+        for rpdo_map in self._rpdo_maps:
+            rpdo_map.slave = None
+        for tpdo_map in self._tpdo_maps:
+            tpdo_map.slave = None
+        self.__slave = None
+
+    def check_servo_is_in_preoperational_state(self) -> None:
+        """Checks if the servo is in preoperational state.
+
+        Raises:
+            ILEcatStateError: if servo is not in preoperational state.
+        """
+        if self.slave is None or not pysoem:
+            return
+        if self.slave.state_check(pysoem.PREOP_STATE) != pysoem.PREOP_STATE:
+            raise ILEcatStateError(
+                f"Servo is in {self.slave.state} state, PDOMap can not be modified."
+            )
 
     def store_parameters(
         self,
@@ -318,9 +342,11 @@ class EthercatServo(PDOServo):
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
+                rpdo_map.slave = self
                 self._rpdo_maps.append(rpdo_map)
         for tpdo_map in tpdo_maps:
             if tpdo_map not in self._tpdo_maps:
+                tpdo_map.slave = self
                 self._tpdo_maps.append(tpdo_map)
         self.slave.config_func = self.map_pdos
 

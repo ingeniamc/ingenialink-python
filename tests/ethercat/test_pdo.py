@@ -13,7 +13,7 @@ from ingenialink.dictionary import Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.exceptions import ILError
+from ingenialink.exceptions import ILEcatStateError, ILError
 from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
 from ingenialink.servo import DictionaryFactory
@@ -239,6 +239,49 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
         servo.dictionary.registers(0)[servo.RPDO_ASSIGN_REGISTER_SUB_IDX_0], complete_access=True
     )
     assert int.to_bytes(0x1600, 2, "little") == value[2:4]
+
+
+@pytest.mark.ethercat
+def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(connect_to_slave):
+    servo, net = connect_to_slave
+
+    operation_mode_uid = "DRV_OP_CMD"
+    rpdo_registers = [operation_mode_uid]
+    operation_mode_display_uid = "DRV_OP_VALUE"
+    tpdo_registers = [operation_mode_display_uid]
+    default_operation_mode = 1
+
+    current_operation_mode = servo.read(operation_mode_uid)
+    new_operation_mode = default_operation_mode
+    if current_operation_mode == default_operation_mode:
+        new_operation_mode += 1
+    rpdo_map, tpdo_map = create_pdo_maps(servo, rpdo_registers, tpdo_registers)
+    for item in rpdo_map.items:
+        item.value = new_operation_mode
+    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+
+    net._ecat_master.read_state()
+    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+    net.start_pdos()
+    net._ecat_master.read_state()
+    start_time = time.time()
+    timeout = 1
+    while time.time() < start_time + timeout:
+        net.send_receive_processdata()
+    assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+
+    locked_methods = {
+        "reset_pdo_mapping": {"kwargs": {}},
+        "reset_rpdo_mapping": {"kwargs": {}},
+        "reset_tpdo_mapping": {"kwargs": {}},
+        "map_pdos": {"kwargs": {"slave_index": 1}},
+        "map_rpdos": {"kwargs": {}},
+        "map_tpdos": {"kwargs": {}},
+    }
+
+    for method, method_args in locked_methods.items():
+        with pytest.raises(ILEcatStateError):
+            getattr(servo, method)(**method_args["kwargs"])
 
 
 @pytest.mark.ethercat
