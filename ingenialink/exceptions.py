@@ -60,3 +60,7 @@ class ILDictionaryParseError(ILError):
 
 class ILWrongWorkingCountError(ILError):
     """PDOs process data working count expected and received differ."""
+
+
+class ILEcatStateError(ILError):
+    """IngeniaLink Ethercat state error."""

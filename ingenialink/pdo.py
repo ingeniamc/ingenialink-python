@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import Optional, Union
 
 import bitarray
@@ -202,11 +203,27 @@ class PDOMap:
     def __init__(self) -> None:
         self.__items: list[PDOMapItem] = []
         self.__map_register_address: Optional[int] = None
+        self.__slave: Optional[PDOServo] = None
+
+    @property
+    def slave(self) -> Optional["PDOServo"]:
+        """Servo to which this PDO is mapped, None if it's not mapped to any servo."""
+        return self.__slave
+
+    @slave.setter
+    def slave(self, slave: Optional["PDOServo"]) -> None:
+        self.__slave = slave
+
+    def __check_servo_is_in_preoperational_state(self) -> None:
+        if self.slave is not None:
+            self.slave.check_servo_is_in_preoperational_state()
 
     def create_item(
         self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
     ) -> PDOMapItem:
         """Create a new PDOMapItem.
+
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
 
         Args:
             register: Register object.
@@ -215,15 +232,19 @@ class PDOMap:
         Returns:
             PDO Map item.
         """
+        self.__check_servo_is_in_preoperational_state()
         item = self._PDO_MAP_ITEM_CLASS(register, size_bits)
         return item
 
     def add_item(self, item: PDOMapItem) -> None:
         """Append a new item.
 
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
+
         Args:
             item: Item to be added.
         """
+        self.__check_servo_is_in_preoperational_state()
         self.__items.append(item)
 
     def add_registers(
@@ -236,9 +257,12 @@ class PDOMap:
 
         It creates a new item for each register and adds it the items attribute.
 
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
+
         Args:
             registers: Register object or list of Registers.
         """
+        self.__check_servo_is_in_preoperational_state()
         if not isinstance(registers, list):
             registers = [registers]
         for register in registers:
@@ -409,15 +433,32 @@ class PDOServo(Servo):
         self._rpdo_maps: list[RPDOMap] = []
         self._tpdo_maps: list[TPDOMap] = []
 
+    @abstractmethod
+    def check_servo_is_in_preoperational_state(self) -> None:
+        """Checks if the servo is in preoperational state.
+
+        Raises:
+            ILEcatStateError: if servo is not in preoperational state.
+        """
+        raise NotImplementedError
+
     def reset_rpdo_mapping(self) -> None:
-        """Delete the RPDO mapping stored in the servo slave."""
+        """Delete the RPDO mapping stored in the servo slave.
+
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
+        """
+        self.check_servo_is_in_preoperational_state()
         self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_0, 0, subnode=0)
         for map_register in self.RPDO_MAP_REGISTER_SUB_IDX_0:
             self.write(map_register, 0, subnode=0)
         self._rpdo_maps.clear()
 
     def reset_tpdo_mapping(self) -> None:
-        """Delete the TPDO mapping stored in the servo slave."""
+        """Delete the TPDO mapping stored in the servo slave.
+
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
+        """
+        self.check_servo_is_in_preoperational_state()
         self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_0, 0, subnode=0)
         for map_register in self.TPDO_MAP_REGISTER_SUB_IDX_0:
             self.write(map_register, 0, subnode=0)
@@ -428,9 +469,12 @@ class PDOServo(Servo):
 
         It takes the first available RPDO assignment slot of the slave.
 
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
+
         Raises:
             ILError: If there are no available PDOs.
         """
+        self.check_servo_is_in_preoperational_state()
         if len(self._rpdo_maps) > self.AVAILABLE_PDOS:
             raise ILError(
                 f"Could not map the RPDO maps, received {len(self._rpdo_maps)} PDOs and only"
@@ -482,9 +526,12 @@ class PDOServo(Servo):
 
         It takes the first available TPDO assignment slot of the slave.
 
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
+
         Raises:
             ILError: If there are no available PDOs.
         """
+        self.check_servo_is_in_preoperational_state()
         if len(self._tpdo_maps) > self.AVAILABLE_PDOS:
             raise ILError(
                 f"Could not map the TPDO maps, received {len(self._tpdo_maps)} PDOs and only"
@@ -534,14 +581,21 @@ class PDOServo(Servo):
     def map_pdos(self, slave_index: int) -> None:  # noqa: ARG002
         """Map RPDO and TPDO register into the slave.
 
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
+
         Args:
             slave_index: salve index.
         """
+        self.check_servo_is_in_preoperational_state()
         self.map_tpdos()
         self.map_rpdos()
 
     def reset_pdo_mapping(self) -> None:
-        """Reset the RPDO and TPDO mapping in the slave."""
+        """Reset the RPDO and TPDO mapping in the slave.
+
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
+        """
+        self.check_servo_is_in_preoperational_state()
         self.reset_rpdo_mapping()
         self.reset_tpdo_mapping()
 
@@ -549,6 +603,8 @@ class PDOServo(Servo):
         self, rpdo_map: Optional[RPDOMap] = None, rpdo_map_index: Optional[int] = None
     ) -> None:
         """Remove a RPDOMap from the RPDOMap list.
+
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
 
         Args:
             rpdo_map: The RPDOMap instance to be removed.
@@ -559,6 +615,7 @@ class PDOServo(Servo):
             IndexError: If the index is out of range.
 
         """
+        self.check_servo_is_in_preoperational_state()
         if rpdo_map_index is None and rpdo_map is None:
             raise ValueError("The RPDOMap instance or the index should be provided.")
         if rpdo_map is not None:
