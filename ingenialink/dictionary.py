@@ -55,6 +55,32 @@ class SubnodeType(enum.Enum):
     """Safety"""
 
 
+class CanOpenObjectType(enum.Enum):
+    """CanOpen Object Type."""
+
+    VAR = enum.auto()
+    """VAR object type"""
+
+    RECORD = enum.auto()
+    """RECORD object type"""
+
+    ARRAY = enum.auto()
+    """ARRAY object type"""
+
+
+@dataclass()
+class CanOpenObject:
+    """CanOpenObject."""
+
+    uid: Optional[str]
+    object_type: CanOpenObjectType
+    registers: list[CanopenRegister]
+
+    def __iter__(self) -> Iterator[CanopenRegister]:
+        """Iterator operator."""
+        return self.registers.__iter__()
+
+
 @dataclass
 class DictionarySafetyPDO:
     """Safety PDOs dictionary descriptor."""
@@ -225,7 +251,7 @@ class Dictionary(ABC):
     """True if has SafetyPDOs element, else False"""
     _registers: dict[int, dict[str, Register]]
     """Instance of all the registers in the dictionary"""
-    registers_group: dict[int, dict[str, list[Register]]]
+    items: dict[int, dict[str, CanOpenObject]]
     """Registers group by subnode and UID"""
     safety_rpdos: dict[str, DictionarySafetyPDO]
     """Safety RPDOs by UID"""
@@ -233,7 +259,7 @@ class Dictionary(ABC):
     """Safety TPDOs by UID"""
 
     def __init__(self, dictionary_path: str, interface: Interface) -> None:
-        self.registers_group = {}
+        self.items = {}
         self.safety_rpdos = {}
         self.safety_tpdos = {}
         self._registers = {}
@@ -300,23 +326,23 @@ class Dictionary(ABC):
     def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
 
-    def child_registers(self, uid: str, subnode: int) -> list[Register]:
-        """Return group registers by an UID.
+    def get_object(self, uid: str, subnode: int) -> CanOpenObject:
+        """Return object by an UID and subnode.
 
         Args:
-            uid: registers group UID
-            subnode: registers group subnode
+            uid: object UID
+            subnode: object subnode
 
         Returns:
-            All registers in the group
+            CanOpen Object
 
         Raises:
-            KeyError: Registers group does not exist
+            KeyError: Object does not exist
 
         """
-        if subnode in self.registers_group and uid in self.registers_group[subnode]:
-            return self.registers_group[subnode][uid]
-        raise KeyError(f"Registers group {uid} in subnode {subnode} not exist")
+        if subnode in self.items and uid in self.items[subnode]:
+            return self.items[subnode][uid]
+        raise KeyError(f"Object {uid} in subnode {subnode} not exist")
 
     def get_safety_rpdo(self, uid: str) -> DictionarySafetyPDO:
         """Get Safe RPDO by uid.
@@ -495,6 +521,7 @@ class DictionaryV3(Dictionary):
     __SUBNODE_INDEX_ATTR = "index"
 
     __SUBNODE_ATTR = "subnode"
+    __OBJECT_DATA_TYPE_ATTR = "datatype"
     __ADDRESS_TYPE_ATTR = "address_type"
     __ACCESS_ATTR = "access"
     __DTYPE_ATTR = "dtype"
@@ -547,6 +574,12 @@ class DictionaryV3(Dictionary):
     __PDO_ENTRY_ELEMENT = "PDOEntry"
     __PDO_ENTRY_SIZE_ATTR = "size"
     __PDO_ENTRY_SUBNODE_ATTR = "subnode"
+
+    __canopen_object_data_type_options = {
+        "VAR": CanOpenObjectType.VAR,
+        "RECORD": CanOpenObjectType.RECORD,
+        "ARRAY": CanOpenObjectType.ARRAY,
+    }
 
     @override
     @classmethod
@@ -943,16 +976,19 @@ class DictionaryV3(Dictionary):
         object_uid = root.attrib.get(self.__UID_ATTR)
         reg_index = int(root.attrib[self.__INDEX_ATTR], 16)
         subnode = int(root.attrib[self.__SUBNODE_ATTR])
-        subitmes_element = self.__find_and_check(root, self.__SUBITEMS_ELEMENT)
-        subitem_list = self._findall_and_check(subitmes_element, self.__SUBITEM_ELEMENT)
+        data_type = self.__canopen_object_data_type_options[
+            root.attrib[self.__OBJECT_DATA_TYPE_ATTR]
+        ]
+        subitems_element = self.__find_and_check(root, self.__SUBITEMS_ELEMENT)
+        subitem_list = self._findall_and_check(subitems_element, self.__SUBITEM_ELEMENT)
         register_list = [
             self.__read_canopen_subitem(subitem, reg_index, subnode) for subitem in subitem_list
         ]
         if object_uid:
             register_list.sort(key=lambda val: val.subidx)
-            if subnode not in self.registers_group:
-                self.registers_group[subnode] = {}
-            self.registers_group[subnode][object_uid] = list(register_list)
+            if subnode not in self.items:
+                self.items[subnode] = {}
+            self.items[subnode][object_uid] = CanOpenObject(object_uid, data_type, register_list)
 
     def __read_canopen_subitem(
         self, subitem: ElementTree.Element, reg_index: int, subnode: int
