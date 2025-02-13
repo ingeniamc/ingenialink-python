@@ -114,6 +114,7 @@ class EthercatNetwork(Network):
     EXPECTED_WKC_PROCESS_DATA = 3
 
     DEFAULT_FOE_PASSWORD = 0x70636675
+    __FOE_WRITE_TIMEOUT_US = 500_000
 
     __FORCE_BOOT_PASSWORD = 0x424F4F54
     __FORCE_COCO_BOOT_IDX = 0x5EDE
@@ -249,9 +250,9 @@ class EthercatNetwork(Network):
             servo: Instance of the servo connected.
 
         """
-        servo.stop_status_listener()
         if not self._change_nodes_state(servo, pysoem.INIT_STATE):
             logger.warning("Drive can not reach Init state")
+        servo.teardown()
         self.servos.remove(servo)
         if not self.servos:
             self.stop_status_listener()
@@ -538,7 +539,9 @@ class EthercatNetwork(Network):
         """
         with open(file_path, "rb") as file:
             file_data = file.read()
-            r: int = slave.foe_write(self.__DEFAULT_FOE_FILE_NAME, password, file_data)
+            r: int = slave.foe_write(
+                self.__DEFAULT_FOE_FILE_NAME, password, file_data, self.__FOE_WRITE_TIMEOUT_US
+            )
         return r
 
     def _start_master(self) -> None:

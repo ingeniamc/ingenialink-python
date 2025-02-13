@@ -4,6 +4,7 @@ import random
 import pytest
 
 from ingenialink.enums.register import RegAccess, RegDtype
+from ingenialink.exceptions import ILNACKError
 from ingenialink.network import NetState
 from virtual_drive.core import VirtualDrive
 
@@ -64,4 +65,5 @@ def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):
     dictionary = os.path.join(TESTS_RESOURCES_FOLDER, "ethercat/test_dict_ethercat_old_dist.xdf")
     server, net, servo = virtual_drive_custom_dict(dictionary)
     assert servo is not None and net is not None
-    assert server._monitoring is None and server._disturbance is None
+    with pytest.raises(ILNACKError):
+        servo.read("MON_DIST_STATUS", subnode=0)

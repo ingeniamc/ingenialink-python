@@ -8,7 +8,9 @@ from xml.etree import ElementTree
 import pytest
 from packaging import version
 
-from ingenialink.canopen.servo import CanopenServo
+from ingenialink import RegAccess
+from ingenialink.configuration_file import ConfigurationFile
+from ingenialink.dictionary import Interface
 from ingenialink.ethernet.register import RegDtype
 from ingenialink.exceptions import (
     ILConfigurationError,
@@ -134,52 +136,33 @@ def test_save_configuration(connect_to_slave):
 
     assert os.path.isfile(filename)
 
-    device, saved_registers = servo._read_configuration_file(filename)
+    config_file = ConfigurationFile.load_from_xcf(filename)
 
     prod_code, rev_number = servo._get_drive_identification()
-    if "ProductCode" in device.attrib and prod_code is not None:
-        assert int(device.attrib.get("ProductCode")) == prod_code
-    if "RevisionNumber" in device.attrib and rev_number is not None:
-        assert int(device.attrib.get("RevisionNumber")) == rev_number
+    assert config_file.device.product_code == prod_code
+    assert config_file.device.revision_number == rev_number
 
-    if servo.dictionary.part_number is None:
-        assert "PartNumber" not in device.attrib
-    else:
-        assert device.attrib["PartNumber"] == servo.dictionary.part_number
-    interface = (
-        servo.DICTIONARY_INTERFACE_ATTR_CAN
-        if isinstance(servo, CanopenServo)
-        else servo.DICTIONARY_INTERFACE_ATTR_ETH
-    )
-    assert device.attrib.get("Interface") == interface
+    assert config_file.device.part_number == servo.dictionary.part_number
+    assert config_file.device.interface == servo.interface
+    if servo.interface == Interface.CAN:
+        assert config_file.device.node_id == servo.target
     # The firmware version from the drive has trailing zeros
     # and the one from the dictionary does not
-    assert version.parse(device.attrib.get("firmwareVersion")) == version.parse(
+    assert version.parse(config_file.device.firmware_version) == version.parse(
         servo.dictionary.firmware_version
     )
 
-    assert len(saved_registers) > 0
-    for saved_register in saved_registers:
-        subnode = int(saved_register.attrib.get("subnode"))
+    assert len(config_file.registers) > 0
+    for saved_register in config_file.registers:
+        subnode = saved_register.subnode
 
-        reg_id = saved_register.attrib.get("id")
+        reg_id = saved_register.uid
         registers = servo.dictionary.registers(subnode=subnode)
-
         assert reg_id in registers
-
-        storage = saved_register.attrib.get("storage")
-        if storage is not None:
-            assert storage == str(registers[reg_id].storage)
-        else:
-            assert registers[reg_id].storage is None
-
-        access = saved_register.attrib.get("access")
-        assert registers[reg_id].access == servo.dictionary.access_xdf_options[access]
-
-        dtype = saved_register.attrib.get("dtype")
-        assert registers[reg_id].dtype == servo.dictionary.dtype_xdf_options[dtype]
-
-        assert access == "rw"
+        assert registers[reg_id].storage == pytest.approx(saved_register.storage, 0.0001)
+        assert registers[reg_id].access == saved_register.access
+        assert registers[reg_id].dtype == saved_register.dtype
+        assert saved_register.access == RegAccess.RW
         assert registers[reg_id].address_type != RegAddressType.NVM_NONE
 
     _clean(filename)
@@ -227,36 +210,22 @@ def test_check_configuration(virtual_drive):
 def test_load_configuration(connect_to_slave):
     servo, net = connect_to_slave
     assert servo is not None and net is not None
-
     filename = "temp_config"
-
     servo.save_configuration(filename)
-
     assert os.path.isfile(filename)
-
     servo.load_configuration(filename)
+    config_file = ConfigurationFile.load_from_xcf(filename)
 
-    _, loaded_registers = servo._read_configuration_file(filename)
-
-    for register in loaded_registers:
-        reg_id = register.attrib.get("id")
-        storage = register.attrib.get("storage")
-        subnode = int(register.attrib.get("subnode"))
-        dtype = register.attrib.get("dtype")
-
+    for register in config_file.registers:
         # Check if the register exists in the drive
         try:
-            value = servo.read(reg_id, subnode=subnode)
+            value = servo.read(register.uid, subnode=register.subnode)
         except ILIOError:
             continue
-
-        if dtype == "str":
-            assert value == storage
-        elif dtype == "float":
-            assert value == pytest.approx(float(storage), 0.0001)
+        if register.dtype == RegDtype.FLOAT:
+            assert value == pytest.approx(register.storage, 0.0001)
         else:
-            assert value == int(storage)
-
+            assert value == register.storage
     _clean(filename)
 
 
@@ -272,27 +241,6 @@ def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: 
         str(exc_info.value) == "Exception during load_configuration, "
         "register DRV_DIAG_SYS_ERROR_TOTAL_COM: Error writing"
     )
-
-
-@pytest.mark.no_connection
-def test_read_configuration_file():
-    test_file = "./tests/resources/test_config_file.xcf"
-    device, registers = CanopenServo._read_configuration_file(test_file)
-
-    assert device.attrib.get("PartNumber") == "EVE-NET-C"
-    assert device.attrib.get("Interface") == "CAN"
-    assert device.attrib.get("firmwareVersion") == "2.3.0"
-    assert device.attrib.get("ProductCode") == "493840"
-    assert device.attrib.get("RevisionNumber") == "196634"
-    assert device.attrib.get("family") == "Summit"
-    assert device.attrib.get("name") == "Generic"
-
-    assert len(registers) == 4
-    assert registers[0].get("id") == "DRV_DIAG_ERROR_LAST_COM"
-    assert registers[0].get("access") == "r"
-    assert registers[0].get("address") == "0x580F00"
-    assert registers[0].get("dtype") == "s32"
-    assert registers[0].get("subnode") == "0"
 
 
 @pytest.mark.canopen
@@ -832,3 +780,30 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
 def test_status_word_decode(virtual_drive, status_word, state):
     server, servo = virtual_drive
     assert servo.status_word_decode(status_word) == state
+
+
+@pytest.mark.parametrize(
+    "uid, subnode, value, node_id, dependent",
+    [
+        ("CIA301_COMMS_COBID_EMCY", 0, 1000, 61, True),
+        ("DRV_STATE_CONTROL", 1, 500, 76, False),
+    ],
+)
+@pytest.mark.canopen
+def test__adapt_configuration_file_storage_value(
+    connect_to_slave, uid, subnode, value, node_id, dependent
+):
+    servo, net = connect_to_slave
+    conf_file = ConfigurationFile.create_empty_configuration(
+        Interface.CAN, None, None, None, None, node_id
+    )
+    node_id_reg = servo.dictionary.registers(subnode)[uid]
+    node_id_reg._CanopenRegister__is_node_id_dependent = dependent
+    conf_file.add_register(node_id_reg, value)
+    adapted_register = servo._adapt_configuration_file_storage_value(
+        conf_file, conf_file.registers[0]
+    )
+    if dependent:
+        assert adapted_register == (value - node_id + servo.target)
+    else:
+        assert adapted_register == value

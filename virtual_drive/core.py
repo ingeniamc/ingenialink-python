@@ -12,6 +12,7 @@ from numpy.typing import NDArray
 from scipy import signal
 from typing_extensions import override
 
+from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.dictionary import Interface
 from ingenialink.enums.register import RegAccess, RegDtype
@@ -1245,6 +1246,7 @@ class VirtualDrive(Thread):
     IP_ADDRESS = "127.0.0.1"
 
     ACK_CMD = 3
+    NACK_CMD = 5
     WRITE_CMD = 2
     READ_CMD = 1
 
@@ -1381,6 +1383,21 @@ class VirtualDrive(Thread):
         ):
             self._monitoring.update_data()
             response = self._response_monitoring_data(value)
+        elif (
+            self._disturbance is None
+            and self._monitoring is None
+            and self.__register_exists(0, VirtualMonitoring.STATUS_REGISTER)
+            and register.address == self.id_to_address(0, VirtualMonitoring.STATUS_REGISTER)
+        ):
+            # If a request to read the MON_DIST_STATUS register is made
+            # Respond with a read error
+            # This is done because the MONITORING_V1 is not supported by the virtual drive.
+            response = MCB.build_mcb_frame(
+                self.NACK_CMD,
+                register.subnode,
+                register.address,
+                convert_dtype_to_bytes(0, register.dtype),
+            )
         else:
             if not isinstance(value, bytes):
                 data = convert_dtype_to_bytes(value, register.dtype)
@@ -1403,18 +1420,16 @@ class VirtualDrive(Thread):
         configuration_file = os.path.join(
             pathlib.Path(__file__).parent.resolve(), self.PATH_CONFIGURATION_RELATIVE
         )
-        _, registers = EthernetServo._read_configuration_file(configuration_file)
-        cast_data = {"float": float, "str": str}
-        for element in registers:
-            subnode = int(element.attrib["subnode"])
-            reg_dtype = element.attrib["dtype"]
-            reg_data = element.attrib["storage"]
-            if not self.__register_exists(subnode, element.attrib["id"]):
+        conf_file = ConfigurationFile.load_from_xcf(configuration_file)
+        for conf_register in conf_file.registers:
+            subnode = conf_register.subnode
+            reg_data = conf_register.storage
+            if not self.__register_exists(subnode, conf_register.uid):
                 continue
             self.set_value_by_id(
                 subnode,
-                element.attrib["id"],
-                cast_data.get(reg_dtype, int)(reg_data),
+                conf_register.uid,
+                reg_data,
             )
         value: Union[str, int]
         for subnode in self.__dictionary.subnodes:
