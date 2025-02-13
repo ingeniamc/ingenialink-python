@@ -15,7 +15,7 @@ from ingenialink.register import Register
 
 logger = ingenialogger.get_logger(__name__)
 
-__INTERFACE_XCF_OPTIONS: dict[str, Interface] = {
+_INTERFACE_XCF_OPTIONS: dict[str, Interface] = {
     "CAN": Interface.CAN,
     "ECAT": Interface.ECAT,
     "EoE": Interface.EoE,
@@ -60,7 +60,7 @@ class Device:
         self.node_id = node_id
 
         self.__interface_value_to_str = {
-            value: key for key, value in __INTERFACE_XCF_OPTIONS.items()
+            value: key for key, value in _INTERFACE_XCF_OPTIONS.items()
         }
         self.__interface_value_to_str[Interface.VIRTUAL] = "ETH"
 
@@ -75,7 +75,7 @@ class Device:
             ValueError: wrong fields type
             KeyError: a mandatory attribute is missing
         """
-        interface = __INTERFACE_XCF_OPTIONS[element.attrib[cls.__INTERFACE_ATTR]]
+        interface = _INTERFACE_XCF_OPTIONS[element.attrib[cls.__INTERFACE_ATTR]]
         part_number = element.attrib.get(cls.__PART_NUMBER_ATTR)
         product_code_raw = element.attrib.get(cls.__PRODUCT_CODE_ATTR)
         product_code = int(product_code_raw) if product_code_raw else None
