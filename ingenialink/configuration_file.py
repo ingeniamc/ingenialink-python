@@ -1,6 +1,7 @@
 import os
 import re
 from abc import ABC
+from functools import cached_property
 from typing import Optional, Union
 from xml.dom import minidom
 from xml.etree import ElementTree
@@ -34,13 +35,6 @@ class Device:
     __REVISION_NUMBER_ATTR = "RevisionNumber"
     __NODE_ID_ATTR = "NodeID"
 
-    INTERFACE_XCF_OPTIONS = {
-        "CAN": Interface.CAN,
-        "ECAT": Interface.ECAT,
-        "EoE": Interface.EoE,
-        "ETH": Interface.ETH,
-    }
-
     def __init__(
         self,
         interface: Interface,
@@ -60,9 +54,18 @@ class Device:
         self.node_id = node_id
 
         self.__interface_value_to_str = {
-            value: key for key, value in self.INTERFACE_XCF_OPTIONS.items()
+            value: key for key, value in self.__interface_xcf_options.items()
         }
         self.__interface_value_to_str[Interface.VIRTUAL] = "ETH"
+
+    @cached_property
+    def __interface_xcf_options(self) -> dict[str, Interface]:
+        return {
+            "CAN": Interface.CAN,
+            "ECAT": Interface.ECAT,
+            "EoE": Interface.EoE,
+            "ETH": Interface.ETH,
+        }
 
     @classmethod
     def from_xcf(cls, element: ElementTree.Element) -> "Device":
@@ -75,7 +78,7 @@ class Device:
             ValueError: wrong fields type
             KeyError: a mandatory attribute is missing
         """
-        interface = cls.INTERFACE_XCF_OPTIONS[element.attrib[cls.__INTERFACE_ATTR]]
+        interface = cls.__interface_xcf_options[element.attrib[cls.__INTERFACE_ATTR]]
         part_number = element.attrib.get(cls.__PART_NUMBER_ATTR)
         product_code_raw = element.attrib.get(cls.__PRODUCT_CODE_ATTR)
         product_code = int(product_code_raw) if product_code_raw else None
