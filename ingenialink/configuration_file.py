@@ -9,7 +9,7 @@ import ingenialogger
 import numpy as np
 
 from ingenialink import RegAccess, RegDtype
-from ingenialink.dictionary import Dictionary, Interface
+from ingenialink.dictionary import ACCESS_XDF_OPTIONS, DTYPE_XDF_OPTIONS, Interface
 from ingenialink.exceptions import ILConfigurationFileParseError
 from ingenialink.register import Register
 
@@ -131,12 +131,8 @@ class ConfigRegister:
         self.access = access
         self.storage = storage
 
-        self.__access_value_to_str = {
-            value: key for key, value in Dictionary.access_xdf_options.items()
-        }
-        self.__dtype_value_to_str = {
-            value: key for key, value in Dictionary.dtype_xdf_options.items()
-        }
+        self.__access_value_to_str = {value: key for key, value in ACCESS_XDF_OPTIONS.items()}
+        self.__dtype_value_to_str = {value: key for key, value in DTYPE_XDF_OPTIONS.items()}
 
     @classmethod
     def from_xcf(cls, element: ElementTree.Element) -> "ConfigRegister":
@@ -151,8 +147,8 @@ class ConfigRegister:
         """
         uid = element.attrib[cls.__ID_ATTR]
         subnode = int(element.attrib[cls.__SUBNODE_ATTR])
-        dtype = Dictionary.dtype_xdf_options[element.attrib[cls.__DTYPE_ATTR]]
-        access = Dictionary.access_xdf_options[element.attrib[cls.__ACCESS_ATTR]]
+        dtype = DTYPE_XDF_OPTIONS[element.attrib[cls.__DTYPE_ATTR]]
+        access = ACCESS_XDF_OPTIONS[element.attrib[cls.__ACCESS_ATTR]]
         storage: Union[float, int, str, bool]
         if dtype == RegDtype.FLOAT:
             storage = float(element.attrib[cls.__STORAGE_ATTR])

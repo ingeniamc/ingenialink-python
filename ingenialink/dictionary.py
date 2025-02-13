@@ -30,6 +30,29 @@ DICT_LABELS = "./Labels"
 DICT_LABELS_LABEL = f"{DICT_LABELS}/Label"
 
 
+ACCESS_XDF_OPTIONS: dict[str, RegAccess] = {
+    "r": RegAccess.RO,
+    "w": RegAccess.WO,
+    "rw": RegAccess.RW,
+}
+
+
+DTYPE_XDF_OPTIONS: dict[str, RegDtype] = {
+    "float": RegDtype.FLOAT,
+    "s8": RegDtype.S8,
+    "u8": RegDtype.U8,
+    "s16": RegDtype.S16,
+    "u16": RegDtype.U16,
+    "s32": RegDtype.S32,
+    "u32": RegDtype.U32,
+    "s64": RegDtype.S64,
+    "u64": RegDtype.U64,
+    "str": RegDtype.STR,
+    "bool": RegDtype.BOOL,
+    "byteArray512": RegDtype.BYTE_ARRAY_512,
+}
+
+
 class Interface(enum.Enum):
     """Connection Interfaces."""
 
@@ -240,29 +263,6 @@ class Dictionary(ABC):
         if address_type == "NVM_HW":
             return RegAddressType.NVM_HW
         raise ILDictionaryParseError(f"The address type {address_type} does not exist.")
-
-    @cached_property
-    def access_xdf_options(self) -> dict[str, RegAccess]:
-        """Register access dictionary."""
-        return {"r": RegAccess.RO, "w": RegAccess.WO, "rw": RegAccess.RW}
-
-    @cached_property
-    def dtype_xdf_options(self) -> dict[str, RegDtype]:
-        """Data type dictionary."""
-        return {
-            "float": RegDtype.FLOAT,
-            "s8": RegDtype.S8,
-            "u8": RegDtype.U8,
-            "s16": RegDtype.S16,
-            "u16": RegDtype.U16,
-            "s32": RegDtype.S32,
-            "u32": RegDtype.U32,
-            "s64": RegDtype.S64,
-            "u64": RegDtype.U64,
-            "str": RegDtype.STR,
-            "bool": RegDtype.BOOL,
-            "byteArray512": RegDtype.BYTE_ARRAY_512,
-        }
 
     @staticmethod
     def _get_subnode_xdf_options(subnode: str) -> SubnodeType:
@@ -951,8 +951,8 @@ class DictionaryV3(Dictionary):
         address_type = Dictionary._get_address_type_xdf_options(
             register.attrib[self.__ADDRESS_TYPE_ATTR]
         )
-        access = self.access_xdf_options[register.attrib[self.__ACCESS_ATTR]]
-        dtype = self.dtype_xdf_options[register.attrib[self.__DTYPE_ATTR]]
+        access = ACCESS_XDF_OPTIONS[register.attrib[self.__ACCESS_ATTR]]
+        dtype = DTYPE_XDF_OPTIONS[register.attrib[self.__DTYPE_ATTR]]
         identifier = register.attrib[self.__UID_ATTR]
         cyclic = RegCyclicType(register.attrib[self.__CYCLIC_ATTR])
         description = register.attrib[self.__DESCRIPTION_ATTR]
@@ -1032,8 +1032,8 @@ class DictionaryV3(Dictionary):
         address_type = Dictionary._get_address_type_xdf_options(
             subitem.attrib[self.__ADDRESS_TYPE_ATTR]
         )
-        access = self.access_xdf_options[subitem.attrib[self.__ACCESS_ATTR]]
-        dtype = self.dtype_xdf_options[subitem.attrib[self.__DTYPE_ATTR]]
+        access = ACCESS_XDF_OPTIONS[subitem.attrib[self.__ACCESS_ATTR]]
+        dtype = DTYPE_XDF_OPTIONS[subitem.attrib[self.__DTYPE_ATTR]]
         identifier = subitem.attrib[self.__UID_ATTR]
         cyclic = RegCyclicType(subitem.attrib[self.__CYCLIC_ATTR])
         description = subitem.attrib[self.__DESCRIPTION_ATTR]
@@ -1408,8 +1408,8 @@ class DictionaryV2(Dictionary):
             # Data type
             dtype_aux = register.attrib["dtype"]
             dtype = None
-            if dtype_aux in self.dtype_xdf_options:
-                dtype = self.dtype_xdf_options[dtype_aux]
+            if dtype_aux in DTYPE_XDF_OPTIONS:
+                dtype = DTYPE_XDF_OPTIONS[dtype_aux]
             else:
                 raise ILDictionaryParseError(
                     f"The data type {dtype_aux} does not exist for the register: {identifier}"
@@ -1418,8 +1418,8 @@ class DictionaryV2(Dictionary):
             # Access type
             access_aux = register.attrib["access"]
             access = None
-            if access_aux in self.access_xdf_options:
-                access = self.access_xdf_options[access_aux]
+            if access_aux in ACCESS_XDF_OPTIONS:
+                access = ACCESS_XDF_OPTIONS[access_aux]
             else:
                 raise ILDictionaryParseError(
                     f"The access type {access_aux} does not exist for the register: {identifier}"
