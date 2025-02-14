@@ -1,12 +1,29 @@
 import re
+import sys
 
 import setuptools
+from Cython.Build import cythonize
 
 _version = re.search(r"__version__\s+=\s+\"(.*)\"", open("ingenialink/__init__.py").read()).group(1)
 
 
 def get_docs_url():
     return f"https://distext.ingeniamc.com/doc/ingenialink-python/{_version}"
+
+
+if sys.platform == "win32":
+    extensions = [
+        setuptools.Extension(
+            "ingenialink.get_adapters_addresses",
+            ["ingenialink/cython_files/get_adapters_addresses.pyx"],
+            language="c++",
+            extra_compile_args=["/TP"],
+            libraries=["Iphlpapi"],
+        )
+    ]
+    extensions = cythonize(extensions, compiler_directives={"language_level": "3"})
+else:
+    extensions = []
 
 
 setuptools.setup(
@@ -37,6 +54,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Cython",
         "Topic :: Communications",
         "Topic :: Software Development :: Libraries",
     ],
@@ -54,5 +72,7 @@ setuptools.setup(
     extras_require={
         "dev": ["tox==4.12.1"],
     },
+    setup_requires=["cython==3.0.11"],
     python_requires=">=3.9",
+    ext_modules=extensions,
 )

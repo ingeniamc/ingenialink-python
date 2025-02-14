@@ -27,7 +27,6 @@ out.txt
 
 # Pipenv and venv
 Pipfile.lock
-pyproject.toml
 venv
 
 # Test files
@@ -35,3 +34,7 @@ pytest_reports/
 
 # Documentation
 _docs
+
+# Cython compilation
+*.cpp
+temp/*
