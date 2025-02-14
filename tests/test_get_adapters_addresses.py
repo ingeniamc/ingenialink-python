@@ -1,8 +1,11 @@
+import contextlib
 import sys
 
 import pytest
 
-from ingenialink.get_adapters_addresses import get_adapters_addresses
+# Module will only be available for Windows
+with contextlib.suppress(ImportError):
+    from ingenialink.get_adapters_addresses import get_adapters_addresses
 
 
 @pytest.mark.skipif(
