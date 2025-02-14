@@ -1051,9 +1051,9 @@ class DictionaryV3(Dictionary):
         object_uid = root.attrib.get(self.__UID_ATTR)
         reg_index = int(root.attrib[self.__INDEX_ATTR], 16)
         subnode = int(root.attrib[self.__SUBNODE_ATTR])
-        data_type = DictionaryV3._get_canopen_object_data_type_options[
+        data_type = DictionaryV3._get_canopen_object_data_type_options(
             root.attrib[self.__OBJECT_DATA_TYPE_ATTR]
-        ]
+        )
         subitems_element = self.__find_and_check(root, self.__SUBITEMS_ELEMENT)
         subitem_list = self._findall_and_check(subitems_element, self.__SUBITEM_ELEMENT)
         register_list = [
