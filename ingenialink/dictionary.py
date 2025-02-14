@@ -609,12 +609,6 @@ class DictionaryV3(Dictionary):
     __PDO_ENTRY_SIZE_ATTR = "size"
     __PDO_ENTRY_SUBNODE_ATTR = "subnode"
 
-    __canopen_object_data_type_options = {
-        "VAR": CanOpenObjectType.VAR,
-        "RECORD": CanOpenObjectType.RECORD,
-        "ARRAY": CanOpenObjectType.ARRAY,
-    }
-
     @staticmethod
     def _interface_to_device_element(interface: Interface) -> str:
         """Returns the device element associated with each interface.
@@ -637,6 +631,27 @@ class DictionaryV3(Dictionary):
         if interface is Interface.EoE:
             return "EoEDevice"
         raise ILDictionaryParseError(f"{interface=} has no device element associated.")
+
+    @staticmethod
+    def _get_canopen_object_data_type_options(data_type: str) -> CanOpenObjectType:
+        """Returns the `CanOpenObjectType` corresponding to a data type string.
+
+        Args:
+            data_type: data type.
+
+        Raises:
+            ILDictionaryParseError: if the provided data type has no `CanOpenObjectType` associated.
+
+        Returns:
+            subnode type.
+        """
+        if data_type == "VAR":
+            return CanOpenObjectType.VAR
+        if data_type == "RECORD":
+            return CanOpenObjectType.RECORD
+        if data_type == "ARRAY":
+            return CanOpenObjectType.ARRAY
+        raise ILDictionaryParseError(f"{data_type} has no canopen object type associated.")
 
     @override
     @classmethod
@@ -1036,7 +1051,7 @@ class DictionaryV3(Dictionary):
         object_uid = root.attrib.get(self.__UID_ATTR)
         reg_index = int(root.attrib[self.__INDEX_ATTR], 16)
         subnode = int(root.attrib[self.__SUBNODE_ATTR])
-        data_type = self.__canopen_object_data_type_options[
+        data_type = DictionaryV3._get_canopen_object_data_type_options[
             root.attrib[self.__OBJECT_DATA_TYPE_ATTR]
         ]
         subitems_element = self.__find_and_check(root, self.__SUBITEMS_ELEMENT)
