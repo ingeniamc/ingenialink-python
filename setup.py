@@ -1,5 +1,5 @@
+import platform
 import re
-import sys
 
 import setuptools
 from Cython.Build import cythonize
@@ -11,7 +11,7 @@ def get_docs_url():
     return f"https://distext.ingeniamc.com/doc/ingenialink-python/{_version}"
 
 
-if sys.platform == "win32":
+if platform.system() == "Windows":
     extensions = [
         setuptools.Extension(
             "ingenialink.get_adapters_addresses",

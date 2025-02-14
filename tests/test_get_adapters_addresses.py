@@ -1,5 +1,5 @@
 import contextlib
-import sys
+import platform
 
 import pytest
 
@@ -9,7 +9,7 @@ with contextlib.suppress(ImportError):
 
 
 @pytest.mark.skipif(
-    sys.platform != "win32", reason="Skipping GetAdaptersAddresses, only available on Windows"
+    platform.system == "Windows", reason="Skipping GetAdaptersAddresses, only available on Windows"
 )
 def test_get_adapters_addresses():
     assert get_adapters_addresses() is False
