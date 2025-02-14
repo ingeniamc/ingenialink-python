@@ -11,8 +11,6 @@ def get_docs_url():
     return f"https://distext.ingeniamc.com/doc/ingenialink-python/{_version}"
 
 
-print(f"Platform is {platform.system()}")
-
 if platform.system() == "Windows":
     extensions = [
         setuptools.Extension(

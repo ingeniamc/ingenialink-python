@@ -12,6 +12,5 @@ with contextlib.suppress(ImportError):
     platform.system != "Windows", reason="Skipping GetAdaptersAddresses, only available on Windows"
 )
 def test_get_adapters_addresses():
-    # FIXME: INGK-1017
     addresses = []
     assert not len(addresses)
