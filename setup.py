@@ -16,8 +16,10 @@ if platform.system() == "Windows":
         setuptools.Extension(
             "ingenialink.get_adapters_addresses",
             ["ingenialink/cython_files/get_adapters_addresses.pyx"],
-            language="c++",
-            extra_compile_args=["/TP"],
+            language="c++",  # source code should be treated as C++
+            extra_compile_args=[
+                "/TP"
+            ],  # treat all files as C++: https://learn.microsoft.com/en-us/cpp/build/reference/tc-tp-tc-tp-specify-source-file-type?view=msvc-170
             libraries=["Iphlpapi"],
         )
     ]
