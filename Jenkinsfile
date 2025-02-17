@@ -22,9 +22,15 @@ def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 coverage_stashes = []
 
-def runTest(protocol, slave = 0) {
+def runTest(protocol, slave = 0, tox_skip_install = false) {
+    if (tox_skip_install) {
+        unstash 'build'
+        sh 'pip install dist/*.whl'
+        echo 'Wheel file installed.'
+    }
+                    
     try {
-        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
+        bat "py -${DEFAULT_PYTHON_VERSION} -m ${TOX_SKIP_INSTALL}=${tox_skip_install} tox -e ${RUN_PYTHON_VERSIONS} -- " +
                 "--protocol ${protocol} " +
                 "--slave ${slave} " +
                 "--cov=ingenialink " +
@@ -198,7 +204,7 @@ pipeline {
                     stages {
                         stage('EtherCAT Everest') {
                             steps {
-                                runTest("ethercat", 0)
+                                runTest("ethercat", 0, true)
                             }
                         }
                         stage('EtherCAT Capitan') {
@@ -223,7 +229,7 @@ pipeline {
                     stages {
                         stage('CANopen Everest') {
                             steps {
-                                runTest("canopen", 0)
+                                runTest("canopen", 0, true)
                             }
                         }
                         stage('CANopen Capitan') {
