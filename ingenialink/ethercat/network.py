@@ -136,6 +136,19 @@ class EthercatNetwork(Network):
         self._overlapping_io_map = overlapping_io_map
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
+        self.__ecat_master_reference: list[pysoem.CdefMaster] = []
+
+    def __store_master_reference(self) -> None:
+        """Stores a reference to the EtherCAT master before calling a nogil function."""
+        self.__ecat_master_reference.append(self._ecat_master)
+
+    def __remove_master_reference(self) -> None:
+        """Removes the EtherCAT master reference from the list.
+
+        Should be called once the nogil function has finished.
+        """
+        if len(self.__ecat_master_reference):
+            self.__ecat_master_reference.pop(-1)
 
     @staticmethod
     def __get_foe_error_message(error_code: int) -> str:
@@ -206,7 +219,9 @@ class EthercatNetwork(Network):
 
         Also fill `__last_init_nodes` attribute.
         """
-        nodes = self._ecat_master.config_init()
+        self.__store_master_reference()
+        nodes = self._ecat_master.config_init(release_gil=True)
+        self.__remove_master_reference()
         if self.servos:
             self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
         self.__last_init_nodes = list(range(1, nodes + 1))
@@ -349,8 +364,14 @@ class EthercatNetwork(Network):
         if self._overlapping_io_map:
             self._ecat_master.send_overlap_processdata()
         else:
-            self._ecat_master.send_processdata()
-        processdata_wkc = self._ecat_master.receive_processdata(timeout=int(timeout * 1_000_000))
+            self.__store_master_reference()
+            self._ecat_master.send_processdata(release_gil=True)
+            self.__remove_master_reference()
+        self.__store_master_reference()
+        processdata_wkc = self._ecat_master.receive_processdata(
+            timeout=int(timeout * 1_000_000), release_gil=True
+        )
+        self.__remove_master_reference()
         if processdata_wkc != self.EXPECTED_WKC_PROCESS_DATA * (len(self.servos)):
             self._ecat_master.read_state()
             servos_state_msg = ""
@@ -567,9 +588,15 @@ class EthercatNetwork(Network):
         """
         with open(file_path, "rb") as file:
             file_data = file.read()
+            self.__store_master_reference()
             r: int = slave.foe_write(
-                self.__DEFAULT_FOE_FILE_NAME, password, file_data, self.__FOE_WRITE_TIMEOUT_US
+                self.__DEFAULT_FOE_FILE_NAME,
+                password,
+                file_data,
+                self.__FOE_WRITE_TIMEOUT_US,
+                release_gil=True,
             )
+            self.__remove_master_reference()
         return r
 
     def _start_master(self) -> None:
