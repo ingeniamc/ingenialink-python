@@ -23,7 +23,10 @@ if platform.system() == "Windows":
             libraries=["Iphlpapi"],
         )
     ]
-    extensions = cythonize(extensions, compiler_directives={"language_level": "3"})
+    # embedsignature: https://github.com/cython/cython/wiki/enhancements-compilerdirectives
+    extensions = cythonize(
+        extensions, compiler_directives={"language_level": "3", "embedsignature": True}
+    )
 else:
     extensions = []
 

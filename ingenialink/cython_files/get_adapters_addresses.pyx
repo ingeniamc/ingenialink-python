@@ -1,5 +1,10 @@
 from GetAdaptersAddresses cimport *
 
-def get_adapters_addresses() -> bool:
+def get_adapters_addresses() -> list[int]:
+    """Retrieves the addresses associated with the adapters on the local computer.
+
+    Returns:
+        adapters on the local computer.
+    """
     # FIXME: INGK-1017
-    return False
+    return []
