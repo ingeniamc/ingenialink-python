@@ -33,6 +33,7 @@ CMD_CHANGE_CPU = 0x67E4
 MAX_NUM_UNSUCCESSFUL_PINGS = 3
 
 MAX_NUMBER_OF_SCAN_TRIES = 2
+SCAN_CONNECTION_TIMEOUT = 0.5
 
 VIRTUAL_DRIVE_DICTIONARY = os.path.join(
     os.path.dirname(__file__), "..", "..", "virtual_drive", "resources", "virtual_drive.xdf"
@@ -215,13 +216,12 @@ class EthernetNetwork(Network):
         hosts_ips = [str(ip) for ip in self.__subnet]
         # The scanning process can fail sometimes. Retry
         # Check https://github.com/romana/multi-ping/issues/19
-        num_tries = 0
-        ping_responses: dict[str, int] = {}
-        while len(ping_responses) == 0 and num_tries < MAX_NUMBER_OF_SCAN_TRIES:
+        detected_slaves: dict[str, int] = {}
+        for _ in range(MAX_NUMBER_OF_SCAN_TRIES):
             with contextlib.suppress(OSError):
                 ping_responses, _ = multi_ping(hosts_ips, timeout=1, ignore_lookup_errors=True)
-            num_tries += 1
-        return list(ping_responses.keys())
+                detected_slaves.update(ping_responses)
+        return list(detected_slaves.keys())
 
     def scan_slaves(self) -> list[str]:  # type: ignore [override]
         """Scan drives connected to the network.
@@ -385,7 +385,9 @@ class EthernetNetwork(Network):
         It's used for the scan_slaves_info method.
 
         """
-        servo = self.connect_to_slave(ip_address, VIRTUAL_DRIVE_DICTIONARY)
+        servo = self.connect_to_slave(
+            ip_address, VIRTUAL_DRIVE_DICTIONARY, connection_timeout=SCAN_CONNECTION_TIMEOUT
+        )
         try:
             product_code = servo.read("DRV_ID_PRODUCT_CODE_COCO", subnode=0)
         except ILError:
