@@ -95,16 +95,6 @@ class EthercatNetwork(Network):
 
     """
 
-    # Error codes taken from SOEM source code.
-    # https://github.com/OpenEtherCATsociety/SOEM/blob/v1.4.0/soem/ethercatfoe.c#L199
-    __FOE_ERRORS = {
-        -3: "Unexpected mailbox received",
-        -5: "FoE error",
-        -6: "Buffer too small",
-        -7: "Packet number error",
-        -10: "File not found",
-    }
-
     MANUAL_STATE_CHANGE = 1
 
     DEFAULT_ECAT_CONNECTION_TIMEOUT_S = 1
@@ -114,6 +104,9 @@ class EthercatNetwork(Network):
     EXPECTED_WKC_PROCESS_DATA = 3
 
     DEFAULT_FOE_PASSWORD = 0x70636675
+    __FOE_WRITE_TIMEOUT_US = 500_000
+    __FOE_RECOVERY_TIMEOUT_S = 90
+    __FOE_RECOVERY_SLEEP_S = 5
 
     __FORCE_BOOT_PASSWORD = 0x424F4F54
     __FORCE_COCO_BOOT_IDX = 0x5EDE
@@ -179,6 +172,30 @@ class EthercatNetwork(Network):
         pysoem.settings.timeouts.tx_mailbox = tx_mailbox
         pysoem.settings.timeouts.rx_mailbox = rx_mailbox
         pysoem.settings.timeouts.state = state
+
+    @staticmethod
+    def __get_foe_error_message(error_code: int) -> str:
+        """Error message associated with an error code.
+
+        Args:
+            error_code: FoE error code.
+
+        Returns:
+            Error message.
+        """
+        # Error codes taken from SOEM source code.
+        # https://github.com/OpenEtherCATsociety/SOEM/blob/v1.4.0/soem/ethercatfoe.c#L199
+        if error_code == -3:
+            return "Unexpected mailbox received"
+        if error_code == -5:
+            return "FoE error"
+        if error_code == -6:
+            return "Buffer too small"
+        if error_code == -7:
+            return "Packet number error"
+        if error_code == -10:
+            return "File not found"
+        return f" Error code: {error_code}."
 
     def scan_slaves(self) -> list[int]:
         """Scans for slaves in the network.
@@ -516,14 +533,26 @@ class EthercatNetwork(Network):
         foe_result = self._write_foe(slave, fw_file, password)
 
         if foe_result < 0:
-            error_message = "The firmware file could not be loaded correctly."
-            if foe_result in self.__FOE_ERRORS:
-                error_message += f" {self.__FOE_ERRORS[foe_result]}."
-            else:
-                error_message += f" Error code: {foe_result}."
+            error_message = (
+                "The firmware file could not be loaded correctly."
+                f" {EthercatNetwork.__get_foe_error_message(error_code=foe_result)}"
+            )
             raise ILFirmwareLoadError(error_message)
-        self.__init_nodes()
-        logger.info("Firmware updated successfully")
+        start_time = time.time()
+        recovered = False
+        while time.time() < (start_time + self.__FOE_RECOVERY_TIMEOUT_S) and not recovered:
+            self.__init_nodes()
+            slave.state = pysoem.PREOP_STATE
+            slave.write_state()
+            recovered = (
+                slave.state_check(pysoem.PREOP_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_US)
+                == pysoem.PREOP_STATE
+            )
+            time.sleep(self.__FOE_RECOVERY_SLEEP_S)
+        if recovered:
+            logger.info("Firmware updated successfully")
+        else:
+            logger.info(f"The slave {slave_id} cannot reach the PreOp state.")
 
     def _switch_to_boot_state(self, slave: "CdefSlave") -> None:
         """Transitions the slave to the boot state."""
@@ -572,7 +601,9 @@ class EthercatNetwork(Network):
         """
         with open(file_path, "rb") as file:
             file_data = file.read()
-            r: int = slave.foe_write(self.__DEFAULT_FOE_FILE_NAME, password, file_data)
+            r: int = slave.foe_write(
+                self.__DEFAULT_FOE_FILE_NAME, password, file_data, self.__FOE_WRITE_TIMEOUT_US
+            )
         return r
 
     def _start_master(self) -> None:
