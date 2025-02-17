@@ -89,6 +89,7 @@ def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
     assert slaves_info[read_config["ethercat"]["slave"]].product_code == drive.product_code
     assert slaves_info[read_config["ethercat"]["slave"]].revision_number == drive.revision_number
 
+
 @pytest.mark.ethercat
 def test_update_sdo_timeout(connect_to_slave):
     _, net = connect_to_slave
@@ -102,6 +103,7 @@ def test_update_sdo_timeout(connect_to_slave):
     assert net._ecat_master.sdo_read_timeout == default_timeout
     assert net._ecat_master.sdo_write_timeout == default_timeout
 
+
 @pytest.mark.ethercat
 def test_update_pysoem_timeouts(connect_to_slave):
     _, net = connect_to_slave
@@ -111,14 +113,16 @@ def test_update_pysoem_timeouts(connect_to_slave):
     old_tx_mailbox = pysoem.settings.timeouts.tx_mailboxold
     old_rx_mailbox = pysoem.settings.timeouts.rx_mailbox
     old_state = pysoem.settings.timeouts.state
-    net.update_pysoem_timeouts(1,2,3,4,5,6)
+    net.update_pysoem_timeouts(1, 2, 3, 4, 5, 6)
     assert pysoem.settings.timeouts.ret == 1
     assert pysoem.settings.timeouts.safe == 2
     assert pysoem.settings.timeouts.eeprom == 3
     assert pysoem.settings.timeouts.tx_mailboxold == 4
     assert pysoem.settings.timeouts.rx_mailbox == 5
     assert pysoem.settings.timeouts.state == 6
-    net.update_pysoem_timeouts(old_ret, old_safe, old_eeprom, old_tx_mailbox, old_rx_mailbox, old_state)
+    net.update_pysoem_timeouts(
+        old_ret, old_safe, old_eeprom, old_tx_mailbox, old_rx_mailbox, old_state
+    )
     assert pysoem.settings.timeouts.ret == old_ret
     assert pysoem.settings.timeouts.safe == old_safe
     assert pysoem.settings.timeouts.eeprom == old_eeprom

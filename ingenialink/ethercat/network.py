@@ -158,7 +158,7 @@ class EthercatNetwork(Network):
     def update_pysoem_timeouts(
         ret: int, safe: int, eeprom: int, tx_mailbox: int, rx_mailbox: int, state: int
     ) -> None:
-        """Update pysoem timeouts
+        """Update pysoem timeouts.
 
         Args:
             ret: new ret timeout
