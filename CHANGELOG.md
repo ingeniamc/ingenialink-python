@@ -3,6 +3,7 @@
 ## [Unreleased]
 ### Added
 - Implement the scan method for Ethernet networks.
+- Release the GIL for Ethercat functions.
 
 ### Deprecated
 - Changed `Enums` names to follow CapWords convention. Old names are still supported, but will soon be deprecated.
