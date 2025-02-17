@@ -99,7 +99,20 @@ class EthercatServo(PDOServo):
         self._connection_timeout = connection_timeout
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
+        self.__slave_reference: list[CdefSlave] = []
         super().__init__(slave_id, dictionary_path, servo_status_listener)
+
+    def __store_slave_reference(self) -> None:
+        """Stores a reference to the slave before calling a nogil function."""
+        self.__slave_reference.append(self.__slave)
+
+    def __remove_slave_reference(self) -> None:
+        """Removes a slave reference from the list.
+
+        Should be called once the nogil function has finished.
+        """
+        if len(self.__slave_reference):
+            self.__slave_reference.pop(-1)
 
     def teardown(self) -> None:
         """Perform the necessary actions for teardown."""
@@ -191,8 +204,11 @@ class EthercatServo(PDOServo):
     ) -> bytes:
         self._lock.acquire()
         try:
-            time.sleep(0.0001)  # Unlock threads before SDO read
-            value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
+            self.__store_slave_reference()
+            value: bytes = self.__slave.sdo_read(
+                reg.idx, reg.subidx, buffer_size, complete_access, release_gil=True
+            )
+            self.__remove_slave_reference()
         except (
             pysoem.SdoError,
             pysoem.MailboxError,
@@ -213,8 +229,9 @@ class EthercatServo(PDOServo):
     ) -> None:
         self._lock.acquire()
         try:
-            time.sleep(0.0001)  # Unlock threads before SDO write
-            self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
+            self.__store_slave_reference()
+            self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access, release_gil=True)
+            self.__remove_slave_reference()
         except (
             pysoem.SdoError,
             pysoem.MailboxError,
