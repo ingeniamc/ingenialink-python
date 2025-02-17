@@ -110,14 +110,14 @@ def test_update_pysoem_timeouts(connect_to_slave):
     old_ret = pysoem.settings.timeouts.ret
     old_safe = pysoem.settings.timeouts.safe
     old_eeprom = pysoem.settings.timeouts.eeprom
-    old_tx_mailbox = pysoem.settings.timeouts.tx_mailboxold
+    old_tx_mailbox = pysoem.settings.timeouts.tx_mailbox
     old_rx_mailbox = pysoem.settings.timeouts.rx_mailbox
     old_state = pysoem.settings.timeouts.state
     net.update_pysoem_timeouts(1, 2, 3, 4, 5, 6)
     assert pysoem.settings.timeouts.ret == 1
     assert pysoem.settings.timeouts.safe == 2
     assert pysoem.settings.timeouts.eeprom == 3
-    assert pysoem.settings.timeouts.tx_mailboxold == 4
+    assert pysoem.settings.timeouts.tx_mailbox == 4
     assert pysoem.settings.timeouts.rx_mailbox == 5
     assert pysoem.settings.timeouts.state == 6
     net.update_pysoem_timeouts(
@@ -126,6 +126,6 @@ def test_update_pysoem_timeouts(connect_to_slave):
     assert pysoem.settings.timeouts.ret == old_ret
     assert pysoem.settings.timeouts.safe == old_safe
     assert pysoem.settings.timeouts.eeprom == old_eeprom
-    assert pysoem.settings.timeouts.tx_mailboxold == old_tx_mailbox
+    assert pysoem.settings.timeouts.tx_mailbox == old_tx_mailbox
     assert pysoem.settings.timeouts.rx_mailbox == old_rx_mailbox
     assert pysoem.settings.timeouts.state == old_state
