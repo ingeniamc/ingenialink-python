@@ -9,11 +9,18 @@ import ingenialogger
 import numpy as np
 
 from ingenialink import RegAccess, RegDtype
-from ingenialink.dictionary import Dictionary, Interface
+from ingenialink.dictionary import ACCESS_XDF_OPTIONS, DTYPE_XDF_OPTIONS, Interface
 from ingenialink.exceptions import ILConfigurationFileParseError
 from ingenialink.register import Register
 
 logger = ingenialogger.get_logger(__name__)
+
+_INTERFACE_XCF_OPTIONS: dict[str, Interface] = {
+    "CAN": Interface.CAN,
+    "ECAT": Interface.ECAT,
+    "EoE": Interface.EoE,
+    "ETH": Interface.ETH,
+}
 
 
 class Device:
@@ -34,13 +41,6 @@ class Device:
     __REVISION_NUMBER_ATTR = "RevisionNumber"
     __NODE_ID_ATTR = "NodeID"
 
-    INTERFACE_XCF_OPTIONS = {
-        "CAN": Interface.CAN,
-        "ECAT": Interface.ECAT,
-        "EoE": Interface.EoE,
-        "ETH": Interface.ETH,
-    }
-
     def __init__(
         self,
         interface: Interface,
@@ -60,7 +60,7 @@ class Device:
         self.node_id = node_id
 
         self.__interface_value_to_str = {
-            value: key for key, value in self.INTERFACE_XCF_OPTIONS.items()
+            value: key for key, value in _INTERFACE_XCF_OPTIONS.items()
         }
         self.__interface_value_to_str[Interface.VIRTUAL] = "ETH"
 
@@ -75,7 +75,7 @@ class Device:
             ValueError: wrong fields type
             KeyError: a mandatory attribute is missing
         """
-        interface = cls.INTERFACE_XCF_OPTIONS[element.attrib[cls.__INTERFACE_ATTR]]
+        interface = _INTERFACE_XCF_OPTIONS[element.attrib[cls.__INTERFACE_ATTR]]
         part_number = element.attrib.get(cls.__PART_NUMBER_ATTR)
         product_code_raw = element.attrib.get(cls.__PRODUCT_CODE_ATTR)
         product_code = int(product_code_raw) if product_code_raw else None
@@ -131,12 +131,8 @@ class ConfigRegister:
         self.access = access
         self.storage = storage
 
-        self.__access_value_to_str = {
-            value: key for key, value in Dictionary.access_xdf_options.items()
-        }
-        self.__dtype_value_to_str = {
-            value: key for key, value in Dictionary.dtype_xdf_options.items()
-        }
+        self.__access_value_to_str = {value: key for key, value in ACCESS_XDF_OPTIONS.items()}
+        self.__dtype_value_to_str = {value: key for key, value in DTYPE_XDF_OPTIONS.items()}
 
     @classmethod
     def from_xcf(cls, element: ElementTree.Element) -> "ConfigRegister":
@@ -151,8 +147,8 @@ class ConfigRegister:
         """
         uid = element.attrib[cls.__ID_ATTR]
         subnode = int(element.attrib[cls.__SUBNODE_ATTR])
-        dtype = Dictionary.dtype_xdf_options[element.attrib[cls.__DTYPE_ATTR]]
-        access = Dictionary.access_xdf_options[element.attrib[cls.__ACCESS_ATTR]]
+        dtype = DTYPE_XDF_OPTIONS[element.attrib[cls.__DTYPE_ATTR]]
+        access = ACCESS_XDF_OPTIONS[element.attrib[cls.__ACCESS_ATTR]]
         storage: Union[float, int, str, bool]
         if dtype == RegDtype.FLOAT:
             storage = float(element.attrib[cls.__STORAGE_ATTR])

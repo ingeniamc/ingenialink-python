@@ -4,6 +4,7 @@ import platform
 import socket
 import time
 from enum import Enum, IntEnum
+from functools import cached_property
 from threading import Thread, Timer
 from typing import TYPE_CHECKING, Any, Optional, Union
 
@@ -706,19 +707,22 @@ class VirtualInternalGenerator:
     COMMUTATION_FEEDBACK_REGISTER = "COMMU_ANGLE_SENSOR"
     POSITION_FEEDBACK_REGISTER = "CL_POS_FBK_SENSOR"
 
-    HALL_VALUES = [1, 3, 2, 6, 4, 5]
-
-    ENCODER_REGISTERS = {
-        SensorType.QEI: "FBK_DIGENC1_VALUE",
-        SensorType.QEI2: "FBK_DIGENC2_VALUE",
-        SensorType.HALLS: "FBK_DIGHALL_VALUE",
-        SensorType.ABS1: "FBK_BISS1_SSI1_POS_VALUE",
-        SensorType.BISSC2: "FBK_BISS2_POS_VALUE",
-    }
+    HALL_VALUES = (1, 3, 2, 6, 4, 5)
 
     def __init__(self, drive: "VirtualDrive") -> None:
         self.drive = drive
         self.start_time = 0.0
+
+    @cached_property
+    def encoder_registers(self) -> dict[SensorType, str]:
+        """Encoder register associated with a sensor type."""
+        return {
+            SensorType.QEI: "FBK_DIGENC1_VALUE",
+            SensorType.QEI2: "FBK_DIGENC2_VALUE",
+            SensorType.HALLS: "FBK_DIGHALL_VALUE",
+            SensorType.ABS1: "FBK_BISS1_SSI1_POS_VALUE",
+            SensorType.BISSC2: "FBK_BISS2_POS_VALUE",
+        }
 
     def enable(self) -> None:
         """Enable internal generator and generate the encoder and position signals."""
@@ -726,7 +730,7 @@ class VirtualInternalGenerator:
         if (
             self.commutation_feedback != SensorType.INTGEN
             or self.generator_mode != GeneratorMode.SAW_TOOTH
-            or self.position_encoder not in self.ENCODER_REGISTERS
+            or self.position_encoder not in self.encoder_registers
         ):
             return
         if self.position_encoder == SensorType.HALLS:
@@ -802,7 +806,7 @@ class VirtualInternalGenerator:
     @property
     def encoder_register(self) -> str:
         """Register of the encoder value."""
-        return self.ENCODER_REGISTERS[SensorType(self.position_encoder)]
+        return self.encoder_registers[SensorType(self.position_encoder)]
 
     @property
     def encoder_resolution(self) -> int:
