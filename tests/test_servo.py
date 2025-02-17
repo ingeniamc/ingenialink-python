@@ -203,6 +203,8 @@ def test_check_configuration(virtual_drive):
     servo.load_configuration(filename)
     servo.check_configuration(filename)
 
+    _clean(filename)
+
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
