@@ -105,6 +105,8 @@ class EthercatNetwork(Network):
 
     DEFAULT_FOE_PASSWORD = 0x70636675
     __FOE_WRITE_TIMEOUT_US = 500_000
+    __FOE_RECOVERY_TIMEOUT_S = 90
+    __FOE_RECOVERY_SLEEP_S = 5
 
     __FORCE_BOOT_PASSWORD = 0x424F4F54
     __FORCE_COCO_BOOT_IDX = 0x5EDE
@@ -502,8 +504,21 @@ class EthercatNetwork(Network):
                 f" {EthercatNetwork.__get_foe_error_message(error_code=foe_result)}"
             )
             raise ILFirmwareLoadError(error_message)
-        self.__init_nodes()
-        logger.info("Firmware updated successfully")
+        start_time = time.time()
+        recovered = False
+        while time.time() < (start_time + self.__FOE_RECOVERY_TIMEOUT_S) and not recovered:
+            self.__init_nodes()
+            slave.state = pysoem.PREOP_STATE
+            slave.write_state()
+            recovered = (
+                slave.state_check(pysoem.PREOP_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_US)
+                == pysoem.PREOP_STATE
+            )
+            time.sleep(self.__FOE_RECOVERY_SLEEP_S)
+        if recovered:
+            logger.info("Firmware updated successfully")
+        else:
+            logger.info(f"The slave {slave_id} cannot reach the PreOp state.")
 
     def _switch_to_boot_state(self, slave: "CdefSlave") -> None:
         """Transitions the slave to the boot state."""
