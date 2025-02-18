@@ -73,75 +73,76 @@ pipeline {
             }
         }
 
-        stage('Build and Docker Tests') {
-            parallel {
-                stage('Build and publish') {
+        stage('Build and publish') {
+            stages {
+                stage('Build') {
+                    agent {
+                        docker {
+                            label SW_NODE
+                            image WIN_DOCKER_IMAGE
+                        }
+                    }
                     stages {
+                        stage('Type checking') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                            }
+                        }
+                        stage('Format checking') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                            }
+                        }
                         stage('Build') {
-                            agent {
-                                docker {
-                                    label SW_NODE
-                                    image WIN_DOCKER_IMAGE
-                                }
-                            }
-                            stages {
-                                stage('Type checking') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
-                                    }
-                                }
-                                stage('Format checking') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                                    }
-                                }
-                                stage('Build') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
-                                        stash includes: 'dist\\*', name: 'build'
-                                    }
-                                }
-                                stage('Generate documentation') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
-                                        bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
-                                        stash includes: 'docs.zip', name: 'docs'
-                                    }
-                                }
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
+                                stash includes: 'dist\\*', name: 'build'
                             }
                         }
-                        stage('Publish documentation') {
-                            when {
-                                beforeAgent true
-                                branch BRANCH_NAME_MASTER
-                            }
-                            agent {
-                                label 'worker'
-                            }
+                        stage('Generate documentation') {
                             steps {
-                                unstash 'docs'
-                                unzip zipFile: 'docs.zip', dir: '.'
-                                publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
-                            }
-                        }
-                        stage('Publish to pypi') {
-                            when {
-                                beforeAgent true
-                                branch BRANCH_NAME_MASTER
-                            }
-                            agent {
-                                docker {
-                                    label 'worker'
-                                    image PUBLISHER_DOCKER_IMAGE
-                                }
-                            }
-                            steps {
-                                unstash 'build'
-                                publishPyPi("dist/*")
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                                bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
+                                stash includes: 'docs.zip', name: 'docs'
                             }
                         }
                     }
                 }
+                stage('Publish documentation') {
+                    when {
+                        beforeAgent true
+                        branch BRANCH_NAME_MASTER
+                    }
+                    agent {
+                        label 'worker'
+                    }
+                    steps {
+                        unstash 'docs'
+                        unzip zipFile: 'docs.zip', dir: '.'
+                        publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
+                    }
+                }
+                stage('Publish to pypi') {
+                    when {
+                        beforeAgent true
+                        branch BRANCH_NAME_MASTER
+                    }
+                    agent {
+                        docker {
+                            label 'worker'
+                            image PUBLISHER_DOCKER_IMAGE
+                        }
+                    }
+                    steps {
+                        unstash 'build'
+                        publishPyPi("dist/*")
+                    }
+                }
+            }
+        }
+        
+        stage('Tests') {
+            parallel {
                 stage('Docker Windows - Tests') {
                     agent {
                         docker {
@@ -193,10 +194,6 @@ pipeline {
                         }
                     }
                 }
-            }
-        }
-        stage('EtherCAT/CANopen/Ethernet Tests') {
-            parallel {
                 stage('EtherCAT/No Connection - Tests') {
                     options {
                         lock(ECAT_NODE_LOCK)
