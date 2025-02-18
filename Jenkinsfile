@@ -27,7 +27,11 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
         unstash 'build'
         script {
             def result = bat(script: 'dir dist /b /a-d', returnStdout: true).trim()
-            def wheelFile = result.split('\n').find { it.endsWith('.whl') }
+            def files = result.split(/[\r\n]+/)    
+            files.each { file ->
+                echo "File: ${file}"
+            }
+            def wheelFile = files.find { it.endsWith('.whl') }
             echo "Result: ${wheelFile}"
             if (wheelFile) {
                 bat "py -${DEFAULT_PYTHON_VERSION} -m pip install dist\\${wheelFile}"
