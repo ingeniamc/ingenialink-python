@@ -43,7 +43,7 @@ def getWheelPath(tox_skip_install) {
 def runTest(protocol, slave = 0, tox_skip_install = false) {
     def wheelFile = getWheelPath(tox_skip_install)
     try {
-        bat "py -${DEFAULT_PYTHON_VERSION} -m TOX_SKIP_INSTALL=${tox_skip_install} INGENIALINK_WHEEL_PATH=${wheelFile} tox -e ${RUN_PYTHON_VERSIONS} -- " +
+        bat "TOX_SKIP_INSTALL=${tox_skip_install} INGENIALINK_WHEEL_PATH=${wheelFile} py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
                 "--protocol ${protocol} " +
                 "--slave ${slave} " +
                 "--cov=ingenialink " +
