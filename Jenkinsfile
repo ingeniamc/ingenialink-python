@@ -26,7 +26,7 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
     if (tox_skip_install) {
         unstash 'build'
         bat 'dir dist'
-        bat "py -${DEFAULT_PYTHON_VERSION} -m pip install dist\*.whl"
+        bat "py -${DEFAULT_PYTHON_VERSION} -m pip install dist/*.whl"
     }
                     
     try {
