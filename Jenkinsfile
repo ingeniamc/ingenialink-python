@@ -25,7 +25,15 @@ coverage_stashes = []
 def runTest(protocol, slave = 0, tox_skip_install = false) {
     if (tox_skip_install) {
         unstash 'build'
-        bat 'dir dist'
+        script {
+            def result = bat(script: 'dir dist /b /a-d', returnStdout: true).trim()
+            def wheelFile = result.split('\n').find { it.endsWith('.whl') }
+            if (wheelFile) {
+                bat "py -${DEFAULT_PYTHON_VERSION} -m pip install dist\\${wheelFile}"
+            } else {
+                error "No .whl file found in the dist directory. Directory contents:\n${result}"            
+            }
+        
         bat "py -${DEFAULT_PYTHON_VERSION} -m pip install dist/*.whl"
     }
                     
