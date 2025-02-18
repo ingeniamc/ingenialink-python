@@ -73,7 +73,7 @@ pipeline {
             }
         }
 
-        stage('Build and Tests') {
+        stage('Build and Docker Tests') {
             parallel {
                 stage('Build and publish') {
                     stages {
@@ -193,6 +193,10 @@ pipeline {
                         }
                     }
                 }
+            }
+        }
+        stage('EtherCAT/CANopen/Ethernet Tests') {
+            parallel {
                 stage('EtherCAT/No Connection - Tests') {
                     options {
                         lock(ECAT_NODE_LOCK)
