@@ -33,6 +33,7 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
             } else {
                 error "No .whl file found in the dist directory. Directory contents:\n${result}"            
             }
+        }
         
         bat "py -${DEFAULT_PYTHON_VERSION} -m pip install dist/*.whl"
     }
