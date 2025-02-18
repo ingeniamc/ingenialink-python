@@ -28,19 +28,13 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
         script {
             def result = bat(script: 'dir dist /b /a-d', returnStdout: true).trim()
             def files = result.split(/[\r\n]+/)    
-            files.each { file ->
-                echo "File: ${file}"
-            }
             def wheelFile = files.find { it.endsWith('.whl') }
-            echo "Result: ${wheelFile}"
             if (wheelFile) {
                 bat "py -${DEFAULT_PYTHON_VERSION} -m pip install dist\\${wheelFile}"
             } else {
                 error "No .whl file found in the dist directory. Directory contents:\n${result}"            
             }
         }
-        
-        bat "py -${DEFAULT_PYTHON_VERSION} -m pip install dist/*.whl"
     }
                     
     try {
@@ -98,117 +92,117 @@ pipeline {
                         }
                     }
                     stages {
-                        // stage('Type checking') {
-                        //     steps {
-                        //         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
-                        //     }
-                        // }
-                        // stage('Format checking') {
-                        //     steps {
-                        //         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                        //     }
-                        // }
+                        stage('Type checking') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                            }
+                        }
+                        stage('Format checking') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                            }
+                        }
                         stage('Build') {
                             steps {
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
                                 stash includes: 'dist\\*', name: 'build'
                             }
                         }
-                        // stage('Generate documentation') {
-                        //     steps {
-                        //         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
-                        //         bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
-                        //         stash includes: 'docs.zip', name: 'docs'
-                        //     }
-                        // }
+                        stage('Generate documentation') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                                bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
+                                stash includes: 'docs.zip', name: 'docs'
+                            }
+                        }
                     }
                 }
-                // stage('Publish documentation') {
-                //     when {
-                //         beforeAgent true
-                //         branch BRANCH_NAME_MASTER
-                //     }
-                //     agent {
-                //         label 'worker'
-                //     }
-                //     steps {
-                //         unstash 'docs'
-                //         unzip zipFile: 'docs.zip', dir: '.'
-                //         publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
-                //     }
-                // }
-                // stage('Publish to pypi') {
-                //     when {
-                //         beforeAgent true
-                //         branch BRANCH_NAME_MASTER
-                //     }
-                //     agent {
-                //         docker {
-                //             label 'worker'
-                //             image PUBLISHER_DOCKER_IMAGE
-                //         }
-                //     }
-                //     steps {
-                //         unstash 'build'
-                //         publishPyPi("dist/*")
-                //     }
-                // }
+                stage('Publish documentation') {
+                    when {
+                        beforeAgent true
+                        branch BRANCH_NAME_MASTER
+                    }
+                    agent {
+                        label 'worker'
+                    }
+                    steps {
+                        unstash 'docs'
+                        unzip zipFile: 'docs.zip', dir: '.'
+                        publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
+                    }
+                }
+                stage('Publish to pypi') {
+                    when {
+                        beforeAgent true
+                        branch BRANCH_NAME_MASTER
+                    }
+                    agent {
+                        docker {
+                            label 'worker'
+                            image PUBLISHER_DOCKER_IMAGE
+                        }
+                    }
+                    steps {
+                        unstash 'build'
+                        publishPyPi("dist/*")
+                    }
+                }
             }
         }
         
         stage('Tests') {
             parallel {
-                // stage('Docker Windows - Tests') {
-                //     agent {
-                //         docker {
-                //             label SW_NODE
-                //             image WIN_DOCKER_IMAGE
-                //         }
-                //     }
-                //     stages {
-                //         stage('Run no-connection tests on docker') {
-                //             steps {
-                //                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                //                         "-m docker " +
-                //                         "--cov=ingenialink"
-                //             }
-                //             post {
-                //                 always {
-                //                     bat "move .coverage .coverage_docker"
-                //                     junit "pytest_reports\\*.xml"
-                //                     // Delete the junit after publishing it so it not re-published on the next stage
-                //                     bat "del /S /Q pytest_reports\\*.xml"
-                //                     stash includes: '.coverage_docker', name: '.coverage_docker'
-                //                     script {
-                //                         coverage_stashes.add(".coverage_docker")
-                //                     }
-                //                 }
-                //             }
-                //         }
-                //     }
-                // }
-                // stage('Docker Linux - Tests') {
-                //     agent {
-                //         docker {
-                //             label "worker"
-                //             image LIN_DOCKER_IMAGE
-                //         }
-                //     }
-                //     stages {
-                //         stage('Run no-connection tests on docker') {
-                //             steps {
-                //                 sh """
-                //                     python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS}
-                //                 """
-                //             }
-                //             post {
-                //                 always {
-                //                     junit "pytest_reports\\*.xml"
-                //                 }
-                //             }
-                //         }
-                //     }
-                // }
+                stage('Docker Windows - Tests') {
+                    agent {
+                        docker {
+                            label SW_NODE
+                            image WIN_DOCKER_IMAGE
+                        }
+                    }
+                    stages {
+                        stage('Run no-connection tests on docker') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
+                                        "-m docker " +
+                                        "--cov=ingenialink"
+                            }
+                            post {
+                                always {
+                                    bat "move .coverage .coverage_docker"
+                                    junit "pytest_reports\\*.xml"
+                                    // Delete the junit after publishing it so it not re-published on the next stage
+                                    bat "del /S /Q pytest_reports\\*.xml"
+                                    stash includes: '.coverage_docker', name: '.coverage_docker'
+                                    script {
+                                        coverage_stashes.add(".coverage_docker")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('Docker Linux - Tests') {
+                    agent {
+                        docker {
+                            label "worker"
+                            image LIN_DOCKER_IMAGE
+                        }
+                    }
+                    stages {
+                        stage('Run no-connection tests on docker') {
+                            steps {
+                                sh """
+                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS}
+                                """
+                            }
+                            post {
+                                always {
+                                    junit "pytest_reports\\*.xml"
+                                }
+                            }
+                        }
+                    }
+                }
                 stage('EtherCAT/No Connection - Tests') {
                     options {
                         lock(ECAT_NODE_LOCK)
