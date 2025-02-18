@@ -22,7 +22,25 @@ def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 coverage_stashes = []
 
-def getWheelPath(tox_skip_install) {
+// def getWheelPath(tox_skip_install) {
+//     if (tox_skip_install) {
+//         unstash 'build'
+//         script {
+//             def result = bat(script: 'dir dist /b /a-d', returnStdout: true).trim()
+//             def files = result.split(/[\r\n]+/)    
+//             def wheelFile = files.find { it.endsWith('.whl') }
+//             if (wheelFile == NULL) {
+//                 error "No .whl file found in the dist directory. Directory contents:\n${result}"            
+//             }
+//             return wheelFile
+//         }
+//     }
+//     else {
+//         return ""
+//     }
+// }
+
+def runTest(protocol, slave = 0, tox_skip_install = false) {
     if (tox_skip_install) {
         unstash 'build'
         script {
@@ -32,16 +50,11 @@ def getWheelPath(tox_skip_install) {
             if (wheelFile == NULL) {
                 error "No .whl file found in the dist directory. Directory contents:\n${result}"            
             }
-            return wheelFile
         }
     }
     else {
-        return ""
+        def wheelFile =  ""
     }
-}
-
-def runTest(protocol, slave = 0, tox_skip_install = false) {
-    def wheelFile = getWheelPath(tox_skip_install)
     try {
         bat "py -${DEFAULT_PYTHON_VERSION} -m TOX_SKIP_INSTALL=${tox_skip_install} INGENIALINK_WHEEL_PATH=${wheelFile} tox -e ${RUN_PYTHON_VERSIONS} -- " +
                 "--protocol ${protocol} " +
