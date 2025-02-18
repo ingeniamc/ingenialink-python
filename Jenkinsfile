@@ -203,17 +203,17 @@ pipeline {
                     stages {
                         stage('EtherCAT Everest') {
                             steps {
-                                runTest("ethercat", 0, true)
+                                runTest("ethercat", 0, tox_skip_install=true)
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                runTest("ethercat", 1)
+                                runTest("ethercat", 1, tox_skip_install=true)
                             }
                         }
                         stage('Run no-connection tests') {
                             steps {
-                                runTest("no_connection")
+                                runTest("no_connection", tox_skip_install=true)
                             }
                         }
                     }
@@ -228,22 +228,22 @@ pipeline {
                     stages {
                         stage('CANopen Everest') {
                             steps {
-                                runTest("canopen", 0, true)
+                                runTest("canopen", 0, tox_skip_install=true)
                             }
                         }
                         stage('CANopen Capitan') {
                             steps {
-                                runTest("canopen", 1)
+                                runTest("canopen", 1, tox_skip_install=true)
                             }
                         }
                         stage('Ethernet Everest') {
                             steps {
-                                runTest("ethernet", 0)
+                                runTest("ethernet", 0, tox_skip_install=true)
                             }
                         }
                         stage('Ethernet Capitan') {
                             steps {
-                                runTest("ethernet", 1)
+                                runTest("ethernet", 1, tox_skip_install=true)
                             }
                         }
                     }
