@@ -22,7 +22,7 @@ def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 coverage_stashes = []
 
-def getWheelPath(tox_skip_install)
+def getWheelPath(tox_skip_install) {
     if (tox_skip_install) {
         unstash 'build'
         script {
@@ -38,6 +38,7 @@ def getWheelPath(tox_skip_install)
     else {
         return ""
     }
+}
 
 def runTest(protocol, slave = 0, tox_skip_install = false) {
     def wheelFile = getWheelPath(tox_skip_install)
