@@ -32,7 +32,7 @@ def getWheelPath(tox_skip_install) {
             if (wheelFile == null) {
                 error "No .whl file found in the dist directory. Directory contents:\n${result}"            
             }
-            return wheelFile
+            return "dist\\${wheelFile}"
         }
     }
     else {
