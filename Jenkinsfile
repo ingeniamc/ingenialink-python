@@ -104,12 +104,14 @@ pipeline {
                     }
                     stages {
                         stage('Move workspace') {
-                            script {
-                                echo "PLATFORM ${env.PLATFORM}"
-                                if (env.PLATFORM == 'windows') {
-                                    bat """
-                                        XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y
-                                    """
+                            steps {
+                                script {
+                                    echo "PLATFORM ${env.PLATFORM}"
+                                    if (env.PLATFORM == 'windows') {
+                                        bat """
+                                            XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y
+                                        """
+                                    }
                                 }
                             }
                         }
