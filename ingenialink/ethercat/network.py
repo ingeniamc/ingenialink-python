@@ -128,14 +128,50 @@ class EthercatNetwork(Network):
         self.servos: list[EthercatServo] = []
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: dict[int, list[Any]] = defaultdict(list)
-        self._connection_timeout: float = connection_timeout
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
-        self._ecat_master.sdo_read_timeout = int(1_000_000 * self._connection_timeout)
-        self._ecat_master.sdo_write_timeout = int(1_000_000 * self._connection_timeout)
+        timeout_us = int(1_000_000 * connection_timeout)
+        self.update_sdo_timeout(timeout_us, timeout_us)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
         self._overlapping_io_map = overlapping_io_map
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
+
+    def update_sdo_timeout(self, sdo_read_timeout: int, sdo_write_timeout: int) -> None:
+        """Update SDO timeouts for all the drives.
+
+        Args:
+            sdo_read_timeout: timeout for SDO read access in us
+            sdo_write_timeout: timeout for SDO write access in us
+
+        """
+        self._ecat_master.sdo_read_timeout = sdo_read_timeout
+        self._ecat_master.sdo_write_timeout = sdo_write_timeout
+
+    @staticmethod
+    def update_pysoem_timeouts(
+        ret: int, safe: int, eeprom: int, tx_mailbox: int, rx_mailbox: int, state: int
+    ) -> None:
+        """Update pysoem timeouts.
+
+        Args:
+            ret: new ret timeout
+            safe: new safe timeout
+            eeprom: new EEPROM access timeout
+            tx_mailbox: new Tx mailbox cycle timeout
+            rx_mailbox: new Rx mailbox cycle timeout
+            state: new status check timeout
+
+        Raises:
+            ImportError: WinPcap is not installed
+        """
+        if not pysoem:
+            raise pysoem_import_error
+        pysoem.settings.timeouts.ret = ret
+        pysoem.settings.timeouts.safe = safe
+        pysoem.settings.timeouts.eeprom = eeprom
+        pysoem.settings.timeouts.tx_mailbox = tx_mailbox
+        pysoem.settings.timeouts.rx_mailbox = rx_mailbox
+        pysoem.settings.timeouts.state = state
 
     @staticmethod
     def __get_foe_error_message(error_code: int) -> str:
@@ -245,9 +281,7 @@ class EthercatNetwork(Network):
         if slave_id not in self.__last_init_nodes:
             raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
-        servo = EthercatServo(
-            slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
-        )
+        servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             if servo_status_listener:
                 servo.stop_status_listener()
