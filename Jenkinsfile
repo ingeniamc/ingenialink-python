@@ -69,6 +69,7 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
             stash includes: coverage_stash, name: coverage_stash
             coverage_stashes.add(coverage_stash)
         }
+    }
 }
 
 /* Build develop everyday at 19:00 UTC (21:00 Barcelona Time), running all tests */
