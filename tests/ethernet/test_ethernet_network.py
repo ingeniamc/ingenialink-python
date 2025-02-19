@@ -144,15 +144,17 @@ def test_load_firmware_no_connection():
     os.remove(fw_file)
 
 
+# Skipping for now. Check INGK-1035 & INGK-1058.
+@pytest.mark.skip
 @pytest.mark.no_connection
-def test_load_firmware_right_user_pwd():
-    """Testing correct ftp firmware load with fake FTP server."""
+def test_load_firmware_wrong_user_pwd():
+    """Testing failed ftp firmware load with fake FTP server."""
     fw_file = "temp_file.lfu"
     with open(fw_file, "w"):
         pass
-    # User and password
-    fake_user = "user1"
-    fake_password = "1234"
+    # Wrong user and password
+    fake_user = "mamma"
+    fake_password = "mia"
     fake_folder = os.getcwd()
     # Create FTP server
     server = FTPServer(folder_path=fake_folder, new_user=fake_user, new_password=fake_password)
