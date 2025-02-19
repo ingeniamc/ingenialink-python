@@ -104,6 +104,14 @@ pipeline {
                     }
                     stages {
                         stage('Move workspace') {
+                            steps {
+                                // Print platform and workspace information for debugging
+                                bat """
+                                    echo Platform: ${env.PLATFORM}
+                                    echo Workspace: ${env.WORKSPACE}
+                                    set
+                                """
+                            }
                             when {
                                 expression {env.PLATFORM == 'windows'};
                             }
