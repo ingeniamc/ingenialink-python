@@ -224,17 +224,17 @@ pipeline {
                     stages {
                         stage('EtherCAT Everest') {
                             steps {
-                                runTest("ethercat", 0, tox_skip_install=true)
+                                runTest("ethercat", 0, true)
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                runTest("ethercat", 1, tox_skip_install=true)
+                                runTest("ethercat", 1, true)
                             }
                         }
                         stage('Run no-connection tests') {
                             steps {
-                                runTest("no_connection", tox_skip_install=true)
+                                runTest("no_connection", 0, true)
                             }
                         }
                     }
@@ -249,22 +249,22 @@ pipeline {
                     stages {
                         stage('CANopen Everest') {
                             steps {
-                                runTest("canopen", 0, tox_skip_install=true)
+                                runTest("canopen", 0, true)
                             }
                         }
                         stage('CANopen Capitan') {
                             steps {
-                                runTest("canopen", 1, tox_skip_install=true)
+                                runTest("canopen", 1, true)
                             }
                         }
                         stage('Ethernet Everest') {
                             steps {
-                                runTest("ethernet", 0, tox_skip_install=true)
+                                runTest("ethernet", 0, true)
                             }
                         }
                         stage('Ethernet Capitan') {
                             steps {
-                                runTest("ethernet", 1, tox_skip_install=true)
+                                runTest("ethernet", 1, true)
                             }
                         }
                     }

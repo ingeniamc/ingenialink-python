@@ -1,17 +1,18 @@
-import contextlib
 import platform
 
 import pytest
 
-# Module will only be available for Windows
-with contextlib.suppress(ImportError):
-    from ingenialink.get_adapters_addresses import get_adapters_addresses
+
+@pytest.fixture
+def adapters_module():
+    current_platform = platform.system()
+    if current_platform == "Windows":
+        import ingenialink.get_adapters_addresses as adapters
+
+        return adapters
+    pytest.skip(f"Skipping test, only available on Windows, platform={current_platform}")
 
 
-@pytest.mark.skipif(
-    platform.system() != "Windows",
-    reason=f"Skipping test, only available on Windows, platform={platform.system()}",
-)
-def test_get_adapters_addresses():
-    addresses = get_adapters_addresses()
+def test_get_adapters_addresses(adapters_module):
+    addresses = adapters_module.get_adapters_addresses()
     assert not len(addresses)
