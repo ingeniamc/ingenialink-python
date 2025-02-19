@@ -104,21 +104,13 @@ pipeline {
                     }
                     stages {
                         stage('Move workspace') {
-                            steps {
-                                // Print platform and workspace information for debugging
-                                bat """
-                                    echo Platform: ${env.PLATFORM}
-                                    echo Workspace: ${env.WORKSPACE}
-                                    set
-                                """
-                            }
-                            when {
-                                expression {env.PLATFORM == 'windows'};
-                            }
-                            steps {
-                                bat """
-                                    XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i
-                                """
+                            script {
+                                echo "PLATFORM ${env.PLATFORM}"
+                                if (env.PLATFORM == 'windows') {
+                                    bat """
+                                        XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y
+                                    """
+                                }
                             }
                         }
                         // stage('Type checking') {
