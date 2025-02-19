@@ -129,7 +129,7 @@ pipeline {
                                         echo "TOX_DIST_DIR: ${env.TOX_DIST_DIR}"
                                         echo "TOX_BUILD_ENV_DIR: ${env.TOX_BUILD_ENV_DIR}"
 
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
+                                        bat "py -3.12 -m tox -e build"
                                         def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
                                         stash includes: "${distDir}\\*", name: stashName
                                     }
