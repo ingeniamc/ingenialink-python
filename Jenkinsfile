@@ -30,7 +30,7 @@ def getWheelPath(tox_skip_install, python_version) {
         script {
             def distDir = python_version == PYTHON_VERSION_MIN ? "dist" : "dist_${python_version}"
             echo "distDir for wheel:  ${distDir}"
-            def result = bat(script: 'dir ${distDir} /b /a-d', returnStdout: true).trim()
+            def result = bat(script: "dir ${distDir} /b /a-d", returnStdout: true).trim()
             def files = result.split(/[\r\n]+/)    
             def wheelFile = files.find { it.endsWith('.whl') }
             if (wheelFile == null) {
