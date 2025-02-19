@@ -22,13 +22,13 @@ def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 coverage_stashes = []
 
-def getWheelPath(tox_skip_install, python_version) {
+def getWheelPath(tox_skip_install, python_version, min_version) {
     if (tox_skip_install) {
-        def stashName = python_version == PYTHON_VERSION_MIN ? "build" : "build_${python_version}"
+        def stashName = python_version == min_version ? "build" : "build_${python_version}"
         echo "unstash:  ${stashName}"
         unstash stashName
         script {
-            def distDir = python_version == PYTHON_VERSION_MIN ? "dist" : "dist_${python_version}"
+            def distDir = python_version == min_version ? "dist" : "dist_${python_version}"
             echo "distDir for wheel:  ${distDir}"
             def result = bat(script: 'dir ${distDir} /b /a-d', returnStdout: true).trim()
             def files = result.split(/[\r\n]+/)    
@@ -47,7 +47,7 @@ def getWheelPath(tox_skip_install, python_version) {
 def runTest(protocol, slave = 0, tox_skip_install = false) {
     def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
     pythonVersions.each { version ->
-        def wheelFile = getWheelPath(tox_skip_install, version)
+        def wheelFile = getWheelPath(tox_skip_install, version, PYTHON_VERSION_MIN)
         env.TOX_SKIP_INSTALL = tox_skip_install.toString()
         env.INGENIALINK_WHEEL_PATH = wheelFile
 
@@ -134,12 +134,6 @@ pipeline {
                                         env.TOX_PYTHON_VERSION = version
                                         env.TOX_DIST_DIR = distDir
                                         env.TOX_BUILD_ENV_DIR = buildDir
-
-                                        echo "Building wheel for ${version}"
-                                        echo "TOX_PYTHON_VERSION: ${env.TOX_PYTHON_VERSION}"
-                                        echo "TOX_DIST_DIR: ${env.TOX_DIST_DIR}"
-                                        echo "TOX_BUILD_ENV_DIR: ${env.TOX_BUILD_ENV_DIR}"
-
                                         bat """
                                             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
                                             py -${DEFAULT_PYTHON_VERSION} -m tox -e build
