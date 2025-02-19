@@ -122,10 +122,12 @@ pipeline {
                                         def buildDir = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
                                         env.TOX_PYTHON_VERSION = version
                                         env.TOX_DIST_DIR = distDir
+                                        env.TOX_BUILD_ENV_DIR = buildDir
 
                                         echo "Building wheel for ${version}"
                                         echo "TOX_PYTHON_VERSION: ${env.TOX_PYTHON_VERSION}"
                                         echo "TOX_DIST_DIR: ${env.TOX_DIST_DIR}"
+                                        echo "TOX_BUILD_ENV_DIR: ${env.TOX_BUILD_ENV_DIR}"
 
                                         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${buildDir}"
                                         def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
