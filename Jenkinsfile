@@ -25,11 +25,9 @@ coverage_stashes = []
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
         def stashName = python_version == PYTHON_VERSION_MIN ? "build" : "build_${python_version}"
-        echo "unstash:  ${stashName}"
         unstash stashName
         script {
             def distDir = python_version == PYTHON_VERSION_MIN ? "dist" : "dist_${python_version}"
-            echo "distDir for wheel:  ${distDir}"
             def result = bat(script: "dir ${distDir} /b /a-d", returnStdout: true).trim()
             def files = result.split(/[\r\n]+/)    
             def wheelFile = files.find { it.endsWith('.whl') }
@@ -50,11 +48,8 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
         def wheelFile = getWheelPath(tox_skip_install, version)
         env.TOX_SKIP_INSTALL = tox_skip_install.toString()
         env.INGENIALINK_WHEEL_PATH = wheelFile
-
-        echo "TOX_SKIP_INSTALL: ${env.TOX_SKIP_INSTALL}"
-        echo "INGENIALINK_WHEEL_PATH: ${env.INGENIALINK_WHEEL_PATH}"
         try {
-            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
+            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -v -e ${version} -- " +
                     "--protocol ${protocol} " +
                     "--slave ${slave} " +
                     "--cov=ingenialink " +
@@ -136,7 +131,7 @@ pipeline {
                                         env.TOX_BUILD_ENV_DIR = buildDir
                                         bat """
                                             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-                                            py -${DEFAULT_PYTHON_VERSION} -m tox -e build
+                                            py -${DEFAULT_PYTHON_VERSION} -m tox -v -e build
                                             XCOPY ${distDir} ${env.WORKSPACE}\\${distDir} /s /i
                                         """
                                         def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
