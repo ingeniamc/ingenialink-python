@@ -87,7 +87,7 @@ pipeline {
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                     } else {
-                        RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MAX}"
+                        RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
                     }
                 }
             }
@@ -103,6 +103,16 @@ pipeline {
                         }
                     }
                     stages {
+                        stage('Move workspace') {
+                            when {
+                                expression {env.PLATFORM == 'windows'};
+                            }
+                            steps {
+                                bat """
+                                    XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i
+                                """
+                            }
+                        }
                         // stage('Type checking') {
                         //     steps {
                         //         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
@@ -129,7 +139,17 @@ pipeline {
                                         echo "TOX_DIST_DIR: ${env.TOX_DIST_DIR}"
                                         echo "TOX_BUILD_ENV_DIR: ${env.TOX_BUILD_ENV_DIR}"
 
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
+                                        if (env.PLATFORM == 'windows') {
+                                            bat """
+                                                cd C:\\Users\\ContainerAdministrator\\ingenialink_python
+                                                py -${DEFAULT_PYTHON_VERSION} -m tox -e build
+                                                XCOPY ${distDir} ${env.WORKSPACE}\\${distDir} /s /i
+                                            """
+                                        }
+                                        else {
+                                            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
+                                        }
+
                                         def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
                                         stash includes: "${distDir}\\*", name: stashName
                                     }
