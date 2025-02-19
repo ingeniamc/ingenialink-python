@@ -87,7 +87,7 @@ pipeline {
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                     } else {
-                        RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
+                        RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MAX}"
                     }
                 }
             }
@@ -129,7 +129,7 @@ pipeline {
                                         echo "TOX_DIST_DIR: ${env.TOX_DIST_DIR}"
                                         echo "TOX_BUILD_ENV_DIR: ${env.TOX_BUILD_ENV_DIR}"
 
-                                        bat "py -3.12 -m tox -e build"
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
                                         def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
                                         stash includes: "${distDir}\\*", name: stashName
                                     }
