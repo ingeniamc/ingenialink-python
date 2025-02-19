@@ -24,11 +24,11 @@ coverage_stashes = []
 
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
-        def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
+        def stashName = python_version == PYTHON_VERSION_MIN ? "build" : "build_${python_version}"
         echo "unstash:  ${stashName}"
         unstash stashName
         script {
-            def distDir = version == PYTHON_VERSION_MIN ? "dist" : "dist_${version}"
+            def distDir = python_version == PYTHON_VERSION_MIN ? "dist" : "dist_${python_version}"
             echo "distDir for wheel:  ${distDir}"
             def result = bat(script: 'dir ${distDir} /b /a-d', returnStdout: true).trim()
             def files = result.split(/[\r\n]+/)    
