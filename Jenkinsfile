@@ -105,14 +105,7 @@ pipeline {
                     stages {
                         stage('Move workspace') {
                             steps {
-                                script {
-                                    echo "PLATFORM ${env.PLATFORM}"
-                                    if (env.PLATFORM == 'windows') {
-                                        bat """
-                                            XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y
-                                        """
-                                    }
-                                }
+                                bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y"
                             }
                         }
                         // stage('Type checking') {
@@ -141,17 +134,11 @@ pipeline {
                                         echo "TOX_DIST_DIR: ${env.TOX_DIST_DIR}"
                                         echo "TOX_BUILD_ENV_DIR: ${env.TOX_BUILD_ENV_DIR}"
 
-                                        if (env.PLATFORM == 'windows') {
-                                            bat """
-                                                cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-                                                py -${DEFAULT_PYTHON_VERSION} -m tox -e build
-                                                XCOPY ${distDir} ${env.WORKSPACE}\\${distDir} /s /i
-                                            """
-                                        }
-                                        else {
-                                            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
-                                        }
-
+                                        bat """
+                                            cd C:\\Users\\ContainerAdministrator\\ingenialink_python
+                                            py -${DEFAULT_PYTHON_VERSION} -m tox -e build
+                                            XCOPY ${distDir} ${env.WORKSPACE}\\${distDir} /s /i
+                                        """
                                         def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
                                         stash includes: "${distDir}\\*", name: stashName
                                     }
