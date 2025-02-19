@@ -24,9 +24,12 @@ coverage_stashes = []
 
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
-        unstash 'build'
+        def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
+        echo "unstash:  ${stashName}"
+        unstash stashName
         script {
             def distDir = version == PYTHON_VERSION_MIN ? "dist" : "dist_${version}"
+            echo "distDir for wheel:  ${distDir}"
             def result = bat(script: 'dir ${distDir} /b /a-d', returnStdout: true).trim()
             def files = result.split(/[\r\n]+/)    
             def wheelFile = files.find { it.endsWith('.whl') }
@@ -44,14 +47,13 @@ def getWheelPath(tox_skip_install, python_version) {
 def runTest(protocol, slave = 0, tox_skip_install = false) {
     def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
     pythonVersions.each { version ->
+        def wheelFile = getWheelPath(tox_skip_install, version)
+        env.TOX_SKIP_INSTALL = tox_skip_install.toString()
+        env.INGENIALINK_WHEEL_PATH = wheelFile
+
+        echo "TOX_SKIP_INSTALL: ${env.TOX_SKIP_INSTALL}"
+        echo "INGENIALINK_WHEEL_PATH: ${env.INGENIALINK_WHEEL_PATH}"
         try {
-            def wheelFile = getWheelPath(tox_skip_install, version)
-            env.TOX_SKIP_INSTALL = tox_skip_install.toString()
-            env.INGENIALINK_WHEEL_PATH = wheelFile
-
-            echo "TOX_SKIP_INSTALL: ${env.TOX_SKIP_INSTALL}"
-            echo "INGENIALINK_WHEEL_PATH: ${env.INGENIALINK_WHEEL_PATH}"
-
             bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
                     "--protocol ${protocol} " +
                     "--slave ${slave} " +
