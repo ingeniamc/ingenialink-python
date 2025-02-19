@@ -49,6 +49,7 @@ setuptools.setup(
         "numpy>=1.26.0",
         "scipy==1.12.0",
         "bitarray==2.9.2",
+        "multiping==1.1.2",
     ],
     extras_require={
         "dev": ["tox==4.12.1"],

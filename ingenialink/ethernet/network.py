@@ -1,4 +1,6 @@
+import contextlib
 import ftplib
+import ipaddress
 import os
 import socket
 import time
@@ -9,6 +11,7 @@ from time import sleep
 from typing import Any, Callable, Optional, Union
 
 import ingenialogger
+from multiping import multi_ping
 from typing_extensions import override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
@@ -28,6 +31,13 @@ FTP_CLOSE_OK_CODE = "221"
 CMD_CHANGE_CPU = 0x67E4
 
 MAX_NUM_UNSUCCESSFUL_PINGS = 3
+
+MAX_NUMBER_OF_SCAN_TRIES = 2
+SCAN_CONNECTION_TIMEOUT = 0.5
+
+VIRTUAL_DRIVE_DICTIONARY = os.path.join(
+    os.path.dirname(__file__), "..", "..", "virtual_drive", "resources", "virtual_drive.xdf"
+)
 
 
 class NetStatusListener(Thread):
@@ -73,10 +83,20 @@ class NetStatusListener(Thread):
 
 
 class EthernetNetwork(Network):
-    """Network for all Ethernet communications."""
+    """Network for all Ethernet communications.
 
-    def __init__(self) -> None:
+    Args:
+        subnet: The subnet in CIDR notation.
+
+    """
+
+    def __init__(self, subnet: Optional[str] = None) -> None:
         super().__init__()
+        self.__subnet: Optional[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]
+        if subnet is not None:
+            self.__subnet = ipaddress.ip_network(subnet, strict=False)
+        else:
+            self.__subnet = None
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: dict[str, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
 
@@ -184,13 +204,43 @@ class EthernetNetwork(Network):
                 logger.error(e)
                 raise ILFirmwareLoadError("Error during bootloader process.")
 
-    @override
-    def scan_slaves(self) -> list[int]:
-        raise NotImplementedError
+    def _scan_slaves(self) -> list[str]:
+        """Ping all the network IPs.
+
+        Returns:
+            List containing the IPs that responded to the ping request.
+
+        """
+        if self.__subnet is None:
+            return []
+        hosts_ips = [str(ip) for ip in self.__subnet]
+        # The scanning process can fail sometimes. Retry
+        # Check https://github.com/romana/multi-ping/issues/19
+        detected_slaves: dict[str, int] = {}
+        for _ in range(MAX_NUMBER_OF_SCAN_TRIES):
+            with contextlib.suppress(OSError):
+                ping_responses, _ = multi_ping(hosts_ips, timeout=1, ignore_lookup_errors=True)
+                detected_slaves.update(ping_responses)
+        return list(detected_slaves.keys())
+
+    def scan_slaves(self) -> list[str]:  # type: ignore [override]
+        """Scan drives connected to the network.
+
+        Returns:
+            List containing the IPs of the detected drives.
+
+        """
+        detected_slaves = self.scan_slaves_info()
+        return list(detected_slaves.keys())
 
     @override
-    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
-        raise NotImplementedError
+    def scan_slaves_info(self) -> OrderedDict[str, SlaveInfo]:  # type: ignore [override]
+        slave_info: OrderedDict[str, SlaveInfo] = OrderedDict()
+        slaves = self._scan_slaves()
+        for slave_id in slaves:
+            with contextlib.suppress(ILError):
+                slave_info[slave_id] = self._get_servo_info_for_scan(slave_id)
+        return slave_info
 
     def connect_to_slave(
         self,
@@ -328,6 +378,34 @@ class EthernetNetwork(Network):
 
         """
         self._servos_state[servo_id] = state
+
+    def _get_servo_info_for_scan(self, ip_address: str) -> SlaveInfo:
+        """Get the product code and revision number of a drive.
+
+        It's used for the scan_slaves_info method.
+
+        """
+        servo = self.connect_to_slave(
+            ip_address, VIRTUAL_DRIVE_DICTIONARY, connection_timeout=SCAN_CONNECTION_TIMEOUT
+        )
+        try:
+            product_code = servo.read("DRV_ID_PRODUCT_CODE_COCO", subnode=0)
+        except ILError:
+            logger.error(f"The product code cannot be read from the drive with IP: {ip_address}.")
+            product_code = None
+        if not isinstance(product_code, int):
+            raise TypeError(f"Expected product code type to be int, got {type(product_code)}")
+        try:
+            revision_number = servo.read("DRV_ID_REVISION_NUMBER_COCO", subnode=0)
+        except ILError:
+            logger.error(
+                f"The revision number cannot be read from the drive with IP: {ip_address}."
+            )
+            revision_number = None
+        if not isinstance(revision_number, int):
+            raise TypeError(f"Expected revision number type to be int, got {type(revision_number)}")
+        self.disconnect_from_slave(servo)
+        return SlaveInfo(product_code, revision_number)
 
     @property
     def protocol(self) -> NetProt:

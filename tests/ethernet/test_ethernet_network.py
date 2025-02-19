@@ -66,11 +66,42 @@ def test_can_not_connect_to_salve(read_config):
         net.connect_to_slave(wrong_ip, protocol_contents["dictionary"], protocol_contents["port"])
 
 
-@pytest.mark.skip
+@pytest.mark.ethernet
+def test_net_invalid_subnet():
+    with pytest.raises(ValueError):
+        EthernetNetwork("12345")
+
+
+@pytest.mark.ethernet
+def test_scan_slaves_no_subnet():
+    net = EthernetNetwork()
+    assert len(net.scan_slaves()) == 0
+
+
 @pytest.mark.ethernet
 def test_scan_slaves(read_config):
-    # It will be implemented in INGK-1042
-    pass
+    drive_ip = read_config["ethernet"]["ip"]
+    subnet = drive_ip + "/24"
+    net = EthernetNetwork(subnet)
+    detected_slaves = net.scan_slaves()
+    assert len(detected_slaves) > 0
+    assert drive_ip in detected_slaves
+
+
+@pytest.mark.ethernet
+def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
+    drive_ip = read_config["ethernet"]["ip"]
+    subnet = drive_ip + "/24"
+    net = EthernetNetwork(subnet)
+    slaves_info = net.scan_slaves_info()
+
+    drive_idx, config = get_configuration_from_rack_service
+    drive = config[drive_idx]
+
+    assert len(slaves_info) > 0
+    assert drive_ip in slaves_info
+    assert slaves_info[drive_ip].product_code == drive.product_code
+    assert slaves_info[drive_ip].revision_number == drive.revision_number
 
 
 @pytest.mark.ethernet
@@ -141,46 +172,48 @@ def test_load_firmware_error_during_loading():
 
 
 @pytest.mark.no_connection
-def test_net_status_listener_connection(virtual_drive):
+def test_net_status_listener(virtual_drive, mocker):
     server, _ = virtual_drive
     net = EthernetNetwork()
-    status_list = []
     net.connect_to_slave(server.ip, dictionary=server.dictionary_path, port=server.port)
 
     status_list = []
     net.subscribe_to_status(server.ip, status_list.append)
-    # Emulate a disconnection. TODO: disconnect from the virtual drive
-    net._set_servo_state(server.ip, NetState.DISCONNECTED)
     net.start_status_listener()
-    time.sleep(2)
+
+    # Mock a disconnection
+    mocker.patch("ingenialink.servo.Servo.is_alive", return_value=False)
+    time.sleep(1)
+
+    # Assert that the net status callback is notified of net status change event
+    assert len(status_list) == 1
+    assert status_list[0] == NetDevEvt.REMOVED
+
+    # Mock a reconnection
+    mocker.patch("ingenialink.servo.Servo.is_alive", return_value=True)
+    time.sleep(1)
     net.stop_status_listener()
 
-    assert len(status_list) == 1
-    assert status_list[0] == NetDevEvt.ADDED
-
-
-@pytest.mark.skip
-@pytest.mark.no_connection
-def test_net_status_listener_disconnection():
-    pass
+    # Assert that the net status callback is notified of net status change event
+    assert len(status_list) == 2
+    assert status_list[1] == NetDevEvt.ADDED
 
 
 @pytest.mark.no_connection
-def test_unsubscribe_from_status(virtual_drive):
+def test_unsubscribe_from_status(virtual_drive, mocker):
     server, _ = virtual_drive
     net = EthernetNetwork()
-
-    status_list = []
-    net.connect_to_slave(server.ip, server.dictionary_path, port=server.port)
+    net.connect_to_slave(server.ip, dictionary=server.dictionary_path, port=server.port)
 
     status_list = []
     net.subscribe_to_status(server.ip, status_list.append)
+    net.start_status_listener()
     net.unsubscribe_from_status(server.ip, status_list.append)
 
-    # Emulate a disconnection. TODO: disconnect from the virtual drive
-    net._set_servo_state(server.ip, NetState.DISCONNECTED)
-    net.start_status_listener()
-    time.sleep(2)
+    # Mock a disconnection
+    mocker.patch("ingenialink.servo.Servo.is_alive", return_value=False)
+    time.sleep(1)
     net.stop_status_listener()
 
+    # Assert that the net status callback is not notified of net status change event
     assert len(status_list) == 0
