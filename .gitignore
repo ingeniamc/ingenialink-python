@@ -7,7 +7,7 @@
 **/*.pyc
 **/__pycache__
 build/
-dist/
+dist*/
 *.egg*
 .ipynb_checkpoints/
 
