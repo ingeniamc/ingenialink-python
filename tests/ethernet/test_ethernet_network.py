@@ -1,6 +1,7 @@
 import os
 import socket
 import time
+from ftplib import error_perm, error_temp
 from threading import Thread
 
 import pytest
@@ -17,6 +18,14 @@ from ingenialink.exceptions import ILError, ILFirmwareLoadError
 
 
 class FTPServer(Thread):
+    """FTP Server.
+
+    Args:
+        folder_path: Path to FTP server files
+        new_user: User for FTP server access
+        new_password: Password for FTP server access
+    """
+
     def __init__(
         self, folder_path: str = "./", new_user: str = "user", new_password: str = "password"
     ):
@@ -36,6 +45,20 @@ class FTPServer(Thread):
     def stop(self) -> None:
         """Stop FTP server."""
         reactor.stop()
+
+
+@pytest.fixture()
+def ftp_server_manager(request):
+    # Get configuration
+    folder_path = request.param.get("folder_path", "./")
+    ftp_user = request.param.get("ftp_user", "user")
+    ftp_password = request.param.get("ftp_password", "password")
+    # Create FTP server
+    server = FTPServer(folder_path=folder_path, new_user=ftp_user, new_password=ftp_password)
+    server.start()
+    yield folder_path, ftp_user, ftp_password
+    server.stop()
+    server.join()
 
 
 @pytest.fixture()
@@ -144,33 +167,54 @@ def test_load_firmware_no_connection():
     os.remove(fw_file)
 
 
-# Skipping for now. Check INGK-1035 & INGK-1058.
-@pytest.mark.skip
+@pytest.mark.skip(reason="Skipping for now. Check INGK-1035 & INGK-1058.")
 @pytest.mark.no_connection
-def test_load_firmware_wrong_user_pwd():
+@pytest.mark.parametrize(
+    "ftp_server_manager",
+    [{"folder_path": "./", "ftp_user": "user", "ftp_password": "password"}],
+    indirect=True,
+)
+def test_load_firmware_wrong_user_pwd(ftp_server_manager):
     """Testing failed ftp firmware load with fake FTP server."""
     fw_file = "temp_file.lfu"
     with open(fw_file, "w"):
         pass
+    folder_path, ftp_user, ftp_password = ftp_server_manager
     # Wrong user and password
     fake_user = "mamma"
     fake_password = "mia"
-    fake_folder = os.getcwd()
-    # Create FTP server
-    server = FTPServer(folder_path=fake_folder, new_user=fake_user, new_password=fake_password)
-    server.start()
     # Create Network
     net = EthernetNetwork()
-    net.load_firmware(fw_file, target="localhost", ftp_user=fake_user, ftp_pwd=fake_password)
-    server.stop()
-    server.join()
+    with pytest.raises(ILFirmwareLoadError) as excinfo:
+        net.load_firmware(fw_file, target="localhost", ftp_user=fake_user, ftp_pwd=fake_password)
+    assert str(excinfo.value) == "Unable to login the FTP session"
+    assert isinstance(excinfo.value.__cause__, error_perm)
     os.remove(fw_file)
 
 
-@pytest.mark.skip
 @pytest.mark.no_connection
-def test_load_firmware_error_during_loading():
-    pass
+@pytest.mark.parametrize(
+    "ftp_server_manager",
+    [{"folder_path": "./", "ftp_user": "user", "ftp_password": "password"}],
+    indirect=True,
+)
+def test_load_firmware_error_during_loading(mocker, ftp_server_manager):
+    """Testing failed ftp firmware load with fake FTP server."""
+    fw_file = "temp_file.lfu"
+    with open(fw_file, "w"):
+        pass
+    folder_path, ftp_user, ftp_password = ftp_server_manager
+    net = EthernetNetwork()
+    # Mock ftp error for ftp.stobinary call
+    mocker.patch(
+        "ftplib.FTP.storbinary",
+        side_effect=error_temp("Failed to establish connection."),
+    )
+    with pytest.raises(ILFirmwareLoadError) as excinfo:
+        net.load_firmware(fw_file, target="localhost", ftp_user=ftp_user, ftp_pwd=ftp_password)
+    assert str(excinfo.value) == "Unable to load the FW file through FTP."
+    assert isinstance(excinfo.value.__cause__, error_temp)
+    os.remove(fw_file)
 
 
 @pytest.mark.no_connection
