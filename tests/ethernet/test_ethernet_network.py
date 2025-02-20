@@ -66,7 +66,7 @@ def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
     slaves_info = net.scan_slaves_info()
 
     drive_idx, config = get_configuration_from_rack_service
-    drive = config[drive_idx]
+    drive = config.drives[drive_idx]
 
     assert len(slaves_info) > 0
     assert drive_ip in slaves_info

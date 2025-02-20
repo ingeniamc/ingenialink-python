@@ -1,5 +1,6 @@
 import itertools
 import json
+import time
 
 import pytest
 import rpyc
@@ -175,7 +176,7 @@ def get_configuration_from_rack_service(pytestconfig, read_config, connect_to_ra
             break
     if drive_idx is None:
         pytest.fail(f"The drive {drive_identifier} cannot be found on the rack's configuration.")
-    return drive_idx, config.drives
+    return drive_idx, config
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -184,9 +185,26 @@ def load_firmware(pytestconfig, read_config, request):
     if protocol == DEFAULT_PROTOCOL:
         return
     protocol_contents = read_config[protocol]
-    drive_idx, config = request.getfixturevalue("get_configuration_from_rack_service")
-    drive = config[drive_idx]
+
     client = request.getfixturevalue("connect_to_rack_service")
+    # Reboot drive
+    client.exposed_turn_off_ps()
+    time.sleep(1)
+    client.exposed_turn_on_ps()
+
+    # Wait for all drives to turn-on, for 90 seconds
+    timeout = 90
+    wait_until = time.time() + timeout
+    while True:
+        if time.time() >= wait_until:
+            raise TimeoutError(f"Could not find drives in {timeout} after rebooting")
+        config = client.exposed_get_configuration()
+        network = config.networks[0]
+        have_started, info = network.all_nodes_started()
+        if have_started:
+            break
+    drive_idx, config = request.getfixturevalue("get_configuration_from_rack_service")
+    drive = config.drives[drive_idx]
     client.exposed_firmware_load(
         drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
     )
