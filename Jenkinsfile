@@ -48,7 +48,6 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
         def wheelFile = getWheelPath(tox_skip_install, version)
         env.TOX_SKIP_INSTALL = tox_skip_install.toString()
         env.INGENIALINK_WHEEL_PATH = wheelFile
-        env.TOX_CHANGE_DIR = "tests"
         try {
             bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
                     "--protocol ${protocol} " +
