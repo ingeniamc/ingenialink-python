@@ -4,7 +4,7 @@ import pytest
 
 from ingenialink import CanopenRegister
 from ingenialink.bitfield import BitField
-from ingenialink.dictionary import DictionaryV3, Interface, SubnodeType
+from ingenialink.dictionary import CanOpenObjectType, DictionaryV3, Interface, SubnodeType
 from ingenialink.exceptions import ILDictionaryParseError
 
 path_resources = "./tests/resources/canopen/"
@@ -125,14 +125,16 @@ def test_read_xdf_register():
 
 
 @pytest.mark.no_connection
-def test_child_registers():
+def test_object():
     dictionary_path = join_path(path_resources, dict_can_v3)
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
-    reg_list = canopen_dict.child_registers("CIA301_COMMS_RPDO1_MAP", 0)
+    canopen_object = canopen_dict.get_object("CIA301_COMMS_RPDO1_MAP", 0)
+    assert canopen_object.uid == "CIA301_COMMS_RPDO1_MAP"
+    assert canopen_object.object_type == CanOpenObjectType.RECORD
     reg_subindex = [0, 1]
     reg_uids = ["CIA301_COMMS_RPDO1_MAP", "CIA301_COMMS_RPDO1_MAP_1"]
     reg_index = [0x1600, 0x1600]
-    for index, reg in enumerate(reg_list):
+    for index, reg in enumerate(canopen_object.registers):
         assert isinstance(reg, CanopenRegister)
         assert reg.idx == reg_index[index]
         assert reg.identifier == reg_uids[index]
@@ -140,11 +142,11 @@ def test_child_registers():
 
 
 @pytest.mark.no_connection
-def test_child_registers_not_exist():
+def test_object_not_exist():
     dictionary_path = join_path(path_resources, dict_can_v3)
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
     with pytest.raises(KeyError):
-        canopen_dict.child_registers("NOT_EXISTING_UID", 0)
+        canopen_dict.get_object("NOT_EXISTING_UID", 0)
 
 
 @pytest.mark.no_connection

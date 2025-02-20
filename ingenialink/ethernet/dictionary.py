@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Optional
 from xml.etree import ElementTree
 
@@ -18,28 +19,30 @@ class EthernetDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: list[EthernetRegister] = [
-        EthernetRegister(
-            identifier="MON_DATA_VALUE",
-            units="",
-            subnode=0,
-            address=0x00B2,
-            cyclic=RegCyclicType.CONFIG,
-            dtype=RegDtype.BYTE_ARRAY_512,
-            access=RegAccess.RO,
-        ),
-        EthernetRegister(
-            identifier="DIST_DATA_VALUE",
-            units="",
-            subnode=0,
-            address=0x00B4,
-            cyclic=RegCyclicType.CONFIG,
-            dtype=RegDtype.BYTE_ARRAY_512,
-            access=RegAccess.WO,
-        ),
-    ]
-
     interface = Interface.ETH
+
+    @cached_property
+    def _monitoring_disturbance_registers(self) -> list[EthernetRegister]:
+        return [
+            EthernetRegister(
+                identifier="MON_DATA_VALUE",
+                units="",
+                subnode=0,
+                address=0x00B2,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.RO,
+            ),
+            EthernetRegister(
+                identifier="DIST_DATA_VALUE",
+                units="",
+                subnode=0,
+                address=0x00B4,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.WO,
+            ),
+        ]
 
     def _read_xdf_register(self, register: ElementTree.Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)

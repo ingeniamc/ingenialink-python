@@ -1,8 +1,9 @@
 import copy
 import enum
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 from typing import Optional, Union
 from xml.etree import ElementTree
@@ -29,6 +30,29 @@ DICT_LABELS = "./Labels"
 DICT_LABELS_LABEL = f"{DICT_LABELS}/Label"
 
 
+ACCESS_XDF_OPTIONS: dict[str, RegAccess] = {
+    "r": RegAccess.RO,
+    "w": RegAccess.WO,
+    "rw": RegAccess.RW,
+}
+
+
+DTYPE_XDF_OPTIONS: dict[str, RegDtype] = {
+    "float": RegDtype.FLOAT,
+    "s8": RegDtype.S8,
+    "u8": RegDtype.U8,
+    "s16": RegDtype.S16,
+    "u16": RegDtype.U16,
+    "s32": RegDtype.S32,
+    "u32": RegDtype.U32,
+    "s64": RegDtype.S64,
+    "u64": RegDtype.U64,
+    "str": RegDtype.STR,
+    "bool": RegDtype.BOOL,
+    "byteArray512": RegDtype.BYTE_ARRAY_512,
+}
+
+
 class Interface(enum.Enum):
     """Connection Interfaces."""
 
@@ -53,6 +77,32 @@ class SubnodeType(enum.Enum):
     """Motion"""
     SAFETY = enum.auto()
     """Safety"""
+
+
+class CanOpenObjectType(enum.Enum):
+    """CanOpen Object Type."""
+
+    VAR = enum.auto()
+    """VAR object type"""
+
+    RECORD = enum.auto()
+    """RECORD object type"""
+
+    ARRAY = enum.auto()
+    """ARRAY object type"""
+
+
+@dataclass()
+class CanOpenObject:
+    """CanOpenObject."""
+
+    uid: Optional[str]
+    object_type: CanOpenObjectType
+    registers: list[CanopenRegister]
+
+    def __iter__(self) -> Iterator[CanopenRegister]:
+        """Iterator operator."""
+        return self.registers.__iter__()
 
 
 @dataclass
@@ -167,37 +217,6 @@ class Dictionary(ABC):
 
     """
 
-    dtype_xdf_options = {
-        "float": RegDtype.FLOAT,
-        "s8": RegDtype.S8,
-        "u8": RegDtype.U8,
-        "s16": RegDtype.S16,
-        "u16": RegDtype.U16,
-        "s32": RegDtype.S32,
-        "u32": RegDtype.U32,
-        "s64": RegDtype.S64,
-        "u64": RegDtype.U64,
-        "str": RegDtype.STR,
-        "bool": RegDtype.BOOL,
-        "byteArray512": RegDtype.BYTE_ARRAY_512,
-    }
-
-    access_xdf_options = {"r": RegAccess.RO, "w": RegAccess.WO, "rw": RegAccess.RW}
-
-    address_type_xdf_options = {
-        "NVM": RegAddressType.NVM,
-        "NVM_NONE": RegAddressType.NVM_NONE,
-        "NVM_CFG": RegAddressType.NVM_CFG,
-        "NVM_LOCK": RegAddressType.NVM_LOCK,
-        "NVM_HW": RegAddressType.NVM_HW,
-    }
-
-    subnode_xdf_options = {
-        "Communication": SubnodeType.COMMUNICATION,
-        "Motion": SubnodeType.MOTION,
-        "Safety": SubnodeType.SAFETY,
-    }
-
     version: str
     """Version of the dictionary."""
     firmware_version: Optional[str] = None
@@ -225,7 +244,7 @@ class Dictionary(ABC):
     """True if has SafetyPDOs element, else False"""
     _registers: dict[int, dict[str, Register]]
     """Instance of all the registers in the dictionary"""
-    registers_group: dict[int, dict[str, list[Register]]]
+    items: dict[int, dict[str, CanOpenObject]]
     """Registers group by subnode and UID"""
     safety_rpdos: dict[str, DictionarySafetyPDO]
     """Safety RPDOs by UID"""
@@ -233,7 +252,7 @@ class Dictionary(ABC):
     """Safety TPDOs by UID"""
 
     def __init__(self, dictionary_path: str, interface: Interface) -> None:
-        self.registers_group = {}
+        self.items = {}
         self.safety_rpdos = {}
         self.safety_tpdos = {}
         self._registers = {}
@@ -245,6 +264,52 @@ class Dictionary(ABC):
             self.read_dictionary()
         except KeyError as e:
             raise ILDictionaryParseError("The dictionary is not well-formed.") from e
+
+    @staticmethod
+    def _get_address_type_xdf_options(address_type: str) -> RegAddressType:
+        """Returns the address type associated with a string.
+
+        Args:
+            address_type: address type.
+
+        Raises:
+            ILDictionaryParseError: if the provided address type does not exist.
+
+        Returns:
+            Address type.
+        """
+        if address_type == "NVM":
+            return RegAddressType.NVM
+        if address_type == "NVM_NONE":
+            return RegAddressType.NVM_NONE
+        if address_type == "NVM_CFG":
+            return RegAddressType.NVM_CFG
+        if address_type == "NVM_LOCK":
+            return RegAddressType.NVM_LOCK
+        if address_type == "NVM_HW":
+            return RegAddressType.NVM_HW
+        raise ILDictionaryParseError(f"The address type {address_type} does not exist.")
+
+    @staticmethod
+    def _get_subnode_xdf_options(subnode: str) -> SubnodeType:
+        """Returns the `SubnodeType` corresponding to a subnode string.
+
+        Args:
+            subnode: subnode.
+
+        Raises:
+            ILDictionaryParseError: if the provided subnode has no `SubnodeType` associated with.
+
+        Returns:
+            subnode type.
+        """
+        if subnode == "Communication":
+            return SubnodeType.COMMUNICATION
+        if subnode == "Motion":
+            return SubnodeType.MOTION
+        if subnode == "Safety":
+            return SubnodeType.SAFETY
+        raise ILDictionaryParseError(f"{subnode=} does not exist.")
 
     @classmethod
     @abstractmethod
@@ -300,23 +365,23 @@ class Dictionary(ABC):
     def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
 
-    def child_registers(self, uid: str, subnode: int) -> list[Register]:
-        """Return group registers by an UID.
+    def get_object(self, uid: str, subnode: int) -> CanOpenObject:
+        """Return object by an UID and subnode.
 
         Args:
-            uid: registers group UID
-            subnode: registers group subnode
+            uid: object UID
+            subnode: object subnode
 
         Returns:
-            All registers in the group
+            CanOpen Object
 
         Raises:
-            KeyError: Registers group does not exist
+            KeyError: Object does not exist
 
         """
-        if subnode in self.registers_group and uid in self.registers_group[subnode]:
-            return self.registers_group[subnode][uid]
-        raise KeyError(f"Registers group {uid} in subnode {subnode} not exist")
+        if subnode in self.items and uid in self.items[subnode]:
+            return self.items[subnode][uid]
+        raise KeyError(f"Object {uid} in subnode {subnode} not exist")
 
     def get_safety_rpdo(self, uid: str) -> DictionarySafetyPDO:
         """Get Safe RPDO by uid.
@@ -479,12 +544,7 @@ class DictionaryV3(Dictionary):
     __CATEGORY_ELEMENT = "Category"
 
     __DEVICES_ELEMENT = "Devices"
-    __DEVICE_ELEMENT = {
-        Interface.CAN: "CANDevice",
-        Interface.ETH: "ETHDevice",
-        Interface.ECAT: "ECATDevice",
-        Interface.EoE: "EoEDevice",
-    }
+
     __DEVICE_FW_VERSION_ATTR = "firmwareVersion"
     __DEVICE_PRODUCT_CODE_ATTR = "ProductCode"
     __DEVICE_PART_NUMBER_ATTR = "PartNumber"
@@ -495,6 +555,7 @@ class DictionaryV3(Dictionary):
     __SUBNODE_INDEX_ATTR = "index"
 
     __SUBNODE_ATTR = "subnode"
+    __OBJECT_DATA_TYPE_ATTR = "datatype"
     __ADDRESS_TYPE_ATTR = "address_type"
     __ACCESS_ATTR = "access"
     __DTYPE_ATTR = "dtype"
@@ -548,6 +609,50 @@ class DictionaryV3(Dictionary):
     __PDO_ENTRY_SIZE_ATTR = "size"
     __PDO_ENTRY_SUBNODE_ATTR = "subnode"
 
+    @staticmethod
+    def _interface_to_device_element(interface: Interface) -> str:
+        """Returns the device element associated with each interface.
+
+        Args:
+            interface: interface.
+
+        Raises:
+            ILDictionaryParseError: if the interface doesn't have any device element associated.
+
+        Returns:
+            Device element.
+        """
+        if interface is Interface.CAN:
+            return "CANDevice"
+        if interface is Interface.ETH:
+            return "ETHDevice"
+        if interface is Interface.ECAT:
+            return "ECATDevice"
+        if interface is Interface.EoE:
+            return "EoEDevice"
+        raise ILDictionaryParseError(f"{interface=} has no device element associated.")
+
+    @staticmethod
+    def _get_canopen_object_data_type_options(data_type: str) -> CanOpenObjectType:
+        """Returns the `CanOpenObjectType` corresponding to a data type string.
+
+        Args:
+            data_type: data type.
+
+        Raises:
+            ILDictionaryParseError: if the provided data type has no `CanOpenObjectType` associated.
+
+        Returns:
+            subnode type.
+        """
+        if data_type == "VAR":
+            return CanOpenObjectType.VAR
+        if data_type == "RECORD":
+            return CanOpenObjectType.RECORD
+        if data_type == "ARRAY":
+            return CanOpenObjectType.ARRAY
+        raise ILDictionaryParseError(f"{data_type} has no canopen object type associated.")
+
     @override
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
@@ -560,7 +665,8 @@ class DictionaryV3(Dictionary):
             ) from e
         root = tree.getroot()
         device_path = (
-            f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}/{cls.__DEVICE_ELEMENT[interface]}"
+            f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}/"
+            f"{DictionaryV3._interface_to_device_element(interface)}"
         )
         device = root.find(device_path)
         if device is None:
@@ -673,14 +779,14 @@ class DictionaryV3(Dictionary):
 
         """
         if self.interface == Interface.VIRTUAL:
-            device_element = root.find(self.__DEVICE_ELEMENT[Interface.ETH])
+            device_element = root.find(DictionaryV3._interface_to_device_element(Interface.ETH))
             if device_element is None:
-                device_element = root.find(self.__DEVICE_ELEMENT[Interface.EoE])
+                device_element = root.find(DictionaryV3._interface_to_device_element(Interface.EoE))
                 self.interface = Interface.EoE
             else:
                 self.interface = Interface.ETH
         else:
-            device_element = root.find(self.__DEVICE_ELEMENT[self.interface])
+            device_element = root.find(DictionaryV3._interface_to_device_element(self.interface))
         if device_element is None:
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
         self.__read_device_attributes(device_element)
@@ -781,7 +887,7 @@ class DictionaryV3(Dictionary):
             if subnode.text is None:
                 raise ILDictionaryParseError("Subnode element text is None")
             self.subnodes[int(subnode.attrib[self.__SUBNODE_INDEX_ATTR])] = (
-                self.subnode_xdf_options[subnode.text.strip()]
+                Dictionary._get_subnode_xdf_options(subnode.text.strip())
             )
 
     def __read_labels(self, root: ElementTree.Element) -> dict[str, str]:
@@ -890,9 +996,11 @@ class DictionaryV3(Dictionary):
         """
         reg_address = int(register.attrib[self.__ADDRESS_ATTR], 16)
         subnode = int(register.attrib[self.__SUBNODE_ATTR])
-        address_type = self.address_type_xdf_options[register.attrib[self.__ADDRESS_TYPE_ATTR]]
-        access = self.access_xdf_options[register.attrib[self.__ACCESS_ATTR]]
-        dtype = self.dtype_xdf_options[register.attrib[self.__DTYPE_ATTR]]
+        address_type = Dictionary._get_address_type_xdf_options(
+            register.attrib[self.__ADDRESS_TYPE_ATTR]
+        )
+        access = ACCESS_XDF_OPTIONS[register.attrib[self.__ACCESS_ATTR]]
+        dtype = DTYPE_XDF_OPTIONS[register.attrib[self.__DTYPE_ATTR]]
         identifier = register.attrib[self.__UID_ATTR]
         cyclic = RegCyclicType(register.attrib[self.__CYCLIC_ATTR])
         description = register.attrib[self.__DESCRIPTION_ATTR]
@@ -943,16 +1051,19 @@ class DictionaryV3(Dictionary):
         object_uid = root.attrib.get(self.__UID_ATTR)
         reg_index = int(root.attrib[self.__INDEX_ATTR], 16)
         subnode = int(root.attrib[self.__SUBNODE_ATTR])
-        subitmes_element = self.__find_and_check(root, self.__SUBITEMS_ELEMENT)
-        subitem_list = self._findall_and_check(subitmes_element, self.__SUBITEM_ELEMENT)
+        data_type = DictionaryV3._get_canopen_object_data_type_options(
+            root.attrib[self.__OBJECT_DATA_TYPE_ATTR]
+        )
+        subitems_element = self.__find_and_check(root, self.__SUBITEMS_ELEMENT)
+        subitem_list = self._findall_and_check(subitems_element, self.__SUBITEM_ELEMENT)
         register_list = [
             self.__read_canopen_subitem(subitem, reg_index, subnode) for subitem in subitem_list
         ]
         if object_uid:
             register_list.sort(key=lambda val: val.subidx)
-            if subnode not in self.registers_group:
-                self.registers_group[subnode] = {}
-            self.registers_group[subnode][object_uid] = list(register_list)
+            if subnode not in self.items:
+                self.items[subnode] = {}
+            self.items[subnode][object_uid] = CanOpenObject(object_uid, data_type, register_list)
 
     def __read_canopen_subitem(
         self, subitem: ElementTree.Element, reg_index: int, subnode: int
@@ -969,9 +1080,11 @@ class DictionaryV3(Dictionary):
 
         """
         reg_subindex = int(subitem.attrib[self.__SUBINDEX_ATTR])
-        address_type = self.address_type_xdf_options[subitem.attrib[self.__ADDRESS_TYPE_ATTR]]
-        access = self.access_xdf_options[subitem.attrib[self.__ACCESS_ATTR]]
-        dtype = self.dtype_xdf_options[subitem.attrib[self.__DTYPE_ATTR]]
+        address_type = Dictionary._get_address_type_xdf_options(
+            subitem.attrib[self.__ADDRESS_TYPE_ATTR]
+        )
+        access = ACCESS_XDF_OPTIONS[subitem.attrib[self.__ACCESS_ATTR]]
+        dtype = DTYPE_XDF_OPTIONS[subitem.attrib[self.__DTYPE_ATTR]]
         identifier = subitem.attrib[self.__UID_ATTR]
         cyclic = RegCyclicType(subitem.attrib[self.__CYCLIC_ATTR])
         description = subitem.attrib[self.__DESCRIPTION_ATTR]
@@ -1106,12 +1219,31 @@ class DictionaryV2(Dictionary):
 
     __MON_DIST_STATUS_REGISTER = "MON_DIST_STATUS"
 
-    _MONITORING_DISTURBANCE_REGISTERS: Union[
-        list[EthercatRegister], list[EthernetRegister], list[CanopenRegister]
-    ]
+    def __init__(self, dictionary_path: str) -> None:
+        super().__init__(dictionary_path, self.interface)
 
-    _KNOWN_REGISTER_BITFIELDS: dict[str, Callable[[], dict[str, BitField]]] = {
-        "DRV_STATE_STATUS": lambda: {
+    @staticmethod
+    def _interface_to_str(interface: Interface) -> str:
+        """Returns the string associated with each interface.
+
+        Args:
+            interface: interface.
+
+        Raises:
+            ILDictionaryParseError: if the interface doesn't have any string associated.
+
+        Returns:
+            Interface string.
+        """
+        if interface is Interface.CAN:
+            return "CAN"
+        if interface in [Interface.ECAT, Interface.EoE, Interface.ETH]:
+            return "ETH"
+        raise ILDictionaryParseError(f"{interface=} has no string associated.")
+
+    @cached_property
+    def __drv_state_status_known_bitfields(self) -> dict[str, BitField]:
+        return {
             # https://drives.novantamotion.com/summit/0x011-status-word
             "READY_TO_SWITCH_ON": BitField.bit(0),
             "SWITCHED_ON": BitField.bit(1),
@@ -1124,8 +1256,11 @@ class DictionaryV2(Dictionary):
             "TARGET_REACHED": BitField.bit(10),
             "SWITCH_LIMITS_ACTIVE": BitField.bit(11),
             "COMMUTATION_FEEDBACK_ALIGNED": BitField.bit(14),
-        },
-        "DRV_STATE_CONTROL": lambda: {
+        }
+
+    @cached_property
+    def __drv_state_control(self) -> dict[str, BitField]:
+        return {
             # https://drives.novantamotion.com/summit/0x010-control-word
             "SWITCH_ON": BitField.bit(0),
             "VOLTAGE_ENABLE": BitField.bit(1),
@@ -1133,33 +1268,54 @@ class DictionaryV2(Dictionary):
             "ENABLE_OPERATION": BitField.bit(3),
             "RUN_SET_POINT_MANAGER": BitField.bit(4),
             "FAULT_RESET": BitField.bit(7),
-        },
-        "DRV_OP_CMD": lambda: {
+        }
+
+    @cached_property
+    def __drv_op_cmd(self) -> dict[str, BitField]:
+        return {
             # https://drives.novantamotion.com/summit/0x014-operation-mode
             "OPERATION_MODE": BitField(0, 3),
             "PROFILER_MODE": BitField(4, 6),
             "PTP_BUFFER": BitField.bit(7),
             "HOMING": BitField.bit(8),
-        },
-        "DRV_PROT_STO_STATUS": lambda: {
+        }
+
+    @cached_property
+    def __drv_prot_sto_status(self) -> dict[str, BitField]:
+        return {
             # https://drives.novantamotion.com/summit/0x51a-sto-status
             "STO1": BitField.bit(0),
             "STO2": BitField.bit(1),
             "STO_SUPPLY_FAULT": BitField.bit(2),
             "STO_ABNORMAL_FAULT": BitField.bit(3),
             "STO_REPORT": BitField.bit(4),
-        },
-    }
+        }
 
-    _INTERFACE_STR = {
-        Interface.CAN: "CAN",
-        Interface.ECAT: "ETH",
-        Interface.EoE: "ETH",
-        Interface.ETH: "ETH",
-    }
+    def _get_known_register_bitfields(self, register: str) -> Optional[dict[str, BitField]]:
+        """Gets the known register bitfields.
 
-    def __init__(self, dictionary_path: str) -> None:
-        super().__init__(dictionary_path, self.interface)
+        Args:
+            register: register.
+
+        Returns:
+            Register bitfields, None if the bitfields are unknown.
+        """
+        if register == "DRV_STATE_STATUS":
+            return self.__drv_state_status_known_bitfields
+        if register == "DRV_STATE_CONTROL":
+            return self.__drv_state_control
+        if register == "DRV_OP_CMD":
+            return self.__drv_op_cmd
+        if register == "DRV_PROT_STO_STATUS":
+            return self.__drv_prot_sto_status
+        return None
+
+    @property
+    @abstractmethod
+    def _monitoring_disturbance_registers(
+        self,
+    ) -> Union[list[EthercatRegister], list[EthernetRegister], list[CanopenRegister]]:
+        raise NotImplementedError
 
     @override
     @classmethod
@@ -1178,7 +1334,10 @@ class DictionaryV2(Dictionary):
                 f"Could not load the dictionary {dictionary_path}. Device information is missing"
             )
         dict_interface = device.attrib.get("Interface")
-        if cls._INTERFACE_STR[interface] != dict_interface and dict_interface is not None:
+        if (
+            DictionaryV2._interface_to_str(interface) != dict_interface
+            and dict_interface is not None
+        ):
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
         firmware_version = device.attrib.get("firmwareVersion")
         product_code = device.attrib.get("ProductCode")
@@ -1244,7 +1403,7 @@ class DictionaryV2(Dictionary):
         self.dict_interface = device.attrib.get("Interface")
         if (
             self.interface != Interface.VIRTUAL
-            and self._INTERFACE_STR[self.interface] != self.dict_interface
+            and DictionaryV2._interface_to_str(self.interface) != self.dict_interface
             and self.dict_interface is not None
         ):
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
@@ -1284,7 +1443,6 @@ class DictionaryV2(Dictionary):
         Raises:
             ILDictionaryParseError: If the register data type is invalid.
             ILDictionaryParseError: If the register access type is invalid.
-            ILDictionaryParseError: If the register address type is invalid.
             KeyError: If some attribute is missing.
 
         """
@@ -1301,8 +1459,8 @@ class DictionaryV2(Dictionary):
             # Data type
             dtype_aux = register.attrib["dtype"]
             dtype = None
-            if dtype_aux in self.dtype_xdf_options:
-                dtype = self.dtype_xdf_options[dtype_aux]
+            if dtype_aux in DTYPE_XDF_OPTIONS:
+                dtype = DTYPE_XDF_OPTIONS[dtype_aux]
             else:
                 raise ILDictionaryParseError(
                     f"The data type {dtype_aux} does not exist for the register: {identifier}"
@@ -1311,23 +1469,15 @@ class DictionaryV2(Dictionary):
             # Access type
             access_aux = register.attrib["access"]
             access = None
-            if access_aux in self.access_xdf_options:
-                access = self.access_xdf_options[access_aux]
+            if access_aux in ACCESS_XDF_OPTIONS:
+                access = ACCESS_XDF_OPTIONS[access_aux]
             else:
                 raise ILDictionaryParseError(
                     f"The access type {access_aux} does not exist for the register: {identifier}"
                 )
 
             # Address type
-            address_type_aux = register.attrib["address_type"]
-
-            if address_type_aux in self.address_type_xdf_options:
-                address_type = self.address_type_xdf_options[address_type_aux]
-            else:
-                raise ILDictionaryParseError(
-                    f"The address type {address_type_aux} does not exist for the register: "
-                    f"{identifier}"
-                )
+            address_type = Dictionary._get_address_type_xdf_options(register.attrib["address_type"])
 
             subnode = int(register.attrib.get("subnode", 1))
             storage = register.attrib.get("storage")
@@ -1351,9 +1501,7 @@ class DictionaryV2(Dictionary):
             enums = {str(enum.text): int(enum.attrib["value"]) for enum in enums_elem}
 
             # Known bitfields.
-            bitfields = None
-            if identifier in self._KNOWN_REGISTER_BITFIELDS:
-                bitfields = self._KNOWN_REGISTER_BITFIELDS[identifier]()
+            bitfields = self._get_known_register_bitfields(identifier)
 
             current_read_register = Register(
                 dtype,
@@ -1403,6 +1551,6 @@ class DictionaryV2(Dictionary):
 
         """
         if self.__MON_DIST_STATUS_REGISTER in self._registers[0]:
-            for register in self._MONITORING_DISTURBANCE_REGISTERS:
+            for register in self._monitoring_disturbance_registers:
                 if register.identifier is not None:
                     self._registers[register.subnode][register.identifier] = register

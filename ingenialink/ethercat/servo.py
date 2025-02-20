@@ -89,14 +89,12 @@ class EthercatServo(PDOServo):
         slave: "CdefSlave",
         slave_id: int,
         dictionary_path: str,
-        connection_timeout: float,
         servo_status_listener: bool = False,
     ):
         if not pysoem:
             raise pysoem_import_error
         self.__slave: CdefSlave = slave
         self.slave_id = slave_id
-        self._connection_timeout = connection_timeout
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
         super().__init__(slave_id, dictionary_path, servo_status_listener)
