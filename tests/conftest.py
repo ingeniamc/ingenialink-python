@@ -1,5 +1,6 @@
 import itertools
 import json
+from pathlib import Path
 
 import pytest
 import rpyc
@@ -10,6 +11,8 @@ from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.virtual.network import VirtualNetwork
 from virtual_drive.core import VirtualDrive
+
+parent_folder = Path(__file__).resolve().parent.parent
 
 DEFAULT_PROTOCOL = "no_connection"
 
@@ -35,7 +38,7 @@ def pytest_addoption(parser):
 
 @pytest.fixture(scope="session")
 def read_config(request):
-    config = "tests/config.json"
+    config = parent_folder / "tests/config.json"
     with open(config, encoding="utf-8") as fp:
         contents = json.load(fp)
     slave = request.config.getoption("--slave")

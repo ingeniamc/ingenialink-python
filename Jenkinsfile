@@ -48,8 +48,9 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
         def wheelFile = getWheelPath(tox_skip_install, version)
         env.TOX_SKIP_INSTALL = tox_skip_install.toString()
         env.INGENIALINK_WHEEL_PATH = wheelFile
+        env.TOX_CHANGE_DIR = tests
         try {
-            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -v -e ${version} -- " +
+            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
                     "--protocol ${protocol} " +
                     "--slave ${slave} " +
                     "--cov=ingenialink " +
@@ -131,7 +132,7 @@ pipeline {
                                         env.TOX_BUILD_ENV_DIR = buildDir
                                         bat """
                                             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-                                            py -${DEFAULT_PYTHON_VERSION} -m tox -v -e build
+                                            py -${DEFAULT_PYTHON_VERSION} -m tox -e build
                                             XCOPY ${distDir} ${env.WORKSPACE}\\${distDir} /s /i
                                         """
                                         def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"

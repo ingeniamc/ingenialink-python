@@ -22,7 +22,8 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState
-from tests.virtual.test_virtual_network import RESOURCES_FOLDER
+
+RESOURCES_FOLDER = "virtual_drive/resources/"
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
