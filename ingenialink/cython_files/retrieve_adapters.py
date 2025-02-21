@@ -10,6 +10,7 @@ adapters = get_adapters_addresses(
 )
 n_adapters = len(adapters)
 for idx, adapter in enumerate(adapters, start=1):
+    print(adapter)
     # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/ns-ifdef-net_luid_lh
     # correct_type = adapter.IfType in [6, 24, 71]
     if adapter.IfType == 6 and len(adapter.FirstUnicastAddress):
