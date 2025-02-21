@@ -35,3 +35,6 @@ pytest_reports/
 
 # Documentation
 _docs
+
+# Cython compilation
+*.cpp
