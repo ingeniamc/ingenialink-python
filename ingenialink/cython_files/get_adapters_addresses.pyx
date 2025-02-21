@@ -1,4 +1,4 @@
-from ingenialink.cython_files.GetAdaptersAddresses cimport *
+cimport ingenialink.cython_files.GetAdaptersAddresses
 
 def get_adapters_addresses() -> list[int]:
     """Retrieves the addresses associated with the adapters on the local computer.
