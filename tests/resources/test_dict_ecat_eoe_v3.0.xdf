@@ -25,7 +25,7 @@
 					<Subnode index="4">Safety</Subnode>
 				</Subnodes>
 				<CANopenObjects>
-					<CANopenObject index="0x580F" subnode="0">
+					<CANopenObject index="0x580F" datatype="VAR" subnode="0">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" cyclic="CYCLIC_TX" desc="Contains the last generated error" default="00000000" cat_id="REPORTING">
 								<Labels>
@@ -34,7 +34,7 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject>
-					<CANopenObject index="0x5E49" subnode="0">
+					<CANopenObject index="0x5E49" datatype="VAR" subnode="0">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="s32" id="TEST_TXRX_REGISTER" cyclic="CYCLIC_TXRX" desc="Test TXRX register" default="00000000" cat_id="OTHERS">
 								<Labels>
@@ -43,7 +43,7 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject>
-					<CANopenObject index="0x58A0" subnode="0">
+					<CANopenObject index="0x58A0" datatype="VAR" subnode="0">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" units="cnt" cyclic="CONFIG" desc="" default="0100" cat_id="IDENTIFICATION">
 								<Labels>
@@ -52,7 +52,7 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject >
-					<CANopenObject index="0x1600" subnode="0" id="CIA301_COMMS_RPDO1_MAP">
+					<CANopenObject index="0x1600" datatype="RECORD"  subnode="0" id="CIA301_COMMS_RPDO1_MAP">
 						<Labels>
 							<Label lang="en_US">RPDO 1 mapping parameter</Label>
 						</Labels>
@@ -69,7 +69,7 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject >
-					<CANopenObject index="0x2151" subnode="1">
+					<CANopenObject index="0x2151" datatype="VAR" subnode="1">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" cyclic="CONFIG" desc="Indicates the sensor used for angle readings" default="0400" cat_id="COMMUTATION">
 								<Labels>

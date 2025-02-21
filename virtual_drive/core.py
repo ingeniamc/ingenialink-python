@@ -4,6 +4,7 @@ import platform
 import socket
 import time
 from enum import Enum, IntEnum
+from functools import cached_property
 from threading import Thread, Timer
 from typing import TYPE_CHECKING, Any, Optional, Union
 
@@ -12,6 +13,7 @@ from numpy.typing import NDArray
 from scipy import signal
 from typing_extensions import override
 
+from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.dictionary import Interface
 from ingenialink.enums.register import RegAccess, RegDtype
@@ -705,19 +707,22 @@ class VirtualInternalGenerator:
     COMMUTATION_FEEDBACK_REGISTER = "COMMU_ANGLE_SENSOR"
     POSITION_FEEDBACK_REGISTER = "CL_POS_FBK_SENSOR"
 
-    HALL_VALUES = [1, 3, 2, 6, 4, 5]
-
-    ENCODER_REGISTERS = {
-        SensorType.QEI: "FBK_DIGENC1_VALUE",
-        SensorType.QEI2: "FBK_DIGENC2_VALUE",
-        SensorType.HALLS: "FBK_DIGHALL_VALUE",
-        SensorType.ABS1: "FBK_BISS1_SSI1_POS_VALUE",
-        SensorType.BISSC2: "FBK_BISS2_POS_VALUE",
-    }
+    HALL_VALUES = (1, 3, 2, 6, 4, 5)
 
     def __init__(self, drive: "VirtualDrive") -> None:
         self.drive = drive
         self.start_time = 0.0
+
+    @cached_property
+    def encoder_registers(self) -> dict[SensorType, str]:
+        """Encoder register associated with a sensor type."""
+        return {
+            SensorType.QEI: "FBK_DIGENC1_VALUE",
+            SensorType.QEI2: "FBK_DIGENC2_VALUE",
+            SensorType.HALLS: "FBK_DIGHALL_VALUE",
+            SensorType.ABS1: "FBK_BISS1_SSI1_POS_VALUE",
+            SensorType.BISSC2: "FBK_BISS2_POS_VALUE",
+        }
 
     def enable(self) -> None:
         """Enable internal generator and generate the encoder and position signals."""
@@ -725,7 +730,7 @@ class VirtualInternalGenerator:
         if (
             self.commutation_feedback != SensorType.INTGEN
             or self.generator_mode != GeneratorMode.SAW_TOOTH
-            or self.position_encoder not in self.ENCODER_REGISTERS
+            or self.position_encoder not in self.encoder_registers
         ):
             return
         if self.position_encoder == SensorType.HALLS:
@@ -801,7 +806,7 @@ class VirtualInternalGenerator:
     @property
     def encoder_register(self) -> str:
         """Register of the encoder value."""
-        return self.ENCODER_REGISTERS[SensorType(self.position_encoder)]
+        return self.encoder_registers[SensorType(self.position_encoder)]
 
     @property
     def encoder_resolution(self) -> int:
@@ -1419,18 +1424,16 @@ class VirtualDrive(Thread):
         configuration_file = os.path.join(
             pathlib.Path(__file__).parent.resolve(), self.PATH_CONFIGURATION_RELATIVE
         )
-        _, registers = EthernetServo._read_configuration_file(configuration_file)
-        cast_data = {"float": float, "str": str}
-        for element in registers:
-            subnode = int(element.attrib["subnode"])
-            reg_dtype = element.attrib["dtype"]
-            reg_data = element.attrib["storage"]
-            if not self.__register_exists(subnode, element.attrib["id"]):
+        conf_file = ConfigurationFile.load_from_xcf(configuration_file)
+        for conf_register in conf_file.registers:
+            subnode = conf_register.subnode
+            reg_data = conf_register.storage
+            if not self.__register_exists(subnode, conf_register.uid):
                 continue
             self.set_value_by_id(
                 subnode,
-                element.attrib["id"],
-                cast_data.get(reg_dtype, int)(reg_data),
+                conf_register.uid,
+                reg_data,
             )
         value: Union[str, int]
         for subnode in self.__dictionary.subnodes:

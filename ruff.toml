@@ -37,6 +37,7 @@ select = [
     "RUF005", # Ruff collection concatenation
     "RUF008", # Ruff dataclasses mutable defaults
     "RUF027", # Missing f-string syntax
+    "RUF012", # Mutable class default
 ]
 
 ignore = [

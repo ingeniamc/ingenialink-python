@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Optional
 from xml.etree import ElementTree
 
@@ -18,28 +19,30 @@ class CanopenDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: list[CanopenRegister] = [
-        CanopenRegister(
-            identifier="MON_DATA_VALUE",
-            idx=0x58B2,
-            subidx=0x00,
-            cyclic=RegCyclicType.CONFIG,
-            dtype=RegDtype.BYTE_ARRAY_512,
-            access=RegAccess.RO,
-            subnode=0,
-        ),
-        CanopenRegister(
-            identifier="DIST_DATA_VALUE",
-            idx=0x58B4,
-            subidx=0x00,
-            cyclic=RegCyclicType.CONFIG,
-            dtype=RegDtype.BYTE_ARRAY_512,
-            access=RegAccess.WO,
-            subnode=0,
-        ),
-    ]
-
     interface = Interface.CAN
+
+    @cached_property
+    def _monitoring_disturbance_registers(self) -> list[CanopenRegister]:
+        return [
+            CanopenRegister(
+                identifier="MON_DATA_VALUE",
+                idx=0x58B2,
+                subidx=0x00,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.RO,
+                subnode=0,
+            ),
+            CanopenRegister(
+                identifier="DIST_DATA_VALUE",
+                idx=0x58B4,
+                subidx=0x00,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.WO,
+                subnode=0,
+            ),
+        ]
 
     def _read_xdf_register(self, register: ElementTree.Element) -> Optional[CanopenRegister]:
         current_read_register = super()._read_xdf_register(register)
