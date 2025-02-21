@@ -1,1 +1,0 @@
-from ingenialink.cython_files.get_adapters_addresses import get_adapters_addresses
