@@ -144,6 +144,11 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Archive artifacts') {
+                            steps {
+                                archiveArtifacts(artifacts: "dist*\\*.whl", followSymlinks: false)
+                            }
+                        }
                         stage('Generate documentation') {
                             steps {
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
