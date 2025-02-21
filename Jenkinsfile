@@ -14,7 +14,7 @@ DEFAULT_PYTHON_VERSION = "3.9"
 
 ALL_PYTHON_VERSIONS = "py39,py310,py311,py312"
 RUN_PYTHON_VERSIONS = ""
-def PYTHON_VERSION_MIN = "py39"
+PYTHON_VERSION_MIN = "py39"
 def PYTHON_VERSION_MAX = "py312"
 
 def BRANCH_NAME_MASTER = "master"
@@ -22,24 +22,54 @@ def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 coverage_stashes = []
 
-def runTest(protocol, slave = 0) {
-    try {
-        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                "--protocol ${protocol} " +
-                "--slave ${slave} " +
-                "--cov=ingenialink " +
-                "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${protocol}-${slave}\""
+def getWheelPath(tox_skip_install, python_version) {
+    if (tox_skip_install) {
+        def stashName = python_version == PYTHON_VERSION_MIN ? "build" : "build_${python_version}"
+        unstash stashName
+        script {
+            def distDir = python_version == PYTHON_VERSION_MIN ? "dist" : "dist_${python_version}"
+            def result = bat(script: "dir ${distDir} /b /a-d", returnStdout: true).trim()
+            def files = result.split(/[\r\n]+/)    
+            def wheelFile = files.find { it.endsWith('.whl') }
+            if (wheelFile == null) {
+                error "No .whl file found in the dist directory. Directory contents:\n${result}"            
+            }
+            return "${distDir}\\${wheelFile}"
+        }
+    }
+    else {
+        return ""
+    }
+}
 
-    } catch (err) {
-        unstable(message: "Tests failed")
-    } finally {
-        def coverage_stash = ".coverage_${protocol}_${slave}"
-        bat "move .coverage ${coverage_stash}"
-        junit "pytest_reports\\*.xml"
-        // Delete the junit after publishing it so it not re-published on the next stage
-        bat "del /S /Q pytest_reports\\*.xml"
-        stash includes: coverage_stash, name: coverage_stash
-        coverage_stashes.add(coverage_stash)
+def runTest(protocol, slave = 0, tox_skip_install = false) {
+    def firstIteration = true
+    def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+    pythonVersions.each { version ->
+        def wheelFile = getWheelPath(tox_skip_install, version)
+        env.TOX_SKIP_INSTALL = tox_skip_install.toString()
+        env.INGENIALINK_WHEEL_PATH = wheelFile
+        try {
+            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
+                    "--protocol ${protocol} " +
+                    "--slave ${slave} " +
+                    "--cov=ingenialink " +
+                    "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${protocol}-${slave}\""
+
+        } catch (err) {
+            unstable(message: "Tests failed")
+        } finally {
+            if (firstIteration) {
+                def coverage_stash = ".coverage_${protocol}_${slave}"
+                bat "move .coverage ${coverage_stash}"
+                junit "pytest_reports\\*.xml"
+                // Delete the junit after publishing it so it not re-published on the next stage
+                bat "del /S /Q pytest_reports\\*.xml"
+                stash includes: coverage_stash, name: coverage_stash
+                coverage_stashes.add(coverage_stash)
+                firstIteration = false
+            }
+        }
     }
 }
 
@@ -68,75 +98,101 @@ pipeline {
             }
         }
 
-        stage('Build and Tests') {
-            parallel {
-                stage('Build and publish') {
+        stage('Build and publish') {
+            stages {
+                stage('Build') {
+                    agent {
+                        docker {
+                            label SW_NODE
+                            image WIN_DOCKER_IMAGE
+                        }
+                    }
                     stages {
+                        stage('Move workspace') {
+                            steps {
+                                bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y"
+                            }
+                        }
+                        stage('Type checking') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                            }
+                        }
+                        stage('Format checking') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                            }
+                        }
                         stage('Build') {
-                            agent {
-                                docker {
-                                    label SW_NODE
-                                    image WIN_DOCKER_IMAGE
-                                }
-                            }
-                            stages {
-                                stage('Type checking') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
-                                    }
-                                }
-                                stage('Format checking') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                                    }
-                                }
-                                stage('Build') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e build"
-                                        stash includes: 'dist\\*', name: 'build'
-                                    }
-                                }
-                                stage('Generate documentation') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
-                                        bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
-                                        stash includes: 'docs.zip', name: 'docs'
+                            steps {
+                                script {
+                                    def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                    pythonVersions.each { version ->
+                                        def distDir = version == PYTHON_VERSION_MIN ? "dist" : "dist_${version}"
+                                        def buildDir = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
+                                        env.TOX_PYTHON_VERSION = version
+                                        env.TOX_DIST_DIR = distDir
+                                        env.TOX_BUILD_ENV_DIR = buildDir
+                                        bat """
+                                            cd C:\\Users\\ContainerAdministrator\\ingenialink_python
+                                            py -${DEFAULT_PYTHON_VERSION} -m tox -e build
+                                            XCOPY ${distDir} ${env.WORKSPACE}\\${distDir} /s /i
+                                        """
+                                        def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
+                                        stash includes: "${distDir}\\*", name: stashName
                                     }
                                 }
                             }
                         }
-                        stage('Publish documentation') {
-                            when {
-                                beforeAgent true
-                                branch BRANCH_NAME_MASTER
-                            }
-                            agent {
-                                label 'worker'
-                            }
+                        stage('Archive artifacts') {
                             steps {
-                                unstash 'docs'
-                                unzip zipFile: 'docs.zip', dir: '.'
-                                publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
+                                archiveArtifacts(artifacts: "dist*\\*.whl", followSymlinks: false)
                             }
                         }
-                        stage('Publish to pypi') {
-                            when {
-                                beforeAgent true
-                                branch BRANCH_NAME_MASTER
-                            }
-                            agent {
-                                docker {
-                                    label 'worker'
-                                    image PUBLISHER_DOCKER_IMAGE
-                                }
-                            }
+                        stage('Generate documentation') {
                             steps {
-                                unstash 'build'
-                                publishPyPi("dist/*")
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                                bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
+                                stash includes: 'docs.zip', name: 'docs'
                             }
                         }
                     }
                 }
+                stage('Publish documentation') {
+                    when {
+                        beforeAgent true
+                        branch BRANCH_NAME_MASTER
+                    }
+                    agent {
+                        label 'worker'
+                    }
+                    steps {
+                        unstash 'docs'
+                        unzip zipFile: 'docs.zip', dir: '.'
+                        publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
+                    }
+                }
+                stage('Publish to pypi') {
+                    when {
+                        beforeAgent true
+                        branch BRANCH_NAME_MASTER
+                    }
+                    agent {
+                        docker {
+                            label 'worker'
+                            image PUBLISHER_DOCKER_IMAGE
+                        }
+                    }
+                    steps {
+                        unstash 'build'
+                        publishPyPi("dist/*")
+                    }
+                }
+            }
+        }
+        
+        stage('Tests') {
+            parallel {
                 stage('Docker Windows - Tests') {
                     agent {
                         docker {
@@ -198,17 +254,17 @@ pipeline {
                     stages {
                         stage('EtherCAT Everest') {
                             steps {
-                                runTest("ethercat", 0)
+                                runTest("ethercat", 0, true)
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                runTest("ethercat", 1)
+                                runTest("ethercat", 1, true)
                             }
                         }
                         stage('Run no-connection tests') {
                             steps {
-                                runTest("no_connection")
+                                runTest("no_connection", 0, true)
                             }
                         }
                     }
@@ -223,22 +279,22 @@ pipeline {
                     stages {
                         stage('CANopen Everest') {
                             steps {
-                                runTest("canopen", 0)
+                                runTest("canopen", 0, true)
                             }
                         }
                         stage('CANopen Capitan') {
                             steps {
-                                runTest("canopen", 1)
+                                runTest("canopen", 1, true)
                             }
                         }
                         stage('Ethernet Everest') {
                             steps {
-                                runTest("ethernet", 0)
+                                runTest("ethernet", 0, true)
                             }
                         }
                         stage('Ethernet Capitan') {
                             steps {
-                                runTest("ethernet", 1)
+                                runTest("ethernet", 1, true)
                             }
                         }
                     }

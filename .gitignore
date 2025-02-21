@@ -7,7 +7,7 @@
 **/*.pyc
 **/__pycache__
 build/
-dist/
+dist*/
 *.egg*
 .ipynb_checkpoints/
 
@@ -27,11 +27,15 @@ out.txt
 
 # Pipenv and venv
 Pipfile.lock
-pyproject.toml
 venv
 
 # Test files
 pytest_reports/
+.coverage
 
 # Documentation
 _docs
+
+# Cython compilation
+ingenialink/cython_files/*.c
+temp/*
