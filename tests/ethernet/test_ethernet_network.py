@@ -59,14 +59,13 @@ def test_scan_slaves(read_config):
 
 
 @pytest.mark.ethernet
-def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
+def test_scan_slaves_info(read_config, get_drive_configuration_from_rack_service):
     drive_ip = read_config["ethernet"]["ip"]
     subnet = drive_ip + "/24"
     net = EthernetNetwork(subnet)
     slaves_info = net.scan_slaves_info()
 
-    drive_idx, config = get_configuration_from_rack_service
-    drive = config.drives[drive_idx]
+    drive = get_drive_configuration_from_rack_service
 
     assert len(slaves_info) > 0
     assert drive_ip in slaves_info

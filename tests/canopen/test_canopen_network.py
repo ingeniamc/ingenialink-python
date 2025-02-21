@@ -86,7 +86,7 @@ def test_scan_slaves_missing_drivers(can_device):
 
 
 @pytest.mark.canopen
-def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
+def test_scan_slaves_info(read_config, get_drive_configuration_from_rack_service):
     net = CanopenNetwork(
         device=CanDevice(read_config["canopen"]["device"]),
         channel=read_config["canopen"]["channel"],
@@ -94,8 +94,7 @@ def test_scan_slaves_info(read_config, get_configuration_from_rack_service):
     )
     slaves_info = net.scan_slaves_info()
 
-    drive_idx, config = get_configuration_from_rack_service
-    drive = config.drives[drive_idx]
+    drive = get_drive_configuration_from_rack_service
 
     assert len(slaves_info) > 0
     assert read_config["canopen"]["node_id"] in slaves_info

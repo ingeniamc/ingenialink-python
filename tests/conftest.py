@@ -163,13 +163,13 @@ def connect_to_rack_service(request):
 
 
 @pytest.fixture(scope="session")
-def get_configuration_from_rack_service(pytestconfig, read_config, connect_to_rack_service):
+def get_drive_configuration_from_rack_service(pytestconfig, read_config, connect_to_rack_service):
     client = connect_to_rack_service
     rack_config = client.exposed_get_configuration()
     protocol = pytestconfig.getoption("--protocol")
     protocol_contents = read_config[protocol]
     drive_idx = get_drive_idx_from_rack_config(protocol_contents, rack_config)
-    return drive_idx, rack_config
+    return rack_config.drives[drive_idx]
 
 
 def get_drive_idx_from_rack_config(protocol_contents, rack_config):
