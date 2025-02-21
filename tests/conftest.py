@@ -164,19 +164,24 @@ def connect_to_rack_service(request):
 
 @pytest.fixture(scope="session")
 def get_configuration_from_rack_service(pytestconfig, read_config, connect_to_rack_service):
+    client = connect_to_rack_service
+    rack_config = client.exposed_get_configuration()
     protocol = pytestconfig.getoption("--protocol")
     protocol_contents = read_config[protocol]
+    drive_idx = get_drive_idx_from_rack_config(protocol_contents, rack_config)
+    return drive_idx, rack_config
+
+
+def get_drive_idx_from_rack_config(protocol_contents, rack_config):
     drive_identifier = protocol_contents["identifier"]
-    client = connect_to_rack_service
-    config = client.exposed_get_configuration()
     drive_idx = None
-    for idx, drive in enumerate(config.drives):
+    for idx, drive in enumerate(rack_config.drives):
         if drive_identifier == drive.identifier:
             drive_idx = idx
             break
     if drive_idx is None:
         pytest.fail(f"The drive {drive_identifier} cannot be found on the rack's configuration.")
-    return drive_idx, config
+    return drive_idx
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -184,7 +189,6 @@ def load_firmware(pytestconfig, read_config, request):
     protocol = pytestconfig.getoption("--protocol")
     if protocol == DEFAULT_PROTOCOL:
         return
-    protocol_contents = read_config[protocol]
 
     client = request.getfixturevalue("connect_to_rack_service")
     # Reboot drive
@@ -198,13 +202,14 @@ def load_firmware(pytestconfig, read_config, request):
     while True:
         if time.time() >= wait_until:
             raise TimeoutError(f"Could not find drives in {timeout} after rebooting")
-        config = client.exposed_get_configuration()
-        network = config.networks[0]
-        have_started, info = network.all_nodes_started()
-        if have_started:
+        rack_config = client.exposed_get_configuration()
+        network = rack_config.networks[0]
+        all_nodes_started, _ = network.all_nodes_started()
+        if all_nodes_started:
             break
-    drive_idx, config = request.getfixturevalue("get_configuration_from_rack_service")
-    drive = config.drives[drive_idx]
+    protocol_contents = read_config[protocol]
+    drive_idx = get_drive_idx_from_rack_config(protocol_contents, rack_config)
+    drive = rack_config.drives[drive_idx]
     client.exposed_firmware_load(
         drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
     )
