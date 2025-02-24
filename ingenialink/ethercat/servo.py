@@ -135,10 +135,6 @@ class EthercatServo(PDOServo):
             all the parameters.
             timeout : how many seconds to wait for the drive to become responsive
             after the store operation. If ``None`` it will wait forever.
-
-        Raises:
-            ILError: Invalid subnode.
-
         """
         super().store_parameters(subnode)
         self._wait_until_alive(timeout)
@@ -159,10 +155,6 @@ class EthercatServo(PDOServo):
                 all the parameters.
             timeout : how many seconds to wait for the drive to become responsive
             after the restore operation. If ``None`` it will wait forever.
-
-        Raises:
-            ILError: Invalid subnode.
-
         """
         super().restore_parameters(subnode)
         self._wait_until_alive(timeout)
@@ -238,9 +230,6 @@ class EthercatServo(PDOServo):
             ILIOError: If the register cannot be read or written.
             ILIOError: If the slave fails to acknowledge the command.
             ILIOError: If the working counter value is wrong.
-            ILTimeoutError: If the slave fails to respond within the connection
-             timeout period.
-
         """
         default_error_msg = f"Error {operation_msg.value} {reg.identifier}"
         if isinstance(exception, pysoem.WkcError):
@@ -263,7 +252,11 @@ class EthercatServo(PDOServo):
         raise ILIOError(f"{default_error_msg}. {reason}") from exception
 
     def _monitoring_read_data(self, **kwargs: Any) -> bytes:
-        """Read monitoring data frame."""
+        """Read monitoring data frame.
+
+        Returns:
+            monitoring data.
+        """
         return super()._monitoring_read_data(
             buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True
         )
@@ -280,6 +273,8 @@ class EthercatServo(PDOServo):
             subnode: Subnode to be targeted.
             address: Register address to map.
 
+        Returns:
+            mapped address.
         """
         mapped_address: int = address - (
             CANOPEN_ADDRESS_OFFSET + (MAP_ADDRESS_OFFSET * (subnode - 1))
@@ -297,6 +292,8 @@ class EthercatServo(PDOServo):
             dtype: Register data type.
             size: Size of data in bytes.
 
+        Returns:
+            mapped address.
         """
         ipb_address = self.__monitoring_disturbance_map_can_address(address, subnode)
         mapped_address: int = super()._monitoring_disturbance_data_to_map_register(

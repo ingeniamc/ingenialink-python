@@ -34,9 +34,11 @@ class VirtualNetwork(EthernetNetwork):
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
 
+        Raises:
+            ILError: if the drive is not found in IP.
+
         Returns:
             VirtualServo: Instance of the servo connected.
-
         """
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(connection_timeout)

@@ -15,7 +15,7 @@ TESTS_RESOURCES_FOLDER = "tests/resources/"
 @pytest.mark.no_connection
 def test_connect_to_virtual_drive(virtual_drive_custom_dict):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
-    server, net, servo = virtual_drive_custom_dict(dictionary)
+    _, net, servo = virtual_drive_custom_dict(dictionary)
     assert servo is not None and net is not None
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
@@ -25,7 +25,7 @@ def test_connect_to_virtual_drive(virtual_drive_custom_dict):
 @pytest.mark.no_connection
 def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
-    server, net, servo = virtual_drive_custom_dict(dictionary)
+    _, net, servo = virtual_drive_custom_dict(dictionary)
     net.disconnect_from_slave(servo)
     assert net.get_servo_state(VirtualDrive.IP_ADDRESS) == NetState.DISCONNECTED
     assert len(net.servos) == 0
@@ -63,7 +63,7 @@ def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict, read_con
 @pytest.mark.no_connection
 def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):
     dictionary = os.path.join(TESTS_RESOURCES_FOLDER, "ethercat/test_dict_ethercat_old_dist.xdf")
-    server, net, servo = virtual_drive_custom_dict(dictionary)
+    _, net, servo = virtual_drive_custom_dict(dictionary)
     assert servo is not None and net is not None
     with pytest.raises(ILNACKError):
         servo.read("MON_DIST_STATUS", subnode=0)

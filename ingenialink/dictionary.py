@@ -329,9 +329,13 @@ class Dictionary(ABC):
 
         It can only be used for merging COM-KIT and CORE dictionaries.
 
+        Raises:
+            TypeError: If dictionaries cannot be merged because of the type.
+            ValueError: If the dictionaries cannot be merged because none of them
+                is a COM-KIT dictionary.
+
         Returns:
             A new dictionary instance with the attributes merged.
-
         """
         if not isinstance(other_dict, type(self)):
             raise TypeError(
@@ -777,6 +781,8 @@ class DictionaryV3(Dictionary):
         Args:
             root: Devices element
 
+        Raises:
+            ILDictionaryParseError: If the dictionary cannot be used for the chosen communication.
         """
         if self.interface == Interface.VIRTUAL:
             device_element = root.find(DictionaryV3._interface_to_device_element(Interface.ETH))
@@ -1160,7 +1166,7 @@ class DictionaryV3(Dictionary):
 
         Raises:
             ILDictionaryParseError: PDO register does not exist
-
+            ValueError: If the subnode is not a CANopen register.
         """
         uid = pdo.attrib[self.__PDO_UID_ATTR]
         pdo_index = int(pdo.attrib[self.__PDO_INDEX_ATTR], 16)
@@ -1443,8 +1449,6 @@ class DictionaryV2(Dictionary):
         Raises:
             ILDictionaryParseError: If the register data type is invalid.
             ILDictionaryParseError: If the register access type is invalid.
-            KeyError: If some attribute is missing.
-
         """
         try:
             identifier = register.attrib["id"]

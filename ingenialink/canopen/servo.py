@@ -197,6 +197,8 @@ class CanopenServo(Servo):
             dtype: Register data type.
             size: Size of data in bytes.
 
+        Returns:
+            data to map a monitoring/disturbance register.
         """
         ipb_address = self._monitoring_disturbance_map_can_address(address, subnode)
         return super()._monitoring_disturbance_data_to_map_register(
