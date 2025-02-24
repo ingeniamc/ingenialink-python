@@ -244,6 +244,9 @@ class CanopenNetwork(Network):
     def scan_slaves(self) -> list[int]:
         """Scans for nodes in the network.
 
+        Raises:
+            ILError: if the transceiver is not detected.
+
         Returns:
             Containing all the detected node IDs.
 
@@ -355,6 +358,15 @@ class CanopenNetwork(Network):
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
 
+        Raises:
+            ILError: if there aren't nodes in the network.
+            ILError: if the connection is not established.
+            ILError: if the connection fails.
+            ILError: if the node id is not found in the network.
+
+        Returns:
+            canopen servo.
+
         """
         nodes = self.scan_slaves()
         if len(nodes) < 1:
@@ -406,6 +418,11 @@ class CanopenNetwork(Network):
 
         Establishing an empty connection with all the network
         attributes already specified.
+
+        Raises:
+            ILError: if there is an error connecting to the transceiver.
+            ILError: if the driver module is not found.
+            ILError: if the connection fails.
 
         """
         if self._connection is None:
@@ -507,7 +524,6 @@ class CanopenNetwork(Network):
                 knowing when to toggle the error detection when loading firmware.
 
         Raises:
-            FileNotFoundError: Firmware file does not exist.
             ILFirmwareLoadError: The firmware load process fails with an error message.
 
         """
@@ -669,6 +685,9 @@ class CanopenNetwork(Network):
             register: Register to be read.
             expected_value: Expected value for the given register.
 
+        Raises:
+            ValueError: if there is an error reading the register.
+
         Returns:
             True if values is reached, else False
         """
@@ -814,10 +833,6 @@ class CanopenNetwork(Network):
             servo: target drive
             callback_status_msg: Subscribed callback function for the status message
             callback_progress: Subscribed callback function for the live progress.
-
-        Raises:
-            ILFirmwareLoadError: Drive does not respond
-
         """
         total_file_size = os.path.getsize(fw_file) / BOOTLOADER_MSG_SIZE
         servo._change_sdo_timeout(CANOPEN_SEND_FW_SDO_RESPONSE_TIMEOUT)
@@ -866,6 +881,9 @@ class CanopenNetwork(Network):
             rev_number: Revision number of the targeted device.
             serial_number: Serial number of the targeted device.
 
+        Raises:
+            ValueError: if the CAN connection has not been established yet.
+            ILError: if there is an error switching lss to selective state.
         """
         if self._connection is None:
             raise ValueError("The CAN connection has not been established yet.")
@@ -912,6 +930,9 @@ class CanopenNetwork(Network):
             rev_number: Revision number of the targeted device.
             serial_number: Serial number of the targeted device.
 
+        Raises:
+            ValueError: if the CAN connection has not been established yet.
+            ILError: if there is an error switching lss to selective state.
         """
         if self._connection is None:
             raise ValueError("The CAN connection has not been established yet.")
@@ -1007,7 +1028,11 @@ class CanopenNetwork(Network):
             callback(status)
 
     def is_listener_started(self) -> bool:
-        """Check if the listener has been started."""
+        """Check if the listener has been started.
+
+        Returns:
+            true if the listener has been started, False otherwise.
+        """
         return self.__listener_net_status is not None
 
     def start_status_listener(self) -> None:
@@ -1064,9 +1089,11 @@ class CanopenNetwork(Network):
         Args:
             servo_id: The servo's node ID.
 
+        Raises:
+            ValueError: it the servo id is not an integer.
+
         Returns:
             The servo's state.
-
         """
         if not isinstance(servo_id, int):
             raise ValueError("The servo ID must be an int.")
@@ -1094,9 +1121,9 @@ class CanopenNetwork(Network):
         return [
             (available_device["interface"], available_device["channel"])
             for available_device in (
-                can.detect_available_configs(
-                    [device.value for device in CanDevice if device not in unavailable_devices]
-                )
+                can.detect_available_configs([
+                    device.value for device in CanDevice if device not in unavailable_devices
+                ])
                 + self._get_available_kvaser_devices()
             )
         ]
