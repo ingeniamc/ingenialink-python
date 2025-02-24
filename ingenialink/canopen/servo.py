@@ -79,10 +79,6 @@ class CanopenServo(Servo):
         Args:
             subnode: Subnode of the axis. `None` by default which stores all the parameters.
             sdo_timeout: Timeout value for each SDO response.
-
-        Raises:
-            ILError: Invalid subnode.
-
         """
         self._change_sdo_timeout(sdo_timeout)
         super().store_parameters(subnode)
@@ -183,7 +179,11 @@ class CanopenServo(Servo):
 
     @staticmethod
     def _monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
-        """Map CAN register address to IPB register address."""
+        """Map CAN register address to IPB register address.
+
+        Returns:
+            Map CAN register address.
+        """
         return address - (0x2000 + (0x800 * (subnode - 1)))
 
     def _monitoring_disturbance_data_to_map_register(
