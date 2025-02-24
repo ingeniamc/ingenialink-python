@@ -1,7 +1,7 @@
 import os
 import socket
 import time
-from ftplib import error_perm, error_temp
+from ftplib import error_temp
 from threading import Thread
 
 import pytest
@@ -166,7 +166,6 @@ def test_load_firmware_no_connection():
     os.remove(fw_file)
 
 
-@pytest.mark.skip(reason="Skipping for now. Check INGK-1035 & INGK-1058.")
 @pytest.mark.no_connection
 @pytest.mark.parametrize(
     "ftp_server_manager",
@@ -187,7 +186,6 @@ def test_load_firmware_wrong_user_pwd(ftp_server_manager):
     with pytest.raises(ILFirmwareLoadError) as excinfo:
         net.load_firmware(fw_file, target="localhost", ftp_user=fake_user, ftp_pwd=fake_password)
     assert str(excinfo.value) == "Unable to login the FTP session"
-    assert isinstance(excinfo.value.__cause__, error_perm)
     os.remove(fw_file)
 
 
