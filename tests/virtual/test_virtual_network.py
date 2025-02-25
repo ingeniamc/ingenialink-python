@@ -8,13 +8,12 @@ from ingenialink.exceptions import ILNACKError
 from ingenialink.network import NetState
 from virtual_drive.core import VirtualDrive
 
-RESOURCES_FOLDER = "virtual_drive/resources/"
 TESTS_RESOURCES_FOLDER = "tests/resources/"
 
 
 @pytest.mark.no_connection
-def test_connect_to_virtual_drive(virtual_drive_custom_dict):
-    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+def test_connect_to_virtual_drive(virtual_drive_custom_dict, virtual_drive_resources_folder):
+    dictionary = os.path.join(virtual_drive_resources_folder, "virtual_drive.xdf")
     _, net, servo = virtual_drive_custom_dict(dictionary)
     assert servo is not None and net is not None
     assert len(net.servos) == 1
@@ -23,8 +22,8 @@ def test_connect_to_virtual_drive(virtual_drive_custom_dict):
 
 
 @pytest.mark.no_connection
-def test_virtual_drive_disconnection(virtual_drive_custom_dict):
-    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+def test_virtual_drive_disconnection(virtual_drive_custom_dict, virtual_drive_resources_folder):
+    dictionary = os.path.join(virtual_drive_resources_folder, "virtual_drive.xdf")
     _, net, servo = virtual_drive_custom_dict(dictionary)
     net.disconnect_from_slave(servo)
     assert net.get_servo_state(VirtualDrive.IP_ADDRESS) == NetState.DISCONNECTED

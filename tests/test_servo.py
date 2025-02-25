@@ -22,7 +22,6 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState
-from tests.virtual.test_virtual_network import RESOURCES_FOLDER
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -203,6 +202,8 @@ def test_check_configuration(virtual_drive):
     servo.load_configuration(filename)
     servo.check_configuration(filename)
 
+    _clean(filename)
+
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
@@ -230,8 +231,10 @@ def test_load_configuration(connect_to_slave):
 
 
 @pytest.mark.no_connection
-def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
-    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+def test_load_configuration_strict(
+    mocker, virtual_drive_custom_dict, virtual_drive_resources_folder
+):  # noqa: F811
+    dictionary = os.path.join(virtual_drive_resources_folder, "virtual_drive.xdf")
     _, _, servo = virtual_drive_custom_dict(dictionary)
     test_file = "./tests/resources/test_config_file.xcf"
     mocker.patch("ingenialink.servo.Servo.write", side_effect=ILError("Error writing"))
@@ -545,9 +548,8 @@ def test_enable_disable(connect_to_slave):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_fault_reset(connect_to_slave, get_configuration_from_rack_service):
-    drive_idx, config = get_configuration_from_rack_service
-    drive = config[drive_idx]
+def test_fault_reset(connect_to_slave, get_drive_configuration_from_rack_service):
+    drive = get_drive_configuration_from_rack_service
     if drive.identifier == "eve-xcr-e":
         pytest.skip("There is a specific fault test for the EVE-XCR-E")
     servo, _ = connect_to_slave
@@ -561,9 +563,8 @@ def test_fault_reset(connect_to_slave, get_configuration_from_rack_service):
 
 
 @pytest.mark.ethercat
-def test_fault_reset_eve_xcr(connect_to_slave, get_configuration_from_rack_service):
-    drive_idx, config = get_configuration_from_rack_service
-    drive = config[drive_idx]
+def test_fault_reset_eve_xcr(connect_to_slave, get_drive_configuration_from_rack_service):
+    drive = get_drive_configuration_from_rack_service
     if drive.identifier != "eve-xcr-e":
         pytest.skip("The test is only for the EVE-XCR-E")
     servo, net = connect_to_slave
@@ -617,11 +618,11 @@ def test_disturbance_overflow(connect_to_slave, pytestconfig):
 
 
 @pytest.mark.no_connection
-def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
+def test_subscribe_register_updates(virtual_drive_custom_dict, virtual_drive_resources_folder):  # noqa: F811
     user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
     register_update_callback = RegisterUpdateTest()
 
-    dictionary = os.path.join(RESOURCES_FOLDER, "virtual_drive.xdf")
+    dictionary = os.path.join(virtual_drive_resources_folder, "virtual_drive.xdf")
     _, _, servo = virtual_drive_custom_dict(dictionary)
     servo.register_update_subscribe(register_update_callback.register_update_test)
 
