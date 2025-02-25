@@ -21,7 +21,7 @@ def test_get_adapters_addresses(adapters_module, read_config, pytestconfig):
     protocol_info = read_config[protocol]
     if "ifname" not in protocol_info:
         pytest.skip(
-            f"Skipping test because 'ifname' is not in the protocol '{protocol}' information"
+            f"Skipping test because 'ifname' is not in the protocol '{protocol}' information."
         )
 
     match = re.search(r"\{[^}]*\}", protocol_info["ifname"])

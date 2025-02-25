@@ -424,6 +424,11 @@ def get_adapters_addresses(
     adapter_families: list[AdapterFamily] | AdapterFamily = AdapterFamily.UNSPEC,
     scan_flags: list[ScanFlags] | ScanFlags = ScanFlags.INCLUDE_PREFIX,
 ) -> list[CyAdapter]:
+    """Retrieves the addresses associated with the adapters on the local Windows computer.
+
+    Returns:
+        adapters on the local computer.
+    """
     adapters = []
     if not isinstance(adapter_families, list):
         adapter_families = [adapter_families]
