@@ -74,22 +74,6 @@ pipeline {
             }
         }
 
-        stage('Get FoE application') {
-            agent {
-                docker {
-                    label "worker"
-                    image PUBLISHER_DOCKER_IMAGE
-                }
-            }
-            steps {
-                script {
-                    FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FoE; print(FoE.__version__)"', returnStdout: true).trim()
-                }
-                copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
-                sh "mv FoEUpdateFirmwareLinux $FOE_APP_NAME_LINUX"
-                stash includes: "$FOE_APP_NAME,$FOE_APP_NAME_LINUX", name: 'foe_app'
-            }
-        }
         stage('Build and Tests') {
             parallel {
                 stage('EtherCAT/No Connection - Tests') {
