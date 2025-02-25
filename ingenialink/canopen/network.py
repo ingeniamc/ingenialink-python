@@ -1121,9 +1121,9 @@ class CanopenNetwork(Network):
         return [
             (available_device["interface"], available_device["channel"])
             for available_device in (
-                can.detect_available_configs([
-                    device.value for device in CanDevice if device not in unavailable_devices
-                ])
+                can.detect_available_configs(
+                    [device.value for device in CanDevice if device not in unavailable_devices]
+                )
                 + self._get_available_kvaser_devices()
             )
         ]
