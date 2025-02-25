@@ -1,6 +1,7 @@
 import itertools
 import json
 import time
+from pathlib import Path
 
 import pytest
 import rpyc
@@ -99,6 +100,12 @@ def connect_eoe(protocol_contents):
         dictionary=protocol_contents["dictionary"],
     )
     return servo, net
+
+
+@pytest.fixture
+def virtual_drive_resources_folder():
+    root_folder = Path(__file__).resolve().parent.parent
+    return (root_folder / "virtual_drive/resources/").as_posix()
 
 
 @pytest.fixture
