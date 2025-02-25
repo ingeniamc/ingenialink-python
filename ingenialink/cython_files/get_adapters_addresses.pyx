@@ -1,4 +1,4 @@
-cimport GetAdaptersAddresses
+cimport CyGetAdaptersAddresses
 from libc.stdlib cimport malloc, free
 import dataclasses
 import cython
@@ -9,22 +9,22 @@ _MAX_TRIES = 3
 _WORKING_BUFFER_SIZE = 15000
 
 cpdef enum AdapterFamily:
-    INET = GetAdaptersAddresses.AF_INET
-    INET6 = GetAdaptersAddresses.AF_INET6
-    UNSPEC = GetAdaptersAddresses.AF_UNSPEC
+    INET = CyGetAdaptersAddresses.AF_INET
+    INET6 = CyGetAdaptersAddresses.AF_INET6
+    UNSPEC = CyGetAdaptersAddresses.AF_UNSPEC
 
 cpdef enum ScanFlags:
-    SKIP_UNICAST = GetAdaptersAddresses.GAA_FLAG_SKIP_UNICAST
-    SKIP_ANYCAST = GetAdaptersAddresses.GAA_FLAG_SKIP_ANYCAST
-    SKIP_MULTICAST = GetAdaptersAddresses.GAA_FLAG_SKIP_MULTICAST
-    SKIP_DNS_SERVER = GetAdaptersAddresses.GAA_FLAG_SKIP_DNS_SERVER
-    INCLUDE_PREFIX = GetAdaptersAddresses.GAA_FLAG_INCLUDE_PREFIX
-    SKIP_FRIENDLY_NAME = GetAdaptersAddresses.GAA_FLAG_SKIP_FRIENDLY_NAME
-    INCLUDE_WINS_INFO = GetAdaptersAddresses.GAA_FLAG_INCLUDE_WINS_INFO
-    INCLUDE_GATEWAYS = GetAdaptersAddresses.GAA_FLAG_INCLUDE_GATEWAYS
-    INCLUDE_ALL_INTERFACES = GetAdaptersAddresses.GAA_FLAG_INCLUDE_ALL_INTERFACES
-    INCLUDE_ALL_COMPARTMENTS = GetAdaptersAddresses.GAA_FLAG_INCLUDE_ALL_COMPARTMENTS
-    INCLUDE_TUNNEL_BINDINGORDER = GetAdaptersAddresses.GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER
+    SKIP_UNICAST = CyGetAdaptersAddresses.GAA_FLAG_SKIP_UNICAST
+    SKIP_ANYCAST = CyGetAdaptersAddresses.GAA_FLAG_SKIP_ANYCAST
+    SKIP_MULTICAST = CyGetAdaptersAddresses.GAA_FLAG_SKIP_MULTICAST
+    SKIP_DNS_SERVER = CyGetAdaptersAddresses.GAA_FLAG_SKIP_DNS_SERVER
+    INCLUDE_PREFIX = CyGetAdaptersAddresses.GAA_FLAG_INCLUDE_PREFIX
+    SKIP_FRIENDLY_NAME = CyGetAdaptersAddresses.GAA_FLAG_SKIP_FRIENDLY_NAME
+    INCLUDE_WINS_INFO = CyGetAdaptersAddresses.GAA_FLAG_INCLUDE_WINS_INFO
+    INCLUDE_GATEWAYS = CyGetAdaptersAddresses.GAA_FLAG_INCLUDE_GATEWAYS
+    INCLUDE_ALL_INTERFACES = CyGetAdaptersAddresses.GAA_FLAG_INCLUDE_ALL_INTERFACES
+    INCLUDE_ALL_COMPARTMENTS = CyGetAdaptersAddresses.GAA_FLAG_INCLUDE_ALL_COMPARTMENTS
+    INCLUDE_TUNNEL_BINDINGORDER = CyGetAdaptersAddresses.GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER
 
 @cython.cclass
 @dataclasses.dataclass
@@ -140,7 +140,7 @@ class CyAdapter:
     Dhcpv6Iaid: int
     FirstDnsSuffix: list[CyFirstDnsSuffix]
 
-cdef _pwchar_to_str(GetAdaptersAddresses.WCHAR* wide_str):
+cdef _pwchar_to_str(CyGetAdaptersAddresses.WCHAR* wide_str):
     if wide_str is NULL:
         return None
     
@@ -149,7 +149,7 @@ cdef _pwchar_to_str(GetAdaptersAddresses.WCHAR* wide_str):
         length += 1
     return (<char *>wide_str)[:length * 2].decode('utf-16le')
 
-cdef CySocketAddress _parse_socket_address(GetAdaptersAddresses.SOCKET_ADDRESS socket_address):
+cdef CySocketAddress _parse_socket_address(CyGetAdaptersAddresses.SOCKET_ADDRESS socket_address):
     if socket_address.lpSockaddr == NULL:
         lpSockaddr = CylpSockaddr(sa_data=None, sa_family=None)
     else:
@@ -159,8 +159,8 @@ cdef CySocketAddress _parse_socket_address(GetAdaptersAddresses.SOCKET_ADDRESS s
         iSockaddrLength=socket_address.iSockaddrLength,
     )
 
-cdef list[CyFirstUnicastAddress] _parse_unicast_address(GetAdaptersAddresses.IP_ADAPTER_UNICAST_ADDRESS_LH* data):
-    cdef GetAdaptersAddresses.IP_ADAPTER_UNICAST_ADDRESS_LH* current_data = data
+cdef list[CyFirstUnicastAddress] _parse_unicast_address(CyGetAdaptersAddresses.IP_ADAPTER_UNICAST_ADDRESS_LH* data):
+    cdef CyGetAdaptersAddresses.IP_ADAPTER_UNICAST_ADDRESS_LH* current_data = data
     parsed_data = []
 
     while current_data:
@@ -182,8 +182,8 @@ cdef list[CyFirstUnicastAddress] _parse_unicast_address(GetAdaptersAddresses.IP_
     return parsed_data
 
 ctypedef fused AnycastMulticastAddress:
-    GetAdaptersAddresses.IP_ADAPTER_ANYCAST_ADDRESS_XP
-    GetAdaptersAddresses.IP_ADAPTER_MULTICAST_ADDRESS_XP
+    CyGetAdaptersAddresses.IP_ADAPTER_ANYCAST_ADDRESS_XP
+    CyGetAdaptersAddresses.IP_ADAPTER_MULTICAST_ADDRESS_XP
 
 cdef list[CyFirstAnycastMulticastAddress] _parse_anycast_multicast_address(AnycastMulticastAddress* data):
     cdef AnycastMulticastAddress* current_data = data
@@ -201,9 +201,9 @@ cdef list[CyFirstAnycastMulticastAddress] _parse_anycast_multicast_address(Anyca
     return parsed_data
 
 ctypedef fused AnyServerAddress:
-    GetAdaptersAddresses.IP_ADAPTER_DNS_SERVER_ADDRESS_XP
-    GetAdaptersAddresses.IP_ADAPTER_WINS_SERVER_ADDRESS_LH
-    GetAdaptersAddresses.IP_ADAPTER_GATEWAY_ADDRESS_LH
+    CyGetAdaptersAddresses.IP_ADAPTER_DNS_SERVER_ADDRESS_XP
+    CyGetAdaptersAddresses.IP_ADAPTER_WINS_SERVER_ADDRESS_LH
+    CyGetAdaptersAddresses.IP_ADAPTER_GATEWAY_ADDRESS_LH
 
 cdef list[CyFirstAnyServerAddress] _parse_any_server_address(AnyServerAddress* data):
     cdef AnyServerAddress* current_data = data
@@ -220,8 +220,8 @@ cdef list[CyFirstAnyServerAddress] _parse_any_server_address(AnyServerAddress* d
         current_data = current_data.Next
     return parsed_data
 
-cdef list[CyFirstPrefix] _parse_adapter_prefix(GetAdaptersAddresses.IP_ADAPTER_PREFIX_XP* data):
-    cdef GetAdaptersAddresses.IP_ADAPTER_PREFIX_XP* current_data = data
+cdef list[CyFirstPrefix] _parse_adapter_prefix(CyGetAdaptersAddresses.IP_ADAPTER_PREFIX_XP* data):
+    cdef CyGetAdaptersAddresses.IP_ADAPTER_PREFIX_XP* current_data = data
     parsed_data = []
 
     while current_data:
@@ -236,14 +236,14 @@ cdef list[CyFirstPrefix] _parse_adapter_prefix(GetAdaptersAddresses.IP_ADAPTER_P
         current_data = current_data.Next
     return parsed_data
 
-cdef list[CyFirstDnsSuffix] _parse_dns_suffix(GetAdaptersAddresses.IP_ADAPTER_DNS_SUFFIX* data):
-    cdef GetAdaptersAddresses.IP_ADAPTER_DNS_SUFFIX* current_data = data
+cdef list[CyFirstDnsSuffix] _parse_dns_suffix(CyGetAdaptersAddresses.IP_ADAPTER_DNS_SUFFIX* data):
+    cdef CyGetAdaptersAddresses.IP_ADAPTER_DNS_SUFFIX* current_data = data
     parsed_data = []
 
     while current_data:
         parsed_data.append(
             CyFirstDnsSuffix(
-                String=[current_data.String[i].decode("utf-8") for i in range(GetAdaptersAddresses.MAX_DNS_SUFFIX_STRING_LENGTH) if current_data.String[i] is not None]
+                String=[current_data.String[i].decode("utf-8") for i in range(CyGetAdaptersAddresses.MAX_DNS_SUFFIX_STRING_LENGTH) if current_data.String[i] is not None]
             )
         )
         current_data = current_data.Next
@@ -260,14 +260,14 @@ cdef str _parse_physical_address(uint8_t* physical_adress, uint32_t physical_adr
             result += "%.2X-" % physical_adress[i]
     return result
 
-cdef str _parse_network_guid(GetAdaptersAddresses.NET_IF_NETWORK_GUID guid):
+cdef str _parse_network_guid(CyGetAdaptersAddresses.NET_IF_NETWORK_GUID guid):
     parsed_guid = f"{guid.Data1:08x}-{guid.Data2:04x}-{guid.Data3:04x}-"
     for i in range(8):
         parsed_guid += f"{guid.Data4[i]:02x}"
     return parsed_guid
 
-cdef list _parse_adapters(GetAdaptersAddresses.PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
-    cdef GetAdaptersAddresses.PIP_ADAPTER_ADDRESSES_LH current_adapter = adapters_addresses
+cdef list _parse_adapters(CyGetAdaptersAddresses.PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
+    cdef CyGetAdaptersAddresses.PIP_ADAPTER_ADDRESSES_LH current_adapter = adapters_addresses
     
     adapters_list = []
     while current_adapter:
@@ -335,16 +335,16 @@ cdef _get_adapters_addresses_by_family(
         uint32_t flags = 0
         uint32_t family = <uint32_t> adapter_family
 
-        GetAdaptersAddresses.PIP_ADAPTER_ADDRESSES_LH pAddresses = NULL
+        CyGetAdaptersAddresses.PIP_ADAPTER_ADDRESSES_LH pAddresses = NULL
         unsigned long outBufLen = 0
         uint32_t Iterations = 0
 
-        GetAdaptersAddresses.PIP_ADAPTER_ADDRESSES_LH pCurrAddresses = NULL
-        GetAdaptersAddresses.PIP_ADAPTER_UNICAST_ADDRESS_LH pUnicast = NULL
-        GetAdaptersAddresses.PIP_ADAPTER_ANYCAST_ADDRESS_XP pAnycast = NULL
-        GetAdaptersAddresses.PIP_ADAPTER_MULTICAST_ADDRESS_XP pMulticast = NULL
-        GetAdaptersAddresses.IP_ADAPTER_DNS_SERVER_ADDRESS_XP *pDnServer = NULL
-        GetAdaptersAddresses.IP_ADAPTER_PREFIX_XP* pPrefix = NULL
+        CyGetAdaptersAddresses.PIP_ADAPTER_ADDRESSES_LH pCurrAddresses = NULL
+        CyGetAdaptersAddresses.PIP_ADAPTER_UNICAST_ADDRESS_LH pUnicast = NULL
+        CyGetAdaptersAddresses.PIP_ADAPTER_ANYCAST_ADDRESS_XP pAnycast = NULL
+        CyGetAdaptersAddresses.PIP_ADAPTER_MULTICAST_ADDRESS_XP pMulticast = NULL
+        CyGetAdaptersAddresses.IP_ADAPTER_DNS_SERVER_ADDRESS_XP *pDnServer = NULL
+        CyGetAdaptersAddresses.IP_ADAPTER_PREFIX_XP* pPrefix = NULL
     
     if not isinstance(scan_flags, list):
         scan_flags = [scan_flags]
@@ -353,21 +353,21 @@ cdef _get_adapters_addresses_by_family(
 
     outBufLen = _WORKING_BUFFER_SIZE
     while Iterations < _MAX_TRIES:
-        pAddresses = <GetAdaptersAddresses.PIP_ADAPTER_ADDRESSES_LH> malloc(outBufLen)
+        pAddresses = <CyGetAdaptersAddresses.PIP_ADAPTER_ADDRESSES_LH> malloc(outBufLen)
         if pAddresses == NULL:
             raise MemoryError("Memory allocation failed for IP_ADAPTER_ADDRESSES struct")
 
-        dwRetVal = GetAdaptersAddresses.GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen)
-        if dwRetVal == GetAdaptersAddresses.ERROR_BUFFER_OVERFLOW:
+        dwRetVal = CyGetAdaptersAddresses.GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen)
+        if dwRetVal == CyGetAdaptersAddresses.ERROR_BUFFER_OVERFLOW:
             free(pAddresses)
             pAddresses = NULL
         else:
             break
         Iterations += 1
 
-    if dwRetVal != GetAdaptersAddresses.NO_ERROR:
+    if dwRetVal != CyGetAdaptersAddresses.NO_ERROR:
         free(pAddresses)
-        if dwRetVal == GetAdaptersAddresses.ERROR_NO_DATA:
+        if dwRetVal == CyGetAdaptersAddresses.ERROR_NO_DATA:
             raise OSError("No addresses were found for the requested parameters")
         else:
             raise OSError(f"Error trying to retrieve adapter addresses: {dwRetVal}")
