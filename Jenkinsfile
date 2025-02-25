@@ -10,11 +10,17 @@ def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.5"
 def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.6"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
+def DIST_FOE_APP_PATH = "ECAT-tools"
+def LIB_FOE_APP_PATH = "ingenialink\\bin\\FOE"
+def FOE_APP_NAME = "FoEUpdateFirmware.exe"
+def FOE_APP_NAME_LINUX = "FoEUpdateFirmware"
+def FOE_APP_VERSION = ""
+
 DEFAULT_PYTHON_VERSION = "3.9"
 
 ALL_PYTHON_VERSIONS = "py39,py310,py311,py312"
 RUN_PYTHON_VERSIONS = ""
-PYTHON_VERSION_MIN = "py39"
+def PYTHON_VERSION_MIN = "py39"
 def PYTHON_VERSION_MAX = "py312"
 
 def BRANCH_NAME_MASTER = "master"
@@ -22,54 +28,24 @@ def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 coverage_stashes = []
 
-def getWheelPath(tox_skip_install, python_version) {
-    if (tox_skip_install) {
-        def stashName = python_version == PYTHON_VERSION_MIN ? "build" : "build_${python_version}"
-        unstash stashName
-        script {
-            def distDir = python_version == PYTHON_VERSION_MIN ? "dist" : "dist_${python_version}"
-            def result = bat(script: "dir ${distDir} /b /a-d", returnStdout: true).trim()
-            def files = result.split(/[\r\n]+/)    
-            def wheelFile = files.find { it.endsWith('.whl') }
-            if (wheelFile == null) {
-                error "No .whl file found in the dist directory. Directory contents:\n${result}"            
-            }
-            return "${distDir}\\${wheelFile}"
-        }
-    }
-    else {
-        return ""
-    }
-}
+def runTest(protocol, slave = 0) {
+    try {
+        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
+                "--protocol ${protocol} " +
+                "--slave ${slave} " +
+                "--cov=ingenialink " +
+                "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${protocol}-${slave}\""
 
-def runTest(protocol, slave = 0, tox_skip_install = false) {
-    def firstIteration = true
-    def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-    pythonVersions.each { version ->
-        def wheelFile = getWheelPath(tox_skip_install, version)
-        env.TOX_SKIP_INSTALL = tox_skip_install.toString()
-        env.INGENIALINK_WHEEL_PATH = wheelFile
-        try {
-            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
-                    "--protocol ${protocol} " +
-                    "--slave ${slave} " +
-                    "--cov=ingenialink " +
-                    "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${protocol}-${slave}\""
-
-        } catch (err) {
-            unstable(message: "Tests failed")
-        } finally {
-            if (firstIteration) {
-                def coverage_stash = ".coverage_${protocol}_${slave}"
-                bat "move .coverage ${coverage_stash}"
-                junit "pytest_reports\\*.xml"
-                // Delete the junit after publishing it so it not re-published on the next stage
-                bat "del /S /Q pytest_reports\\*.xml"
-                stash includes: coverage_stash, name: coverage_stash
-                coverage_stashes.add(coverage_stash)
-                firstIteration = false
-            }
-        }
+    } catch (err) {
+        unstable(message: "Tests failed")
+    } finally {
+        def coverage_stash = ".coverage_${protocol}_${slave}"
+        bat "move .coverage ${coverage_stash}"
+        junit "pytest_reports\\*.xml"
+        // Delete the junit after publishing it so it not re-published on the next stage
+        bat "del /S /Q pytest_reports\\*.xml"
+        stash includes: coverage_stash, name: coverage_stash
+        coverage_stashes.add(coverage_stash)
     }
 }
 
@@ -97,8 +73,24 @@ pipeline {
                 }
             }
         }
-        
-        stage('Tests') {
+
+        stage('Get FoE application') {
+            agent {
+                docker {
+                    label "worker"
+                    image PUBLISHER_DOCKER_IMAGE
+                }
+            }
+            steps {
+                script {
+                    FOE_APP_VERSION = sh(script: 'cd ingenialink/bin && python3.9 -c "import FoE; print(FoE.__version__)"', returnStdout: true).trim()
+                }
+                copyFromDist(".", "$DIST_FOE_APP_PATH/$FOE_APP_VERSION")
+                sh "mv FoEUpdateFirmwareLinux $FOE_APP_NAME_LINUX"
+                stash includes: "$FOE_APP_NAME,$FOE_APP_NAME_LINUX", name: 'foe_app'
+            }
+        }
+        stage('Build and Tests') {
             parallel {
                 stage('EtherCAT/No Connection - Tests') {
                     options {
@@ -110,12 +102,12 @@ pipeline {
                     stages {
                         stage('EtherCAT Everest') {
                             steps {
-                                runTest("ethercat", 0, true)
+                                runTest("ethercat", 0)
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                runTest("ethercat", 1, true)
+                                runTest("ethercat", 1)
                             }
                         }
                     }
