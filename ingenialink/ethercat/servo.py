@@ -265,12 +265,12 @@ class EthercatServo(PDOServo):
     def _monitoring_read_data(self, **kwargs: Any) -> bytes:
         """Read monitoring data frame."""
         return super()._monitoring_read_data(
-            buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True
+            buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True, **kwargs
         )
 
     def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
         """Write disturbance data."""
-        super()._disturbance_write_data(data, complete_access=True)
+        super()._disturbance_write_data(data, complete_access=True, **kwargs)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
