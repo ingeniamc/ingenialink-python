@@ -6,23 +6,6 @@ from libc.stdint cimport uint16_t, uint32_t, uint8_t, int32_t, uint64_t
 from libc.stdint cimport uint16_t
 
 cdef extern from "winsock2.h":
-    enum:
-        # https://learn.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getadaptersaddresses#parameters
-        AF_INET
-        AF_INET6
-        AF_UNSPEC
-        GAA_FLAG_SKIP_UNICAST
-        GAA_FLAG_SKIP_ANYCAST
-        GAA_FLAG_SKIP_MULTICAST
-        GAA_FLAG_SKIP_DNS_SERVER
-        GAA_FLAG_INCLUDE_PREFIX
-        GAA_FLAG_SKIP_FRIENDLY_NAME
-        GAA_FLAG_INCLUDE_WINS_INFO
-        GAA_FLAG_INCLUDE_GATEWAYS
-        GAA_FLAG_INCLUDE_ALL_INTERFACES
-        GAA_FLAG_INCLUDE_ALL_COMPARTMENTS
-        GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER
-
     # https://learn.microsoft.com/is-is/windows/win32/api/winsock2/ns-winsock2-in_addr
     ctypedef struct in_addr:
         uint32_t s_addr
@@ -60,12 +43,6 @@ cdef extern from "winsock2.h":
         char __ss_pad1[6]
         uint32_t __ss_align
         char __ss_pad2[112]
-
-cdef extern from "winerror.h":
-    enum:
-        ERROR_BUFFER_OVERFLOW
-        ERROR_NO_DATA
-        NO_ERROR
 
 cdef extern from "ifdef.h":
     # https://learn.microsoft.com/en-us/windows/win32/api/ifdef/ns-ifdef-net_luid_lh

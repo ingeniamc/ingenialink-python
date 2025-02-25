@@ -37,5 +37,5 @@ pytest_reports/
 _docs
 
 # Cython compilation
-ingenialink/cython_files/*.c
+ingenialink/cython_files/*.cpp
 temp/*
