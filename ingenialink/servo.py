@@ -1243,7 +1243,7 @@ class Servo:
         reg: Union[str, Register],
         data: Union[int, float, str, bytes],
         subnode: int = 1,
-        complete_access: Optional[bool] = False,
+        **kwargs: Any,
     ) -> None:
         """Writes a data to a target register.
 
@@ -1251,7 +1251,7 @@ class Servo:
             reg: Target register to be written.
             data: Data to be written.
             subnode: Target axis of the drive.
-            complete_access: Complete access.
+            **kwargs: Keyword arguments.
 
         Raises:
             ILAccessError: Wrong access to the register.
@@ -1264,23 +1264,18 @@ class Servo:
         if _reg.access == RegAccess.RO:
             raise ILAccessError("Register is Read-only")
         data_bytes = data if isinstance(data, bytes) else convert_dtype_to_bytes(data, _reg.dtype)
-        self._write_raw(reg=_reg, data=data_bytes, complete_access=complete_access)
+        self._write_raw(_reg, data_bytes, **kwargs)
         self._notify_register_update(_reg, data)
 
     def read(
-        self,
-        reg: Union[str, Register],
-        subnode: int = 1,
-        complete_access: Optional[bool] = False,
-        buffer_size: Optional[int] = 0,
+        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
     ) -> Union[int, float, str, bytes]:
         """Read a register value from servo.
 
         Args:
             reg: Register.
             subnode: Target axis of the drive.
-            complete_access: Complete access.
-            buffer_size: Size of the reading buffer.
+            **kwargs: Keyword arguments.
 
         Returns:
             int, float or Value stored in the register.
@@ -1296,9 +1291,7 @@ class Servo:
         if access == RegAccess.WO:
             raise ILAccessError("Register is Write-only")
 
-        raw_read = self._read_raw(
-            reg=_reg, complete_access=complete_access, buffer_size=buffer_size
-        )
+        raw_read = self._read_raw(_reg, **kwargs)
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
         self._notify_register_update(_reg, value)
         return value
@@ -1441,9 +1434,7 @@ class Servo:
             self._disturbance_write_data(chunk)
         self.disturbance_data = data
 
-    def _monitoring_read_data(
-        self, buffer_size: Optional[int] = 0, complete_access: Optional[bool] = False
-    ) -> bytes:
+    def _monitoring_read_data(self, **kwargs: Any) -> bytes:
         """Read monitoring data frame.
 
         Args:
@@ -1456,21 +1447,13 @@ class Servo:
         """
         if self.MONITORING_DATA not in self.dictionary.registers(0):
             raise NotImplementedError("Monitoring is not supported by this device.")
-        if not isinstance(
-            data := self.read(
-                self.MONITORING_DATA,
-                subnode=0,
-                complete_access=complete_access,
-                buffer_size=buffer_size,
-            ),
-            bytes,
-        ):
+        if not isinstance(data := self.read(self.MONITORING_DATA, subnode=0, **kwargs), bytes):
             raise ValueError(
                 f"Error reading monitoring data. Expected type bytes, got {type(data)}"
             )
         return data
 
-    def _disturbance_write_data(self, data: bytes, complete_access: Optional[bool] = False) -> None:
+    def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
         """Write disturbance data.
 
         Args:
@@ -1483,7 +1466,7 @@ class Servo:
         """
         if self.DIST_DATA not in self.dictionary.registers(0):
             raise NotImplementedError("Disturbance is not supported by this device.")
-        return self.write(self.DIST_DATA, complete_access=complete_access, subnode=0, data=data)
+        return self.write(self.DIST_DATA, subnode=0, data=data, **kwargs)
 
     @abstractmethod
     def _write_raw(
