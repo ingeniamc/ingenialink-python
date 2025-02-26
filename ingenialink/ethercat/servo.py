@@ -262,13 +262,31 @@ class EthercatServo(PDOServo):
             reason = str(exception)
         raise ILIOError(f"{default_error_msg}. {reason}") from exception
 
-    def _monitoring_read_data(self) -> bytes:
-        """Read monitoring data frame."""
-        return super()._monitoring_read_data()
+    def _monitoring_read_data(
+        self,
+        buffer_size: Optional[int] = MONITORING_DATA_BUFFER_SIZE,
+        complete_access: Optional[bool] = True,
+    ) -> bytes:
+        """Read monitoring data frame.
 
-    def _disturbance_write_data(self, data: bytes) -> None:
-        """Write disturbance data."""
-        super()._disturbance_write_data(data)
+        Args:
+            buffer_size: The size of the reading buffer.
+            complete_access: Complete access.
+
+        """
+        return super()._monitoring_read_data(
+            buffer_size=buffer_size, complete_access=complete_access
+        )
+
+    def _disturbance_write_data(self, data: bytes, complete_access: Optional[bool] = True) -> None:
+        """Write disturbance data.
+
+        Args:
+            data: Data to be written.
+            complete_access: Complete access.
+
+        """
+        super()._disturbance_write_data(data, complete_access=complete_access)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
