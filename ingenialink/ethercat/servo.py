@@ -273,7 +273,6 @@ class EthercatServo(PDOServo):
 
         Args:
             data: Data to be written.
-            complete_access: Complete access to buffer.
 
         """
         super()._disturbance_write_data(data, complete_access=True)
