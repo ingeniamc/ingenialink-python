@@ -1438,8 +1438,7 @@ class Servo:
         """Read monitoring data frame.
 
         Args:
-            buffer_size: The size of the reading buffer.
-            complete_access: Complete access.
+            **kwargs: Protocol dependent keyword arguments.
 
         Raises:
             NotImplementedError: If monitoring is not supported by the device.
@@ -1458,7 +1457,7 @@ class Servo:
 
         Args:
             data: Data to be written.
-            complete_access: Complete access.
+            **kwargs: Protocol dependent keyword arguments.
 
         Raises:
             NotImplementedError: If disturbance is not supported by the device.
@@ -1469,15 +1468,13 @@ class Servo:
         return self.write(self.DIST_DATA, subnode=0, data=data, **kwargs)
 
     @abstractmethod
-    def _write_raw(
-        self, reg: Register, data: bytes, complete_access: Optional[bool] = False
-    ) -> None:
+    def _write_raw(self, reg: Register, data: bytes, **kwargs: Any) -> None:
         """Write raw bytes to a target register.
 
         Args:
             reg: Target register to be written.
             data: Data to be written.
-            complete_access: Complete access.
+            **kwargs: Protocol dependent keyword arguments.
 
         Raises:
             ILIOError: Error writing the register.
@@ -1504,15 +1501,12 @@ class Servo:
         raise NotImplementedError
 
     @abstractmethod
-    def _read_raw(
-        self, reg: Register, complete_access: Optional[bool] = False, buffer_size: Optional[int] = 0
-    ) -> bytes:
+    def _read_raw(self, reg: Register, **kwargs: Any) -> bytes:
         """Read raw bytes from a target register.
 
         Args:
             reg: Register.
-            complete_access: Complete access.
-            buffer_size: Size of the reading buffer.
+            **kwargs: Protocol dependent keyword arguments.
 
         Returns:
             Raw bytes reading from servo.
