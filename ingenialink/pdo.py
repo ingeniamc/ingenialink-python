@@ -488,9 +488,7 @@ class PDOServo(Servo):
                 self._set_rpdo_map_register(custom_map_index, rpdo_map)
                 custom_map_index += 1
             rpdo_assigns += rpdo_map.map_register_index_bytes
-        self.write(
-            self.RPDO_ASSIGN_REGISTER_SUB_IDX_1, rpdo_assigns, complete_access=True, subnode=0
-        )
+        self.write(self.RPDO_ASSIGN_REGISTER_SUB_IDX_1, rpdo_assigns, subnode=0)
 
     def _set_rpdo_map_register(self, rpdo_map_register_index: int, rpdo_map: RPDOMap) -> None:
         """Fill RPDO map register with PRDOMap object data.
@@ -508,7 +506,6 @@ class PDOServo(Servo):
         self.write(
             self.RPDO_MAP_REGISTER_SUB_IDX_1[rpdo_map_register_index],
             bytes(rpdo_map.items_mapping),
-            complete_access=True,
             subnode=0,
         )
         rpdo_map_register = self.dictionary.registers(0)[
@@ -545,9 +542,7 @@ class PDOServo(Servo):
                 self._set_tpdo_map_register(custom_map_index, tpdo_map)
                 custom_map_index += 1
             tpdo_assigns += tpdo_map.map_register_index_bytes
-        self.write(
-            self.TPDO_ASSIGN_REGISTER_SUB_IDX_1, tpdo_assigns, complete_access=True, subnode=0
-        )
+        self.write(self.TPDO_ASSIGN_REGISTER_SUB_IDX_1, tpdo_assigns, subnode=0)
 
     def _set_tpdo_map_register(self, tpdo_map_register_index: int, tpdo_map: TPDOMap) -> None:
         """Fill TPDO map register with TRDOMap object data.
@@ -565,7 +560,6 @@ class PDOServo(Servo):
         self.write(
             self.TPDO_MAP_REGISTER_SUB_IDX_1[tpdo_map_register_index],
             bytes(tpdo_map.items_mapping),
-            complete_access=True,
             subnode=0,
         )
         tpdo_map_register = self.dictionary.registers(0)[
