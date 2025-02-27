@@ -143,9 +143,8 @@ class EthercatDictionaryV2(DictionaryV2):
         Args:
             subnode: register subnode.
 
-        Returs:
+        Returns:
             The CiA offset for the register.
-
         """
         return (
             CANOPEN_SUBNODE_0_ADDRESS_OFFSET

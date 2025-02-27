@@ -977,12 +977,14 @@ class VirtualMonDistBase:
         Args:
             channel: Channel of the register to be decoded.
 
+        Raises:
+            ValueError: if the register has a wrong type.
+
         Returns:
             Register subnode
             Register address
             Register dtype index
             Channel size
-
         """
         register_id = self.MAP_REG_CFG.format(channel)
         data = self.drive.get_value_by_id(0, register_id)
@@ -1449,7 +1451,11 @@ class VirtualDrive(Thread):
                 self.set_value_by_id(subnode, reg_id, value)
 
     def _update_registers(self) -> None:
-        """Force storage_valid at each register and add registers that are not in the dictionary."""
+        """Force storage_valid at each register and add registers that are not in the dictionary.
+
+        Raises:
+            ValueError: if the register is not an EthernetRegister.
+        """
         for subnode in self.__dictionary.subnodes:
             self.__reg_address_to_id[subnode] = {}
             for reg_id, reg in self.__dictionary.registers(subnode).items():
@@ -1463,6 +1469,8 @@ class VirtualDrive(Thread):
 
         Only used for dictionaries V2 because V3 includes these registers.
 
+        Raises:
+            ValueError: if the register is not an EthernetRegister.
         """
         if not isinstance(self.__dictionary, VirtualDictionary):
             return
@@ -1665,6 +1673,9 @@ class VirtualDrive(Thread):
         Args:
             subnode: Subnode.
             uid: Register UID.
+
+        Raises:
+            ValueError: if the register is not an EthernetRegister.
 
         Returns:
             Register address.

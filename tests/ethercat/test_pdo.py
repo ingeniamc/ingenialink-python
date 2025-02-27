@@ -406,7 +406,7 @@ def test_start_pdo_error_rpod_values_not_set(connect_to_slave, create_pdo_map):
 @pytest.mark.ethercat
 def test_set_pdo_map_to_slave(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
-    servo, net = connect_to_slave
+    servo, _ = connect_to_slave
     servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     assert len(servo._rpdo_maps) == 1
     assert servo._rpdo_maps[0] == rpdo_map
@@ -571,7 +571,7 @@ def test_map_pdo_with_bools(open_dictionary):
 @pytest.mark.ethercat
 def test_remove_rpdo_map(connect_to_slave, create_pdo_map):
     _, rpdo_map = create_pdo_map
-    servo, net = connect_to_slave
+    servo, _ = connect_to_slave
     servo.set_pdo_map_to_slave([rpdo_map], [])
     assert len(servo._rpdo_maps) > 0
     servo.remove_rpdo_map(rpdo_map)
@@ -584,7 +584,7 @@ def test_remove_rpdo_map(connect_to_slave, create_pdo_map):
 @pytest.mark.ethercat
 def test_remove_rpdo_map_exceptions(connect_to_slave, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
-    servo, net = connect_to_slave
+    servo, _ = connect_to_slave
     servo.set_pdo_map_to_slave([rpdo_map], [])
     with pytest.raises(ValueError):
         servo.remove_rpdo_map()
@@ -597,7 +597,7 @@ def test_remove_rpdo_map_exceptions(connect_to_slave, create_pdo_map):
 @pytest.mark.ethercat
 def test_remove_tpdo_map(connect_to_slave, create_pdo_map):
     tpdo_map, _ = create_pdo_map
-    servo, net = connect_to_slave
+    servo, _ = connect_to_slave
     servo.set_pdo_map_to_slave([], [tpdo_map])
     assert len(servo._tpdo_maps) > 0
     servo.remove_tpdo_map(tpdo_map)
@@ -609,8 +609,8 @@ def test_remove_tpdo_map(connect_to_slave, create_pdo_map):
 
 @pytest.mark.ethercat
 def test_remove_tpdo_map_exceptions(connect_to_slave, create_pdo_map):
-    tpdo_map, rpdo_map = create_pdo_map
-    servo, net = connect_to_slave
+    _, rpdo_map = create_pdo_map
+    servo, _ = connect_to_slave
     servo.set_pdo_map_to_slave([rpdo_map], [])
     with pytest.raises(ValueError):
         servo.remove_rpdo_map()

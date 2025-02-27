@@ -12,7 +12,7 @@ def _bit_mask(selected_bits: Iterable[int]) -> int:
     Returns:
         bit mask
     """
-    return sum([1 << bit for bit in selected_bits])
+    return sum(1 << bit for bit in selected_bits)
 
 
 class BitField:
@@ -38,7 +38,11 @@ class BitField:
 
     @classmethod
     def bit(cls, bit: int) -> "BitField":
-        """Bitfield of single bit."""
+        """Bitfield of single bit.
+
+        Returns:
+            Bitfield.
+        """
         return cls(start=bit, end=bit)
 
     @staticmethod
@@ -77,6 +81,7 @@ class BitField:
             value: Previous integer value of the register
 
         Raises:
+            KeyError: If the bitfield name does not exist.
             ValueError: If one of the values to set does not fit in the bitfield space
 
         Returns:

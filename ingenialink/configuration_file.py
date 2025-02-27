@@ -69,11 +69,7 @@ class Device:
         """Creates a Device instance from XML element.
 
         Returns:
-            Device instance filled with XML element data
-
-        Raises:
-            ValueError: wrong fields type
-            KeyError: a mandatory attribute is missing
+            Device instance filled with XML element data.
         """
         interface = _INTERFACE_XCF_OPTIONS[element.attrib[cls.__INTERFACE_ATTR]]
         part_number = element.attrib.get(cls.__PART_NUMBER_ATTR)
@@ -140,10 +136,6 @@ class ConfigRegister:
 
         Returns:
             ConfigRegister filled with XML element data
-
-        Raises:
-            ValueError: wrong fields type
-            KeyError: an attribute is missing
         """
         uid = element.attrib[cls.__ID_ATTR]
         subnode = int(element.attrib[cls.__SUBNODE_ATTR])
