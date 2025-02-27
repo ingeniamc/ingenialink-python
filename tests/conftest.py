@@ -10,6 +10,7 @@ from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.eoe.network import EoENetwork
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethernet.network import EthernetNetwork
+from ingenialink.exceptions import ILFirmwareLoadError
 from ingenialink.virtual.network import VirtualNetwork
 from virtual_drive.core import VirtualDrive
 
@@ -221,5 +222,9 @@ def load_firmware(pytestconfig, read_config, request):
     #    drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
     #)
     net = EthercatNetwork(protocol_contents["ifname"])
-    net.load_firmware(protocol_contents["fw_file"], protocol_contents["boot_in_app"], protocol_contents["slave"])
+    try:
+        net.load_firmware(protocol_contents["fw_file"], protocol_contents["boot_in_app"], protocol_contents["slave"])
+    except ILFirmwareLoadError:
+        net.load_firmware(protocol_contents["fw_file"], protocol_contents["boot_in_app"], protocol_contents["slave"])
+
 
