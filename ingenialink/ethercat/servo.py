@@ -199,7 +199,7 @@ class EthercatServo(PDOServo):
         self,
         reg: EthercatRegister,
         data: bytes,
-        complete_access: bool = True,
+        complete_access: bool = False,
     ) -> None:
         self._lock.acquire()
         try:

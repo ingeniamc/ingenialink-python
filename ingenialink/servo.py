@@ -1478,13 +1478,12 @@ class Servo:
         return self.write(self.DIST_DATA, subnode=0, data=data)
 
     @abstractmethod
-    def _write_raw(self, reg: Register, data: bytes, **kwargs: Any) -> None:
+    def _write_raw(self, reg: Register, data: bytes) -> None:
         """Write raw bytes to a target register.
 
         Args:
             reg: Target register to be written.
             data: Data to be written.
-            **kwargs: Protocol dependent keyword arguments.
 
         Raises:
             ILIOError: Error writing the register.
@@ -1511,12 +1510,11 @@ class Servo:
         raise NotImplementedError
 
     @abstractmethod
-    def _read_raw(self, reg: Register, **kwargs: Any) -> bytes:
+    def _read_raw(self, reg: Register) -> bytes:
         """Read raw bytes from a target register.
 
         Args:
             reg: Register.
-            **kwargs: Protocol dependent keyword arguments.
 
         Returns:
             Raw bytes reading from servo.
