@@ -530,7 +530,10 @@ class EthercatNetwork(Network):
             self._force_boot_mode(slave)
         self._switch_to_boot_state(slave)
 
-        foe_result = self._write_foe(slave, fw_file, password)
+        for _ in range(2):
+            foe_result = self._write_foe(slave, fw_file, password)
+            if foe_result == 0:
+                break
 
         if foe_result < 0:
             error_message = (
