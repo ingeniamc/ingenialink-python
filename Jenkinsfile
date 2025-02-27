@@ -108,6 +108,16 @@ pipeline {
                         }
                     }
                     stages {
+                        stage ('Save git commit as env var') {
+                            steps {
+                                script {
+                                    node {
+                                        def scmVars = checkout scm
+                                        echo "scmVars: ${scmVars}"
+                                    }
+                                }
+                            }
+                        }
                         stage('Move workspace') {
                             steps {
                                 bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y"
