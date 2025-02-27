@@ -79,13 +79,10 @@ class DictionaryFactory:
             Dictionary instance
 
         Raises:
-            FileNotFoundError: dictionary path does not exist.
-            ILDictionaryParseError: xdf is not well-formed.
-            ILDictionaryParseError: File is not a xdf.
             NotImplementedError: Dictionary version is not supported.
 
         """
-        major_version, minor_version = cls.__get_dictionary_version(dictionary_path)
+        major_version, _ = cls.__get_dictionary_version(dictionary_path)
         if major_version == 3:
             return DictionaryV3(dictionary_path, interface)
         if major_version == 2:
@@ -113,11 +110,9 @@ class DictionaryFactory:
             Target dictionary description
 
         Raises:
-            FileNotFoundError: dictionary path does not exist.
-            ILDictionaryParseError: xdf is not well-formed.
             NotImplementedError: Dictionary version is not supported.
         """
-        major_version, minor_version = cls.__get_dictionary_version(dictionary_path)
+        major_version, _ = cls.__get_dictionary_version(dictionary_path)
         if major_version == 3:
             return DictionaryV3.get_description(dictionary_path, interface)
         if major_version == 2:
@@ -333,7 +328,6 @@ class Servo:
             subnode: Subnode of the axis. Defaults to None.
 
         Raises:
-            FileNotFoundError: If the configuration file cannot be found.
             ValueError: If a configuration file from a subnode different from 0
                 is attempted to be loaded to subnode 0.
             ValueError: If an invalid subnode is provided.
@@ -409,7 +403,6 @@ class Servo:
             `False` by default.
 
         Raises:
-            FileNotFoundError: If the configuration file cannot be found.
             ValueError: If a configuration file from a subnode different from 0
                 is attempted to be loaded to subnode 0.
             ValueError: If an invalid subnode is provided.
@@ -449,6 +442,8 @@ class Servo:
             config_file: Destination path for the configuration file.
             subnode: Subnode of the axis.
 
+        Raises:
+            ILError: if the subnode is invalid.
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ILError("Invalid subnode")
@@ -645,9 +640,7 @@ class Servo:
              timeout: Timeout in milliseconds.
 
         Raises:
-             ILTimeoutError: The servo could not be enabled due to timeout.
-             ILError: Failed to enable PDS.
-
+            ILStateError: If a subnode cannot be enabled within the timeout.
         """
         # Try fault reset if faulty
         if self.get_state(subnode) in [
@@ -700,11 +693,6 @@ class Servo:
         Args:
             subnode: Subnode of the drive.
             timeout: Timeout in milliseconds.
-
-        Raises:
-            ILTimeoutError: The servo could not be disabled due to timeout.
-            ILError: Failed to disable PDS.
-
         """
         state = self.get_state(subnode)
         while state != ServoState.DISABLED:
@@ -729,11 +717,6 @@ class Servo:
         Args:
             subnode: Subnode of the drive.
             timeout: Timeout in milliseconds.
-
-        Raises:
-            ILTimeoutError: If fault reset spend too much time.
-            ILError: Failed to fault reset.
-
         """
         state = self.get_state(subnode=subnode)
         if state in [
@@ -803,7 +786,11 @@ class Servo:
         return actual_state
 
     def get_state(self, subnode: int = 1) -> ServoState:
-        """Current drive state."""
+        """Get the current drive state.
+
+        Returns:
+            current drive state.
+        """
         status_word = self.read_bitfields(self.STATUS_WORD_REGISTERS, subnode=subnode)
         state = self.status_word_decode(status_word)
         return state
@@ -909,7 +896,11 @@ class Servo:
         self.__monitoring_dtype = {}
 
     def monitoring_actual_number_bytes(self) -> int:
-        """Get the number of monitoring bytes left to be read."""
+        """Get the number of monitoring bytes left to be read.
+
+        Returns:
+            number of monitoring bytes left to be read.
+        """
         try:
             return int(self.read(self.MONITORING_ACTUAL_NUMBER_BYTES, subnode=0))
         except ILRegisterNotFoundError:
@@ -918,12 +909,7 @@ class Servo:
             return num_samples * sample_size
 
     def monitoring_read_data(self) -> None:
-        """Obtain processed monitoring data.
-
-        Returns:
-            Actual processed monitoring data.
-
-        """
+        """Obtain processed monitoring data."""
         num_available_bytes = self.monitoring_actual_number_bytes()
         monitoring_data = []
         while num_available_bytes > 0:
@@ -1017,10 +1003,6 @@ class Servo:
 
         Args:
             callback: Callback function.
-
-        Returns:
-            Assigned slot.
-
         """
         if callback in self.__observers_servo_state:
             logger.info("Callback already subscribed.")
@@ -1074,7 +1056,8 @@ class Servo:
 
         Raises:
             ValueError: If the dictionary is not loaded.
-            ILWrongRegisterError: If the register has invalid format.
+            ILRegisterNotFoundError: If the register is not found.
+            TypeError: If the register is invalid.
         """
         if isinstance(reg, Register):
             return reg
@@ -1109,9 +1092,11 @@ class Servo:
             register_coco: COCO Register ID to be read.
             register_moco: MOCO Register ID to be read.
 
+        Raises:
+            ILError: if there is an error reading the register.
+
         Returns:
             Read value of the register.
-
         """
         try:
             return str(self.read(register_coco, subnode=0))
@@ -1146,6 +1131,8 @@ class Servo:
             dtype: Register data type.
             size: Size of data in bytes.
 
+        Returns:
+            arranged data.
         """
         data_h = address | subnode << 12
         data_l = dtype << 8 | size
@@ -1215,6 +1202,8 @@ class Servo:
             data_arr: Data array.
             max_size: Max chunk size in bytes.
 
+        Returns:
+            data, chunks.
         """
         if not isinstance(channels, list):
             channels = [channels]
@@ -1255,9 +1244,6 @@ class Servo:
 
         Raises:
             ILAccessError: Wrong access to the register.
-            ILIOError: Error writing the register.
-            ILTimeoutError: Write timeout.
-
         """
         _reg = self._get_reg(reg, subnode)
 
@@ -1282,9 +1268,6 @@ class Servo:
 
         Raises:
             ILAccessError: Wrong access to the register.
-            ILIOError: Error reading the register.
-            ILTimeoutError: Read timeout.
-
         """
         _reg = self._get_reg(reg, subnode)
         access = _reg.access
@@ -1308,7 +1291,11 @@ class Servo:
             reg: Register.
             subnode: Target subnode of the drive.
             bitfields: Optional bitfield specification.
-                If not it will be used from the register definition (if Any)
+                If not it will be used from the register definition (if Any).
+
+        Raises:
+            ValueError: if the register does not have bitfields.
+            TypeError: if the register is not of integer type.
 
         Returns:
             Dictionary with values of the bitfields.
@@ -1346,6 +1333,10 @@ class Servo:
             subnode: Target subnode of the drive.
             bitfields: Optional bitfield specification.
                 If not it will be used from the register definition (if Any)
+
+        Raises:
+            ValueError: if the register does not have bitfields.
+            TypeError: if the register is not of integer type.
         """
         _reg = self._get_reg(reg, subnode)
         if bitfields is None:
@@ -1423,6 +1414,8 @@ class Servo:
             dtypes: Data type.
             data_arr: Data array.
 
+        Raises:
+            ILValueError: if the disturbance data cannot be written.
         """
         try:
             data, chunks = self._disturbance_create_data_chunks(
@@ -1439,7 +1432,10 @@ class Servo:
 
         Raises:
             NotImplementedError: If monitoring is not supported by the device.
+            ValueError: if the data read is not of type bytes.
 
+        Returns:
+            monitoring data read.
         """
         if self.MONITORING_DATA not in self.dictionary.registers(0):
             raise NotImplementedError("Monitoring is not supported by this device.")

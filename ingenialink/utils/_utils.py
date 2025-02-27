@@ -154,6 +154,8 @@ def convert_ip_to_int(ip: str) -> int:
     Args:
         ip: IP to be converted.
 
+    Returns:
+        IP in integer form.
     """
     split_ip = ip.split(".")
     drive_ip1 = int(split_ip[0]) << 24
@@ -169,6 +171,8 @@ def convert_int_to_ip(int_ip: int) -> str:
     Args:
         int_ip: IP to be converted.
 
+    Returns:
+        IP in string form.
     """
     drive_ip1 = (int_ip >> 24) & 0x000000FF
     drive_ip2 = (int_ip >> 16) & 0x000000FF
@@ -225,6 +229,9 @@ def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: RegDtype)
     Args:
         data: Data to convert.
         dtype: Data type.
+
+    Raises:
+        ValueError: if the data has an invalid value.
 
     Returns:
         Value formatted to bytes

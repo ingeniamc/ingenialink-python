@@ -385,10 +385,6 @@ class PDOMap:
     def get_item_bytes(self) -> bytes:
         """Return the concatenated items raw data (in bytes).
 
-        Raises:
-            ILError: Raw data is empty.
-            ILError: If the length of th byte array is incorrect.
-
         Returns:
             Concatenated items raw data in bytes.
         """
@@ -499,6 +495,8 @@ class PDOServo(Servo):
             rpdo_map_register_index: custom rpdo map register index
             rpdo_map: custom rpdo data
 
+        Raises:
+            ValueError: If there is an error retrieving the RPDO Map register.
         """
         self.write(
             self.RPDO_MAP_REGISTER_SUB_IDX_0[rpdo_map_register_index],
@@ -556,6 +554,8 @@ class PDOServo(Servo):
             tpdo_map_register_index: custom tpdo map register index
             tpdo_map: custom tpdo data
 
+        Raises:
+            ValueError: If there is an error retrieving the TPDO Map register.
         """
         self.write(
             self.TPDO_MAP_REGISTER_SUB_IDX_0[tpdo_map_register_index],
@@ -612,8 +612,6 @@ class PDOServo(Servo):
 
         Raises:
             ValueError: If the RPDOMap instance is not in the RPDOMap list.
-            IndexError: If the index is out of range.
-
         """
         self.check_servo_is_in_preoperational_state()
         if rpdo_map_index is None and rpdo_map is None:
@@ -635,7 +633,6 @@ class PDOServo(Servo):
 
         Raises:
             ValueError: If the TPDOMap instance is not in the TPDOMap list.
-            IndexError: If the index is out of range.
 
         """
         if tpdo_map_index is None and tpdo_map is None:
@@ -686,7 +683,7 @@ class PDOServo(Servo):
     def _process_rpdo(self) -> Optional[bytes]:
         """Retrieve the RPDO raw data from each map.
 
-        Return:
+        Returns:
             Concatenated data bytes to be sent.
         """
         if len(self._rpdo_maps) == 0:
