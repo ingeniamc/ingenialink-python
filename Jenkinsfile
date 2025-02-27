@@ -111,6 +111,7 @@ pipeline {
                         stage ('Save git commit as env var') {
                             steps {
                                 script {
+                                    def originalGitCommitHash = null
                                     def currentCommit = bat(script: "git rev-parse HEAD", returnStdout: true).trim()
                                     def currentCommitHash = (currentCommit =~ /\b[0-9a-f]{40}\b/)[0]
                                     echo "Current Commit Hash: ${currentCommitHash}"
@@ -121,12 +122,14 @@ pipeline {
                                         // This is a merge commit
                                         def originalCommitHash = parentCommitsHashes[2]
                                         echo "Original Commit Hash (before merge): ${originalCommitHash}"
-                                        env.ORGINAL_GIT_COMMIT_HASH = originalCommitHash
+                                        originalGitCommitHash = originalCommitHash
                                     } else {
                                         // This is not a merge commit
                                         echo "Current Commit Hash: ${currentCommitHash}"
-                                        env.ORGINAL_GIT_COMMIT_HASH = currentCommitHash
+                                        originalGitCommitHash = currentCommitHash
                                     }
+                                    writeFile file: 'git_commit_hash.txt', text: originalGitCommitHash
+                                    archiveArtifacts artifacts: 'git_commit_hash.txt'
                                 }
                             }
                         }
