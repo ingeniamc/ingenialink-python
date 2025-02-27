@@ -1,7 +1,7 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 import ingenialogger
 from typing_extensions import override
@@ -184,8 +184,8 @@ class EthercatServo(PDOServo):
     def _read_raw(  # type: ignore [override]
         self,
         reg: EthercatRegister,
-        buffer_size: int = 0,
-        complete_access: bool = False,
+        buffer_size: int = MONITORING_DATA_BUFFER_SIZE,
+        complete_access: bool = True,
     ) -> bytes:
         self._lock.acquire()
         try:
@@ -207,7 +207,7 @@ class EthercatServo(PDOServo):
         self,
         reg: EthercatRegister,
         data: bytes,
-        complete_access: bool = False,
+        complete_access: bool = True,
     ) -> None:
         self._lock.acquire()
         try:
@@ -262,20 +262,18 @@ class EthercatServo(PDOServo):
             reason = str(exception)
         raise ILIOError(f"{default_error_msg}. {reason}") from exception
 
-    def _monitoring_read_data(self, **_: Any) -> bytes:
+    def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame."""
-        return super()._monitoring_read_data(
-            buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True
-        )
+        return super()._monitoring_read_data()
 
-    def _disturbance_write_data(self, data: bytes, **_: Any) -> None:
+    def _disturbance_write_data(self, data: bytes) -> None:
         """Write disturbance data.
 
         Args:
             data: Data to be written.
 
         """
-        super()._disturbance_write_data(data, complete_access=True)
+        super()._disturbance_write_data(data)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:

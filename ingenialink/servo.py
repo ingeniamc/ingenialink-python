@@ -1434,11 +1434,8 @@ class Servo:
             self._disturbance_write_data(chunk)
         self.disturbance_data = data
 
-    def _monitoring_read_data(self, **kwargs: Any) -> bytes:
+    def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame.
-
-        Args:
-            **kwargs: Protocol dependent keyword arguments.
 
         Raises:
             NotImplementedError: If monitoring is not supported by the device.
@@ -1446,18 +1443,17 @@ class Servo:
         """
         if self.MONITORING_DATA not in self.dictionary.registers(0):
             raise NotImplementedError("Monitoring is not supported by this device.")
-        if not isinstance(data := self.read(self.MONITORING_DATA, subnode=0, **kwargs), bytes):
+        if not isinstance(data := self.read(self.MONITORING_DATA, subnode=0), bytes):
             raise ValueError(
                 f"Error reading monitoring data. Expected type bytes, got {type(data)}"
             )
         return data
 
-    def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
+    def _disturbance_write_data(self, data: bytes) -> None:
         """Write disturbance data.
 
         Args:
             data: Data to be written.
-            **kwargs: Protocol dependent keyword arguments.
 
         Raises:
             NotImplementedError: If disturbance is not supported by the device.
@@ -1465,7 +1461,7 @@ class Servo:
         """
         if self.DIST_DATA not in self.dictionary.registers(0):
             raise NotImplementedError("Disturbance is not supported by this device.")
-        return self.write(self.DIST_DATA, subnode=0, data=data, **kwargs)
+        return self.write(self.DIST_DATA, subnode=0, data=data)
 
     @abstractmethod
     def _write_raw(self, reg: Register, data: bytes, **kwargs: Any) -> None:
