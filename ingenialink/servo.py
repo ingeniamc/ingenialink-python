@@ -1427,6 +1427,15 @@ class Servo:
             self._disturbance_write_data(chunk)
         self.disturbance_data = data
 
+    def _is_monitoring_implemented(self) -> bool:
+        """Checks if monitoring is supported by the device.
+
+        Returns:
+            True if monitoring is implemented.
+
+        """
+        return not (self.MONITORING_DATA not in self.dictionary.registers(0))
+
     def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame.
 
@@ -1437,13 +1446,22 @@ class Servo:
         Returns:
             monitoring data read.
         """
-        if self.MONITORING_DATA not in self.dictionary.registers(0):
+        if not self._is_monitoring_implemented():
             raise NotImplementedError("Monitoring is not supported by this device.")
         if not isinstance(data := self.read(self.MONITORING_DATA, subnode=0), bytes):
             raise ValueError(
                 f"Error reading monitoring data. Expected type bytes, got {type(data)}"
             )
         return data
+
+    def _is_disturbance_implemented(self) -> bool:
+        """Checks if disturbance is supported by the device.
+
+        Returns:
+            True if disturbance is implemented.
+
+        """
+        return not (self.DIST_DATA not in self.dictionary.registers(0))
 
     def _disturbance_write_data(self, data: bytes) -> None:
         """Write disturbance data.
@@ -1455,7 +1473,7 @@ class Servo:
             NotImplementedError: If disturbance is not supported by the device.
 
         """
-        if self.DIST_DATA not in self.dictionary.registers(0):
+        if not self._is_disturbance_implemented():
             raise NotImplementedError("Disturbance is not supported by this device.")
         return self.write(self.DIST_DATA, subnode=0, data=data)
 

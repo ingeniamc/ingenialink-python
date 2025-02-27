@@ -176,8 +176,8 @@ class EthercatServo(PDOServo):
     def _read_raw(  # type: ignore [override]
         self,
         reg: EthercatRegister,
-        buffer_size: int = MONITORING_DATA_BUFFER_SIZE,
-        complete_access: bool = True,
+        buffer_size: int = 0,
+        complete_access: bool = False,
     ) -> bytes:
         self._lock.acquire()
         try:
@@ -257,7 +257,21 @@ class EthercatServo(PDOServo):
         Returns:
             monitoring data.
         """
-        return super()._monitoring_read_data()
+        if not super()._is_monitoring_implemented():
+            raise NotImplementedError("Monitoring is not supported by this device.")
+        if not isinstance(
+            data := self.read(
+                self.MONITORING_DATA,
+                subnode=0,
+                buffer_size=self.MONITORING_DATA_BUFFER_SIZE,
+                complete_access=True,
+            ),
+            bytes,
+        ):
+            raise ValueError(
+                f"Error reading monitoring data. Expected type bytes, got {type(data)}"
+            )
+        return data
 
     def _disturbance_write_data(self, data: bytes) -> None:
         """Write disturbance data.
@@ -266,7 +280,9 @@ class EthercatServo(PDOServo):
             data: Data to be written.
 
         """
-        super()._disturbance_write_data(data)
+        if not super()._is_disturbance_implemented():
+            raise NotImplementedError("Disturbance is not supported by this device.")
+        return self.write(self.DIST_DATA, subnode=0, data=data, complete_access=True)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
