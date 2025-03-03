@@ -217,11 +217,9 @@ def load_firmware(pytestconfig, read_config, request):
             break
     protocol_contents = read_config[protocol]
     drive_idx = get_drive_idx_from_rack_config(protocol_contents, rack_config)
-    #drive = rack_config.drives[drive_idx]
-    #client.exposed_firmware_load(
-    #    drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
-    #)
-    net = EthercatNetwork(protocol_contents["ifname"])
-    net.load_firmware(protocol_contents["fw_file"], protocol_contents["boot_in_app"], protocol_contents["slave"])
+    drive = rack_config.drives[drive_idx]
+    client.exposed_firmware_load(
+        drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
+    )
 
 
