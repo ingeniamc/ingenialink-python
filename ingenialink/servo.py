@@ -925,18 +925,11 @@ class Servo:
     def monitoring_channel_data(
         self,
         channel: int,
-        dtype: Optional[RegDtype] = None,  # noqa: ARG002
     ) -> list[float]:
         """Obtain processed monitoring data of a channel.
 
         Args:
             channel: Identity channel number.
-            dtype: Data type of the register to map.
-
-        Note:
-            The dtype argument is not necessary for this function, it
-            was added to maintain compatibility with IPB's implementation
-            of monitoring.
 
         Returns:
             Monitoring data.
