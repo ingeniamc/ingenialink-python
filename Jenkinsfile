@@ -108,6 +108,27 @@ pipeline {
                         }
                     }
                     stages {
+                        stage ('Git Commit to Build description') {
+                            steps {
+                                // Build description should follow the format VAR1=value1;VAR2=value2...
+                                script {
+                                    def currentCommit = bat(script: "git rev-parse HEAD", returnStdout: true).trim()
+                                    def currentCommitHash = (currentCommit =~ /\b[0-9a-f]{40}\b/)[0]
+                                    echo "Current Commit Hash: ${currentCommitHash}"
+                                    def parentCommits = bat(script: "git rev-list --parents -n 1 ${currentCommitHash}", returnStdout: true).trim().split(" ")
+                                    def parentCommitsHashes = (parentCommits =~ /\b[0-9a-f]{40}\b/).findAll()
+                                    
+                                    if (parentCommitsHashes.size() > 2) { // This is a merge commit
+                                        def originalCommitHash = parentCommitsHashes[2]
+                                        echo "Original Commit Hash (before merge): ${originalCommitHash}"
+                                        currentBuild.description = "ORGINAL_GIT_COMMIT_HASH=${originalCommitHash}"
+                                    } else { // This is not a merge commit
+                                        echo "Current Commit Hash: ${currentCommitHash}"
+                                        currentBuild.description = "ORGINAL_GIT_COMMIT_HASH=${currentCommitHash}"
+                                    }
+                                }
+                            }
+                        }
                         stage('Move workspace') {
                             steps {
                                 bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y"
