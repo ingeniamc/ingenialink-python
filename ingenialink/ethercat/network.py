@@ -128,10 +128,9 @@ class EthercatNetwork(Network):
         self.servos: list[EthercatServo] = []
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: dict[int, list[Any]] = defaultdict(list)
-        self._connection_timeout: float = connection_timeout
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
-        self._ecat_master.sdo_read_timeout = int(1_000_000 * self._connection_timeout)
-        self._ecat_master.sdo_write_timeout = int(1_000_000 * self._connection_timeout)
+        timeout_us = int(1_000_000 * connection_timeout)
+        self.update_sdo_timeout(timeout_us, timeout_us)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
         self._overlapping_io_map = overlapping_io_map
         self.__is_master_running = False
@@ -149,6 +148,40 @@ class EthercatNetwork(Network):
         """
         if len(self.__ecat_master_reference):
             self.__ecat_master_reference.pop(-1)
+
+    def update_sdo_timeout(self, sdo_read_timeout: int, sdo_write_timeout: int) -> None:
+        """Update SDO timeouts for all the drives.
+
+        Args:
+            sdo_read_timeout: timeout for SDO read access in us
+            sdo_write_timeout: timeout for SDO write access in us
+
+        """
+        self._ecat_master.sdo_read_timeout = sdo_read_timeout
+        self._ecat_master.sdo_write_timeout = sdo_write_timeout
+
+    @staticmethod
+    def update_pysoem_timeouts(
+        ret: int, safe: int, eeprom: int, tx_mailbox: int, rx_mailbox: int, state: int
+    ) -> None:
+        """Update pysoem timeouts.
+
+        Args:
+            ret: new ret timeout.
+            safe: new safe timeout.
+            eeprom: new EEPROM access timeout.
+            tx_mailbox: new Tx mailbox cycle timeout.
+            rx_mailbox: new Rx mailbox cycle timeout.
+            state: new status check timeout.
+        """
+        if not pysoem:
+            raise pysoem_import_error
+        pysoem.settings.timeouts.ret = ret
+        pysoem.settings.timeouts.safe = safe
+        pysoem.settings.timeouts.eeprom = eeprom
+        pysoem.settings.timeouts.tx_mailbox = tx_mailbox
+        pysoem.settings.timeouts.rx_mailbox = rx_mailbox
+        pysoem.settings.timeouts.state = state
 
     @staticmethod
     def __get_foe_error_message(error_code: int) -> str:
@@ -199,10 +232,6 @@ class EthercatNetwork(Network):
 
         Returns:
             Ordered dict with the slave information.
-
-        Raises:
-            ILError: If any slave is already connected.
-
         """
         slave_info: OrderedDict[int, SlaveInfo] = OrderedDict()
         try:
@@ -248,6 +277,8 @@ class EthercatNetwork(Network):
             ILError: If no slaves are found.
             ILStateError: If slave can not reach PreOp state
 
+        Returns:
+            ethercat servo.
         """
         if not isinstance(slave_id, int) or slave_id < 0:
             raise ValueError("Invalid slave ID value")
@@ -260,9 +291,7 @@ class EthercatNetwork(Network):
         if slave_id not in self.__last_init_nodes:
             raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
-        servo = EthercatServo(
-            slave, slave_id, dictionary, self._connection_timeout, servo_status_listener
-        )
+        servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             if servo_status_listener:
                 servo.stop_status_listener()
@@ -309,8 +338,8 @@ class EthercatNetwork(Network):
             timeout: timeout in seconds to reach Op state, 1.0 seconds by default.
 
         Raises:
-            ILStateError: If slaves can not reach SafeOp or Op state
-
+            ILError: If the RPDO values are not set before starting the PDO exchange process.
+            ILStateError: If slaves can not reach SafeOp or Op state.
         """
         op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
         if not op_servo_list:
@@ -487,11 +516,13 @@ class EthercatNetwork(Network):
                 used.
 
         Raises:
+            AttributeError: If the boot_in_app argument is not a boolean.
             FileNotFoundError: If the firmware file cannot be found.
+            ValueError: If the salve ID value is invalid.
+            ILError: If no slaves could be found in the network.
+            ILError: If the slave ID couldn't be found in the network.
             ILFirmwareLoadError: If no slave is detected.
             ILFirmwareLoadError: If the FoE write operation is not successful.
-            NotImplementedError: If FoE is not implemented for the current OS and architecture
-            AttributeError: If the boot_in_app argument is not a boolean.
         """
         if not isinstance(boot_in_app, bool):
             raise AttributeError("The boot_in_app argument should be a boolean.")
@@ -542,7 +573,11 @@ class EthercatNetwork(Network):
             logger.info(f"The slave {slave_id} cannot reach the PreOp state.")
 
     def _switch_to_boot_state(self, slave: "CdefSlave") -> None:
-        """Transitions the slave to the boot state."""
+        """Transitions the slave to the boot state.
+
+        Raises:
+            ILFirmwareLoadError: if the drive cannot reach the boot state.
+        """
         slave.state = pysoem.BOOT_STATE
         slave.write_state()
         if (
@@ -552,7 +587,11 @@ class EthercatNetwork(Network):
             raise ILFirmwareLoadError("The drive cannot reach the boot state.")
 
     def _force_boot_mode(self, slave: "CdefSlave") -> None:
-        """COMOCO drives need to be forced to boot mode."""
+        """COMOCO drives need to be forced to boot mode.
+
+        Raises:
+            ILFirmwareLoadError: If there is an error writing to the Boot mode register.
+        """
         slave.state = pysoem.PREOP_STATE
         slave.write_state()
         if (
@@ -617,9 +656,11 @@ class EthercatNetwork(Network):
         Args:
             servo_id: The servo's slave ID.
 
+        Raises:
+            ValueError: If the servo ID is not an integer.
+
         Returns:
             The servo's state.
-
         """
         if not isinstance(servo_id, int):
             raise ValueError("The servo ID must be an int.")

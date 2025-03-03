@@ -118,7 +118,11 @@ class EthernetNetwork(Network):
             ftp_pwd: FTP password for the given user.
 
         Raises:
-            ILError: If the loading firmware process fails.
+            FileNotFoundError: If the file is not found.
+            ILFirmwareLoadError: If it is not possible to create the FTP session.
+            ILFirmwareLoadError: If it is not possible to open the FTP session.
+            ILFirmwareLoadError: If it is unable to login the FTP session.
+            ILFirmwareLoadError: If it is unable to load the FW file through FTP.
 
         """
         if not os.path.isfile(fw_file):
@@ -163,9 +167,6 @@ class EthernetNetwork(Network):
             ip: Drive address IP.
             port: Drive port.
             moco_file: Path to the firmware file.
-
-        Returns:
-            Result code.
 
         Raises:
             ILFirmwareLoadError: The firmware load process fails
@@ -265,9 +266,11 @@ class EthernetNetwork(Network):
                 status, connection and disconnection.
             is_eoe: True if communication is EoE. ``False`` by default.
 
+        Raises:
+            ILError: If the drive is not found.
+
         Returns:
             EthernetServo: Instance of the servo connected.
-
         """
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(connection_timeout)
@@ -361,9 +364,11 @@ class EthernetNetwork(Network):
         Args:
             servo_id: The servo's IP address.
 
+        Raises:
+            ValueError: if the servo ID is not a string.
+
         Returns:
             The servo's state.
-
         """
         if not isinstance(servo_id, str):
             raise ValueError("The servo ID must be a string.")
@@ -384,6 +389,11 @@ class EthernetNetwork(Network):
 
         It's used for the scan_slaves_info method.
 
+        Raises:
+            TypeError: if the product code type is not an integer.
+
+        Returns:
+            product code and revision number.
         """
         servo = self.connect_to_slave(
             ip_address, VIRTUAL_DRIVE_DICTIONARY, connection_timeout=SCAN_CONNECTION_TIMEOUT

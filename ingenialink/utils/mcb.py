@@ -138,8 +138,6 @@ class MCB:
             frame: MCB frame.
 
         Raises:
-            ILWrongCRCError: If the received CRC code does not match
-            the calculated CRC code.
             ILNACKError: If the received command is a NACK.
             ILWrongRegisterError: If the received address does not match
             the expected address.
