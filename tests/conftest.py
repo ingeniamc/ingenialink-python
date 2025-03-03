@@ -193,7 +193,7 @@ def get_drive_idx_from_rack_config(protocol_contents, rack_config):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def load_firmware(pytestconfig, read_config, request):
+def load_firmware(pytestconfig, request):
     protocol = pytestconfig.getoption("--protocol")
     if protocol == DEFAULT_PROTOCOL:
         return
@@ -215,11 +215,16 @@ def load_firmware(pytestconfig, read_config, request):
         all_nodes_started, _ = network.all_nodes_started()
         if all_nodes_started:
             break
-    protocol_contents = read_config[protocol]
-    drive_idx = get_drive_idx_from_rack_config(protocol_contents, rack_config)
-    drive = rack_config.drives[drive_idx]
-    client.exposed_firmware_load(
-        drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
-    )
+    config = "tests/config.json"
+    with open(config, encoding="utf-8") as fp:
+        contents = json.load(fp)
+    protocol_contents = contents[protocol]
+    rack_config = client.exposed_get_configuration()
+    for slave_content in protocol_contents:
+        drive_idx = get_drive_idx_from_rack_config(slave_content, rack_config)
+        drive = rack_config.drives[drive_idx]
+        client.exposed_firmware_load(
+            drive_idx, slave_content["fw_file"], drive.product_code, drive.serial_number
+        )
 
 
