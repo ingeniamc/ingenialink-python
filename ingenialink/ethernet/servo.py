@@ -93,9 +93,6 @@ class EthernetServo(Servo):
                 valid IP address.
             ValueError: If the drive IP and gateway IP are not
                 on the same network.
-            NetmaskValueError: If the subnet_mask is not a valid
-                netmask.
-
         """
         drive_ip = ipaddress.ip_address(ip_address)
         gateway_ip = ipaddress.ip_address(gateway)
@@ -125,9 +122,11 @@ class EthernetServo(Servo):
     def get_mac_address(self) -> int:
         """Get the MAC address of the servo.
 
+        Raises:
+            ValueError: if there is an error retrieving the MAC address.
+
         Returns:
             The servo's MAC address.
-
         """
         mac_address = self.read(self.COMMS_ETH_MAC, subnode=0)
         if not isinstance(mac_address, int):
@@ -161,6 +160,9 @@ class EthernetServo(Servo):
             reg: Register address to be read/written.
             subnode: Target axis of the drive.
             data: Data to be written to the register.
+
+        Raises:
+            ILIOError: If there is an error sending the data.
 
         Returns:
             The response frame.

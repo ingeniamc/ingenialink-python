@@ -22,6 +22,12 @@ def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 coverage_stashes = []
 
+// Run this before PYTEST tox command that requires develop ingenialink installation and that 
+// may run in parallel/after with EtherCAT/CANopen tests, because these tests alter its value
+def restoreIngenialinkWheelEnvVar() {
+    env.INGENIALINK_WHEEL_PATH = null
+}
+
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
         def stashName = python_version == PYTHON_VERSION_MIN ? "build" : "build_${python_version}"
@@ -224,6 +230,9 @@ pipeline {
                     stages {
                         stage('Run no-connection tests on docker') {
                             steps {
+                                script {
+                                    restoreIngenialinkWheelEnvVar()
+                                }
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
                                         "-m docker " +
                                         "--cov=ingenialink"
@@ -253,6 +262,9 @@ pipeline {
                     stages {
                         stage('Run no-connection tests on docker') {
                             steps {
+                                script {
+                                    restoreIngenialinkWheelEnvVar()
+                                }
                                 sh """
                                     python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS}
                                 """

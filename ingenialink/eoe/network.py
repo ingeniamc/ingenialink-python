@@ -102,13 +102,10 @@ class EoENetwork(EthernetNetwork):
                 status, connection and disconnection.
 
         Raises:
-            ValueError: ip_address must be a subnetwork of 192.168.3.0/24
-            ILError: If the EoE service is not running.
-            ILError: If the EoE service cannot be started on the network interface.
+            ValueError: ip_address must be a subnetwork of 192.168.3.0/24.
 
         Returns:
             EthernetServo: Instance of the servo connected.
-
         """
         if ipaddress.ip_address(ip_address) not in self.ECAT_SERVICE_NETWORK:
             raise ValueError("ip_address must be a subnetwork of 192.168.3.0/24")
@@ -175,10 +172,6 @@ class EoENetwork(EthernetNetwork):
 
         Returns:
             List containing the ids of the connected slaves.
-
-        Raises:
-            ILError: If the EoE service fails to perform a scan.
-
         """
         deinit_later = False
         if not self._eoe_service_init:

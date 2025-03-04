@@ -57,6 +57,9 @@ class UDP:
     def check_ack(self) -> int:
         """Checks if the received message has a valid ACK.
 
+        Raises:
+            Exception: no ACK received.
+
         Returns:
             Command code of the message.
         """
@@ -77,6 +80,9 @@ class UDP:
 
         Args:
             in_frame: Input frame.
+
+        Raises:
+            ILUDPError: if CRC error.
 
         Returns:
             Command from the given message.

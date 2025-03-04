@@ -57,7 +57,7 @@ def test_set_bitfield_over_max_value(values, error):
 
 @pytest.mark.no_connection
 def test_read_status_word_known_bitfields(virtual_drive):  # noqa: F811
-    server, servo = virtual_drive
+    _, servo = virtual_drive
 
     # Load dictionary v2, that does not contain bitfield information.
     # DRV_STATE_STATUS is injected by the XDF V2 parser
@@ -95,7 +95,7 @@ def test_read_status_word_known_bitfields(virtual_drive):  # noqa: F811
 
 @pytest.mark.no_connection
 def test_write_control_word_known_bitfields(virtual_drive, mocker):  # noqa: F811
-    server, servo = virtual_drive
+    _, servo = virtual_drive
 
     # Load dictionary v2, that does not contain bitfield information.
     # DRV_STATE_CONTROL is injected by the XDF V2 parser
