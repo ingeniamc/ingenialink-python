@@ -26,6 +26,7 @@ coverage_stashes = []
 // may run in parallel/after with EtherCAT/CANopen tests, because these tests alter its value
 def restoreIngenialinkWheelEnvVar() {
     env.INGENIALINK_WHEEL_PATH = null
+    env.TOX_SKIP_INSTALL = false
 }
 
 def getWheelPath(tox_skip_install, python_version) {
