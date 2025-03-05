@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 def is_port_open(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(1)
-        result = sock.connect_ex(("127.0.0.1", port))
+        result = sock.connect_ex(("localhost", port))
         return result == 0  # Returns True if port is open, False otherwise
 
 
@@ -51,56 +51,58 @@ class FTPServer(Thread):
     """
 
     def __init__(
-        self, folder_path: str = "./", new_user: str = "user", new_password: str = "password"
+        self,
+        folder_path: str = "./",
+        new_user: str = "user",
+        new_password: str = "password",
+        port: int = 21,
     ):
         super().__init__()
+        self.ftp_port = port
         self.fpt_checker = InMemoryUsernamePasswordDatabaseDontUse()
         self.fpt_checker.addUser(new_user, new_password)
         self.ftp_portal = Portal(
             FTPRealm(folder_path, folder_path), [AllowAnonymousAccess(), self.fpt_checker]
         )
         self.ftp_factory = FTPFactory(self.ftp_portal)
-        reactor.listenTCP(21, self.ftp_factory)
-        logger.warning(f"port opened: {is_port_open(21)}")
+        self.reactor = reactor
         self.__stopped = False
+        self.reactor.callFromThread(self._listen)
+
+    def _listen(self) -> None:
+        self.reactor.listenTCP(self.ftp_port, self.ftp_factory)
 
     def run(self) -> None:
         """Run FTP server."""
-        reactor.run(installSignalHandlers=False)
+        self.reactor.run(installSignalHandlers=False)
 
     def stop(self) -> None:
         """Stop FTP server."""
         if self.__stopped:
             return
         self.__stopped = True
-        reactor.stop()
+        self.reactor.callFromThread(self.reactor.stop)
         del self.ftp_factory
         del self.ftp_portal
         del self.fpt_checker
-        is_opened = is_port_open(21)
-        logger.warning(f"port opened: {is_opened}")
-        logger.warning(f"port opened 2: {is_port_open(21)}")
-        if is_opened:
-            logger.info("will force close port")
-            force_close_port(21)
-            logger.warning(f"port opened after closing: {is_port_open(21)}")
+        if is_port_open(self.ftp_port):
+            logger.warning("Port was left opened! Closing...")
+            force_close_port(self.ftp_port)
 
     def join(self, timeout=None):
         self.stop()
         return super().join(timeout)
 
 
-@pytest.fixture
-def ftp_server_manager(request):
+@pytest.fixture(scope="module")
+def ftp_server_manager():
     # Get configuration
-    folder_path = request.param.get("folder_path", "./")
-    ftp_user = request.param.get("ftp_user", "user")
-    ftp_password = request.param.get("ftp_password", "password")
+    ftp_user = "user"
+    ftp_password = "password"
     # Create FTP server
-    server = FTPServer(folder_path=folder_path, new_user=ftp_user, new_password=ftp_password)
+    server = FTPServer(folder_path="./", new_user=ftp_user, new_password=ftp_password, port=21)
     server.start()
-    yield folder_path, ftp_user, ftp_password
-    # server.stop()
+    yield ftp_user, ftp_password
     server.join()
     assert not server.is_alive()
 
@@ -211,40 +213,35 @@ def test_load_firmware_no_connection():
 
 
 @pytest.mark.no_connection
-@pytest.mark.parametrize(
-    "ftp_server_manager",
-    [{"folder_path": "./", "ftp_user": "user", "ftp_password": "password"}],
-    indirect=True,
-)
 def test_load_firmware_wrong_user_pwd(ftp_server_manager):
     """Testing failed ftp firmware load with fake FTP server."""
     fw_file = "temp_file.lfu"
     with open(fw_file, "w"):
         pass
-    folder_path, ftp_user, ftp_password = ftp_server_manager
+    ftp_user, ftp_password = ftp_server_manager
     # Wrong user and password
     fake_user = "mamma"
     fake_password = "mia"
     # Create Network
     net = EthernetNetwork()
     with pytest.raises(ILFirmwareLoadError) as excinfo:
-        net.load_firmware(fw_file, target="localhost", ftp_user=fake_user, ftp_pwd=fake_password)
+        net.load_firmware(
+            fw_file,
+            target="localhost",
+            ftp_user=fake_user,
+            ftp_pwd=fake_password,
+        )
     assert str(excinfo.value) == "Unable to login the FTP session"
     os.remove(fw_file)
 
 
 @pytest.mark.no_connection
-@pytest.mark.parametrize(
-    "ftp_server_manager",
-    [{"folder_path": "./", "ftp_user": "user", "ftp_password": "password"}],
-    indirect=True,
-)
 def test_load_firmware_error_during_loading(mocker, ftp_server_manager):
     """Testing failed ftp firmware load with fake FTP server."""
     fw_file = "temp_file.lfu"
     with open(fw_file, "w"):
         pass
-    folder_path, ftp_user, ftp_password = ftp_server_manager
+    ftp_user, ftp_password = ftp_server_manager
     net = EthernetNetwork()
     # Mock ftp error for ftp.stobinary call
     mocker.patch(
