@@ -1,12 +1,10 @@
 import os
 import socket
-import subprocess
 import time
 from ftplib import error_temp
 from threading import Thread
 
 import pytest
-from ingenialogger import get_logger
 from twisted.cred.checkers import (
     AllowAnonymousAccess,
     InMemoryUsernamePasswordDatabaseDontUse,
@@ -17,28 +15,6 @@ from twisted.protocols.ftp import FTPFactory, FTPRealm
 
 from ingenialink.ethernet.network import EthernetNetwork, NetDevEvt, NetProt, NetState
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-
-logger = get_logger(__name__)
-
-
-def is_port_open(port):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(1)
-        result = sock.connect_ex(("localhost", port))
-        return result == 0  # Returns True if port is open, False otherwise
-
-
-def force_close_port(port):
-    # Find the PID of the process using the port
-    result = subprocess.run(["netstat", "-ano"], capture_output=True, text=True)
-    for line in result.stdout.splitlines():
-        if f":{port}" in line:
-            pid = line.split()[-1]
-            # Kill the process using the PID
-            subprocess.run(["taskkill", "/PID", pid, "/F"])
-            logger.warning(f"Forcefully closed port {port} (PID: {pid})")
-            return
-    logger.warning(f"No process found using port {port}")
 
 
 class FTPServer(Thread):
@@ -55,10 +31,9 @@ class FTPServer(Thread):
         folder_path: str = "./",
         new_user: str = "user",
         new_password: str = "password",
-        port: int = 21,
     ):
         super().__init__()
-        self.ftp_port = port
+        self.ftp_port = 21
         self.fpt_checker = InMemoryUsernamePasswordDatabaseDontUse()
         self.fpt_checker.addUser(new_user, new_password)
         self.ftp_portal = Portal(
@@ -82,12 +57,6 @@ class FTPServer(Thread):
             return
         self.__stopped = True
         self.reactor.callFromThread(self.reactor.stop)
-        del self.ftp_factory
-        del self.ftp_portal
-        del self.fpt_checker
-        if is_port_open(self.ftp_port):
-            logger.warning("Port was left opened! Closing...")
-            force_close_port(self.ftp_port)
 
     def join(self, timeout=None):
         self.stop()
@@ -100,7 +69,7 @@ def ftp_server_manager():
     ftp_user = "user"
     ftp_password = "password"
     # Create FTP server
-    server = FTPServer(folder_path="./", new_user=ftp_user, new_password=ftp_password, port=21)
+    server = FTPServer(folder_path="./", new_user=ftp_user, new_password=ftp_password)
     server.start()
     yield ftp_user, ftp_password
     server.join()
