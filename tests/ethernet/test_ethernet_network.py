@@ -42,9 +42,6 @@ class FTPServer(Thread):
         self.ftp_factory = FTPFactory(self.ftp_portal)
         self.reactor = reactor
         self.__stopped = False
-        self.reactor.callFromThread(self._listen)
-
-    def _listen(self) -> None:
         self.reactor.listenTCP(self.ftp_port, self.ftp_factory)
 
     def run(self) -> None:
