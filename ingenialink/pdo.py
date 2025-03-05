@@ -595,7 +595,6 @@ class PDOServo(Servo):
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
         """
-        self.check_servo_is_in_preoperational_state()
         self.reset_rpdo_mapping()
         self.reset_tpdo_mapping()
 
