@@ -26,6 +26,7 @@ coverage_stashes = []
 // may run in parallel/after with EtherCAT/CANopen tests, because these tests alter its value
 def restoreIngenialinkWheelEnvVar() {
     env.INGENIALINK_WHEEL_PATH = null
+    env.TOX_SKIP_INSTALL = false
 }
 
 def getWheelPath(tox_skip_install, python_version) {
@@ -121,16 +122,18 @@ pipeline {
                                     def currentCommit = bat(script: "git rev-parse HEAD", returnStdout: true).trim()
                                     def currentCommitHash = (currentCommit =~ /\b[0-9a-f]{40}\b/)[0]
                                     echo "Current Commit Hash: ${currentCommitHash}"
-                                    def parentCommits = bat(script: "git rev-list --parents -n 1 ${currentCommitHash}", returnStdout: true).trim().split(" ")
-                                    def parentCommitsHashes = (parentCommits =~ /\b[0-9a-f]{40}\b/).findAll()
+                                    def currentCommitBranch = bat(script: "git branch --contains ${currentCommitHash}", returnStdout: true).trim().split("\n").find { it.contains('*') }.replace('* ', '').trim()
+                                    echo "currentCommitBranch: ${currentCommitBranch}"
                                     
-                                    if (parentCommitsHashes.size() > 2) { // This is a merge commit
-                                        def originalCommitHash = parentCommitsHashes[2]
-                                        echo "Original Commit Hash (before merge): ${originalCommitHash}"
-                                        currentBuild.description = "ORGINAL_GIT_COMMIT_HASH=${originalCommitHash}"
-                                    } else { // This is not a merge commit
-                                        echo "Current Commit Hash: ${currentCommitHash}"
-                                        currentBuild.description = "ORGINAL_GIT_COMMIT_HASH=${currentCommitHash}"
+                                    if (currentCommitBranch.contains('detached')) {
+                                        def shortCommitHash = (currentCommitBranch =~ /\b[0-9a-f]{7,40}\b/)[0]
+                                        def detachedCommit = bat(script: "git rev-parse ${shortCommitHash}", returnStdout: true).trim()
+                                        def detachedCommitHash = (detachedCommit =~ /\b[0-9a-f]{40}\b/)[0]
+                                        echo "Detached Commit Hash: ${detachedCommitHash}"
+                                        currentBuild.description = "ORIGINAL_GIT_COMMIT_HASH=${detachedCommitHash}"
+                                    } else {
+                                        echo "No detached HEAD state found. Using current commit hash ${currentCommitHash}."
+                                        currentBuild.description = "ORIGINAL_GIT_COMMIT_HASH=${currentCommitHash}"
                                     }
                                 }
                             }
