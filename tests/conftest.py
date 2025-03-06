@@ -194,7 +194,7 @@ def get_drive_idx_from_rack_config(protocol_contents, rack_config):
 @pytest.fixture(scope="session", autouse=True)
 def load_firmware(pytestconfig, read_config, request):
     protocol = pytestconfig.getoption("--protocol")
-    if protocol == DEFAULT_PROTOCOL:
+    if protocol != DEFAULT_PROTOCOL:
         return
 
     client = request.getfixturevalue("connect_to_rack_service")
