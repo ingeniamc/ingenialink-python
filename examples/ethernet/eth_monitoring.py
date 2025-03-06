@@ -78,8 +78,7 @@ def monitoring_example(args: argparse.Namespace) -> List[NDArray[np.float_]]:
                 servo.monitoring_read_data()
                 for idx, key in enumerate(registers_key):
                     index = idx
-                    dtype = servo.dictionary.registers(1)[key].dtype
-                    tmp_monitor_data = servo.monitoring_channel_data(index, dtype)
+                    tmp_monitor_data = servo.monitoring_channel_data(index)
                     tmp_mon_data[index] = tmp_mon_data[index] + tmp_monitor_data
                     if len(tmp_mon_data[index]) >= total_num_samples:
                         tmp_mon_data[index] = np.resize(tmp_mon_data[index], total_num_samples)

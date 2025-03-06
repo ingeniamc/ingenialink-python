@@ -140,7 +140,10 @@ class EthernetNetwork(Network):
                 raise ILFirmwareLoadError("Unable to open the FTP session")
             # Login into FTP session.
             logger.info("Logging into FTP session...")
-            ftp_output = ftp.login(ftp_user, ftp_pwd)
+            try:
+                ftp_output = ftp.login(ftp_user, ftp_pwd)
+            except ftplib.error_perm as e:
+                raise ILFirmwareLoadError("Unable to login the FTP session") from e
             logger.info(ftp_output)
             if FTP_LOGIN_OK_CODE not in ftp_output:
                 raise ILFirmwareLoadError("Unable to login the FTP session")

@@ -15,6 +15,9 @@
 - Created ConfigurationFile class, used in load_configuration, save_configuration and check_configuration
 - Functions to update pysoem timeouts
 
+### Fixed
+- FTP login exception.
+
 ## [7.4.1] - 2025-01-28
 ### Fixed
 - Avoid mapping a PDO map twice.

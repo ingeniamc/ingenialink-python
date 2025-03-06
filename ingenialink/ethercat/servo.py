@@ -18,7 +18,12 @@ except ImportError as ex:
 if TYPE_CHECKING:
     from pysoem import CdefSlave
 
-from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
+from ingenialink.constants import (
+    CAN_MAX_WRITE_SIZE,
+    CANOPEN_ADDRESS_OFFSET,
+    ECAT_STATE_CHANGE_TIMEOUT_US,
+    MAP_ADDRESS_OFFSET,
+)
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILEcatStateError, ILIOError
@@ -118,7 +123,10 @@ class EthercatServo(PDOServo):
         """
         if self.slave is None or not pysoem:
             return
-        if self.slave.state_check(pysoem.PREOP_STATE) != pysoem.PREOP_STATE:
+        if (
+            self.slave.state_check(pysoem.PREOP_STATE, ECAT_STATE_CHANGE_TIMEOUT_US)
+            != pysoem.PREOP_STATE
+        ):
             raise ILEcatStateError(
                 f"Servo is in {self.slave.state} state, PDOMap can not be modified."
             )
