@@ -83,7 +83,7 @@ def connect_ethernet(protocol_contents):
 
 
 def connect_ethercat(protocol_contents):
-    net = EthercatNetwork(protocol_contents["ifname"])
+    net = EthercatNetwork(protocol_contents["ifname"], connection_timeout=10)
 
     servo = net.connect_to_slave(
         protocol_contents["slave"], protocol_contents["dictionary"], net_status_listener=True
