@@ -432,9 +432,13 @@ class EthercatNetwork(Network):
         node_list = nodes if isinstance(nodes, list) else [nodes]
         self._ecat_master.read_state()
 
-        return all(
-            target_state == drive.slave.state_check(target_state, ECAT_STATE_CHANGE_TIMEOUT_US)
-            for drive in node_list
+        return (
+            all(
+                target_state == drive.slave.state_check(target_state, ECAT_STATE_CHANGE_TIMEOUT_US)
+                for drive in node_list
+            )
+            if nodes
+            else False
         )
 
     def subscribe_to_status(  # type: ignore [override]
