@@ -594,8 +594,12 @@ def test_status_word_wait_change(connect_to_slave):
     subnode = 1
     timeout = 0.5
     status_word = servo.read(servo.STATUS_WORD_REGISTERS, subnode=subnode)
-    with pytest.raises(ILTimeoutError):
+    try:
         servo.status_word_wait_change(status_word, timeout, subnode)
+    except ILTimeoutError:
+        return
+    current_status_word = servo.read(servo.STATUS_WORD_REGISTERS, subnode=subnode)
+    pytest.fail(f"The status word changed from {status_word} to {current_status_word}.")
 
 
 @pytest.mark.ethernet
