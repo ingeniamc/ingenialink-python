@@ -9,7 +9,7 @@ import ingenialogger
 import numpy as np
 
 from ingenialink import RegAccess, RegDtype
-from ingenialink.dictionary import ACCESS_XDF_OPTIONS, DTYPE_XDF_OPTIONS, Interface
+from ingenialink.dictionary import ACCESS_XDF_OPTIONS, DTYPE_XDF_OPTIONS, Interface, XMLBase
 from ingenialink.exceptions import ILConfigurationFileParseError
 from ingenialink.register import Register
 
@@ -195,52 +195,6 @@ class ConfigRegister:
         else:
             register_xml.set(self.__STORAGE_ATTR, str(self.storage))
         return register_xml
-
-
-class XMLBase(ABC):
-    """Base class to manipulate XML files."""
-
-    _CHECK_FAIL_EXCEPTION = Exception
-
-    @classmethod
-    def _findall_and_check(cls, root: ElementTree.Element, path: str) -> list[ElementTree.Element]:
-        """Return list of elements in the target root element if existed, else, raises an exception.
-
-        Args:
-          root: root element
-          path: target elements path
-
-        Returns:
-          list of path elements
-
-        Raises:
-          path elements not found
-
-        """
-        element = root.findall(path)
-        if not element:
-            raise cls._CHECK_FAIL_EXCEPTION(f"{path} element is not found")
-        return element
-
-    @classmethod
-    def _find_and_check(cls, root: ElementTree.Element, path: str) -> ElementTree.Element:
-        """Return the path element in the target root element if exists, else, raises an exception.
-
-        Args:
-            root: root element
-            path: target element path
-
-        Returns:
-            path element
-
-        Raises:
-            path element not found
-
-        """
-        element = root.find(path)
-        if element is None:
-            raise cls._CHECK_FAIL_EXCEPTION(f"{path} element is not found")
-        return element
 
 
 class ConfigurationFile(XMLBase, ABC):

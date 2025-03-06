@@ -205,7 +205,53 @@ class DictionaryDescriptor:
     """Revision number declared in the dictionary."""
 
 
-class Dictionary(ABC):
+class XMLBase(ABC):
+    """Base class to manipulate XML files."""
+
+    _CHECK_FAIL_EXCEPTION = Exception
+
+    @classmethod
+    def _findall_and_check(cls, root: ElementTree.Element, path: str) -> list[ElementTree.Element]:
+        """Return list of elements in the target root element if existed, else, raises an exception.
+
+        Args:
+          root: root element
+          path: target elements path
+
+        Returns:
+          list of path elements
+
+        Raises:
+          path elements not found
+
+        """
+        element = root.findall(path)
+        if not element:
+            raise cls._CHECK_FAIL_EXCEPTION(f"{path} element is not found")
+        return element
+
+    @classmethod
+    def _find_and_check(cls, root: ElementTree.Element, path: str) -> ElementTree.Element:
+        """Return the path element in the target root element if exists, else, raises an exception.
+
+        Args:
+            root: root element
+            path: target element path
+
+        Returns:
+            path element
+
+        Raises:
+            path element not found
+
+        """
+        element = root.find(path)
+        if element is None:
+            raise cls._CHECK_FAIL_EXCEPTION(f"{path} element is not found")
+        return element
+
+
+class Dictionary(XMLBase, ABC):
     """Ingenia dictionary Abstract Base Class.
 
     Args:
@@ -216,6 +262,8 @@ class Dictionary(ABC):
         ILDictionaryParseError: If the dictionary could not be created.
 
     """
+
+    _CHECK_FAIL_EXCEPTION = ILDictionaryParseError
 
     version: str
     """Version of the dictionary."""
@@ -681,26 +729,6 @@ class DictionaryV3(Dictionary):
         revision_number = int(device.attrib[cls.DEVICE_REVISION_NUMBER_ATTR])
         return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
 
-    @staticmethod
-    def __find_and_check(root: ElementTree.Element, path: str) -> ElementTree.Element:
-        """Return the path element in the target root element if exists, else, raises an exception.
-
-        Args:
-            root: root element
-            path: target element path
-
-        Returns:
-            path element
-
-        Raises:
-            ILDictionaryParseError: path element not found
-
-        """
-        element = root.find(path)
-        if element is None:
-            raise ILDictionaryParseError(f"{path} element is not found")
-        return element
-
     @override
     def read_dictionary(self) -> None:
         try:
@@ -709,11 +737,11 @@ class DictionaryV3(Dictionary):
         except FileNotFoundError as e:
             raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}") from e
         root = tree.getroot()
-        drive_image_element = self.__find_and_check(root, self.__DRIVE_IMAGE_ELEMENT)
+        drive_image_element = self._find_and_check(root, self.__DRIVE_IMAGE_ELEMENT)
         self.__read_drive_image(drive_image_element)
-        header_element = self.__find_and_check(root, self.__HEADER_ELEMENT)
+        header_element = self._find_and_check(root, self.__HEADER_ELEMENT)
         self.__read_header(header_element)
-        body_element = self.__find_and_check(root, self.__BODY_ELEMENT)
+        body_element = self._find_and_check(root, self.__BODY_ELEMENT)
         self.__read_body(body_element)
 
     def __read_drive_image(self, drive_image: ElementTree.Element) -> None:
@@ -735,7 +763,7 @@ class DictionaryV3(Dictionary):
             root: Header element
 
         """
-        version_element = self.__find_and_check(root, self.__VERSION_ELEMENT)
+        version_element = self._find_and_check(root, self.__VERSION_ELEMENT)
         self.__read_version(version_element)
         # Dictionary localization not implemented
 
@@ -760,9 +788,9 @@ class DictionaryV3(Dictionary):
             root: Body element
 
         """
-        categories_element = self.__find_and_check(root, self.__CATEGORIES_ELEMENT)
+        categories_element = self._find_and_check(root, self.__CATEGORIES_ELEMENT)
         self.__read_categories(categories_element)
-        devices_element = self.__find_and_check(root, self.__DEVICES_ELEMENT)
+        devices_element = self._find_and_check(root, self.__DEVICES_ELEMENT)
         self.__read_devices(devices_element)
 
     def __read_categories(self, root: ElementTree.Element) -> None:
@@ -828,15 +856,15 @@ class DictionaryV3(Dictionary):
             root: ETHDevice element
 
         """
-        subnodes_element = self.__find_and_check(root, self.__SUBNODES_ELEMENT)
+        subnodes_element = self._find_and_check(root, self.__SUBNODES_ELEMENT)
         self.__read_subnodes(subnodes_element)
-        registers_element = self.__find_and_check(root, self.__MCB_REGISTERS_ELEMENT)
+        registers_element = self._find_and_check(root, self.__MCB_REGISTERS_ELEMENT)
         register_element_list = self._findall_and_check(
             registers_element, self.__MCB_REGISTER_ELEMENT
         )
         for register_element in register_element_list:
             self.__read_mcb_register(register_element)
-        errors_element = self.__find_and_check(root, self.__ERRORS_ELEMENT)
+        errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
 
     def __read_device_ecat(self, root: ElementTree.Element) -> None:
@@ -846,15 +874,15 @@ class DictionaryV3(Dictionary):
             root: ECATDevice element
 
         """
-        subnodes_element = self.__find_and_check(root, self.__SUBNODES_ELEMENT)
+        subnodes_element = self._find_and_check(root, self.__SUBNODES_ELEMENT)
         self.__read_subnodes(subnodes_element)
-        registers_element = self.__find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
+        registers_element = self._find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
             registers_element, self.__CANOPEN_OBJECT_ELEMENT
         )
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
-        errors_element = self.__find_and_check(root, self.__ERRORS_ELEMENT)
+        errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
         safety_pdos_element = root.find(self.__SAFETY_PDOS_ELEMENT)
         if safety_pdos_element is not None:
@@ -867,15 +895,15 @@ class DictionaryV3(Dictionary):
             root: CANDevice element
 
         """
-        subnodes_element = self.__find_and_check(root, self.__SUBNODES_ELEMENT)
+        subnodes_element = self._find_and_check(root, self.__SUBNODES_ELEMENT)
         self.__read_subnodes(subnodes_element)
-        registers_element = self.__find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
+        registers_element = self._find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
             registers_element, self.__CANOPEN_OBJECT_ELEMENT
         )
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
-        errors_element = self.__find_and_check(root, self.__ERRORS_ELEMENT)
+        errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
 
     def __read_subnodes(self, root: ElementTree.Element) -> None:
@@ -1014,7 +1042,7 @@ class DictionaryV3(Dictionary):
         cat_id = register.attrib[self.__CAT_ID_ATTR]
         units = register.attrib.get(self.__UNITS_ATTR)
         # Labels
-        labels_element = self.__find_and_check(register, self.__LABELS_ELEMENT)
+        labels_element = self._find_and_check(register, self.__LABELS_ELEMENT)
         labels = self.__read_labels(labels_element)
         # Range
         range_elem = register.find(self.__RANGE_ELEMENT)
@@ -1060,7 +1088,7 @@ class DictionaryV3(Dictionary):
         data_type = DictionaryV3._get_canopen_object_data_type_options(
             root.attrib[self.__OBJECT_DATA_TYPE_ATTR]
         )
-        subitems_element = self.__find_and_check(root, self.__SUBITEMS_ELEMENT)
+        subitems_element = self._find_and_check(root, self.__SUBITEMS_ELEMENT)
         subitem_list = self._findall_and_check(subitems_element, self.__SUBITEM_ELEMENT)
         register_list = [
             self.__read_canopen_subitem(subitem, reg_index, subnode) for subitem in subitem_list
@@ -1102,7 +1130,7 @@ class DictionaryV3(Dictionary):
             == self.__IS_NODE_ID_DEPENDENT_TRUE_ATTR_VALUE
         )
         # Labels
-        labels_element = self.__find_and_check(subitem, self.__LABELS_ELEMENT)
+        labels_element = self._find_and_check(subitem, self.__LABELS_ELEMENT)
         labels = self.__read_labels(labels_element)
         # Range
         range_elem = subitem.find(self.__RANGE_ELEMENT)
