@@ -309,12 +309,12 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
 @pytest.fixture
 def connect_to_all_slave(pytestconfig):
     protocol = pytestconfig.getoption("--protocol")
-    if protocol != "ethercat":
+    if protocol != "multislave":
         raise AssertionError("Wrong protocol")
     config = "tests/config.json"
     with open(config, encoding="utf-8") as fp:
         contents = json.load(fp)
-    protocol_contents = contents[protocol]
+    protocol_contents = contents["ethercat"]
     net = EthercatNetwork(protocol_contents[0]["ifname"])
     servos = [
         net.connect_to_slave(slave_content["slave"], slave_content["dictionary"])
@@ -354,7 +354,7 @@ def start_stop_pdos(net):
         assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
 
 
-@pytest.mark.ethercat
+@pytest.mark.multislave
 def test_start_stop_pdo(connect_to_all_slave):
     servos, net = connect_to_all_slave
     operation_mode_uid = "DRV_OP_CMD"

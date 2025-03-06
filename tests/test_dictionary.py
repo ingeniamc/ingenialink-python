@@ -22,6 +22,7 @@ PATH_RESOURCE = "./tests/resources/"
 PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "dict_path, interface, fw_version, product_code, part_number, revision_number",
     [
@@ -71,6 +72,7 @@ def test_dictionary_description(
     )
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "dict_path, interface, raises",
     [
