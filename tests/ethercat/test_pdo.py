@@ -261,14 +261,20 @@ def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(connec
     servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
 
     net._ecat_master.read_state()
-    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+    assert (
+        servo.slave.state_check(pysoem.PREOP_STATE, EthercatNetwork.ECAT_STATE_CHANGE_TIMEOUT_US)
+        == pysoem.PREOP_STATE
+    )
     net.start_pdos()
     net._ecat_master.read_state()
     start_time = time.time()
     timeout = 1
     while time.time() < start_time + timeout:
         net.send_receive_processdata()
-    assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+    assert (
+        servo.slave.state_check(pysoem.OP_STATE, EthercatNetwork.ECAT_STATE_CHANGE_TIMEOUT_US)
+        == pysoem.OP_STATE
+    )
 
     locked_methods = {
         "reset_pdo_mapping": {"kwargs": {}},
@@ -340,7 +346,12 @@ def create_pdo_maps(servo, rpdo_registers, tpdo_registers):
 def start_stop_pdos(net):
     net._ecat_master.read_state()
     for servo in net.servos:
-        assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+        assert (
+            servo.slave.state_check(
+                pysoem.PREOP_STATE, EthercatNetwork.ECAT_STATE_CHANGE_TIMEOUT_US
+            )
+            == pysoem.PREOP_STATE
+        )
     net.start_pdos()
     net._ecat_master.read_state()
     start_time = time.time()
@@ -348,10 +359,18 @@ def start_stop_pdos(net):
     while time.time() < start_time + timeout:
         net.send_receive_processdata()
     for servo in net.servos:
-        assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+        assert (
+            servo.slave.state_check(pysoem.OP_STATE, EthercatNetwork.ECAT_STATE_CHANGE_TIMEOUT_US)
+            == pysoem.OP_STATE
+        )
     net.stop_pdos()
     for servo in net.servos:
-        assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+        assert (
+            servo.slave.state_check(
+                pysoem.PREOP_STATE, EthercatNetwork.ECAT_STATE_CHANGE_TIMEOUT_US
+            )
+            == pysoem.PREOP_STATE
+        )
 
 
 @pytest.mark.ethercat
