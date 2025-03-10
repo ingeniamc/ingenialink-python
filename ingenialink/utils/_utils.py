@@ -55,6 +55,9 @@ def deprecated(
     a DeprecationWarning but since by default this warning is hidden, we use this
     decorator to manually activate DeprecationWarning and turning it off after
     the warn has been done.
+
+    Returns:
+        wrapped method.
     """
 
     def wrap(func: Callable[..., Any]) -> Callable[..., Any]:

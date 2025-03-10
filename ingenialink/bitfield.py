@@ -31,7 +31,14 @@ class BitField:
         self._mask = _bit_mask(range(start, end + 1))
 
     def __eq__(self, other: object) -> bool:
-        """Compare bitfields."""
+        """Compare bitfields.
+
+        Args:
+            other: object to compare it to.
+
+        Returns:
+            True if they are equal, False otherwise.
+        """
         if not isinstance(other, BitField):
             return False
         return (self._start == other._start) and (self._end == other._end)
