@@ -300,7 +300,7 @@ pipeline {
                         }
                         stage('EtherCAT Multislave') {
                             steps {
-                                runTest("multislave", tox_skip_install=true)
+                                runTest("multislave", 0, true)
                             }
                         }
                         stage('Run no-connection tests') {
