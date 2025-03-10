@@ -29,7 +29,7 @@ def test_load_firmware_example(arguments, script_runner, mocker, read_config):
     mock.assert_called_once_with("dummy_file.lfu", False, slave_id=slave_id)
 
 
-@pytest.mark.ethercat
+@pytest.mark.multislave
 def test_pdo_example(read_config, script_runner):
     protocol_contents = read_config["ethercat"]
     ifname = protocol_contents["ifname"]

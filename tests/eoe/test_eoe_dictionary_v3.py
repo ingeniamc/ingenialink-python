@@ -144,6 +144,7 @@ def test_register_description():
             )
 
 
+@pytest.mark.no_connection
 def test_register_bitfields():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
     canopen_dict = DictionaryV3(dictionary_path, Interface.EoE)

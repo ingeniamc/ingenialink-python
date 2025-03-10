@@ -24,6 +24,7 @@ def test_parse_bitfields(value, values):
     assert BitField.parse_bitfields(BITFIELD_EXAMPLES, value) == values
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "old_value, new_value, values",
     [
@@ -41,6 +42,7 @@ def test_set_bitfields(old_value, new_value, values):
     assert BitField.set_bitfields(BITFIELD_EXAMPLES, values, old_value) == new_value
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "values, error",
     [

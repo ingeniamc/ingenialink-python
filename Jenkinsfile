@@ -298,6 +298,11 @@ pipeline {
                                 runTest("ethercat", 1, true)
                             }
                         }
+                        stage('EtherCAT Multislave') {
+                            steps {
+                                runTest("multislave", 0, true)
+                            }
+                        }
                         stage('Run no-connection tests') {
                             steps {
                                 runTest("no_connection", 0, true)

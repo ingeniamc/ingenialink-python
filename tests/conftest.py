@@ -15,7 +15,7 @@ from virtual_drive.core import VirtualDrive
 
 DEFAULT_PROTOCOL = "no_connection"
 
-ALLOW_PROTOCOLS = [DEFAULT_PROTOCOL, "ethernet", "ethercat", "canopen", "eoe"]
+ALLOW_PROTOCOLS = [DEFAULT_PROTOCOL, "ethernet", "ethercat", "canopen", "eoe", "multislave"]
 
 
 def pytest_addoption(parser):
@@ -194,7 +194,7 @@ def get_drive_idx_from_rack_config(protocol_contents, rack_config):
 @pytest.fixture(scope="session", autouse=True)
 def load_firmware(pytestconfig, read_config, request):
     protocol = pytestconfig.getoption("--protocol")
-    if protocol == DEFAULT_PROTOCOL:
+    if protocol in [DEFAULT_PROTOCOL, "multislave"]:
         return
 
     client = request.getfixturevalue("connect_to_rack_service")
