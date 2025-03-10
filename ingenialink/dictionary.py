@@ -101,7 +101,11 @@ class CanOpenObject:
     registers: list[CanopenRegister]
 
     def __iter__(self) -> Iterator[CanopenRegister]:
-        """Iterator operator."""
+        """Iterator operator.
+
+        Returns:
+            Iterator operator.
+        """
         return self.registers.__iter__()
 
 
@@ -186,7 +190,11 @@ class DictionaryError:
     """The error description."""
 
     def __iter__(self) -> Iterator[Union[str, None]]:
-        """Iterator method."""
+        """Iterator method.
+
+        Returns:
+            iterator method.
+        """
         id_hex_string = f"0x{self.id:08X}"
         return iter((id_hex_string, self.affected_module, self.error_type, self.description))
 
