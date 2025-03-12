@@ -17,6 +17,8 @@ DEFAULT_PROTOCOL = "no_connection"
 
 ALLOW_PROTOCOLS = [DEFAULT_PROTOCOL, "ethernet", "ethercat", "canopen", "eoe", "multislave"]
 
+SLEEP_BETWEEN_POWER_CYCLE_S = 5
+
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -200,7 +202,7 @@ def load_firmware(pytestconfig, read_config, request):
     client = request.getfixturevalue("connect_to_rack_service")
     # Reboot drive
     client.exposed_turn_off_ps()
-    time.sleep(1)
+    time.sleep(SLEEP_BETWEEN_POWER_CYCLE_S)
     client.exposed_turn_on_ps()
 
     # Wait for all drives to turn-on, for 90 seconds
