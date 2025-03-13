@@ -23,6 +23,8 @@ from ingenialink.exceptions import (
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState
 
+from .conftest import SLEEP_BETWEEN_POWER_CYCLE_S
+
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
 DISTURBANCE_CH_DATA_SIZE = 4
@@ -323,7 +325,7 @@ def test_store_parameters(connect_to_slave, connect_to_rack_service):
 
     client = connect_to_rack_service
     client.exposed_turn_off_ps()
-    time.sleep(1)
+    time.sleep(SLEEP_BETWEEN_POWER_CYCLE_S)
     client.exposed_turn_on_ps()
 
     wait_until_alive(servo, timeout=20)
@@ -349,7 +351,7 @@ def test_restore_parameters(connect_to_slave, connect_to_rack_service):
 
     client = connect_to_rack_service
     client.exposed_turn_off_ps()
-    time.sleep(1)
+    time.sleep(SLEEP_BETWEEN_POWER_CYCLE_S)
     client.exposed_turn_on_ps()
 
     wait_until_alive(servo, timeout=20)
