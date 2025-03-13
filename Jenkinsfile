@@ -60,6 +60,7 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
             bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
                     "--protocol ${protocol} " +
                     "--slave ${slave} " +
+                    "--cov " +
                     "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${protocol}-${slave}\""
 
         } catch (err) {
@@ -236,7 +237,8 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker "
+                                        "-m docker " +
+                                        "--cov"
                             }
                             post {
                                 always {
