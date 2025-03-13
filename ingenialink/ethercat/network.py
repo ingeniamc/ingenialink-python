@@ -115,6 +115,8 @@ class EthercatNetwork(Network):
 
     __DEFAULT_FOE_FILE_NAME = "firmware_file"
 
+    __MAX_FOE_TRIES = 2
+
     def __init__(
         self,
         interface_name: str,
@@ -523,16 +525,19 @@ class EthercatNetwork(Network):
             raise ILError(f"Slave {slave_id} was not found.")
 
         slave = self._ecat_master.slaves[slave_id - 1]
-        if not boot_in_app:
-            self._force_boot_mode(slave)
-        self._switch_to_boot_state(slave)
+        for iteration in range(self.__MAX_FOE_TRIES):
+            if not boot_in_app:
+                self._force_boot_mode(slave)
+            self._switch_to_boot_state(slave)
 
-        foe_result = self._write_foe(slave, fw_file, password)
-
-        if foe_result < 0:
+            foe_write_result = self._write_foe(slave, fw_file, password)
+            if foe_write_result > 0:
+                break
+            self.__init_nodes()
+        else:
             error_message = (
                 "The firmware file could not be loaded correctly."
-                f" {EthercatNetwork.__get_foe_error_message(error_code=foe_result)}"
+                f" {EthercatNetwork.__get_foe_error_message(error_code=foe_write_result)}"
             )
             raise ILFirmwareLoadError(error_message)
         start_time = time.time()

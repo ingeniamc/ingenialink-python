@@ -184,7 +184,7 @@ def test_load_firmware_wrong_user_pwd(ftp_server_manager):
     fw_file = "temp_file.lfu"
     with open(fw_file, "w"):
         pass
-    ftp_user, ftp_password = ftp_server_manager
+    _, _ = ftp_server_manager
     # Wrong user and password
     fake_user = "mamma"
     fake_password = "mia"

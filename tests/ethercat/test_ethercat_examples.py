@@ -29,13 +29,16 @@ def test_load_firmware_example(arguments, script_runner, mocker, read_config):
     mock.assert_called_once_with("dummy_file.lfu", False, slave_id=slave_id)
 
 
-@pytest.mark.ethercat
+@pytest.mark.multislave
 def test_pdo_example(read_config, script_runner):
     protocol_contents = read_config["ethercat"]
     ifname = protocol_contents["ifname"]
     dictionary = protocol_contents["dictionary"]
     script_path = "examples/ethercat/process_data_objects.py"
-    result = script_runner.run(
-        [script_path, f"--interface={ifname}", f"--dictionary_path={dictionary}", "--auto_stop"]
-    )
+    result = script_runner.run([
+        script_path,
+        f"--interface={ifname}",
+        f"--dictionary_path={dictionary}",
+        "--auto_stop",
+    ])
     assert result.returncode == 0

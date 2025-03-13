@@ -15,7 +15,9 @@ from virtual_drive.core import VirtualDrive
 
 DEFAULT_PROTOCOL = "no_connection"
 
-ALLOW_PROTOCOLS = [DEFAULT_PROTOCOL, "ethernet", "ethercat", "canopen", "eoe"]
+ALLOW_PROTOCOLS = [DEFAULT_PROTOCOL, "ethernet", "ethercat", "canopen", "eoe", "multislave"]
+
+SLEEP_BETWEEN_POWER_CYCLE_S = 5
 
 
 def pytest_addoption(parser):
@@ -194,13 +196,13 @@ def get_drive_idx_from_rack_config(protocol_contents, rack_config):
 @pytest.fixture(scope="session", autouse=True)
 def load_firmware(pytestconfig, read_config, request):
     protocol = pytestconfig.getoption("--protocol")
-    if protocol == DEFAULT_PROTOCOL:
+    if protocol in [DEFAULT_PROTOCOL, "multislave"]:
         return
 
     client = request.getfixturevalue("connect_to_rack_service")
     # Reboot drive
     client.exposed_turn_off_ps()
-    time.sleep(1)
+    time.sleep(SLEEP_BETWEEN_POWER_CYCLE_S)
     client.exposed_turn_on_ps()
 
     # Wait for all drives to turn-on, for 90 seconds
