@@ -17,7 +17,7 @@ DEFAULT_PROTOCOL = "no_connection"
 
 ALLOW_PROTOCOLS = [DEFAULT_PROTOCOL, "ethernet", "ethercat", "canopen", "eoe", "multislave"]
 
-SLEEP_BETWEEN_POWER_CYCLE_S = 5
+SLEEP_BETWEEN_POWER_CYCLE_S = 10
 
 
 def pytest_addoption(parser):
