@@ -6,7 +6,6 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 import pytest
-from conftest import SLEEP_BETWEEN_POWER_CYCLE_S
 from packaging import version
 
 from ingenialink import RegAccess
@@ -23,6 +22,8 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState
+
+from .conftest import SLEEP_BETWEEN_POWER_CYCLE_S
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
