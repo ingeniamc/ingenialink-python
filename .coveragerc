@@ -1,2 +1,8 @@
 [run]
 relative_files = True
+
+; Skip empty files
+[report]
+skip_empty = true
+omit =
+    */__init__.py
