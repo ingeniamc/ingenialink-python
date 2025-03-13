@@ -35,7 +35,10 @@ def test_pdo_example(read_config, script_runner):
     ifname = protocol_contents["ifname"]
     dictionary = protocol_contents["dictionary"]
     script_path = "examples/ethercat/process_data_objects.py"
-    result = script_runner.run(
-        [script_path, f"--interface={ifname}", f"--dictionary_path={dictionary}", "--auto_stop"]
-    )
+    result = script_runner.run([
+        script_path,
+        f"--interface={ifname}",
+        f"--dictionary_path={dictionary}",
+        "--auto_stop",
+    ])
     assert result.returncode == 0
