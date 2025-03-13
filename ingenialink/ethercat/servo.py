@@ -262,8 +262,12 @@ class EthercatServo(PDOServo):
     def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame.
 
+        Raises:
+            NotImplementedError: If monitoring is not supported by the device.
+            ValueError: If unexpected data type was returned from read.
+
         Returns:
-            monitoring data.
+            Monitoring data.
         """
         if not super()._is_monitoring_implemented():
             raise NotImplementedError("Monitoring is not supported by this device.")
