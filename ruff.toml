@@ -4,7 +4,6 @@ preview = true
 
 [lint]
 pydocstyle.convention = "google"
-flake8-unused-arguments.ignore-variadic-names = true
 
 select = [
     "F", # Pyflakes
