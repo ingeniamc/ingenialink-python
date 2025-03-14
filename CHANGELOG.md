@@ -17,6 +17,7 @@
 
 ### Fixed
 - FTP login exception.
+- Return False on ECAT node-state check when servo list is empty
 
 ## [7.4.1] - 2025-01-28
 ### Fixed

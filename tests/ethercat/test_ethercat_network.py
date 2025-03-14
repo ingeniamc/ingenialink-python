@@ -128,3 +128,12 @@ def test_update_pysoem_timeouts(connect_to_slave):
     assert pysoem.settings.timeouts.tx_mailbox == old_tx_mailbox
     assert pysoem.settings.timeouts.rx_mailbox == old_rx_mailbox
     assert pysoem.settings.timeouts.state == old_state
+
+
+@pytest.mark.ethercat
+def test_check_node_state(connect_to_slave):
+    servo, net = connect_to_slave
+    # True when list is not empty
+    assert net._check_node_state(servo, pysoem.PREOP_STATE)
+    # False when list is not empty
+    assert not net._check_node_state([], pysoem.PREOP_STATE)
