@@ -669,6 +669,13 @@ class DictionaryV3(Dictionary):
     __PDO_ENTRY_SIZE_ATTR = "size"
     __PDO_ENTRY_SUBNODE_ATTR = "subnode"
 
+    __SAFETY_MODULES_ELEMENT = "SafetyModules"
+    __SAFETY_MODULE_ELEMENT = "SafetyModule"
+    __SAFETY_MODULE_USES_SRA_ATTR = "uses_sra"
+    __APPLICATION_PARAMETERS_ELEMENT = "ApplicationParameters"
+    __APPLICATION_PARAMETER_ELEMENT = "ApplicationParameter"
+    __APPLICATION_PARAMETER_UID_ATTR = "id"
+
     @staticmethod
     def _interface_to_device_element(interface: Interface) -> str:
         """Returns the device element associated with each interface.
