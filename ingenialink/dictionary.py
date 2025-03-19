@@ -505,8 +505,7 @@ class Dictionary(XMLBase, ABC):
         """Get safety module by module_ident.
 
         Args:
-            module_ident: safety module module ident.
-                Can be provided as integer number of hex string.
+            module_ident: safety module module ident (int/hex).
 
         Returns:
             Safety module object description.
