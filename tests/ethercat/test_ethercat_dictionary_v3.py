@@ -4,11 +4,18 @@ import pytest
 
 from ingenialink import CanopenRegister
 from ingenialink.bitfield import BitField
-from ingenialink.dictionary import DictionarySafetyPDO, DictionaryV3, Interface, SubnodeType
+from ingenialink.dictionary import (
+    DictionarySafetyModule,
+    DictionarySafetyPDO,
+    DictionaryV3,
+    Interface,
+    SubnodeType,
+)
 from ingenialink.exceptions import ILDictionaryParseError
 
 path_resources = "./tests/resources/"
 dict_ecat_v3 = "test_dict_ecat_eoe_v3.0.xdf"
+dict_ecat_v3_safe = "ethercat/test_dict_ethercat_safe_v3.0.xdf"
 SINGLE_AXIS_SAFETY_SUBNODES = {
     0: SubnodeType.COMMUNICATION,
     1: SubnodeType.MOTION,
@@ -181,6 +188,42 @@ def test_safety_tpdo():
         if regs[index] is not None:
             entry_reg = ethercat_dict.registers(regs[index][1])[regs[index][0]]
         assert pdo_entry.register == entry_reg
+
+
+@pytest.mark.no_connection
+def test_safety_modules():
+    dictionary_path = join_path(path_resources, dict_ecat_v3_safe)
+    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+
+    # Expected data
+    module_ident_to_application_parameters = {
+        "0x3800000": {
+            "uses_sra": False,
+            "application_parameters": ["FSOE_SAFE_INPUTS_MAP", "FSOE_SS1_TIME_TO_STO_1"],
+        },
+        "0x3800001": {
+            "uses_sra": True,
+            "application_parameters": ["FSOE_SAFE_INPUTS_MAP", "FSOE_SS1_TIME_TO_STO_1"],
+        },
+    }
+
+    for module_ident, module_data in module_ident_to_application_parameters.items():
+        expected_app_params = module_data["application_parameters"]
+        safety_module = ethercat_dict.get_safety_module(module_ident=module_ident)
+        assert isinstance(safety_module, DictionarySafetyModule)
+        assert hex(safety_module.module_ident) == module_ident
+        assert safety_module.uses_sra == module_data["uses_sra"]
+        assert len(safety_module.application_parameters) == len(expected_app_params)
+        for param in safety_module.application_parameters:
+            assert param.uid in expected_app_params
+
+
+@pytest.mark.no_connection
+def test_safety_module_not_exist():
+    dictionary_path = join_path(path_resources, dict_ecat_v3_safe)
+    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    with pytest.raises(KeyError):
+        ethercat_dict.get_safety_module("0x3800007")
 
 
 @pytest.mark.no_connection

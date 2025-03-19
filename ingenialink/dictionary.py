@@ -501,6 +501,28 @@ class Dictionary(XMLBase, ABC):
             return self.safety_tpdos[uid]
         raise KeyError(f"Safe TPDO {uid} not exist")
 
+    def get_safety_module(self, module_ident: Union[int, str]) -> DictionarySafetyModule:
+        """Get safety module by module_ident.
+
+        Args:
+            module_ident: safety module module ident.
+                Can be provided as integer number of hex string.
+
+        Returns:
+            Safety module object description.
+
+        Raises:
+            NotImplementedError: Device is not safe.
+            KeyError: Safety module does not exist.
+        """
+        if not self.is_safe:
+            raise NotImplementedError("Safe PDOs are not implemented for this device")
+        if isinstance(module_ident, str):
+            module_ident = int(module_ident, 16)
+        if module_ident in self.safety_modules:
+            return self.safety_modules[module_ident]
+        raise KeyError(f"Safety Module {module_ident} not exist")
+
     def _merge_registers(self, other_dict: "Dictionary") -> None:
         """Add the registers from another dictionary to the dictionary instance.
 
@@ -1220,6 +1242,40 @@ class DictionaryV3(Dictionary):
             uid, safety_tpdo = self.__read_pdo(tpdo_element)
             self.safety_tpdos[uid] = safety_tpdo
 
+    def __read_pdo(self, pdo: ElementTree.Element) -> tuple[str, DictionarySafetyPDO]:
+        """Process RPDO and TPDO elements.
+
+        Args:
+            pdo: MCBRegister element
+
+        Returns:
+            PDO uid and class description
+
+        Raises:
+            ILDictionaryParseError: PDO register does not exist
+            ValueError: If the subnode is not a CANopen register.
+        """
+        uid = pdo.attrib[self.__PDO_UID_ATTR]
+        pdo_index = int(pdo.attrib[self.__PDO_INDEX_ATTR], 16)
+        entry_list = self._findall_and_check(pdo, self.__PDO_ENTRY_ELEMENT)
+        pdo_registers = []
+        for entry in entry_list:
+            size = int(entry.attrib[self.__PDO_ENTRY_SIZE_ATTR])
+            reg_subnode = int(entry.attrib.get(self.__PDO_ENTRY_SUBNODE_ATTR, 1))
+            reg_uid = entry.text
+            if reg_uid:
+                if not (reg_subnode in self._registers and reg_uid in self._registers[reg_subnode]):
+                    raise ILDictionaryParseError(
+                        f"PDO entry {reg_uid} subnode {reg_subnode} does not exist"
+                    )
+                entry_reg = self._registers[reg_subnode][reg_uid]
+                if not isinstance(entry_reg, CanopenRegister):
+                    raise ValueError(f"{reg_uid} subnode {reg_subnode} is not a CANopen register")
+                pdo_registers.append(DictionarySafetyPDO.PDORegister(entry_reg, size))
+            else:
+                pdo_registers.append(DictionarySafetyPDO.PDORegister(None, size))
+        return uid, DictionarySafetyPDO(pdo_index, pdo_registers)
+
     def __read_safety_modules(self, root: ElementTree.Element) -> None:
         """Process SafetyModules element.
 
@@ -1267,40 +1323,6 @@ class DictionaryV3(Dictionary):
             module_ident=module_ident,
             application_parameters=application_parameters,
         )
-
-    def __read_pdo(self, pdo: ElementTree.Element) -> tuple[str, DictionarySafetyPDO]:
-        """Process RPDO and TPDO elements.
-
-        Args:
-            pdo: MCBRegister element
-
-        Returns:
-            PDO uid and class description
-
-        Raises:
-            ILDictionaryParseError: PDO register does not exist
-            ValueError: If the subnode is not a CANopen register.
-        """
-        uid = pdo.attrib[self.__PDO_UID_ATTR]
-        pdo_index = int(pdo.attrib[self.__PDO_INDEX_ATTR], 16)
-        entry_list = self._findall_and_check(pdo, self.__PDO_ENTRY_ELEMENT)
-        pdo_registers = []
-        for entry in entry_list:
-            size = int(entry.attrib[self.__PDO_ENTRY_SIZE_ATTR])
-            reg_subnode = int(entry.attrib.get(self.__PDO_ENTRY_SUBNODE_ATTR, 1))
-            reg_uid = entry.text
-            if reg_uid:
-                if not (reg_subnode in self._registers and reg_uid in self._registers[reg_subnode]):
-                    raise ILDictionaryParseError(
-                        f"PDO entry {reg_uid} subnode {reg_subnode} does not exist"
-                    )
-                entry_reg = self._registers[reg_subnode][reg_uid]
-                if not isinstance(entry_reg, CanopenRegister):
-                    raise ValueError(f"{reg_uid} subnode {reg_subnode} is not a CANopen register")
-                pdo_registers.append(DictionarySafetyPDO.PDORegister(entry_reg, size))
-            else:
-                pdo_registers.append(DictionarySafetyPDO.PDORegister(None, size))
-        return uid, DictionarySafetyPDO(pdo_index, pdo_registers)
 
 
 class DictionaryV2(Dictionary):
