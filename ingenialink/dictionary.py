@@ -124,6 +124,21 @@ class DictionarySafetyPDO:
     entries: list[PDORegister]
 
 
+@dataclass
+class DictionarySafetyModule:
+    """Safety module (MDP) dictionary descriptor."""
+
+    @dataclass
+    class ApplicationParameter:
+        """FSoE application parameter descriptor."""
+
+        uid: str
+
+    uses_sra: bool
+    module_ident: int
+    application_parameters: list[ApplicationParameter]
+
+
 class DictionaryCategories:
     """Contains all categories from a Dictionary.
 
@@ -306,11 +321,14 @@ class Dictionary(XMLBase, ABC):
     """Safety RPDOs by UID"""
     safety_tpdos: dict[str, DictionarySafetyPDO]
     """Safety TPDOs by UID"""
+    safety_modules: dict[str, DictionarySafetyModule]
+    """Safety modules (MDP)."""
 
     def __init__(self, dictionary_path: str, interface: Interface) -> None:
         self.items = {}
         self.safety_rpdos = {}
         self.safety_tpdos = {}
+        self.safety_modules = {}
         self._registers = {}
         self.subnodes = {}
         self.path = dictionary_path
@@ -672,6 +690,7 @@ class DictionaryV3(Dictionary):
     __SAFETY_MODULES_ELEMENT = "SafetyModules"
     __SAFETY_MODULE_ELEMENT = "SafetyModule"
     __SAFETY_MODULE_USES_SRA_ATTR = "uses_sra"
+    __SAFETY_MODULE_MODULE_IDENT_ATTR = "module_ident"
     __APPLICATION_PARAMETERS_ELEMENT = "ApplicationParameters"
     __APPLICATION_PARAMETER_ELEMENT = "ApplicationParameter"
     __APPLICATION_PARAMETER_UID_ATTR = "id"
@@ -902,6 +921,9 @@ class DictionaryV3(Dictionary):
         safety_pdos_element = root.find(self.__SAFETY_PDOS_ELEMENT)
         if safety_pdos_element is not None:
             self.__read_safety_pdos(safety_pdos_element)
+        safety_modules_element = root.find(self.__SAFETY_MODULES_ELEMENT)
+        if safety_modules_element is not None:
+            self.__read_safety_modules(safety_modules_element)
 
     def __read_device_can(self, root: ElementTree.Element) -> None:
         """Process CANDevice element.
@@ -1197,6 +1219,54 @@ class DictionaryV3(Dictionary):
         for tpdo_element in tpdo_list:
             uid, safety_tpdo = self.__read_pdo(tpdo_element)
             self.safety_tpdos[uid] = safety_tpdo
+
+    def __read_safety_modules(self, root: ElementTree.Element) -> None:
+        """Process SafetyModules element.
+
+        Args:
+            root: SafetyModules element.
+        """
+        self.is_safe = True
+        safety_modules_list = self._findall_and_check(root, self.__SAFETY_MODULE_ELEMENT)
+        for safety_module_element in safety_modules_list:
+            module_ident, safety_module = self.__read_safety_module(
+                safety_module=safety_module_element
+            )
+            self.safety_modules[module_ident] = safety_module
+
+    def __read_safety_module(
+        self, safety_module: ElementTree.Element
+    ) -> tuple[int, DictionarySafetyModule]:
+        """Process SafetyModule element.
+
+        Args:
+            safety_module: SafetyModule element.
+
+        Returns:
+            Safety module ident and class descriptor.
+        """
+        uses_sra = safety_module.attrib[self.__SAFETY_MODULE_USES_SRA_ATTR] in [
+            "True",
+            "true",
+        ]
+        module_ident = int(safety_module.attrib[self.__SAFETY_MODULE_MODULE_IDENT_ATTR], 16)
+        application_parameters_element = self._find_and_check(
+            safety_module, self.__APPLICATION_PARAMETERS_ELEMENT
+        )
+        application_parameters_list = self._findall_and_check(
+            application_parameters_element, self.__APPLICATION_PARAMETER_ELEMENT
+        )
+        application_parameters = [
+            DictionarySafetyModule.ApplicationParameter(
+                uid=param.attrib[self.__APPLICATION_PARAMETER_UID_ATTR]
+            )
+            for param in application_parameters_list
+        ]
+        return module_ident, DictionarySafetyModule(
+            uses_sra=uses_sra,
+            module_ident=module_ident,
+            application_parameters=application_parameters,
+        )
 
     def __read_pdo(self, pdo: ElementTree.Element) -> tuple[str, DictionarySafetyPDO]:
         """Process RPDO and TPDO elements.
