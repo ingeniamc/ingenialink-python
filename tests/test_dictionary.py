@@ -136,7 +136,8 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
         (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.EoE, EthernetDictionaryV2),
         (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.ECAT, DictionaryV3),
         (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.EoE, DictionaryV3),
-        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat_safe_v3.0.xdf", Interface.ECAT, DictionaryV3),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_safe_v3.0.xdf", Interface.ECAT, DictionaryV3),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_safe_v3.0.xdf", Interface.EoE, DictionaryV3),
     ],
 )
 def test_dictionary_factory(dict_path, interface, dict_class):

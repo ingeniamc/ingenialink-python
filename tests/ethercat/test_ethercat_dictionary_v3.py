@@ -15,7 +15,7 @@ from ingenialink.exceptions import ILDictionaryParseError
 
 path_resources = "./tests/resources/"
 dict_ecat_v3 = "test_dict_ecat_eoe_v3.0.xdf"
-dict_ecat_v3_safe = "ethercat/test_dict_ethercat_safe_v3.0.xdf"
+dict_ecat_v3_safe = "test_dict_ecat_eoe_safe_v3.0.xdf"
 SINGLE_AXIS_SAFETY_SUBNODES = {
     0: SubnodeType.COMMUNICATION,
     1: SubnodeType.MOTION,
@@ -191,6 +191,14 @@ def test_safety_tpdo():
 
 
 @pytest.mark.no_connection
+def test_safety_tpdo_not_exist():
+    dictionary_path = join_path(path_resources, dict_ecat_v3)
+    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    with pytest.raises(KeyError):
+        ethercat_dict.get_safety_tpdo("READ_ONLY_RPDO_1")
+
+
+@pytest.mark.no_connection
 def test_safety_modules():
     dictionary_path = join_path(path_resources, dict_ecat_v3_safe)
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
@@ -224,14 +232,6 @@ def test_safety_module_not_exist():
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
     with pytest.raises(KeyError):
         ethercat_dict.get_safety_module("0x3800007")
-
-
-@pytest.mark.no_connection
-def test_safety_tpdo_not_exist():
-    dictionary_path = join_path(path_resources, dict_ecat_v3)
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
-    with pytest.raises(KeyError):
-        ethercat_dict.get_safety_tpdo("READ_ONLY_RPDO_1")
 
 
 @pytest.mark.no_connection
