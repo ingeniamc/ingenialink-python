@@ -516,7 +516,7 @@ class Dictionary(XMLBase, ABC):
             KeyError: Safety module does not exist.
         """
         if not self.is_safe:
-            raise NotImplementedError("Safe PDOs are not implemented for this device")
+            raise NotImplementedError("Safety modules are not implemented for this device")
         if isinstance(module_ident, str):
             module_ident = int(module_ident, 16)
         if module_ident in self.safety_modules:
