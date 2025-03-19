@@ -4,7 +4,7 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
-from ingenialink.dictionary import DictionaryV2, Interface
+from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethernet.register import EthernetRegister
 
@@ -43,6 +43,10 @@ class EthernetDictionaryV2(DictionaryV2):
                 access=RegAccess.WO,
             ),
         ]
+
+    @cached_property
+    def _safety_modules(self) -> list[DictionarySafetyModule]:
+        raise NotImplementedError("Safety modules are not implemented for this device.")
 
     def _read_xdf_register(self, register: ElementTree.Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)

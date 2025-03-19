@@ -5,7 +5,7 @@ from xml.etree import ElementTree
 import ingenialogger
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.dictionary import DictionaryV2, Interface
+from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 
 logger = ingenialogger.get_logger(__name__)
@@ -43,6 +43,10 @@ class CanopenDictionaryV2(DictionaryV2):
                 subnode=0,
             ),
         ]
+
+    @cached_property
+    def _safety_modules(self) -> list[DictionarySafetyModule]:
+        raise NotImplementedError("Safety modules are not implemented for this device.")
 
     def _read_xdf_register(self, register: ElementTree.Element) -> Optional[CanopenRegister]:
         current_read_register = super()._read_xdf_register(register)

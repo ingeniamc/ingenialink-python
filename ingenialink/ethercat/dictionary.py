@@ -9,7 +9,7 @@ from ingenialink.constants import (
     CANOPEN_SUBNODE_0_ADDRESS_OFFSET,
     MAP_ADDRESS_OFFSET,
 )
-from ingenialink.dictionary import DictionaryV2, Interface
+from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
 from ingenialink.enums.register import RegAccess, RegAddressType, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 
@@ -25,6 +25,11 @@ class EthercatDictionaryV2(DictionaryV2):
     """
 
     interface = Interface.ECAT
+
+    def __init__(self, dictionary_path: str, is_safe: bool = False):
+        self.is_safe = is_safe
+
+        super().__init__(dictionary_path)
 
     @cached_property
     def _monitoring_disturbance_registers(self) -> list[EthercatRegister]:
@@ -48,6 +53,27 @@ class EthercatDictionaryV2(DictionaryV2):
                 cyclic=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.WO,
+            ),
+        ]
+
+    @cached_property
+    def _safety_modules(self) -> list[DictionarySafetyModule]:
+        return [
+            DictionarySafetyModule(
+                uses_sra=False,
+                module_ident=int("0x3800000", 16),
+                application_parameters=[
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SAFE_INPUTS_MAP"),
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SS1_TIME_TO_STO_1"),
+                ],
+            ),
+            DictionarySafetyModule(
+                uses_sra=True,
+                module_ident=int("0x3800001", 16),
+                application_parameters=[
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SAFE_INPUTS_MAP"),
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SS1_TIME_TO_STO_1"),
+                ],
             ),
         ]
 

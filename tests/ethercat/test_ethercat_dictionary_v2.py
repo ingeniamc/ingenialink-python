@@ -2,7 +2,7 @@ from os.path import join as join_path
 
 import pytest
 
-from ingenialink.dictionary import Interface, SubnodeType
+from ingenialink.dictionary import DictionarySafetyModule, Interface, SubnodeType
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2
 
 path_resources = "./tests/resources/ethercat/"
@@ -165,3 +165,14 @@ def test_safety_pdo_not_implemented():
         ethercat_dict.get_safety_rpdo("NOT_EXISTING_UID")
     with pytest.raises(NotImplementedError):
         ethercat_dict.get_safety_tpdo("NOT_EXISTING_UID")
+
+
+@pytest.mark.no_connection
+def test_read_dictionary_safety_modules():
+    dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
+
+    ethercat_dict = EthercatDictionaryV2(dictionary_path, is_safe=True)
+    assert len(ethercat_dict.safety_modules)
+    for module_ident in ["0x3800000", "0x3800001"]:
+        safety_module = ethercat_dict.get_safety_module(module_ident=module_ident)
+        assert isinstance(safety_module, DictionarySafetyModule)

@@ -1458,6 +1458,11 @@ class DictionaryV2(Dictionary):
     ) -> Union[list[EthercatRegister], list[EthernetRegister], list[CanopenRegister]]:
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def _safety_modules(self) -> list[DictionarySafetyModule]:
+        raise NotImplementedError
+
     @override
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
@@ -1570,6 +1575,7 @@ class DictionaryV2(Dictionary):
         # Closing xdf file
         xdf_file.close()
         self._append_missing_registers()
+        self._append_missing_safety_modules()
 
     def _read_xdf_register(self, register: ElementTree.Element) -> Optional[Register]:
         """Reads a register from the dictionary and creates a Register instance.
@@ -1693,3 +1699,11 @@ class DictionaryV2(Dictionary):
             for register in self._monitoring_disturbance_registers:
                 if register.identifier is not None:
                     self._registers[register.subnode][register.identifier] = register
+
+    def _append_missing_safety_modules(self) -> None:
+        """Append  missing safety modules to the dictionary."""
+        if not self.is_safe:
+            return
+
+        for safety_submodule in self._safety_modules:
+            self.safety_modules[safety_submodule.module_ident] = safety_submodule
