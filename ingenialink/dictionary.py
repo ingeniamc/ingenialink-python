@@ -321,7 +321,7 @@ class Dictionary(XMLBase, ABC):
     """Safety RPDOs by UID"""
     safety_tpdos: dict[str, DictionarySafetyPDO]
     """Safety TPDOs by UID"""
-    safety_modules: dict[str, DictionarySafetyModule]
+    safety_modules: dict[int, DictionarySafetyModule]
     """Safety modules (MDP)."""
 
     def __init__(self, dictionary_path: str, interface: Interface) -> None:
