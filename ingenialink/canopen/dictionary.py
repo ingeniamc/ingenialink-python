@@ -7,6 +7,7 @@ import ingenialogger
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
+from ingenialink.ethercat.register import EthercatRegister
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -43,6 +44,12 @@ class CanopenDictionaryV2(DictionaryV2):
                 subnode=0,
             ),
         ]
+
+    @cached_property
+    def _fsoe_application_parameters_registers(self) -> list[EthercatRegister]:
+        raise NotImplementedError(
+            "FSoE application parameter registers are not implemented for this device."
+        )
 
     @cached_property
     def _safety_modules(self) -> list[DictionarySafetyModule]:

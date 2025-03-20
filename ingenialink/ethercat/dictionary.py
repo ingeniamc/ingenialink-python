@@ -26,11 +26,6 @@ class EthercatDictionaryV2(DictionaryV2):
 
     interface = Interface.ECAT
 
-    def __init__(self, dictionary_path: str, is_safe: bool = False):
-        self.is_safe = is_safe
-
-        super().__init__(dictionary_path)
-
     @cached_property
     def _monitoring_disturbance_registers(self) -> list[EthercatRegister]:
         return [
@@ -53,6 +48,27 @@ class EthercatDictionaryV2(DictionaryV2):
                 cyclic=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.WO,
+            ),
+        ]
+
+    @cached_property
+    def _fsoe_application_parameters_registers(self) -> list[EthercatRegister]:
+        return [
+            EthercatRegister(
+                identifier="FSOE_SAFE_INPUTS_MAP",
+                idx=0x46D2,
+                subidx=0x00,
+                dtype=RegDtype.U16,
+                access=RegAccess.RW,
+                subnode=4,
+            ),
+            EthercatRegister(
+                identifier="FSOE_SS1_TIME_TO_STO_1",
+                idx=0x6651,
+                subidx=0x01,
+                dtype=RegDtype.U16,
+                access=RegAccess.RW,
+                subnode=4,
             ),
         ]
 

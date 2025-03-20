@@ -1459,6 +1459,13 @@ class DictionaryV2(Dictionary):
 
     @property
     @abstractmethod
+    def _fsoe_application_parameters_registers(
+        self,
+    ) -> list[EthercatRegister]:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
     def _safety_modules(self) -> list[DictionarySafetyModule]:
         raise NotImplementedError
 
@@ -1573,8 +1580,8 @@ class DictionaryV2(Dictionary):
             logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
         xdf_file.close()
-        self._append_missing_registers()
         self._append_missing_safety_modules()
+        self._append_missing_registers()
 
     def _read_xdf_register(self, register: ElementTree.Element) -> Optional[Register]:
         """Reads a register from the dictionary and creates a Register instance.
@@ -1686,6 +1693,21 @@ class DictionaryV2(Dictionary):
             return
         self._registers[subnode][identifier] = register
 
+    def _append_missing_safety_modules(self) -> None:
+        """Append  missing safety modules to the dictionary.
+
+        It will also create the safety subnode and initialize safe registers.
+        """
+        if not self.is_safe and self.part_number not in ["DEN-S-NET-E", "EVS-S-NET-E"]:
+            return
+        self.is_safe = True
+        safety_subnode = 4
+        self.subnodes[safety_subnode] = SubnodeType.SAFETY
+        if safety_subnode not in self._registers:
+            self._registers[safety_subnode] = {}
+        for safety_submodule in self._safety_modules:
+            self.safety_modules[safety_submodule.module_ident] = safety_submodule
+
     def _append_missing_registers(
         self,
     ) -> None:
@@ -1699,10 +1721,10 @@ class DictionaryV2(Dictionary):
                 if register.identifier is not None:
                     self._registers[register.subnode][register.identifier] = register
 
-    def _append_missing_safety_modules(self) -> None:
-        """Append  missing safety modules to the dictionary."""
         if not self.is_safe:
             return
 
-        for safety_submodule in self._safety_modules:
-            self.safety_modules[safety_submodule.module_ident] = safety_submodule
+        # Append safety registers
+        for register in self._fsoe_application_parameters_registers:
+            if register.identifier is not None:
+                self._registers[register.subnode][register.identifier] = register
