@@ -79,8 +79,10 @@ class EthercatDictionaryV2(DictionaryV2):
 
     @cached_property
     def _safety_modules(self) -> list[DictionarySafetyModule]:
-        def __module_ident(x):
-            return (self.product_code & 0x7F00000) + x
+        def __module_ident(module_idx: int) -> int:
+            if self.product_code is None:
+                raise ValueError("Module ident cannot be calculated, product code missing.")
+            return (self.product_code & 0x7F00000) + module_idx
 
         return [
             DictionarySafetyModule(
