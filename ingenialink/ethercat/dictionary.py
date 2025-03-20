@@ -10,7 +10,12 @@ from ingenialink.constants import (
     MAP_ADDRESS_OFFSET,
 )
 from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
-from ingenialink.enums.register import RegAccess, RegAddressType, RegCyclicType, RegDtype
+from ingenialink.enums.register import (
+    RegAccess,
+    RegAddressType,
+    RegCyclicType,
+    RegDtype,
+)
 from ingenialink.ethercat.register import EthercatRegister
 
 logger = ingenialogger.get_logger(__name__)
@@ -74,10 +79,13 @@ class EthercatDictionaryV2(DictionaryV2):
 
     @cached_property
     def _safety_modules(self) -> list[DictionarySafetyModule]:
+        def __module_ident(x):
+            return (self.product_code & 0x7F00000) + x
+
         return [
             DictionarySafetyModule(
                 uses_sra=False,
-                module_ident=int("0x3800000", 16),
+                module_ident=__module_ident(0),
                 application_parameters=[
                     DictionarySafetyModule.ApplicationParameter(uid="FSOE_SAFE_INPUTS_MAP"),
                     DictionarySafetyModule.ApplicationParameter(uid="FSOE_SS1_TIME_TO_STO_1"),
@@ -85,7 +93,7 @@ class EthercatDictionaryV2(DictionaryV2):
             ),
             DictionarySafetyModule(
                 uses_sra=True,
-                module_ident=int("0x3800001", 16),
+                module_ident=__module_ident(1),
                 application_parameters=[
                     DictionarySafetyModule.ApplicationParameter(uid="FSOE_SAFE_INPUTS_MAP"),
                     DictionarySafetyModule.ApplicationParameter(uid="FSOE_SS1_TIME_TO_STO_1"),
