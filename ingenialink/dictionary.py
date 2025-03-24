@@ -1708,10 +1708,6 @@ class DictionaryV2(Dictionary):
         if not self.is_safe and self.part_number not in ["DEN-S-NET-E", "EVS-S-NET-E"]:
             return
         self.is_safe = True
-        safety_subnode = 4
-        self.subnodes[safety_subnode] = SubnodeType.SAFETY
-        if safety_subnode not in self._registers:
-            self._registers[safety_subnode] = {}
         for safety_submodule in self._safety_modules:
             self.safety_modules[safety_submodule.module_ident] = safety_submodule
 
