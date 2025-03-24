@@ -13,7 +13,12 @@ from typing_extensions import override
 
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import RegAccess, RegAddressType, RegCyclicType, RegDtype
+from ingenialink.enums.register import (
+    RegAccess,
+    RegAddressType,
+    RegCyclicType,
+    RegDtype,
+)
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILDictionaryParseError
@@ -34,6 +39,7 @@ ACCESS_XDF_OPTIONS: dict[str, RegAccess] = {
     "r": RegAccess.RO,
     "w": RegAccess.WO,
     "rw": RegAccess.RW,
+    "n": RegAccess.N,
 }
 
 
@@ -49,6 +55,7 @@ DTYPE_XDF_OPTIONS: dict[str, RegDtype] = {
     "u64": RegDtype.U64,
     "str": RegDtype.STR,
     "bool": RegDtype.BOOL,
+    "bit": RegDtype.BOOL,
     "byteArray512": RegDtype.BYTE_ARRAY_512,
 }
 

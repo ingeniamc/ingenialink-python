@@ -41,6 +41,8 @@ class RegAccess(Enum):
     """Read-only."""
     WO = 2
     """Write-only."""
+    N = 3
+    """No access."""
 
 
 class RegPhy(Enum):
@@ -77,7 +79,7 @@ class RegCyclicType(Enum):
 
     RX = "CYCLIC_RX"
     TX = "CYCLIC_TX"
-    TXRX = "CYCLIC_TXRX"
+    TXRX = "CYCLIC_RXTX"
     CONFIG = "CONFIG"
 
 
