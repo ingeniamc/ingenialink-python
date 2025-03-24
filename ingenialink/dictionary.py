@@ -39,7 +39,6 @@ ACCESS_XDF_OPTIONS: dict[str, RegAccess] = {
     "r": RegAccess.RO,
     "w": RegAccess.WO,
     "rw": RegAccess.RW,
-    "n": RegAccess.N,
 }
 
 

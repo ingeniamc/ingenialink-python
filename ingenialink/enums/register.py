@@ -41,8 +41,6 @@ class RegAccess(Enum):
     """Read-only."""
     WO = 2
     """Write-only."""
-    N = 3
-    """No access."""
 
 
 class RegPhy(Enum):
