@@ -1466,7 +1466,7 @@ class DictionaryV2(Dictionary):
 
     @property
     @abstractmethod
-    def _fsoe_application_parameters_registers(
+    def _safety_registers(
         self,
     ) -> list[EthercatRegister]:
         raise NotImplementedError
@@ -1728,6 +1728,6 @@ class DictionaryV2(Dictionary):
             return
 
         # Append safety registers
-        for register in self._fsoe_application_parameters_registers:
+        for register in self._safety_registers:
             if register.identifier is not None:
                 self._registers[register.subnode][register.identifier] = register

@@ -46,10 +46,8 @@ class CanopenDictionaryV2(DictionaryV2):
         ]
 
     @cached_property
-    def _fsoe_application_parameters_registers(self) -> list[EthercatRegister]:
-        raise NotImplementedError(
-            "FSoE application parameter registers are not implemented for this device."
-        )
+    def _safety_registers(self) -> list[EthercatRegister]:
+        raise NotImplementedError("Safety registers are not implemented for this device.")
 
     @cached_property
     def _safety_modules(self) -> list[DictionarySafetyModule]:

@@ -57,8 +57,24 @@ class EthercatDictionaryV2(DictionaryV2):
         ]
 
     @cached_property
-    def _fsoe_application_parameters_registers(self) -> list[EthercatRegister]:
+    def _safety_registers(self) -> list[EthercatRegister]:
         return [
+            EthercatRegister(
+                identifier="FSOE_TOTAL_ERROR",
+                idx=0x4193,
+                subidx=0x00,
+                dtype=RegDtype.U16,
+                access=RegAccess.RW,
+                subnode=0,
+            ),
+            EthercatRegister(
+                identifier="MDP_CONFIGURED_MODULE_1",
+                idx=0xF030,
+                subidx=0x01,
+                dtype=RegDtype.U32,
+                access=RegAccess.RW,
+                subnode=0,
+            ),
             EthercatRegister(
                 identifier="FSOE_SAFE_INPUTS_MAP",
                 idx=0x46D2,
