@@ -107,7 +107,7 @@ class EthercatDictionaryV2(DictionaryV2):
     def __pdo_registers(self) -> list[EthercatRegister]:
         return [
             EthercatRegister(
-                identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_0",
+                identifier="ETG_COMMS_RPDO_ASSIGN_TOTAL",
                 units="",
                 subnode=0,
                 idx=0x1C12,
@@ -117,7 +117,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_1",
+                identifier="ETG_COMMS_RPDO_ASSIGN_1",
                 units="",
                 subnode=0,
                 idx=0x1C12,
@@ -127,7 +127,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="RPDO_MAP_REGISTER_SUB_IDX_0",
+                identifier="ETG_COMMS_RPDO_MAP1_TOTAL",
                 units="",
                 subnode=0,
                 idx=0x1600,
@@ -137,7 +137,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="RPDO_MAP_REGISTER_SUB_IDX_1",
+                identifier="ETG_COMMS_RPDO_MAP1_1",
                 units="",
                 subnode=0,
                 idx=0x1600,
@@ -147,7 +147,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_0",
+                identifier="ETG_COMMS_TPDO_ASSIGN_TOTAL",
                 units="",
                 subnode=0,
                 idx=0x1C13,
@@ -157,7 +157,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_1",
+                identifier="ETG_COMMS_TPDO_ASSIGN_1",
                 units="",
                 subnode=0,
                 idx=0x1C13,
@@ -167,7 +167,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="TPDO_MAP_REGISTER_SUB_IDX_0",
+                identifier="ETG_COMMS_TPDO_MAP1_TOTAL",
                 units="",
                 subnode=0,
                 idx=0x1A00,
@@ -177,7 +177,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="TPDO_MAP_REGISTER_SUB_IDX_1",
+                identifier="ETG_COMMS_TPDO_MAP1_1",
                 units="",
                 subnode=0,
                 idx=0x1A00,
