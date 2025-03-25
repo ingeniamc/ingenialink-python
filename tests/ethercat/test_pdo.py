@@ -74,7 +74,7 @@ def test_rpdo_item_wrong_cyclic(open_dictionary):
         RPDOMapItem(register)
     assert (
         str(exc_info.value)
-        == "Incorrect cyclic. It should be RegCyclicType.RX or RegCyclicType.TXRX, obtained:"
+        == "Incorrect cyclic. It should be RegCyclicType.RX or RegCyclicType.RXTX, obtained:"
         " RegCyclicType.TX"
     )
 
@@ -87,7 +87,7 @@ def test_tpdo_item_wrong_cyclic(open_dictionary):
         TPDOMapItem(register)
     assert (
         str(exc_info.value)
-        == "Incorrect cyclic. It should be RegCyclicType.TX or RegCyclicType.TXRX, obtained:"
+        == "Incorrect cyclic. It should be RegCyclicType.TX or RegCyclicType.RXTX, obtained:"
         " RegCyclicType.RX"
     )
 
@@ -204,39 +204,35 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
     servo.reset_tpdo_mapping()
     servo.reset_rpdo_mapping()
 
-    assert servo.read(EthercatServo.TPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 0
-    assert servo.read(EthercatServo.RPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 0
+    assert servo.read(EthercatServo.ETG_COMMS_TPDO_ASSIGN_TOTAL, subnode=0) == 0
+    assert servo.read(EthercatServo.ETG_COMMS_RPDO_ASSIGN_TOTAL, subnode=0) == 0
 
     servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     servo.map_pdos(1)
 
-    assert servo.read(EthercatServo.TPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 1
+    assert servo.read(EthercatServo.ETG_COMMS_TPDO_ASSIGN_TOTAL, subnode=0) == 1
     assert len(servo._tpdo_maps) == 1
     assert (
         tpdo_map.map_register_index
-        == servo.dictionary.registers(0)[servo.TPDO_MAP_REGISTER_SUB_IDX_0[0]].idx
+        == servo.dictionary.registers(0)[servo.ETG_COMMS_TPDO_MAP1_TOTAL[0]].idx
     )
     assert tpdo_map.map_register_index_bytes == tpdo_map.map_register_index.to_bytes(2, "little")
-    assert servo.read(EthercatServo.TPDO_MAP_REGISTER_SUB_IDX_0[0], subnode=0) == len(
-        TPDO_REGISTERS
-    )
+    assert servo.read(EthercatServo.ETG_COMMS_TPDO_MAP1_TOTAL[0], subnode=0) == len(TPDO_REGISTERS)
     value = servo._read_raw(
-        servo.dictionary.registers(0)[servo.TPDO_ASSIGN_REGISTER_SUB_IDX_0], complete_access=True
+        servo.dictionary.registers(0)[servo.ETG_COMMS_TPDO_ASSIGN_TOTAL], complete_access=True
     )
     assert int.to_bytes(0x1A00, 2, "little") == value[2:4]
 
-    assert servo.read(EthercatServo.RPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 1
+    assert servo.read(EthercatServo.ETG_COMMS_RPDO_ASSIGN_TOTAL, subnode=0) == 1
     assert len(servo._rpdo_maps) == 1
     assert (
         rpdo_map.map_register_index
-        == servo.dictionary.registers(0)[servo.RPDO_MAP_REGISTER_SUB_IDX_0[0]].idx
+        == servo.dictionary.registers(0)[servo.ETG_COMMS_RPDO_MAP1_TOTAL[0]].idx
     )
     assert rpdo_map.map_register_index_bytes == rpdo_map.map_register_index.to_bytes(2, "little")
-    assert servo.read(EthercatServo.RPDO_MAP_REGISTER_SUB_IDX_0[0], subnode=0) == len(
-        RPDO_REGISTERS
-    )
+    assert servo.read(EthercatServo.ETG_COMMS_RPDO_MAP1_TOTAL[0], subnode=0) == len(RPDO_REGISTERS)
     value = servo._read_raw(
-        servo.dictionary.registers(0)[servo.RPDO_ASSIGN_REGISTER_SUB_IDX_0], complete_access=True
+        servo.dictionary.registers(0)[servo.ETG_COMMS_RPDO_ASSIGN_TOTAL], complete_access=True
     )
     assert int.to_bytes(0x1600, 2, "little") == value[2:4]
 
@@ -292,16 +288,16 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
     servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     servo.map_pdos(1)
 
-    assert servo.read(servo.TPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 1
-    assert servo.read(servo.RPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 1
+    assert servo.read(servo.ETG_COMMS_TPDO_ASSIGN_TOTAL, subnode=0) == 1
+    assert servo.read(servo.ETG_COMMS_RPDO_ASSIGN_TOTAL, subnode=0) == 1
     assert len(servo._rpdo_maps) == 1
     assert len(servo._tpdo_maps) == 1
 
     servo.reset_tpdo_mapping()
     servo.reset_rpdo_mapping()
 
-    assert servo.read(servo.TPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 0
-    assert servo.read(servo.RPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 0
+    assert servo.read(servo.ETG_COMMS_TPDO_ASSIGN_TOTAL, subnode=0) == 0
+    assert servo.read(servo.ETG_COMMS_RPDO_ASSIGN_TOTAL, subnode=0) == 0
     assert len(servo._rpdo_maps) == 0
     assert len(servo._tpdo_maps) == 0
 
@@ -416,15 +412,15 @@ def test_set_pdo_map_to_slave(connect_to_slave, create_pdo_map):
 
     servo.map_pdos(1)
     # Check the current PDO mapping
-    assert servo.read(servo.TPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 1
-    assert servo.read(servo.RPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 1
+    assert servo.read(servo.ETG_COMMS_TPDO_ASSIGN_TOTAL, subnode=0) == 1
+    assert servo.read(servo.ETG_COMMS_RPDO_ASSIGN_TOTAL, subnode=0) == 1
 
     new_rdpo_map = RPDOMap()
     new_tpdo_map = TPDOMap()
     servo.set_pdo_map_to_slave([new_rdpo_map], [new_tpdo_map])
     # Check that the previous mapping was not deleted
-    assert servo.read(servo.TPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 1
-    assert servo.read(servo.RPDO_ASSIGN_REGISTER_SUB_IDX_0, subnode=0) == 1
+    assert servo.read(servo.ETG_COMMS_TPDO_ASSIGN_TOTAL, subnode=0) == 1
+    assert servo.read(servo.ETG_COMMS_RPDO_ASSIGN_TOTAL, subnode=0) == 1
     # Check that the new PDOMaps were added
     assert len(servo._rpdo_maps) == 2
     assert servo._rpdo_maps[1] == new_rdpo_map

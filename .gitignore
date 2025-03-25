@@ -32,6 +32,7 @@ venv
 # Test files
 pytest_reports/
 .coverage
+coverage.xml
 
 # Documentation
 _docs

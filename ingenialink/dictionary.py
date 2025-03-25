@@ -13,7 +13,12 @@ from typing_extensions import override
 
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import RegAccess, RegAddressType, RegCyclicType, RegDtype
+from ingenialink.enums.register import (
+    RegAccess,
+    RegAddressType,
+    RegCyclicType,
+    RegDtype,
+)
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILDictionaryParseError
@@ -49,6 +54,7 @@ DTYPE_XDF_OPTIONS: dict[str, RegDtype] = {
     "u64": RegDtype.U64,
     "str": RegDtype.STR,
     "bool": RegDtype.BOOL,
+    "bit": RegDtype.BOOL,
     "byteArray512": RegDtype.BYTE_ARRAY_512,
 }
 
@@ -122,6 +128,21 @@ class DictionarySafetyPDO:
 
     index: int
     entries: list[PDORegister]
+
+
+@dataclass
+class DictionarySafetyModule:
+    """Safety module (MDP) dictionary descriptor."""
+
+    @dataclass
+    class ApplicationParameter:
+        """FSoE application parameter descriptor."""
+
+        uid: str
+
+    uses_sra: bool
+    module_ident: int
+    application_parameters: list[ApplicationParameter]
 
 
 class DictionaryCategories:
@@ -306,11 +327,14 @@ class Dictionary(XMLBase, ABC):
     """Safety RPDOs by UID"""
     safety_tpdos: dict[str, DictionarySafetyPDO]
     """Safety TPDOs by UID"""
+    safety_modules: dict[int, DictionarySafetyModule]
+    """Safety modules (MDP)."""
 
     def __init__(self, dictionary_path: str, interface: Interface) -> None:
         self.items = {}
         self.safety_rpdos = {}
         self.safety_tpdos = {}
+        self.safety_modules = {}
         self._registers = {}
         self.subnodes = {}
         self.path = dictionary_path
@@ -482,6 +506,27 @@ class Dictionary(XMLBase, ABC):
         if uid in self.safety_tpdos:
             return self.safety_tpdos[uid]
         raise KeyError(f"Safe TPDO {uid} not exist")
+
+    def get_safety_module(self, module_ident: Union[int, str]) -> DictionarySafetyModule:
+        """Get safety module by module_ident.
+
+        Args:
+            module_ident: safety module module ident (int/hex).
+
+        Returns:
+            Safety module object description.
+
+        Raises:
+            NotImplementedError: Device is not safe.
+            KeyError: Safety module does not exist.
+        """
+        if not self.is_safe:
+            raise NotImplementedError("Safety modules are not implemented for this device")
+        if isinstance(module_ident, str):
+            module_ident = int(module_ident, 16)
+        if module_ident in self.safety_modules:
+            return self.safety_modules[module_ident]
+        raise KeyError(f"Safety Module {module_ident} not exist")
 
     def _merge_registers(self, other_dict: "Dictionary") -> None:
         """Add the registers from another dictionary to the dictionary instance.
@@ -668,6 +713,14 @@ class DictionaryV3(Dictionary):
     __PDO_ENTRY_ELEMENT = "PDOEntry"
     __PDO_ENTRY_SIZE_ATTR = "size"
     __PDO_ENTRY_SUBNODE_ATTR = "subnode"
+
+    __SAFETY_MODULES_ELEMENT = "SafetyModules"
+    __SAFETY_MODULE_ELEMENT = "SafetyModule"
+    __SAFETY_MODULE_USES_SRA_ATTR = "uses_sra"
+    __SAFETY_MODULE_MODULE_IDENT_ATTR = "module_ident"
+    __APPLICATION_PARAMETERS_ELEMENT = "ApplicationParameters"
+    __APPLICATION_PARAMETER_ELEMENT = "ApplicationParameter"
+    __APPLICATION_PARAMETER_UID_ATTR = "id"
 
     @staticmethod
     def _interface_to_device_element(interface: Interface) -> str:
@@ -895,6 +948,9 @@ class DictionaryV3(Dictionary):
         safety_pdos_element = root.find(self.__SAFETY_PDOS_ELEMENT)
         if safety_pdos_element is not None:
             self.__read_safety_pdos(safety_pdos_element)
+        safety_modules_element = root.find(self.__SAFETY_MODULES_ELEMENT)
+        if safety_modules_element is not None:
+            self.__read_safety_modules(safety_modules_element)
 
     def __read_device_can(self, root: ElementTree.Element) -> None:
         """Process CANDevice element.
@@ -1225,6 +1281,54 @@ class DictionaryV3(Dictionary):
                 pdo_registers.append(DictionarySafetyPDO.PDORegister(None, size))
         return uid, DictionarySafetyPDO(pdo_index, pdo_registers)
 
+    def __read_safety_modules(self, root: ElementTree.Element) -> None:
+        """Process SafetyModules element.
+
+        Args:
+            root: SafetyModules element.
+        """
+        self.is_safe = True
+        safety_modules_list = self._findall_and_check(root, self.__SAFETY_MODULE_ELEMENT)
+        for safety_module_element in safety_modules_list:
+            module_ident, safety_module = self.__read_safety_module(
+                safety_module=safety_module_element
+            )
+            self.safety_modules[module_ident] = safety_module
+
+    def __read_safety_module(
+        self, safety_module: ElementTree.Element
+    ) -> tuple[int, DictionarySafetyModule]:
+        """Process SafetyModule element.
+
+        Args:
+            safety_module: SafetyModule element.
+
+        Returns:
+            Safety module ident and class descriptor.
+        """
+        uses_sra = safety_module.attrib[self.__SAFETY_MODULE_USES_SRA_ATTR] in [
+            "True",
+            "true",
+        ]
+        module_ident = int(safety_module.attrib[self.__SAFETY_MODULE_MODULE_IDENT_ATTR], 16)
+        application_parameters_element = self._find_and_check(
+            safety_module, self.__APPLICATION_PARAMETERS_ELEMENT
+        )
+        application_parameters_list = self._findall_and_check(
+            application_parameters_element, self.__APPLICATION_PARAMETER_ELEMENT
+        )
+        application_parameters = [
+            DictionarySafetyModule.ApplicationParameter(
+                uid=param.attrib[self.__APPLICATION_PARAMETER_UID_ATTR]
+            )
+            for param in application_parameters_list
+        ]
+        return module_ident, DictionarySafetyModule(
+            uses_sra=uses_sra,
+            module_ident=module_ident,
+            application_parameters=application_parameters,
+        )
+
 
 class DictionaryV2(Dictionary):
     """Class to represent a Dictionary V2."""
@@ -1359,6 +1463,18 @@ class DictionaryV2(Dictionary):
     ) -> Union[list[EthercatRegister], list[EthernetRegister], list[CanopenRegister]]:
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def _safety_registers(
+        self,
+    ) -> list[EthercatRegister]:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def _safety_modules(self) -> list[DictionarySafetyModule]:
+        raise NotImplementedError
+
     @override
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
@@ -1470,6 +1586,7 @@ class DictionaryV2(Dictionary):
             logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
         xdf_file.close()
+        self._append_missing_safety_modules()
         self._append_missing_registers()
 
     def _read_xdf_register(self, register: ElementTree.Element) -> Optional[Register]:
@@ -1582,6 +1699,17 @@ class DictionaryV2(Dictionary):
             return
         self._registers[subnode][identifier] = register
 
+    def _append_missing_safety_modules(self) -> None:
+        """Append  missing safety modules to the dictionary.
+
+        It will also create the safety subnode and initialize safe registers.
+        """
+        if not self.is_safe and self.part_number not in ["DEN-S-NET-E", "EVS-S-NET-E"]:
+            return
+        self.is_safe = True
+        for safety_submodule in self._safety_modules:
+            self.safety_modules[safety_submodule.module_ident] = safety_submodule
+
     def _append_missing_registers(
         self,
     ) -> None:
@@ -1594,3 +1722,11 @@ class DictionaryV2(Dictionary):
             for register in self._monitoring_disturbance_registers:
                 if register.identifier is not None:
                     self._registers[register.subnode][register.identifier] = register
+
+        if not self.is_safe:
+            return
+
+        # Append safety registers
+        for register in self._safety_registers:
+            if register.identifier is not None:
+                self._registers[register.subnode][register.identifier] = register
