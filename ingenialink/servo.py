@@ -225,9 +225,17 @@ class Servo:
     CONTROL_WORD_QUICK_STOP = "QUICK_STOP"
     CONTROL_WORD_ENABLE_OPERATION = "ENABLE_OPERATION"
     CONTROL_WORD_FAULT_RESET = "FAULT_RESET"
-    SERIAL_NUMBER_REGISTERS = ("DRV_ID_SERIAL_NUMBER_COCO", "DRV_ID_SERIAL_NUMBER")
-    SOFTWARE_VERSION_REGISTERS = ("DRV_APP_COCO_VERSION", "DRV_ID_SOFTWARE_VERSION")
-    PRODUCT_ID_REGISTERS = ("DRV_ID_PRODUCT_CODE_COCO", "DRV_ID_PRODUCT_CODE")
+    SERIAL_NUMBER_REGISTERS = (
+        "DRV_ID_SERIAL_NUMBER_COCO",
+        "DRV_ID_SERIAL_NUMBER",
+        "FSOE_SERIAL_NUMBER",
+    )
+    SOFTWARE_VERSION_REGISTERS = (
+        "DRV_APP_COCO_VERSION",
+        "DRV_ID_SOFTWARE_VERSION",
+        "FSOE_SOFTWARE_VERSION",
+    )
+    PRODUCT_ID_REGISTERS = ("DRV_ID_PRODUCT_CODE_COCO", "DRV_ID_PRODUCT_CODE", "FSOE_PRODUCT_CODE")
     REVISION_NUMBER_REGISTERS = ("DRV_ID_REVISION_NUMBER_COCO", "DRV_ID_REVISION_NUMBER")
     MONITORING_DIST_ENABLE = "MON_DIST_ENABLE"
     MONITORING_REMOVE_DATA = "MON_REMOVE_DATA"
@@ -1076,14 +1084,19 @@ class Servo:
         for callback in self.__observers_servo_state:
             callback(state, subnode)
 
-    def __read_coco_moco_register(self, register_coco: str, register_moco: str) -> str:
+    def __read_coco_moco_saco_register(
+        self, register_coco: str, register_moco: str, register_saco: Optional[str]
+    ) -> str:
         """Read a register from COCO or MOCO.
 
-        if it does not exist, reads the MOCO register.
+        If it does not exist, reads the MOCO register.
+        If it does not exist, reads the SACO register.
 
         Args:
             register_coco: COCO Register ID to be read.
             register_moco: MOCO Register ID to be read.
+            register_saco: SACO Register ID to be read.
+                None if there is no equivalent SACO register.
 
         Raises:
             ILError: if there is an error reading the register.
@@ -1098,7 +1111,13 @@ class Servo:
         try:
             return str(self.read(register_moco, subnode=1))
         except ILError:
-            raise ILError(f"Error reading register {register_moco} from MOCO.")
+            if register_saco is None:
+                raise ILError(f"Error reading register {register_moco} from MOCO.")
+            logger.warning(f"Error reading register {register_moco} from MOCO. Trying SACO")
+        try:
+            return str(self.read(register_saco, subnode=4))
+        except ILError:
+            raise ILError(f"Error reading register {register_saco} from SACO.")
 
     def __monitoring_map_register(self) -> str:
         """Get the first available Monitoring Mapped Register slot.
@@ -1561,26 +1580,32 @@ class Servo:
     def info(self) -> dict[str, Union[None, str, int]]:
         """Servo information."""
         try:
-            serial_number = self.__read_coco_moco_register(
-                self.SERIAL_NUMBER_REGISTERS[0], self.SERIAL_NUMBER_REGISTERS[1]
+            serial_number = self.__read_coco_moco_saco_register(
+                self.SERIAL_NUMBER_REGISTERS[0],
+                self.SERIAL_NUMBER_REGISTERS[1],
+                self.SERIAL_NUMBER_REGISTERS[2],
             )
         except ILError:
             serial_number = None
         try:
-            sw_version = self.__read_coco_moco_register(
-                self.SOFTWARE_VERSION_REGISTERS[0], self.SOFTWARE_VERSION_REGISTERS[1]
+            sw_version = self.__read_coco_moco_saco_register(
+                self.SOFTWARE_VERSION_REGISTERS[0],
+                self.SOFTWARE_VERSION_REGISTERS[1],
+                self.SOFTWARE_VERSION_REGISTERS[2],
             )
         except ILError:
             sw_version = None
         try:
-            product_code = self.__read_coco_moco_register(
-                self.PRODUCT_ID_REGISTERS[0], self.PRODUCT_ID_REGISTERS[1]
+            product_code = self.__read_coco_moco_saco_register(
+                self.PRODUCT_ID_REGISTERS[0],
+                self.PRODUCT_ID_REGISTERS[1],
+                self.PRODUCT_ID_REGISTERS[2],
             )
         except ILError:
             product_code = None
         try:
-            revision_number = self.__read_coco_moco_register(
-                self.REVISION_NUMBER_REGISTERS[0], self.REVISION_NUMBER_REGISTERS[1]
+            revision_number = self.__read_coco_moco_saco_register(
+                self.REVISION_NUMBER_REGISTERS[0], self.REVISION_NUMBER_REGISTERS[1], None
             )
         except ILError:
             revision_number = None
