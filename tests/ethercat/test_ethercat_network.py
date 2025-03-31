@@ -4,7 +4,7 @@ with contextlib.suppress(ImportError):
     import pysoem
 import pytest
 
-from ingenialink.ethercat.network import EthercatNetwork
+from ingenialink.ethercat.network import EthercatNetwork, GilReleaseConfig
 from ingenialink.exceptions import ILError
 
 
@@ -137,3 +137,29 @@ def test_check_node_state(connect_to_slave):
     assert net._check_node_state(servo, pysoem.PREOP_STATE)
     # False when list is not empty
     assert not net._check_node_state([], pysoem.PREOP_STATE)
+
+
+@pytest.mark.no_connection
+def test_gil_configuration_raises_error_if_multiple_configs():
+    with pytest.raises(ValueError):
+        _ = EthercatNetwork(
+            interface_name="dummy_ifname",
+            gil_release_config=GilReleaseConfig(always_release=True, config_init=False),
+        )
+
+
+@pytest.mark.ethercat
+def test_master_reference_is_kept_when_gil_is_released(read_config, mocker):
+    net = EthercatNetwork(
+        read_config["ethercat"]["ifname"],
+        gil_release_config=GilReleaseConfig(config_init=True),
+    )
+    assert net._EthercatNetwork__gil_release_config.config_init is True
+
+    gil_spy = mocker.spy(EthercatNetwork, "_EthercatNetwork__keep_master_reference")
+    _ = net.scan_slaves()
+
+    assert gil_spy.call_count == 2
+    _, kwargs = gil_spy.call_args
+    assert kwargs["release_gil"] is True
+    assert gil_spy.spy_return is True
