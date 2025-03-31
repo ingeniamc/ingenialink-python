@@ -16,6 +16,7 @@ except ImportError as ex:
 if TYPE_CHECKING:
     from pysoem import CdefSlave
 
+from ingenialink.constants import ECAT_STATE_CHANGE_TIMEOUT_US
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import (
     ILError,
@@ -98,7 +99,6 @@ class EthercatNetwork(Network):
     MANUAL_STATE_CHANGE = 1
 
     DEFAULT_ECAT_CONNECTION_TIMEOUT_S = 1
-    ECAT_STATE_CHANGE_TIMEOUT_US = 50_000
     ECAT_PROCESSDATA_TIMEOUT_S = 0.1
 
     EXPECTED_WKC_PROCESS_DATA = 3
@@ -114,6 +114,8 @@ class EthercatNetwork(Network):
     __FORCE_BOOT_SLEEP_TIME_S = 5
 
     __DEFAULT_FOE_FILE_NAME = "firmware_file"
+
+    __MAX_FOE_TRIES = 2
 
     def __init__(
         self,
@@ -450,11 +452,14 @@ class EthercatNetwork(Network):
         Returns:
             True if all nodes reached the target state, else False.
         """
+        if not nodes:
+            return False
+
         node_list = nodes if isinstance(nodes, list) else [nodes]
         self._ecat_master.read_state()
 
         return all(
-            target_state == drive.slave.state_check(target_state, self.ECAT_STATE_CHANGE_TIMEOUT_US)
+            target_state == drive.slave.state_check(target_state, ECAT_STATE_CHANGE_TIMEOUT_US)
             for drive in node_list
         )
 
@@ -544,16 +549,19 @@ class EthercatNetwork(Network):
             raise ILError(f"Slave {slave_id} was not found.")
 
         slave = self._ecat_master.slaves[slave_id - 1]
-        if not boot_in_app:
-            self._force_boot_mode(slave)
-        self._switch_to_boot_state(slave)
+        for iteration in range(self.__MAX_FOE_TRIES):
+            if not boot_in_app:
+                self._force_boot_mode(slave)
+            self._switch_to_boot_state(slave)
 
-        foe_result = self._write_foe(slave, fw_file, password)
-
-        if foe_result < 0:
+            foe_write_result = self._write_foe(slave, fw_file, password)
+            if foe_write_result > 0:
+                break
+            self.__init_nodes()
+        else:
             error_message = (
                 "The firmware file could not be loaded correctly."
-                f" {EthercatNetwork.__get_foe_error_message(error_code=foe_result)}"
+                f" {EthercatNetwork.__get_foe_error_message(error_code=foe_write_result)}"
             )
             raise ILFirmwareLoadError(error_message)
         start_time = time.time()
@@ -563,7 +571,7 @@ class EthercatNetwork(Network):
             slave.state = pysoem.PREOP_STATE
             slave.write_state()
             recovered = (
-                slave.state_check(pysoem.PREOP_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_US)
+                slave.state_check(pysoem.PREOP_STATE, ECAT_STATE_CHANGE_TIMEOUT_US)
                 == pysoem.PREOP_STATE
             )
             time.sleep(self.__FOE_RECOVERY_SLEEP_S)
@@ -580,10 +588,7 @@ class EthercatNetwork(Network):
         """
         slave.state = pysoem.BOOT_STATE
         slave.write_state()
-        if (
-            slave.state_check(pysoem.BOOT_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_US)
-            != pysoem.BOOT_STATE
-        ):
+        if slave.state_check(pysoem.BOOT_STATE, ECAT_STATE_CHANGE_TIMEOUT_US) != pysoem.BOOT_STATE:
             raise ILFirmwareLoadError("The drive cannot reach the boot state.")
 
     def _force_boot_mode(self, slave: "CdefSlave") -> None:
@@ -595,7 +600,7 @@ class EthercatNetwork(Network):
         slave.state = pysoem.PREOP_STATE
         slave.write_state()
         if (
-            slave.state_check(pysoem.PREOP_STATE, self.ECAT_STATE_CHANGE_TIMEOUT_US)
+            slave.state_check(pysoem.PREOP_STATE, ECAT_STATE_CHANGE_TIMEOUT_US)
             == pysoem.PREOP_STATE
         ):
             try:
@@ -694,6 +699,11 @@ class EthercatNetwork(Network):
         if self._ecat_master.state == pysoem.PREOP_STATE:
             return True
         self.__init_nodes()
+        if not self.servos:
+            log_message = (
+                "The CoE communication cannot be recovered. No slaves where detected in the network"
+            )
+            return False
         all_drives_in_preop = self._check_node_state(self.servos, pysoem.PREOP_STATE)
         if all_drives_in_preop:
             log_message = "CoE communication recovered."

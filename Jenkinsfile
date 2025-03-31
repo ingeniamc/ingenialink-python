@@ -22,6 +22,13 @@ def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 coverage_stashes = []
 
+// Run this before PYTEST tox command that requires develop ingenialink installation and that 
+// may run in parallel/after with EtherCAT/CANopen tests, because these tests alter its value
+def restoreIngenialinkWheelEnvVar() {
+    env.INGENIALINK_WHEEL_PATH = null
+    env.TOX_SKIP_INSTALL = false
+}
+
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
         def stashName = python_version == PYTHON_VERSION_MIN ? "build" : "build_${python_version}"
@@ -53,18 +60,17 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
             bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
                     "--protocol ${protocol} " +
                     "--slave ${slave} " +
-                    "--cov=ingenialink " +
                     "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${protocol}-${slave}\""
 
         } catch (err) {
             unstable(message: "Tests failed")
         } finally {
+            junit "pytest_reports\\*.xml"
+            // Delete the junit after publishing it so it not re-published on the next stage
+            bat "del /S /Q pytest_reports\\*.xml"
             if (firstIteration) {
                 def coverage_stash = ".coverage_${protocol}_${slave}"
                 bat "move .coverage ${coverage_stash}"
-                junit "pytest_reports\\*.xml"
-                // Delete the junit after publishing it so it not re-published on the next stage
-                bat "del /S /Q pytest_reports\\*.xml"
                 stash includes: coverage_stash, name: coverage_stash
                 coverage_stashes.add(coverage_stash)
                 firstIteration = false
@@ -108,6 +114,29 @@ pipeline {
                         }
                     }
                     stages {
+                        stage ('Git Commit to Build description') {
+                            steps {
+                                // Build description should follow the format VAR1=value1;VAR2=value2...
+                                script {
+                                    def currentCommit = bat(script: "git rev-parse HEAD", returnStdout: true).trim()
+                                    def currentCommitHash = (currentCommit =~ /\b[0-9a-f]{40}\b/)[0]
+                                    echo "Current Commit Hash: ${currentCommitHash}"
+                                    def currentCommitBranch = bat(script: "git branch --contains ${currentCommitHash}", returnStdout: true).trim().split("\n").find { it.contains('*') }.replace('* ', '').trim()
+                                    echo "currentCommitBranch: ${currentCommitBranch}"
+                                    
+                                    if (currentCommitBranch.contains('detached')) {
+                                        def shortCommitHash = (currentCommitBranch =~ /\b[0-9a-f]{7,40}\b/)[0]
+                                        def detachedCommit = bat(script: "git rev-parse ${shortCommitHash}", returnStdout: true).trim()
+                                        def detachedCommitHash = (detachedCommit =~ /\b[0-9a-f]{40}\b/)[0]
+                                        echo "Detached Commit Hash: ${detachedCommitHash}"
+                                        currentBuild.description = "ORIGINAL_GIT_COMMIT_HASH=${detachedCommitHash}"
+                                    } else {
+                                        echo "No detached HEAD state found. Using current commit hash ${currentCommitHash}."
+                                        currentBuild.description = "ORIGINAL_GIT_COMMIT_HASH=${currentCommitHash}"
+                                    }
+                                }
+                            }
+                        }
                         stage('Move workspace') {
                             steps {
                                 bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y"
@@ -203,9 +232,11 @@ pipeline {
                     stages {
                         stage('Run no-connection tests on docker') {
                             steps {
+                                script {
+                                    restoreIngenialinkWheelEnvVar()
+                                }
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker " +
-                                        "--cov=ingenialink"
+                                        "-m docker "
                             }
                             post {
                                 always {
@@ -232,6 +263,9 @@ pipeline {
                     stages {
                         stage('Run no-connection tests on docker') {
                             steps {
+                                script {
+                                    restoreIngenialinkWheelEnvVar()
+                                }
                                 sh """
                                     python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS}
                                 """
@@ -260,6 +294,11 @@ pipeline {
                         stage('EtherCAT Capitan') {
                             steps {
                                 runTest("ethercat", 1, true)
+                            }
+                        }
+                        stage('EtherCAT Multislave') {
+                            steps {
+                                runTest("multislave", 0, true)
                             }
                         }
                         stage('Run no-connection tests') {

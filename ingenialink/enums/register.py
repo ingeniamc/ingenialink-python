@@ -77,7 +77,7 @@ class RegCyclicType(Enum):
 
     RX = "CYCLIC_RX"
     TX = "CYCLIC_TX"
-    TXRX = "CYCLIC_TXRX"
+    RXTX = "CYCLIC_RXTX"
     CONFIG = "CONFIG"
 
 

@@ -13,7 +13,12 @@ from typing_extensions import override
 
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.enums.register import RegAccess, RegAddressType, RegCyclicType, RegDtype
+from ingenialink.enums.register import (
+    RegAccess,
+    RegAddressType,
+    RegCyclicType,
+    RegDtype,
+)
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILDictionaryParseError
@@ -49,6 +54,7 @@ DTYPE_XDF_OPTIONS: dict[str, RegDtype] = {
     "u64": RegDtype.U64,
     "str": RegDtype.STR,
     "bool": RegDtype.BOOL,
+    "bit": RegDtype.BOOL,
     "byteArray512": RegDtype.BYTE_ARRAY_512,
 }
 
@@ -101,7 +107,11 @@ class CanOpenObject:
     registers: list[CanopenRegister]
 
     def __iter__(self) -> Iterator[CanopenRegister]:
-        """Iterator operator."""
+        """Iterator operator.
+
+        Returns:
+            Iterator operator.
+        """
         return self.registers.__iter__()
 
 
@@ -118,6 +128,21 @@ class DictionarySafetyPDO:
 
     index: int
     entries: list[PDORegister]
+
+
+@dataclass
+class DictionarySafetyModule:
+    """Safety module (MDP) dictionary descriptor."""
+
+    @dataclass
+    class ApplicationParameter:
+        """FSoE application parameter descriptor."""
+
+        uid: str
+
+    uses_sra: bool
+    module_ident: int
+    application_parameters: list[ApplicationParameter]
 
 
 class DictionaryCategories:
@@ -186,7 +211,11 @@ class DictionaryError:
     """The error description."""
 
     def __iter__(self) -> Iterator[Union[str, None]]:
-        """Iterator method."""
+        """Iterator method.
+
+        Returns:
+            iterator method.
+        """
         id_hex_string = f"0x{self.id:08X}"
         return iter((id_hex_string, self.affected_module, self.error_type, self.description))
 
@@ -205,7 +234,53 @@ class DictionaryDescriptor:
     """Revision number declared in the dictionary."""
 
 
-class Dictionary(ABC):
+class XMLBase(ABC):
+    """Base class to manipulate XML files."""
+
+    _CHECK_FAIL_EXCEPTION = Exception
+
+    @classmethod
+    def _findall_and_check(cls, root: ElementTree.Element, path: str) -> list[ElementTree.Element]:
+        """Return list of elements in the target root element if existed, else, raises an exception.
+
+        Args:
+          root: root element
+          path: target elements path
+
+        Returns:
+          list of path elements
+
+        Raises:
+          path elements not found
+
+        """
+        element = root.findall(path)
+        if not element:
+            raise cls._CHECK_FAIL_EXCEPTION(f"{path} element is not found")
+        return element
+
+    @classmethod
+    def _find_and_check(cls, root: ElementTree.Element, path: str) -> ElementTree.Element:
+        """Return the path element in the target root element if exists, else, raises an exception.
+
+        Args:
+            root: root element
+            path: target element path
+
+        Returns:
+            path element
+
+        Raises:
+            path element not found
+
+        """
+        element = root.find(path)
+        if element is None:
+            raise cls._CHECK_FAIL_EXCEPTION(f"{path} element is not found")
+        return element
+
+
+class Dictionary(XMLBase, ABC):
     """Ingenia dictionary Abstract Base Class.
 
     Args:
@@ -216,6 +291,8 @@ class Dictionary(ABC):
         ILDictionaryParseError: If the dictionary could not be created.
 
     """
+
+    _CHECK_FAIL_EXCEPTION = ILDictionaryParseError
 
     version: str
     """Version of the dictionary."""
@@ -250,11 +327,14 @@ class Dictionary(ABC):
     """Safety RPDOs by UID"""
     safety_tpdos: dict[str, DictionarySafetyPDO]
     """Safety TPDOs by UID"""
+    safety_modules: dict[int, DictionarySafetyModule]
+    """Safety modules (MDP)."""
 
     def __init__(self, dictionary_path: str, interface: Interface) -> None:
         self.items = {}
         self.safety_rpdos = {}
         self.safety_tpdos = {}
+        self.safety_modules = {}
         self._registers = {}
         self.subnodes = {}
         self.path = dictionary_path
@@ -426,6 +506,27 @@ class Dictionary(ABC):
         if uid in self.safety_tpdos:
             return self.safety_tpdos[uid]
         raise KeyError(f"Safe TPDO {uid} not exist")
+
+    def get_safety_module(self, module_ident: Union[int, str]) -> DictionarySafetyModule:
+        """Get safety module by module_ident.
+
+        Args:
+            module_ident: safety module module ident (int/hex).
+
+        Returns:
+            Safety module object description.
+
+        Raises:
+            NotImplementedError: Device is not safe.
+            KeyError: Safety module does not exist.
+        """
+        if not self.is_safe:
+            raise NotImplementedError("Safety modules are not implemented for this device")
+        if isinstance(module_ident, str):
+            module_ident = int(module_ident, 16)
+        if module_ident in self.safety_modules:
+            return self.safety_modules[module_ident]
+        raise KeyError(f"Safety Module {module_ident} not exist")
 
     def _merge_registers(self, other_dict: "Dictionary") -> None:
         """Add the registers from another dictionary to the dictionary instance.
@@ -613,6 +714,14 @@ class DictionaryV3(Dictionary):
     __PDO_ENTRY_SIZE_ATTR = "size"
     __PDO_ENTRY_SUBNODE_ATTR = "subnode"
 
+    __SAFETY_MODULES_ELEMENT = "SafetyModules"
+    __SAFETY_MODULE_ELEMENT = "SafetyModule"
+    __SAFETY_MODULE_USES_SRA_ATTR = "uses_sra"
+    __SAFETY_MODULE_MODULE_IDENT_ATTR = "module_ident"
+    __APPLICATION_PARAMETERS_ELEMENT = "ApplicationParameters"
+    __APPLICATION_PARAMETER_ELEMENT = "ApplicationParameter"
+    __APPLICATION_PARAMETER_UID_ATTR = "id"
+
     @staticmethod
     def _interface_to_device_element(interface: Interface) -> str:
         """Returns the device element associated with each interface.
@@ -681,26 +790,6 @@ class DictionaryV3(Dictionary):
         revision_number = int(device.attrib[cls.DEVICE_REVISION_NUMBER_ATTR])
         return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
 
-    @staticmethod
-    def __find_and_check(root: ElementTree.Element, path: str) -> ElementTree.Element:
-        """Return the path element in the target root element if exists, else, raises an exception.
-
-        Args:
-            root: root element
-            path: target element path
-
-        Returns:
-            path element
-
-        Raises:
-            ILDictionaryParseError: path element not found
-
-        """
-        element = root.find(path)
-        if element is None:
-            raise ILDictionaryParseError(f"{path} element is not found")
-        return element
-
     @override
     def read_dictionary(self) -> None:
         try:
@@ -709,11 +798,11 @@ class DictionaryV3(Dictionary):
         except FileNotFoundError as e:
             raise FileNotFoundError(f"There is not any xdf file in the path: {self.path}") from e
         root = tree.getroot()
-        drive_image_element = self.__find_and_check(root, self.__DRIVE_IMAGE_ELEMENT)
+        drive_image_element = self._find_and_check(root, self.__DRIVE_IMAGE_ELEMENT)
         self.__read_drive_image(drive_image_element)
-        header_element = self.__find_and_check(root, self.__HEADER_ELEMENT)
+        header_element = self._find_and_check(root, self.__HEADER_ELEMENT)
         self.__read_header(header_element)
-        body_element = self.__find_and_check(root, self.__BODY_ELEMENT)
+        body_element = self._find_and_check(root, self.__BODY_ELEMENT)
         self.__read_body(body_element)
 
     def __read_drive_image(self, drive_image: ElementTree.Element) -> None:
@@ -735,7 +824,7 @@ class DictionaryV3(Dictionary):
             root: Header element
 
         """
-        version_element = self.__find_and_check(root, self.__VERSION_ELEMENT)
+        version_element = self._find_and_check(root, self.__VERSION_ELEMENT)
         self.__read_version(version_element)
         # Dictionary localization not implemented
 
@@ -760,9 +849,9 @@ class DictionaryV3(Dictionary):
             root: Body element
 
         """
-        categories_element = self.__find_and_check(root, self.__CATEGORIES_ELEMENT)
+        categories_element = self._find_and_check(root, self.__CATEGORIES_ELEMENT)
         self.__read_categories(categories_element)
-        devices_element = self.__find_and_check(root, self.__DEVICES_ELEMENT)
+        devices_element = self._find_and_check(root, self.__DEVICES_ELEMENT)
         self.__read_devices(devices_element)
 
     def __read_categories(self, root: ElementTree.Element) -> None:
@@ -828,15 +917,15 @@ class DictionaryV3(Dictionary):
             root: ETHDevice element
 
         """
-        subnodes_element = self.__find_and_check(root, self.__SUBNODES_ELEMENT)
+        subnodes_element = self._find_and_check(root, self.__SUBNODES_ELEMENT)
         self.__read_subnodes(subnodes_element)
-        registers_element = self.__find_and_check(root, self.__MCB_REGISTERS_ELEMENT)
+        registers_element = self._find_and_check(root, self.__MCB_REGISTERS_ELEMENT)
         register_element_list = self._findall_and_check(
             registers_element, self.__MCB_REGISTER_ELEMENT
         )
         for register_element in register_element_list:
             self.__read_mcb_register(register_element)
-        errors_element = self.__find_and_check(root, self.__ERRORS_ELEMENT)
+        errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
 
     def __read_device_ecat(self, root: ElementTree.Element) -> None:
@@ -846,19 +935,22 @@ class DictionaryV3(Dictionary):
             root: ECATDevice element
 
         """
-        subnodes_element = self.__find_and_check(root, self.__SUBNODES_ELEMENT)
+        subnodes_element = self._find_and_check(root, self.__SUBNODES_ELEMENT)
         self.__read_subnodes(subnodes_element)
-        registers_element = self.__find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
+        registers_element = self._find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
             registers_element, self.__CANOPEN_OBJECT_ELEMENT
         )
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
-        errors_element = self.__find_and_check(root, self.__ERRORS_ELEMENT)
+        errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
         safety_pdos_element = root.find(self.__SAFETY_PDOS_ELEMENT)
         if safety_pdos_element is not None:
             self.__read_safety_pdos(safety_pdos_element)
+        safety_modules_element = root.find(self.__SAFETY_MODULES_ELEMENT)
+        if safety_modules_element is not None:
+            self.__read_safety_modules(safety_modules_element)
 
     def __read_device_can(self, root: ElementTree.Element) -> None:
         """Process CANDevice element.
@@ -867,15 +959,15 @@ class DictionaryV3(Dictionary):
             root: CANDevice element
 
         """
-        subnodes_element = self.__find_and_check(root, self.__SUBNODES_ELEMENT)
+        subnodes_element = self._find_and_check(root, self.__SUBNODES_ELEMENT)
         self.__read_subnodes(subnodes_element)
-        registers_element = self.__find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
+        registers_element = self._find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
             registers_element, self.__CANOPEN_OBJECT_ELEMENT
         )
         for register_element in register_element_list:
             self.__read_canopen_object(register_element)
-        errors_element = self.__find_and_check(root, self.__ERRORS_ELEMENT)
+        errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
 
     def __read_subnodes(self, root: ElementTree.Element) -> None:
@@ -1014,7 +1106,7 @@ class DictionaryV3(Dictionary):
         cat_id = register.attrib[self.__CAT_ID_ATTR]
         units = register.attrib.get(self.__UNITS_ATTR)
         # Labels
-        labels_element = self.__find_and_check(register, self.__LABELS_ELEMENT)
+        labels_element = self._find_and_check(register, self.__LABELS_ELEMENT)
         labels = self.__read_labels(labels_element)
         # Range
         range_elem = register.find(self.__RANGE_ELEMENT)
@@ -1060,7 +1152,7 @@ class DictionaryV3(Dictionary):
         data_type = DictionaryV3._get_canopen_object_data_type_options(
             root.attrib[self.__OBJECT_DATA_TYPE_ATTR]
         )
-        subitems_element = self.__find_and_check(root, self.__SUBITEMS_ELEMENT)
+        subitems_element = self._find_and_check(root, self.__SUBITEMS_ELEMENT)
         subitem_list = self._findall_and_check(subitems_element, self.__SUBITEM_ELEMENT)
         register_list = [
             self.__read_canopen_subitem(subitem, reg_index, subnode) for subitem in subitem_list
@@ -1102,7 +1194,7 @@ class DictionaryV3(Dictionary):
             == self.__IS_NODE_ID_DEPENDENT_TRUE_ATTR_VALUE
         )
         # Labels
-        labels_element = self.__find_and_check(subitem, self.__LABELS_ELEMENT)
+        labels_element = self._find_and_check(subitem, self.__LABELS_ELEMENT)
         labels = self.__read_labels(labels_element)
         # Range
         range_elem = subitem.find(self.__RANGE_ELEMENT)
@@ -1188,6 +1280,54 @@ class DictionaryV3(Dictionary):
             else:
                 pdo_registers.append(DictionarySafetyPDO.PDORegister(None, size))
         return uid, DictionarySafetyPDO(pdo_index, pdo_registers)
+
+    def __read_safety_modules(self, root: ElementTree.Element) -> None:
+        """Process SafetyModules element.
+
+        Args:
+            root: SafetyModules element.
+        """
+        self.is_safe = True
+        safety_modules_list = self._findall_and_check(root, self.__SAFETY_MODULE_ELEMENT)
+        for safety_module_element in safety_modules_list:
+            module_ident, safety_module = self.__read_safety_module(
+                safety_module=safety_module_element
+            )
+            self.safety_modules[module_ident] = safety_module
+
+    def __read_safety_module(
+        self, safety_module: ElementTree.Element
+    ) -> tuple[int, DictionarySafetyModule]:
+        """Process SafetyModule element.
+
+        Args:
+            safety_module: SafetyModule element.
+
+        Returns:
+            Safety module ident and class descriptor.
+        """
+        uses_sra = safety_module.attrib[self.__SAFETY_MODULE_USES_SRA_ATTR] in [
+            "True",
+            "true",
+        ]
+        module_ident = int(safety_module.attrib[self.__SAFETY_MODULE_MODULE_IDENT_ATTR], 16)
+        application_parameters_element = self._find_and_check(
+            safety_module, self.__APPLICATION_PARAMETERS_ELEMENT
+        )
+        application_parameters_list = self._findall_and_check(
+            application_parameters_element, self.__APPLICATION_PARAMETER_ELEMENT
+        )
+        application_parameters = [
+            DictionarySafetyModule.ApplicationParameter(
+                uid=param.attrib[self.__APPLICATION_PARAMETER_UID_ATTR]
+            )
+            for param in application_parameters_list
+        ]
+        return module_ident, DictionarySafetyModule(
+            uses_sra=uses_sra,
+            module_ident=module_ident,
+            application_parameters=application_parameters,
+        )
 
 
 class DictionaryV2(Dictionary):
@@ -1323,6 +1463,18 @@ class DictionaryV2(Dictionary):
     ) -> Union[list[EthercatRegister], list[EthernetRegister], list[CanopenRegister]]:
         raise NotImplementedError
 
+    @property
+    @abstractmethod
+    def _safety_registers(
+        self,
+    ) -> list[EthercatRegister]:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def _safety_modules(self) -> list[DictionarySafetyModule]:
+        raise NotImplementedError
+
     @override
     @classmethod
     def get_description(cls, dictionary_path: str, interface: Interface) -> DictionaryDescriptor:
@@ -1434,6 +1586,7 @@ class DictionaryV2(Dictionary):
             logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
         xdf_file.close()
+        self._append_missing_safety_modules()
         self._append_missing_registers()
 
     def _read_xdf_register(self, register: ElementTree.Element) -> Optional[Register]:
@@ -1546,6 +1699,17 @@ class DictionaryV2(Dictionary):
             return
         self._registers[subnode][identifier] = register
 
+    def _append_missing_safety_modules(self) -> None:
+        """Append  missing safety modules to the dictionary.
+
+        It will also create the safety subnode and initialize safe registers.
+        """
+        if not self.is_safe and self.part_number not in ["DEN-S-NET-E", "EVS-S-NET-E"]:
+            return
+        self.is_safe = True
+        for safety_submodule in self._safety_modules:
+            self.safety_modules[safety_submodule.module_ident] = safety_submodule
+
     def _append_missing_registers(
         self,
     ) -> None:
@@ -1558,3 +1722,11 @@ class DictionaryV2(Dictionary):
             for register in self._monitoring_disturbance_registers:
                 if register.identifier is not None:
                     self._registers[register.subnode][register.identifier] = register
+
+        if not self.is_safe:
+            return
+
+        # Append safety registers
+        for register in self._safety_registers:
+            if register.identifier is not None:
+                self._registers[register.subnode][register.identifier] = register

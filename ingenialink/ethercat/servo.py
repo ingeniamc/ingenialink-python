@@ -1,7 +1,7 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 import ingenialogger
 from typing_extensions import override
@@ -18,7 +18,12 @@ except ImportError as ex:
 if TYPE_CHECKING:
     from pysoem import CdefSlave
 
-from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
+from ingenialink.constants import (
+    CAN_MAX_WRITE_SIZE,
+    CANOPEN_ADDRESS_OFFSET,
+    ECAT_STATE_CHANGE_TIMEOUT_US,
+    MAP_ADDRESS_OFFSET,
+)
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILEcatStateError, ILIOError
@@ -131,7 +136,10 @@ class EthercatServo(PDOServo):
         """
         if self.slave is None or not pysoem:
             return
-        if self.slave.state_check(pysoem.PREOP_STATE) != pysoem.PREOP_STATE:
+        if (
+            self.slave.state_check(pysoem.PREOP_STATE, ECAT_STATE_CHANGE_TIMEOUT_US)
+            != pysoem.PREOP_STATE
+        ):
             raise ILEcatStateError(
                 f"Servo is in {self.slave.state} state, PDOMap can not be modified."
             )
@@ -268,19 +276,42 @@ class EthercatServo(PDOServo):
             reason = str(exception)
         raise ILIOError(f"{default_error_msg}. {reason}") from exception
 
-    def _monitoring_read_data(self, **kwargs: Any) -> bytes:
+    def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame.
 
-        Returns:
-            monitoring data.
-        """
-        return super()._monitoring_read_data(
-            buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True
-        )
+        Raises:
+            NotImplementedError: If monitoring is not supported by the device.
+            ValueError: If unexpected data type was returned from read.
 
-    def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
-        """Write disturbance data."""
-        super()._disturbance_write_data(data, complete_access=True)
+        Returns:
+            Monitoring data.
+        """
+        if not super()._is_monitoring_implemented():
+            raise NotImplementedError("Monitoring is not supported by this device.")
+        if not isinstance(
+            data := self.read(
+                self.MONITORING_DATA,
+                subnode=0,
+                buffer_size=self.MONITORING_DATA_BUFFER_SIZE,
+                complete_access=True,
+            ),
+            bytes,
+        ):
+            raise ValueError(
+                f"Error reading monitoring data. Expected type bytes, got {type(data)}"
+            )
+        return data
+
+    def _disturbance_write_data(self, data: bytes) -> None:
+        """Write disturbance data.
+
+        Args:
+            data: Data to be written.
+
+        """
+        if not super()._is_disturbance_implemented():
+            raise NotImplementedError("Disturbance is not supported by this device.")
+        return self.write(self.DIST_DATA, subnode=0, data=data, complete_access=True)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:

@@ -9,8 +9,13 @@ from ingenialink.constants import (
     CANOPEN_SUBNODE_0_ADDRESS_OFFSET,
     MAP_ADDRESS_OFFSET,
 )
-from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.enums.register import RegAccess, RegAddressType, RegCyclicType, RegDtype
+from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
+from ingenialink.enums.register import (
+    RegAccess,
+    RegAddressType,
+    RegCyclicType,
+    RegDtype,
+)
 from ingenialink.ethercat.register import EthercatRegister
 
 logger = ingenialogger.get_logger(__name__)
@@ -52,10 +57,73 @@ class EthercatDictionaryV2(DictionaryV2):
         ]
 
     @cached_property
+    def _safety_registers(self) -> list[EthercatRegister]:
+        return [
+            EthercatRegister(
+                identifier="FSOE_TOTAL_ERROR",
+                idx=0x4193,
+                subidx=0x00,
+                dtype=RegDtype.U16,
+                access=RegAccess.RW,
+                subnode=0,
+            ),
+            EthercatRegister(
+                identifier="MDP_CONFIGURED_MODULE_1",
+                idx=0xF030,
+                subidx=0x01,
+                dtype=RegDtype.U32,
+                access=RegAccess.RW,
+                subnode=0,
+            ),
+            EthercatRegister(
+                identifier="FSOE_SAFE_INPUTS_MAP",
+                idx=0x46D2,
+                subidx=0x00,
+                dtype=RegDtype.U16,
+                access=RegAccess.RW,
+                subnode=0,
+            ),
+            EthercatRegister(
+                identifier="FSOE_SS1_TIME_TO_STO_1",
+                idx=0x6651,
+                subidx=0x01,
+                dtype=RegDtype.U16,
+                access=RegAccess.RW,
+                subnode=0,
+            ),
+        ]
+
+    @cached_property
+    def _safety_modules(self) -> list[DictionarySafetyModule]:
+        def __module_ident(module_idx: int) -> int:
+            if self.product_code is None:
+                raise ValueError("Module ident cannot be calculated, product code missing.")
+            return (self.product_code & 0x7F00000) + module_idx
+
+        return [
+            DictionarySafetyModule(
+                uses_sra=False,
+                module_ident=__module_ident(0),
+                application_parameters=[
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SAFE_INPUTS_MAP"),
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SS1_TIME_TO_STO_1"),
+                ],
+            ),
+            DictionarySafetyModule(
+                uses_sra=True,
+                module_ident=__module_ident(1),
+                application_parameters=[
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SAFE_INPUTS_MAP"),
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SS1_TIME_TO_STO_1"),
+                ],
+            ),
+        ]
+
+    @cached_property
     def __pdo_registers(self) -> list[EthercatRegister]:
         return [
             EthercatRegister(
-                identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_0",
+                identifier="ETG_COMMS_RPDO_ASSIGN_TOTAL",
                 units="",
                 subnode=0,
                 idx=0x1C12,
@@ -65,7 +133,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="RPDO_ASSIGN_REGISTER_SUB_IDX_1",
+                identifier="ETG_COMMS_RPDO_ASSIGN_1",
                 units="",
                 subnode=0,
                 idx=0x1C12,
@@ -75,7 +143,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="RPDO_MAP_REGISTER_SUB_IDX_0",
+                identifier="ETG_COMMS_RPDO_MAP1_TOTAL",
                 units="",
                 subnode=0,
                 idx=0x1600,
@@ -85,7 +153,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="RPDO_MAP_REGISTER_SUB_IDX_1",
+                identifier="ETG_COMMS_RPDO_MAP1_1",
                 units="",
                 subnode=0,
                 idx=0x1600,
@@ -95,7 +163,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_0",
+                identifier="ETG_COMMS_TPDO_ASSIGN_TOTAL",
                 units="",
                 subnode=0,
                 idx=0x1C13,
@@ -105,7 +173,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="TPDO_ASSIGN_REGISTER_SUB_IDX_1",
+                identifier="ETG_COMMS_TPDO_ASSIGN_1",
                 units="",
                 subnode=0,
                 idx=0x1C13,
@@ -115,7 +183,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="TPDO_MAP_REGISTER_SUB_IDX_0",
+                identifier="ETG_COMMS_TPDO_MAP1_TOTAL",
                 units="",
                 subnode=0,
                 idx=0x1A00,
@@ -125,7 +193,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 address_type=RegAddressType.NVM_NONE,
             ),
             EthercatRegister(
-                identifier="TPDO_MAP_REGISTER_SUB_IDX_1",
+                identifier="ETG_COMMS_TPDO_MAP1_1",
                 units="",
                 subnode=0,
                 idx=0x1A00,

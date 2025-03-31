@@ -32,10 +32,11 @@ venv
 # Test files
 pytest_reports/
 .coverage
+coverage.xml
 
 # Documentation
 _docs
 
 # Cython compilation
-ingenialink/cython_files/*.c
+ingenialink/cython_files/*.cpp
 temp/*
