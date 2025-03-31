@@ -148,7 +148,7 @@ def test_gil_configuration_raises_error_if_multiple_configs():
         )
 
 
-@pytest.mark.no_connection
+@pytest.mark.ethercat
 @pytest.mark.parametrize(
     "gil_config, release_gil, keep_reference",
     [
