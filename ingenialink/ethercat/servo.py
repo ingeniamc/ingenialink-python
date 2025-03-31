@@ -148,10 +148,11 @@ class EthercatServo(PDOServo):
             release_gil: True to release the GIL, False otherwise.
                 If not specified, default pysoem GIL configuration will be used.
         """
-        if not self.__keep_slave_reference(release_gil=release_gil):
+        if not self.__keep_slave_reference(release_gil=release_gil) or not len(
+            self.__slave_reference
+        ):
             return
-        if len(self.__slave_reference):
-            self.__slave_reference.pop(-1)
+        self.__slave_reference.pop(-1)
 
     def teardown(self) -> None:
         """Perform the necessary actions for teardown."""
@@ -239,7 +240,7 @@ class EthercatServo(PDOServo):
         release_gil: Optional[bool] = None,
     ) -> bytes:
         if release_gil is None:
-            release_gil = self.__release_gil
+            release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
         try:
             self.__store_slave_reference(release_gil=release_gil)
@@ -268,7 +269,7 @@ class EthercatServo(PDOServo):
         release_gil: Optional[bool] = None,
     ) -> None:
         if release_gil is None:
-            release_gil = self.__release_gil
+            release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
         try:
             self.__store_slave_reference(release_gil=release_gil)
