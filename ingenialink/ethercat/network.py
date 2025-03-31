@@ -222,10 +222,11 @@ class EthercatNetwork(Network):
             release_gil: True to release the GIL, False otherwise.
                 If not specified, default pysoem GIL configuration will be used.
         """
-        if not self.__keep_master_reference(release_gil=release_gil):
+        if not self.__keep_master_reference(release_gil=release_gil) or not len(
+            self.__ecat_master_reference
+        ):
             return
-        if len(self.__ecat_master_reference):
-            self.__ecat_master_reference.pop(-1)
+        self.__ecat_master_reference.pop(-1)
 
     def update_sdo_timeout(self, sdo_read_timeout: int, sdo_write_timeout: int) -> None:
         """Update SDO timeouts for all the drives.
