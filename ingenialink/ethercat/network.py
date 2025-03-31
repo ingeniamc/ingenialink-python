@@ -16,6 +16,8 @@ except ImportError as ex:
 if TYPE_CHECKING:
     from pysoem import CdefSlave
 
+from dataclasses import dataclass
+
 from ingenialink.constants import ECAT_STATE_CHANGE_TIMEOUT_US
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import (
@@ -27,6 +29,43 @@ from ingenialink.exceptions import (
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
+
+
+@dataclass
+class GilReleaseConfig:
+    """Configuration of pysoem functions that have GIL release control."""
+
+    always_release: Optional[bool] = None
+    config_init: Optional[bool] = None
+    sdo_read_write: Optional[bool] = None
+    foe_read_write: Optional[bool] = None
+    send_receive_processdata: Optional[bool] = None
+
+    def __post_init__(self) -> None:
+        """Checks if `always_release` and other configurations have been set simultaneously.
+
+        Raises:
+            ValueError: if multiple configurations are specified.
+        """
+        if self.always_release is None:
+            return
+
+        if (
+            self.config_init is not None
+            or self.sdo_read_write is not None
+            or self.foe_read_write is not None
+            or self.send_receive_processdata is not None
+        ):
+            raise ValueError(
+                "`always_release` and individual functions can not be configured simultaneously"
+            )
+
+        # If `always_release` configuration is specified, all other
+        # settings should have the same value
+        self.config_init = self.always_release
+        self.sdo_read_write = self.always_release
+        self.foe_read_write = self.always_release
+        self.send_receive_processdata = self.always_release
 
 
 class SlaveState(Enum):
@@ -90,6 +129,7 @@ class EthercatNetwork(Network):
         interface_name: Interface name to be targeted.
         connection_timeout: Time in seconds of the connection timeout.
         overlapping_io_map: Map PDOs to overlapping IO map.
+        gil_release_config: configures which functions should release the GIL.
 
     Raises:
         ImportError: WinPcap is not installed
@@ -122,7 +162,7 @@ class EthercatNetwork(Network):
         interface_name: str,
         connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT_S,
         overlapping_io_map: bool = True,
-        always_release_gil: Optional[bool] = None,
+        gil_release_config: GilReleaseConfig = GilReleaseConfig(),
     ):
         if not pysoem:
             raise pysoem_import_error
@@ -132,8 +172,9 @@ class EthercatNetwork(Network):
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: dict[int, list[Any]] = defaultdict(list)
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
-        if always_release_gil is not None:
-            self._ecat_master.always_release_gil = always_release_gil
+        self.__gil_release_config = gil_release_config
+        if self.__gil_release_config.always_release is not None:
+            self._ecat_master.always_release_gil = self.__gil_release_config.always_release
         timeout_us = int(1_000_000 * connection_timeout)
         self.update_sdo_timeout(timeout_us, timeout_us)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
@@ -142,6 +183,25 @@ class EthercatNetwork(Network):
         self.__last_init_nodes: list[int] = []
         self.__ecat_master_reference: list[pysoem.CdefMaster] = []
 
+    def __keep_master_reference(self, release_gil: Optional[bool]) -> bool:
+        """Checks if the master reference should be kept depending on the provided configuration.
+
+        If `release_gil` is not provided, it means that it is using the default
+        `always_release_gil` master configuration.
+        So, depending on that, the GIL should be released or not.
+
+        Args:
+            release_gil: True to release the GIL, False otherwise.
+
+        Returns:
+            True to keep the master reference, False otherwise.
+        """
+        if release_gil is None:
+            return self.__gil_release_config.always_release is True
+        elif not release_gil:
+            return False
+        return True
+
     def __store_master_reference(self, release_gil: Optional[bool]) -> None:
         """Stores a reference to the EtherCAT master before calling a nogil function.
 
@@ -149,7 +209,7 @@ class EthercatNetwork(Network):
             release_gil: True to release the GIL, False otherwise.
                 If not specified, default pysoem GIL configuration will be used.
         """
-        if release_gil is None or not release_gil:
+        if not self.__keep_master_reference(release_gil=release_gil):
             return
         self.__ecat_master_reference.append(self._ecat_master)
 
@@ -162,7 +222,7 @@ class EthercatNetwork(Network):
             release_gil: True to release the GIL, False otherwise.
                 If not specified, default pysoem GIL configuration will be used.
         """
-        if release_gil is None or not release_gil:
+        if not self.__keep_master_reference(release_gil=release_gil):
             return
         if len(self.__ecat_master_reference):
             self.__ecat_master_reference.pop(-1)
@@ -267,9 +327,12 @@ class EthercatNetwork(Network):
         Also fill `__last_init_nodes` attribute.
 
         Args:
-            release_gil: True to release the GIL, False otherwise.
-                If not specified, default pysoem GIL configuration will be used.
+            release_gil: used to overwrite the GIL release configuration.
+                True to release the GIL, False otherwise.
+                If not specified, default GIL release configuration will be used.
         """
+        if release_gil is None:
+            release_gil = self.__gil_release_config.config_init
         self.__store_master_reference(release_gil=release_gil)
         nodes = self._ecat_master.config_init(release_gil=release_gil)
         self.__remove_master_reference(release_gil=release_gil)
@@ -313,7 +376,13 @@ class EthercatNetwork(Network):
         if slave_id not in self.__last_init_nodes:
             raise ILError(f"Slave {slave_id} was not found.")
         slave = self._ecat_master.slaves[slave_id - 1]
-        servo = EthercatServo(slave, slave_id, dictionary, servo_status_listener)
+        servo = EthercatServo(
+            slave,
+            slave_id,
+            dictionary,
+            servo_status_listener,
+            sdo_read_write_release_gil=self.__gil_release_config.sdo_read_write,
+        )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             if servo_status_listener:
                 servo.stop_status_listener()
@@ -407,13 +476,16 @@ class EthercatNetwork(Network):
 
         Args:
             timeout: receive processdata timeout in seconds, 0.1 seconds by default.
-            release_gil: True to release the GIL, False otherwise.
-                If not specified, default pysoem GIL configuration will be used.
+            release_gil: used to overwrite the GIL release configuration.
+                True to release the GIL, False otherwise.
+                If not specified, default GIL release configuration will be used.
 
         Raises:
             ILWrongWorkingCountError: If processdata working count is wrong
 
         """
+        if release_gil is None:
+            release_gil = self.__gil_release_config.send_receive_processdata
         for servo in self.servos:
             servo.generate_pdo_outputs()
         if self._overlapping_io_map:
@@ -656,13 +728,16 @@ class EthercatNetwork(Network):
             slave: The pysoem slave object.
             file_path: The firmware file path.
             password: The firmware password.
-            release_gil: True to release the GIL, False otherwise.
-                If not specified, default pysoem GIL configuration will be used.
+            release_gil: used to overwrite the GIL release configuration.
+                True to release the GIL, False otherwise.
+                If not specified, default GIL release configuration will be used.
 
         Returns:
             The FOE operation result.
 
         """
+        if release_gil is None:
+            release_gil = self.__gil_release_config.foe_read_write
         with open(file_path, "rb") as file:
             file_data = file.read()
             self.__store_master_reference(release_gil=release_gil)

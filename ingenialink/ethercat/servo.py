@@ -66,6 +66,8 @@ class EthercatServo(PDOServo):
         connection_timeout: Time in seconds of the connection timeout.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
+        sdo_read_write_release_gil: True to release the GIL in SDO read/write operations,
+            False otherwise. If not specified, default pysoem configuration will be used.
 
     Raises:
         ImportError: WinPcap is not installed
@@ -95,6 +97,7 @@ class EthercatServo(PDOServo):
         slave_id: int,
         dictionary_path: str,
         servo_status_listener: bool = False,
+        sdo_read_write_release_gil: Optional[bool] = None,
     ):
         if not pysoem:
             raise pysoem_import_error
@@ -103,7 +106,27 @@ class EthercatServo(PDOServo):
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
         self.__slave_reference: list[CdefSlave] = []
+        self.__sdo_read_write_release_gil = sdo_read_write_release_gil
         super().__init__(slave_id, dictionary_path, servo_status_listener)
+
+    def __keep_slave_reference(self, release_gil: Optional[bool]) -> bool:
+        """Checks if the slave reference should be kept depending on the provided configuration.
+
+        If `release_gil` is not provided, it means that it is using the default
+        `self.__sdo_read_write_release_gil` configuration.
+        So, depending on that, the GIL should be released or not.
+
+        Args:
+            release_gil: True to release the GIL, False otherwise.
+
+        Returns:
+            True to keep the slave reference, False otherwise.
+        """
+        if release_gil is None:
+            return self.__sdo_read_write_release_gil is True
+        elif not release_gil:
+            return False
+        return True
 
     def __store_slave_reference(self, release_gil: Optional[bool]) -> None:
         """Stores a reference to the slave before calling a nogil function.
@@ -112,7 +135,7 @@ class EthercatServo(PDOServo):
             release_gil: True to release the GIL, False otherwise.
                 If not specified, default pysoem GIL configuration will be used.
         """
-        if release_gil is None or not release_gil:
+        if not self.__keep_slave_reference(release_gil=release_gil):
             return
         self.__slave_reference.append(self.__slave)
 
@@ -125,7 +148,7 @@ class EthercatServo(PDOServo):
             release_gil: True to release the GIL, False otherwise.
                 If not specified, default pysoem GIL configuration will be used.
         """
-        if release_gil is None or not release_gil:
+        if not self.__keep_slave_reference(release_gil=release_gil):
             return
         if len(self.__slave_reference):
             self.__slave_reference.pop(-1)
@@ -212,8 +235,11 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         buffer_size: int = 0,
         complete_access: bool = False,
+        *,
         release_gil: Optional[bool] = None,
     ) -> bytes:
+        if release_gil is None:
+            release_gil = self.__release_gil
         self._lock.acquire()
         try:
             self.__store_slave_reference(release_gil=release_gil)
@@ -238,8 +264,11 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         data: bytes,
         complete_access: bool = False,
+        *,
         release_gil: Optional[bool] = None,
     ) -> None:
+        if release_gil is None:
+            release_gil = self.__release_gil
         self._lock.acquire()
         try:
             self.__store_slave_reference(release_gil=release_gil)
