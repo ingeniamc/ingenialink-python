@@ -92,7 +92,7 @@ setuptools.setup(
         "python-can==4.4.2",
         "ingenialogger>=0.2.1",
         "ping3==4.0.3",
-        "pysoem @ git+https://github.com/julieta-prieto/pysoem@c258fe6#egg=pysoem",
+        "pysoem>=1.1.11, <1.2.0",
         "numpy>=1.26.0",
         "scipy==1.12.0",
         "bitarray==2.9.2",
