@@ -148,18 +148,36 @@ def test_gil_configuration_raises_error_if_multiple_configs():
         )
 
 
-@pytest.mark.ethercat
-def test_master_reference_is_kept_when_gil_is_released(read_config, mocker):
+@pytest.mark.no_connection
+@pytest.mark.parametrize(
+    "gil_config, release_gil, keep_reference",
+    [
+        ({"always_release": None, "config_init": None}, None, False),
+        ({"always_release": False, "config_init": None}, False, False),
+        ({"always_release": None, "config_init": False}, False, False),
+        ({"always_release": True, "config_init": None}, True, True),
+        ({"always_release": None, "config_init": True}, True, True),
+    ],
+)
+def test_master_reference_is_kept_when_gil_is_released(
+    gil_config, release_gil, keep_reference, read_config, mocker
+):
     net = EthercatNetwork(
         read_config["ethercat"]["ifname"],
-        gil_release_config=GilReleaseConfig(config_init=True),
+        gil_release_config=GilReleaseConfig(
+            always_release=gil_config["always_release"],
+            config_init=gil_config["config_init"],
+        ),
     )
-    assert net._EthercatNetwork__gil_release_config.config_init is True
+    if gil_config["always_release"] is not None:
+        assert net._EthercatNetwork__gil_release_config.config_init is gil_config["always_release"]
+    else:
+        assert net._EthercatNetwork__gil_release_config.config_init is gil_config["config_init"]
 
     gil_spy = mocker.spy(EthercatNetwork, "_EthercatNetwork__keep_master_reference")
     _ = net.scan_slaves()
 
     assert gil_spy.call_count == 2
     _, kwargs = gil_spy.call_args
-    assert kwargs["release_gil"] is True
-    assert gil_spy.spy_return is True
+    assert kwargs["release_gil"] is release_gil
+    assert gil_spy.spy_return is keep_reference
