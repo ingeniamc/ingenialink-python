@@ -122,6 +122,7 @@ class EthercatNetwork(Network):
         interface_name: str,
         connection_timeout: float = DEFAULT_ECAT_CONNECTION_TIMEOUT_S,
         overlapping_io_map: bool = True,
+        always_release_gil: Optional[bool] = None,
     ):
         if not pysoem:
             raise pysoem_import_error
@@ -131,6 +132,8 @@ class EthercatNetwork(Network):
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: dict[int, list[Any]] = defaultdict(list)
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
+        if always_release_gil is not None:
+            self._ecat_master.always_release_gil = always_release_gil
         timeout_us = int(1_000_000 * connection_timeout)
         self.update_sdo_timeout(timeout_us, timeout_us)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
@@ -139,15 +142,28 @@ class EthercatNetwork(Network):
         self.__last_init_nodes: list[int] = []
         self.__ecat_master_reference: list[pysoem.CdefMaster] = []
 
-    def __store_master_reference(self) -> None:
-        """Stores a reference to the EtherCAT master before calling a nogil function."""
+    def __store_master_reference(self, release_gil: Optional[bool]) -> None:
+        """Stores a reference to the EtherCAT master before calling a nogil function.
+
+        Args:
+            release_gil: True to release the GIL, False otherwise.
+                If not specified, default pysoem GIL configuration will be used.
+        """
+        if release_gil is None or not release_gil:
+            return
         self.__ecat_master_reference.append(self._ecat_master)
 
-    def __remove_master_reference(self) -> None:
+    def __remove_master_reference(self, release_gil: Optional[bool]) -> None:
         """Removes the EtherCAT master reference from the list.
 
         Should be called once the nogil function has finished.
+
+        Args:
+            release_gil: True to release the GIL, False otherwise.
+                If not specified, default pysoem GIL configuration will be used.
         """
+        if release_gil is None or not release_gil:
+            return
         if len(self.__ecat_master_reference):
             self.__ecat_master_reference.pop(-1)
 
@@ -245,14 +261,18 @@ class EthercatNetwork(Network):
             slave_info[slave_id] = SlaveInfo(slave.id, slave.rev)
         return slave_info
 
-    def __init_nodes(self) -> None:
+    def __init_nodes(self, *, release_gil: Optional[bool] = None) -> None:
         """Init all the nodes and set already connected nodes to PreOp state.
 
         Also fill `__last_init_nodes` attribute.
+
+        Args:
+            release_gil: True to release the GIL, False otherwise.
+                If not specified, default pysoem GIL configuration will be used.
         """
-        self.__store_master_reference()
-        nodes = self._ecat_master.config_init(release_gil=True)
-        self.__remove_master_reference()
+        self.__store_master_reference(release_gil=release_gil)
+        nodes = self._ecat_master.config_init(release_gil=release_gil)
+        self.__remove_master_reference(release_gil=release_gil)
         if self.servos:
             self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
         self.__last_init_nodes = list(range(1, nodes + 1))
@@ -380,11 +400,15 @@ class EthercatNetwork(Network):
             logger.warning("Not all drives could reach the Init state")
         self.__init_nodes()
 
-    def send_receive_processdata(self, timeout: float = ECAT_PROCESSDATA_TIMEOUT_S) -> None:
+    def send_receive_processdata(
+        self, timeout: float = ECAT_PROCESSDATA_TIMEOUT_S, *, release_gil: Optional[bool] = None
+    ) -> None:
         """Send and receive PDOs.
 
         Args:
             timeout: receive processdata timeout in seconds, 0.1 seconds by default.
+            release_gil: True to release the GIL, False otherwise.
+                If not specified, default pysoem GIL configuration will be used.
 
         Raises:
             ILWrongWorkingCountError: If processdata working count is wrong
@@ -395,14 +419,14 @@ class EthercatNetwork(Network):
         if self._overlapping_io_map:
             self._ecat_master.send_overlap_processdata()
         else:
-            self.__store_master_reference()
-            self._ecat_master.send_processdata(release_gil=True)
-            self.__remove_master_reference()
-        self.__store_master_reference()
+            self.__store_master_reference(release_gil=release_gil)
+            self._ecat_master.send_processdata(release_gil=release_gil)
+            self.__remove_master_reference(release_gil=release_gil)
+        self.__store_master_reference(release_gil=release_gil)
         processdata_wkc = self._ecat_master.receive_processdata(
-            timeout=int(timeout * 1_000_000), release_gil=True
+            timeout=int(timeout * 1_000_000), release_gil=release_gil
         )
-        self.__remove_master_reference()
+        self.__remove_master_reference(release_gil=release_gil)
         if processdata_wkc != self.EXPECTED_WKC_PROCESS_DATA * (len(self.servos)):
             self._ecat_master.read_state()
             servos_state_msg = ""
@@ -618,13 +642,22 @@ class EthercatNetwork(Network):
         time.sleep(self.__FORCE_BOOT_SLEEP_TIME_S)
         self.__init_nodes()
 
-    def _write_foe(self, slave: "CdefSlave", file_path: str, password: int) -> int:
+    def _write_foe(
+        self,
+        slave: "CdefSlave",
+        file_path: str,
+        password: int,
+        *,
+        release_gil: Optional[bool] = None,
+    ) -> int:
         """Write the firmware file via FoE.
 
         Args:
             slave: The pysoem slave object.
             file_path: The firmware file path.
             password: The firmware password.
+            release_gil: True to release the GIL, False otherwise.
+                If not specified, default pysoem GIL configuration will be used.
 
         Returns:
             The FOE operation result.
@@ -632,15 +665,15 @@ class EthercatNetwork(Network):
         """
         with open(file_path, "rb") as file:
             file_data = file.read()
-            self.__store_master_reference()
+            self.__store_master_reference(release_gil=release_gil)
             r: int = slave.foe_write(
                 self.__DEFAULT_FOE_FILE_NAME,
                 password,
                 file_data,
                 self.__FOE_WRITE_TIMEOUT_US,
-                release_gil=True,
+                release_gil=release_gil,
             )
-            self.__remove_master_reference()
+            self.__remove_master_reference(release_gil=release_gil)
         return r
 
     def _start_master(self) -> None:

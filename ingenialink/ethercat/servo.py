@@ -105,15 +105,28 @@ class EthercatServo(PDOServo):
         self.__slave_reference: list[CdefSlave] = []
         super().__init__(slave_id, dictionary_path, servo_status_listener)
 
-    def __store_slave_reference(self) -> None:
-        """Stores a reference to the slave before calling a nogil function."""
+    def __store_slave_reference(self, release_gil: Optional[bool]) -> None:
+        """Stores a reference to the slave before calling a nogil function.
+
+        Args:
+            release_gil: True to release the GIL, False otherwise.
+                If not specified, default pysoem GIL configuration will be used.
+        """
+        if release_gil is None or not release_gil:
+            return
         self.__slave_reference.append(self.__slave)
 
-    def __remove_slave_reference(self) -> None:
+    def __remove_slave_reference(self, release_gil: Optional[bool]) -> None:
         """Removes a slave reference from the list.
 
         Should be called once the nogil function has finished.
+
+        Args:
+            release_gil: True to release the GIL, False otherwise.
+                If not specified, default pysoem GIL configuration will be used.
         """
+        if release_gil is None or not release_gil:
+            return
         if len(self.__slave_reference):
             self.__slave_reference.pop(-1)
 
@@ -199,14 +212,15 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         buffer_size: int = 0,
         complete_access: bool = False,
+        release_gil: Optional[bool] = None,
     ) -> bytes:
         self._lock.acquire()
         try:
-            self.__store_slave_reference()
+            self.__store_slave_reference(release_gil=release_gil)
             value: bytes = self.__slave.sdo_read(
-                reg.idx, reg.subidx, buffer_size, complete_access, release_gil=True
+                reg.idx, reg.subidx, buffer_size, complete_access, release_gil=release_gil
             )
-            self.__remove_slave_reference()
+            self.__remove_slave_reference(release_gil=release_gil)
         except (
             pysoem.SdoError,
             pysoem.MailboxError,
@@ -224,12 +238,15 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         data: bytes,
         complete_access: bool = False,
+        release_gil: Optional[bool] = None,
     ) -> None:
         self._lock.acquire()
         try:
-            self.__store_slave_reference()
-            self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access, release_gil=True)
-            self.__remove_slave_reference()
+            self.__store_slave_reference(release_gil=release_gil)
+            self.__slave.sdo_write(
+                reg.idx, reg.subidx, data, complete_access, release_gil=release_gil
+            )
+            self.__remove_slave_reference(release_gil=release_gil)
         except (
             pysoem.SdoError,
             pysoem.MailboxError,
