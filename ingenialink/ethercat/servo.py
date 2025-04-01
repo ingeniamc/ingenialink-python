@@ -105,54 +105,8 @@ class EthercatServo(PDOServo):
         self.slave_id = slave_id
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
-        self.__slave_reference: list[CdefSlave] = []
         self.__sdo_read_write_release_gil = sdo_read_write_release_gil
         super().__init__(slave_id, dictionary_path, servo_status_listener)
-
-    def __keep_slave_reference(self, release_gil: Optional[bool]) -> bool:
-        """Checks if the slave reference should be kept depending on the provided configuration.
-
-        If `release_gil` is not provided, it means that it is using the default
-        `self.__sdo_read_write_release_gil` configuration.
-        So, depending on that, the GIL should be released or not.
-
-        Args:
-            release_gil: True to release the GIL, False otherwise.
-
-        Returns:
-            True to keep the slave reference, False otherwise.
-        """
-        if release_gil is None:
-            return self.__sdo_read_write_release_gil is True
-        elif not release_gil:
-            return False
-        return True
-
-    def __store_slave_reference(self, release_gil: Optional[bool]) -> None:
-        """Stores a reference to the slave before calling a nogil function.
-
-        Args:
-            release_gil: True to release the GIL, False otherwise.
-                If not specified, default pysoem GIL configuration will be used.
-        """
-        if not self.__keep_slave_reference(release_gil=release_gil):
-            return
-        self.__slave_reference.append(self.__slave)
-
-    def __remove_slave_reference(self, release_gil: Optional[bool]) -> None:
-        """Removes a slave reference from the list.
-
-        Should be called once the nogil function has finished.
-
-        Args:
-            release_gil: True to release the GIL, False otherwise.
-                If not specified, default pysoem GIL configuration will be used.
-        """
-        if not self.__keep_slave_reference(release_gil=release_gil) or not len(
-            self.__slave_reference
-        ):
-            return
-        self.__slave_reference.pop(-1)
 
     def teardown(self) -> None:
         """Perform the necessary actions for teardown."""
@@ -243,11 +197,9 @@ class EthercatServo(PDOServo):
             release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
         try:
-            self.__store_slave_reference(release_gil=release_gil)
             value: bytes = self.__slave.sdo_read(
                 reg.idx, reg.subidx, buffer_size, complete_access, release_gil=release_gil
             )
-            self.__remove_slave_reference(release_gil=release_gil)
         except (
             pysoem.SdoError,
             pysoem.MailboxError,
@@ -272,11 +224,9 @@ class EthercatServo(PDOServo):
             release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
         try:
-            self.__store_slave_reference(release_gil=release_gil)
             self.__slave.sdo_write(
                 reg.idx, reg.subidx, data, complete_access, release_gil=release_gil
             )
-            self.__remove_slave_reference(release_gil=release_gil)
         except (
             pysoem.SdoError,
             pysoem.MailboxError,

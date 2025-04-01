@@ -30,6 +30,32 @@ from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
+# Holds a reference to the Ethercat network by the time it is created -> handle no-GIL cases
+ETHERCAT_NETWORK_REFERENCES: dict[float, "EthercatNetwork"] = {}
+
+
+def set_network_reference(network: "EthercatNetwork") -> float:
+    """Adds a reference to an EtherCAT network.
+
+    Args:
+        network: network.
+
+    Returns:
+        network creation time.
+    """
+    creation_time_s = time.time()
+    ETHERCAT_NETWORK_REFERENCES[creation_time_s] = network
+    return creation_time_s
+
+
+def release_network_reference(creation_time_s: float) -> None:
+    """Releases a network reference.
+
+    Args:
+        creation_time_s: network creation time.
+    """
+    ETHERCAT_NETWORK_REFERENCES.pop(creation_time_s)
+
 
 @dataclass
 class GilReleaseConfig:
@@ -181,52 +207,8 @@ class EthercatNetwork(Network):
         self._overlapping_io_map = overlapping_io_map
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
-        self.__ecat_master_reference: list[pysoem.CdefMaster] = []
 
-    def __keep_master_reference(self, release_gil: Optional[bool]) -> bool:
-        """Checks if the master reference should be kept depending on the provided configuration.
-
-        If `release_gil` is not provided, it means that it is using the default
-        `always_release_gil` master configuration.
-        So, depending on that, the GIL should be released or not.
-
-        Args:
-            release_gil: True to release the GIL, False otherwise.
-
-        Returns:
-            True to keep the master reference, False otherwise.
-        """
-        if release_gil is None:
-            return self.__gil_release_config.always_release is True
-        elif not release_gil:
-            return False
-        return True
-
-    def __store_master_reference(self, release_gil: Optional[bool]) -> None:
-        """Stores a reference to the EtherCAT master before calling a nogil function.
-
-        Args:
-            release_gil: True to release the GIL, False otherwise.
-                If not specified, default pysoem GIL configuration will be used.
-        """
-        if not self.__keep_master_reference(release_gil=release_gil):
-            return
-        self.__ecat_master_reference.append(self._ecat_master)
-
-    def __remove_master_reference(self, release_gil: Optional[bool]) -> None:
-        """Removes the EtherCAT master reference from the list.
-
-        Should be called once the nogil function has finished.
-
-        Args:
-            release_gil: True to release the GIL, False otherwise.
-                If not specified, default pysoem GIL configuration will be used.
-        """
-        if not self.__keep_master_reference(release_gil=release_gil) or not len(
-            self.__ecat_master_reference
-        ):
-            return
-        self.__ecat_master_reference.pop(-1)
+        self._network_creation_time_s = set_network_reference(network=self)
 
     def update_sdo_timeout(self, sdo_read_timeout: int, sdo_write_timeout: int) -> None:
         """Update SDO timeouts for all the drives.
@@ -334,9 +316,7 @@ class EthercatNetwork(Network):
         """
         if release_gil is None:
             release_gil = self.__gil_release_config.config_init
-        self.__store_master_reference(release_gil=release_gil)
         nodes = self._ecat_master.config_init(release_gil=release_gil)
-        self.__remove_master_reference(release_gil=release_gil)
         if self.servos:
             self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
         self.__last_init_nodes = list(range(1, nodes + 1))
@@ -395,6 +375,11 @@ class EthercatNetwork(Network):
             self.start_status_listener()
         return servo
 
+    def close_ecat_master(self) -> None:
+        """Closes the connection with the EtherCAT master."""
+        self._ecat_master.close()
+        release_network_reference(creation_time_s=self._network_creation_time_s)
+
     def disconnect_from_slave(self, servo: EthercatServo) -> None:  # type: ignore [override]
         """Disconnects the slave from the network.
 
@@ -408,7 +393,7 @@ class EthercatNetwork(Network):
         self.servos.remove(servo)
         if not self.servos:
             self.stop_status_listener()
-            self._ecat_master.close()
+            self.close_ecat_master()
             self.__is_master_running = False
             self.__last_init_nodes = []
 
@@ -492,14 +477,10 @@ class EthercatNetwork(Network):
         if self._overlapping_io_map:
             self._ecat_master.send_overlap_processdata()
         else:
-            self.__store_master_reference(release_gil=release_gil)
             self._ecat_master.send_processdata(release_gil=release_gil)
-            self.__remove_master_reference(release_gil=release_gil)
-        self.__store_master_reference(release_gil=release_gil)
         processdata_wkc = self._ecat_master.receive_processdata(
             timeout=int(timeout * 1_000_000), release_gil=release_gil
         )
-        self.__remove_master_reference(release_gil=release_gil)
         if processdata_wkc != self.EXPECTED_WKC_PROCESS_DATA * (len(self.servos)):
             self._ecat_master.read_state()
             servos_state_msg = ""
@@ -741,7 +722,6 @@ class EthercatNetwork(Network):
             release_gil = self.__gil_release_config.foe_read_write
         with open(file_path, "rb") as file:
             file_data = file.read()
-            self.__store_master_reference(release_gil=release_gil)
             r: int = slave.foe_write(
                 self.__DEFAULT_FOE_FILE_NAME,
                 password,
@@ -749,7 +729,6 @@ class EthercatNetwork(Network):
                 self.__FOE_WRITE_TIMEOUT_US,
                 release_gil=release_gil,
             )
-            self.__remove_master_reference(release_gil=release_gil)
         return r
 
     def _start_master(self) -> None:
