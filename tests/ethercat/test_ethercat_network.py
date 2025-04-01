@@ -4,7 +4,12 @@ with contextlib.suppress(ImportError):
     import pysoem
 import pytest
 
-from ingenialink.ethercat.network import EthercatNetwork, GilReleaseConfig
+import ingenialink.ethercat.network
+from ingenialink.ethercat.network import (
+    ETHERCAT_NETWORK_REFERENCES,
+    EthercatNetwork,
+    GilReleaseConfig,
+)
 from ingenialink.exceptions import ILError
 
 
@@ -150,18 +155,19 @@ def test_gil_configuration_raises_error_if_multiple_configs():
 
 @pytest.mark.ethercat
 @pytest.mark.parametrize(
-    "gil_config, release_gil, keep_reference",
+    "gil_config",
     [
-        ({"always_release": None, "config_init": None}, None, False),
-        ({"always_release": False, "config_init": None}, False, False),
-        ({"always_release": None, "config_init": False}, False, False),
-        ({"always_release": True, "config_init": None}, True, True),
-        ({"always_release": None, "config_init": True}, True, True),
+        ({"always_release": None, "config_init": None}),
+        ({"always_release": False, "config_init": None}),
+        ({"always_release": None, "config_init": False}),
+        ({"always_release": True, "config_init": None}),
+        ({"always_release": None, "config_init": True}),
     ],
 )
-def test_master_reference_is_kept_when_gil_is_released(
-    gil_config, release_gil, keep_reference, read_config, mocker
-):
+def test_master_reference_is_kept_when_gil_is_released(gil_config, read_config, mocker):
+    set_network_reference_spy = mocker.spy(ingenialink.ethercat.network, "set_network_reference")
+    assert ETHERCAT_NETWORK_REFERENCES == {}
+
     net = EthercatNetwork(
         read_config["ethercat"]["ifname"],
         gil_release_config=GilReleaseConfig(
@@ -174,10 +180,15 @@ def test_master_reference_is_kept_when_gil_is_released(
     else:
         assert net._EthercatNetwork__gil_release_config.config_init is gil_config["config_init"]
 
-    gil_spy = mocker.spy(EthercatNetwork, "_EthercatNetwork__keep_master_reference")
-    _ = net.scan_slaves()
+    set_network_reference_spy.assert_called_once()
+    assert len(ETHERCAT_NETWORK_REFERENCES) == 1
+    stored_network = ETHERCAT_NETWORK_REFERENCES[net._network_creation_time_s]
+    assert stored_network == net
 
-    assert gil_spy.call_count == 2
-    _, kwargs = gil_spy.call_args
-    assert kwargs["release_gil"] is release_gil
-    assert gil_spy.spy_return is keep_reference
+    # Disconnect so that the network reference is cleared
+    release_network_reference_spy = mocker.spy(
+        ingenialink.ethercat.network, "release_network_reference"
+    )
+    net.close_ecat_master()
+    release_network_reference_spy.assert_called_once()
+    assert len(ETHERCAT_NETWORK_REFERENCES) == 0
