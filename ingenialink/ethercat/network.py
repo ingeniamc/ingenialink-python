@@ -44,25 +44,26 @@ def set_network_reference(network: "EthercatNetwork") -> float:
     Returns:
         network creation time.
     """
-    creation_time_s = time.time()
-    ETHERCAT_NETWORK_REFERENCES[creation_time_s] = network
-    return creation_time_s
+    global ETHERCAT_NETWORK_REFERENCES
+    creation_time_ns = time.time_ns()
+    ETHERCAT_NETWORK_REFERENCES[creation_time_ns] = network
+    return creation_time_ns
 
 
 @atexit.register  # Remove all references upon normal program termination
-def release_network_reference(creation_time_s: Optional[float] = None) -> None:
+def release_network_reference(creation_time_ns: Optional[float] = None) -> None:
     """Releases a network reference.
 
-    If `creation_time_s` is not provided, all references will be removed.
+    If `creation_time_ns` is not provided, all references will be removed.
 
     Args:
-        creation_time_s: network creation time.
+        creation_time_ns: network creation time.
     """
     global ETHERCAT_NETWORK_REFERENCES
-    if creation_time_s is not None:
-        ETHERCAT_NETWORK_REFERENCES.pop(creation_time_s)
+    if creation_time_ns is not None:
+        ETHERCAT_NETWORK_REFERENCES.pop(creation_time_ns)
     else:
-        ETHERCAT_NETWORK_REFERENCES = {}
+        ETHERCAT_NETWORK_REFERENCES.clear()
 
 
 @dataclass(frozen=True)
@@ -211,7 +212,7 @@ class EthercatNetwork(Network):
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
 
-        self._network_creation_time_s = set_network_reference(network=self)
+        self._network_creation_time_ns = set_network_reference(network=self)
 
     def update_sdo_timeout(self, sdo_read_timeout: int, sdo_write_timeout: int) -> None:
         """Update SDO timeouts for all the drives.
@@ -381,7 +382,7 @@ class EthercatNetwork(Network):
     def close_ecat_master(self) -> None:
         """Closes the connection with the EtherCAT master."""
         self._ecat_master.close()
-        release_network_reference(creation_time_s=self._network_creation_time_s)
+        release_network_reference(creation_time_ns=self._network_creation_time_ns)
 
     def disconnect_from_slave(self, servo: EthercatServo) -> None:  # type: ignore [override]
         """Disconnects the slave from the network.

@@ -2,6 +2,9 @@ import contextlib
 
 with contextlib.suppress(ImportError):
     import pysoem
+import atexit
+import time
+
 import pytest
 
 import ingenialink.ethercat.network
@@ -173,39 +176,40 @@ def test_gil_configuration():
 
 
 @pytest.mark.ethercat
-@pytest.mark.parametrize(
-    "gil_config",
-    [
-        ({"always": False, "config_init": None}),
-        ({"always": False, "config_init": False}),
-        ({"always": False, "config_init": True}),
-        ({"always": True, "config_init": False}),
-    ],
-)
-def test_master_reference_is_kept_when_gil_is_released(gil_config, read_config, mocker):
+def test_master_reference_is_kept_while_network_is_alive(mocker):
     set_network_reference_spy = mocker.spy(ingenialink.ethercat.network, "set_network_reference")
-    assert ETHERCAT_NETWORK_REFERENCES == {}
-
-    if gil_config["always"]:
-        gil_release_config = GilReleaseConfig.always()
-    else:
-        gil_release_config = GilReleaseConfig(config_init=gil_config["config_init"])
-
-    net = EthercatNetwork(read_config["ethercat"]["ifname"], gil_release_config=gil_release_config)
-    if gil_config["always"]:
-        assert net._EthercatNetwork__gil_release_config.config_init is True
-    else:
-        assert net._EthercatNetwork__gil_release_config.config_init is gil_config["config_init"]
-
-    set_network_reference_spy.assert_called_once()
-    assert len(ETHERCAT_NETWORK_REFERENCES) == 1
-    stored_network = ETHERCAT_NETWORK_REFERENCES[net._network_creation_time_s]
-    assert stored_network == net
-
-    # Disconnect so that the network reference is cleared
     release_network_reference_spy = mocker.spy(
         ingenialink.ethercat.network, "release_network_reference"
     )
-    net.close_ecat_master()
-    release_network_reference_spy.assert_called_once()
+
+    assert ETHERCAT_NETWORK_REFERENCES == {}
+    net_1 = EthercatNetwork("dummy_network_1", gil_release_config=GilReleaseConfig.always())
+    assert set_network_reference_spy.call_count == 1
+    assert len(ETHERCAT_NETWORK_REFERENCES) == 1
+    assert net_1 == ETHERCAT_NETWORK_REFERENCES[net_1._network_creation_time_ns]
+
+    # Sleep to ensure that different creation times are set
+    time.sleep(0.1)
+
+    # Create a second network
+    net_2 = EthercatNetwork("dummy_network_2", gil_release_config=GilReleaseConfig.always())
+    assert net_1._network_creation_time_ns != net_2._network_creation_time_ns
+    assert set_network_reference_spy.call_count == 2
+    assert len(ETHERCAT_NETWORK_REFERENCES) == 2
+    assert net_2 == ETHERCAT_NETWORK_REFERENCES[net_2._network_creation_time_ns]
+
+    # Disconnect the first network so that the reference is cleared
+    net_1.close_ecat_master()
+    assert release_network_reference_spy.call_count == 1
+    assert len(ETHERCAT_NETWORK_REFERENCES) == 1
+
+    # Lose the reference to the second network, it should still exist in the stack
+    net_2_creation_time_ns = net_2._network_creation_time_ns
+    net_2 = None
+    assert net_2_creation_time_ns in ETHERCAT_NETWORK_REFERENCES
+    assert release_network_reference_spy.call_count == 1  # Has not been called again
+
+    # When the program ends, atexit should get rid of it
+    # Manually call atexit functions -> should be called on normal program termination
+    atexit._run_exitfuncs()
     assert len(ETHERCAT_NETWORK_REFERENCES) == 0
