@@ -19,8 +19,19 @@ from ingenialink.ethercat.network import (
 from ingenialink.exceptions import ILError
 
 
+@pytest.fixture
+def ethercat_network_teardown():
+    """Should be executed for all the tests that do not use `connect_to_slave` fixture.
+
+    It is used to clear the network reference.
+    Many of the tests check that errors are raised, so the reference is not properly cleared."""
+    yield
+    atexit._run_exitfuncs()
+    assert not len(ETHERCAT_NETWORK_REFERENCES)
+
+
 @pytest.mark.docker
-def test_raise_exception_if_not_winpcap():
+def test_raise_exception_if_not_winpcap(ethercat_network_teardown):  # noqa: ARG001
     try:
         import pysoem  # noqa: F401
 
@@ -32,14 +43,14 @@ def test_raise_exception_if_not_winpcap():
 
 
 @pytest.mark.ethercat
-def test_load_firmware_file_not_found_error(read_config):
+def test_load_firmware_file_not_found_error(read_config, ethercat_network_teardown):  # noqa: ARG001
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     with pytest.raises(FileNotFoundError):
         net.load_firmware("ethercat.sfu", True)
 
 
 @pytest.mark.ethercat
-def test_load_firmware_no_slave_detected_error(mocker, read_config):
+def test_load_firmware_no_slave_detected_error(mocker, read_config, ethercat_network_teardown):  # noqa: ARG001
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     mocker.patch("os.path.isfile", return_value=True)
     slave_id = 23
@@ -51,7 +62,7 @@ def test_load_firmware_no_slave_detected_error(mocker, read_config):
 
 
 @pytest.mark.ethercat
-def test_wrong_interface_name_error(read_config):
+def test_wrong_interface_name_error(read_config, ethercat_network_teardown):  # noqa: ARG001
     with pytest.raises(ConnectionError):
         net = EthercatNetwork("not existing ifname")
         slave_id = 1
@@ -61,14 +72,14 @@ def test_wrong_interface_name_error(read_config):
 
 @pytest.mark.ethercat
 @pytest.mark.parametrize("slave_id", [-1, "one", None])
-def test_connect_to_slave_invalid_id(read_config, slave_id):
+def test_connect_to_slave_invalid_id(read_config, slave_id, ethercat_network_teardown):  # noqa: ARG001
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     with pytest.raises(ValueError):
         net.connect_to_slave(slave_id, read_config["ethercat"]["dictionary"])
 
 
 @pytest.mark.ethercat
-def test_connect_to_no_detected_slave(read_config):
+def test_connect_to_no_detected_slave(read_config, ethercat_network_teardown):  # noqa: ARG001
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     slaves = net.scan_slaves()
     slave_id = slaves[-1] + 1
@@ -88,7 +99,11 @@ def test_scan_slaves_raises_exception_if_drive_is_already_connected(connect_to_s
 
 
 @pytest.mark.ethercat
-def test_scan_slaves_info(read_config, get_drive_configuration_from_rack_service):
+def test_scan_slaves_info(
+    read_config,
+    get_drive_configuration_from_rack_service,
+    ethercat_network_teardown,  # noqa: ARG001
+):
     net = EthercatNetwork(read_config["ethercat"]["ifname"])
     slaves_info = net.scan_slaves_info()
 
