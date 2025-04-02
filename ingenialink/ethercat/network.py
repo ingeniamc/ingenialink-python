@@ -1,5 +1,6 @@
 import atexit
 import os
+import threading
 import time
 from collections import OrderedDict, defaultdict
 from enum import Enum
@@ -203,8 +204,7 @@ class EthercatNetwork(Network):
         self.__observers_net_state: dict[int, list[Any]] = defaultdict(list)
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
         self.__gil_release_config = gil_release_config
-        if self.__gil_release_config.always_release is True:
-            self._ecat_master.always_release_gil = self.__gil_release_config.always_release
+        self._ecat_master.always_release_gil = self.__gil_release_config.always_release
         timeout_us = int(1_000_000 * connection_timeout)
         self.update_sdo_timeout(timeout_us, timeout_us)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
@@ -212,6 +212,7 @@ class EthercatNetwork(Network):
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
 
+        self._lock = threading.Lock()
         set_network_reference(network=self)
 
     def update_sdo_timeout(self, sdo_read_timeout: int, sdo_write_timeout: int) -> None:
@@ -320,7 +321,9 @@ class EthercatNetwork(Network):
         """
         if release_gil is None:
             release_gil = self.__gil_release_config.config_init
+        self._lock.acquire()
         nodes = self._ecat_master.config_init(release_gil=release_gil)
+        self._lock.release()
         if self.servos:
             self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
         self.__last_init_nodes = list(range(1, nodes + 1))
@@ -381,7 +384,9 @@ class EthercatNetwork(Network):
 
     def close_ecat_master(self) -> None:
         """Closes the connection with the EtherCAT master."""
+        self._lock.acquire()
         self._ecat_master.close()
+        self._lock.release()
         release_network_reference(network=self)
 
     def disconnect_from_slave(self, servo: EthercatServo) -> None:  # type: ignore [override]
@@ -478,6 +483,7 @@ class EthercatNetwork(Network):
             release_gil = self.__gil_release_config.send_receive_processdata
         for servo in self.servos:
             servo.generate_pdo_outputs()
+        self._lock.acquire()
         if self._overlapping_io_map:
             self._ecat_master.send_overlap_processdata()
         else:
@@ -485,6 +491,7 @@ class EthercatNetwork(Network):
         processdata_wkc = self._ecat_master.receive_processdata(
             timeout=int(timeout * 1_000_000), release_gil=release_gil
         )
+        self._lock.release()
         if processdata_wkc != self.EXPECTED_WKC_PROCESS_DATA * (len(self.servos)):
             self._ecat_master.read_state()
             servos_state_msg = ""
@@ -726,6 +733,7 @@ class EthercatNetwork(Network):
             release_gil = self.__gil_release_config.foe_read_write
         with open(file_path, "rb") as file:
             file_data = file.read()
+            self._lock.acquire()
             r: int = slave.foe_write(
                 self.__DEFAULT_FOE_FILE_NAME,
                 password,
@@ -733,6 +741,7 @@ class EthercatNetwork(Network):
                 self.__FOE_WRITE_TIMEOUT_US,
                 release_gil=release_gil,
             )
+            self._lock.release()
         return r
 
     def _start_master(self) -> None:

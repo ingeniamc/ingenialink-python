@@ -110,6 +110,7 @@ class EthercatServo(PDOServo):
 
     def teardown(self) -> None:
         """Perform the necessary actions for teardown."""
+        self._lock.acquire()
         self.stop_status_listener()
 
         # Remove the servo reference from the pdo maps
@@ -118,6 +119,7 @@ class EthercatServo(PDOServo):
         for tpdo_map in self._tpdo_maps:
             tpdo_map.slave = None
         self.__slave = None
+        self._lock.release()
 
     def check_servo_is_in_preoperational_state(self) -> None:
         """Checks if the servo is in preoperational state.
