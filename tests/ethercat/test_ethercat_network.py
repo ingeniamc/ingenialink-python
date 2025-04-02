@@ -187,7 +187,7 @@ def test_release_network_reference_raises_error_if_wrong_network():
         release_network_reference(network=DummyEthercatNetwork)
 
 
-@pytest.mark.no_connection
+@pytest.mark.ethercat
 def test_master_reference_is_kept_while_network_is_alive(mocker):
     set_network_reference_spy = mocker.spy(ingenialink.ethercat.network, "set_network_reference")
     release_network_reference_spy = mocker.spy(
@@ -224,7 +224,7 @@ def test_master_reference_is_kept_while_network_is_alive(mocker):
     assert not len(ETHERCAT_NETWORK_REFERENCES)
 
 
-@pytest.mark.no_connection
+@pytest.mark.ethercat
 def test_network_is_not_released_if_gil_operation_ongoing(mocker, read_config):
     blocking_time = 5
 
