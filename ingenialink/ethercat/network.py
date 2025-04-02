@@ -49,7 +49,7 @@ def set_network_reference(network: "EthercatNetwork") -> float:
     return creation_time_s
 
 
-@atexit.register  # Remove all references upon normal program  termination
+@atexit.register  # Remove all references upon normal program termination
 def release_network_reference(creation_time_s: Optional[float] = None) -> None:
     """Releases a network reference.
 
