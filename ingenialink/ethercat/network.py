@@ -49,7 +49,7 @@ def set_network_reference(network: "EthercatNetwork") -> None:
 def release_network_reference(network: Optional["EthercatNetwork"] = None) -> None:
     """Releases a network reference.
 
-    If `nertwork` is not provided, all references will be removed.
+    If `network` is not provided, all references will be removed.
 
     Args:
         network: network object.
