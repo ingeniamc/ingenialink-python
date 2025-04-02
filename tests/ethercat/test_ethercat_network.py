@@ -3,7 +3,10 @@ import contextlib
 with contextlib.suppress(ImportError):
     import pysoem
 import atexit
+import threading
+import time
 
+import numpy as np
 import pytest
 
 import ingenialink.ethercat.network
@@ -184,7 +187,7 @@ def test_release_network_reference_raises_error_if_wrong_network():
         release_network_reference(network=DummyEthercatNetwork)
 
 
-@pytest.mark.ethercat
+@pytest.mark.no_connection
 def test_master_reference_is_kept_while_network_is_alive(mocker):
     set_network_reference_spy = mocker.spy(ingenialink.ethercat.network, "set_network_reference")
     release_network_reference_spy = mocker.spy(
@@ -218,4 +221,52 @@ def test_master_reference_is_kept_while_network_is_alive(mocker):
     # When the program ends, atexit should get rid of it
     # Manually call atexit functions -> should be called on normal program termination
     atexit._run_exitfuncs()
+    assert not len(ETHERCAT_NETWORK_REFERENCES)
+
+
+@pytest.mark.no_connection
+def test_network_is_not_released_if_gil_operation_ongoing(mocker, read_config):
+    blocking_time = 5
+
+    def dummy_config_init(usetable=False, *, release_gil=None):  # noqa: ARG001
+        start_time = time.time()
+        while time.time() - start_time < blocking_time:
+            time.sleep(0.01)
+
+    def thread_scan_slaves(network, event):
+        if not event.is_set():  # Run a single time
+            network.scan_slaves()
+            event.set()
+
+    def thread_close_master(network, event):
+        event.wait()
+        network.close_ecat_master()
+
+    mocker.patch.object(pysoem.Master, "config_init", dummy_config_init)
+
+    assert not len(ETHERCAT_NETWORK_REFERENCES)
+    network = EthercatNetwork(
+        read_config["ethercat"]["ifname"], gil_release_config=GilReleaseConfig.always()
+    )
+    assert network in ETHERCAT_NETWORK_REFERENCES
+
+    event = threading.Event()
+
+    thread_block_lock = threading.Thread(target=thread_scan_slaves, args=(network, event))
+    thread_acquire_lock = threading.Thread(target=thread_close_master, args=(network, event))
+
+    thread_block_lock_start_time = time.time()
+    thread_block_lock.start()
+    time.sleep(0.05)  # wait for the thread to start
+    assert network._lock.locked() is True
+
+    thread_acquire_lock.start()
+
+    # The thread is locked, so the second thread should wait until the first finishes
+    while network in ETHERCAT_NETWORK_REFERENCES:
+        time.sleep(0.05)
+    assert np.isclose(time.time() - thread_block_lock_start_time, blocking_time, atol=0.5)
+
+    thread_block_lock.join()
+    thread_acquire_lock.join()
     assert not len(ETHERCAT_NETWORK_REFERENCES)

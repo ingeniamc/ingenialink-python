@@ -324,9 +324,10 @@ class EthercatNetwork(Network):
         self._lock.acquire()
         nodes = self._ecat_master.config_init(release_gil=release_gil)
         self._lock.release()
-        if self.servos:
+        if len(self.servos):
             self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
-        self.__last_init_nodes = list(range(1, nodes + 1))
+        if nodes is not None:
+            self.__last_init_nodes = list(range(1, nodes + 1))
 
     def connect_to_slave(
         self,
