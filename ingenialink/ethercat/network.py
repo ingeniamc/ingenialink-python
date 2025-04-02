@@ -57,7 +57,7 @@ def release_network_reference(creation_time_s: float) -> None:
     ETHERCAT_NETWORK_REFERENCES.pop(creation_time_s)
 
 
-@dataclass
+@dataclass(frozen=True)
 class GilReleaseConfig:
     """Configuration of pysoem functions that have GIL release control."""
 
@@ -85,7 +85,7 @@ class GilReleaseConfig:
             foe_read_write=True,
             send_receive_processdata=True,
         )
-        instance._always_release = True
+        object.__setattr__(instance, "_always_release", True)  # frozen instance
         return instance
 
 
