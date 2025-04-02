@@ -145,38 +145,55 @@ def test_check_node_state(connect_to_slave):
 
 
 @pytest.mark.no_connection
-def test_gil_configuration_raises_error_if_multiple_configs():
-    with pytest.raises(ValueError):
-        _ = EthercatNetwork(
-            interface_name="dummy_ifname",
-            gil_release_config=GilReleaseConfig(always_release=True, config_init=False),
-        )
+def test_gil_configuration():
+    gil_config_1 = GilReleaseConfig.always()
+    assert all([
+        gil_config_1.config_init,
+        gil_config_1.sdo_read_write,
+        gil_config_1.foe_read_write,
+        gil_config_1.send_receive_processdata,
+    ])
+    assert gil_config_1.always_release is True
+
+    gil_config_2 = GilReleaseConfig(
+        config_init=True, foe_read_write=False, send_receive_processdata=True
+    )
+    assert gil_config_2.config_init is True
+    assert gil_config_2.sdo_read_write is None
+    assert gil_config_2.foe_read_write is False
+    assert gil_config_2.send_receive_processdata is True
+    assert gil_config_2.always_release is False
+
+    gil_config_3 = GilReleaseConfig()
+    assert gil_config_3.config_init is None
+    assert gil_config_3.sdo_read_write is None
+    assert gil_config_3.foe_read_write is None
+    assert gil_config_3.send_receive_processdata is None
+    assert gil_config_3.always_release is False
 
 
 @pytest.mark.ethercat
 @pytest.mark.parametrize(
     "gil_config",
     [
-        ({"always_release": None, "config_init": None}),
-        ({"always_release": False, "config_init": None}),
-        ({"always_release": None, "config_init": False}),
-        ({"always_release": True, "config_init": None}),
-        ({"always_release": None, "config_init": True}),
+        ({"always": False, "config_init": None}),
+        ({"always": False, "config_init": False}),
+        ({"always": False, "config_init": True}),
+        ({"always": True, "config_init": False}),
     ],
 )
 def test_master_reference_is_kept_when_gil_is_released(gil_config, read_config, mocker):
     set_network_reference_spy = mocker.spy(ingenialink.ethercat.network, "set_network_reference")
     assert ETHERCAT_NETWORK_REFERENCES == {}
 
-    net = EthercatNetwork(
-        read_config["ethercat"]["ifname"],
-        gil_release_config=GilReleaseConfig(
-            always_release=gil_config["always_release"],
-            config_init=gil_config["config_init"],
-        ),
-    )
-    if gil_config["always_release"] is not None:
-        assert net._EthercatNetwork__gil_release_config.config_init is gil_config["always_release"]
+    if gil_config["always"]:
+        gil_release_config = GilReleaseConfig.always()
+    else:
+        gil_release_config = GilReleaseConfig(config_init=gil_config["config_init"])
+
+    net = EthercatNetwork(read_config["ethercat"]["ifname"], gil_release_config=gil_release_config)
+    if gil_config["always"]:
+        assert net._EthercatNetwork__gil_release_config.config_init is True
     else:
         assert net._EthercatNetwork__gil_release_config.config_init is gil_config["config_init"]
 

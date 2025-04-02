@@ -16,7 +16,7 @@ except ImportError as ex:
 if TYPE_CHECKING:
     from pysoem import CdefSlave
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from ingenialink.constants import ECAT_STATE_CHANGE_TIMEOUT_US
 from ingenialink.ethercat.servo import EthercatServo
@@ -61,37 +61,32 @@ def release_network_reference(creation_time_s: float) -> None:
 class GilReleaseConfig:
     """Configuration of pysoem functions that have GIL release control."""
 
-    always_release: Optional[bool] = None
     config_init: Optional[bool] = None
     sdo_read_write: Optional[bool] = None
     foe_read_write: Optional[bool] = None
     send_receive_processdata: Optional[bool] = None
+    _always_release: bool = field(init=False, default=False)
 
-    def __post_init__(self) -> None:
-        """Checks if `always_release` and other configurations have been set simultaneously.
+    @property
+    def always_release(self) -> bool:
+        """Returns True if the GIL should be released for all functions, False otherwise."""
+        return self._always_release
 
-        Raises:
-            ValueError: if multiple configurations are specified.
+    @classmethod
+    def always(cls) -> "GilReleaseConfig":
+        """Releases the GIL from all functions.
+
+        Returns:
+            GIL configuration.
         """
-        if self.always_release is None:
-            return
-
-        if (
-            self.config_init is not None
-            or self.sdo_read_write is not None
-            or self.foe_read_write is not None
-            or self.send_receive_processdata is not None
-        ):
-            raise ValueError(
-                "`always_release` and individual functions can not be configured simultaneously"
-            )
-
-        # If `always_release` configuration is specified, all other
-        # settings should have the same value
-        self.config_init = self.always_release
-        self.sdo_read_write = self.always_release
-        self.foe_read_write = self.always_release
-        self.send_receive_processdata = self.always_release
+        instance = cls(
+            config_init=True,
+            sdo_read_write=True,
+            foe_read_write=True,
+            send_receive_processdata=True,
+        )
+        instance._always_release = True
+        return instance
 
 
 class SlaveState(Enum):
@@ -199,7 +194,7 @@ class EthercatNetwork(Network):
         self.__observers_net_state: dict[int, list[Any]] = defaultdict(list)
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
         self.__gil_release_config = gil_release_config
-        if self.__gil_release_config.always_release is not None:
+        if self.__gil_release_config.always_release is True:
             self._ecat_master.always_release_gil = self.__gil_release_config.always_release
         timeout_us = int(1_000_000 * connection_timeout)
         self.update_sdo_timeout(timeout_us, timeout_us)
