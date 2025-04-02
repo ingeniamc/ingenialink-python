@@ -1,3 +1,4 @@
+import atexit
 import itertools
 import json
 import time
@@ -8,7 +9,7 @@ import rpyc
 
 from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.eoe.network import EoENetwork
-from ingenialink.ethercat.network import EthercatNetwork
+from ingenialink.ethercat.network import ETHERCAT_NETWORK_REFERENCES, EthercatNetwork
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.virtual.network import VirtualNetwork
 from virtual_drive.core import VirtualDrive
@@ -108,6 +109,17 @@ def connect_eoe(protocol_contents):
 def virtual_drive_resources_folder():
     root_folder = Path(__file__).resolve().parent.parent
     return (root_folder / "virtual_drive/resources/").as_posix()
+
+
+@pytest.fixture
+def ethercat_network_teardown():
+    """Should be executed for all the tests that do not use `connect_to_slave` fixture.
+
+    It is used to clear the network reference.
+    Many of the tests check that errors are raised, so the reference is not properly cleared."""
+    yield
+    atexit._run_exitfuncs()
+    assert not len(ETHERCAT_NETWORK_REFERENCES)
 
 
 @pytest.fixture

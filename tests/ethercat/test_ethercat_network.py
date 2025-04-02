@@ -19,17 +19,6 @@ from ingenialink.ethercat.network import (
 from ingenialink.exceptions import ILError
 
 
-@pytest.fixture
-def ethercat_network_teardown():
-    """Should be executed for all the tests that do not use `connect_to_slave` fixture.
-
-    It is used to clear the network reference.
-    Many of the tests check that errors are raised, so the reference is not properly cleared."""
-    yield
-    atexit._run_exitfuncs()
-    assert not len(ETHERCAT_NETWORK_REFERENCES)
-
-
 @pytest.mark.docker
 def test_raise_exception_if_not_winpcap(ethercat_network_teardown):  # noqa: ARG001
     try:
