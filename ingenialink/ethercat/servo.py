@@ -66,6 +66,8 @@ class EthercatServo(PDOServo):
         connection_timeout: Time in seconds of the connection timeout.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
+        sdo_read_write_release_gil: True to release the GIL in SDO read/write operations,
+            False otherwise. If not specified, default pysoem configuration will be used.
 
     Raises:
         ImportError: WinPcap is not installed
@@ -95,6 +97,7 @@ class EthercatServo(PDOServo):
         slave_id: int,
         dictionary_path: str,
         servo_status_listener: bool = False,
+        sdo_read_write_release_gil: Optional[bool] = None,
     ):
         if not pysoem:
             raise pysoem_import_error
@@ -102,10 +105,12 @@ class EthercatServo(PDOServo):
         self.slave_id = slave_id
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
+        self.__sdo_read_write_release_gil = sdo_read_write_release_gil
         super().__init__(slave_id, dictionary_path, servo_status_listener)
 
     def teardown(self) -> None:
         """Perform the necessary actions for teardown."""
+        self._lock.acquire()
         self.stop_status_listener()
 
         # Remove the servo reference from the pdo maps
@@ -114,6 +119,7 @@ class EthercatServo(PDOServo):
         for tpdo_map in self._tpdo_maps:
             tpdo_map.slave = None
         self.__slave = None
+        self._lock.release()
 
     def check_servo_is_in_preoperational_state(self) -> None:
         """Checks if the servo is in preoperational state.
@@ -186,11 +192,16 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         buffer_size: int = 0,
         complete_access: bool = False,
+        *,
+        release_gil: Optional[bool] = None,
     ) -> bytes:
+        if release_gil is None:
+            release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
         try:
-            time.sleep(0.0001)  # Unlock threads before SDO read
-            value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
+            value: bytes = self.__slave.sdo_read(
+                reg.idx, reg.subidx, buffer_size, complete_access, release_gil=release_gil
+            )
         except (
             pysoem.SdoError,
             pysoem.MailboxError,
@@ -208,11 +219,16 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         data: bytes,
         complete_access: bool = False,
+        *,
+        release_gil: Optional[bool] = None,
     ) -> None:
+        if release_gil is None:
+            release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
         try:
-            time.sleep(0.0001)  # Unlock threads before SDO write
-            self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
+            self.__slave.sdo_write(
+                reg.idx, reg.subidx, data, complete_access, release_gil=release_gil
+            )
         except (
             pysoem.SdoError,
             pysoem.MailboxError,

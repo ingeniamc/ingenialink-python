@@ -17,7 +17,7 @@ from .canopen.dictionary import CanopenDictionaryV2
 from .canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from .canopen.register import CanopenRegister
 from .canopen.servo import CanopenServo
-from .ethercat.network import EthercatNetwork
+from .ethercat.network import EthercatNetwork, GilReleaseConfig
 from .ethernet.network import EthernetNetwork
 from .ethernet.servo import EthernetServo
 from .network import NetDevEvt, NetProt, NetState, Network
@@ -38,6 +38,7 @@ __all__ = [
     "RegAccess",
     "RegPhy",
     "EthercatNetwork",
+    "GilReleaseConfig",
     "EthernetServo",
     "EthernetNetwork",
     "CanopenNetwork",

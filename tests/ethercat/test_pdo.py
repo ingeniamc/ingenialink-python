@@ -303,7 +303,7 @@ def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
 
 
 @pytest.fixture
-def connect_to_all_slave(pytestconfig):
+def connect_to_all_slave(pytestconfig, ethercat_network_teardown):  # noqa: ARG001
     protocol = pytestconfig.getoption("--protocol")
     if protocol != "multislave":
         raise AssertionError("Wrong protocol")

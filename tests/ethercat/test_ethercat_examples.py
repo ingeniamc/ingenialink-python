@@ -19,7 +19,13 @@ def test_connection_example(arguments, script_runner):
 
 
 @pytest.mark.ethercat
-def test_load_firmware_example(arguments, script_runner, mocker, read_config):
+def test_load_firmware_example(
+    arguments,
+    script_runner,
+    mocker,
+    read_config,
+    ethercat_network_teardown,  # noqa: ARG001
+):
     slave_id = read_config["ethercat"]["slave"]
     mock = mocker.patch("ingenialink.ethercat.network.EthercatNetwork.load_firmware")
     arguments[0] = "--firmware_path=dummy_file.lfu"
