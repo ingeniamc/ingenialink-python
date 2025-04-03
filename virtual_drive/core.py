@@ -835,7 +835,7 @@ class VirtualInternalGenerator:
             multiplier_reg_value = int(
                 self.drive.get_value_by_id(1, self.SINCOS_MULTIPLIER_FACTOR_REGISTER)
             )
-            multiplier_factor = typing.cast(int, 2 ** multiplier_reg_value)
+            multiplier_factor = typing.cast("int", 2**multiplier_reg_value)
             return sincos_resolution * multiplier_factor
         else:
             return 1
