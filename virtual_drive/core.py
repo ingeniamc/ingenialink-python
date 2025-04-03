@@ -3,6 +3,7 @@ import pathlib
 import platform
 import socket
 import time
+import typing
 from enum import Enum, IntEnum
 from functools import cached_property
 from threading import Thread, Timer
@@ -99,6 +100,8 @@ class SensorType(IntEnum):
     """Absolute encoder 2"""
     QEI2 = 8
     """Digital/Incremental encoder 2"""
+    SINCOS = 10
+    """SinCos encoder 1"""
 
 
 class GeneratorMode(IntEnum):
@@ -706,6 +709,8 @@ class VirtualInternalGenerator:
     ABS2_ST_BITS_REGISTER = "FBK_BISS2_POS_ST_BITS"
     COMMUTATION_FEEDBACK_REGISTER = "COMMU_ANGLE_SENSOR"
     POSITION_FEEDBACK_REGISTER = "CL_POS_FBK_SENSOR"
+    SINCOS_MULTIPLIER_FACTOR_REGISTER = "FBK_SINCOS_MULT_FACTOR"
+    SINCOS_RESOLUTION_REGISTER = "FBK_SINCOS_RESOLUTION"
 
     HALL_VALUES = (1, 3, 2, 6, 4, 5)
 
@@ -722,6 +727,7 @@ class VirtualInternalGenerator:
             SensorType.HALLS: "FBK_DIGHALL_VALUE",
             SensorType.ABS1: "FBK_BISS1_SSI1_POS_VALUE",
             SensorType.BISSC2: "FBK_BISS2_POS_VALUE",
+            SensorType.SINCOS: "FBK_SINCOS_VALUE",
         }
 
     def enable(self) -> None:
@@ -824,6 +830,13 @@ class VirtualInternalGenerator:
         elif self.position_encoder == SensorType.BISSC2:
             single_turn_bits = int(self.drive.get_value_by_id(1, self.ABS2_ST_BITS_REGISTER))
             return int(2**single_turn_bits)
+        elif self.position_encoder == SensorType.SINCOS:
+            sincos_resolution = int(self.drive.get_value_by_id(1, self.SINCOS_RESOLUTION_REGISTER))
+            multiplier_reg_value = int(
+                self.drive.get_value_by_id(1, self.SINCOS_MULTIPLIER_FACTOR_REGISTER)
+            )
+            multiplier_factor = typing.cast(int, 2 ** multiplier_reg_value)
+            return sincos_resolution * multiplier_factor
         else:
             return 1
 
