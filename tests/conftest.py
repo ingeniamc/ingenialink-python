@@ -9,7 +9,11 @@ import rpyc
 
 from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.eoe.network import EoENetwork
-from ingenialink.ethercat.network import ETHERCAT_NETWORK_REFERENCES, EthercatNetwork
+from ingenialink.ethercat.network import (
+    ETHERCAT_NETWORK_REFERENCES,
+    EthercatNetwork,
+    release_network_reference,
+)
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.virtual.network import VirtualNetwork
 from virtual_drive.core import VirtualDrive
@@ -120,6 +124,8 @@ def ethercat_network_teardown():
     yield
     atexit._run_exitfuncs()
     assert not len(ETHERCAT_NETWORK_REFERENCES)
+    # Once atexit is called, the register will be lost, so register the needed functions again
+    atexit.register(release_network_reference, None)
 
 
 @pytest.fixture

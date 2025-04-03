@@ -2,7 +2,6 @@ import contextlib
 
 with contextlib.suppress(ImportError):
     import pysoem
-import atexit
 import threading
 import time
 
@@ -192,7 +191,7 @@ def test_release_network_reference_raises_error_if_wrong_network():
 
 
 @pytest.mark.ethercat
-def test_master_reference_is_kept_while_network_is_alive(mocker):
+def test_master_reference_is_kept_while_network_is_alive(mocker, ethercat_network_teardown):  # noqa: ARG001
     set_network_reference_spy = mocker.spy(ingenialink.ethercat.network, "set_network_reference")
     release_network_reference_spy = mocker.spy(
         ingenialink.ethercat.network, "release_network_reference"
@@ -222,10 +221,8 @@ def test_master_reference_is_kept_while_network_is_alive(mocker):
     assert id(list(ETHERCAT_NETWORK_REFERENCES)[0]) == net_2_id
     assert release_network_reference_spy.call_count == 1  # Has not been called again
 
-    # When the program ends, atexit should get rid of it
-    # Manually call atexit functions -> should be called on normal program termination
-    atexit._run_exitfuncs()
-    assert not len(ETHERCAT_NETWORK_REFERENCES)
+    # When the program ends, atexit should get rid of it (mocked with ethercat_network_teardown)
+    # In real program execution, it is called on normal program termination
 
 
 @pytest.mark.ethercat
