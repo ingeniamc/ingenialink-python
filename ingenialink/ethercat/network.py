@@ -32,7 +32,7 @@ from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
-# Holds a reference to the Ethercat network by the time it is created -> handle no-GIL cases
+# Holds a reference to the Ethercat network (used to handle no-GIL cases)
 ETHERCAT_NETWORK_REFERENCES: set["EthercatNetwork"] = set()
 
 
