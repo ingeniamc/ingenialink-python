@@ -1266,6 +1266,8 @@ class SinCosSignalGenerator:
     COSINE_GAIN = 0.9
     COSINE_OFFSET = 0.6
 
+    NOISE_AMPLITUDE = 0.01
+
     def __init__(self, drive: "VirtualDrive") -> None:
         self.drive = drive
         self.monitoring_frequency = VirtualMonitoring.FREQUENCY
@@ -1288,7 +1290,9 @@ class SinCosSignalGenerator:
             self.COSINE_GAIN * np.cos(2 * np.pi * self.SIGNAL_FREQUENCY_HZ * t)
         )
         self.drive.reg_signals[self.SINE_REGISTER_VALUE] = sine_signal_data
+        self.drive.reg_noise_amplitude[self.SINE_REGISTER_VALUE] = self.NOISE_AMPLITUDE
         self.drive.reg_signals[self.COSINE_REGISTER_VALUE] = cosine_signal_data
+        self.drive.reg_noise_amplitude[self.COSINE_REGISTER_VALUE] = self.NOISE_AMPLITUDE
 
 
 class VirtualDrive(Thread):
