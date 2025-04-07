@@ -1256,7 +1256,7 @@ class VirtualDisturbance(VirtualMonDistBase):
 class SinCosSignalGenerator:
     """SinCos signals generator."""
 
-    SIGNAL_FREQUENCY_HZ = 10
+    SIGNAL_FREQUENCY_HZ = 50
 
     SINE_REGISTER_VALUE = "FBK_SINCOS_SINE_VALUE"
     SINE_GAIN = 0.8
@@ -1270,18 +1270,15 @@ class SinCosSignalGenerator:
 
     def __init__(self, drive: "VirtualDrive") -> None:
         self.drive = drive
-        self.monitoring_frequency = VirtualMonitoring.FREQUENCY
 
     def emulate_signals(self) -> None:
         """Emulate the SinCos signals."""
         if self.drive._monitoring is None:
             return
-        sampling_freq = round(self.monitoring_frequency / self.drive._monitoring.divider, 2)
-        total_time_s = self.drive._monitoring.buffer_size / sampling_freq
-        samples_step_s = total_time_s / (
-            self.drive._monitoring.buffer_size * self.drive._monitoring.divider
-        )
-        t = np.arange(0, total_time_s, samples_step_s)
+        total_time_s = self.drive._monitoring.buffer_time
+        n_samples = self.drive._monitoring.buffer_size * self.drive._monitoring.divider
+        sample_step_s = total_time_s / n_samples
+        t = np.arange(0, total_time_s, sample_step_s)
 
         sine_signal_data = self.SINE_OFFSET + (
             self.SINE_GAIN * np.sin(2 * np.pi * self.SIGNAL_FREQUENCY_HZ * t)
