@@ -1253,6 +1253,44 @@ class VirtualDisturbance(VirtualMonDistBase):
         return buffer_size_bytes
 
 
+class SinCosSignalGenerator:
+    """SinCos signals generator."""
+
+    SIGNAL_FREQUENCY_HZ = 10
+
+    SINE_REGISTER_VALUE = "FBK_SINCOS_SINE_VALUE"
+    SINE_GAIN = 0.8
+    SINE_OFFSET = 0.5
+
+    COSINE_REGISTER_VALUE = "FBK_SINCOS_COSINE_VALUE"
+    COSINE_GAIN = 0.9
+    COSINE_OFFSET = 0.6
+
+    def __init__(self, drive: "VirtualDrive") -> None:
+        self.drive = drive
+        self.monitoring_frequency = VirtualMonitoring.FREQUENCY
+
+    def emulate_signals(self) -> None:
+        """Emulate the SinCos signals."""
+        if self.drive._monitoring is None:
+            return
+        sampling_freq = round(self.monitoring_frequency / self.drive._monitoring.divider, 2)
+        total_time_s = self.drive._monitoring.buffer_size / sampling_freq
+        samples_step_s = total_time_s / (
+            self.drive._monitoring.buffer_size * self.drive._monitoring.divider
+        )
+        t = np.arange(0, total_time_s, samples_step_s)
+
+        sine_signal_data = self.SINE_OFFSET + (
+            self.SINE_GAIN * np.sin(2 * np.pi * self.SIGNAL_FREQUENCY_HZ * t)
+        )
+        cosine_signal_data = self.COSINE_OFFSET + (
+            self.COSINE_GAIN * np.cos(2 * np.pi * self.SIGNAL_FREQUENCY_HZ * t)
+        )
+        self.drive.reg_signals[self.SINE_REGISTER_VALUE] = sine_signal_data
+        self.drive.reg_signals[self.COSINE_REGISTER_VALUE] = cosine_signal_data
+
+
 class VirtualDrive(Thread):
     """Emulates a drive by creating a UDP server that sends and receives MCB messages.
 
@@ -1334,6 +1372,8 @@ class VirtualDrive(Thread):
         self._plant_open_loop_vol_to_curr_a = PlantOpenLoopVoltageToCurrentA(self)
         self._plant_open_loop_vol_to_curr_b = PlantOpenLoopVoltageToCurrentB(self)
         self._plant_open_loop_vol_to_curr_c = PlantOpenLoopVoltageToCurrentC(self)
+
+        self._sincos_signals = SinCosSignalGenerator(self)
 
         self.phasing = VirtualPhasing(self)
         self.internal_generator = VirtualInternalGenerator(self)
@@ -1583,6 +1623,7 @@ class VirtualDrive(Thread):
         dtype = register.dtype
         value = convert_bytes_to_dtype(data, dtype)
         if reg_id == "MON_DIST_ENABLE" and subnode == 0 and value == 1 and self._monitoring:
+            self._sincos_signals.emulate_signals()
             self._monitoring.enable()
         if reg_id == "MON_DIST_ENABLE" and subnode == 0 and value == 0 and self._monitoring:
             self._monitoring.disable()
