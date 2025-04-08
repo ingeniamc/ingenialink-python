@@ -1145,6 +1145,7 @@
             <Enum value="6">Secondary BiSS-C / SSI slave 1</Enum>
             <Enum value="7">BiSS-C slave 2</Enum>
             <Enum value="8">Incremental encoder 2</Enum>
+            <Enum value="10">Sincos encoder 1</Enum>
           </Enumerations>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0152" dtype="float" id="COMMU_ANGLE_REF_OFFSET" units="rev" subnode="1" cyclic="CONFIG" desc="Offset between the generated 0 angle position of the drive and the value read by the reference feedback sensor. It is computed automatically by a forced phasing method." cat_id="COMMUTATION">
@@ -1165,6 +1166,7 @@
             <Enum value="6">Secondary BiSS-C / SSI slave 1</Enum>
             <Enum value="7">BiSS-C slave 2</Enum>
             <Enum value="8">Incremental encoder 2</Enum>
+            <Enum value="10">Sincos encoder 1</Enum>
           </Enumerations>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0154" dtype="u16" id="COMMU_PHASING_MODE" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the method of actuator alignment" cat_id="COMMUTATION">
@@ -1439,6 +1441,7 @@
             <Enum value="6">Secondary BiSS-C / SSI slave 1</Enum>
             <Enum value="7">BiSS-C slave 2</Enum>
             <Enum value="8">Incremental encoder 2</Enum>
+            <Enum value="10">Sincos encoder 1</Enum>
           </Enumerations>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0361" dtype="u16" id="CL_POS_FBK_SENSOR" units="-" subnode="1" cyclic="CONFIG" desc="Selects the position feedback sensor" cat_id="FEEDBACK">
@@ -1453,6 +1456,7 @@
             <Enum value="6">Secondary BiSS-C / SSI slave 1</Enum>
             <Enum value="7">BiSS-C slave 2</Enum>
             <Enum value="8">Incremental encoder 2</Enum>
+            <Enum value="10">Sincos encoder 1</Enum>
           </Enumerations>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0362" dtype="u16" id="CL_AUX_FBK_SENSOR" units="none" subnode="1" cyclic="CONFIG" desc="Indicates the sensor used for raw value reading" cat_id="FEEDBACK">
@@ -1466,6 +1470,7 @@
             <Enum value="6">Secondary BiSS-C / SSI slave 1</Enum>
             <Enum value="7">BiSS-C slave 2</Enum>
             <Enum value="8">Incremental encoder 2</Enum>
+            <Enum value="10">Sincos encoder 1</Enum>
           </Enumerations>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0364" dtype="float" id="PROF_POS_VEL_RATIO" units="-" subnode="1" cyclic="CONFIG" desc="Ratio between revolutions in position sensor against revolutions in velocity sensor [revs in position sensor / revs in velocity sensor]&#13;&#10;&#13;&#10;For instance, if 1 revolution at the position sensor locations equals 50 revolutions where the velocity sensor is located, the ratio should be 1/50." cat_id="FEEDBACK">
@@ -1773,6 +1778,7 @@
             <Enum value="6">Secondary BiSS-C / SSI slave 1</Enum>
             <Enum value="7">Biss-C slave 2</Enum>
             <Enum value="8">Incremental encoder 2</Enum>
+            <Enum value="10">Sincos encoder 1</Enum>
           </Enumerations>
         </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x0395" dtype="u16" id="FBK_BISS_CHAIN" units="-" subnode="1" cyclic="CONFIG" desc="Number of serial absolute feedbacks connected in daisy chain. There has to be at least one feedback connected" cat_id="FEEDBACK">
@@ -1995,6 +2001,16 @@
                 <Enum value="0">Standard</Enum>
                 <Enum value="1">Reversed</Enum>
             </Enumerations>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x046A"  dtype="s32" id="FBK_SINCOS_VALUE" units="cnt" subnode="1" cyclic="CYCLIC_TX" desc="Contains raw value read as a SinCos encoder." cat_id="FEEDBACK">
+            <Labels>
+                <Label lang="en_US">SinCos encoder - Coarse Value</Label>
+            </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM" address="0x046B"  dtype="u16" id="FBK_SINCOS_FILTER" units="-" subnode="1" cyclic="CYCLIC_TX" desc="To Be Defined" cat_id="FEEDBACK">
+            <Labels>
+                <Label lang="en_US">SinCos encoder - Filter</Label>
+            </Labels>
         </Register>
         <Register access="r" address_type="NVM_NONE" address="0x046C"  dtype="float" id="FBK_SINCOS_SINE_VALUE" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Contains sine value read from adc." cat_id="FEEDBACK">
             <Labels>
