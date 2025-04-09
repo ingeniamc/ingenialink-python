@@ -189,6 +189,8 @@
 				<Register access="rw" dtype="s32" id="FBK_BISS1_SSI1_OFFSET" storage="0" subnode="1"/>
 				<Register access="rw" dtype="s32" id="FBK_BISS2_OFFSET" storage="0" subnode="1"/>
 				<Register access="rw" dtype="s32" id="FBK_SSI2_OFFSET" storage="0" subnode="1"/>
+				<Register access="rw" dtype="u32" id="FBK_SINCOS_RESOLUTION" storage="4096" subnode="1"/>
+				<Register access="rw" dtype="u16" id="FBK_SINCOS_MULT_FACTOR" storage="2" subnode="1"/>
 				<Register access="rw" dtype="float" id="TORQUE_ESTIM_KT" storage="1.0" subnode="1"/>
 				<Register access="rw" dtype="u16" id="FBK_SSI2_PROTOCOL" storage="0" subnode="1"/>
 				<Register access="rw" dtype="u16" id="HOM_MODE" storage="0" subnode="1"/>
