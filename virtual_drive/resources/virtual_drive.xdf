@@ -2022,6 +2022,26 @@
                 <Label lang="en_US">SinCos encoder - Cosinus Value</Label>
             </Labels>
         </Register>
+        <Register access="rw" address_type="NVM" address="0x0470"  dtype="float" id="FBK_SINCOS_SINE_GAIN" units="-" subnode="1" cyclic="CYCLIC_TX" desc="This register provides control to assign which is the gain of sine signal. A value of 65535 will represent a gain of 1" cat_id="FEEDBACK">
+            <Labels>
+                <Label lang="en_US">SinCos encoder - Sinus Gain</Label>
+            </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM" address="0x0471"  dtype="float" id="FBK_SINCOS_COSINE_GAIN" units="-" subnode="1" cyclic="CYCLIC_TX" desc="This register provides control to assign which is the gain of cosine signal. A value of 65535 will represent a gain of 1" cat_id="FEEDBACK">
+            <Labels>
+                <Label lang="en_US">SinCos encoder - Cosinus Gain</Label>
+            </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM" address="0x0473"  dtype="float" id="FBK_SINCOS_SINE_OFFSET" units="-" subnode="1" cyclic="CYCLIC_TX" desc="This register provides control to assign which is the offset of each sine signal amplitude. The value is expressed in counts of analog to digital converter." cat_id="FEEDBACK">
+            <Labels>
+                <Label lang="en_US">SinCos encoder - Sinus Offset</Label>
+            </Labels>
+        </Register>
+        <Register access="rw" address_type="NVM" address="0x0474"  dtype="float" id="FBK_SINCOS_COSINE_OFFSET" units="-" subnode="1" cyclic="CYCLIC_TX" desc="This register provides control to assign which is the offset of each cosine signal amplitude. The value is expressed in counts of analog to digital converter." cat_id="FEEDBACK">
+            <Labels>
+                <Label lang="en_US">SinCos encoder - Cosinus Offset</Label>
+            </Labels>
+        </Register>
         <Register access="rw" address_type="NVM_CFG" address="0x04FF" dtype="u16" id="FBK_CUR_RANGE_SELECTION" units="-" subnode="1" cyclic="CONFIG" desc="Indicates the gain applied to current amplifier for readings." cat_id="LIMITS">
           <Labels>
             <Label lang="en_US">Current scaling gain factor</Label>
