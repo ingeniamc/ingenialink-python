@@ -40,3 +40,6 @@ _docs
 # Cython compilation
 ingenialink/cython_files/*.cpp
 temp/*
+
+# tests setups
+tests/setups/tests_setup.py
