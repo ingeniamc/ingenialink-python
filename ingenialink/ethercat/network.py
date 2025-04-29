@@ -273,6 +273,18 @@ class EthercatNetwork(Network):
             return "File not found"
         return f" Error code: {error_code}."
 
+    def get_slave_state(self, servo: EthercatServo) -> SlaveState:
+        """Returns the EthercatServo state.
+
+        Args:
+            servo: slave.
+
+        Returns:
+            Slave state.
+        """
+        self._ecat_master.read_state()
+        return SlaveState(servo.slave.state)
+
     def scan_slaves(self) -> list[int]:
         """Scans for slaves in the network.
 
@@ -446,7 +458,7 @@ class EthercatNetwork(Network):
             raise ILStateError("Drives can not reach SafeOp state")
         self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
         init_time = time.time()
-        while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
+        while not self._wait_for_node_state(op_servo_list, pysoem.OP_STATE):
             self.send_receive_processdata()
             if timeout < time.time() - init_time:
                 raise ILStateError("Drives can not reach Op state")
@@ -528,9 +540,9 @@ class EthercatNetwork(Network):
         for drive in node_list:
             drive.slave.state = target_state
             drive.slave.write_state()
-        return self._check_node_state(nodes, target_state)
+        return self._wait_for_node_state(nodes, target_state)
 
-    def _check_node_state(
+    def _wait_for_node_state(
         self, nodes: Union["EthercatServo", list["EthercatServo"]], target_state: int
     ) -> bool:
         """Check ECAT state for all nodes in list.
@@ -806,7 +818,7 @@ class EthercatNetwork(Network):
                 "The CoE communication cannot be recovered. No slaves where detected in the network"
             )
             return False
-        all_drives_in_preop = self._check_node_state(self.servos, pysoem.PREOP_STATE)
+        all_drives_in_preop = self._wait_for_node_state(self.servos, pysoem.PREOP_STATE)
         if all_drives_in_preop:
             log_message = "CoE communication recovered."
         else:
