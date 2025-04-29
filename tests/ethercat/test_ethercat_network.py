@@ -156,6 +156,7 @@ def test_wait_for_node_state(connect_to_slave):
 @pytest.mark.ethercat
 def test_get_slave_state(connect_to_slave):
     servo, net = connect_to_slave
+    assert net._wait_for_node_state(servo, pysoem.PREOP_STATE)
     assert net.get_slave_state(servo=servo) is pysoem.PREOP_STATE
 
 
