@@ -238,5 +238,8 @@ def load_firmware(pytestconfig, read_config, request):
     drive_idx = get_drive_idx_from_rack_config(protocol_contents, rack_config)
     drive = rack_config.drives[drive_idx]
     client.exposed_firmware_load(
-        drive_idx, protocol_contents["fw_file"], drive.product_code, drive.serial_number
+        drive_idx=drive_idx,
+        revision_number=protocol_contents["revision_number"],
+        product_code=drive.product_code,
+        serial_number=drive.serial_number,
     )
