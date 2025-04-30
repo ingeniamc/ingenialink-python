@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.4.2] - 2025-04-30
 ### Added
 - Implement the scan method for Ethernet networks.
 - GIL release control for EtherCAT functions.
