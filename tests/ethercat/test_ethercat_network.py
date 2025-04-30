@@ -226,6 +226,25 @@ def test_master_reference_is_kept_while_network_is_alive(mocker, ethercat_networ
 
 
 @pytest.mark.ethercat
+def test_master_reference_is_kept_after_scan(mocker, ethercat_network_teardown):  # noqa: ARG001
+    assert len(ETHERCAT_NETWORK_REFERENCES) == 0
+    net_1 = EthercatNetwork("dummy_network_1", gil_release_config=GilReleaseConfig.always())
+    assert len(ETHERCAT_NETWORK_REFERENCES) == 1
+    assert net_1 in ETHERCAT_NETWORK_REFERENCES
+
+    mocker.patch("ingenialink.ethercat.network.EthercatNetwork.scan_slaves")
+
+    net_1.scan_slaves()
+
+    assert len(ETHERCAT_NETWORK_REFERENCES) == 1
+    assert net_1 in ETHERCAT_NETWORK_REFERENCES
+
+    net_1.close_ecat_master()
+
+    assert len(ETHERCAT_NETWORK_REFERENCES) == 0
+
+
+@pytest.mark.ethercat
 def test_network_is_not_released_if_gil_operation_ongoing(mocker, read_config):
     blocking_time = 5
 
