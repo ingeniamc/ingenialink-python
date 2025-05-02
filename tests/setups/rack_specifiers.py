@@ -1,9 +1,6 @@
 from pathlib import Path
 
-from summit_testing_framework.setups import (
-    PartNumber,
-    RackServiceConfigSpecifier,
-)
+from summit_testing_framework.setups.specifiers import PartNumber, RackServiceConfigSpecifier
 
 from ingenialink.dictionary import Interface
 

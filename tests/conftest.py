@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 import rpyc
+from summit_testing_framework import dynamic_loader
 
 from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.eoe.network import EoENetwork
@@ -18,6 +19,19 @@ from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.virtual.network import VirtualNetwork
 from virtual_drive.core import VirtualDrive
 
+pytest_plugins = [
+    "summit_testing_framework.pytest_addoptions",
+    "summit_testing_framework.setup_fixtures",
+]
+
+
+# Pytest runs with importlib import mode, which means that it will run the tests with the installed
+# version of the package. Therefore, modules that are not included in the package cannot be imported
+# in the tests.
+# The issue is solved by dynamically importing them before the tests start. All modules that should
+# be imported and ARE NOT part of the package should be specified here
+_DYNAMIC_MODULES_IMPORT = ["tests"]
+
 DEFAULT_PROTOCOL = "no_connection"
 
 ALLOW_PROTOCOLS = [DEFAULT_PROTOCOL, "ethernet", "ethercat", "canopen", "eoe", "multislave"]
@@ -25,21 +39,17 @@ ALLOW_PROTOCOLS = [DEFAULT_PROTOCOL, "ethernet", "ethercat", "canopen", "eoe", "
 SLEEP_BETWEEN_POWER_CYCLE_S = 10
 
 
-def pytest_addoption(parser):
-    parser.addoption(
-        "--protocol",
-        action="store",
-        default=DEFAULT_PROTOCOL,
-        help=",".join(ALLOW_PROTOCOLS),
-        choices=ALLOW_PROTOCOLS,
-    )
-    parser.addoption("--slave", type=int, default=0, help="Slave index in config.json")
-    parser.addoption(
-        "--job_name",
-        action="store",
-        default="ingenialink - Unknown",
-        help="Name of the executing job. Will be set to rack service to have more info of the logs",
-    )
+def pytest_sessionstart(session):
+    """Loads the modules that are not part of the package if import mode is importlib.
+
+    Args:
+        session: session.
+    """
+    if session.config.option.importmode != "importlib":
+        return
+    ingeniamotion_base_path = Path(__file__).parents[1]
+    for module_name in _DYNAMIC_MODULES_IMPORT:
+        dynamic_loader((ingeniamotion_base_path / module_name).resolve())
 
 
 @pytest.fixture(scope="session")
