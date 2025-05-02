@@ -9,9 +9,8 @@ def _read_user_over_voltage_uid(servo):
     return servo.read(_USER_OVER_VOLTAGE_UID, subnode=1)
 
 
-@pytest.mark.smoke
 @pytest.mark.ethernet
-@pytest.mark.soem
+@pytest.mark.ethercat
 @pytest.mark.canopen
 def test_drive_context_manager(connect_to_slave):
     servo, _ = connect_to_slave
