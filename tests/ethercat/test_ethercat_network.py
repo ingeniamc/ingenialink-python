@@ -77,8 +77,8 @@ def test_connect_to_no_detected_slave(read_config, ethercat_network_teardown):  
 
 
 @pytest.mark.ethercat
-def test_scan_slaves_raises_exception_if_drive_is_already_connected(connect_to_slave):
-    servo, net = connect_to_slave
+def test_scan_slaves_raises_exception_if_drive_is_already_connected(interface_controller):
+    servo, net, _, _ = interface_controller
     net._ecat_master.read_state()
     assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
     with pytest.raises(ILError):
@@ -104,8 +104,8 @@ def test_scan_slaves_info(
 
 
 @pytest.mark.ethercat
-def test_update_sdo_timeout(connect_to_slave):
-    _, net = connect_to_slave
+def test_update_sdo_timeout(interface_controller):
+    _, net, _, _ = interface_controller
     read_timeout = 10
     write_timeout = 100
     net.update_sdo_timeout(read_timeout, write_timeout)
@@ -118,8 +118,8 @@ def test_update_sdo_timeout(connect_to_slave):
 
 
 @pytest.mark.ethercat
-def test_update_pysoem_timeouts(connect_to_slave):
-    _, net = connect_to_slave
+def test_update_pysoem_timeouts(interface_controller):
+    _, net, _, _ = interface_controller
     old_ret = pysoem.settings.timeouts.ret
     old_safe = pysoem.settings.timeouts.safe
     old_eeprom = pysoem.settings.timeouts.eeprom
@@ -145,8 +145,8 @@ def test_update_pysoem_timeouts(connect_to_slave):
 
 
 @pytest.mark.ethercat
-def test_check_node_state(connect_to_slave):
-    servo, net = connect_to_slave
+def test_check_node_state(interface_controller):
+    servo, net, _, _ = interface_controller
     # True when list is not empty
     assert net._check_node_state(servo, pysoem.PREOP_STATE)
     # False when list is not empty

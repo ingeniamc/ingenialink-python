@@ -21,8 +21,8 @@ def is_coco_moco(servo):
 
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_emcy_callback(connect_to_slave):
-    servo, _ = connect_to_slave
+def test_emcy_callback(interface_controller):
+    servo, _, _, _ = interface_controller
     if isinstance(servo, EthercatServo) and is_coco_moco(servo):
         pytest.skip("The test is not supported for COCO MOCO EtherCAT drives")
     emcy_test = EmcyTest()
@@ -44,10 +44,10 @@ def test_emcy_callback(connect_to_slave):
 
 
 @pytest.mark.ethercat
-def test_emcy_callback_coco_moco_ethercat(connect_to_slave):
+def test_emcy_callback_coco_moco_ethercat(interface_controller):
     # EMCY test for COCO MOCO EtherCAT drives
     # Check INGK-993
-    servo, _ = connect_to_slave
+    servo, _, _, _ = interface_controller
     if not is_coco_moco(servo):
         pytest.skip("The test is only for COCO MOCO EtherCAT drives")
     emcy_test = EmcyTest()

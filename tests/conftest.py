@@ -8,14 +8,10 @@ import pytest
 import rpyc
 from summit_testing_framework import dynamic_loader
 
-from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
-from ingenialink.eoe.network import EoENetwork
 from ingenialink.ethercat.network import (
     ETHERCAT_NETWORK_REFERENCES,
-    EthercatNetwork,
     release_network_reference,
 )
-from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.virtual.network import VirtualNetwork
 from virtual_drive.core import VirtualDrive
 
@@ -47,9 +43,9 @@ def pytest_sessionstart(session):
     """
     if session.config.option.importmode != "importlib":
         return
-    ingeniamotion_base_path = Path(__file__).parents[1]
+    ingenialink_base_path = Path(__file__).parents[1]
     for module_name in _DYNAMIC_MODULES_IMPORT:
-        dynamic_loader((ingeniamotion_base_path / module_name).resolve())
+        dynamic_loader((ingenialink_base_path / module_name).resolve())
 
 
 @pytest.fixture(scope="session")
@@ -76,49 +72,6 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_by_protocol)
 
 
-def connect_canopen(protocol_contents):
-    net = CanopenNetwork(
-        device=CanDevice(protocol_contents["device"]),
-        channel=protocol_contents["channel"],
-        baudrate=CanBaudrate(protocol_contents["baudrate"]),
-    )
-
-    servo = net.connect_to_slave(
-        target=protocol_contents["node_id"],
-        dictionary=protocol_contents["dictionary"],
-    )
-    return servo, net
-
-
-def connect_ethernet(protocol_contents):
-    net = EthernetNetwork()
-
-    servo = net.connect_to_slave(
-        protocol_contents["ip"], protocol_contents["dictionary"], protocol_contents["port"]
-    )
-    return servo, net
-
-
-def connect_ethercat(protocol_contents):
-    net = EthercatNetwork(protocol_contents["ifname"])
-
-    servo = net.connect_to_slave(
-        protocol_contents["slave"], protocol_contents["dictionary"], net_status_listener=True
-    )
-    return servo, net
-
-
-def connect_eoe(protocol_contents):
-    net = EoENetwork(protocol_contents["ifname"])
-
-    servo = net.connect_to_slave(
-        slave_id=protocol_contents["slave"],
-        ip_address=protocol_contents["ip"],
-        dictionary=protocol_contents["dictionary"],
-    )
-    return servo, net
-
-
 @pytest.fixture
 def virtual_drive_resources_folder():
     root_folder = Path(__file__).resolve().parent.parent
@@ -127,7 +80,7 @@ def virtual_drive_resources_folder():
 
 @pytest.fixture
 def ethercat_network_teardown():
-    """Should be executed for all the tests that do not use `connect_to_slave` fixture.
+    """Should be executed for all the tests that do not use `interface_controller` fixture.
 
     It is used to clear the network reference.
     Many of the tests check that errors are raised, so the reference is not properly cleared."""
@@ -136,28 +89,6 @@ def ethercat_network_teardown():
     assert not len(ETHERCAT_NETWORK_REFERENCES)
     # Once atexit is called, the register will be lost, so register the needed functions again
     atexit.register(release_network_reference, None)
-
-
-@pytest.fixture
-def connect_to_slave(pytestconfig, read_config):
-    servo = None
-    net = None
-    protocol = pytestconfig.getoption("--protocol")
-    protocol_contents = read_config[protocol]
-    if protocol == "ethernet":
-        servo, net = connect_ethernet(protocol_contents)
-    elif protocol == "canopen":
-        servo, net = connect_canopen(protocol_contents)
-    elif protocol == "eoe":
-        servo, net = connect_eoe(protocol_contents)
-    elif protocol == "ethercat":
-        servo, net = connect_ethercat(protocol_contents)
-
-    filename = read_config[protocol]["load_config_file"]
-    servo.load_configuration(filename)
-
-    yield servo, net
-    net.disconnect_from_slave(servo)
 
 
 @pytest.fixture()

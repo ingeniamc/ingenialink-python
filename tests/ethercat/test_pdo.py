@@ -197,9 +197,9 @@ def test_pdo_map(create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_servo_add_maps(connect_to_slave, create_pdo_map):
+def test_servo_add_maps(interface_controller, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
-    servo, _ = connect_to_slave
+    servo, _, _, _ = interface_controller
 
     servo.reset_tpdo_mapping()
     servo.reset_rpdo_mapping()
@@ -238,8 +238,8 @@ def test_servo_add_maps(connect_to_slave, create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(connect_to_slave):
-    servo, net = connect_to_slave
+def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(interface_controller):
+    servo, net, _, _ = interface_controller
 
     operation_mode_uid = "DRV_OP_CMD"
     rpdo_registers = [operation_mode_uid]
@@ -281,9 +281,9 @@ def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(connec
 
 
 @pytest.mark.ethercat
-def test_servo_reset_pdos(connect_to_slave, create_pdo_map):
+def test_servo_reset_pdos(interface_controller, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
-    servo, _ = connect_to_slave
+    servo, _, _, _ = interface_controller
 
     servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     servo.map_pdos(1)
@@ -391,18 +391,18 @@ def test_start_stop_pdo(connect_to_all_slave):
 
 
 @pytest.mark.ethercat
-def test_start_pdo_error_rpod_values_not_set(connect_to_slave, create_pdo_map):
+def test_start_pdo_error_rpod_values_not_set(interface_controller, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
-    servo, net = connect_to_slave
+    servo, net, _, _ = interface_controller
     servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     with pytest.raises(ILError):
         net.start_pdos()
 
 
 @pytest.mark.ethercat
-def test_set_pdo_map_to_slave(connect_to_slave, create_pdo_map):
+def test_set_pdo_map_to_slave(interface_controller, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
-    servo, _ = connect_to_slave
+    servo, _, _, _ = interface_controller
     servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     assert len(servo._rpdo_maps) == 1
     assert servo._rpdo_maps[0] == rpdo_map
@@ -565,9 +565,9 @@ def test_map_pdo_with_bools(open_dictionary):
 
 
 @pytest.mark.ethercat
-def test_remove_rpdo_map(connect_to_slave, create_pdo_map):
+def test_remove_rpdo_map(interface_controller, create_pdo_map):
     _, rpdo_map = create_pdo_map
-    servo, _ = connect_to_slave
+    servo, _, _, _ = interface_controller
     servo.set_pdo_map_to_slave([rpdo_map], [])
     assert len(servo._rpdo_maps) > 0
     servo.remove_rpdo_map(rpdo_map)
@@ -578,9 +578,9 @@ def test_remove_rpdo_map(connect_to_slave, create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_remove_rpdo_map_exceptions(connect_to_slave, create_pdo_map):
+def test_remove_rpdo_map_exceptions(interface_controller, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
-    servo, _ = connect_to_slave
+    servo, _, _, _ = interface_controller
     servo.set_pdo_map_to_slave([rpdo_map], [])
     with pytest.raises(ValueError):
         servo.remove_rpdo_map()
@@ -591,9 +591,9 @@ def test_remove_rpdo_map_exceptions(connect_to_slave, create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_remove_tpdo_map(connect_to_slave, create_pdo_map):
+def test_remove_tpdo_map(interface_controller, create_pdo_map):
     tpdo_map, _ = create_pdo_map
-    servo, _ = connect_to_slave
+    servo, _, _, _ = interface_controller
     servo.set_pdo_map_to_slave([], [tpdo_map])
     assert len(servo._tpdo_maps) > 0
     servo.remove_tpdo_map(tpdo_map)
@@ -604,9 +604,9 @@ def test_remove_tpdo_map(connect_to_slave, create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_remove_tpdo_map_exceptions(connect_to_slave, create_pdo_map):
+def test_remove_tpdo_map_exceptions(interface_controller, create_pdo_map):
     _, rpdo_map = create_pdo_map
-    servo, _ = connect_to_slave
+    servo, _, _, _ = interface_controller
     servo.set_pdo_map_to_slave([rpdo_map], [])
     with pytest.raises(ValueError):
         servo.remove_rpdo_map()

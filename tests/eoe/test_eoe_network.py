@@ -20,10 +20,10 @@ def connect(read_config):
 
 
 @pytest.mark.eoe
-def test_eoe_connection(connect_to_slave):
+def test_eoe_connection(interface_controller):
     eoe_service_ip = "127.0.0.1"
     eoe_service_port = 8888
-    servo, net = connect_to_slave
+    servo, net, _, _ = interface_controller
     net_socket = net._eoe_socket
     ip, port = net_socket.getpeername()
     assert servo.is_alive()

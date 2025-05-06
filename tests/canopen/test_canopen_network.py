@@ -27,8 +27,8 @@ def test_getters_canopen(virtual_network):
 
 
 @pytest.mark.canopen
-def test_connect_to_slave(connect_to_slave):
-    servo, net = connect_to_slave
+def test_connect_to_slave(interface_controller):
+    servo, net, _, _ = interface_controller
     assert servo is not None and net is not None
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
@@ -133,8 +133,8 @@ def test_setup_and_teardown_connection(virtual_network):
 
 
 @pytest.mark.skip
-def test_load_firmware(connect_to_slave, read_config):
-    servo, net = connect_to_slave
+def test_load_firmware(interface_controller, read_config):
+    servo, net, _, _ = interface_controller
     assert servo is not None and net is not None
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
