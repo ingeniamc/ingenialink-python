@@ -150,37 +150,3 @@ def get_drive_idx_from_rack_config(protocol_contents, rack_config):
     if drive_idx is None:
         pytest.fail(f"The drive {drive_identifier} cannot be found on the rack's configuration.")
     return drive_idx
-
-
-@pytest.fixture(scope="session", autouse=True)
-def load_firmware(pytestconfig, read_config, request):
-    protocol = pytestconfig.getoption("--protocol")
-    if protocol in [DEFAULT_PROTOCOL, "multislave"]:
-        return
-
-    client = request.getfixturevalue("connect_to_rack_service")
-    # Reboot drive
-    client.exposed_turn_off_ps()
-    time.sleep(SLEEP_BETWEEN_POWER_CYCLE_S)
-    client.exposed_turn_on_ps()
-
-    # Wait for all drives to turn-on, for 90 seconds
-    timeout = 90
-    wait_until = time.time() + timeout
-    while True:
-        if time.time() >= wait_until:
-            raise TimeoutError(f"Could not find drives in {timeout} after rebooting")
-        rack_config = client.exposed_get_configuration()
-        network = rack_config.networks[0]
-        all_nodes_started, _ = network.all_nodes_started()
-        if all_nodes_started:
-            break
-    protocol_contents = read_config[protocol]
-    drive_idx = get_drive_idx_from_rack_config(protocol_contents, rack_config)
-    drive = rack_config.drives[drive_idx]
-    client.exposed_firmware_load(
-        drive_idx=drive_idx,
-        revision_number=protocol_contents["revision_number"],
-        product_code=drive.product_code,
-        serial_number=drive.serial_number,
-    )
