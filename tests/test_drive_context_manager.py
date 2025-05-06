@@ -53,7 +53,7 @@ def test_drive_context_manager_nested_contexts(connect_to_slave):
 
         context_2 = DriveContextManager(servo)
         with context_2:
-            servo.write(_USER_OVER_VOLTAGE_UID, new_under_volt_value, subnode=1)
+            servo.write(_USER_UNDER_VOLTAGE_UID, new_under_volt_value, subnode=1)
             assert _read_user_under_voltage_uid(servo) == new_under_volt_value
 
         assert _read_user_under_voltage_uid(servo) == previous_under_volt_value
