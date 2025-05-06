@@ -8,13 +8,12 @@ from ingenialink.ethernet.servo import EthernetServo
 
 
 @pytest.fixture()
-def connect(read_config):
-    protocol_contents = read_config["eoe"]
-    net = EoENetwork(protocol_contents["ifname"])
+def connect(setup_descriptor):
+    net = EoENetwork(setup_descriptor.ifname)
     servo = net.connect_to_slave(
-        slave_id=protocol_contents["slave"],
-        ip_address=protocol_contents["ip"],
-        dictionary=protocol_contents["dictionary"],
+        slave_id=setup_descriptor.slave,
+        ip_address=setup_descriptor.ip,
+        dictionary=setup_descriptor.dictionary,
     )
     return servo, net
 
@@ -39,14 +38,13 @@ def test_eoe_connection(interface_controller):
 
 
 @pytest.mark.eoe
-def test_eoe_connection_wrong_ip_address(read_config):
-    protocol_contents = read_config["eoe"]
-    net = EoENetwork(protocol_contents["ifname"])
+def test_eoe_connection_wrong_ip_address(setup_descriptor):
+    net = EoENetwork(setup_descriptor.ifname)
     with pytest.raises(ValueError):
         net.connect_to_slave(
-            slave_id=protocol_contents["slave"],
+            slave_id=setup_descriptor.slave,
             ip_address="192.168.2.22",
-            dictionary=protocol_contents["dictionary"],
+            dictionary=setup_descriptor.dictionary,
         )
 
 

@@ -7,6 +7,8 @@ from xml.etree import ElementTree
 
 import pytest
 from packaging import version
+from summit_testing_framework.rack_service_client import PartNumber
+from summit_testing_framework.setups.specifiers import RackServiceConfigSpecifier
 
 from ingenialink import RegAccess
 from ingenialink.configuration_file import ConfigurationFile
@@ -264,14 +266,11 @@ def test_load_configuration_file_not_found(interface_controller):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration_invalid_subnode(
-    read_config, pytestconfig, interface_controller, subnode
-):
+def test_load_configuration_invalid_subnode(setup_descriptor, interface_controller, subnode):
     servo, net, _, _ = interface_controller
     assert servo is not None and net is not None
 
-    protocol = pytestconfig.getoption("--protocol")
-    filename = read_config[protocol]["load_config_file"]
+    filename = setup_descriptor.config_file
     with pytest.raises(ValueError):
         servo.load_configuration(filename, subnode=subnode)
 
@@ -279,12 +278,11 @@ def test_load_configuration_invalid_subnode(
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration_to_subnode_zero(read_config, pytestconfig, interface_controller):
+def test_load_configuration_to_subnode_zero(setup_descriptor, interface_controller):
     servo, net, _, _ = interface_controller
     assert servo is not None and net is not None
 
-    protocol = pytestconfig.getoption("--protocol")
-    filename = read_config[protocol]["load_config_file"]
+    filename = setup_descriptor.config_file
     path = Path(filename)
     file = filename.split("/")[-1]
     modified_path = Path(filename.replace(file, "config_0_test.xdf"))
@@ -552,9 +550,11 @@ def test_enable_disable(interface_controller):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_fault_reset(interface_controller, get_drive_configuration_from_rack_service):
-    drive = get_drive_configuration_from_rack_service
-    if drive.identifier == "eve-xcr-e":
+def test_fault_reset(interface_controller, setup_specifier):
+    if (
+        isinstance(setup_specifier, RackServiceConfigSpecifier)
+        and setup_specifier.part_number is PartNumber.EVE_XCR_E
+    ):
         pytest.skip("There is a specific fault test for the EVE-XCR-E")
     servo, _, _, _ = interface_controller
     prev_val = servo.read("DRV_PROT_USER_OVER_VOLT", subnode=1)
@@ -567,9 +567,11 @@ def test_fault_reset(interface_controller, get_drive_configuration_from_rack_ser
 
 
 @pytest.mark.ethercat
-def test_fault_reset_eve_xcr(interface_controller, get_drive_configuration_from_rack_service):
-    drive = get_drive_configuration_from_rack_service
-    if drive.identifier != "eve-xcr-e":
+def test_fault_reset_eve_xcr(interface_controller, setup_specifier):
+    if (
+        isinstance(setup_specifier, RackServiceConfigSpecifier)
+        and setup_specifier.part_number is not PartNumber.EVE_XCR_E
+    ):
         pytest.skip("The test is only for the EVE-XCR-E")
     servo, net, _, _ = interface_controller
     prev_val = servo.read("DRV_PROT_USER_OVER_VOLT", subnode=1)

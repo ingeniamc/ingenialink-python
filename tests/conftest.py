@@ -1,7 +1,5 @@
 import atexit
 import itertools
-import json
-import time
 from pathlib import Path
 
 import pytest
@@ -46,18 +44,6 @@ def pytest_sessionstart(session):
     ingenialink_base_path = Path(__file__).parents[1]
     for module_name in _DYNAMIC_MODULES_IMPORT:
         dynamic_loader((ingenialink_base_path / module_name).resolve())
-
-
-@pytest.fixture(scope="session")
-def read_config(request):
-    config = "tests/config.json"
-    with open(config, encoding="utf-8") as fp:
-        contents = json.load(fp)
-    slave = request.config.getoption("--slave")
-    for key in contents:
-        if isinstance(contents[key], list) and len(contents[key]) > slave:
-            contents[key] = contents[key][slave]
-    return contents
 
 
 def pytest_collection_modifyitems(config, items):
@@ -131,22 +117,21 @@ def connect_to_rack_service(request):
 
 
 @pytest.fixture(scope="session")
-def get_drive_configuration_from_rack_service(pytestconfig, read_config, connect_to_rack_service):
+def get_drive_configuration_from_rack_service(setup_descriptor, connect_to_rack_service):
     client = connect_to_rack_service
     rack_config = client.exposed_get_configuration()
-    protocol = pytestconfig.getoption("--protocol")
-    protocol_contents = read_config[protocol]
-    drive_idx = get_drive_idx_from_rack_config(protocol_contents, rack_config)
+    drive_idx = get_drive_idx_from_rack_config(setup_descriptor, rack_config)
     return rack_config.drives[drive_idx]
 
 
-def get_drive_idx_from_rack_config(protocol_contents, rack_config):
-    drive_identifier = protocol_contents["identifier"]
+def get_drive_idx_from_rack_config(descriptor, rack_config):
     drive_idx = None
     for idx, drive in enumerate(rack_config.drives):
-        if drive_identifier == drive.identifier:
+        if descriptor.identifier == drive.identifier:
             drive_idx = idx
             break
     if drive_idx is None:
-        pytest.fail(f"The drive {drive_identifier} cannot be found on the rack's configuration.")
+        pytest.fail(
+            f"The drive {descriptor.identifier} cannot be found on the rack's configuration."
+        )
     return drive_idx
