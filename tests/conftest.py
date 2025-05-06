@@ -3,7 +3,6 @@ import itertools
 from pathlib import Path
 
 import pytest
-import rpyc
 from summit_testing_framework import dynamic_loader
 
 from ingenialink.ethercat.network import (
@@ -108,30 +107,8 @@ def virtual_drive_custom_dict():
 
 
 @pytest.fixture(scope="session")
-def connect_to_rack_service(request):
-    rack_service_port = 33810
-    client = rpyc.connect("localhost", rack_service_port, config={"sync_request_timeout": None})
-    client.root.set_job_name(request.config.getoption("--job_name"))
-    yield client.root
-    client.close()
-
-
-@pytest.fixture(scope="session")
 def get_drive_configuration_from_rack_service(setup_descriptor, connect_to_rack_service):
     client = connect_to_rack_service
-    rack_config = client.exposed_get_configuration()
-    drive_idx = get_drive_idx_from_rack_config(setup_descriptor, rack_config)
-    return rack_config.drives[drive_idx]
-
-
-def get_drive_idx_from_rack_config(descriptor, rack_config):
-    drive_idx = None
-    for idx, drive in enumerate(rack_config.drives):
-        if descriptor.identifier == drive.identifier:
-            drive_idx = idx
-            break
-    if drive_idx is None:
-        pytest.fail(
-            f"The drive {descriptor.identifier} cannot be found on the rack's configuration."
-        )
-    return drive_idx
+    if setup_descriptor.rack_drive_idx is None:
+        raise ValueError
+    return client.configuration.drives[setup_descriptor.rack_drive_idx]
