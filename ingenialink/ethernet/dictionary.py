@@ -1,10 +1,13 @@
-import xml.etree.ElementTree as ET
-from typing import List, Optional
+from functools import cached_property
+from typing import Optional
+from xml.etree import ElementTree
 
 import ingenialogger
 
-from ingenialink.dictionary import DictionaryV2, Interface
-from ingenialink.ethernet.register import REG_ACCESS, REG_DTYPE, EthernetRegister, RegCyclicType
+from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
+from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
+from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.ethernet.register import EthernetRegister
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -17,30 +20,95 @@ class EthernetDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: List[EthernetRegister] = [
-        EthernetRegister(
-            identifier="MON_DATA_VALUE",
-            units="",
-            subnode=0,
-            address=0x00B2,
-            cyclic=RegCyclicType.CONFIG,
-            dtype=REG_DTYPE.BYTE_ARRAY_512,
-            access=REG_ACCESS.RO,
-        ),
-        EthernetRegister(
-            identifier="DIST_DATA_VALUE",
-            units="",
-            subnode=0,
-            address=0x00B4,
-            cyclic=RegCyclicType.CONFIG,
-            dtype=REG_DTYPE.BYTE_ARRAY_512,
-            access=REG_ACCESS.WO,
-        ),
-    ]
-
     interface = Interface.ETH
 
-    def _read_xdf_register(self, register: ET.Element) -> Optional[EthernetRegister]:
+    @cached_property
+    def _monitoring_disturbance_registers(self) -> list[EthernetRegister]:
+        return [
+            EthernetRegister(
+                identifier="MON_DATA_VALUE",
+                units="",
+                subnode=0,
+                address=0x00B2,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.RO,
+            ),
+            EthernetRegister(
+                identifier="DIST_DATA_VALUE",
+                units="",
+                subnode=0,
+                address=0x00B4,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.WO,
+            ),
+        ]
+
+    @cached_property
+    def _safety_registers(self) -> list[EthercatRegister]:
+        return [
+            EthercatRegister(
+                identifier="FSOE_TOTAL_ERROR",
+                idx=0x4193,
+                subidx=0x00,
+                dtype=RegDtype.U16,
+                access=RegAccess.RW,
+                subnode=0,
+            ),
+            EthercatRegister(
+                identifier="MDP_CONFIGURED_MODULE_1",
+                idx=0xF030,
+                subidx=0x01,
+                dtype=RegDtype.U32,
+                access=RegAccess.RW,
+                subnode=0,
+            ),
+            EthercatRegister(
+                identifier="FSOE_SAFE_INPUTS_MAP",
+                idx=0x46D2,
+                subidx=0x00,
+                dtype=RegDtype.U16,
+                access=RegAccess.RW,
+                subnode=0,
+            ),
+            EthercatRegister(
+                identifier="FSOE_SS1_TIME_TO_STO_1",
+                idx=0x6651,
+                subidx=0x01,
+                dtype=RegDtype.U16,
+                access=RegAccess.RW,
+                subnode=0,
+            ),
+        ]
+
+    @cached_property
+    def _safety_modules(self) -> list[DictionarySafetyModule]:
+        def __module_ident(module_idx: int) -> int:
+            if self.product_code is None:
+                raise ValueError("Module ident cannot be calculated, product code missing.")
+            return (self.product_code & 0x7F00000) + module_idx
+
+        return [
+            DictionarySafetyModule(
+                uses_sra=False,
+                module_ident=__module_ident(0),
+                application_parameters=[
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SAFE_INPUTS_MAP"),
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SS1_TIME_TO_STO_1"),
+                ],
+            ),
+            DictionarySafetyModule(
+                uses_sra=True,
+                module_ident=__module_ident(1),
+                application_parameters=[
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SAFE_INPUTS_MAP"),
+                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SS1_TIME_TO_STO_1"),
+                ],
+            ),
+        ]
+
+    def _read_xdf_register(self, register: ElementTree.Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)
         if current_read_register is None:
             return None

@@ -4,14 +4,17 @@ import struct
 
 import ingenialogger
 
-from ingenialink.exceptions import ILUDPException
+from ingenialink.exceptions import ILUDPError
 
 logger = ingenialogger.get_logger(__name__)
 
 
 class UDP:
-    """UDP Contains all the basic operations for the lightweight data
-    transport protocol based off the MCB protocol."""
+    """Class to create a UDP connection.
+
+    UDP Contains all the basic operations for the lightweight data
+    transport protocol based off the MCB protocol.
+    """
 
     def __init__(self, port: int, ip: str) -> None:
         self.port = port
@@ -22,6 +25,7 @@ class UDP:
         self.socket.connect((ip, port))
 
     def __del__(self) -> None:
+        """Delete method."""
         try:
             self.socket.close()
         except Exception as e:
@@ -53,6 +57,9 @@ class UDP:
     def check_ack(self) -> int:
         """Checks if the received message has a valid ACK.
 
+        Raises:
+            Exception: no ACK received.
+
         Returns:
             Command code of the message.
         """
@@ -60,7 +67,7 @@ class UDP:
         ret_cmd = self.unmsg(rcv)
         if ret_cmd != 3:
             self.socket.close()
-            raise Exception("No ACK received (command received %d)" % ret_cmd)
+            raise Exception(f"No ACK received (command received {ret_cmd})")
         return ret_cmd
 
     @staticmethod
@@ -74,6 +81,9 @@ class UDP:
         Args:
             in_frame: Input frame.
 
+        Raises:
+            ILUDPError: if CRC error.
+
         Returns:
             Command from the given message.
         """
@@ -85,7 +95,7 @@ class UDP:
         crc = binascii.crc_hqx(in_frame[0:12], 0)
         crcread = struct.unpack("<H", in_frame[12:14])[0]
         if crcread != crc:
-            raise ILUDPException("CRC error")
+            raise ILUDPError("CRC error")
 
         return int(cmd)
 
@@ -99,6 +109,7 @@ class UDP:
             cmd: Command of the message.
             data: Data of the message.
             size: Size of the message.
+
         Returns:
             Message frame.
         """

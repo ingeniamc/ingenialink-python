@@ -1,7 +1,7 @@
 import io
 import struct
 from binascii import crc_hqx
-from typing import Optional, Tuple, Type, TypeVar
+from typing import Optional, TypeVar
 
 from ingenialink.constants import MCB_CMD_ACK
 from ingenialink.exceptions import ILNACKError, ILWrongCRCError, ILWrongRegisterError
@@ -10,7 +10,9 @@ T = TypeVar("T", bound="MCB")
 
 
 class MCB:
-    """Motion Control Bus (MCB) is a high-speed serial protocol designed for getting low
+    """Class to create and process MCB frames.
+
+    Motion Control Bus (MCB) is a high-speed serial protocol designed for getting low
     latency and high determinism in motion control systems where control loops
     work at high update rates (tens of kHz).
     """
@@ -33,7 +35,7 @@ class MCB:
         pass
 
     def __del__(self) -> None:
-        pass
+        """Delete method."""
 
     def create_msg(self, node: int, subnode: int, cmd: int, data: bytes, size: int) -> bytes:
         """Creates a command message following the MCB protocol.
@@ -93,7 +95,7 @@ class MCB:
 
     @classmethod
     def build_mcb_frame(
-        cls: Type[T], cmd: int, subnode: int, address: int, data: Optional[bytes] = None
+        cls: type[T], cmd: int, subnode: int, address: int, data: Optional[bytes] = None
     ) -> bytes:
         """Build an MCB frame.
 
@@ -127,7 +129,7 @@ class MCB:
         return frame
 
     @classmethod
-    def read_mcb_data(cls: Type[T], expected_address: int, frame: bytes) -> bytes:
+    def read_mcb_data(cls: type[T], expected_address: int, frame: bytes) -> bytes:
         """Read an MCB frame and return its data.
 
         Args:
@@ -136,8 +138,6 @@ class MCB:
             frame: MCB frame.
 
         Raises:
-            ILWrongCRCError: If the received CRC code does not match
-            the calculated CRC code.
             ILNACKError: If the received command is a NACK.
             ILWrongRegisterError: If the received address does not match
             the expected address.
@@ -159,7 +159,7 @@ class MCB:
         return data
 
     @classmethod
-    def read_mcb_frame(cls: Type[T], frame: bytes) -> Tuple[int, int, int, bytes]:
+    def read_mcb_frame(cls: type[T], frame: bytes) -> tuple[int, int, int, bytes]:
         """Read an MCB frame and return its address, subnode, data and command.
 
         Args:

@@ -1,4 +1,4 @@
-from typing import Dict, Iterable
+from collections.abc import Iterable
 
 
 def _bit_mask(selected_bits: Iterable[int]) -> int:
@@ -12,7 +12,7 @@ def _bit_mask(selected_bits: Iterable[int]) -> int:
     Returns:
         bit mask
     """
-    return sum([1 << bit for bit in selected_bits])
+    return sum(1 << bit for bit in selected_bits)
 
 
 class BitField:
@@ -31,17 +31,29 @@ class BitField:
         self._mask = _bit_mask(range(start, end + 1))
 
     def __eq__(self, other: object) -> bool:
+        """Compare bitfields.
+
+        Args:
+            other: object to compare it to.
+
+        Returns:
+            True if they are equal, False otherwise.
+        """
         if not isinstance(other, BitField):
             return False
         return (self._start == other._start) and (self._end == other._end)
 
     @classmethod
     def bit(cls, bit: int) -> "BitField":
-        """Bitfield of single bit."""
+        """Bitfield of single bit.
+
+        Returns:
+            Bitfield.
+        """
         return cls(start=bit, end=bit)
 
     @staticmethod
-    def parse_bitfields(bitfields: Dict[str, "BitField"], value: int) -> Dict[str, int]:
+    def parse_bitfields(bitfields: dict[str, "BitField"], value: int) -> dict[str, int]:
         """Parse value into bitfields.
 
         Separates a integer value into a dictionary of values, where the key is the bitfield name
@@ -63,7 +75,7 @@ class BitField:
         }
 
     @staticmethod
-    def set_bitfields(bitfields: Dict[str, "BitField"], values: Dict[str, int], value: int) -> int:
+    def set_bitfields(bitfields: dict[str, "BitField"], values: dict[str, int], value: int) -> int:
         """Set bitfields to a value.
 
         Args:
@@ -76,6 +88,7 @@ class BitField:
             value: Previous integer value of the register
 
         Raises:
+            KeyError: If the bitfield name does not exist.
             ValueError: If one of the values to set does not fit in the bitfield space
 
         Returns:

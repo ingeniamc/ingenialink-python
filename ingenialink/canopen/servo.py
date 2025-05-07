@@ -1,10 +1,13 @@
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import canopen
 import ingenialogger
 from canopen.emcy import EmcyError
+from typing_extensions import override
 
+from ingenialink import RegDtype
 from ingenialink.canopen.register import CanopenRegister
+from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
 from ingenialink.constants import CAN_MAX_WRITE_SIZE
 from ingenialink.dictionary import Interface
 from ingenialink.emcy import EmergencyMessage
@@ -57,10 +60,11 @@ class CanopenServo(Servo):
         servo_status_listener: bool = False,
     ) -> None:
         self.__node = node
-        self.__emcy_observers: List[Callable[[EmergencyMessage], None]] = []
+        self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__node.emcy.add_callback(self._on_emcy)
-        super(CanopenServo, self).__init__(target, dictionary_path, servo_status_listener)
+        super().__init__(target, dictionary_path, servo_status_listener)
 
+    @override
     def read(
         self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
     ) -> Union[int, float, str, bytes]:
@@ -75,10 +79,6 @@ class CanopenServo(Servo):
         Args:
             subnode: Subnode of the axis. `None` by default which stores all the parameters.
             sdo_timeout: Timeout value for each SDO response.
-
-        Raises:
-            ILError: Invalid subnode.
-
         """
         self._change_sdo_timeout(sdo_timeout)
         super().store_parameters(subnode)
@@ -106,7 +106,7 @@ class CanopenServo(Servo):
         finally:
             self._lock.release()
         if not isinstance(value, bytes):
-            return bytes()
+            return b""
         return value
 
     def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
@@ -129,6 +129,7 @@ class CanopenServo(Servo):
 
     def _on_emcy(self, emergency_msg: EmcyError) -> None:
         """Receive an emergency message from canopen and transform it to a CanopenEmergencyMessage.
+
         Afterward, send the CanopenEmergencyMessage to all the subscribed callbacks.
 
         Args:
@@ -150,15 +151,39 @@ class CanopenServo(Servo):
             return is_register_valid
         # Exclude the RxPDO and TxPDO related registers
         # Check INGK-980
-        if register.identifier is not None and register.identifier.startswith(
-            ("CIA301_COMMS_TPDO", "CIA301_COMMS_RPDO")
+        return not (
+            register.identifier is not None
+            and register.identifier.startswith(("CIA301_COMMS_TPDO", "CIA301_COMMS_RPDO"))
+        )
+
+    def _adapt_configuration_file_storage_value(
+        self, configuration_file: ConfigurationFile, register: ConfigRegister
+    ) -> Union[int, float, str, bytes]:
+        target_register = self.dictionary.registers(register.subnode).get(register.uid)
+
+        if (
+            configuration_file.device.node_id is not None
+            and target_register is not None
+            and isinstance(target_register, CanopenRegister)
+            and target_register.dtype != RegDtype.STR
+            and target_register.is_node_id_dependent
         ):
-            return False
-        return True
+            if not isinstance(register.storage, str):
+                return register.storage - configuration_file.device.node_id + int(self.target)
+            else:
+                raise ValueError(
+                    f"Illegal value for register with ID {register.uid}"
+                    f" and dtype {target_register.dtype}: {register.storage} is an string"
+                )
+        return register.storage
 
     @staticmethod
     def _monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
-        """Map CAN register address to IPB register address."""
+        """Map CAN register address to IPB register address.
+
+        Returns:
+            Map CAN register address.
+        """
         return address - (0x2000 + (0x800 * (subnode - 1)))
 
     def _monitoring_disturbance_data_to_map_register(
@@ -172,6 +197,8 @@ class CanopenServo(Servo):
             dtype: Register data type.
             size: Size of data in bytes.
 
+        Returns:
+            data to map a monitoring/disturbance register.
         """
         ipb_address = self._monitoring_disturbance_map_can_address(address, subnode)
         return super()._monitoring_disturbance_data_to_map_register(

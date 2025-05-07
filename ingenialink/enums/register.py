@@ -1,7 +1,9 @@
+import warnings
 from enum import Enum
+from typing import Any
 
 
-class REG_DTYPE(Enum):
+class RegDtype(Enum):
     """Data Type."""
 
     U8 = 0
@@ -30,7 +32,7 @@ class REG_DTYPE(Enum):
     """Boolean."""
 
 
-class REG_ACCESS(Enum):
+class RegAccess(Enum):
     """Access Type."""
 
     RW = 0
@@ -41,7 +43,7 @@ class REG_ACCESS(Enum):
     """Write-only."""
 
 
-class REG_PHY(Enum):
+class RegPhy(Enum):
     """Physical Units."""
 
     NONE = 0
@@ -60,7 +62,7 @@ class REG_PHY(Enum):
     """Radians."""
 
 
-class REG_ADDRESS_TYPE(Enum):
+class RegAddressType(Enum):
     """Address Type."""
 
     NVM = 0
@@ -75,5 +77,23 @@ class RegCyclicType(Enum):
 
     RX = "CYCLIC_RX"
     TX = "CYCLIC_TX"
-    TXRX = "CYCLIC_TXRX"
+    RXTX = "CYCLIC_RXTX"
     CONFIG = "CONFIG"
+
+
+_DEPRECATED = {
+    "REG_DTYPE": "RegDtype",
+    "REG_ACCESS": "RegAccess",
+    "REG_PHY": "RegPhy",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _DEPRECATED:
+        warnings.warn(
+            f"{name} is deprecated, use {_DEPRECATED[name]} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return globals()[_DEPRECATED[name]]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

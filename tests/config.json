@@ -6,7 +6,7 @@
     "ip": "192.168.2.10",
     "port": 1061,
     "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_eve_can/1.2.0/config.xml",
-    "fw_file": "//azr-srv-ingfs1/pool/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-c_2.4.0.sfu"
+    "revision_number": "2.4.0"
   },
   {
     "identifier": "cap-xcr-c",
@@ -14,7 +14,7 @@
     "ip": "192.168.2.11",
     "port": 1061,
     "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml",
-    "fw_file": "//azr-srv-ingfs1/pool/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_2.4.0.lfu"
+    "revision_number": "2.4.0"
   }
   ],
   "ethercat": [
@@ -24,7 +24,7 @@
     "slave": 1,
     "dictionary": "//azr-srv-ingfs1/pool/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-e_eoe_2.4.0.xdf",
     "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_eve_ecat/1.2.0/config.xml",
-    "fw_file": "//azr-srv-ingfs1/pool/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-e_2.4.0.sfu",
+    "revision_number": "2.4.0",
     "boot_in_app": true
   },
   {
@@ -33,7 +33,7 @@
     "slave": 2,
     "dictionary": "//azr-srv-ingfs1/pool/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_eoe_2.4.0.xdf",
     "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_cap_ecat/1.1.0/config.xml",
-    "fw_file": "//azr-srv-ingfs1/pool/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-e_2.4.0.lfu",
+    "revision_number": "2.4.0",
     "boot_in_app": false
   }
   ],
@@ -46,7 +46,7 @@
     "baudrate": 1000000,
     "channel": 0,
     "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_eve_can/1.2.0/config.xml",
-    "fw_file": "//azr-srv-ingfs1/pool/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-c_2.4.0.sfu"
+    "revision_number": "2.4.0"
   },
   {
     "identifier": "cap-xcr-c",
@@ -56,7 +56,7 @@
     "baudrate": 1000000,
     "channel": 0,
     "load_config_file": "//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml",
-    "fw_file": "//azr-srv-ingfs1/pool/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_2.4.0.lfu"
+    "revision_number": "2.4.0"
   }
   ],
   "eoe": [

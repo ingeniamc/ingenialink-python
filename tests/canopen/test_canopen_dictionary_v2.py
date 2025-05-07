@@ -54,10 +54,8 @@ def test_read_dictionary_registers():
 
     canopen_dict = CanopenDictionaryV2(dictionary_path)
 
-    for subnode in expected_regs_per_subnode.keys():
-        assert expected_regs_per_subnode[subnode] == [
-            reg for reg in canopen_dict.registers(subnode)
-        ]
+    for subnode in expected_regs_per_subnode:
+        assert expected_regs_per_subnode[subnode] == list(canopen_dict.registers(subnode))
 
 
 @pytest.mark.no_connection
@@ -71,7 +69,7 @@ def test_read_dictionary_registers_multiaxis():
         1: SubnodeType.MOTION,
         2: SubnodeType.MOTION,
     }
-    for subnode in expected_num_registers_per_subnode.keys():
+    for subnode in expected_num_registers_per_subnode:
         num_registers = len(canopen_dict.registers(subnode))
         assert num_registers == expected_num_registers_per_subnode[subnode]
 
@@ -115,7 +113,7 @@ def test_read_dictionary_errors():
 
     canopen_dict = CanopenDictionaryV2(dictionary_path)
 
-    assert [error for error in canopen_dict.errors] == expected_errors
+    assert list(canopen_dict.errors) == expected_errors
 
 
 @pytest.mark.no_connection
@@ -133,11 +131,11 @@ def test_read_xdf_register():
 
 
 @pytest.mark.no_connection
-def test_child_registers_not_exist():
+def test_object_not_exist():
     dictionary_path = join_path(path_resources, "test_dict_can.xdf")
     canopen_dict = CanopenDictionaryV2(dictionary_path)
     with pytest.raises(KeyError):
-        canopen_dict.child_registers("NOT_EXISTING_UID", 0)
+        canopen_dict.get_object("NOT_EXISTING_UID", 0)
 
 
 @pytest.mark.no_connection

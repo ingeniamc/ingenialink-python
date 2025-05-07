@@ -53,10 +53,8 @@ def test_read_dictionary_registers():
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
 
-    for subnode in expected_regs_per_subnode.keys():
-        assert expected_regs_per_subnode[subnode] == [
-            reg for reg in ethercat_dict.registers(subnode)
-        ]
+    for subnode in expected_regs_per_subnode:
+        assert expected_regs_per_subnode[subnode] == list(ethercat_dict.registers(subnode))
 
 
 @pytest.mark.no_connection
@@ -82,15 +80,15 @@ def test_read_dictionary_errors():
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
 
-    assert [error for error in ethercat_dict.errors] == expected_errors
+    assert list(ethercat_dict.errors) == expected_errors
 
 
 @pytest.mark.no_connection
-def test_child_registers_not_exist():
+def test_object_not_exist():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
     ethernet_dict = DictionaryV3(dictionary_path, Interface.EoE)
     with pytest.raises(KeyError):
-        ethernet_dict.child_registers("NOT_EXISTING_UID", 0)
+        ethernet_dict.get_object("NOT_EXISTING_UID", 0)
 
 
 @pytest.mark.no_connection
@@ -146,11 +144,12 @@ def test_register_description():
             )
 
 
+@pytest.mark.no_connection
 def test_register_bitfields():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
     canopen_dict = DictionaryV3(dictionary_path, Interface.EoE)
 
-    for subnode, registers in canopen_dict._registers.items():
+    for registers in canopen_dict._registers.values():
         for register in registers.values():
             if register.identifier == "DRV_STATE_CONTROL":
                 assert register.bitfields == {

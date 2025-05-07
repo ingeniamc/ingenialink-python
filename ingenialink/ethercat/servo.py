@@ -1,9 +1,10 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, List, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink import Servo
 from ingenialink.emcy import EmergencyMessage
@@ -17,16 +18,21 @@ except ImportError as ex:
 if TYPE_CHECKING:
     from pysoem import CdefSlave
 
-from ingenialink.constants import CAN_MAX_WRITE_SIZE, CANOPEN_ADDRESS_OFFSET, MAP_ADDRESS_OFFSET
+from ingenialink.constants import (
+    CAN_MAX_WRITE_SIZE,
+    CANOPEN_ADDRESS_OFFSET,
+    ECAT_STATE_CHANGE_TIMEOUT_US,
+    MAP_ADDRESS_OFFSET,
+)
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILIOError
+from ingenialink.exceptions import ILEcatStateError, ILIOError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
 
 
-class SDO_OPERATION_MSG(Enum):
+class SdoOperationMsg(Enum):
     """Message for exceptions depending on the operation type."""
 
     READ = "reading"
@@ -60,6 +66,8 @@ class EthercatServo(PDOServo):
         connection_timeout: Time in seconds of the connection timeout.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
+        sdo_read_write_release_gil: True to release the GIL in SDO read/write operations,
+            False otherwise. If not specified, default pysoem configuration will be used.
 
     Raises:
         ImportError: WinPcap is not installed
@@ -88,17 +96,46 @@ class EthercatServo(PDOServo):
         slave: "CdefSlave",
         slave_id: int,
         dictionary_path: str,
-        connection_timeout: float,
         servo_status_listener: bool = False,
+        sdo_read_write_release_gil: Optional[bool] = None,
     ):
         if not pysoem:
             raise pysoem_import_error
-        self.__slave = slave
+        self.__slave: CdefSlave = slave
         self.slave_id = slave_id
-        self._connection_timeout = connection_timeout
-        self.__emcy_observers: List[Callable[[EmergencyMessage], None]] = []
+        self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
-        super(EthercatServo, self).__init__(slave_id, dictionary_path, servo_status_listener)
+        self.__sdo_read_write_release_gil = sdo_read_write_release_gil
+        super().__init__(slave_id, dictionary_path, servo_status_listener)
+
+    def teardown(self) -> None:
+        """Perform the necessary actions for teardown."""
+        self._lock.acquire()
+        self.stop_status_listener()
+
+        # Remove the servo reference from the pdo maps
+        for rpdo_map in self._rpdo_maps:
+            rpdo_map.slave = None
+        for tpdo_map in self._tpdo_maps:
+            tpdo_map.slave = None
+        self.__slave = None
+        self._lock.release()
+
+    def check_servo_is_in_preoperational_state(self) -> None:
+        """Checks if the servo is in preoperational state.
+
+        Raises:
+            ILEcatStateError: if servo is not in preoperational state.
+        """
+        if self.slave is None or not pysoem:
+            return
+        if (
+            self.slave.state_check(pysoem.PREOP_STATE, ECAT_STATE_CHANGE_TIMEOUT_US)
+            != pysoem.PREOP_STATE
+        ):
+            raise ILEcatStateError(
+                f"Servo is in {self.slave.state} state, PDOMap can not be modified."
+            )
 
     def store_parameters(
         self,
@@ -112,10 +149,6 @@ class EthercatServo(PDOServo):
             all the parameters.
             timeout : how many seconds to wait for the drive to become responsive
             after the store operation. If ``None`` it will wait forever.
-
-        Raises:
-            ILError: Invalid subnode.
-
         """
         super().store_parameters(subnode)
         self._wait_until_alive(timeout)
@@ -136,10 +169,6 @@ class EthercatServo(PDOServo):
                 all the parameters.
             timeout : how many seconds to wait for the drive to become responsive
             after the restore operation. If ``None`` it will wait forever.
-
-        Raises:
-            ILError: Invalid subnode.
-
         """
         super().restore_parameters(subnode)
         self._wait_until_alive(timeout)
@@ -163,12 +192,16 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         buffer_size: int = 0,
         complete_access: bool = False,
-        start_time: Optional[float] = None,
+        *,
+        release_gil: Optional[bool] = None,
     ) -> bytes:
+        if release_gil is None:
+            release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
         try:
-            time.sleep(0.0001)  # Unlock threads before SDO read
-            value: bytes = self.__slave.sdo_read(reg.idx, reg.subidx, buffer_size, complete_access)
+            value: bytes = self.__slave.sdo_read(
+                reg.idx, reg.subidx, buffer_size, complete_access, release_gil=release_gil
+            )
         except (
             pysoem.SdoError,
             pysoem.MailboxError,
@@ -176,7 +209,9 @@ class EthercatServo(PDOServo):
             pysoem.WkcError,
             ILIOError,
         ) as e:
-            self._handle_sdo_exception(reg, SDO_OPERATION_MSG.READ, e)
+            self._handle_sdo_exception(reg, SdoOperationMsg.READ, e)
+        except AttributeError:
+            raise ILIOError(f"Error reading {reg.identifier}. The drive has been disconnected.")
         finally:
             self._lock.release()
         return value
@@ -186,12 +221,16 @@ class EthercatServo(PDOServo):
         reg: EthercatRegister,
         data: bytes,
         complete_access: bool = False,
-        start_time: Optional[float] = None,
+        *,
+        release_gil: Optional[bool] = None,
     ) -> None:
+        if release_gil is None:
+            release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
         try:
-            time.sleep(0.0001)  # Unlock threads before SDO write
-            self.__slave.sdo_write(reg.idx, reg.subidx, data, complete_access)
+            self.__slave.sdo_write(
+                reg.idx, reg.subidx, data, complete_access, release_gil=release_gil
+            )
         except (
             pysoem.SdoError,
             pysoem.MailboxError,
@@ -199,15 +238,16 @@ class EthercatServo(PDOServo):
             pysoem.WkcError,
             ILIOError,
         ) as e:
-            self._handle_sdo_exception(reg, SDO_OPERATION_MSG.WRITE, e)
+            self._handle_sdo_exception(reg, SdoOperationMsg.WRITE, e)
+        except AttributeError:
+            raise ILIOError(f"Error writing {reg.identifier}. The drive has been disconnected.")
         finally:
             self._lock.release()
 
     def _handle_sdo_exception(
-        self, reg: EthercatRegister, operation_msg: SDO_OPERATION_MSG, exception: Exception
+        self, reg: EthercatRegister, operation_msg: SdoOperationMsg, exception: Exception
     ) -> None:
-        """
-        Handle the exceptions that occur when reading or writing SDOs.
+        """Handle the exceptions that occur when reading or writing SDOs.
 
         Args:
             reg: The register that was read or written.
@@ -218,9 +258,6 @@ class EthercatServo(PDOServo):
             ILIOError: If the register cannot be read or written.
             ILIOError: If the slave fails to acknowledge the command.
             ILIOError: If the working counter value is wrong.
-            ILTimeoutError: If the slave fails to respond within the connection
-             timeout period.
-
         """
         default_error_msg = f"Error {operation_msg.value} {reg.identifier}"
         if isinstance(exception, pysoem.WkcError):
@@ -242,15 +279,42 @@ class EthercatServo(PDOServo):
             reason = str(exception)
         raise ILIOError(f"{default_error_msg}. {reason}") from exception
 
-    def _monitoring_read_data(self, **kwargs: Any) -> bytes:
-        """Read monitoring data frame."""
-        return super()._monitoring_read_data(
-            buffer_size=self.MONITORING_DATA_BUFFER_SIZE, complete_access=True
-        )
+    def _monitoring_read_data(self) -> bytes:
+        """Read monitoring data frame.
 
-    def _disturbance_write_data(self, data: bytes, **kwargs: Any) -> None:
-        """Write disturbance data."""
-        super()._disturbance_write_data(data, complete_access=True)
+        Raises:
+            NotImplementedError: If monitoring is not supported by the device.
+            ValueError: If unexpected data type was returned from read.
+
+        Returns:
+            Monitoring data.
+        """
+        if not super()._is_monitoring_implemented():
+            raise NotImplementedError("Monitoring is not supported by this device.")
+        if not isinstance(
+            data := self.read(
+                self.MONITORING_DATA,
+                subnode=0,
+                buffer_size=self.MONITORING_DATA_BUFFER_SIZE,
+                complete_access=True,
+            ),
+            bytes,
+        ):
+            raise ValueError(
+                f"Error reading monitoring data. Expected type bytes, got {type(data)}"
+            )
+        return data
+
+    def _disturbance_write_data(self, data: bytes) -> None:
+        """Write disturbance data.
+
+        Args:
+            data: Data to be written.
+
+        """
+        if not super()._is_disturbance_implemented():
+            raise NotImplementedError("Disturbance is not supported by this device.")
+        return self.write(self.DIST_DATA, subnode=0, data=data, complete_access=True)
 
     @staticmethod
     def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
@@ -260,6 +324,8 @@ class EthercatServo(PDOServo):
             subnode: Subnode to be targeted.
             address: Register address to map.
 
+        Returns:
+            mapped address.
         """
         mapped_address: int = address - (
             CANOPEN_ADDRESS_OFFSET + (MAP_ADDRESS_OFFSET * (subnode - 1))
@@ -277,6 +343,8 @@ class EthercatServo(PDOServo):
             dtype: Register data type.
             size: Size of data in bytes.
 
+        Returns:
+            mapped address.
         """
         ipb_address = self.__monitoring_disturbance_map_can_address(address, subnode)
         mapped_address: int = super()._monitoring_disturbance_data_to_map_register(
@@ -304,6 +372,7 @@ class EthercatServo(PDOServo):
 
     def _on_emcy(self, emergency_msg: "pysoem.Emergency") -> None:
         """Receive an emergency message from PySOEM and transform it to a EthercatEmergencyMessage.
+
         Afterward, send the EthercatEmergencyMessage to all the subscribed callbacks.
 
         Args:
@@ -315,18 +384,23 @@ class EthercatServo(PDOServo):
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
-    def set_pdo_map_to_slave(self, rpdo_maps: List[RPDOMap], tpdo_maps: List[TPDOMap]) -> None:
+    @override
+    def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
+                rpdo_map.slave = self
                 self._rpdo_maps.append(rpdo_map)
         for tpdo_map in tpdo_maps:
             if tpdo_map not in self._tpdo_maps:
+                tpdo_map.slave = self
                 self._tpdo_maps.append(tpdo_map)
         self.slave.config_func = self.map_pdos
 
+    @override
     def process_pdo_inputs(self) -> None:
         self._process_tpdo(self.__slave.input)
 
+    @override
     def generate_pdo_outputs(self) -> None:
         output = self._process_rpdo()
         if output is None:
@@ -366,7 +440,7 @@ class EthercatServo(PDOServo):
         """
         if length < 1:
             raise ValueError("The minimum length is 1 byte.")
-        data = bytes()
+        data = b""
         while len(data) < length:
             data += self.slave.eeprom_read(address, timeout)
             address += 2
@@ -414,5 +488,5 @@ class EthercatServo(PDOServo):
 
     @property
     def slave(self) -> "CdefSlave":
-        """Ethercat slave"""
+        """Ethercat slave."""
         return self.__slave

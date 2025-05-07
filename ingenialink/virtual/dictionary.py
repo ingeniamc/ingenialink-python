@@ -1,5 +1,5 @@
-import xml.etree.ElementTree as ET
 from typing import Optional
+from xml.etree import ElementTree
 
 import ingenialogger
 
@@ -23,7 +23,9 @@ class VirtualDictionary(EthernetDictionaryV2):
     interface = Interface.VIRTUAL
 
     def _transform_canopen_index_to_mcb_address(self, index: int, subnode: int) -> int:
-        """CANopen index is an uint16 but MCB address only has 12 bits, so,
+        """Transfrom CANopen index to MCB address.
+
+        CANopen index is an uint16 but MCB address only has 12 bits, so,
         some index makes overflow in MCB frame.
 
         Args:
@@ -36,7 +38,7 @@ class VirtualDictionary(EthernetDictionaryV2):
         """
         return index - (0x2000 + (0x800 * (subnode - 1)))
 
-    def _read_xdf_register(self, register: ET.Element) -> Optional[EthernetRegister]:
+    def _read_xdf_register(self, register: ElementTree.Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)
 
         if current_read_register is None:

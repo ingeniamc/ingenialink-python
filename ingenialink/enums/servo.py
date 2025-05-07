@@ -1,7 +1,9 @@
+import warnings
 from enum import Enum
+from typing import Any
 
 
-class SERVO_STATE(Enum):
+class ServoState(Enum):
     """Servo states."""
 
     NRDY = 0
@@ -22,32 +24,7 @@ class SERVO_STATE(Enum):
     """Fault."""
 
 
-class SERVO_FLAGS(Enum):
-    """Status Flags."""
-
-    TGT_REACHED = 0x01
-    """Target reached."""
-    ILIM_ACTIVE = 0x02
-    """Internal limit active."""
-    HOMING_ATT = 0x04
-    """(Homing) attained."""
-    HOMING_ERR = 0x08
-    """(Homing) error."""
-    PV_VZERO = 0x04
-    """(PV) Vocity speed is zero."""
-    PP_SPACK = 0x04
-    """(PP) SP acknowledge."""
-    IP_ACTIVE = 0x04
-    """(IP) active."""
-    CS_FOLLOWS = 0x04
-    """(CST/CSV/CSP) follow command value."""
-    FERR = 0x08
-    """(CST/CSV/CSP/PV) following error."""
-    IANGLE_DET = 0x10
-    """Initial angle determination finished."""
-
-
-class SERVO_MODE(Enum):
+class ServoMode(Enum):
     """Operation Mode."""
 
     OLV = 0
@@ -74,7 +51,7 @@ class SERVO_MODE(Enum):
     """Cyclic sync torque mode."""
 
 
-class SERVO_UNITS_TORQUE(Enum):
+class ServoUnitsTorque(Enum):
     """Torque Units."""
 
     NATIVE = 0
@@ -85,7 +62,7 @@ class SERVO_UNITS_TORQUE(Enum):
     """Newtons*meter."""
 
 
-class SERVO_UNITS_POS(Enum):
+class ServoUnitsPos(Enum):
     """Position Units."""
 
     NATIVE = 0
@@ -104,7 +81,7 @@ class SERVO_UNITS_POS(Enum):
     """Meters."""
 
 
-class SERVO_UNITS_VEL(Enum):
+class ServoUnitsVel(Enum):
     """Velocity Units."""
 
     NATIVE = 0
@@ -125,7 +102,7 @@ class SERVO_UNITS_VEL(Enum):
     """Meters/second."""
 
 
-class SERVO_UNITS_ACC(Enum):
+class ServoUnitsAcc(Enum):
     """Acceleration Units."""
 
     NATIVE = 0
@@ -142,3 +119,25 @@ class SERVO_UNITS_ACC(Enum):
     """Millimeters/second^2."""
     M_S2 = 6
     """Meters/second^2."""
+
+
+# WARNING: Deprecated aliases
+_DEPRECATED = {
+    "SERVO_STATE": "ServoState",
+    "SERVO_MODE": "ServoMode",
+    "SERVO_UNITS_TORQUE": "ServoUnitsTorque",
+    "SERVO_UNITS_POS": "ServoUnitsPos",
+    "SERVO_UNITS_VEL": "ServoUnitsVel",
+    "SERVO_UNITS_ACC": "ServoUnitsAcc",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _DEPRECATED:
+        warnings.warn(
+            f"{name} is deprecated, use {_DEPRECATED[name]} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return globals()[_DEPRECATED[name]]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

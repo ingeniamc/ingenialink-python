@@ -4,11 +4,18 @@ import pytest
 
 from ingenialink import CanopenRegister
 from ingenialink.bitfield import BitField
-from ingenialink.dictionary import DictionarySafetyPDO, DictionaryV3, Interface, SubnodeType
+from ingenialink.dictionary import (
+    DictionarySafetyModule,
+    DictionarySafetyPDO,
+    DictionaryV3,
+    Interface,
+    SubnodeType,
+)
 from ingenialink.exceptions import ILDictionaryParseError
 
 path_resources = "./tests/resources/"
 dict_ecat_v3 = "test_dict_ecat_eoe_v3.0.xdf"
+dict_ecat_v3_safe = "test_dict_ecat_eoe_safe_v3.0.xdf"
 SINGLE_AXIS_SAFETY_SUBNODES = {
     0: SubnodeType.COMMUNICATION,
     1: SubnodeType.MOTION,
@@ -52,7 +59,7 @@ def test_read_dictionary_registers():
     expected_regs_per_subnode = {
         0: [
             "DRV_DIAG_ERROR_LAST_COM",
-            "TEST_TXRX_REGISTER",
+            "TEST_RXTX_REGISTER",
             "DRV_AXIS_NUMBER",
             "CIA301_COMMS_RPDO1_MAP",
             "CIA301_COMMS_RPDO1_MAP_1",
@@ -62,10 +69,8 @@ def test_read_dictionary_registers():
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
 
-    for subnode in expected_regs_per_subnode.keys():
-        assert expected_regs_per_subnode[subnode] == [
-            reg for reg in ethercat_dict.registers(subnode)
-        ]
+    for subnode in expected_regs_per_subnode:
+        assert expected_regs_per_subnode[subnode] == list(ethercat_dict.registers(subnode))
 
 
 @pytest.mark.no_connection
@@ -91,7 +96,7 @@ def test_read_dictionary_errors():
 
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
 
-    assert [error for error in ethercat_dict.errors] == expected_errors
+    assert list(ethercat_dict.errors) == expected_errors
 
 
 @pytest.mark.no_connection
@@ -111,14 +116,14 @@ def test_read_xdf_register():
 
 
 @pytest.mark.no_connection
-def test_child_registers():
+def test_object_registers():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
-    reg_list = ethercat_dict.child_registers("CIA301_COMMS_RPDO1_MAP", 0)
+    canopen_object = ethercat_dict.get_object("CIA301_COMMS_RPDO1_MAP", 0)
     reg_subindex = [0, 1]
     reg_uids = ["CIA301_COMMS_RPDO1_MAP", "CIA301_COMMS_RPDO1_MAP_1"]
     reg_index = [0x1600, 0x1600]
-    for index, reg in enumerate(reg_list):
+    for index, reg in enumerate(canopen_object):
         assert isinstance(reg, CanopenRegister)
         assert reg.idx == reg_index[index]
         assert reg.identifier == reg_uids[index]
@@ -126,11 +131,11 @@ def test_child_registers():
 
 
 @pytest.mark.no_connection
-def test_child_registers_not_exist():
+def test_object_not_exist():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
     with pytest.raises(KeyError):
-        ethercat_dict.child_registers("NOT_EXISTING_UID", 0)
+        ethercat_dict.get_object("NOT_EXISTING_UID", 0)
 
 
 @pytest.mark.no_connection
@@ -194,6 +199,42 @@ def test_safety_tpdo_not_exist():
 
 
 @pytest.mark.no_connection
+def test_safety_modules():
+    dictionary_path = join_path(path_resources, dict_ecat_v3_safe)
+    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+
+    # Expected data
+    module_ident_to_application_parameters = {
+        "0x3800000": {
+            "uses_sra": False,
+            "application_parameters": ["FSOE_SAFE_INPUTS_MAP", "FSOE_SS1_TIME_TO_STO_1"],
+        },
+        "0x3800001": {
+            "uses_sra": True,
+            "application_parameters": ["FSOE_SAFE_INPUTS_MAP", "FSOE_SS1_TIME_TO_STO_1"],
+        },
+    }
+
+    for module_ident, module_data in module_ident_to_application_parameters.items():
+        expected_app_params = module_data["application_parameters"]
+        safety_module = ethercat_dict.get_safety_module(module_ident=module_ident)
+        assert isinstance(safety_module, DictionarySafetyModule)
+        assert hex(safety_module.module_ident) == module_ident
+        assert safety_module.uses_sra == module_data["uses_sra"]
+        assert len(safety_module.application_parameters) == len(expected_app_params)
+        for param in safety_module.application_parameters:
+            assert param.uid in expected_app_params
+
+
+@pytest.mark.no_connection
+def test_safety_module_not_exist():
+    dictionary_path = join_path(path_resources, dict_ecat_v3_safe)
+    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    with pytest.raises(KeyError):
+        ethercat_dict.get_safety_module("0x3800007")
+
+
+@pytest.mark.no_connection
 def test_wrong_dictionary():
     with pytest.raises(
         ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication"
@@ -208,7 +249,7 @@ def test_register_default_values():
         0: {
             "DRV_DIAG_ERROR_LAST_COM": 0,
             "DRV_AXIS_NUMBER": 1,
-            "TEST_TXRX_REGISTER": 0,
+            "TEST_RXTX_REGISTER": 0,
             "CIA301_COMMS_RPDO1_MAP": 1,
             "CIA301_COMMS_RPDO1_MAP_1": 268451936,
         },
@@ -229,7 +270,7 @@ def test_register_description():
         0: {
             "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
             "DRV_AXIS_NUMBER": "",
-            "TEST_TXRX_REGISTER": "Test TXRX register",
+            "TEST_RXTX_REGISTER": "Test RXTX register",
             "CIA301_COMMS_RPDO1_MAP": "",
             "CIA301_COMMS_RPDO1_MAP_1": "",
         },
@@ -246,11 +287,12 @@ def test_register_description():
             )
 
 
+@pytest.mark.no_connection
 def test_register_bitfields():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
     canopen_dict = DictionaryV3(dictionary_path, Interface.ECAT)
 
-    for subnode, registers in canopen_dict._registers.items():
+    for registers in canopen_dict._registers.values():
         for register in registers.values():
             if register.identifier == "DRV_STATE_CONTROL":
                 assert register.bitfields == {

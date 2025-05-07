@@ -1,12 +1,33 @@
 # Changelog
 
+## [7.4.2] - 2025-05-07
+### Added
+- Implement the scan method for Ethernet networks.
+- GIL release control for EtherCAT functions.
+
+### Deprecated
+- Changed `Enums` names to follow CapWords convention. Old names are still supported, but will soon be deprecated.
+
+### Changed
+- Change dictionary registers groups to objects
+- Parse CanOpen object type from xdf v3 dictionaries
+- FoE using PySOEM.
+
+### Added
+- Created ConfigurationFile class, used in load_configuration, save_configuration and check_configuration
+- Functions to update pysoem timeouts
+
+### Fixed
+- FTP login exception.
+- Return False on ECAT node-state check when servo list is empty
+
 ## [7.4.1] - 2025-01-28
 ### Fixed
 - Avoid mapping a PDO map twice.
 - Recover from a disconnection while PDOs were active.
 
 ### Changed
-- Virtual monitoring and disturbance disabled for old disturbance. 
+- Virtual monitoring and disturbance disabled for old disturbance.
 
 ## [7.4.0] - 2024-12-3
 ### Added

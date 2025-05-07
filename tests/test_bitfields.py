@@ -24,6 +24,7 @@ def test_parse_bitfields(value, values):
     assert BitField.parse_bitfields(BITFIELD_EXAMPLES, value) == values
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "old_value, new_value, values",
     [
@@ -41,6 +42,7 @@ def test_set_bitfields(old_value, new_value, values):
     assert BitField.set_bitfields(BITFIELD_EXAMPLES, values, old_value) == new_value
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "values, error",
     [
@@ -57,7 +59,7 @@ def test_set_bitfield_over_max_value(values, error):
 
 @pytest.mark.no_connection
 def test_read_status_word_known_bitfields(virtual_drive):  # noqa: F811
-    server, servo = virtual_drive
+    _, servo = virtual_drive
 
     # Load dictionary v2, that does not contain bitfield information.
     # DRV_STATE_STATUS is injected by the XDF V2 parser
@@ -95,7 +97,7 @@ def test_read_status_word_known_bitfields(virtual_drive):  # noqa: F811
 
 @pytest.mark.no_connection
 def test_write_control_word_known_bitfields(virtual_drive, mocker):  # noqa: F811
-    server, servo = virtual_drive
+    _, servo = virtual_drive
 
     # Load dictionary v2, that does not contain bitfield information.
     # DRV_STATE_CONTROL is injected by the XDF V2 parser

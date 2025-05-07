@@ -1,9 +1,8 @@
-import io
 import os
 import tempfile
-import xml.etree.ElementTree as ET
 from os.path import join as join_path
 from xml.dom import minidom
+from xml.etree import ElementTree
 
 import pytest
 
@@ -23,6 +22,7 @@ PATH_RESOURCE = "./tests/resources/"
 PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "dict_path, interface, fw_version, product_code, part_number, revision_number",
     [
@@ -72,6 +72,7 @@ def test_dictionary_description(
     )
 
 
+@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "dict_path, interface, raises",
     [
@@ -109,17 +110,16 @@ def test_dictionary_v2_image(dictionary_class, dictionary_path):
 )
 @pytest.mark.no_connection
 def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
-    with open(dictionary_path, "r", encoding="utf-8") as xdf_file:
-        tree = ET.parse(xdf_file)
+    with open(dictionary_path, encoding="utf-8") as xdf_file:
+        tree = ElementTree.parse(xdf_file)
     root = tree.getroot()
     root.remove(root.find(DictionaryV2._DictionaryV2__DICT_IMAGE))
-    xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
+    xml_str = minidom.parseString(ElementTree.tostring(root)).toprettyxml(
         indent="  ", newl="", encoding="UTF-8"
     )
     temp_file = join_path(PATH_RESOURCE, "temp.xdf")
-    merged_file = io.open(temp_file, "wb")
-    merged_file.write(xml_str)
-    merged_file.close()
+    with open(temp_file, "wb") as merged_file:
+        merged_file.write(xml_str)
     dictionary = dictionary_class(temp_file)
     os.remove(temp_file)
     assert dictionary.image is None
@@ -136,6 +136,8 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
         (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.EoE, EthernetDictionaryV2),
         (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.ECAT, DictionaryV3),
         (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.EoE, DictionaryV3),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_safe_v3.0.xdf", Interface.ECAT, DictionaryV3),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_safe_v3.0.xdf", Interface.EoE, DictionaryV3),
     ],
 )
 def test_dictionary_factory(dict_path, interface, dict_class):
@@ -316,12 +318,12 @@ def test_merge_dictionaries_no_coco_exception():
 )
 @pytest.mark.no_connection
 def test_dictionary_no_product_code(xml_attribute, class_attribute):
-    with open(PATH_TO_DICTIONARY, "r", encoding="utf-8") as xdf_file:
-        tree = ET.parse(xdf_file)
+    with open(PATH_TO_DICTIONARY, encoding="utf-8") as xdf_file:
+        tree = ElementTree.parse(xdf_file)
     root = tree.getroot()
     device = root.find(DictionaryV2._DictionaryV2__DICT_ROOT_DEVICE)
     device.attrib.pop(xml_attribute)
-    xml_str = minidom.parseString(ET.tostring(root)).toprettyxml(
+    xml_str = minidom.parseString(ElementTree.tostring(root)).toprettyxml(
         indent="  ", newl="", encoding="UTF-8"
     )
     with tempfile.TemporaryDirectory() as tmp_dir:

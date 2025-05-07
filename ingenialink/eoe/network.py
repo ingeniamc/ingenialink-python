@@ -5,20 +5,23 @@ import time
 from collections import OrderedDict
 from enum import Enum
 from threading import Thread
-from typing import Dict, List, Optional
+from typing import Optional
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink import constants
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError
-from ingenialink.network import NET_DEV_EVT, SlaveInfo
+from ingenialink.network import NetDevEvt, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
 
 class EoECommand(Enum):
+    """EoE command enum."""
+
     INIT = 0
     DEINIT = 1
     SCAN = 2
@@ -73,7 +76,7 @@ class EoENetwork(EthernetNetwork):
             self._deinitialize_eoe_service()
         self._eoe_service_init = False
         self._eoe_service_started = False
-        self._configured_slaves: Dict[str, int] = {}
+        self._configured_slaves: dict[str, int] = {}
 
     def connect_to_slave(  # type: ignore [override]
         self,
@@ -99,13 +102,10 @@ class EoENetwork(EthernetNetwork):
                 status, connection and disconnection.
 
         Raises:
-            ValueError: ip_address must be a subnetwork of 192.168.3.0/24
-            ILError: If the EoE service is not running.
-            ILError: If the EoE service cannot be started on the network interface.
+            ValueError: ip_address must be a subnetwork of 192.168.3.0/24.
 
         Returns:
             EthernetServo: Instance of the servo connected.
-
         """
         if ipaddress.ip_address(ip_address) not in self.ECAT_SERVICE_NETWORK:
             raise ValueError("ip_address must be a subnetwork of 192.168.3.0/24")
@@ -133,23 +133,24 @@ class EoENetwork(EthernetNetwork):
         )
 
     def __wait_eoe_starts(self) -> None:
-        """Wait until the EoE service starts the EoE or the timeout was reached"""
+        """Wait until the EoE service starts the EoE or the timeout was reached."""
         status = self._get_status_eoe_service()
         time_start = time.time()
-        while not status & self.STATUS_EOE_BIT and self.WAIT_EOE_TIMEOUT > time.time() - time_start:
+        while not status & self.STATUS_EOE_BIT and time.time() - time_start < self.WAIT_EOE_TIMEOUT:
             time.sleep(0.1)
             status = self._get_status_eoe_service()
         if not status & self.STATUS_EOE_BIT:
             logger.warning("Service did not starts the EoE")
 
     def __reconfigure_drives(self) -> None:
-        """Reconfigure all the slaves saved in the network"""
-        for ip_addr, slave_id in self._configured_slaves.items():
-            try:
+        """Reconfigure all the slaves saved in the network."""
+        try:
+            for ip_addr, slave_id in self._configured_slaves.items():
                 self._configure_slave(slave_id, ip_addr)
-            except ILError as e:
-                logger.error(e)
+        except ILError as e:
+            logger.error(e)
 
+    @override
     def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override]
         del self._configured_slaves[servo.ip_address]
         super().disconnect_from_slave(servo)
@@ -162,18 +163,15 @@ class EoENetwork(EthernetNetwork):
                 logger.error(e)
 
     def __del__(self) -> None:
+        """Delete method."""
         self._eoe_socket.shutdown(socket.SHUT_RDWR)
         self._eoe_socket.close()
 
-    def scan_slaves(self) -> List[int]:
+    def scan_slaves(self) -> list[int]:  # type: ignore [override]
         """Scan slaves connected to the network adapter.
 
         Returns:
             List containing the ids of the connected slaves.
-
-        Raises:
-            ILError: If the EoE service fails to perform a scan.
-
         """
         deinit_later = False
         if not self._eoe_service_init:
@@ -184,8 +182,8 @@ class EoENetwork(EthernetNetwork):
             self._deinitialize_eoe_service()
         return result
 
-    def _scan_eoe_service(self) -> List[int]:
-        """Make the scan request to the EoE service
+    def _scan_eoe_service(self) -> list[int]:
+        """Make the scan request to the EoE service.
 
         Returns:
             List containing the ids of the connected slaves.
@@ -203,13 +201,13 @@ class EoENetwork(EthernetNetwork):
             ) from e
         return list(range(1, r + 1))
 
-    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
+    @override
+    def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:  # type: ignore [override]
         raise NotImplementedError
 
     @staticmethod
     def _build_eoe_command_msg(cmd: int, data: Optional[bytes] = None) -> bytes:
-        """
-        Build a message with the following format.
+        """Build a message with the following format.
 
         +----------+----------+
         |   cmd    |   data   |
@@ -226,14 +224,13 @@ class EoENetwork(EthernetNetwork):
 
         """
         if data is None:
-            data = bytes()
+            data = b""
         cmd_field = cmd.to_bytes(EoENetwork.EOE_MSG_CMD_SIZE, "little")
         data_field = data + EoENetwork.NULL_TERMINATOR * (EoENetwork.EOE_MSG_DATA_SIZE - len(data))
         return cmd_field + data_field
 
     def _send_command(self, msg: bytes) -> int:
-        """
-        Send command to EoE service.
+        """Send command to EoE service.
 
         Args:
             msg: Message to send.
@@ -249,13 +246,13 @@ class EoENetwork(EthernetNetwork):
         """
         try:
             self._eoe_socket.send(msg)
-        except socket.error as e:
+        except OSError as e:
             raise ILIOError("Error sending message.") from e
         try:
             response = self._eoe_socket.recv(1024)
         except socket.timeout as e:
             raise ILTimeoutError("Timeout while receiving response.") from e
-        except socket.error as e:
+        except OSError as e:
             raise ILIOError("Error receiving response.") from e
         return int.from_bytes(response, byteorder="little", signed=True)
 
@@ -306,12 +303,12 @@ class EoENetwork(EthernetNetwork):
     def _configure_slave(
         self, slave_id: int, ip_address: str, net_mask: str = "255.255.255.0"
     ) -> None:
-        """
-        Configure an EtherCAT slave with a given IP.
+        """Configure an EtherCAT slave with a given IP.
 
         Args:
             slave_id: EtherCAT slave ID.
             ip_address: IP address to be set to the slave.
+            net_mask: The subnet mask.
 
         Raises:
             ILError: If the EoE service fails to configure a slave.
@@ -330,7 +327,7 @@ class EoENetwork(EthernetNetwork):
             raise ILError(f"Failed to configure slave {slave_id} with IP {ip_address}.") from e
 
     def _start_eoe_service(self) -> None:
-        """Starts the EoE service
+        """Starts the EoE service.
 
         Raises:
            ILError: If the EoE service fails to start.
@@ -344,7 +341,7 @@ class EoENetwork(EthernetNetwork):
             raise ILError("Failed to start the EoE service.") from e
 
     def _stop_eoe_service(self) -> None:
-        """Stops the EoE service
+        """Stops the EoE service.
 
         Raises:
            ILError: If the EoE service fails to stop.
@@ -358,7 +355,7 @@ class EoENetwork(EthernetNetwork):
             raise ILError("Failed to stop the EoE service.") from e
 
     def _erase_config_eoe_service(self) -> None:
-        """Stops the EoE service
+        """Stops the EoE service.
 
         Raises:
            ILError: If the EoE service fails to stop.
@@ -393,20 +390,22 @@ class EoENetwork(EthernetNetwork):
             raise ILError("Failed to get service status.") from e
         return r
 
+    @override
     def load_firmware_moco(self) -> None:  # type: ignore [override]
         raise NotImplementedError
 
+    @override
     def load_firmware(self) -> None:  # type: ignore [override]
         raise NotImplementedError
 
-    def _recover_from_power_cycle(self, status: NET_DEV_EVT) -> None:
+    def _recover_from_power_cycle(self, status: NetDevEvt) -> None:
         """Recover the connection after a power cycle.
 
         Args:
             status: The network status.
 
         """
-        if status == NET_DEV_EVT.REMOVED:
+        if status == NetDevEvt.REMOVED:
             connection_recovery_thread = Thread(target=self._connection_recovery)
             connection_recovery_thread.start()
 

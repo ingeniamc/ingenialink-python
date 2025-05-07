@@ -19,3 +19,9 @@ API documentation
     :maxdepth: 2
     
     api/base_classes
+
+.. toctree::
+    :glob:
+    :maxdepth: 1
+    
+    api/helpers

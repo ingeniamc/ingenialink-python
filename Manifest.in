@@ -1,1 +1,2 @@
-recursive-include ingenialink/bin *
+recursive-include ingenialink/cython_files *.pxd *.pyx *.cpp *.pyd
+recursive-include ingenialink *.pyd

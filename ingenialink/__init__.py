@@ -1,53 +1,84 @@
-from ingenialink.enums.register import REG_ACCESS, REG_DTYPE, REG_PHY
+import warnings
+from typing import Any
+
+from ingenialink.enums.register import RegAccess, RegDtype, RegPhy
 from ingenialink.enums.servo import (
-    SERVO_FLAGS,
-    SERVO_MODE,
-    SERVO_STATE,
-    SERVO_UNITS_ACC,
-    SERVO_UNITS_POS,
-    SERVO_UNITS_TORQUE,
-    SERVO_UNITS_VEL,
+    ServoMode,
+    ServoState,
+    ServoUnitsAcc,
+    ServoUnitsPos,
+    ServoUnitsTorque,
+    ServoUnitsVel,
 )
 from ingenialink.poller import Poller
 from ingenialink.servo import Servo
 
 from .canopen.dictionary import CanopenDictionaryV2
-from .canopen.network import CAN_BAUDRATE, CAN_DEVICE, CanopenNetwork
+from .canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from .canopen.register import CanopenRegister
 from .canopen.servo import CanopenServo
-from .ethercat.network import EthercatNetwork
+from .ethercat.network import EthercatNetwork, GilReleaseConfig
 from .ethernet.network import EthernetNetwork
 from .ethernet.servo import EthernetServo
-from .network import EEPROM_FILE_FORMAT, NET_DEV_EVT, NET_PROT, NET_STATE, NET_TRANS_PROT, Network
+from .network import NetDevEvt, NetProt, NetState, Network
 
 __all__ = [
-    "EEPROM_FILE_FORMAT",
-    "NET_PROT",
-    "NET_DEV_EVT",
-    "NET_STATE",
-    "NET_TRANS_PROT",
-    "SERVO_STATE",
-    "SERVO_FLAGS",
-    "SERVO_MODE",
-    "SERVO_UNITS_TORQUE",
-    "SERVO_UNITS_POS",
-    "SERVO_UNITS_VEL",
-    "SERVO_UNITS_ACC",
+    "NetProt",
+    "NetDevEvt",
+    "NetState",
+    "ServoState",
+    "ServoMode",
+    "ServoUnitsTorque",
+    "ServoUnitsPos",
+    "ServoUnitsVel",
+    "ServoUnitsAcc",
     "Network",
     "Servo",
-    "REG_DTYPE",
-    "REG_ACCESS",
-    "REG_PHY",
+    "RegDtype",
+    "RegAccess",
+    "RegPhy",
     "EthercatNetwork",
+    "GilReleaseConfig",
     "EthernetServo",
     "EthernetNetwork",
     "CanopenNetwork",
-    "CAN_DEVICE",
-    "CAN_BAUDRATE",
+    "CanDevice",
+    "CanBaudrate",
     "CanopenServo",
     "CanopenRegister",
     "Poller",
     "CanopenDictionaryV2",
 ]
 
-__version__ = "7.4.1"
+
+# WARNING: Deprecated aliases
+_DEPRECATED = {
+    "NET_PROT": "NetProt",
+    "NET_STATE": "NetState",
+    "NET_DEV_EVT": "NetDevEvt",
+    "REG_DTYPE": "RegDtype",
+    "REG_ACCESS": "RegAccess",
+    "REG_PHY": "RegPhy",
+    "SERVO_STATE": "ServoState",
+    "SERVO_MODE": "ServoMode",
+    "SERVO_UNITS_TORQUE": "ServoUnitsTorque",
+    "SERVO_UNITS_POS": "ServoUnitsPos",
+    "SERVO_UNITS_VEL": "ServoUnitsVel",
+    "SERVO_UNITS_ACC": "ServoUnitsAcc",
+    "CAN_DEVICE": "CanDevice",
+    "CAN_BAUDRATE": "CanBaudrate",
+}
+
+
+def __getattr__(name: str) -> Any:
+    if name in _DEPRECATED:
+        warnings.warn(
+            f"{name} is deprecated, use {_DEPRECATED[name]} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return globals()[_DEPRECATED[name]]
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+
+__version__ = "7.4.2"

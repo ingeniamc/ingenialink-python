@@ -49,14 +49,14 @@ def test_read_dictionary_registers():
             "COMMS_ETH_NET_MASK",
             "DRV_BOOT_COCO_VERSION",
             "MON_CFG_EOC_TYPE",
-            "RPDO_ASSIGN_REGISTER_SUB_IDX_0",
-            "RPDO_ASSIGN_REGISTER_SUB_IDX_1",
-            "RPDO_MAP_REGISTER_SUB_IDX_0",
-            "RPDO_MAP_REGISTER_SUB_IDX_1",
-            "TPDO_ASSIGN_REGISTER_SUB_IDX_0",
-            "TPDO_ASSIGN_REGISTER_SUB_IDX_1",
-            "TPDO_MAP_REGISTER_SUB_IDX_0",
-            "TPDO_MAP_REGISTER_SUB_IDX_1",
+            "ETG_COMMS_RPDO_ASSIGN_TOTAL",
+            "ETG_COMMS_RPDO_ASSIGN_1",
+            "ETG_COMMS_RPDO_MAP1_TOTAL",
+            "ETG_COMMS_RPDO_MAP1_1",
+            "ETG_COMMS_TPDO_ASSIGN_TOTAL",
+            "ETG_COMMS_TPDO_ASSIGN_1",
+            "ETG_COMMS_TPDO_MAP1_TOTAL",
+            "ETG_COMMS_TPDO_MAP1_1",
         ],
         1: [
             "CL_POS_SET_POINT_VALUE",
@@ -69,10 +69,8 @@ def test_read_dictionary_registers():
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
-    for subnode in expected_regs_per_subnode.keys():
-        assert expected_regs_per_subnode[subnode] == [
-            reg for reg in ethercat_dict.registers(subnode)
-        ]
+    for subnode in expected_regs_per_subnode:
+        assert expected_regs_per_subnode[subnode] == list(ethercat_dict.registers(subnode))
 
 
 @pytest.mark.no_connection
@@ -87,7 +85,7 @@ def test_read_dictionary_registers_multiaxis():
         2: SubnodeType.MOTION,
     }
 
-    for subnode in expected_num_registers_per_subnode.keys():
+    for subnode in expected_num_registers_per_subnode:
         num_registers = len(ethercat_dict.registers(subnode))
         assert num_registers == expected_num_registers_per_subnode[subnode]
 
@@ -120,7 +118,7 @@ def test_read_dictionary_errors():
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
-    assert [error for error in ethercat_dict.errors] == expected_errors
+    assert list(ethercat_dict.errors) == expected_errors
 
 
 @pytest.mark.no_connection
@@ -152,11 +150,11 @@ def test_mcb_to_can_mapping(register_uid, subnode, idx):
 
 
 @pytest.mark.no_connection
-def test_child_registers_not_exist():
+def test_object_not_exist():
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
     with pytest.raises(KeyError):
-        ethercat_dict.child_registers("NOT_EXISTING_UID", 0)
+        ethercat_dict.get_object("NOT_EXISTING_UID", 0)
 
 
 @pytest.mark.no_connection

@@ -53,25 +53,30 @@ class EthernetServo(Servo):
             self.interface = Interface.EoE
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
-        super(EthernetServo, self).__init__(self.ip_address, dictionary_path, servo_status_listener)
+        super().__init__(self.ip_address, dictionary_path, servo_status_listener)
 
     def store_tcp_ip_parameters(self) -> None:
-        """Stores the TCP/IP values. Affects IP address,
-        subnet mask and gateway"""
+        """Stores the TCP/IP values.
+
+        Affects IP address, subnet mask, gateway and mac_address.
+        """
         self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Store TCP/IP successfully done.")
 
     def restore_tcp_ip_parameters(self) -> None:
-        """Restores the TCP/IP values back to default. Affects
-        IP address, subnet mask and gateway"""
+        """Restores the TCP/IP values back to default.
+
+        Affects IP address, subnet mask and gateway.
+        """
         self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_TCP_IP, subnode=0)
         logger.info("Restore TCP/IP successfully done.")
 
     def change_tcp_ip_parameters(
         self, ip_address: str, subnet_mask: str, gateway: str, mac_address: Optional[int] = None
     ) -> None:
-        """Stores the TCP/IP values. Affects IP address,
-        network mask and gateway
+        """Stores the TCP/IP values.
+
+        Affects IP address, network mask ,gateway and mac_address.
 
         .. note::
             The drive needs a power cycle after this
@@ -88,9 +93,6 @@ class EthernetServo(Servo):
                 valid IP address.
             ValueError: If the drive IP and gateway IP are not
                 on the same network.
-            NetmaskValueError: If the subnet_mask is not a valid
-                netmask.
-
         """
         drive_ip = ipaddress.ip_address(ip_address)
         gateway_ip = ipaddress.ip_address(gateway)
@@ -120,9 +122,11 @@ class EthernetServo(Servo):
     def get_mac_address(self) -> int:
         """Get the MAC address of the servo.
 
+        Raises:
+            ValueError: if there is an error retrieving the MAC address.
+
         Returns:
             The servo's MAC address.
-
         """
         mac_address = self.read(self.COMMS_ETH_MAC, subnode=0)
         if not isinstance(mac_address, int):
@@ -157,6 +161,9 @@ class EthernetServo(Servo):
             subnode: Target axis of the drive.
             data: Data to be written to the register.
 
+        Raises:
+            ILIOError: If there is an error sending the data.
+
         Returns:
             The response frame.
         """
@@ -165,7 +172,7 @@ class EthernetServo(Servo):
         try:
             try:
                 self.socket.sendall(frame)
-            except socket.error as e:
+            except OSError as e:
                 raise ILIOError("Error sending data.") from e
             try:
                 return self.__receive_mcb_frame(reg)
@@ -180,7 +187,7 @@ class EthernetServo(Servo):
             self._lock.release()
 
     def __receive_mcb_frame(self, reg: int) -> bytes:
-        """Receive frame from socket and return MCB data
+        """Receive frame from socket and return MCB data.
 
         Args:
             reg: expected address
@@ -197,6 +204,6 @@ class EthernetServo(Servo):
             response = self.socket.recv(ETH_BUF_SIZE)
         except socket.timeout as e:
             raise ILTimeoutError("Timeout while receiving data.") from e
-        except socket.error as e:
+        except OSError as e:
             raise ILIOError("Error receiving data.") from e
         return MCB.read_mcb_data(reg, response)

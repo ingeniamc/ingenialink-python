@@ -1,13 +1,13 @@
 from typing import TYPE_CHECKING
 
-from .environment import Signal
+from .signals import Signal
 
 if TYPE_CHECKING:
     from .environment import Environment
 
 
 class Gpios:
-    """General Purpose Input and Outputs"""
+    """General Purpose Input and Outputs."""
 
     def __init__(self, environment: "Environment"):
         self.value = Signal[int](0)

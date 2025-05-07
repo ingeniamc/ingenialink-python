@@ -1,10 +1,13 @@
-import xml.etree.ElementTree as ET
-from typing import List, Optional
+from functools import cached_property
+from typing import Optional
+from xml.etree import ElementTree
 
 import ingenialogger
 
-from ingenialink.canopen.register import REG_ACCESS, REG_DTYPE, CanopenRegister, RegCyclicType
-from ingenialink.dictionary import DictionaryV2, Interface
+from ingenialink.canopen.register import CanopenRegister
+from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
+from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
+from ingenialink.ethercat.register import EthercatRegister
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -17,30 +20,40 @@ class CanopenDictionaryV2(DictionaryV2):
 
     """
 
-    _MONITORING_DISTURBANCE_REGISTERS: List[CanopenRegister] = [
-        CanopenRegister(
-            identifier="MON_DATA_VALUE",
-            idx=0x58B2,
-            subidx=0x00,
-            cyclic=RegCyclicType.CONFIG,
-            dtype=REG_DTYPE.BYTE_ARRAY_512,
-            access=REG_ACCESS.RO,
-            subnode=0,
-        ),
-        CanopenRegister(
-            identifier="DIST_DATA_VALUE",
-            idx=0x58B4,
-            subidx=0x00,
-            cyclic=RegCyclicType.CONFIG,
-            dtype=REG_DTYPE.BYTE_ARRAY_512,
-            access=REG_ACCESS.WO,
-            subnode=0,
-        ),
-    ]
-
     interface = Interface.CAN
 
-    def _read_xdf_register(self, register: ET.Element) -> Optional[CanopenRegister]:
+    @cached_property
+    def _monitoring_disturbance_registers(self) -> list[CanopenRegister]:
+        return [
+            CanopenRegister(
+                identifier="MON_DATA_VALUE",
+                idx=0x58B2,
+                subidx=0x00,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.RO,
+                subnode=0,
+            ),
+            CanopenRegister(
+                identifier="DIST_DATA_VALUE",
+                idx=0x58B4,
+                subidx=0x00,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.WO,
+                subnode=0,
+            ),
+        ]
+
+    @cached_property
+    def _safety_registers(self) -> list[EthercatRegister]:
+        raise NotImplementedError("Safety registers are not implemented for this device.")
+
+    @cached_property
+    def _safety_modules(self) -> list[DictionarySafetyModule]:
+        raise NotImplementedError("Safety modules are not implemented for this device.")
+
+    def _read_xdf_register(self, register: ElementTree.Element) -> Optional[CanopenRegister]:
         current_read_register = super()._read_xdf_register(register)
         if current_read_register is None:
             return None
