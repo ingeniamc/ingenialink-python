@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.4.2] - 2025-05-07
 ### Added
 - Implement the scan method for Ethernet networks.
 - GIL release control for EtherCAT functions.
@@ -11,6 +11,7 @@
 ### Changed
 - Change dictionary registers groups to objects
 - Parse CanOpen object type from xdf v3 dictionaries
+- FoE using PySOEM.
 
 ### Added
 - Created ConfigurationFile class, used in load_configuration, save_configuration and check_configuration
@@ -27,7 +28,6 @@
 
 ### Changed
 - Virtual monitoring and disturbance disabled for old disturbance.
-- FoE using PySOEM.
 
 ## [7.4.0] - 2024-12-3
 ### Added
