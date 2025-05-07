@@ -40,8 +40,8 @@ def test_pdo_example(setup_descriptor, script_runner):
     script_path = "examples/ethercat/process_data_objects.py"
     result = script_runner.run([
         script_path,
-        f"--interface={setup_descriptor.ifname}",
-        f"--dictionary_path={setup_descriptor.dictionary}",
+        f"--interface={setup_descriptor.drives[0].ifname}",
+        f"--dictionary_path={setup_descriptor.drives[0].dictionary}",
         "--auto_stop",
     ])
     assert result.returncode == 0

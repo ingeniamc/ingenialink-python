@@ -8,6 +8,7 @@ from xml.etree import ElementTree
 import pytest
 from packaging import version
 from summit_testing_framework.rack_service_client import PartNumber
+from summit_testing_framework.setups import DriveCanOpenSetup, DriveEthernetSetup
 from summit_testing_framework.setups.specifiers import RackServiceConfigSpecifier
 
 from ingenialink import RegAccess
@@ -24,8 +25,6 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState
-
-from .conftest import SLEEP_BETWEEN_POWER_CYCLE_S
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -51,9 +50,12 @@ def _clean(filename):
         os.remove(filename)
 
 
-def _get_reg_address(register, protocol):
-    attr_dict = {"ethernet": "address", "canopen": "idx"}
-    return getattr(register, attr_dict[protocol])
+def _get_reg_address(register, descriptor):
+    if isinstance(descriptor, DriveEthernetSetup):
+        return register.address
+    elif isinstance(descriptor, DriveCanOpenSetup):
+        return register.idx
+    raise ValueError
 
 
 def wait_until_alive(servo, timeout=None):
@@ -86,8 +88,7 @@ class SDOReadTimeoutManager:
 
 
 @pytest.fixture()
-def create_monitoring(interface_controller, pytestconfig):
-    protocol = pytestconfig.getoption("--protocol")
+def create_monitoring(interface_controller, setup_descriptor):
     servo, net, _, _ = interface_controller
     skip_if_monitoring_is_not_available(servo)
     servo.monitoring_disable()
@@ -96,7 +97,7 @@ def create_monitoring(interface_controller, pytestconfig):
     subnode = 1
     for idx, key in enumerate(registers_key):
         reg = servo._get_reg(key, subnode=1)
-        address = _get_reg_address(reg, protocol)
+        address = _get_reg_address(reg, setup_descriptor)
         servo.monitoring_set_mapped_register(
             idx, address, subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE
         )
@@ -109,15 +110,14 @@ def create_monitoring(interface_controller, pytestconfig):
 
 
 @pytest.fixture()
-def create_disturbance(interface_controller, pytestconfig):
-    protocol = pytestconfig.getoption("--protocol")
+def create_disturbance(interface_controller, setup_descriptor):
     servo, net, _, _ = interface_controller
     skip_if_monitoring_is_not_available(servo)
     data = list(range(DISTURBANCE_NUM_SAMPLES))
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
     reg = servo._get_reg("CL_POS_SET_POINT_VALUE", subnode=1)
-    address = _get_reg_address(reg, protocol)
+    address = _get_reg_address(reg, setup_descriptor)
     servo.disturbance_set_mapped_register(
         0, address, 1, RegDtype.S32.value, DISTURBANCE_CH_DATA_SIZE
     )
@@ -324,11 +324,7 @@ def test_store_parameters(interface_controller, connect_to_rack_service):
     time.sleep(5)
 
     client = connect_to_rack_service
-    client.exposed_turn_off_ps()
-    time.sleep(SLEEP_BETWEEN_POWER_CYCLE_S)
-    client.exposed_turn_on_ps()
-
-    wait_until_alive(servo, timeout=20)
+    client.power_cycle()
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
@@ -350,11 +346,7 @@ def test_restore_parameters(interface_controller, connect_to_rack_service):
     servo.restore_parameters()
 
     client = connect_to_rack_service
-    client.exposed_turn_off_ps()
-    time.sleep(SLEEP_BETWEEN_POWER_CYCLE_S)
-    client.exposed_turn_on_ps()
-
-    wait_until_alive(servo, timeout=20)
+    client.power_cycle()
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
 
@@ -416,8 +408,7 @@ def test_monitoring_remove_data(create_monitoring):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_monitoring_map_register(interface_controller, pytestconfig):
-    protocol = pytestconfig.getoption("--protocol")
+def test_monitoring_map_register(interface_controller, setup_descriptor):
     servo, _, _, _ = interface_controller
     skip_if_monitoring_is_not_available(servo)
     servo.monitoring_remove_all_mapped_registers()
@@ -426,7 +417,7 @@ def test_monitoring_map_register(interface_controller, pytestconfig):
     subnode = 1
     for idx, key in enumerate(registers_key):
         reg = servo._get_reg(key, subnode=1)
-        address = _get_reg_address(reg, protocol)
+        address = _get_reg_address(reg, setup_descriptor)
         servo.monitoring_set_mapped_register(idx, address, subnode, reg.dtype.value, data_size)
     assert servo.monitoring_number_mapped_registers == len(registers_key)
 
@@ -501,8 +492,7 @@ def test_disturbance_remove_data(create_disturbance):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_disturbance_map_register(interface_controller, pytestconfig):
-    protocol = pytestconfig.getoption("--protocol")
+def test_disturbance_map_register(interface_controller, setup_descriptor):
     servo, _, _, _ = interface_controller
     skip_if_monitoring_is_not_available(servo)
     servo.disturbance_remove_all_mapped_registers()
@@ -511,7 +501,7 @@ def test_disturbance_map_register(interface_controller, pytestconfig):
     subnode = 1
     for idx, key in enumerate(registers_key):
         reg = servo._get_reg(key, subnode=1)
-        address = _get_reg_address(reg, protocol)
+        address = _get_reg_address(reg, setup_descriptor)
         servo.disturbance_set_mapped_register(idx, address, subnode, reg.dtype.value, data_size)
     assert servo.disturbance_number_mapped_registers == len(registers_key)
 
@@ -612,14 +602,13 @@ def test_status_word_wait_change(interface_controller):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_disturbance_overflow(interface_controller, pytestconfig):
-    protocol = pytestconfig.getoption("--protocol")
+def test_disturbance_overflow(interface_controller, setup_descriptor):
     servo, _, _, _ = interface_controller
     skip_if_monitoring_is_not_available(servo)
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
     reg = servo._get_reg("DRV_OP_CMD", subnode=1)
-    address = _get_reg_address(reg, protocol)
+    address = _get_reg_address(reg, setup_descriptor)
     servo.disturbance_set_mapped_register(
         0, address, 1, RegDtype.U16.value, DISTURBANCE_CH_DATA_SIZE
     )

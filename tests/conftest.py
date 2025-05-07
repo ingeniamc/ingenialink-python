@@ -25,12 +25,6 @@ pytest_plugins = [
 # be imported and ARE NOT part of the package should be specified here
 _DYNAMIC_MODULES_IMPORT = ["tests"]
 
-DEFAULT_PROTOCOL = "no_connection"
-
-ALLOW_PROTOCOLS = [DEFAULT_PROTOCOL, "ethernet", "ethercat", "canopen", "eoe", "multislave"]
-
-SLEEP_BETWEEN_POWER_CYCLE_S = 10
-
 
 def pytest_sessionstart(session):
     """Loads the modules that are not part of the package if import mode is importlib.
@@ -43,18 +37,6 @@ def pytest_sessionstart(session):
     ingenialink_base_path = Path(__file__).parents[1]
     for module_name in _DYNAMIC_MODULES_IMPORT:
         dynamic_loader((ingenialink_base_path / module_name).resolve())
-
-
-def pytest_collection_modifyitems(config, items):
-    protocol = config.getoption("--protocol")
-    negate_protocols = [x for x in ALLOW_PROTOCOLS if x != protocol]
-    skip_by_protocol = pytest.mark.skip(reason="Protocol does not match")
-    for item in items:
-        if protocol in item.keywords:
-            continue
-        for not_protocol in negate_protocols:
-            if not_protocol in item.keywords:
-                item.add_marker(skip_by_protocol)
 
 
 @pytest.fixture

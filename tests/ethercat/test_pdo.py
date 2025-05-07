@@ -1,5 +1,4 @@
 import contextlib
-import json
 import time
 
 from bitarray import bitarray
@@ -8,7 +7,6 @@ with contextlib.suppress(ImportError):
     import pysoem
 import pytest
 
-from ingenialink import EthercatNetwork
 from ingenialink.dictionary import Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
@@ -302,25 +300,6 @@ def test_servo_reset_pdos(interface_controller, create_pdo_map):
     assert len(servo._tpdo_maps) == 0
 
 
-@pytest.fixture
-def connect_to_all_slave(pytestconfig, ethercat_network_teardown):  # noqa: ARG001
-    protocol = pytestconfig.getoption("--protocol")
-    if protocol != "multislave":
-        raise AssertionError("Wrong protocol")
-    config = "tests/config.json"
-    with open(config, encoding="utf-8") as fp:
-        contents = json.load(fp)
-    protocol_contents = contents["ethercat"]
-    net = EthercatNetwork(protocol_contents[0]["ifname"])
-    servos = [
-        net.connect_to_slave(slave_content["slave"], slave_content["dictionary"])
-        for slave_content in protocol_contents
-    ]
-    yield servos, net
-    for servo in servos:
-        net.disconnect_from_slave(servo)
-
-
 def create_pdo_maps(servo, rpdo_registers, tpdo_registers):
     rpdo_map = RPDOMap()
     tpdo_map = TPDOMap()
@@ -351,8 +330,8 @@ def start_stop_pdos(net):
 
 
 @pytest.mark.multislave
-def test_start_stop_pdo(connect_to_all_slave):
-    servos, net = connect_to_all_slave
+def test_start_stop_pdo(interface_controller):
+    servos, net, _, _ = interface_controller
     operation_mode_uid = "DRV_OP_CMD"
     rpdo_registers = [operation_mode_uid]
     operation_mode_display_uid = "DRV_OP_VALUE"

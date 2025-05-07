@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from summit_testing_framework.setups.specifiers import PartNumber, RackServiceConfigSpecifier
+from summit_testing_framework.setups.specifiers import (
+    MultiRackServiceConfigSpecifier,
+    PartNumber,
+    RackServiceConfigSpecifier,
+)
 
 from ingenialink.dictionary import Interface
 
@@ -44,4 +48,8 @@ CAN_CAP_SETUP = RackServiceConfigSpecifier.from_frozen_firmware(
     interface=Interface.CAN,
     config_file=Path("//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml"),
     firmware_version="2.4.0",
+)
+
+ECAT_MULTISLAVE_SETUP = MultiRackServiceConfigSpecifier(
+    specifiers=[ECAT_EVE_SETUP, ECAT_CAP_SETUP],
 )
