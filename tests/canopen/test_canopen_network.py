@@ -49,10 +49,10 @@ def test_connect_to_slave_target_not_in_nodes(setup_descriptor):
 
 
 @pytest.mark.no_connection
-def test_connect_to_slave_none_nodes(virtual_network, setup_descriptor):
+def test_connect_to_slave_none_nodes(virtual_network):
     net = virtual_network
     with pytest.raises(ILError):
-        net.connect_to_slave(target=1, dictionary=setup_descriptor.dictionary)
+        net.connect_to_slave(target=1, dictionary="")
 
 
 @pytest.mark.canopen

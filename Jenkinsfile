@@ -59,6 +59,7 @@ def runTest(markers, setup_name, tox_skip_install = false) {
         env.INGENIALINK_WHEEL_PATH = wheelFile
         try {
             bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
+                    "--skip_motion_controller " +
                     "-m \"${markers}\" " +
                     "--setup ${setup_name} " +
                     "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\""
