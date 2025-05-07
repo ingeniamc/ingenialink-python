@@ -2,8 +2,7 @@ import pytest
 
 
 @pytest.mark.ethercat
-def test_eeprom_read(interface_controller):
-    servo, _, _, _ = interface_controller
+def test_eeprom_read(servo):
     product_code_bytes = servo.read("DRV_ID_PRODUCT_CODE").to_bytes(4, "little")
     product_code_address = 10
     for length in range(1, 5):
@@ -13,16 +12,14 @@ def test_eeprom_read(interface_controller):
 
 
 @pytest.mark.ethercat
-def test_eeprom_read_wrong_size(interface_controller):
-    servo, _, _, _ = interface_controller
+def test_eeprom_read_wrong_size(servo):
     product_code_address = 10
     with pytest.raises(ValueError):
         servo._read_esc_eeprom(product_code_address, length=0)
 
 
 @pytest.mark.ethercat
-def test_eeprom_write(interface_controller):
-    servo, _, _, _ = interface_controller
+def test_eeprom_write(servo):
     serial_number_address = 14
     serial_number = int.from_bytes(servo._read_esc_eeprom(serial_number_address), "little")
     new_serial_number = serial_number + 1
@@ -35,8 +32,7 @@ def test_eeprom_write(interface_controller):
 
 
 @pytest.mark.ethercat
-def test_eeprom_wrong_size(interface_controller):
-    servo, _, _, _ = interface_controller
+def test_eeprom_wrong_size(servo):
     serial_number_address = 14
     with pytest.raises(ValueError):
         servo._write_esc_eeprom(serial_number_address, (0).to_bytes(3, "little"))

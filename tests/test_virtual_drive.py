@@ -75,10 +75,7 @@ def test_virtual_drive_write_wrong_enum(virtual_drive):
 @pytest.mark.parametrize(
     "reg, value, subnode", [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)]
 )
-def test_virtual_drive_write_read_compare_responses(
-    interface_controller, virtual_drive, reg, value, subnode
-):
-    servo, _, _, _ = interface_controller
+def test_virtual_drive_write_read_compare_responses(servo, virtual_drive, reg, value, subnode):
     _, virtual_servo = virtual_drive
 
     virtual_response = virtual_servo.write(reg, value, subnode)

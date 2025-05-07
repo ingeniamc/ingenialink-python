@@ -83,8 +83,7 @@ def connect(setup_descriptor):
 
 
 @pytest.mark.ethernet
-def test_connect_to_slave(interface_controller):
-    servo, net, _, _ = interface_controller
+def test_connect_to_slave(servo, net):
     assert servo is not None and net is not None
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
@@ -137,8 +136,7 @@ def test_scan_slaves_info(setup_descriptor, get_drive_configuration_from_rack_se
 
 
 @pytest.mark.ethernet
-def test_ethernet_connection(interface_controller, setup_descriptor):
-    servo, net, _, _ = interface_controller
+def test_ethernet_connection(servo, net, setup_descriptor):
     family = servo.socket.family
     ip, port = servo.socket.getpeername()
     assert net.get_servo_state(setup_descriptor.ip) == NetState.CONNECTED

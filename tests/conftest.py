@@ -47,7 +47,7 @@ def virtual_drive_resources_folder():
 
 @pytest.fixture
 def ethercat_network_teardown():
-    """Should be executed for all the tests that do not use `interface_controller` fixture.
+    """Should be executed for all the tests that do not use `net` fixture.
 
     It is used to clear the network reference.
     Many of the tests check that errors are raised, so the reference is not properly cleared."""

@@ -65,8 +65,7 @@ def test_getters_canopen_register():
 
 
 @pytest.mark.canopen
-def test_canopen_connection_register(interface_controller):
-    servo, net, _, _ = interface_controller
+def test_canopen_connection_register(servo, net):
     assert servo is not None and net is not None
 
     assert isinstance(servo.dictionary, Dictionary)

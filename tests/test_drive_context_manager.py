@@ -17,8 +17,8 @@ def _read_user_under_voltage_uid(servo):
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.canopen
-def test_drive_context_manager(interface_controller):
-    servo, _, _, _ = interface_controller
+def test_drive_context_manager(setup_manager):
+    servo, _, _, _ = setup_manager
     context = DriveContextManager(servo)
 
     new_reg_value = 100.0
@@ -35,8 +35,8 @@ def test_drive_context_manager(interface_controller):
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.canopen
-def test_drive_context_manager_nested_contexts(interface_controller):
-    servo, _, _, _ = interface_controller
+def test_drive_context_manager_nested_contexts(setup_manager):
+    servo, _, _, _ = setup_manager
     context = DriveContextManager(servo)
 
     new_over_volt_value = 100.0
