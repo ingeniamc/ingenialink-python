@@ -29,7 +29,7 @@ class CanopenDictionaryV2(DictionaryV2):
                 identifier="MON_DATA_VALUE",
                 idx=0x58B2,
                 subidx=0x00,
-                cyclic=RegCyclicType.CONFIG,
+                pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.RO,
                 subnode=0,
@@ -38,7 +38,7 @@ class CanopenDictionaryV2(DictionaryV2):
                 identifier="DIST_DATA_VALUE",
                 idx=0x58B4,
                 subidx=0x00,
-                cyclic=RegCyclicType.CONFIG,
+                pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.WO,
                 subnode=0,
@@ -69,7 +69,7 @@ class CanopenDictionaryV2(DictionaryV2):
                 current_read_register.access,
                 identifier=current_read_register.identifier,
                 units=current_read_register.units,
-                cyclic=current_read_register.cyclic,
+                pdo_access=current_read_register.pdo_access,
                 phy=current_read_register.phy,
                 subnode=current_read_register.subnode,
                 storage=current_read_register.storage,
@@ -81,6 +81,7 @@ class CanopenDictionaryV2(DictionaryV2):
                 internal_use=current_read_register.internal_use,
                 address_type=current_read_register.address_type,
                 bitfields=current_read_register.bitfields,
+                monitoring=current_read_register.monitoring,
             )
 
             return canopen_register

@@ -1,4 +1,5 @@
 from abc import ABC
+from functools import cached_property
 from typing import Any, Optional, Union
 
 from ingenialink import exceptions as exc
@@ -33,7 +34,7 @@ class Register(ABC):
         access: Access type.
         identifier: Identifier.
         units: Units.
-        cyclic: Cyclic typed register.
+        pdo_access: pdo access.
         phy: Physical units.
         subnode: Subnode.
         storage: Storage.
@@ -46,7 +47,9 @@ class Register(ABC):
         address_type: Address tpye.
         description: Register description.
         default: Register default value.
-        bitfields: Fields that specify groups of bits
+        bitfields: Fields that specify groups of bits.
+        monitoring: monitoring information (address, subnode, cyclic access),
+            None if register is not monitoreable.
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -61,7 +64,7 @@ class Register(ABC):
         access: RegAccess,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
-        cyclic: RegCyclicType = RegCyclicType.CONFIG,
+        pdo_access: RegCyclicType = RegCyclicType.CONFIG,
         phy: RegPhy = RegPhy.NONE,
         subnode: int = 1,
         storage: Any = None,
@@ -77,6 +80,11 @@ class Register(ABC):
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
+        monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]] = (
+            None,
+            None,
+            None,
+        ),
     ) -> None:
         if labels is None:
             labels = {}
@@ -89,7 +97,7 @@ class Register(ABC):
         self._access = access.value
         self._identifier = identifier
         self._units = units
-        self._cyclic = cyclic
+        self._pdo_access = pdo_access
         self._phy = phy.value
         self._subnode = subnode
         self._storage = storage
@@ -104,6 +112,7 @@ class Register(ABC):
         self._default = default
         self._enums = enums
         self.__bitfields = bitfields
+        self._monitoring = monitoring
         self.__config_range(reg_range)
 
     def __type_errors(self, dtype: RegDtype, access: RegAccess, phy: RegPhy) -> None:
@@ -163,9 +172,9 @@ class Register(ABC):
         return self._units
 
     @property
-    def cyclic(self) -> RegCyclicType:
-        """Defines if the register is cyclic."""
-        return self._cyclic
+    def pdo_access(self) -> RegCyclicType:
+        """Defines if the register is pdo mappable."""
+        return self._pdo_access
 
     @property
     def phy(self) -> RegPhy:
@@ -221,6 +230,24 @@ class Register(ABC):
         if self._range:
             return self._range
         return (None, None)
+
+    @cached_property
+    def is_monitoreable(self) -> bool:
+        """True if the register is monitoreable, False otherwise."""
+        return bool(self._monitoring)
+
+    @property
+    def monitoring(self) -> Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]:
+        """Containing the address, subnode and cyclic access.
+
+        If the register is not monitoreable, it will contain None.
+
+        Raises:
+            RuntimeError: if monitoring data is invalid.
+        """
+        if self.is_monitoreable and None in self._monitoring:
+            raise RuntimeError("Invalid monitoring data.")
+        return self._monitoring
 
     @property
     def labels(self) -> dict[str, str]:
