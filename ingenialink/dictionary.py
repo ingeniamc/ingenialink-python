@@ -705,6 +705,11 @@ class DictionaryV3(Dictionary):
     __RANGE_MIN_ATTR = "min"
     __RANGE_MAX_ATTR = "max"
 
+    __MONITORING_ELEMENT = "MonitoringV3"
+    __MONITORING_ADDRESS_ATTR = "address"
+    __MONITORING_SUBNODE_ATTR = "subnode"
+    __MONITORING_CYCLIC_ATTR = "cyclic"
+
     __SAFETY_PDOS_ELEMENT = "SafetyPDOs"
     __RPDO_ELEMENT = "RPDO"
     __TPDO_ELEMENT = "TPDO"
@@ -1040,6 +1045,25 @@ class DictionaryV3(Dictionary):
             return range_min, range_max
         return None, None
 
+    def __read_monitoring(
+        self, monitoring_elem: Optional[ElementTree.Element]
+    ) -> Union[tuple[None, None, None], tuple[str, int, RegCyclicType]]:
+        """Process Monitoring element.
+
+        Args:
+            monitoring_elem: Monitoring element.
+
+        Returns:
+            Tuple with address, subnode and cyclic access
+            or None if the register is not monitoreable.
+        """
+        if monitoring_elem is None:
+            return None, None, None
+        address = int(monitoring_elem.attrib[self.__MONITORING_ADDRESS_ATTR], 16)
+        subnode = int(monitoring_elem.attrib[self.__MONITORING_SUBNODE_ATTR])
+        cyclic = RegCyclicType(monitoring_elem.attrib[self.__MONITORING_ADDRESS_ATTR])
+        return address, subnode, cyclic
+
     def __read_enumeration(
         self, enumerations_element: Optional[ElementTree.Element]
     ) -> Optional[dict[str, int]]:
@@ -1111,6 +1135,9 @@ class DictionaryV3(Dictionary):
         # Range
         range_elem = register.find(self.__RANGE_ELEMENT)
         reg_range = self.__read_range(range_elem)
+        # Monitoring
+        monitoring_elem = register.find(self.__MONITORING_ELEMENT)
+        monitoring = self.__read_monitoring(monitoring_elem)
         # Enumerations
         enumerations_element = register.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
@@ -1134,6 +1161,7 @@ class DictionaryV3(Dictionary):
             description=description,
             default=default,
             bitfields=bitfields,
+            monitoring=monitoring,
         )
         if subnode not in self._registers:
             self._registers[subnode] = {}
@@ -1199,6 +1227,9 @@ class DictionaryV3(Dictionary):
         # Range
         range_elem = subitem.find(self.__RANGE_ELEMENT)
         reg_range = self.__read_range(range_elem)
+        # Monitoring
+        monitoring_elem = subitem.find(self.__MONITORING_ELEMENT)
+        monitoring = self.__read_monitoring(monitoring_elem)
         # Enumerations
         enumerations_element = subitem.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
@@ -1223,6 +1254,7 @@ class DictionaryV3(Dictionary):
             description=description,
             default=default,
             bitfields=bitfields,
+            monitoring=monitoring,
             is_node_id_dependent=is_node_id_dependent,
         )
         if subnode not in self._registers:
