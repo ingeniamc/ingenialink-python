@@ -445,6 +445,43 @@ class Dictionary(XMLBase, ABC):
         """
         return self._registers[subnode]
 
+    def get_register(self, uid: str, axis: Optional[int] = None) -> Register:
+        """Gets the targeted register.
+
+        Args:
+            uid: register uid.
+            axis: axis. Should be specified if multiaxis, None otherwise.
+
+        Raises:
+            KeyError: if the specified axis does not exist.
+            KeyError: if the register is not present in the specified axis.
+            ValueError: if the register is not found in any axis, if axis is not provided.
+            ValueError: if the register is found in multiple axis, if axis is provided.
+
+        Returns:
+            register.
+        """
+        if axis is not None:
+            if axis not in self._registers:
+                raise KeyError(f"{axis=} does not exist.")
+            registers = self.registers(axis)
+            if uid not in registers:
+                raise KeyError(f"Register {uid} not present in {axis=}")
+            return registers[uid]
+
+        registers: list[Register] = []
+        for axis in self.subnodes:
+            axis_registers = self.registers(axis)
+            if uid in axis_registers:
+                registers.append(axis_registers[uid])
+
+        if len(registers) == 0:
+            raise ValueError(f"Register {uid} not found.")
+        if len(registers) > 1:
+            raise ValueError(f"Register {uid} found in multiple axis. Axis should be specified.")
+
+        return registers[0]
+
     @abstractmethod
     def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
