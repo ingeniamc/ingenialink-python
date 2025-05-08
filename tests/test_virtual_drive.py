@@ -20,16 +20,13 @@ def create_monitoring_disturbance(servo, dist_reg, monit_regs, dist_data):
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
     servo.write("DIST_FREQ_DIV", divisor, subnode=0)
-    servo.disturbance_set_mapped_register(0, reg.address, reg.subnode, reg.dtype.value, 4)
+    servo.disturbance_set_mapped_register(channel=0, uid="DIST_FREQ_DIV", size=4)
     servo.disturbance_write_data([0], [reg.dtype], [dist_data])
     servo.disturbance_enable()
 
     servo.monitoring_disable()
     for idx, key in enumerate(monit_regs):
-        reg = servo._get_reg(key, subnode=1)
-        servo.monitoring_set_mapped_register(
-            idx, reg.address, reg.subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE
-        )
+        servo.monitoring_set_mapped_register(channel=idx, uid=key, size=MONITORING_CH_DATA_SIZE)
 
     servo.write("MON_DIST_FREQ_DIV", divisor, subnode=0)
     servo.write("MON_CFG_SOC_TYPE", 1, subnode=0)
@@ -139,10 +136,8 @@ def test_virtual_disturbance(virtual_drive, register_key):
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
 
-    subnode = 1
     reg = servo._get_reg(register_key, subnode=1)
-    address = reg.address
-    servo.disturbance_set_mapped_register(0, address, subnode, reg.dtype.value, 4)
+    servo.disturbance_set_mapped_register(channel=0, uid=register_key, size=4)
     data_arr = [0.0, -1.0, 2.0, 3.0] if reg.dtype == RegDtype.FLOAT else [0, -1, 2, 3]
 
     channels = [0]

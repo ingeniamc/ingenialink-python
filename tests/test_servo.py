@@ -84,20 +84,14 @@ class SDOReadTimeoutManager:
 
 
 @pytest.fixture()
-def create_monitoring(connect_to_slave, pytestconfig):
-    protocol = pytestconfig.getoption("--protocol")
+def create_monitoring(connect_to_slave):
     servo, net = connect_to_slave
     skip_if_monitoring_is_not_available(servo)
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
     registers_key = ["CL_CUR_D_REF_VALUE"]
-    subnode = 1
     for idx, key in enumerate(registers_key):
-        reg = servo._get_reg(key, subnode=1)
-        address = _get_reg_address(reg, protocol)
-        servo.monitoring_set_mapped_register(
-            idx, address, subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE
-        )
+        servo.monitoring_set_mapped_register(channel=idx, uid=key, size=MONITORING_CH_DATA_SIZE)
     divisor = 1
     servo.write("MON_DIST_FREQ_DIV", divisor, subnode=0)
     servo.write("MON_CFG_SOC_TYPE", 0, subnode=0)
@@ -107,17 +101,14 @@ def create_monitoring(connect_to_slave, pytestconfig):
 
 
 @pytest.fixture()
-def create_disturbance(connect_to_slave, pytestconfig):
-    protocol = pytestconfig.getoption("--protocol")
+def create_disturbance(connect_to_slave):
     servo, net = connect_to_slave
     skip_if_monitoring_is_not_available(servo)
     data = list(range(DISTURBANCE_NUM_SAMPLES))
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
-    reg = servo._get_reg("CL_POS_SET_POINT_VALUE", subnode=1)
-    address = _get_reg_address(reg, protocol)
     servo.disturbance_set_mapped_register(
-        0, address, 1, RegDtype.S32.value, DISTURBANCE_CH_DATA_SIZE
+        channel=0, uid="CL_POS_SET_POINT_VALUE", size=DISTURBANCE_CH_DATA_SIZE
     )
     servo.disturbance_write_data(0, RegDtype.S32, data)
     yield servo, net
@@ -416,18 +407,14 @@ def test_monitoring_remove_data(create_monitoring):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_monitoring_map_register(connect_to_slave, pytestconfig):
-    protocol = pytestconfig.getoption("--protocol")
+def test_monitoring_map_register(connect_to_slave):
     servo, _ = connect_to_slave
     skip_if_monitoring_is_not_available(servo)
     servo.monitoring_remove_all_mapped_registers()
     registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
     data_size = 4
-    subnode = 1
     for idx, key in enumerate(registers_key):
-        reg = servo._get_reg(key, subnode=1)
-        address = _get_reg_address(reg, protocol)
-        servo.monitoring_set_mapped_register(idx, address, subnode, reg.dtype.value, data_size)
+        servo.monitoring_set_mapped_register(channel=idx, uid=key, size=data_size)
     assert servo.monitoring_number_mapped_registers == len(registers_key)
 
     mon_cfg_regs = {"MON_CFG_REG0_MAP": 0x10200504, "MON_CFG_REG1_MAP": 0x10210804}
@@ -501,18 +488,14 @@ def test_disturbance_remove_data(create_disturbance):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_disturbance_map_register(connect_to_slave, pytestconfig):
-    protocol = pytestconfig.getoption("--protocol")
+def test_disturbance_map_register(connect_to_slave):
     servo, _ = connect_to_slave
     skip_if_monitoring_is_not_available(servo)
     servo.disturbance_remove_all_mapped_registers()
     registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
     data_size = 4
-    subnode = 1
     for idx, key in enumerate(registers_key):
-        reg = servo._get_reg(key, subnode=1)
-        address = _get_reg_address(reg, protocol)
-        servo.disturbance_set_mapped_register(idx, address, subnode, reg.dtype.value, data_size)
+        servo.disturbance_set_mapped_register(channel=idx, uid=key, size=data_size)
     assert servo.disturbance_number_mapped_registers == len(registers_key)
 
     dist_cfg_regs = {"DIST_CFG_REG0_MAP": 0x10200504, "DIST_CFG_REG1_MAP": 0x10210804}
@@ -608,16 +591,13 @@ def test_status_word_wait_change(connect_to_slave):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_disturbance_overflow(connect_to_slave, pytestconfig):
-    protocol = pytestconfig.getoption("--protocol")
+def test_disturbance_overflow(connect_to_slave):
     servo, _ = connect_to_slave
     skip_if_monitoring_is_not_available(servo)
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
-    reg = servo._get_reg("DRV_OP_CMD", subnode=1)
-    address = _get_reg_address(reg, protocol)
     servo.disturbance_set_mapped_register(
-        0, address, 1, RegDtype.U16.value, DISTURBANCE_CH_DATA_SIZE
+        channel=0, uid="DRV_OP_CMD", size=DISTURBANCE_CH_DATA_SIZE
     )
     data = list(range(-10, 11))
     with pytest.raises(ILValueError):
