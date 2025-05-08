@@ -69,7 +69,7 @@ class EthernetRegister(Register):
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
-        monitoring: Union[tuple[None, None, None], tuple[str, int, RegCyclicType]] = (
+        monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]] = (
             None,
             None,
             None,

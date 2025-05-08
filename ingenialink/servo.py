@@ -2,7 +2,7 @@ import re
 import threading
 import time
 from abc import abstractmethod
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, cast
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -869,13 +869,16 @@ class Servo:
         register = self.dictionary.get_register(uid, axis=axis)
         if not register.is_monitoreable:
             raise RuntimeError("Register is not monitoreable.")
+
         address, subnode, _ = register.monitoring
+        address = cast("int", address)
+        subnode = cast("int", subnode)
 
         self.__monitoring_data[channel] = []
         self.__monitoring_dtype[channel] = register.dtype
         self.__monitoring_size[channel] = size
         data = self._monitoring_disturbance_data_to_map_register(
-            subnode, address, register.dtype, size
+            subnode, address, register.dtype.value, size
         )
         try:
             self.write(self.__monitoring_map_register(), data=data, subnode=0)
@@ -984,11 +987,13 @@ class Servo:
         if not register.is_monitoreable:
             raise RuntimeError("Register is not monitoreable.")
         address, subnode, _ = register.monitoring
+        address = cast("int", address)
+        subnode = cast("int", subnode)
 
         self.__disturbance_size[channel] = size
-        self.__disturbance_dtype[channel] = register.dtype
+        self.__disturbance_dtype[channel] = register.dtype.name
         data = self._monitoring_disturbance_data_to_map_register(
-            subnode, address, register.dtype, size
+            subnode, address, register.dtype.value, size
         )
         try:
             self.write(self.__disturbance_map_register(), data=data, subnode=0)

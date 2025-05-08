@@ -80,7 +80,7 @@ class Register(ABC):
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
-        monitoring: Union[tuple[None, None, None], tuple[str, int, RegCyclicType]] = (
+        monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]] = (
             None,
             None,
             None,
@@ -234,14 +234,19 @@ class Register(ABC):
     @cached_property
     def is_monitoreable(self) -> bool:
         """True if the register is monitoreable, False otherwise."""
-        return bool(self.monitoring)
+        return bool(self._monitoring)
 
     @property
-    def monitoring(self) -> Union[tuple[None, None, None], tuple[str, int, RegCyclicType]]:
+    def monitoring(self) -> Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]:
         """Containing the address, subnode and cyclic access.
 
         If the register is not monitoreable, it will contain None.
+
+        Raises:
+            RuntimeError: if monitoring data is invalid.
         """
+        if self.is_monitoreable and None in self._monitoring:
+            raise RuntimeError("Invalid monitoring data.")
         return self._monitoring
 
     @property

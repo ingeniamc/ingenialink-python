@@ -469,18 +469,18 @@ class Dictionary(XMLBase, ABC):
                 raise KeyError(f"Register {uid} not present in {axis=}")
             return registers[uid]
 
-        registers: list[Register] = []
+        matching_registers: list[Register] = []
         for axis in self.subnodes:
             axis_registers = self.registers(axis)
             if uid in axis_registers:
-                registers.append(axis_registers[uid])
+                matching_registers.append(axis_registers[uid])
 
-        if len(registers) == 0:
+        if len(matching_registers) == 0:
             raise ValueError(f"Register {uid} not found.")
-        if len(registers) > 1:
+        if len(matching_registers) > 1:
             raise ValueError(f"Register {uid} found in multiple axis. Axis should be specified.")
 
-        return registers[0]
+        return matching_registers[0]
 
     @abstractmethod
     def read_dictionary(self) -> None:
@@ -1084,7 +1084,7 @@ class DictionaryV3(Dictionary):
 
     def __read_monitoring(
         self, monitoring_elem: Optional[ElementTree.Element]
-    ) -> Union[tuple[None, None, None], tuple[str, int, RegCyclicType]]:
+    ) -> Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]:
         """Process Monitoring element.
 
         Args:
