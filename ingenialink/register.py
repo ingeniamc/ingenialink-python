@@ -46,7 +46,9 @@ class Register(ABC):
         address_type: Address tpye.
         description: Register description.
         default: Register default value.
-        bitfields: Fields that specify groups of bits
+        bitfields: Fields that specify groups of bits.
+        monitoring: monitoring information (address, subnode, cyclic access),
+            None if register is not monitoreable.
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -77,6 +79,11 @@ class Register(ABC):
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
+        monitoring: Union[tuple[None, None, None], tuple[str, int, RegCyclicType]] = (
+            None,
+            None,
+            None,
+        ),
     ) -> None:
         if labels is None:
             labels = {}
@@ -104,6 +111,7 @@ class Register(ABC):
         self._default = default
         self._enums = enums
         self.__bitfields = bitfields
+        self._monitoring = monitoring
         self.__config_range(reg_range)
 
     def __type_errors(self, dtype: RegDtype, access: RegAccess, phy: RegPhy) -> None:
@@ -221,6 +229,14 @@ class Register(ABC):
         if self._range:
             return self._range
         return (None, None)
+
+    @property
+    def monitoring(self) -> Union[tuple[None, None, None], tuple[str, int, RegCyclicType]]:
+        """Containing the address, subnode and cyclic access.
+
+        If the register is not monitoreable, it will contain None.
+        """
+        return self._monitoring
 
     @property
     def labels(self) -> dict[str, str]:

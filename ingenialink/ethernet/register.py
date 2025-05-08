@@ -33,7 +33,9 @@ class EthernetRegister(Register):
         address_type: Address Type.
         description: Register description.
         default: Register default value.
-        bitfields: Fields that specify groups of bits
+        bitfields: Fields that specify groups of bits.
+        monitoring: monitoring information (address, subnode, cyclic access),
+            None if register is not monitoreable.
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -67,6 +69,11 @@ class EthernetRegister(Register):
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
+        monitoring: Union[tuple[None, None, None], tuple[str, int, RegCyclicType]] = (
+            None,
+            None,
+            None,
+        ),
     ):
         super().__init__(
             dtype,
@@ -87,6 +94,7 @@ class EthernetRegister(Register):
             description,
             default,
             bitfields,
+            monitoring=monitoring,
         )
 
         self.__address = address
