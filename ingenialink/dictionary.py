@@ -702,7 +702,7 @@ class DictionaryV3(Dictionary):
     __ACCESS_ATTR = "access"
     __DTYPE_ATTR = "dtype"
     __UID_ATTR = "id"
-    __CYCLIC_ATTR = "cyclic"
+    __PDO_ACCESS_ATTR = "pdo_access"
     __DESCRIPTION_ATTR = "desc"
     __DEFAULT_ATTR = "default"
     __CAT_ID_ATTR = "cat_id"
@@ -1098,7 +1098,7 @@ class DictionaryV3(Dictionary):
             return None, None, None
         address = int(monitoring_elem.attrib[self.__MONITORING_ADDRESS_ATTR], 16)
         subnode = int(monitoring_elem.attrib[self.__MONITORING_SUBNODE_ATTR])
-        cyclic = RegCyclicType(monitoring_elem.attrib[self.__MONITORING_ADDRESS_ATTR])
+        cyclic = RegCyclicType(monitoring_elem.attrib[self.__MONITORING_CYCLIC_ATTR])
         return address, subnode, cyclic
 
     def __read_enumeration(
@@ -1161,7 +1161,7 @@ class DictionaryV3(Dictionary):
         access = ACCESS_XDF_OPTIONS[register.attrib[self.__ACCESS_ATTR]]
         dtype = DTYPE_XDF_OPTIONS[register.attrib[self.__DTYPE_ATTR]]
         identifier = register.attrib[self.__UID_ATTR]
-        cyclic = RegCyclicType(register.attrib[self.__CYCLIC_ATTR])
+        pdo_access = RegCyclicType(register.attrib[self.__PDO_ACCESS_ATTR])
         description = register.attrib[self.__DESCRIPTION_ATTR]
         default = bytes.fromhex(register.attrib[self.__DEFAULT_ATTR])
         cat_id = register.attrib[self.__CAT_ID_ATTR]
@@ -1188,7 +1188,7 @@ class DictionaryV3(Dictionary):
             access,
             identifier=identifier,
             units=units,
-            cyclic=cyclic,
+            pdo_access=pdo_access,
             subnode=subnode,
             reg_range=reg_range,
             labels=labels,
@@ -1249,7 +1249,7 @@ class DictionaryV3(Dictionary):
         access = ACCESS_XDF_OPTIONS[subitem.attrib[self.__ACCESS_ATTR]]
         dtype = DTYPE_XDF_OPTIONS[subitem.attrib[self.__DTYPE_ATTR]]
         identifier = subitem.attrib[self.__UID_ATTR]
-        cyclic = RegCyclicType(subitem.attrib[self.__CYCLIC_ATTR])
+        pdo_access = RegCyclicType(subitem.attrib[self.__PDO_ACCESS_ATTR])
         description = subitem.attrib[self.__DESCRIPTION_ATTR]
         default = bytes.fromhex(subitem.attrib[self.__DEFAULT_ATTR])
         cat_id = subitem.attrib[self.__CAT_ID_ATTR]
@@ -1281,7 +1281,7 @@ class DictionaryV3(Dictionary):
             access,
             identifier=identifier,
             units=units,
-            cyclic=cyclic,
+            pdo_access=pdo_access,
             subnode=subnode,
             reg_range=reg_range,
             labels=labels,
@@ -1680,7 +1680,7 @@ class DictionaryV2(Dictionary):
 
         try:
             units = register.attrib["units"]
-            cyclic = RegCyclicType(register.attrib.get("cyclic", "CONFIG"))
+            pdo_access = RegCyclicType(register.attrib.get("pdo_access", "CONFIG"))
 
             # Data type
             dtype_aux = register.attrib["dtype"]
@@ -1734,7 +1734,7 @@ class DictionaryV2(Dictionary):
                 access,
                 identifier=identifier,
                 units=units,
-                cyclic=cyclic,
+                pdo_access=pdo_access,
                 subnode=subnode,
                 storage=storage,
                 reg_range=reg_range,

@@ -144,7 +144,7 @@ def cleanup_register(register: ElementTree.Element) -> None:
 
     pop_element(register.attrib, "desc")
     pop_element(register.attrib, "cat_id")
-    pop_element(register.attrib, "cyclic")
+    pop_element(register.attrib, "pdo_access")
     pop_element(register.attrib, "units")
     pop_element(register.attrib, "address_type")
 

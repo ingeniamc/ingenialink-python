@@ -20,7 +20,7 @@ class EthernetRegister(Register):
         access: Access type.
         identifier: Identifier.
         units: Units.
-        cyclic: Cyclic typed register.
+        pdo_access: pdo access.
         phy: Physical units.
         subnode: Subnode.
         storage: Storage.
@@ -53,7 +53,7 @@ class EthernetRegister(Register):
         access: RegAccess,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
-        cyclic: RegCyclicType = RegCyclicType.CONFIG,
+        pdo_access: RegCyclicType = RegCyclicType.CONFIG,
         phy: RegPhy = RegPhy.NONE,
         subnode: int = 1,
         storage: Any = None,
@@ -80,7 +80,7 @@ class EthernetRegister(Register):
             access,
             identifier,
             units,
-            cyclic,
+            pdo_access,
             phy,
             subnode,
             storage,

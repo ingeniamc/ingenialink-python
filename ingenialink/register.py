@@ -34,7 +34,7 @@ class Register(ABC):
         access: Access type.
         identifier: Identifier.
         units: Units.
-        cyclic: Cyclic typed register.
+        pdo_access: pdo access.
         phy: Physical units.
         subnode: Subnode.
         storage: Storage.
@@ -64,7 +64,7 @@ class Register(ABC):
         access: RegAccess,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
-        cyclic: RegCyclicType = RegCyclicType.CONFIG,
+        pdo_access: RegCyclicType = RegCyclicType.CONFIG,
         phy: RegPhy = RegPhy.NONE,
         subnode: int = 1,
         storage: Any = None,
@@ -97,7 +97,7 @@ class Register(ABC):
         self._access = access.value
         self._identifier = identifier
         self._units = units
-        self._cyclic = cyclic
+        self._pdo_access = pdo_access
         self._phy = phy.value
         self._subnode = subnode
         self._storage = storage
@@ -172,9 +172,9 @@ class Register(ABC):
         return self._units
 
     @property
-    def cyclic(self) -> RegCyclicType:
-        """Defines if the register is cyclic."""
-        return self._cyclic
+    def pdo_access(self) -> RegCyclicType:
+        """Defines if the register is pdo mappable."""
+        return self._pdo_access
 
     @property
     def phy(self) -> RegPhy:
