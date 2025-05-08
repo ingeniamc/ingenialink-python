@@ -1,4 +1,5 @@
 from abc import ABC
+from functools import cached_property
 from typing import Any, Optional, Union
 
 from ingenialink import exceptions as exc
@@ -229,6 +230,11 @@ class Register(ABC):
         if self._range:
             return self._range
         return (None, None)
+
+    @cached_property
+    def is_monitoreable(self) -> bool:
+        """True if the register is monitoreable, False otherwise."""
+        return bool(self.monitoring)
 
     @property
     def monitoring(self) -> Union[tuple[None, None, None], tuple[str, int, RegCyclicType]]:
