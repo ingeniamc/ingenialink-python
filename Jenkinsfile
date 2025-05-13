@@ -165,17 +165,16 @@ pipeline {
                                         bat """
                                             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
                                             py -${DEFAULT_PYTHON_VERSION} -m tox -e build
-                                            XCOPY ${distDir} ${env.WORKSPACE}\\${distDir} /s /i
+                                            XCOPY ${distDir}\\*.whl ${env.WORKSPACE}\\dist /s /i
                                         """
-                                        def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
-                                        stash includes: "${distDir}\\*", name: stashName
                                     }
                                 }
                             }
                         }
                         stage('Archive artifacts') {
                             steps {
-                                archiveArtifacts(artifacts: "dist*\\*.whl", followSymlinks: false)
+                                archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
+                                stash includes: "dist\\*", name: 'wheels'
                             }
                         }
                         stage('Generate documentation') {
@@ -213,7 +212,7 @@ pipeline {
                         }
                     }
                     steps {
-                        unstash 'build'
+                        unstash 'wheels'
                         publishPyPi("dist/*")
                     }
                 }
