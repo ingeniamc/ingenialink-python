@@ -32,13 +32,12 @@ def restoreIngenialinkWheelEnvVar() {
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
         script {
-            def result = bat(script: "dir dist /b /a-d", returnStdout: true).trim()
-            def files = result.split(/[\r\n]+/)
             def pythonVersionTag = "cp${python_version.replace('py', '')}"
-            def wheelFile = files.find { it.endsWith('.whl') && it.contains(pythonVersionTag) }
-            if (wheelFile == null) {
-                error "No .whl file found for Python version ${python_version} in the dist directory. Directory contents:\n${result}"
+            def files = findFiles(glob: "dist/*${pythonVersionTag}*.whl")
+            if (files.length == 0) {
+                error "No .whl file found for Python version ${python_version} in the dist directory."
             }
+            def wheelFile = files[0].name
             return "dist\\${wheelFile}"
         }
     }
