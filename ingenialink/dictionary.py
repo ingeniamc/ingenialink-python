@@ -1249,7 +1249,10 @@ class DictionaryV3(Dictionary):
         access = ACCESS_XDF_OPTIONS[subitem.attrib[self.__ACCESS_ATTR]]
         dtype = DTYPE_XDF_OPTIONS[subitem.attrib[self.__DTYPE_ATTR]]
         identifier = subitem.attrib[self.__UID_ATTR]
-        pdo_access = RegCyclicType(subitem.attrib[self.__PDO_ACCESS_ATTR])
+        try:
+            pdo_access = RegCyclicType(subitem.attrib[self.__PDO_ACCESS_ATTR])
+        except KeyError:
+            pdo_access = None
         description = subitem.attrib[self.__DESCRIPTION_ATTR]
         default = bytes.fromhex(subitem.attrib[self.__DEFAULT_ATTR])
         cat_id = subitem.attrib[self.__CAT_ID_ATTR]
@@ -1680,7 +1683,7 @@ class DictionaryV2(Dictionary):
 
         try:
             units = register.attrib["units"]
-            pdo_access = RegCyclicType(register.attrib.get("pdo_access", "CONFIG"))
+            pdo_access = RegCyclicType(register.attrib.get("cyclic", "CONFIG"))
 
             # Data type
             dtype_aux = register.attrib["dtype"]

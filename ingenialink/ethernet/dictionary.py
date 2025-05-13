@@ -115,6 +115,11 @@ class EthernetDictionaryV2(DictionaryV2):
         try:
             reg_address = int(register.attrib["address"], 16)
 
+            if register.pdo_access != RegCyclicType.CONFIG:
+                monitoring = (reg_address, current_read_register.subnode, register.pdo_access)
+            else:
+                monitoring = (None, None, None)
+
             ethernet_register = EthernetRegister(
                 reg_address,
                 current_read_register.dtype,
@@ -133,7 +138,7 @@ class EthernetDictionaryV2(DictionaryV2):
                 internal_use=current_read_register.internal_use,
                 address_type=current_read_register.address_type,
                 bitfields=current_read_register.bitfields,
-                monitoring=current_read_register.monitoring,
+                monitoring=monitoring,
             )
 
             return ethernet_register
