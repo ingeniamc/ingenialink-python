@@ -115,10 +115,13 @@ class EthernetDictionaryV2(DictionaryV2):
         try:
             reg_address = int(register.attrib["address"], 16)
 
-            cyclic_access = RegCyclicType(register.attrib["cyclic"])
             monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]
-            if cyclic_access != RegCyclicType.CONFIG:
-                monitoring = (reg_address, current_read_register.subnode, cyclic_access)
+            if current_read_register.pdo_access != RegCyclicType.CONFIG:
+                monitoring = (
+                    reg_address,
+                    current_read_register.subnode,
+                    current_read_register.pdo_access,
+                )
             else:
                 monitoring = (None, None, None)
 

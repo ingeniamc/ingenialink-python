@@ -66,14 +66,17 @@ class CanopenDictionaryV2(DictionaryV2):
             idx = aux_var >> 8
             subidx = aux_var & 0xFF
 
-            cyclic_access = RegCyclicType(register.attrib["cyclic"])
             monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]
-            if cyclic_access != RegCyclicType.CONFIG:
+            if current_read_register.pdo_access != RegCyclicType.CONFIG:
                 address = aux_var - (
                     CANOPEN_ADDRESS_OFFSET
                     + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
                 )
-                monitoring = (address, current_read_register.subnode, cyclic_access)
+                monitoring = (
+                    address,
+                    current_read_register.subnode,
+                    current_read_register.pdo_access,
+                )
             else:
                 monitoring = (None, None, None)
 

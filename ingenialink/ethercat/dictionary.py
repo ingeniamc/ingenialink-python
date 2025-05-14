@@ -230,14 +230,17 @@ class EthercatDictionaryV2(DictionaryV2):
             )
             subidx = 0x00
 
-            cyclic_access = RegCyclicType(register.attrib["cyclic"])
             monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]
-            if cyclic_access != RegCyclicType.CONFIG:
+            if current_read_register.pdo_access != RegCyclicType.CONFIG:
                 address = int(register.attrib["address"], 16) - (
                     CANOPEN_ADDRESS_OFFSET
                     + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
                 )
-                monitoring = (address, current_read_register.subnode, cyclic_access)
+                monitoring = (
+                    address,
+                    current_read_register.subnode,
+                    current_read_register.pdo_access,
+                )
             else:
                 monitoring = (None, None, None)
 
