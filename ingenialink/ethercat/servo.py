@@ -332,26 +332,6 @@ class EthercatServo(PDOServo):
         )
         return mapped_address
 
-    def _monitoring_disturbance_data_to_map_register(
-        self, subnode: int, address: int, dtype: int, size: int
-    ) -> int:
-        """Arrange necessary data to map a monitoring/disturbance register.
-
-        Args:
-            subnode: Subnode to be targeted.
-            address: Register address to map.
-            dtype: Register data type.
-            size: Size of data in bytes.
-
-        Returns:
-            mapped address.
-        """
-        ipb_address = self.__monitoring_disturbance_map_can_address(address, subnode)
-        mapped_address: int = super()._monitoring_disturbance_data_to_map_register(
-            subnode, ipb_address, dtype, size
-        )
-        return mapped_address
-
     def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
         """Subscribe to emergency messages.
 

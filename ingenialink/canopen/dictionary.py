@@ -5,6 +5,10 @@ from xml.etree import ElementTree
 import ingenialogger
 
 from ingenialink.canopen.register import CanopenRegister
+from ingenialink.constants import (
+    CANOPEN_ADDRESS_OFFSET,
+    MAP_ADDRESS_OFFSET,
+)
 from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
@@ -64,7 +68,10 @@ class CanopenDictionaryV2(DictionaryV2):
 
             cyclic_access = RegCyclicType(register.attrib["cyclic"])
             if cyclic_access != RegCyclicType.CONFIG:
-                address = aux_var - (0x2000 + (0x800 * (current_read_register.subnode - 1)))
+                address = aux_var - (
+                    CANOPEN_ADDRESS_OFFSET
+                    + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
+                )
                 monitoring = (address, current_read_register.subnode, cyclic_access)
             else:
                 monitoring = (None, None, None)

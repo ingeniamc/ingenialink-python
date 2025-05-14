@@ -233,7 +233,8 @@ class EthercatDictionaryV2(DictionaryV2):
             cyclic_access = RegCyclicType(register.attrib["cyclic"])
             if cyclic_access != RegCyclicType.CONFIG:
                 address = int(register.attrib["address"], 16) - (
-                    0x2000 + (0x800 * (current_read_register.subnode - 1))
+                    CANOPEN_ADDRESS_OFFSET
+                    + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
                 )
                 monitoring = (address, current_read_register.subnode, cyclic_access)
             else:
