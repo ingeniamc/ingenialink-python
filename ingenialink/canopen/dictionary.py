@@ -62,6 +62,13 @@ class CanopenDictionaryV2(DictionaryV2):
             idx = aux_var >> 8
             subidx = aux_var & 0xFF
 
+            cyclic_access = RegCyclicType(register.attrib["cyclic"])
+            if cyclic_access != RegCyclicType.CONFIG:
+                address = aux_var - (0x2000 + (0x800 * (current_read_register.subnode - 1)))
+                monitoring = (address, current_read_register.subnode, cyclic_access)
+            else:
+                monitoring = (None, None, None)
+
             canopen_register = CanopenRegister(
                 idx,
                 subidx,
@@ -81,7 +88,7 @@ class CanopenDictionaryV2(DictionaryV2):
                 internal_use=current_read_register.internal_use,
                 address_type=current_read_register.address_type,
                 bitfields=current_read_register.bitfields,
-                monitoring=current_read_register.monitoring,
+                monitoring=monitoring,
             )
 
             return canopen_register

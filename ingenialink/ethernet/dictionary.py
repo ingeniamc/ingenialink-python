@@ -115,8 +115,9 @@ class EthernetDictionaryV2(DictionaryV2):
         try:
             reg_address = int(register.attrib["address"], 16)
 
-            if register.pdo_access != RegCyclicType.CONFIG:
-                monitoring = (reg_address, current_read_register.subnode, register.pdo_access)
+            cyclic_access = RegCyclicType(register.attrib["cyclic"])
+            if cyclic_access != RegCyclicType.CONFIG:
+                monitoring = (reg_address, current_read_register.subnode, cyclic_access)
             else:
                 monitoring = (None, None, None)
 
