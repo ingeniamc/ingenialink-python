@@ -234,7 +234,7 @@ class Register(ABC):
     @cached_property
     def is_monitoreable(self) -> bool:
         """True if the register is monitoreable, False otherwise."""
-        return bool(self._monitoring)
+        return None not in self._monitoring
 
     @property
     def monitoring(self) -> Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]:
