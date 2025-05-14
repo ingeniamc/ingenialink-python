@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Optional
+from typing import Optional, Union
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -67,6 +67,7 @@ class CanopenDictionaryV2(DictionaryV2):
             subidx = aux_var & 0xFF
 
             cyclic_access = RegCyclicType(register.attrib["cyclic"])
+            monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]
             if cyclic_access != RegCyclicType.CONFIG:
                 address = aux_var - (
                     CANOPEN_ADDRESS_OFFSET

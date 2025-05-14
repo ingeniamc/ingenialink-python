@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Optional
+from typing import Optional, Union
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -231,6 +231,7 @@ class EthercatDictionaryV2(DictionaryV2):
             subidx = 0x00
 
             cyclic_access = RegCyclicType(register.attrib["cyclic"])
+            monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]
             if cyclic_access != RegCyclicType.CONFIG:
                 address = int(register.attrib["address"], 16) - (
                     CANOPEN_ADDRESS_OFFSET
