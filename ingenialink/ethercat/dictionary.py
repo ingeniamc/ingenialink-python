@@ -230,6 +230,15 @@ class EthercatDictionaryV2(DictionaryV2):
             )
             subidx = 0x00
 
+            cyclic_access = RegCyclicType(register.attrib["cyclic"])
+            if cyclic_access != RegCyclicType.CONFIG:
+                address = int(register.attrib["address"], 16) - (
+                    0x2000 + (0x800 * (current_read_register.subnode - 1))
+                )
+                monitoring = (address, current_read_register.subnode, cyclic_access)
+            else:
+                monitoring = (None, None, None)
+
             ethercat_register = EthercatRegister(
                 idx,
                 subidx,
@@ -249,7 +258,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 internal_use=current_read_register.internal_use,
                 address_type=current_read_register.address_type,
                 bitfields=current_read_register.bitfields,
-                monitoring=current_read_register.monitoring,
+                monitoring=monitoring,
             )
 
             return ethercat_register
