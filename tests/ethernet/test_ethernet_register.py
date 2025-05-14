@@ -12,7 +12,7 @@ def test_getters_ethernet_register():
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
         "units": "none",
-        "cyclic": "CONFIG",
+        "pdo_access": "CONFIG",
         "phy": RegPhy.NONE,
         "subnode": 0,
         "storage": 1,
@@ -30,7 +30,7 @@ def test_getters_ethernet_register():
     assert register.address == reg_address
     assert register.identifier == reg_kwargs["identifier"]
     assert register.units == reg_kwargs["units"]
-    assert register.cyclic == reg_kwargs["cyclic"]
+    assert register.pdo_access == reg_kwargs["pdo_access"]
     assert register.dtype == reg_dtype
     assert register.access == reg_access
     assert register.phy == reg_kwargs["phy"]

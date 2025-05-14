@@ -1,10 +1,14 @@
 from functools import cached_property
-from typing import Optional
+from typing import Optional, Union
 from xml.etree import ElementTree
 
 import ingenialogger
 
 from ingenialink.canopen.register import CanopenRegister
+from ingenialink.constants import (
+    CANOPEN_ADDRESS_OFFSET,
+    MAP_ADDRESS_OFFSET,
+)
 from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
@@ -29,7 +33,7 @@ class CanopenDictionaryV2(DictionaryV2):
                 identifier="MON_DATA_VALUE",
                 idx=0x58B2,
                 subidx=0x00,
-                cyclic=RegCyclicType.CONFIG,
+                pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.RO,
                 subnode=0,
@@ -38,7 +42,7 @@ class CanopenDictionaryV2(DictionaryV2):
                 identifier="DIST_DATA_VALUE",
                 idx=0x58B4,
                 subidx=0x00,
-                cyclic=RegCyclicType.CONFIG,
+                pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.WO,
                 subnode=0,
@@ -62,6 +66,20 @@ class CanopenDictionaryV2(DictionaryV2):
             idx = aux_var >> 8
             subidx = aux_var & 0xFF
 
+            monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]
+            if current_read_register.pdo_access != RegCyclicType.CONFIG:
+                address = aux_var - (
+                    CANOPEN_ADDRESS_OFFSET
+                    + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
+                )
+                monitoring = (
+                    address,
+                    current_read_register.subnode,
+                    current_read_register.pdo_access,
+                )
+            else:
+                monitoring = (None, None, None)
+
             canopen_register = CanopenRegister(
                 idx,
                 subidx,
@@ -69,7 +87,7 @@ class CanopenDictionaryV2(DictionaryV2):
                 current_read_register.access,
                 identifier=current_read_register.identifier,
                 units=current_read_register.units,
-                cyclic=current_read_register.cyclic,
+                pdo_access=current_read_register.pdo_access,
                 phy=current_read_register.phy,
                 subnode=current_read_register.subnode,
                 storage=current_read_register.storage,
@@ -81,6 +99,7 @@ class CanopenDictionaryV2(DictionaryV2):
                 internal_use=current_read_register.internal_use,
                 address_type=current_read_register.address_type,
                 bitfields=current_read_register.bitfields,
+                monitoring=monitoring,
             )
 
             return canopen_register

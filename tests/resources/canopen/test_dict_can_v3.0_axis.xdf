@@ -27,7 +27,8 @@
 				<CANopenObjects>
 					<CANopenObject index="0x580F" datatype="VAR" subnode="0">
 						<Subitems>
-							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" cyclic="CYCLIC_TX" desc="Contains the last generated error" default="00000000" cat_id="REPORTING">
+							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" pdo_access="CYCLIC_TX" desc="Contains the last generated error" default="00000000" cat_id="REPORTING">
+								<MonitoringV3 address="0x000F" subnode="0" cyclic="CYCLIC_TX"/>
 								<Labels>
 									<Label lang="en_US">Last error</Label>
 								</Labels>
@@ -36,7 +37,7 @@
 					</CANopenObject>
 					<CANopenObject index="0x58A0" datatype="VAR" subnode="0">
 						<Subitems>
-							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" units="cnt" cyclic="CONFIG" desc="" default="0100" cat_id="IDENTIFICATION">
+							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" units="cnt" pdo_access="CONFIG" desc="" default="0100" cat_id="IDENTIFICATION">
 								<Labels>
 									<Label lang="en_US">Number of axes</Label>
 								</Labels>
@@ -48,12 +49,12 @@
 							<Label lang="en_US">RPDO 1 mapping parameter</Label>
 						</Labels>
 						<Subitems>
-							<Subitem subindex="0" address_type="NVM" access="rw" dtype="u8" id="CIA301_COMMS_RPDO1_MAP" cyclic="CONFIG" desc="" default="01" cat_id="COMMUNICATIONS">
+							<Subitem subindex="0" address_type="NVM" access="rw" dtype="u8" id="CIA301_COMMS_RPDO1_MAP" pdo_access="CONFIG" desc="" default="01" cat_id="COMMUNICATIONS">
 								<Labels>
 									<Label lang="en_US">Number of mapped objects</Label>
 								</Labels>
 							</Subitem>
-							<Subitem subindex="1" address_type="NVM" access="rw" dtype="u32" id="CIA301_COMMS_RPDO1_MAP_1" cyclic="CONFIG" desc="" default="60400010" cat_id="COMMUNICATIONS">
+							<Subitem subindex="1" address_type="NVM" access="rw" dtype="u32" id="CIA301_COMMS_RPDO1_MAP_1" pdo_access="CONFIG" desc="" default="60400010" cat_id="COMMUNICATIONS">
 								<Labels>
 									<Label lang="en_US">RPDO 1 mapping parameter Element 1</Label>
 								</Labels>
@@ -62,7 +63,7 @@
 					</CANopenObject >
 					<CANopenObject index="0x2151" datatype="VAR" subnode="1">
 						<Subitems>
-							<Subitem subindex="0" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" cyclic="CONFIG" desc="Indicates the sensor used for angle readings" default="0400" cat_id="COMMUTATION">
+							<Subitem subindex="0" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" pdo_access="CONFIG" desc="Indicates the sensor used for angle readings" default="0400" cat_id="COMMUTATION">
 								<Labels>
 									<Label lang="en_US">Commutation feedback sensor</Label>
 								</Labels>
@@ -80,7 +81,7 @@
 					</CANopenObject >
 					<CANopenObject index="0x2151" datatype="VAR" subnode="2">
 						<Subitems>
-							<Subitem subindex="0" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" cyclic="CONFIG" desc="Indicates the sensor used for angle readings" default="0400" cat_id="COMMUTATION">
+							<Subitem subindex="0" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" pdo_access="CONFIG" desc="Indicates the sensor used for angle readings" default="0400" cat_id="COMMUTATION">
 								<Labels>
 									<Label lang="en_US">Commutation feedback sensor</Label>
 								</Labels>

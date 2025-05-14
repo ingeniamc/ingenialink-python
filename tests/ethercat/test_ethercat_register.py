@@ -13,7 +13,7 @@ def test_getters_ethercat_register():
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
         "units": "none",
-        "cyclic": "CONFIG",
+        "pdo_access": "CONFIG",
         "phy": RegPhy.NONE,
         "subnode": 0,
         "storage": 1,
@@ -40,7 +40,7 @@ def test_getters_ethercat_register():
     assert register.access == reg_access
     assert register.identifier == reg_kwargs["identifier"]
     assert register.units == reg_kwargs["units"]
-    assert register.cyclic == reg_kwargs["cyclic"]
+    assert register.pdo_access == reg_kwargs["pdo_access"]
     assert register.phy == reg_kwargs["phy"]
     assert register.subnode == reg_kwargs["subnode"]
     assert register.storage == reg_kwargs["storage"]

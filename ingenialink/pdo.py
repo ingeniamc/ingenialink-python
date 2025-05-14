@@ -52,7 +52,7 @@ class PDOMapItem:
                 subnode=0,
                 idx=0x0000,
                 subidx=0x00,
-                cyclic=self.ACCEPTED_CYCLIC,
+                pdo_access=self.ACCEPTED_CYCLIC,
                 dtype=RegDtype.STR,
                 access=RegAccess.RW,
             )
@@ -62,15 +62,16 @@ class PDOMapItem:
         self._check_if_mappable()
 
     def _check_if_mappable(self) -> None:
-        """Check if the passed register is mappable. I.e., if the cyclic information is correct.
+        """Check if the passed register is mappable. I.e., if the pdo_access information is correct.
 
         Raises:
             ILError: Tf the register is not mappable.
         """
-        if self.register.cyclic not in [self.ACCEPTED_CYCLIC, RegCyclicType.RXTX]:
+        if self.register.pdo_access not in [self.ACCEPTED_CYCLIC, RegCyclicType.RXTX]:
             raise ILError(
-                f"Incorrect cyclic. It should be {self.ACCEPTED_CYCLIC} or {RegCyclicType.RXTX},"
-                f" obtained: {self.register.cyclic}"
+                f"Incorrect pdo access. "
+                f"It should be {self.ACCEPTED_CYCLIC} or {RegCyclicType.RXTX},"
+                f" obtained: {self.register.pdo_access}"
             )
 
     @property

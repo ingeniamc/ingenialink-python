@@ -74,7 +74,7 @@ def test_rpdo_item_wrong_cyclic(open_dictionary):
         RPDOMapItem(register)
     assert (
         str(exc_info.value)
-        == "Incorrect cyclic. It should be RegCyclicType.RX or RegCyclicType.RXTX, obtained:"
+        == "Incorrect pdo access. It should be RegCyclicType.RX or RegCyclicType.RXTX, obtained:"
         " RegCyclicType.TX"
     )
 
@@ -87,7 +87,7 @@ def test_tpdo_item_wrong_cyclic(open_dictionary):
         TPDOMapItem(register)
     assert (
         str(exc_info.value)
-        == "Incorrect cyclic. It should be RegCyclicType.TX or RegCyclicType.RXTX, obtained:"
+        == "Incorrect pdo access. It should be RegCyclicType.TX or RegCyclicType.RXTX, obtained:"
         " RegCyclicType.RX"
     )
 
@@ -440,7 +440,7 @@ def test_set_pdo_map_to_slave(connect_to_slave, create_pdo_map):
 
 @pytest.mark.no_connection
 def test_pdo_item_bool():
-    register = EthercatRegister(0, 1, RegDtype.BOOL, RegAccess.RW, cyclic=RegCyclicType.RX)
+    register = EthercatRegister(0, 1, RegDtype.BOOL, RegAccess.RW, pdo_access=RegCyclicType.RX)
     rpdo_item = RPDOMapItem(register)
 
     assert rpdo_item.register == register
@@ -541,7 +541,7 @@ def test_map_pdo_with_bools(open_dictionary):
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
     item1 = RPDOMapItem(register)
     item2 = RPDOMapItem(register, size_bits=4)
-    register = EthercatRegister(0, 1, RegDtype.BOOL, RegAccess.RW, cyclic=RegCyclicType.RX)
+    register = EthercatRegister(0, 1, RegDtype.BOOL, RegAccess.RW, pdo_access=RegCyclicType.RX)
     item3 = RPDOMapItem(register)
     item4 = RPDOMapItem(register)
 

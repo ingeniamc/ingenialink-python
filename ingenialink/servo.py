@@ -2,7 +2,7 @@ import re
 import threading
 import time
 from abc import abstractmethod
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, cast
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -853,22 +853,33 @@ class Servo:
         self.write(self.MONITORING_REMOVE_DATA, data=1, subnode=0)
 
     def monitoring_set_mapped_register(
-        self, channel: int, address: int, subnode: int, dtype: int, size: int
+        self, channel: int, uid: str, size: int, axis: Optional[int] = None
     ) -> None:
         """Set monitoring mapped register.
 
         Args:
             channel: Identity channel number.
-            address: Register address to map.
-            subnode: Subnode to be targeted.
-            dtype: Register data type.
+            uid: Register uid.
             size: Size of data in bytes.
+            axis: axis. Should be specified if multiaxis, None otherwise.
 
+        Raises:
+            RuntimeError: if the register is not monitoreable.
         """
+        register = self.dictionary.get_register(uid, axis=axis)
+        if not register.is_monitoreable:
+            raise RuntimeError("Register is not monitoreable.")
+
+        address, subnode, _ = register.monitoring
+        address = cast("int", address)
+        subnode = cast("int", subnode)
+
         self.__monitoring_data[channel] = []
-        self.__monitoring_dtype[channel] = RegDtype(dtype)
+        self.__monitoring_dtype[channel] = register.dtype
         self.__monitoring_size[channel] = size
-        data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
+        data = self._monitoring_disturbance_data_to_map_register(
+            subnode, address, register.dtype.value, size
+        )
         try:
             self.write(self.__monitoring_map_register(), data=data, subnode=0)
             self.__monitoring_update_num_mapped_registers()
@@ -959,21 +970,31 @@ class Servo:
         self.disturbance_data = b""
 
     def disturbance_set_mapped_register(
-        self, channel: int, address: int, subnode: int, dtype: int, size: int
+        self, channel: int, uid: str, size: int, axis: Optional[int] = None
     ) -> None:
         """Set monitoring mapped register.
 
         Args:
             channel: Identity channel number.
-            address: Register address to map.
-            subnode: Subnode to be targeted.
-            dtype: Register data type.
+            uid: Register uid.
             size: Size of data in bytes.
+            axis: axis. Should be specified if multiaxis, None otherwise.
 
+        Raises:
+            RuntimeError: if the register is not monitoreable.
         """
+        register = self.dictionary.get_register(uid, axis=axis)
+        if not register.is_monitoreable:
+            raise RuntimeError("Register is not monitoreable.")
+        address, subnode, _ = register.monitoring
+        address = cast("int", address)
+        subnode = cast("int", subnode)
+
         self.__disturbance_size[channel] = size
-        self.__disturbance_dtype[channel] = RegDtype(dtype).name
-        data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
+        self.__disturbance_dtype[channel] = register.dtype.name
+        data = self._monitoring_disturbance_data_to_map_register(
+            subnode, address, register.dtype.value, size
+        )
         try:
             self.write(self.__disturbance_map_register(), data=data, subnode=0)
             self.__disturbance_update_num_mapped_registers()
