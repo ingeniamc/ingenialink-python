@@ -32,17 +32,14 @@ def restoreIngenialinkWheelEnvVar() {
 
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
-        def stashName = python_version == PYTHON_VERSION_MIN ? "build" : "build_${python_version}"
-        unstash stashName
         script {
-            def distDir = python_version == PYTHON_VERSION_MIN ? "dist" : "dist_${python_version}"
-            def result = bat(script: "dir ${distDir} /b /a-d", returnStdout: true).trim()
-            def files = result.split(/[\r\n]+/)    
-            def wheelFile = files.find { it.endsWith('.whl') }
-            if (wheelFile == null) {
-                error "No .whl file found in the dist directory. Directory contents:\n${result}"            
+            def pythonVersionTag = "cp${python_version.replace('py', '')}"
+            def files = findFiles(glob: "dist/*${pythonVersionTag}*.whl")
+            if (files.length == 0) {
+                error "No .whl file found for Python version ${python_version} in the dist directory."
             }
-            return "${distDir}\\${wheelFile}"
+            def wheelFile = files[0].name
+            return "dist\\${wheelFile}"
         }
     }
     else {
@@ -51,6 +48,7 @@ def getWheelPath(tox_skip_install, python_version) {
 }
 
 def runTest(markers, setup_name, tox_skip_install = false) {
+    unstash 'wheels'
     def firstIteration = true
     def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
     pythonVersions.each { version ->
@@ -167,17 +165,16 @@ pipeline {
                                         bat """
                                             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
                                             py -${DEFAULT_PYTHON_VERSION} -m tox -e build
-                                            XCOPY ${distDir} ${env.WORKSPACE}\\${distDir} /s /i
+                                            XCOPY ${distDir}\\*.whl ${env.WORKSPACE}\\dist /s /i
                                         """
-                                        def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
-                                        stash includes: "${distDir}\\*", name: stashName
                                     }
                                 }
                             }
                         }
                         stage('Archive artifacts') {
                             steps {
-                                archiveArtifacts(artifacts: "dist*\\*.whl", followSymlinks: false)
+                                archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
+                                stash includes: "dist\\*", name: 'wheels'
                             }
                         }
                         stage('Generate documentation') {
@@ -215,7 +212,7 @@ pipeline {
                         }
                     }
                     steps {
-                        unstash 'build'
+                        unstash 'wheels'
                         publishPyPi("dist/*")
                     }
                 }
