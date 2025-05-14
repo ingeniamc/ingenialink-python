@@ -1083,19 +1083,30 @@ class DictionaryV3(Dictionary):
         return None, None
 
     def __read_monitoring(
-        self, monitoring_elem: Optional[ElementTree.Element]
+        self, pdo_access: RegCyclicType, monitoring_elem: Optional[ElementTree.Element]
     ) -> Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]:
         """Process Monitoring element.
 
         Args:
+            pdo_access: pdo access.
             monitoring_elem: Monitoring element.
 
         Returns:
             Tuple with address, subnode and cyclic access
             or None if the register is not monitoreable.
+
+        Raises:
+            ValueError: if register is PDO mappable but no monitoring entry is present.
+            ValueError: if register is not PDO mappable, and monitoring entry is present.
         """
         if monitoring_elem is None:
+            if pdo_access is not RegCyclicType.CONFIG:
+                raise ValueError(f"Monitoring entry not found for {pdo_access=}")
             return None, None, None
+
+        if pdo_access is RegCyclicType.CONFIG:
+            raise ValueError("Register is not PDO mappable, but it has monitoring information.")
+
         address = int(monitoring_elem.attrib[self.__MONITORING_ADDRESS_ATTR], 16)
         subnode = int(monitoring_elem.attrib[self.__MONITORING_SUBNODE_ATTR])
         cyclic = RegCyclicType(monitoring_elem.attrib[self.__MONITORING_CYCLIC_ATTR])
@@ -1174,7 +1185,7 @@ class DictionaryV3(Dictionary):
         reg_range = self.__read_range(range_elem)
         # Monitoring
         monitoring_elem = register.find(self.__MONITORING_ELEMENT)
-        monitoring = self.__read_monitoring(monitoring_elem)
+        monitoring = self.__read_monitoring(pdo_access, monitoring_elem)
         # Enumerations
         enumerations_element = register.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
@@ -1249,10 +1260,7 @@ class DictionaryV3(Dictionary):
         access = ACCESS_XDF_OPTIONS[subitem.attrib[self.__ACCESS_ATTR]]
         dtype = DTYPE_XDF_OPTIONS[subitem.attrib[self.__DTYPE_ATTR]]
         identifier = subitem.attrib[self.__UID_ATTR]
-        try:
-            pdo_access = RegCyclicType(subitem.attrib[self.__PDO_ACCESS_ATTR])
-        except KeyError:
-            pdo_access = None
+        pdo_access = RegCyclicType(subitem.attrib[self.__PDO_ACCESS_ATTR])
         description = subitem.attrib[self.__DESCRIPTION_ATTR]
         default = bytes.fromhex(subitem.attrib[self.__DEFAULT_ATTR])
         cat_id = subitem.attrib[self.__CAT_ID_ATTR]
@@ -1269,7 +1277,7 @@ class DictionaryV3(Dictionary):
         reg_range = self.__read_range(range_elem)
         # Monitoring
         monitoring_elem = subitem.find(self.__MONITORING_ELEMENT)
-        monitoring = self.__read_monitoring(monitoring_elem)
+        monitoring = self.__read_monitoring(pdo_access, monitoring_elem)
         # Enumerations
         enumerations_element = subitem.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
