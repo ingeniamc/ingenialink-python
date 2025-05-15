@@ -266,7 +266,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} --setup summit_testing_framework.setups.no_drive.TESTS_SETUP --skip_motion_controller
+                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- --setup summit_testing_framework.setups.no_drive.TESTS_SETUP --skip_motion_controller
                                 """
                             }
                             post {
