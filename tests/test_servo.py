@@ -9,7 +9,10 @@ import pytest
 from packaging import version
 from summit_testing_framework.rack_service_client import PartNumber
 from summit_testing_framework.setups import DriveCanOpenSetup, DriveEthernetSetup
-from summit_testing_framework.setups.specifiers import RackServiceConfigSpecifier
+from summit_testing_framework.setups.specifiers import (
+    MultiRackServiceConfigSpecifier,
+    RackServiceConfigSpecifier,
+)
 
 from ingenialink import RegAccess
 from ingenialink.configuration_file import ConfigurationFile
@@ -275,8 +278,9 @@ def test_load_configuration_invalid_subnode(setup_descriptor, servo, net, subnod
 def test_load_configuration_to_subnode_zero(setup_descriptor, servo, net):
     assert servo is not None and net is not None
 
-    filename = setup_descriptor.config_file
-    path = Path(filename)
+    path = setup_descriptor.config_file
+    assert isinstance(path, Path)
+    filename = path.as_posix()
     file = filename.split("/")[-1]
     modified_path = Path(filename.replace(file, "config_0_test.xdf"))
     shutil.copy(path, modified_path)
@@ -300,7 +304,12 @@ def test_load_configuration_to_subnode_zero(setup_descriptor, servo, net):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_store_parameters(servo, rs_client):
+def test_store_parameters(setup_specifier, servo, request):
+    if not isinstance(
+        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
+    ):
+        pytest.skip("Only available for rack specifiers.")
+    rs_client = request.getfixturevalue("rs_client")
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     initial_user_over_voltage_value = servo.read(user_over_voltage_register)
@@ -322,7 +331,12 @@ def test_store_parameters(servo, rs_client):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_restore_parameters(servo, rs_client):
+def test_restore_parameters(setup_specifier, servo, request):
+    if not isinstance(
+        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
+    ):
+        pytest.skip("Only available for rack specifiers.")
+    rs_client = request.getfixturevalue("rs_client")
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     new_user_over_voltage_value = servo.read(user_over_voltage_register) + 5
