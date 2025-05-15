@@ -57,7 +57,6 @@ def runTest(markers, setup_name, tox_skip_install = false) {
         env.INGENIALINK_WHEEL_PATH = wheelFile
         try {
             bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
-                    "--skip_motion_controller " +
                     "-m \"${markers}\" " +
                     "--setup ${setup_name} " +
                     "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\""
@@ -235,7 +234,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker --setup summit_testing_framework.setups.no_drive.TESTS_SETUP --skip_motion_controller"
+                                        "-m docker --setup summit_testing_framework.setups.no_drive.TESTS_SETUP"
                             }
                             post {
                                 always {
@@ -266,7 +265,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- --setup summit_testing_framework.setups.no_drive.TESTS_SETUP --skip_motion_controller
+                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- --setup summit_testing_framework.setups.no_drive.TESTS_SETUP
                                 """
                             }
                             post {
