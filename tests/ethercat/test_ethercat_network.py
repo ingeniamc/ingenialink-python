@@ -7,6 +7,10 @@ import time
 
 import numpy as np
 import pytest
+from summit_testing_framework.setups import (
+    MultiRackServiceConfigSpecifier,
+    RackServiceConfigSpecifier,
+)
 
 import ingenialink.ethercat.network
 from ingenialink.ethercat.network import (
@@ -87,14 +91,19 @@ def test_scan_slaves_raises_exception_if_drive_is_already_connected(servo, net):
 
 @pytest.mark.ethercat
 def test_scan_slaves_info(
+    setup_specifier,
     setup_descriptor,
-    get_drive_configuration_from_rack_service,
+    request,
     ethercat_network_teardown,  # noqa: ARG001
 ):
+    if not isinstance(
+        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
+    ):
+        pytest.skip("Only available for rack specifiers.")
     net = EthercatNetwork(setup_descriptor.ifname)
     slaves_info = net.scan_slaves_info()
 
-    drive = get_drive_configuration_from_rack_service
+    drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
 
     assert len(slaves_info) > 0
     assert setup_descriptor.slave in slaves_info

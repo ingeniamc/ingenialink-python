@@ -1,6 +1,10 @@
 import platform
 
 import pytest
+from summit_testing_framework.setups import (
+    MultiRackServiceConfigSpecifier,
+    RackServiceConfigSpecifier,
+)
 
 from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.exceptions import ILError
@@ -83,7 +87,12 @@ def test_scan_slaves_missing_drivers(can_device):
 
 
 @pytest.mark.canopen
-def test_scan_slaves_info(setup_descriptor, get_drive_configuration_from_rack_service):
+def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
+    if not isinstance(
+        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
+    ):
+        pytest.skip("Only available for rack specifiers.")
+
     net = CanopenNetwork(
         device=CanDevice(setup_descriptor.device),
         channel=setup_descriptor.channel,
@@ -91,7 +100,7 @@ def test_scan_slaves_info(setup_descriptor, get_drive_configuration_from_rack_se
     )
     slaves_info = net.scan_slaves_info()
 
-    drive = get_drive_configuration_from_rack_service
+    drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
 
     assert len(slaves_info) > 0
     assert setup_descriptor.node_id in slaves_info

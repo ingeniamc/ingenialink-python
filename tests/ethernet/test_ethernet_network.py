@@ -5,6 +5,10 @@ from ftplib import error_temp
 from threading import Thread
 
 import pytest
+from summit_testing_framework.setups import (
+    MultiRackServiceConfigSpecifier,
+    RackServiceConfigSpecifier,
+)
 from twisted.cred.checkers import (
     AllowAnonymousAccess,
     InMemoryUsernamePasswordDatabaseDontUse,
@@ -121,13 +125,17 @@ def test_scan_slaves(setup_descriptor):
 
 
 @pytest.mark.ethernet
-def test_scan_slaves_info(setup_descriptor, get_drive_configuration_from_rack_service):
+def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
+    if not isinstance(
+        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
+    ):
+        pytest.skip("Only available for rack specifiers.")
     drive_ip = setup_descriptor.ip
     subnet = drive_ip + "/24"
     net = EthernetNetwork(subnet)
     slaves_info = net.scan_slaves_info()
 
-    drive = get_drive_configuration_from_rack_service
+    drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
 
     assert len(slaves_info) > 0
     assert drive_ip in slaves_info
