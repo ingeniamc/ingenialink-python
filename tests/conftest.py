@@ -89,8 +89,7 @@ def virtual_drive_custom_dict():
 
 
 @pytest.fixture(scope="session")
-def get_drive_configuration_from_rack_service(setup_descriptor, connect_to_rack_service):
-    client = connect_to_rack_service
+def get_drive_configuration_from_rack_service(setup_descriptor, rs_client):
     if setup_descriptor.rack_drive_idx is None:
         raise ValueError
-    return client.configuration.drives[setup_descriptor.rack_drive_idx]
+    return rs_client.configuration.drives[setup_descriptor.rack_drive_idx]

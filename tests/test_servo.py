@@ -300,7 +300,7 @@ def test_load_configuration_to_subnode_zero(setup_descriptor, servo, net):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_store_parameters(servo, connect_to_rack_service):
+def test_store_parameters(servo, rs_client):
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     initial_user_over_voltage_value = servo.read(user_over_voltage_register)
@@ -314,8 +314,7 @@ def test_store_parameters(servo, connect_to_rack_service):
 
     time.sleep(5)
 
-    client = connect_to_rack_service
-    client.power_cycle()
+    rs_client.power_cycle()
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
@@ -323,7 +322,7 @@ def test_store_parameters(servo, connect_to_rack_service):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_restore_parameters(servo, connect_to_rack_service):
+def test_restore_parameters(servo, rs_client):
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     new_user_over_voltage_value = servo.read(user_over_voltage_register) + 5
@@ -334,8 +333,7 @@ def test_restore_parameters(servo, connect_to_rack_service):
 
     servo.restore_parameters()
 
-    client = connect_to_rack_service
-    client.power_cycle()
+    rs_client.power_cycle()
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
 
