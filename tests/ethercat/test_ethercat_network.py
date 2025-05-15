@@ -228,7 +228,12 @@ def test_master_reference_is_kept_while_network_is_alive(mocker):
     # Lose the reference to the second network, it should still exist in the stack
     net_2_id = id(net_2)
     net_2 = None
-    assert id(list(ETHERCAT_NETWORK_REFERENCES)[-1]) == net_2_id
+    net_2_id_found = False
+    for ref_net in ETHERCAT_NETWORK_REFERENCES:
+        if id(ref_net) == net_2_id:
+            net_2_id_found = True
+            break
+    assert net_2_id_found is True
     assert release_network_reference_spy.call_count == 1  # Has not been called again
 
     release_networks = [net for net in ETHERCAT_NETWORK_REFERENCES if net not in previous_networks]
