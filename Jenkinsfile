@@ -235,7 +235,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker --setup summit_testing_framework.setups.no_drive.TESTS_SETUP"
+                                        "-m docker --setup summit_testing_framework.setups.no_drive.TESTS_SETUP --skip_motion_controller"
                             }
                             post {
                                 always {
@@ -266,7 +266,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS}
+                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} --setup summit_testing_framework.setups.no_drive.TESTS_SETUP --skip_motion_controller
                                 """
                             }
                             post {
