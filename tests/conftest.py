@@ -1,14 +1,9 @@
-import atexit
 import itertools
 from pathlib import Path
 
 import pytest
 from summit_testing_framework import dynamic_loader
 
-from ingenialink.ethercat.network import (
-    ETHERCAT_NETWORK_REFERENCES,
-    release_network_reference,
-)
 from ingenialink.virtual.network import VirtualNetwork
 from virtual_drive.core import VirtualDrive
 
@@ -43,19 +38,6 @@ def pytest_sessionstart(session):
 def virtual_drive_resources_folder():
     root_folder = Path(__file__).resolve().parent.parent
     return (root_folder / "virtual_drive/resources/").as_posix()
-
-
-@pytest.fixture
-def ethercat_network_teardown():
-    """Should be executed for all the tests that do not use `net` fixture.
-
-    It is used to clear the network reference.
-    Many of the tests check that errors are raised, so the reference is not properly cleared."""
-    yield
-    atexit._run_exitfuncs()
-    assert not len(ETHERCAT_NETWORK_REFERENCES)
-    # Once atexit is called, the register will be lost, so register the needed functions again
-    atexit.register(release_network_reference, None)
 
 
 @pytest.fixture()
