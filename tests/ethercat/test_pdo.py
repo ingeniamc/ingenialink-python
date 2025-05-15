@@ -235,7 +235,8 @@ def test_servo_add_maps(servo, create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(servo, net):
+def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(setup_manager):
+    servo, net, _, _ = setup_manager
     operation_mode_uid = "DRV_OP_CMD"
     rpdo_registers = [operation_mode_uid]
     operation_mode_display_uid = "DRV_OP_VALUE"
