@@ -304,7 +304,10 @@ def test_load_configuration_to_subnode_zero(setup_descriptor, servo, net):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_store_parameters(setup_specifier, servo, request):
+def test_store_parameters(setup_specifier, setup_manager, request):
+    servo, _, _, _ = (
+        setup_manager  # use servo fixture: https://novantamotion.atlassian.net/browse/INGK-1096
+    )
     if not isinstance(
         setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
     ):
@@ -331,7 +334,10 @@ def test_store_parameters(setup_specifier, servo, request):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_restore_parameters(setup_specifier, servo, request):
+def test_restore_parameters(setup_specifier, setup_manager, request):
+    servo, _, _, _ = (
+        setup_manager  # use servo fixture: https://novantamotion.atlassian.net/browse/INGK-1096
+    )
     if not isinstance(
         setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
     ):
