@@ -6,7 +6,6 @@ def arguments(setup_descriptor):
     attrs = [
         f"--dictionary_path={setup_descriptor.dictionary}",
         f"--ip_address={setup_descriptor.ip}",
-        f"--port={setup_descriptor.port}",
     ]
     yield attrs
 
