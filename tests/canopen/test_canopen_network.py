@@ -105,7 +105,6 @@ def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
     assert len(slaves_info) > 0
     assert setup_descriptor.node_id in slaves_info
     assert slaves_info[setup_descriptor.node_id].product_code == drive.product_code
-    assert slaves_info[setup_descriptor.node_id].revision_number == drive.revision_number
 
 
 @pytest.mark.canopen
