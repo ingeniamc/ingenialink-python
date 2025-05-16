@@ -51,3 +51,40 @@ For further details you can read the documentation_ where you will find
 simple usage examples, the API docs, etc.
 
 .. _documentation: https://distext.ingeniamc.com/doc/ingenialink-python/latest/
+
+
+Run PyTest
+----------
+
+Create *tests/setups/tests_setup.py* file with configuration file.
+
+This file is ignored by git and won't be uploaded to the repository.
+Example of a setup:
+
+
+.. code-block:: python
+
+
+   from pathlib import Path
+
+   from summit_testing_framework.setups import LocalDriveConfigSpecifier
+
+   DEN_NET_E_SETUP = LocalDriveConfigSpecifier.from_ethercat_configuration(
+      identifier="den-net-e",
+      dictionary=Path("C://Users//some.user//Downloads//den-net-e_eoe_2.7.3.xdf"),
+      config_file=Path("C://Users//some.user//Downloads//den_net_e.xcf"),
+      firmware_file=Path("C://Users//some.user//Downloads//den-net-e_2.7.3.lfu"),
+      ifname="\\Device\\NPF_{675921D7-B64A-4997-9211-D18E2A6DC96A}",
+      slave=1,
+      boot_in_app=False,
+   )
+
+
+For more information, check *summit-testing-framework* documentation.
+
+Run tests selecting the markers that you want and are appropriate for your setup.
+Beware that some tests may not be appropiate for the setup that you have and may fail.
+
+.. code-block:: bash
+   
+   tox -e py39 -- -m soem

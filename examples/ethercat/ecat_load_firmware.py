@@ -7,6 +7,7 @@ def ecat_load_fw(args: argparse.Namespace) -> None:
     net = EthercatNetwork(args.interface)
     boot_in_app = args.firmware_path.endswith(".sfu")
     net.load_firmware(args.firmware_path, boot_in_app, slave_id=args.slave_id)
+    net.close_ecat_master()
 
 
 def setup_command() -> argparse.Namespace:
