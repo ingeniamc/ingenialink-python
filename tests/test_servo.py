@@ -10,7 +10,6 @@ from packaging import version
 from summit_testing_framework.rack_service_client import PartNumber
 from summit_testing_framework.setups import DriveCanOpenSetup, DriveEthernetSetup
 from summit_testing_framework.setups.specifiers import (
-    MultiRackServiceConfigSpecifier,
     RackServiceConfigSpecifier,
 )
 
@@ -59,6 +58,14 @@ def _get_reg_address(register, descriptor):
     elif isinstance(descriptor, DriveCanOpenSetup):
         return register.idx
     raise ValueError
+
+
+def wait_until_alive(servo, timeout=None):
+    init_time = time.time()
+    while not servo.is_alive():
+        if timeout is not None and (init_time + timeout) < time.time():
+            pytest.fail("The drive is unresponsive after the recovery timeout.")
+        time.sleep(1)
 
 
 def skip_if_monitoring_is_not_available(servo):
@@ -296,15 +303,10 @@ def test_load_configuration_to_subnode_zero(setup_descriptor, servo, net):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_store_parameters(setup_specifier, setup_manager, request):
+def test_store_parameters(setup_manager, environment):
     servo, _, _, _ = (
         setup_manager  # use servo fixture: https://novantamotion.atlassian.net/browse/INGK-1096
     )
-    if not isinstance(
-        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
-    ):
-        pytest.skip("Only available for rack specifiers.")
-    rs_client = request.getfixturevalue("rs_client")
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     initial_user_over_voltage_value = servo.read(user_over_voltage_register)
@@ -318,7 +320,9 @@ def test_store_parameters(setup_specifier, setup_manager, request):
 
     time.sleep(5)
 
-    rs_client.power_cycle()
+    environment.power_cycle()
+
+    wait_until_alive(servo, timeout=20)
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
@@ -326,15 +330,10 @@ def test_store_parameters(setup_specifier, setup_manager, request):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_restore_parameters(setup_specifier, setup_manager, request):
+def test_restore_parameters(setup_manager, environment):
     servo, _, _, _ = (
         setup_manager  # use servo fixture: https://novantamotion.atlassian.net/browse/INGK-1096
     )
-    if not isinstance(
-        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
-    ):
-        pytest.skip("Only available for rack specifiers.")
-    rs_client = request.getfixturevalue("rs_client")
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     new_user_over_voltage_value = servo.read(user_over_voltage_register) + 5
@@ -345,7 +344,9 @@ def test_restore_parameters(setup_specifier, setup_manager, request):
 
     servo.restore_parameters()
 
-    rs_client.power_cycle()
+    environment.power_cycle()
+
+    wait_until_alive(servo, timeout=20)
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
 
