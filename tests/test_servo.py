@@ -61,14 +61,6 @@ def _get_reg_address(register, descriptor):
     raise ValueError
 
 
-def wait_until_alive(servo, timeout=None):
-    init_time = time.time()
-    while not servo.is_alive():
-        if timeout is not None and (init_time + timeout) < time.time():
-            pytest.fail("The drive is unresponsive after the recovery timeout.")
-        time.sleep(1)
-
-
 def skip_if_monitoring_is_not_available(servo):
     try:
         servo.read("MON_DIST_STATUS")
