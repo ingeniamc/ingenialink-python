@@ -320,7 +320,7 @@ def test_store_parameters(setup_manager, environment):
 
     time.sleep(5)
 
-    environment.power_cycle()
+    environment.power_cycle(wait_for_drives=False)
 
     wait_until_alive(servo, timeout=20)
 
@@ -344,7 +344,7 @@ def test_restore_parameters(setup_manager, environment):
 
     servo.restore_parameters()
 
-    environment.power_cycle()
+    environment.power_cycle(wait_for_drives=False)
 
     wait_until_alive(servo, timeout=20)
 
