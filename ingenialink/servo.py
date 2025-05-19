@@ -2,7 +2,7 @@ import re
 import threading
 import time
 from abc import abstractmethod
-from typing import Any, Callable, Optional, Union, cast
+from typing import Any, Callable, Optional, Union
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -867,24 +867,22 @@ class Servo:
             RuntimeError: if the register is not monitoreable.
         """
         register = self.dictionary.get_register(uid, axis=axis)
-        if not register.is_monitoreable:
-            raise RuntimeError("Register is not monitoreable.")
-
-        address, subnode, _ = register.monitoring
-        address = cast("int", address)
-        subnode = cast("int", subnode)
+        if register.monitoring is None:
+            raise RuntimeError(f"Register {uid} is not monitoreable.")
 
         self.__monitoring_data[channel] = []
         self.__monitoring_dtype[channel] = register.dtype
         self.__monitoring_size[channel] = size
         data = self._monitoring_disturbance_data_to_map_register(
-            subnode, address, register.dtype.value, size
+            register.monitoring.subnode, register.monitoring.address, register.dtype.value, size
         )
         try:
             self.write(self.__monitoring_map_register(), data=data, subnode=0)
             self.__monitoring_update_num_mapped_registers()
         except ILAccessError:
-            self.write(self.MONITORING_ADD_REGISTERS_OLD, data=address, subnode=0)
+            self.write(
+                self.MONITORING_ADD_REGISTERS_OLD, data=register.monitoring.address, subnode=0
+            )
 
     def monitoring_get_num_mapped_registers(self) -> int:
         """Obtain the number of monitoring mapped registers.
@@ -984,22 +982,21 @@ class Servo:
             RuntimeError: if the register is not monitoreable.
         """
         register = self.dictionary.get_register(uid, axis=axis)
-        if not register.is_monitoreable:
+        if register.monitoring is None:
             raise RuntimeError("Register is not monitoreable.")
-        address, subnode, _ = register.monitoring
-        address = cast("int", address)
-        subnode = cast("int", subnode)
 
         self.__disturbance_size[channel] = size
         self.__disturbance_dtype[channel] = register.dtype.name
         data = self._monitoring_disturbance_data_to_map_register(
-            subnode, address, register.dtype.value, size
+            register.monitoring.subnode, register.monitoring.address, register.dtype.value, size
         )
         try:
             self.write(self.__disturbance_map_register(), data=data, subnode=0)
             self.__disturbance_update_num_mapped_registers()
         except ILRegisterNotFoundError:
-            self.write(self.DISTURBANCE_ADD_REGISTERS_OLD, data=address, subnode=0)
+            self.write(
+                self.DISTURBANCE_ADD_REGISTERS_OLD, data=register.monitoring.address, subnode=0
+            )
 
     def disturbance_get_num_mapped_registers(self) -> int:
         """Obtain the number of disturbance mapped registers.
