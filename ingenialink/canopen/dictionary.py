@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Optional, Union
+from typing import Optional
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -12,6 +12,7 @@ from ingenialink.constants import (
 from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.register import MonitoringV3
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -66,19 +67,17 @@ class CanopenDictionaryV2(DictionaryV2):
             idx = aux_var >> 8
             subidx = aux_var & 0xFF
 
-            monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]
+            monitoring: Optional[MonitoringV3] = None
             if current_read_register.pdo_access != RegCyclicType.CONFIG:
                 address = aux_var - (
                     CANOPEN_ADDRESS_OFFSET
                     + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
                 )
-                monitoring = (
-                    address,
-                    current_read_register.subnode,
-                    current_read_register.pdo_access,
+                monitoring = MonitoringV3(
+                    address=address,
+                    subnode=current_read_register.subnode,
+                    cyclic=current_read_register.pdo_access,
                 )
-            else:
-                monitoring = (None, None, None)
 
             canopen_register = CanopenRegister(
                 idx,

@@ -1,5 +1,5 @@
 from abc import ABC
-from functools import cached_property
+from dataclasses import dataclass
 from typing import Any, Optional, Union
 
 from ingenialink import exceptions as exc
@@ -24,6 +24,15 @@ dtypes_ranges: dict[RegDtype, dict[str, Union[int, float]]] = {
     RegDtype.S64: {"max": 9223372036854775807, "min": 9223372036854775807 - 1},
     RegDtype.FLOAT: {"max": 3.4e38, "min": -3.4e38},
 }
+
+
+@dataclass(frozen=True)
+class MonitoringV3:
+    """Monitoring data."""
+
+    address: int
+    subnode: int
+    cyclic: RegCyclicType
 
 
 class Register(ABC):
@@ -80,11 +89,7 @@ class Register(ABC):
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
-        monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]] = (
-            None,
-            None,
-            None,
-        ),
+        monitoring: Optional[MonitoringV3] = None,
     ) -> None:
         if labels is None:
             labels = {}
@@ -231,22 +236,12 @@ class Register(ABC):
             return self._range
         return (None, None)
 
-    @cached_property
-    def is_monitoreable(self) -> bool:
-        """True if the register is monitoreable, False otherwise."""
-        return None not in self._monitoring
-
     @property
-    def monitoring(self) -> Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]:
+    def monitoring(self) -> Optional[MonitoringV3]:
         """Containing the address, subnode and cyclic access.
 
         If the register is not monitoreable, it will contain None.
-
-        Raises:
-            RuntimeError: if monitoring data is invalid.
         """
-        if self.is_monitoreable and None in self._monitoring:
-            raise RuntimeError("Invalid monitoring data.")
         return self._monitoring
 
     @property

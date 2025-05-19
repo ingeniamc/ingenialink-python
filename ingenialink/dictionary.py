@@ -22,7 +22,7 @@ from ingenialink.enums.register import (
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILDictionaryParseError
-from ingenialink.register import Register
+from ingenialink.register import MonitoringV3, Register
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -1084,7 +1084,7 @@ class DictionaryV3(Dictionary):
 
     def __read_monitoring(
         self, pdo_access: RegCyclicType, monitoring_elem: Optional[ElementTree.Element]
-    ) -> Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]:
+    ) -> Optional[MonitoringV3]:
         """Process Monitoring element.
 
         Args:
@@ -1092,8 +1092,7 @@ class DictionaryV3(Dictionary):
             monitoring_elem: Monitoring element.
 
         Returns:
-            Tuple with address, subnode and cyclic access
-            or None if the register is not monitoreable.
+            Monitoring data, None if the register is not monitoreable.
 
         Raises:
             ValueError: if register is PDO mappable but no monitoring entry is present.
@@ -1102,15 +1101,16 @@ class DictionaryV3(Dictionary):
         if monitoring_elem is None:
             if pdo_access is not RegCyclicType.CONFIG:
                 raise ValueError(f"Monitoring entry not found for {pdo_access=}")
-            return None, None, None
+            return None
 
         if pdo_access is RegCyclicType.CONFIG:
             raise ValueError("Register is not PDO mappable, but it has monitoring information.")
 
-        address = int(monitoring_elem.attrib[self.__MONITORING_ADDRESS_ATTR], 16)
-        subnode = int(monitoring_elem.attrib[self.__MONITORING_SUBNODE_ATTR])
-        cyclic = RegCyclicType(monitoring_elem.attrib[self.__MONITORING_CYCLIC_ATTR])
-        return address, subnode, cyclic
+        return MonitoringV3(
+            address=int(monitoring_elem.attrib[self.__MONITORING_ADDRESS_ATTR], 16),
+            subnode=int(monitoring_elem.attrib[self.__MONITORING_SUBNODE_ATTR]),
+            cyclic=RegCyclicType(monitoring_elem.attrib[self.__MONITORING_CYCLIC_ATTR]),
+        )
 
     def __read_enumeration(
         self, enumerations_element: Optional[ElementTree.Element]

@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Optional, Union
+from typing import Optional
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -8,6 +8,7 @@ from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interfa
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.register import MonitoringV3
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -115,15 +116,13 @@ class EthernetDictionaryV2(DictionaryV2):
         try:
             reg_address = int(register.attrib["address"], 16)
 
-            monitoring: Union[tuple[None, None, None], tuple[int, int, RegCyclicType]]
+            monitoring: Optional[MonitoringV3] = None
             if current_read_register.pdo_access != RegCyclicType.CONFIG:
-                monitoring = (
-                    reg_address,
-                    current_read_register.subnode,
-                    current_read_register.pdo_access,
+                monitoring = MonitoringV3(
+                    address=reg_address,
+                    subnode=current_read_register.subnode,
+                    cyclic=current_read_register.pdo_access,
                 )
-            else:
-                monitoring = (None, None, None)
 
             ethernet_register = EthernetRegister(
                 reg_address,
