@@ -1083,12 +1083,11 @@ class DictionaryV3(Dictionary):
         return None, None
 
     def __read_monitoring(
-        self, pdo_access: RegCyclicType, monitoring_elem: Optional[ElementTree.Element]
+        self, monitoring_elem: Optional[ElementTree.Element]
     ) -> Optional[MonitoringV3]:
         """Process Monitoring element.
 
         Args:
-            pdo_access: pdo access.
             monitoring_elem: Monitoring element.
 
         Returns:
@@ -1176,7 +1175,7 @@ class DictionaryV3(Dictionary):
         reg_range = self.__read_range(range_elem)
         # Monitoring
         monitoring_elem = register.find(self.__MONITORING_ELEMENT)
-        monitoring = self.__read_monitoring(pdo_access, monitoring_elem)
+        monitoring = self.__read_monitoring(monitoring_elem)
         # Enumerations
         enumerations_element = register.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
@@ -1268,7 +1267,7 @@ class DictionaryV3(Dictionary):
         reg_range = self.__read_range(range_elem)
         # Monitoring
         monitoring_elem = subitem.find(self.__MONITORING_ELEMENT)
-        monitoring = self.__read_monitoring(pdo_access, monitoring_elem)
+        monitoring = self.__read_monitoring(monitoring_elem)
         # Enumerations
         enumerations_element = subitem.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
