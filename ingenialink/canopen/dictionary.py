@@ -69,7 +69,7 @@ class CanopenDictionaryV2(DictionaryV2):
 
             monitoring: Optional[MonitoringV3] = None
             if current_read_register.pdo_access != RegCyclicType.CONFIG:
-                address = aux_var - (
+                address = idx - (
                     CANOPEN_ADDRESS_OFFSET
                     + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
                 )
