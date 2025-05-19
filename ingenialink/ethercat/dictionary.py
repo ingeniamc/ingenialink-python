@@ -233,7 +233,7 @@ class EthercatDictionaryV2(DictionaryV2):
 
             monitoring: Optional[MonitoringV3] = None
             if current_read_register.pdo_access != RegCyclicType.CONFIG:
-                address = int(register.attrib["address"], 16) - (
+                address = idx - (
                     CANOPEN_ADDRESS_OFFSET
                     + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
                 )
