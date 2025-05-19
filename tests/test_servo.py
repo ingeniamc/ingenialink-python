@@ -90,7 +90,7 @@ class SDOReadTimeoutManager:
 
 
 @pytest.fixture()
-def create_monitoring(servo, net, setup_descriptor):
+def create_monitoring(servo, net):
     skip_if_monitoring_is_not_available(servo)
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
@@ -106,7 +106,7 @@ def create_monitoring(servo, net, setup_descriptor):
 
 
 @pytest.fixture()
-def create_disturbance(servo, net, setup_descriptor):
+def create_disturbance(servo, net):
     skip_if_monitoring_is_not_available(servo)
     data = list(range(DISTURBANCE_NUM_SAMPLES))
     servo.disturbance_disable()
@@ -398,7 +398,7 @@ def test_monitoring_remove_data(create_monitoring):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_monitoring_map_register(servo, setup_descriptor):
+def test_monitoring_map_register(servo):
     skip_if_monitoring_is_not_available(servo)
     servo.monitoring_remove_all_mapped_registers()
     registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
@@ -477,7 +477,7 @@ def test_disturbance_remove_data(create_disturbance):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_disturbance_map_register(servo, setup_descriptor):
+def test_disturbance_map_register(servo):
     skip_if_monitoring_is_not_available(servo)
     servo.disturbance_remove_all_mapped_registers()
     registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
@@ -578,7 +578,7 @@ def test_status_word_wait_change(servo):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_disturbance_overflow(servo, setup_descriptor):
+def test_disturbance_overflow(servo):
     skip_if_monitoring_is_not_available(servo)
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
