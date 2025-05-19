@@ -2,12 +2,12 @@ import pytest
 
 
 @pytest.fixture
-def arguments(read_config):
-    protocol_contents = read_config["ethernet"]
-    dictionary = protocol_contents["dictionary"]
-    ip_address = protocol_contents["ip"]
-    port = protocol_contents["port"]
-    attrs = [f"--dictionary_path={dictionary}", f"--ip_address={ip_address}", f"--port={port}"]
+def arguments(setup_descriptor):
+    attrs = [
+        f"--dictionary_path={setup_descriptor.dictionary}",
+        f"--ip_address={setup_descriptor.ip}",
+        f"--port={setup_descriptor.port}",
+    ]
     yield attrs
 
 
