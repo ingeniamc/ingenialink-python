@@ -177,15 +177,6 @@ class CanopenServo(Servo):
                 )
         return register.storage
 
-    @staticmethod
-    def _monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
-        """Map CAN register address to IPB register address.
-
-        Returns:
-            Map CAN register address.
-        """
-        return address - (0x2000 + (0x800 * (subnode - 1)))
-
     @property
     def node(self) -> canopen.RemoteNode:
         """Remote node of the servo."""

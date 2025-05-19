@@ -20,9 +20,7 @@ if TYPE_CHECKING:
 
 from ingenialink.constants import (
     CAN_MAX_WRITE_SIZE,
-    CANOPEN_ADDRESS_OFFSET,
     ECAT_STATE_CHANGE_TIMEOUT_US,
-    MAP_ADDRESS_OFFSET,
 )
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
@@ -315,22 +313,6 @@ class EthercatServo(PDOServo):
         if not super()._is_disturbance_implemented():
             raise NotImplementedError("Disturbance is not supported by this device.")
         return self.write(self.DIST_DATA, subnode=0, data=data, complete_access=True)
-
-    @staticmethod
-    def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
-        """Map CAN register address to IPB register address.
-
-        Args:
-            subnode: Subnode to be targeted.
-            address: Register address to map.
-
-        Returns:
-            mapped address.
-        """
-        mapped_address: int = address - (
-            CANOPEN_ADDRESS_OFFSET + (MAP_ADDRESS_OFFSET * (subnode - 1))
-        )
-        return mapped_address
 
     def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
         """Subscribe to emergency messages.
