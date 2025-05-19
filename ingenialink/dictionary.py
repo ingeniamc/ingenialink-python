@@ -1093,18 +1093,9 @@ class DictionaryV3(Dictionary):
 
         Returns:
             Monitoring data, None if the register is not monitoreable.
-
-        Raises:
-            ValueError: if register is PDO mappable but no monitoring entry is present.
-            ValueError: if register is not PDO mappable, and monitoring entry is present.
         """
         if monitoring_elem is None:
-            if pdo_access is not RegCyclicType.CONFIG:
-                raise ValueError(f"Monitoring entry not found for {pdo_access=}")
             return None
-
-        if pdo_access is RegCyclicType.CONFIG:
-            raise ValueError("Register is not PDO mappable, but it has monitoring information.")
 
         return MonitoringV3(
             address=int(monitoring_elem.attrib[self.__MONITORING_ADDRESS_ATTR], 16),
