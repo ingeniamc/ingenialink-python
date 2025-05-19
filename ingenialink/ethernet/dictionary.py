@@ -49,7 +49,7 @@ class EthernetDictionaryV2(DictionaryV2):
     def _safety_registers(self) -> list[EthercatRegister]:
         return [
             EthercatRegister(
-                identifier="FSOE_TOTAL_ERROR",
+                identifier="FSOE_MANUF_SAFETY_ADDRESS",
                 idx=0x4193,
                 subidx=0x00,
                 dtype=RegDtype.U16,
