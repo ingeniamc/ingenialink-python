@@ -340,6 +340,7 @@ class Dictionary(XMLBase, ABC):
         self.path = dictionary_path
         """Path of the dictionary."""
         self.interface = interface
+        self.__register_cache: dict[tuple[str, Optional[int]], Register] = {}
         try:
             self.read_dictionary()
         except KeyError as e:
@@ -461,13 +462,18 @@ class Dictionary(XMLBase, ABC):
         Returns:
             register.
         """
+        cache_key = (uid, axis)
+        if cache_key in self.__register_cache:
+            return self.__register_cache[cache_key]
+
         if axis is not None:
             if axis not in self._registers:
                 raise KeyError(f"{axis=} does not exist.")
             registers = self.registers(axis)
             if uid not in registers:
                 raise KeyError(f"Register {uid} not present in {axis=}")
-            return registers[uid]
+            self.__register_cache[cache_key] = registers[uid]
+            return self.__register_cache[cache_key]
 
         matching_registers: list[Register] = []
         for axis in self.subnodes:
@@ -480,7 +486,8 @@ class Dictionary(XMLBase, ABC):
         if len(matching_registers) > 1:
             raise ValueError(f"Register {uid} found in multiple axis. Axis should be specified.")
 
-        return matching_registers[0]
+        self.__register_cache[cache_key] = matching_registers[0]
+        return self.__register_cache[cache_key]
 
     @abstractmethod
     def read_dictionary(self) -> None:

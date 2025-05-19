@@ -343,6 +343,11 @@ def test_get_register():
     uid = "TEST_UID"
     with pytest.raises(ValueError, match=f"Register {uid} not found."):
         dictionary.get_register(uid=uid, axis=None)
+    assert dictionary._Dictionary__register_cache == {}
+    # Specify a uid and axis that does not exist
+    with pytest.raises(KeyError, match="axis=3 does not exist."):
+        dictionary.get_register(uid=uid, axis=3)
+    assert dictionary._Dictionary__register_cache == {}
 
     # Register present in two axis, no axis specified
     uid = "DRV_DIAG_ERROR_LAST"
@@ -350,16 +355,23 @@ def test_get_register():
         ValueError, match=f"Register {uid} found in multiple axis. Axis should be specified."
     ):
         dictionary.get_register(uid=uid, axis=None)
+    assert dictionary._Dictionary__register_cache == {}
 
     # Specify axis, but register does not exist in that axis
     with pytest.raises(KeyError, match=f"Register {uid} not present in axis=0"):
         dictionary.get_register(uid=uid, axis=0)
+    assert dictionary._Dictionary__register_cache == {}
 
     # Find same uid in two different axis
     register_axis1 = dictionary.get_register(uid=uid, axis=1)
-    register_axis2 = dictionary.get_register(uid=uid, axis=2)
     assert register_axis1.subnode == 1
+    assert dictionary._Dictionary__register_cache == {("DRV_DIAG_ERROR_LAST", 1): register_axis1}
+    register_axis2 = dictionary.get_register(uid=uid, axis=2)
     assert register_axis2.subnode == 2
+    assert dictionary._Dictionary__register_cache == {
+        ("DRV_DIAG_ERROR_LAST", 1): register_axis1,
+        ("DRV_DIAG_ERROR_LAST", 2): register_axis2,
+    }
     assert register_axis1.identifier == register_axis2.identifier
 
     # Specify a unique uid without providing the axis
@@ -367,6 +379,17 @@ def test_get_register():
     register_1 = dictionary.get_register(uid=uid, axis=None)
     assert register_1.subnode == 0
     assert register_1.identifier == uid
+    assert dictionary._Dictionary__register_cache == {
+        ("DRV_DIAG_ERROR_LAST", 1): register_axis1,
+        ("DRV_DIAG_ERROR_LAST", 2): register_axis2,
+        ("DRV_DIAG_ERROR_LAST_COM", None): register_1,
+    }
     # Specify the same uid, providing the subnode, registers should match
     register_2 = dictionary.get_register(uid=uid, axis=0)
     assert register_1 == register_2
+    assert dictionary._Dictionary__register_cache == {
+        ("DRV_DIAG_ERROR_LAST", 1): register_axis1,
+        ("DRV_DIAG_ERROR_LAST", 2): register_axis2,
+        ("DRV_DIAG_ERROR_LAST_COM", None): register_1,
+        ("DRV_DIAG_ERROR_LAST_COM", 0): register_2,
+    }
