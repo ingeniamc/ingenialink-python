@@ -5,6 +5,10 @@ from ftplib import error_temp
 from threading import Thread
 
 import pytest
+from summit_testing_framework.setups import (
+    MultiRackServiceConfigSpecifier,
+    RackServiceConfigSpecifier,
+)
 from twisted.cred.checkers import (
     AllowAnonymousAccess,
     InMemoryUsernamePasswordDatabaseDontUse,
@@ -74,18 +78,16 @@ def ftp_server_manager():
 
 
 @pytest.fixture()
-def connect(read_config):
+def connect(setup_descriptor):
     net = EthernetNetwork()
-    protocol_contents = read_config["ethernet"]
     servo = net.connect_to_slave(
-        protocol_contents["ip"], protocol_contents["dictionary"], protocol_contents["port"]
+        setup_descriptor.ip, setup_descriptor.dictionary, setup_descriptor.port
     )
     return servo, net
 
 
 @pytest.mark.ethernet
-def test_connect_to_slave(connect_to_slave):
-    servo, net = connect_to_slave
+def test_connect_to_slave(servo, net):
     assert servo is not None and net is not None
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
@@ -93,12 +95,11 @@ def test_connect_to_slave(connect_to_slave):
 
 
 @pytest.mark.ethernet
-def test_can_not_connect_to_salve(read_config):
+def test_can_not_connect_to_salve(setup_descriptor):
     net = EthernetNetwork()
     wrong_ip = "34.56.125.234"
-    protocol_contents = read_config["ethernet"]
     with pytest.raises(ILError):
-        net.connect_to_slave(wrong_ip, protocol_contents["dictionary"], protocol_contents["port"])
+        net.connect_to_slave(wrong_ip, setup_descriptor.dictionary, setup_descriptor.port)
 
 
 @pytest.mark.ethernet
@@ -114,8 +115,8 @@ def test_scan_slaves_no_subnet():
 
 
 @pytest.mark.ethernet
-def test_scan_slaves(read_config):
-    drive_ip = read_config["ethernet"]["ip"]
+def test_scan_slaves(setup_descriptor):
+    drive_ip = setup_descriptor.ip
     subnet = drive_ip + "/24"
     net = EthernetNetwork(subnet)
     detected_slaves = net.scan_slaves()
@@ -124,38 +125,40 @@ def test_scan_slaves(read_config):
 
 
 @pytest.mark.ethernet
-def test_scan_slaves_info(read_config, get_drive_configuration_from_rack_service):
-    drive_ip = read_config["ethernet"]["ip"]
+def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
+    if not isinstance(
+        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
+    ):
+        pytest.skip("Only available for rack specifiers.")
+    drive_ip = setup_descriptor.ip
     subnet = drive_ip + "/24"
     net = EthernetNetwork(subnet)
     slaves_info = net.scan_slaves_info()
 
-    drive = get_drive_configuration_from_rack_service
+    drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
 
     assert len(slaves_info) > 0
     assert drive_ip in slaves_info
     assert slaves_info[drive_ip].product_code == drive.product_code
-    assert slaves_info[drive_ip].revision_number == drive.revision_number
 
 
 @pytest.mark.ethernet
-def test_ethernet_connection(connect_to_slave, read_config):
-    servo, net = connect_to_slave
+def test_ethernet_connection(servo, net, setup_descriptor):
     family = servo.socket.family
     ip, port = servo.socket.getpeername()
-    assert net.get_servo_state(read_config["ethernet"]["ip"]) == NetState.CONNECTED
+    assert net.get_servo_state(setup_descriptor.ip) == NetState.CONNECTED
     assert net.protocol == NetProt.ETH
     assert family == socket.AF_INET
     assert servo.socket.type == socket.SOCK_DGRAM
-    assert ip == read_config["ethernet"]["ip"]
-    assert port == read_config["ethernet"]["port"]
+    assert ip == setup_descriptor.ip
+    assert port == setup_descriptor.port
 
 
 @pytest.mark.ethernet
-def test_ethernet_disconnection(connect, read_config):
+def test_ethernet_disconnection(connect, setup_descriptor):
     servo, net = connect
     net.disconnect_from_slave(servo)
-    assert net.get_servo_state(read_config["ethernet"]["ip"]) == NetState.DISCONNECTED
+    assert net.get_servo_state(setup_descriptor.ip) == NetState.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
 

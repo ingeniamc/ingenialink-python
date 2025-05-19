@@ -19,6 +19,7 @@ def PYTHON_VERSION_MAX = "py312"
 
 def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
+def RACK_SPECIFIERS_PATH = "tests.setups.rack_specifiers"
 
 coverage_stashes = []
 
@@ -31,17 +32,14 @@ def restoreIngenialinkWheelEnvVar() {
 
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
-        def stashName = python_version == PYTHON_VERSION_MIN ? "build" : "build_${python_version}"
-        unstash stashName
         script {
-            def distDir = python_version == PYTHON_VERSION_MIN ? "dist" : "dist_${python_version}"
-            def result = bat(script: "dir ${distDir} /b /a-d", returnStdout: true).trim()
-            def files = result.split(/[\r\n]+/)    
-            def wheelFile = files.find { it.endsWith('.whl') }
-            if (wheelFile == null) {
-                error "No .whl file found in the dist directory. Directory contents:\n${result}"            
+            def pythonVersionTag = "cp${python_version.replace('py', '')}"
+            def files = findFiles(glob: "dist/*${pythonVersionTag}*.whl")
+            if (files.length == 0) {
+                error "No .whl file found for Python version ${python_version} in the dist directory."
             }
-            return "${distDir}\\${wheelFile}"
+            def wheelFile = files[0].name
+            return "dist\\${wheelFile}"
         }
     }
     else {
@@ -49,7 +47,8 @@ def getWheelPath(tox_skip_install, python_version) {
     }
 }
 
-def runTest(protocol, slave = 0, tox_skip_install = false) {
+def runTest(markers, setup_name, tox_skip_install = false) {
+    unstash 'wheels'
     def firstIteration = true
     def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
     pythonVersions.each { version ->
@@ -58,9 +57,9 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
         env.INGENIALINK_WHEEL_PATH = wheelFile
         try {
             bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
-                    "--protocol ${protocol} " +
-                    "--slave ${slave} " +
-                    "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${protocol}-${slave}\""
+                    "-m \"${markers}\" " +
+                    "--setup ${setup_name} " +
+                    "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\""
 
         } catch (err) {
             unstable(message: "Tests failed")
@@ -69,7 +68,7 @@ def runTest(protocol, slave = 0, tox_skip_install = false) {
             // Delete the junit after publishing it so it not re-published on the next stage
             bat "del /S /Q pytest_reports\\*.xml"
             if (firstIteration) {
-                def coverage_stash = ".coverage_${protocol}_${slave}"
+                def coverage_stash = ".coverage_${setup_name}"
                 bat "move .coverage ${coverage_stash}"
                 stash includes: coverage_stash, name: coverage_stash
                 coverage_stashes.add(coverage_stash)
@@ -165,17 +164,16 @@ pipeline {
                                         bat """
                                             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
                                             py -${DEFAULT_PYTHON_VERSION} -m tox -e build
-                                            XCOPY ${distDir} ${env.WORKSPACE}\\${distDir} /s /i
+                                            XCOPY ${distDir}\\*.whl ${env.WORKSPACE}\\dist /s /i
                                         """
-                                        def stashName = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
-                                        stash includes: "${distDir}\\*", name: stashName
                                     }
                                 }
                             }
                         }
                         stage('Archive artifacts') {
                             steps {
-                                archiveArtifacts(artifacts: "dist*\\*.whl", followSymlinks: false)
+                                archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
+                                stash includes: "dist\\*", name: 'wheels'
                             }
                         }
                         stage('Generate documentation') {
@@ -213,7 +211,7 @@ pipeline {
                         }
                     }
                     steps {
-                        unstash 'build'
+                        unstash 'wheels'
                         publishPyPi("dist/*")
                     }
                 }
@@ -236,7 +234,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker "
+                                        "-m docker --setup summit_testing_framework.setups.no_drive.TESTS_SETUP"
                             }
                             post {
                                 always {
@@ -267,7 +265,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS}
+                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m no_connection --setup summit_testing_framework.setups.no_drive.TESTS_SETUP
                                 """
                             }
                             post {
@@ -288,22 +286,22 @@ pipeline {
                     stages {
                         stage('EtherCAT Everest') {
                             steps {
-                                runTest("ethercat", 0, true)
+                                runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true)
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                runTest("ethercat", 1, true)
+                                runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true)
                             }
                         }
                         stage('EtherCAT Multislave') {
                             steps {
-                                runTest("multislave", 0, true)
+                                runTest("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true)
                             }
                         }
                         stage('Run no-connection tests') {
                             steps {
-                                runTest("no_connection", 0, true)
+                                runTest("no_connection", "summit_testing_framework.setups.no_drive.TESTS_SETUP", true)
                             }
                         }
                     }
@@ -318,22 +316,22 @@ pipeline {
                     stages {
                         stage('CANopen Everest') {
                             steps {
-                                runTest("canopen", 0, true)
+                                runTest("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP", true)
                             }
                         }
                         stage('CANopen Capitan') {
                             steps {
-                                runTest("canopen", 1, true)
+                                runTest("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP", true)
                             }
                         }
                         stage('Ethernet Everest') {
                             steps {
-                                runTest("ethernet", 0, true)
+                                runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", true)
                             }
                         }
                         stage('Ethernet Capitan') {
                             steps {
-                                runTest("ethernet", 1, true)
+                                runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", true)
                             }
                         }
                     }

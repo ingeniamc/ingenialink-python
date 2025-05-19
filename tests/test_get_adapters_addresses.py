@@ -16,16 +16,14 @@ def adapters_module():
 
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_get_adapters_addresses(adapters_module, read_config, pytestconfig):
-    protocol = pytestconfig.getoption("--protocol")
-    protocol_info = read_config[protocol]
-    if "ifname" not in protocol_info:
+def test_get_adapters_addresses(adapters_module, setup_descriptor):
+    if not hasattr(setup_descriptor, "ifname"):
         pytest.skip(
-            f"Skipping test because 'ifname' is not in the protocol '{protocol}' information."
+            f"Skipping test because 'ifname' is not in the '{setup_descriptor=}' information."
         )
 
-    match = re.search(r"\{[^}]*\}", protocol_info["ifname"])
-    expected_adapter_address = match.group(0) if match else None
+    ifname_match = re.search(r"\{[^}]*\}", setup_descriptor.ifname)
+    expected_adapter_address = ifname_match.group(0) if ifname_match else None
     assert expected_adapter_address is not None
 
     adapters = adapters_module.get_adapters_addresses(
