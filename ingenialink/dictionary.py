@@ -1084,6 +1084,9 @@ class DictionaryV3(Dictionary):
         Args:
             register: register to add.
             axis: register's axis.
+
+        Raises:
+            ValueError: if register identifier is not provided.
         """
         if axis not in self._registers:
             self._registers[axis] = {}
@@ -1093,6 +1096,8 @@ class DictionaryV3(Dictionary):
                 if axis != 1:
                     logger.warning(f"Found {axis=}, will treat it as a Motion axis.")
                 self.subnodes[axis] = SubnodeType.MOTION
+        if register.identifier is None:
+            raise ValueError("Identifier must be provided.")
         self._registers[axis][register.identifier] = register
 
     def __read_mcb_register(self, register: ElementTree.Element) -> None:
