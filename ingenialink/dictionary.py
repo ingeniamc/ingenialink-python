@@ -22,7 +22,7 @@ from ingenialink.enums.register import (
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILDictionaryParseError
-from ingenialink.register import MonitoringV3, Register
+from ingenialink.register import MonDistV3, Register
 from ingenialink.utils._utils import weak_lru
 
 logger = ingenialogger.get_logger(__name__)
@@ -744,7 +744,7 @@ class DictionaryV3(Dictionary):
     __RANGE_MIN_ATTR = "min"
     __RANGE_MAX_ATTR = "max"
 
-    __MONITORING_ELEMENT = "MonitoringV3"
+    __MONITORING_ELEMENT = "MonDistV3"
     __MONITORING_ADDRESS_ATTR = "address"
     __MONITORING_SUBNODE_ATTR = "subnode"
     __MONITORING_CYCLIC_ATTR = "cyclic"
@@ -1086,7 +1086,7 @@ class DictionaryV3(Dictionary):
 
     def __read_monitoring(
         self, monitoring_elem: Optional[ElementTree.Element]
-    ) -> Optional[MonitoringV3]:
+    ) -> Optional[MonDistV3]:
         """Process Monitoring element.
 
         Args:
@@ -1098,7 +1098,7 @@ class DictionaryV3(Dictionary):
         if monitoring_elem is None:
             return None
 
-        return MonitoringV3(
+        return MonDistV3(
             address=int(monitoring_elem.attrib[self.__MONITORING_ADDRESS_ATTR], 16),
             subnode=int(monitoring_elem.attrib[self.__MONITORING_SUBNODE_ATTR]),
             cyclic=RegCyclicType(monitoring_elem.attrib[self.__MONITORING_CYCLIC_ATTR]),

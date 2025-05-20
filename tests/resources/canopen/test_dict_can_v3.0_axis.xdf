@@ -28,7 +28,7 @@
 					<CANopenObject index="0x580F" datatype="VAR" subnode="0">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" pdo_access="CYCLIC_TX" desc="Contains the last generated error" default="00000000" cat_id="REPORTING">
-								<MonitoringV3 address="0x000F" subnode="0" cyclic="CYCLIC_TX"/>
+								<MonDistV3 address="0x000F" subnode="0" cyclic="CYCLIC_TX"/>
 								<Labels>
 									<Label lang="en_US">Last error</Label>
 								</Labels>

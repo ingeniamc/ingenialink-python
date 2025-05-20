@@ -27,7 +27,7 @@ dtypes_ranges: dict[RegDtype, dict[str, Union[int, float]]] = {
 
 
 @dataclass(frozen=True)
-class MonitoringV3:
+class MonDistV3:
     """Monitoring data."""
 
     address: int
@@ -89,7 +89,7 @@ class Register(ABC):
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
-        monitoring: Optional[MonitoringV3] = None,
+        monitoring: Optional[MonDistV3] = None,
     ) -> None:
         if labels is None:
             labels = {}
@@ -237,7 +237,7 @@ class Register(ABC):
         return (None, None)
 
     @property
-    def monitoring(self) -> Optional[MonitoringV3]:
+    def monitoring(self) -> Optional[MonDistV3]:
         """Containing the address, subnode and cyclic access.
 
         If the register is not monitoreable, it will contain None.

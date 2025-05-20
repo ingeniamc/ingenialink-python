@@ -12,7 +12,7 @@ from ingenialink.constants import (
 from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.register import MonitoringV3
+from ingenialink.register import MonDistV3
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -67,13 +67,13 @@ class CanopenDictionaryV2(DictionaryV2):
             idx = aux_var >> 8
             subidx = aux_var & 0xFF
 
-            monitoring: Optional[MonitoringV3] = None
+            monitoring: Optional[MonDistV3] = None
             if current_read_register.pdo_access != RegCyclicType.CONFIG:
                 address = idx - (
                     CANOPEN_ADDRESS_OFFSET
                     + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
                 )
-                monitoring = MonitoringV3(
+                monitoring = MonDistV3(
                     address=address,
                     subnode=current_read_register.subnode,
                     cyclic=current_read_register.pdo_access,
