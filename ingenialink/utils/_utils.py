@@ -2,6 +2,7 @@ import functools
 import logging
 import struct
 import warnings
+import weakref
 from typing import Any, Callable, Optional, Union
 from xml.etree import ElementTree
 
@@ -76,6 +77,23 @@ def deprecated(
         return wrapped_method
 
     return wrap
+
+
+def weak_lru(maxsize=128, typed=False):
+    def decorator(func):
+        ref = weakref.ref
+
+        @functools.lru_cache(maxsize, typed)
+        def _func(_self, /, *args, **kwargs):
+            return func(_self(), *args, **kwargs)
+
+        @functools.wraps(func)
+        def wrapper(self, /, *args, **kwargs):
+            return _func(ref(self), *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class DisableLogger:
