@@ -81,7 +81,7 @@ class SubnodeType(enum.Enum):
     """Communication"""
     MOTION = enum.auto()
     """Motion"""
-    SAFETY = enum.auto()
+    SAFETY = enum.auto()  # TODO: remove
     """Safety"""
 
 
@@ -679,6 +679,7 @@ class DictionaryV3(Dictionary):
     __SUBITEM_ELEMENT = "Subitem"
     __INDEX_ATTR = "index"
     __SUBINDEX_ATTR = "subindex"
+    __AXIS_ATTR = "axis"
 
     __MCB_REGISTERS_ELEMENT = "MCBRegisters"
     __MCB_REGISTER_ELEMENT = "MCBRegister"
@@ -935,8 +936,6 @@ class DictionaryV3(Dictionary):
             root: ECATDevice element
 
         """
-        subnodes_element = self._find_and_check(root, self.__SUBNODES_ELEMENT)
-        self.__read_subnodes(subnodes_element)
         registers_element = self._find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
             registers_element, self.__CANOPEN_OBJECT_ELEMENT
@@ -959,8 +958,6 @@ class DictionaryV3(Dictionary):
             root: CANDevice element
 
         """
-        subnodes_element = self._find_and_check(root, self.__SUBNODES_ELEMENT)
-        self.__read_subnodes(subnodes_element)
         registers_element = self._find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
             registers_element, self.__CANOPEN_OBJECT_ELEMENT
@@ -1085,6 +1082,23 @@ class DictionaryV3(Dictionary):
 
         return None
 
+    def __add_register(self, register: Register, axis: int) -> None:
+        """Adds a register to register list.
+
+        Args:
+            register: register to add.
+            axis: register's axis.
+        """
+        if axis not in self._registers:
+            self._registers[axis] = {}
+            if axis == 0:
+                self.subnodes[axis] = SubnodeType.COMMUNICATION
+            else:
+                if axis != 1:
+                    logger.warning(f"Found {axis=}, will treat it as a Motion axis.")
+                self.subnodes[axis] = SubnodeType.MOTION
+        self._registers[axis][register.identifier] = register
+
     def __read_mcb_register(self, register: ElementTree.Element) -> None:
         """Process MCBRegister element and add it to _registers.
 
@@ -1135,9 +1149,7 @@ class DictionaryV3(Dictionary):
             default=default,
             bitfields=bitfields,
         )
-        if subnode not in self._registers:
-            self._registers[subnode] = {}
-        self._registers[subnode][identifier] = ethernet_register
+        self.__add_register(register=ethernet_register, axis=subnode)
 
     def __read_canopen_object(self, root: ElementTree.Element) -> None:
         """Process CANopenObject element and add it to registers_group if has UID.
@@ -1148,20 +1160,20 @@ class DictionaryV3(Dictionary):
         """
         object_uid = root.attrib.get(self.__UID_ATTR)
         reg_index = int(root.attrib[self.__INDEX_ATTR], 16)
-        subnode = int(root.attrib[self.__SUBNODE_ATTR])
+        axis = int(root.attrib[self.__AXIS_ATTR])
         data_type = DictionaryV3._get_canopen_object_data_type_options(
             root.attrib[self.__OBJECT_DATA_TYPE_ATTR]
         )
         subitems_element = self._find_and_check(root, self.__SUBITEMS_ELEMENT)
         subitem_list = self._findall_and_check(subitems_element, self.__SUBITEM_ELEMENT)
         register_list = [
-            self.__read_canopen_subitem(subitem, reg_index, subnode) for subitem in subitem_list
+            self.__read_canopen_subitem(subitem, reg_index, axis) for subitem in subitem_list
         ]
         if object_uid:
             register_list.sort(key=lambda val: val.subidx)
-            if subnode not in self.items:
-                self.items[subnode] = {}
-            self.items[subnode][object_uid] = CanOpenObject(object_uid, data_type, register_list)
+            if axis not in self.items:
+                self.items[axis] = {}
+            self.items[axis][object_uid] = CanOpenObject(object_uid, data_type, register_list)
 
     def __read_canopen_subitem(
         self, subitem: ElementTree.Element, reg_index: int, subnode: int
@@ -1225,9 +1237,7 @@ class DictionaryV3(Dictionary):
             bitfields=bitfields,
             is_node_id_dependent=is_node_id_dependent,
         )
-        if subnode not in self._registers:
-            self._registers[subnode] = {}
-        self._registers[subnode][identifier] = canopen_register
+        self.__add_register(register=canopen_register, axis=subnode)
         return canopen_register
 
     def __read_safety_pdos(self, root: ElementTree.Element) -> None:

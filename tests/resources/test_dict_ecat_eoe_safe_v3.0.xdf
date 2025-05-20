@@ -19,13 +19,8 @@
     </Categories>
     <Devices>
       <ECATDevice firmwareVersion="2.4.1" ProductCode="58790914" PartNumber="DEN-S-NET-E" RevisionNumber="327689">
-        <Subnodes>
-          <Subnode index="0">Communication</Subnode>
-          <Subnode index="1">Motion</Subnode>
-          <Subnode index="4">Safety</Subnode>
-        </Subnodes>
         <CANopenObjects>
-          <CANopenObject index="0x580F" datatype="VAR" subnode="0">
+          <CANopenObject index="0x580F" datatype="VAR" axis="0">
             <Subitems>
               <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" cyclic="CYCLIC_TX" desc="Contains the last generated error" units="none" default="00000000" cat_id="REPORTING">
                 <Labels>
@@ -34,7 +29,7 @@
               </Subitem>
             </Subitems>
           </CANopenObject>
-          <CANopenObject index="0x5E49" datatype="VAR" subnode="0">
+          <CANopenObject index="0x5E49" datatype="VAR" axis="0">
             <Subitems>
               <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_SYS_ERROR_LAST" cyclic="CYCLIC_TX" desc="Contains the last system generated error" units="none" default="00000000" cat_id="REPORTING">
                 <Labels>
@@ -48,7 +43,7 @@
               </Subitem>
             </Subitems>
           </CANopenObject>
-          <CANopenObject index="0x58A0" datatype="VAR" subnode="0">
+          <CANopenObject index="0x58A0" datatype="VAR" axis="0">
             <Subitems>
               <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" cyclic="CONFIG" desc="" units="none" default="0100" cat_id="IDENTIFICATION">
                 <Labels>
@@ -57,7 +52,7 @@
               </Subitem>
             </Subitems>
           </CANopenObject>
-          <CANopenObject index="0x1600" datatype="RECORD" subnode="0">
+          <CANopenObject index="0x1600" datatype="RECORD" axis="0">
             <Subitems>
               <Subitem subindex="0" address_type="NVM" access="rw" dtype="u8" id="CIA301_COMMS_RPDO1_MAP" cyclic="CONFIG" desc="" units="none" default="01" cat_id="CIA402">
                 <Labels>
@@ -71,7 +66,7 @@
               </Subitem>
             </Subitems>
           </CANopenObject>
-          <CANopenObject index="0x2151" datatype="VAR" subnode="1">
+          <CANopenObject index="0x2151" datatype="VAR" axis="1">
             <Subitems>
               <Subitem subindex="0" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" cyclic="CONFIG" desc="Indicates the sensor used for angle readings" units="none" default="0400" cat_id="COMMUTATION">
                 <Labels>
