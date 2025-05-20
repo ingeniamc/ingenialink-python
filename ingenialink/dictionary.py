@@ -81,8 +81,6 @@ class SubnodeType(enum.Enum):
     """Communication"""
     MOTION = enum.auto()
     """Motion"""
-    SAFETY = enum.auto()  # TODO: remove
-    """Safety"""
 
 
 class CanOpenObjectType(enum.Enum):
@@ -387,8 +385,6 @@ class Dictionary(XMLBase, ABC):
             return SubnodeType.COMMUNICATION
         if subnode == "Motion":
             return SubnodeType.MOTION
-        if subnode == "Safety":
-            return SubnodeType.SAFETY
         raise ILDictionaryParseError(f"{subnode=} does not exist.")
 
     @classmethod
