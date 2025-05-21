@@ -1093,8 +1093,6 @@ class DictionaryV3(Dictionary):
             if axis == 0:
                 self.subnodes[axis] = SubnodeType.COMMUNICATION
             else:
-                if axis != 1:
-                    logger.warning(f"Found {axis=}, will treat it as a Motion axis.")
                 self.subnodes[axis] = SubnodeType.MOTION
         if register.identifier is None:
             raise ValueError("Identifier must be provided.")
