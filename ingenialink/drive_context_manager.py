@@ -13,12 +13,11 @@ class DriveContextManager:
     """
 
     def __init__(
-        self,
-        servo: Servo,
-        axis: Optional[int] = None,
+        self, servo: Servo, axis: Optional[int] = None, do_not_restore_registers: list[str] = []
     ):
         self.drive = servo
         self._axis: Optional[int] = axis
+        self._do_not_restore_registers: list[str] = do_not_restore_registers
 
         self._original_register_values: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
         self._registers_changed: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
@@ -31,12 +30,16 @@ class DriveContextManager:
     ) -> None:
         """Saves the register uids that are changed.
 
+        It will ignore the registers that should not be restored `self._do_not_restore_registers`.
+
         Args:
             alias: servo alias.
             servo: servo.
             register: register.
             value: changed value.
         """
+        if register.identifier in self._do_not_restore_registers:
+            return
         if register.subnode not in self._registers_changed:
             self._registers_changed[register.subnode] = {}
         self._registers_changed[register.subnode][cast("str", register.identifier)] = value
@@ -48,6 +51,8 @@ class DriveContextManager:
         for axis in axes:
             self._original_register_values[axis] = {}
             for uid, register in drive.dictionary.registers(subnode=axis).items():
+                if register.identifier in self._do_not_restore_registers:
+                    continue
                 if register.access in [RegAccess.WO, RegAccess.RO]:
                     continue
                 try:
