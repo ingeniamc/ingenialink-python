@@ -1,6 +1,7 @@
 line-length = 100
 target-version = "py39"
 preview = true
+exclude = ["tests/setups/tests_setup.py"]
 
 [lint]
 pydocstyle.convention = "google"
@@ -38,6 +39,7 @@ select = [
     "RUF008", # Ruff dataclasses mutable defaults
     "RUF027", # Missing f-string syntax
     "RUF012", # Mutable class default
+    "B006", # Mutable-argument-default
 ]
 
 ignore = [

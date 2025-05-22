@@ -13,7 +13,10 @@ class DriveContextManager:
     """
 
     def __init__(
-        self, servo: Servo, axis: Optional[int] = None, do_not_restore_registers: list[str] = []
+        self,
+        servo: Servo,
+        axis: Optional[int] = None,
+        do_not_restore_registers: Optional[list[str]] = None,
     ) -> None:
         """Initializes the registers that shouldn't be stored.
 
@@ -27,7 +30,9 @@ class DriveContextManager:
         self.drive = servo
         self._axis: Optional[int] = axis
 
-        self._do_not_restore_registers: list[str] = do_not_restore_registers
+        self._do_not_restore_registers: list[str] = (
+            do_not_restore_registers if isinstance(do_not_restore_registers, list) else []
+        )
         self._do_not_restore_registers.extend([
             servo.STORE_COCO_ALL,
             servo.STORE_MOCO_ALL_REGISTERS,
