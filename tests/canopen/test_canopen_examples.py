@@ -2,13 +2,12 @@ import pytest
 
 
 @pytest.fixture
-def arguments(read_config):
-    protocol_contents = read_config["canopen"]
-    dictionary = protocol_contents["dictionary"]
-    node_id = protocol_contents["node_id"]
-    device = protocol_contents["device"]
-    channel = protocol_contents["channel"]
-    baudrate = protocol_contents["baudrate"]
+def arguments(setup_descriptor):
+    dictionary = setup_descriptor.dictionary
+    node_id = setup_descriptor.node_id
+    device = setup_descriptor.device
+    channel = setup_descriptor.channel
+    baudrate = setup_descriptor.baudrate
     attrs = [
         f"--dictionary_path={dictionary}",
         f"--node_id={node_id}",

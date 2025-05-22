@@ -300,10 +300,14 @@ class EthercatNetwork(Network):
         """
         if self.servos:
             raise ILError("Some slaves are already connected")
-        if not self.__is_master_running:
+        is_master_running_before_scan = self.__is_master_running
+        if not is_master_running_before_scan:
             self._start_master()
         self.__init_nodes()
-        return self.__last_init_nodes
+        slaves_found = self.__last_init_nodes
+        if not is_master_running_before_scan:
+            self.close_ecat_master(release_reference=False)
+        return slaves_found
 
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         """Scans for slaves in the network and return an ordered dict with the slave information.
@@ -395,12 +399,21 @@ class EthercatNetwork(Network):
             self.start_status_listener()
         return servo
 
-    def close_ecat_master(self) -> None:
-        """Closes the connection with the EtherCAT master."""
+    def close_ecat_master(self, release_reference: bool = True) -> None:
+        """Closes the connection with the EtherCAT master.
+
+        Args:
+            release_reference: Whether to release the network reference.
+        If the network will be reused afterward it should be set to False.
+
+        """
         self._lock.acquire()
         self._ecat_master.close()
         self._lock.release()
-        release_network_reference(network=self)
+        self.__is_master_running = False
+        self.__last_init_nodes = []
+        if release_reference:
+            release_network_reference(network=self)
 
     def disconnect_from_slave(self, servo: EthercatServo) -> None:  # type: ignore [override]
         """Disconnects the slave from the network.
@@ -416,8 +429,6 @@ class EthercatNetwork(Network):
         if not self.servos:
             self.stop_status_listener()
             self.close_ecat_master()
-            self.__is_master_running = False
-            self.__last_init_nodes = []
 
     def config_pdo_maps(self) -> None:
         """Configure the PDO maps.
@@ -642,7 +653,8 @@ class EthercatNetwork(Network):
 
         if not isinstance(slave_id, int) or slave_id < 0:
             raise ValueError("Invalid slave ID value")
-        if not self.__is_master_running:
+        is_master_running_before_loading_firmware = self.__is_master_running
+        if not is_master_running_before_loading_firmware:
             self._start_master()
             self.__init_nodes()
         if len(self.__last_init_nodes) == 0:
@@ -681,6 +693,8 @@ class EthercatNetwork(Network):
             logger.info("Firmware updated successfully")
         else:
             logger.info(f"The slave {slave_id} cannot reach the PreOp state.")
+        if not is_master_running_before_loading_firmware:
+            self.close_ecat_master(release_reference=False)
 
     def _switch_to_boot_state(self, slave: "CdefSlave") -> None:
         """Transitions the slave to the boot state.
