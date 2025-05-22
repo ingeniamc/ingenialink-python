@@ -17,6 +17,7 @@ from ingenialink.ethercat.network import (
     ETHERCAT_NETWORK_REFERENCES,
     EthercatNetwork,
     GilReleaseConfig,
+    SlaveState,
     release_network_reference,
 )
 from ingenialink.exceptions import ILError
@@ -155,11 +156,18 @@ def test_update_pysoem_timeouts(net):
 
 
 @pytest.mark.ethercat
-def test_check_node_state(servo, net):
+def test_wait_for_node_state(servo, net):
     # True when list is not empty
-    assert net._check_node_state(servo, pysoem.PREOP_STATE)
+    assert net._wait_for_node_state(servo, pysoem.PREOP_STATE)
     # False when list is not empty
-    assert not net._check_node_state([], pysoem.PREOP_STATE)
+    assert not net._wait_for_node_state([], pysoem.PREOP_STATE)
+
+
+@pytest.mark.ethercat
+def test_get_slave_state(connect_to_slave):
+    servo, net = connect_to_slave
+    assert net._wait_for_node_state(servo, pysoem.PREOP_STATE)
+    assert net.get_slave_state(servo=servo) is SlaveState(pysoem.PREOP_STATE)
 
 
 @pytest.mark.no_connection
