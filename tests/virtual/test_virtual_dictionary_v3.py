@@ -24,7 +24,7 @@ def test_read_dictionary(virtual_dictionary_v3):
         "product_code": 000000,
         "part_number": "VIRTUAL-DRIVE",
         "revision_number": 000000,
-        "interface": Interface.ECAT,
+        "interface": Interface.ETH,
         "subnodes": SINGLE_AXIS_SUBNODES,
         "is_safe": False,
         "image": "image-text",
