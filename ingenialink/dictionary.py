@@ -22,7 +22,8 @@ from ingenialink.enums.register import (
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILDictionaryParseError
-from ingenialink.register import Register
+from ingenialink.register import MonDistV3, Register
+from ingenialink.utils._utils import weak_lru
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -445,6 +446,44 @@ class Dictionary(XMLBase, ABC):
         """
         return self._registers[subnode]
 
+    @weak_lru()
+    def get_register(self, uid: str, axis: Optional[int] = None) -> Register:
+        """Gets the targeted register.
+
+        Args:
+            uid: register uid.
+            axis: axis. Should be specified if multiaxis, None otherwise.
+
+        Raises:
+            KeyError: if the specified axis does not exist.
+            KeyError: if the register is not present in the specified axis.
+            ValueError: if the register is not found in any axis, if axis is not provided.
+            ValueError: if the register is found in multiple axis, if axis is provided.
+
+        Returns:
+            register.
+        """
+        if axis is not None:
+            if axis not in self._registers:
+                raise KeyError(f"{axis=} does not exist.")
+            registers = self.registers(axis)
+            if uid not in registers:
+                raise KeyError(f"Register {uid} not present in {axis=}")
+            return registers[uid]
+
+        matching_registers: list[Register] = []
+        for axis in self.subnodes:
+            axis_registers = self.registers(axis)
+            if uid in axis_registers:
+                matching_registers.append(axis_registers[uid])
+
+        if len(matching_registers) == 0:
+            raise ValueError(f"Register {uid} not found.")
+        if len(matching_registers) > 1:
+            raise ValueError(f"Register {uid} found in multiple axis. Axis should be specified.")
+
+        return matching_registers[0]
+
     @abstractmethod
     def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
@@ -665,7 +704,7 @@ class DictionaryV3(Dictionary):
     __ACCESS_ATTR = "access"
     __DTYPE_ATTR = "dtype"
     __UID_ATTR = "id"
-    __CYCLIC_ATTR = "cyclic"
+    __PDO_ACCESS_ATTR = "pdo_access"
     __DESCRIPTION_ATTR = "desc"
     __DEFAULT_ATTR = "default"
     __CAT_ID_ATTR = "cat_id"
@@ -704,6 +743,11 @@ class DictionaryV3(Dictionary):
     __RANGE_ELEMENT = "Range"
     __RANGE_MIN_ATTR = "min"
     __RANGE_MAX_ATTR = "max"
+
+    __MONITORING_ELEMENT = "MonDistV3"
+    __MONITORING_ADDRESS_ATTR = "address"
+    __MONITORING_SUBNODE_ATTR = "subnode"
+    __MONITORING_CYCLIC_ATTR = "cyclic"
 
     __SAFETY_PDOS_ELEMENT = "SafetyPDOs"
     __RPDO_ELEMENT = "RPDO"
@@ -1040,6 +1084,26 @@ class DictionaryV3(Dictionary):
             return range_min, range_max
         return None, None
 
+    def __read_monitoring(
+        self, monitoring_elem: Optional[ElementTree.Element]
+    ) -> Optional[MonDistV3]:
+        """Process Monitoring element.
+
+        Args:
+            monitoring_elem: Monitoring element.
+
+        Returns:
+            Monitoring data, None if the register is not monitoreable.
+        """
+        if monitoring_elem is None:
+            return None
+
+        return MonDistV3(
+            address=int(monitoring_elem.attrib[self.__MONITORING_ADDRESS_ATTR], 16),
+            subnode=int(monitoring_elem.attrib[self.__MONITORING_SUBNODE_ATTR]),
+            cyclic=RegCyclicType(monitoring_elem.attrib[self.__MONITORING_CYCLIC_ATTR]),
+        )
+
     def __read_enumeration(
         self, enumerations_element: Optional[ElementTree.Element]
     ) -> Optional[dict[str, int]]:
@@ -1100,7 +1164,7 @@ class DictionaryV3(Dictionary):
         access = ACCESS_XDF_OPTIONS[register.attrib[self.__ACCESS_ATTR]]
         dtype = DTYPE_XDF_OPTIONS[register.attrib[self.__DTYPE_ATTR]]
         identifier = register.attrib[self.__UID_ATTR]
-        cyclic = RegCyclicType(register.attrib[self.__CYCLIC_ATTR])
+        pdo_access = RegCyclicType(register.attrib[self.__PDO_ACCESS_ATTR])
         description = register.attrib[self.__DESCRIPTION_ATTR]
         default = bytes.fromhex(register.attrib[self.__DEFAULT_ATTR])
         cat_id = register.attrib[self.__CAT_ID_ATTR]
@@ -1111,6 +1175,9 @@ class DictionaryV3(Dictionary):
         # Range
         range_elem = register.find(self.__RANGE_ELEMENT)
         reg_range = self.__read_range(range_elem)
+        # Monitoring
+        monitoring_elem = register.find(self.__MONITORING_ELEMENT)
+        monitoring = self.__read_monitoring(monitoring_elem)
         # Enumerations
         enumerations_element = register.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
@@ -1124,7 +1191,7 @@ class DictionaryV3(Dictionary):
             access,
             identifier=identifier,
             units=units,
-            cyclic=cyclic,
+            pdo_access=pdo_access,
             subnode=subnode,
             reg_range=reg_range,
             labels=labels,
@@ -1134,6 +1201,7 @@ class DictionaryV3(Dictionary):
             description=description,
             default=default,
             bitfields=bitfields,
+            monitoring=monitoring,
         )
         if subnode not in self._registers:
             self._registers[subnode] = {}
@@ -1184,7 +1252,7 @@ class DictionaryV3(Dictionary):
         access = ACCESS_XDF_OPTIONS[subitem.attrib[self.__ACCESS_ATTR]]
         dtype = DTYPE_XDF_OPTIONS[subitem.attrib[self.__DTYPE_ATTR]]
         identifier = subitem.attrib[self.__UID_ATTR]
-        cyclic = RegCyclicType(subitem.attrib[self.__CYCLIC_ATTR])
+        pdo_access = RegCyclicType(subitem.attrib[self.__PDO_ACCESS_ATTR])
         description = subitem.attrib[self.__DESCRIPTION_ATTR]
         default = bytes.fromhex(subitem.attrib[self.__DEFAULT_ATTR])
         cat_id = subitem.attrib[self.__CAT_ID_ATTR]
@@ -1199,6 +1267,9 @@ class DictionaryV3(Dictionary):
         # Range
         range_elem = subitem.find(self.__RANGE_ELEMENT)
         reg_range = self.__read_range(range_elem)
+        # Monitoring
+        monitoring_elem = subitem.find(self.__MONITORING_ELEMENT)
+        monitoring = self.__read_monitoring(monitoring_elem)
         # Enumerations
         enumerations_element = subitem.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
@@ -1213,7 +1284,7 @@ class DictionaryV3(Dictionary):
             access,
             identifier=identifier,
             units=units,
-            cyclic=cyclic,
+            pdo_access=pdo_access,
             subnode=subnode,
             reg_range=reg_range,
             labels=labels,
@@ -1223,6 +1294,7 @@ class DictionaryV3(Dictionary):
             description=description,
             default=default,
             bitfields=bitfields,
+            monitoring=monitoring,
             is_node_id_dependent=is_node_id_dependent,
         )
         if subnode not in self._registers:
@@ -1611,7 +1683,7 @@ class DictionaryV2(Dictionary):
 
         try:
             units = register.attrib["units"]
-            cyclic = RegCyclicType(register.attrib.get("cyclic", "CONFIG"))
+            pdo_access = RegCyclicType(register.attrib.get("cyclic", "CONFIG"))
 
             # Data type
             dtype_aux = register.attrib["dtype"]
@@ -1665,7 +1737,7 @@ class DictionaryV2(Dictionary):
                 access,
                 identifier=identifier,
                 units=units,
-                cyclic=cyclic,
+                pdo_access=pdo_access,
                 subnode=subnode,
                 storage=storage,
                 reg_range=reg_range,

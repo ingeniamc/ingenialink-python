@@ -8,6 +8,7 @@ from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interfa
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.register import MonDistV3
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -30,7 +31,7 @@ class EthernetDictionaryV2(DictionaryV2):
                 units="",
                 subnode=0,
                 address=0x00B2,
-                cyclic=RegCyclicType.CONFIG,
+                pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.RO,
             ),
@@ -39,7 +40,7 @@ class EthernetDictionaryV2(DictionaryV2):
                 units="",
                 subnode=0,
                 address=0x00B4,
-                cyclic=RegCyclicType.CONFIG,
+                pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.WO,
             ),
@@ -115,13 +116,21 @@ class EthernetDictionaryV2(DictionaryV2):
         try:
             reg_address = int(register.attrib["address"], 16)
 
+            monitoring: Optional[MonDistV3] = None
+            if current_read_register.pdo_access != RegCyclicType.CONFIG:
+                monitoring = MonDistV3(
+                    address=reg_address,
+                    subnode=current_read_register.subnode,
+                    cyclic=current_read_register.pdo_access,
+                )
+
             ethernet_register = EthernetRegister(
                 reg_address,
                 current_read_register.dtype,
                 current_read_register.access,
                 identifier=current_read_register.identifier,
                 units=current_read_register.units,
-                cyclic=current_read_register.cyclic,
+                pdo_access=current_read_register.pdo_access,
                 phy=current_read_register.phy,
                 subnode=current_read_register.subnode,
                 storage=current_read_register.storage,
@@ -133,6 +142,7 @@ class EthernetDictionaryV2(DictionaryV2):
                 internal_use=current_read_register.internal_use,
                 address_type=current_read_register.address_type,
                 bitfields=current_read_register.bitfields,
+                monitoring=monitoring,
             )
 
             return ethernet_register

@@ -17,6 +17,7 @@ from ingenialink.enums.register import (
     RegDtype,
 )
 from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.register import MonDistV3
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -40,7 +41,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 subnode=0,
                 idx=0x58B2,
                 subidx=0x01,
-                cyclic=RegCyclicType.CONFIG,
+                pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.RO,
             ),
@@ -50,7 +51,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 subnode=0,
                 idx=0x58B4,
                 subidx=0x01,
-                cyclic=RegCyclicType.CONFIG,
+                pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.WO,
             ),
@@ -230,6 +231,18 @@ class EthercatDictionaryV2(DictionaryV2):
             )
             subidx = 0x00
 
+            monitoring: Optional[MonDistV3] = None
+            if current_read_register.pdo_access != RegCyclicType.CONFIG:
+                address = idx - (
+                    CANOPEN_ADDRESS_OFFSET
+                    + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
+                )
+                monitoring = MonDistV3(
+                    address=address,
+                    subnode=current_read_register.subnode,
+                    cyclic=current_read_register.pdo_access,
+                )
+
             ethercat_register = EthercatRegister(
                 idx,
                 subidx,
@@ -237,7 +250,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 current_read_register.access,
                 identifier=current_read_register.identifier,
                 units=current_read_register.units,
-                cyclic=current_read_register.cyclic,
+                pdo_access=current_read_register.pdo_access,
                 phy=current_read_register.phy,
                 subnode=current_read_register.subnode,
                 storage=current_read_register.storage,
@@ -249,6 +262,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 internal_use=current_read_register.internal_use,
                 address_type=current_read_register.address_type,
                 bitfields=current_read_register.bitfields,
+                monitoring=monitoring,
             )
 
             return ethercat_register

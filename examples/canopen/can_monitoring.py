@@ -1,5 +1,4 @@
 import argparse
-from typing import List
 
 import numpy as np
 from numpy.typing import NDArray
@@ -9,7 +8,7 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.exceptions import ILRegisterNotFoundError
 
 
-def monitoring_example(args: argparse.Namespace) -> List[NDArray[np.float_]]:
+def monitoring_example(args: argparse.Namespace) -> list[NDArray[np.float64]]:
     registers_key = [
         "DRV_PROT_TEMP_VALUE",
     ]
@@ -40,16 +39,13 @@ def monitoring_example(args: argparse.Namespace) -> List[NDArray[np.float_]]:
         )
     sampling_freq = round(position_velocity_loop_rate / ccp_value, 2)
     read_process_finished = False
-    tmp_mon_data: List[NDArray[np.float_]] = []
-    monitor_data: List[NDArray[np.float_]] = []
+    tmp_mon_data: list[NDArray[np.float64]] = []
+    monitor_data: list[NDArray[np.float64]] = []
 
     for idx, key in enumerate(registers_key):
-        reg = servo.dictionary.registers(1)[key]
-        if not isinstance(reg, CanopenRegister):
+        if not isinstance(servo.dictionary.get_register(key), CanopenRegister):
             raise TypeError("Expected register type to be CanopenRegister.")
-        mapped_reg = reg.idx
-        dtype_value = servo.dictionary.registers(1)[key].dtype.value
-        servo.monitoring_set_mapped_register(idx, mapped_reg, 1, dtype_value, 4)
+        servo.monitoring_set_mapped_register(channel=idx, uid=key, size=4)
         tmp_mon_data.append(np.ndarray([]))
         monitor_data.append(np.ndarray([]))
     # Configure monitoring SOC as forced
@@ -101,7 +97,7 @@ def monitoring_example(args: argparse.Namespace) -> List[NDArray[np.float_]]:
                     # Single-shot mode
                     read_process_finished = True
         except Exception as e:
-            print("Exception monitoring: {}".format(e))
+            print(f"Exception monitoring: {e}")
             break
     print("Finished")
 
