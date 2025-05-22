@@ -30,16 +30,15 @@ class DriveContextManager:
         self.drive = servo
         self._axis: Optional[int] = axis
 
-        self._do_not_restore_registers: list[str] = (
-            do_not_restore_registers if isinstance(do_not_restore_registers, list) else []
+        self._do_not_restore_registers: set[str] = (
+            set(do_not_restore_registers) if isinstance(do_not_restore_registers, list) else set()
         )
-        self._do_not_restore_registers.extend([
+        self._do_not_restore_registers.update([
             servo.STORE_COCO_ALL,
             servo.STORE_MOCO_ALL_REGISTERS,
             servo.RESTORE_COCO_ALL,
             servo.RESTORE_MOCO_ALL_REGISTERS,
         ])
-        self._do_not_restore_registers = list(set(self._do_not_restore_registers))
 
         self._original_register_values: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
         self._registers_changed: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
