@@ -9,18 +9,12 @@ from ingenialink.dictionary import (
     DictionarySafetyPDO,
     DictionaryV3,
     Interface,
-    SubnodeType,
 )
 from ingenialink.exceptions import ILDictionaryParseError
 
 path_resources = "./tests/resources/"
 dict_ecat_v3 = "test_dict_ecat_eoe_v3.0.xdf"
 dict_ecat_v3_safe = "test_dict_ecat_eoe_safe_v3.0.xdf"
-SINGLE_AXIS_SAFETY_SUBNODES = {
-    0: SubnodeType.COMMUNICATION,
-    1: SubnodeType.MOTION,
-    4: SubnodeType.SAFETY,
-}
 
 
 @pytest.mark.no_connection
@@ -34,7 +28,6 @@ def test_read_dictionary():
         "part_number": "EVS-NET-E",
         "revision_number": 196617,
         "interface": Interface.ECAT,
-        "subnodes": SINGLE_AXIS_SAFETY_SUBNODES,
         "is_safe": True,
         "image": "image-text",
     }
