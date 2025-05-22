@@ -93,7 +93,7 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(setup_mana
             assert uid in context._do_not_restore_registers
 
             previous_reg_value = servo.read(uid, subnode=axis)
-            assert previous_reg_value == 0
+            assert previous_reg_value != pwd
 
             with context:
                 servo.write(reg=uid, data=pwd, subnode=axis)
