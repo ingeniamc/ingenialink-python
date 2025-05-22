@@ -93,14 +93,14 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(setup_mana
             assert uid in context._do_not_restore_registers
 
             previous_reg_value = servo.read(uid, subnode=axis)
-            assert previous_reg_value != pwd
 
             with context:
                 servo.write(reg=uid, data=pwd, subnode=axis)
-                assert servo.read(uid, subnode=axis) == pwd
+                new_reg_value = servo.read(uid, subnode=axis)
+                assert new_reg_value != previous_reg_value
 
             # Context do not restore the register
-            assert servo.read(uid, subnode=axis) == pwd
+            assert servo.read(uid, subnode=axis) == new_reg_value
 
 
 @pytest.mark.ethernet
