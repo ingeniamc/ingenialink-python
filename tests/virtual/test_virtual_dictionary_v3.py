@@ -34,3 +34,11 @@ def test_read_dictionary(virtual_dictionary_v3):
 
     for attr, value in expected_device_attr.items():
         assert getattr(virtual_dict, attr) == value
+
+
+@pytest.mark.no_connection
+def test_read_dictionary_file_not_found():
+    dictionary_path = "false.xdf"
+
+    with pytest.raises(FileNotFoundError):
+        DictionaryV3(dictionary_path, Interface.ETH)
