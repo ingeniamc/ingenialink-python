@@ -110,6 +110,9 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(setup_mana
 def test_drive_context_manager_with_do_not_restore_registers(setup_manager):
     servo, _, _, _ = setup_manager
     context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
+    assert (
+        len(context._do_not_restore_registers) == 5
+    )  # COCO-MOCO store/restore regiisters + _USER_OVER_VOLTAGE_UID
 
     new_reg_value = 100.0
     previous_reg_value = _read_user_over_voltage_uid(servo)
