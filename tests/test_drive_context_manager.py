@@ -61,3 +61,22 @@ def test_drive_context_manager_nested_contexts(setup_manager):
         assert _read_user_under_voltage_uid(servo) == previous_under_volt_value
 
     assert _read_user_over_voltage_uid(servo) == previous_over_volt_value
+
+
+@pytest.mark.ethernet
+@pytest.mark.ethercat
+@pytest.mark.canopen
+@pytest.mark.virtual
+def test_drive_context_manager_with_do_not_restore_registers(setup_manager):
+    servo, _, _, _ = setup_manager
+    context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
+
+    new_reg_value = 100.0
+    previous_reg_value = _read_user_over_voltage_uid(servo)
+    assert previous_reg_value != new_reg_value
+
+    with context:
+        servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
+        assert _read_user_over_voltage_uid(servo) == new_reg_value
+
+    assert _read_user_over_voltage_uid(servo) == new_reg_value
