@@ -1,5 +1,10 @@
 import pytest
 
+from ingenialink.constants import (
+    PASSWORD_RESTORE_ALL,
+    PASSWORD_STORE_ALL,
+    PASSWORD_STORE_RESTORE_SUB_0,
+)
 from ingenialink.drive_context_manager import DriveContextManager
 
 _USER_OVER_VOLTAGE_UID = "DRV_PROT_USER_OVER_VOLT"
@@ -61,6 +66,41 @@ def test_drive_context_manager_nested_contexts(setup_manager):
         assert _read_user_under_voltage_uid(servo) == previous_under_volt_value
 
     assert _read_user_over_voltage_uid(servo) == previous_over_volt_value
+
+
+@pytest.mark.ethernet
+@pytest.mark.ethercat
+@pytest.mark.canopen
+@pytest.mark.virtual
+def test_drive_context_manager_skips_default_do_not_restore_registers(setup_manager):
+    servo, _, _, _ = setup_manager
+    context = DriveContextManager(servo)
+    assert len(context._do_not_restore_registers) == 4
+
+    axis_to_registers = {
+        0: {
+            servo.STORE_COCO_ALL: PASSWORD_STORE_RESTORE_SUB_0,
+            servo.RESTORE_COCO_ALL: PASSWORD_STORE_RESTORE_SUB_0,
+        },
+        1: {
+            servo.STORE_MOCO_ALL_REGISTERS: PASSWORD_STORE_ALL,
+            servo.RESTORE_MOCO_ALL_REGISTERS: PASSWORD_RESTORE_ALL,
+        },
+    }
+
+    for axis, registers in axis_to_registers.items():
+        for uid, pwd in registers.items():
+            assert uid in context._do_not_restore_registers
+
+            previous_reg_value = servo.read(uid, subnode=axis)
+            assert previous_reg_value == 0
+
+            with context:
+                servo.write(reg=uid, data=pwd, subnode=axis)
+                assert servo.read(uid, subnode=axis) == pwd
+
+            # Context do not restore the register
+            assert servo.read(uid, subnode=axis) == pwd
 
 
 @pytest.mark.ethernet
