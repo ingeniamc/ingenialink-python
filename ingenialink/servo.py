@@ -853,27 +853,36 @@ class Servo:
         self.write(self.MONITORING_REMOVE_DATA, data=1, subnode=0)
 
     def monitoring_set_mapped_register(
-        self, channel: int, address: int, subnode: int, dtype: int, size: int
+        self, channel: int, uid: str, size: int, axis: Optional[int] = None
     ) -> None:
         """Set monitoring mapped register.
 
         Args:
             channel: Identity channel number.
-            address: Register address to map.
-            subnode: Subnode to be targeted.
-            dtype: Register data type.
+            uid: Register uid.
             size: Size of data in bytes.
+            axis: axis. Should be specified if multiaxis, None otherwise.
 
+        Raises:
+            RuntimeError: if the register is not monitoreable.
         """
+        register = self.dictionary.get_register(uid, axis=axis)
+        if register.monitoring is None:
+            raise RuntimeError(f"Register {uid} is not monitoreable.")
+
         self.__monitoring_data[channel] = []
-        self.__monitoring_dtype[channel] = RegDtype(dtype)
+        self.__monitoring_dtype[channel] = register.dtype
         self.__monitoring_size[channel] = size
-        data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
+        data = self._monitoring_disturbance_data_to_map_register(
+            register.monitoring.subnode, register.monitoring.address, register.dtype.value, size
+        )
         try:
             self.write(self.__monitoring_map_register(), data=data, subnode=0)
             self.__monitoring_update_num_mapped_registers()
         except ILAccessError:
-            self.write(self.MONITORING_ADD_REGISTERS_OLD, data=address, subnode=0)
+            self.write(
+                self.MONITORING_ADD_REGISTERS_OLD, data=register.monitoring.address, subnode=0
+            )
 
     def monitoring_get_num_mapped_registers(self) -> int:
         """Obtain the number of monitoring mapped registers.
@@ -959,26 +968,35 @@ class Servo:
         self.disturbance_data = b""
 
     def disturbance_set_mapped_register(
-        self, channel: int, address: int, subnode: int, dtype: int, size: int
+        self, channel: int, uid: str, size: int, axis: Optional[int] = None
     ) -> None:
         """Set monitoring mapped register.
 
         Args:
             channel: Identity channel number.
-            address: Register address to map.
-            subnode: Subnode to be targeted.
-            dtype: Register data type.
+            uid: Register uid.
             size: Size of data in bytes.
+            axis: axis. Should be specified if multiaxis, None otherwise.
 
+        Raises:
+            RuntimeError: if the register is not monitoreable.
         """
+        register = self.dictionary.get_register(uid, axis=axis)
+        if register.monitoring is None:
+            raise RuntimeError("Register is not monitoreable.")
+
         self.__disturbance_size[channel] = size
-        self.__disturbance_dtype[channel] = RegDtype(dtype).name
-        data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
+        self.__disturbance_dtype[channel] = register.dtype.name
+        data = self._monitoring_disturbance_data_to_map_register(
+            register.monitoring.subnode, register.monitoring.address, register.dtype.value, size
+        )
         try:
             self.write(self.__disturbance_map_register(), data=data, subnode=0)
             self.__disturbance_update_num_mapped_registers()
         except ILRegisterNotFoundError:
-            self.write(self.DISTURBANCE_ADD_REGISTERS_OLD, data=address, subnode=0)
+            self.write(
+                self.DISTURBANCE_ADD_REGISTERS_OLD, data=register.monitoring.address, subnode=0
+            )
 
     def disturbance_get_num_mapped_registers(self) -> int:
         """Obtain the number of disturbance mapped registers.

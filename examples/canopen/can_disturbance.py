@@ -23,7 +23,7 @@ def disturbance_example(args: argparse.Namespace) -> None:
     # t = sample_period*i (time)
     # w = signal_frequency*2*math.pi (angular frequency)
     data_pos = cast(
-        List[Union[int, float]],
+        "List[Union[int, float]]",
         [
             int(
                 1000
@@ -48,7 +48,7 @@ def disturbance_example(args: argparse.Namespace) -> None:
         for i in range(n_samples)
     ]
     data_positioning_opt = cast(
-        List[Union[int, float]],
+        "List[Union[int, float]]",
         [
             int(
                 abs(
@@ -72,11 +72,15 @@ def disturbance_example(args: argparse.Namespace) -> None:
         print("Disturbance is not available for this drive")
     else:
         servo.disturbance_remove_all_mapped_registers()
-        servo.disturbance_set_mapped_register(0, 0x2021, 1, RegDtype.FLOAT.value, 4)
-        servo.disturbance_set_mapped_register(1, 0x2020, 1, RegDtype.S32.value, 4)
-        servo.disturbance_set_mapped_register(2, 0x201A, 1, RegDtype.FLOAT.value, 4)
-        servo.disturbance_set_mapped_register(3, 0x201B, 1, RegDtype.FLOAT.value, 4)
-        servo.disturbance_set_mapped_register(4, 0x2024, 1, RegDtype.U16.value, 2)
+        registers_key_to_size = {
+            "CL_VEL_SET_POINT_VALUE": 4,
+            "CL_POS_SET_POINT_VALUE": 4,
+            "CL_CUR_Q_SET_POINT": 4,
+            "CL_CUR_D_SET_POINT": 4,
+            "PROF_POS_OPTION_CODE": 2,
+        }
+        for idx, (reg_key, size) in enumerate(registers_key_to_size.items()):
+            servo.disturbance_set_mapped_register(idx, reg_key, size)
 
         servo.disturbance_write_data(
             [0, 1, 2, 3, 4],
