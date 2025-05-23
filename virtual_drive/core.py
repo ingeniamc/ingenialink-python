@@ -1310,6 +1310,7 @@ class VirtualDrive(Thread):
 
     PATH_CONFIGURATION_RELATIVE = "./resources/virtual_drive.xcf"
     PATH_DICTIONARY_RELATIVE = "./resources/virtual_drive.xdf"
+    PATH_DICTIONARY_V3_RELATIVE = "./resources/virtual_drive_v3.0.xdf"
 
     def __init__(self, port: int, dictionary_path: Optional[str] = None) -> None:
         super().__init__()
