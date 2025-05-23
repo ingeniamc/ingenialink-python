@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+### Fixed
+- Default xdf v2 injected safety registers
+
+
 ## [7.4.2] - 2025-05-07
 ### Added
 - Implement the scan method for Ethernet networks.
