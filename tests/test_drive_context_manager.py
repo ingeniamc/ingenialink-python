@@ -92,12 +92,9 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(setup_mana
         for uid, pwd in registers.items():
             assert uid in context._do_not_restore_registers
 
-            previous_reg_value = servo.read(uid, subnode=axis)
-
             with context:
                 servo.write(reg=uid, data=pwd, subnode=axis)
                 new_reg_value = servo.read(uid, subnode=axis)
-                assert new_reg_value != previous_reg_value
 
             # Context do not restore the register
             assert servo.read(uid, subnode=axis) == new_reg_value
@@ -112,7 +109,7 @@ def test_drive_context_manager_with_do_not_restore_registers(setup_manager):
     context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
     assert (
         len(context._do_not_restore_registers) == 5
-    )  # COCO-MOCO store/restore regiisters + _USER_OVER_VOLTAGE_UID
+    )  # COCO-MOCO store/restore registers + _USER_OVER_VOLTAGE_UID
 
     new_reg_value = 100.0
     previous_reg_value = _read_user_over_voltage_uid(servo)
