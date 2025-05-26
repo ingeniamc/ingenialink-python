@@ -14,7 +14,6 @@ from numpy.typing import NDArray
 from scipy import signal
 from typing_extensions import override
 
-from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
 from ingenialink.dictionary import Interface
 from ingenialink.enums.register import RegAccess, RegDtype
@@ -1308,7 +1307,6 @@ class VirtualDrive(Thread):
     WRITE_CMD = 2
     READ_CMD = 1
 
-    PATH_CONFIGURATION_RELATIVE = "./resources/virtual_drive.xcf"
     PATH_DICTIONARY_RELATIVE = "./resources/virtual_drive.xdf"
     PATH_DICTIONARY_V3_RELATIVE = "./resources/virtual_drive_v3.0.xdf"
 
@@ -1478,20 +1476,19 @@ class VirtualDrive(Thread):
 
     def _init_registers(self) -> None:
         """Initialize the registers using the configuration file."""
-        configuration_file = os.path.join(
-            pathlib.Path(__file__).parent.resolve(), self.PATH_CONFIGURATION_RELATIVE
+        dictionary_v3 = DictionaryFactory.create_dictionary(
+            os.path.join(pathlib.Path(__file__).parent.resolve(), self.PATH_DICTIONARY_V3_RELATIVE),
+            Interface.VIRTUAL,
         )
-        conf_file = ConfigurationFile.load_from_xcf(configuration_file)
-        for conf_register in conf_file.registers:
-            subnode = conf_register.subnode
-            reg_data = conf_register.storage
-            if not self.__register_exists(subnode, conf_register.uid):
-                continue
-            self.set_value_by_id(
-                subnode,
-                conf_register.uid,
-                reg_data,
-            )
+        for subnode in dictionary_v3.subnodes:
+            for uid, dict_register in dictionary_v3.registers(subnode).items():
+                if not self.__register_exists(subnode, uid):
+                    continue
+                self.set_value_by_id(
+                    subnode,
+                    uid,
+                    dict_register.default,
+                )
         value: Union[str, int]
         for subnode in self.__dictionary.subnodes:
             for reg_id, reg in self.__dictionary.registers(subnode).items():
