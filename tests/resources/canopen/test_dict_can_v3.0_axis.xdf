@@ -20,7 +20,7 @@
 		<Devices>
 			<CANDevice firmwareVersion="2.4.1" ProductCode="61939713" PartNumber="EVS-NET-C" RevisionNumber="196617">
 				<CANopenObjects>
-					<CANopenObject index="0x580F" datatype="VAR" axis="0">
+					<CANopenObject index="0x580F" datatype="VAR">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" cyclic="CYCLIC_TX" desc="Contains the last generated error" default="00000000" cat_id="REPORTING">
 								<Labels>
@@ -29,7 +29,7 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject>
-					<CANopenObject index="0x58A0" datatype="VAR" axis="0">
+					<CANopenObject index="0x58A0" datatype="VAR">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" units="cnt" cyclic="CONFIG" desc="" default="0100" cat_id="IDENTIFICATION">
 								<Labels>
@@ -38,7 +38,7 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject >
-					<CANopenObject index="0x1600" axis="0" datatype="RECORD" id="CIA301_COMMS_RPDO1_MAP">
+					<CANopenObject index="0x1600" datatype="RECORD" id="CIA301_COMMS_RPDO1_MAP">
 						<Labels>
 							<Label lang="en_US">RPDO 1 mapping parameter</Label>
 						</Labels>

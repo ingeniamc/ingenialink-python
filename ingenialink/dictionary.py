@@ -1159,7 +1159,7 @@ class DictionaryV3(Dictionary):
         """
         object_uid = root.attrib.get(self.__UID_ATTR)
         reg_index = int(root.attrib[self.__INDEX_ATTR], 16)
-        axis = int(root.attrib[self.__AXIS_ATTR])
+        axis = int(root.attrib[self.__AXIS_ATTR]) if self.__AXIS_ATTR in root.attrib else 0
         data_type = DictionaryV3._get_canopen_object_data_type_options(
             root.attrib[self.__OBJECT_DATA_TYPE_ATTR]
         )
