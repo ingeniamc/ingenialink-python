@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pytest
 
 from ingenialink.constants import (
@@ -72,32 +74,58 @@ def test_drive_context_manager_nested_contexts(setup_manager):
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_context_manager_skips_default_do_not_restore_registers(setup_manager):
+def test_drive_context_manager_skips_default_do_not_restore_registers(mocker, setup_manager):
     servo, _, _, _ = setup_manager
     context = DriveContextManager(servo)
     assert len(context._do_not_restore_registers) == 4
 
-    axis_to_registers = {
-        0: {
-            servo.STORE_COCO_ALL: PASSWORD_STORE_RESTORE_SUB_0,
-            servo.RESTORE_COCO_ALL: PASSWORD_STORE_RESTORE_SUB_0,
-        },
-        1: {
-            servo.STORE_MOCO_ALL_REGISTERS: PASSWORD_STORE_ALL,
-            servo.RESTORE_MOCO_ALL_REGISTERS: PASSWORD_RESTORE_ALL,
-        },
-    }
+    register_update_callback_spy = mocker.spy(context, "_register_update_callback")
+    servo_write_spy = mocker.spy(context.drive, "write")
 
-    for axis, registers in axis_to_registers.items():
-        for uid, pwd in registers.items():
-            assert uid in context._do_not_restore_registers
+    def assert_store_restore_is_skipped(
+        store: bool,
+        subnode: Optional[int],
+        expected_uid: str,
+        expected_value: int,
+        expected_call_count: int,
+    ) -> None:
+        if store:
+            servo.store_parameters(subnode=subnode)
+        else:
+            servo.restore_parameters(subnode=subnode)
+        assert register_update_callback_spy.call_count == expected_call_count
+        call_args = register_update_callback_spy.call_args.args
+        call_args[1].identifier == expected_uid
+        call_args[2] == expected_value
+        assert context._registers_changed == {}
 
-            with context:
-                servo.write(reg=uid, data=pwd, subnode=axis)
-                new_reg_value = servo.read(uid, subnode=axis)
+    with context:
+        assert_store_restore_is_skipped(
+            True, 0, servo.STORE_COCO_ALL, PASSWORD_STORE_RESTORE_SUB_0, 1
+        )
 
-            # Context do not restore the register
-            assert servo.read(uid, subnode=axis) == new_reg_value
+        assert_store_restore_is_skipped(
+            True, 1, servo.STORE_MOCO_ALL_REGISTERS, PASSWORD_STORE_ALL, 2
+        )
+
+        assert_store_restore_is_skipped(True, None, servo.STORE_COCO_ALL, PASSWORD_RESTORE_ALL, 3)
+
+        assert_store_restore_is_skipped(
+            False, 0, servo.RESTORE_COCO_ALL, PASSWORD_STORE_RESTORE_SUB_0, 4
+        )
+
+        assert_store_restore_is_skipped(
+            False, 1, servo.RESTORE_MOCO_ALL_REGISTERS, PASSWORD_RESTORE_ALL, 5
+        )
+
+        assert_store_restore_is_skipped(
+            False, None, servo.RESTORE_COCO_ALL, PASSWORD_RESTORE_ALL, 6
+        )
+
+        assert servo_write_spy.call_count == 6
+
+    # Nothing is restored when the context exits
+    assert servo_write_spy.call_count == 6
 
 
 @pytest.mark.ethernet
