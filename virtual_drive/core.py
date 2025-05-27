@@ -1482,7 +1482,7 @@ class VirtualDrive(Thread):
         )
         for subnode in dictionary_v3.subnodes:
             for uid, dict_register in dictionary_v3.registers(subnode).items():
-                if not self.__register_exists(subnode, uid):
+                if not self.__register_exists(subnode, uid) or dict_register.default is None:
                     continue
                 self.set_value_by_id(
                     subnode,
