@@ -332,3 +332,44 @@ def test_dictionary_no_product_code(xml_attribute, class_attribute):
             merged_file.write(xml_str)
         dictionary = EthernetDictionaryV2(temp_file)
     assert getattr(dictionary, class_attribute) is None
+
+
+@pytest.mark.no_connection
+def test_get_register():
+    dict_path = f"{PATH_RESOURCE}ethercat/test_dict_ethercat_axis.xdf"
+    dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.ECAT)
+
+    # Specify a uid that does not exist
+    uid = "TEST_UID"
+    with pytest.raises(ValueError, match=f"Register {uid} not found."):
+        dictionary.get_register(uid=uid, axis=None)
+    # Specify a uid and axis that does not exist
+    with pytest.raises(KeyError, match="axis=3 does not exist."):
+        dictionary.get_register(uid=uid, axis=3)
+
+    # Register present in two axis, no axis specified
+    uid = "DRV_DIAG_ERROR_LAST"
+    with pytest.raises(
+        ValueError, match=f"Register {uid} found in multiple axis. Axis should be specified."
+    ):
+        dictionary.get_register(uid=uid, axis=None)
+
+    # Specify axis, but register does not exist in that axis
+    with pytest.raises(KeyError, match=f"Register {uid} not present in axis=0"):
+        dictionary.get_register(uid=uid, axis=0)
+
+    # Find same uid in two different axis
+    register_axis1 = dictionary.get_register(uid=uid, axis=1)
+    assert register_axis1.subnode == 1
+    register_axis2 = dictionary.get_register(uid=uid, axis=2)
+    assert register_axis2.subnode == 2
+    assert register_axis1.identifier == register_axis2.identifier
+
+    # Specify a unique uid without providing the axis
+    uid = "DRV_DIAG_ERROR_LAST_COM"
+    register_1 = dictionary.get_register(uid=uid, axis=None)
+    assert register_1.subnode == 0
+    assert register_1.identifier == uid
+    # Specify the same uid, providing the subnode, registers should match
+    register_2 = dictionary.get_register(uid=uid, axis=0)
+    assert register_1 == register_2

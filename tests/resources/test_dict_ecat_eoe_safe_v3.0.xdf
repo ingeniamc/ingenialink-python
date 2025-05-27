@@ -27,7 +27,8 @@
         <CANopenObjects>
           <CANopenObject index="0x580F" datatype="VAR" subnode="0">
             <Subitems>
-              <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" cyclic="CYCLIC_TX" desc="Contains the last generated error" units="none" default="00000000" cat_id="REPORTING">
+              <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" pdo_access="CYCLIC_TX" desc="Contains the last generated error" units="none" default="00000000" cat_id="REPORTING">
+                <MonDistV3 address="0x000F" subnode="0" cyclic="CYCLIC_TX"/>
                 <Labels>
                   <Label lang="en_US">Last error</Label>
                 </Labels>
@@ -36,7 +37,8 @@
           </CANopenObject>
           <CANopenObject index="0x5E49" datatype="VAR" subnode="0">
             <Subitems>
-              <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_SYS_ERROR_LAST" cyclic="CYCLIC_TX" desc="Contains the last system generated error" units="none" default="00000000" cat_id="REPORTING">
+              <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_SYS_ERROR_LAST" pdo_access="CYCLIC_TX" desc="Contains the last system generated error" units="none" default="00000000" cat_id="REPORTING">
+                <MonDistV3 address="0x0649" subnode="0" cyclic="CYCLIC_TX"/>
                 <Labels>
                   <Label lang="en_US">System last error</Label>
                 </Labels>
@@ -50,7 +52,7 @@
           </CANopenObject>
           <CANopenObject index="0x58A0" datatype="VAR" subnode="0">
             <Subitems>
-              <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" cyclic="CONFIG" desc="" units="none" default="0100" cat_id="IDENTIFICATION">
+              <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" pdo_access="CONFIG" desc="" units="none" default="0100" cat_id="IDENTIFICATION">
                 <Labels>
                   <Label lang="en_US">Number of axes</Label>
                 </Labels>
@@ -59,12 +61,12 @@
           </CANopenObject>
           <CANopenObject index="0x1600" datatype="RECORD" subnode="0">
             <Subitems>
-              <Subitem subindex="0" address_type="NVM" access="rw" dtype="u8" id="CIA301_COMMS_RPDO1_MAP" cyclic="CONFIG" desc="" units="none" default="01" cat_id="CIA402">
+              <Subitem subindex="0" address_type="NVM" access="rw" dtype="u8" id="CIA301_COMMS_RPDO1_MAP" pdo_access="CONFIG" desc="" units="none" default="01" cat_id="CIA402">
                 <Labels>
                   <Label lang="en_US">Number of mapped objects</Label>
                 </Labels>
               </Subitem>
-              <Subitem subindex="1" address_type="NVM" access="rw" dtype="u32" id="CIA301_COMMS_RPDO1_MAP_1" cyclic="CONFIG" desc="" units="none" default="10004060" cat_id="CIA402">
+              <Subitem subindex="1" address_type="NVM" access="rw" dtype="u32" id="CIA301_COMMS_RPDO1_MAP_1" pdo_access="CONFIG" desc="" units="none" default="10004060" cat_id="CIA402">
                 <Labels>
                   <Label lang="en_US">RPDO 1 mapping parameter Element 1</Label>
                 </Labels>
@@ -73,7 +75,7 @@
           </CANopenObject>
           <CANopenObject index="0x2151" datatype="VAR" subnode="1">
             <Subitems>
-              <Subitem subindex="0" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" cyclic="CONFIG" desc="Indicates the sensor used for angle readings" units="none" default="0400" cat_id="COMMUTATION">
+              <Subitem subindex="0" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" pdo_access="CONFIG" desc="Indicates the sensor used for angle readings" units="none" default="0400" cat_id="COMMUTATION">
                 <Labels>
                   <Label lang="en_US">Commutation feedback sensor</Label>
                 </Labels>
@@ -122,17 +124,18 @@
           <Subnode index="1">Motion</Subnode>
         </Subnodes>
         <MCBRegisters>
-          <MCBRegister address="0x000F" subnode="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" units="none" cyclic="CYCLIC_TX" desc="Contains the last generated error" default="00000000" cat_id="REPORTING">
+          <MCBRegister address="0x000F" subnode="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" units="none" pdo_access="CYCLIC_TX" desc="Contains the last generated error" default="00000000" cat_id="REPORTING">
+            <MonDistV3 address="0x000F" subnode="0" cyclic="CYCLIC_TX"/>
             <Labels>
               <Label lang="en_US">Last error</Label>
             </Labels>
           </MCBRegister>
-          <MCBRegister address="0x00A0" subnode="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" units="none" cyclic="CONFIG" desc="" default="0100" cat_id="IDENTIFICATION">
+          <MCBRegister address="0x00A0" subnode="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" units="none" pdo_access="CONFIG" desc="" default="0100" cat_id="IDENTIFICATION">
             <Labels>
               <Label lang="en_US">Number of axes</Label>
             </Labels>
           </MCBRegister>
-          <MCBRegister address="0x0151" subnode="1" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" units="none" cyclic="CONFIG" desc="Indicates the sensor used for angle readings" default="0400" cat_id="COMMUTATION">
+          <MCBRegister address="0x0151" subnode="1" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" units="none" pdo_access="CONFIG" desc="Indicates the sensor used for angle readings" default="0400" cat_id="COMMUTATION">
             <Labels>
               <Label lang="en_US">Commutation feedback sensor</Label>
             </Labels>
@@ -145,7 +148,8 @@
               <Enum value="7">Primary Absolute Slave 2 (daisy chain)</Enum>
             </Enumerations>
           </MCBRegister>
-          <MCBRegister address="0x0010" subnode="1" address_type="NVM_NONE" access="rw" dtype="u16" id="DRV_STATE_CONTROL" units="none" cyclic="CYCLIC_RX" desc="Parameter to manage the drive state machine. It is compliant with DS402." default="0000" cat_id="TARGET">
+          <MCBRegister address="0x0010" subnode="1" address_type="NVM_NONE" access="rw" dtype="u16" id="DRV_STATE_CONTROL" units="none" pdo_access="CYCLIC_RX" desc="Parameter to manage the drive state machine. It is compliant with DS402." default="0000" cat_id="TARGET">
+            <MonDistV3 address="0x0010" subnode="1" cyclic="CYCLIC_RX"/>
             <Labels>
               <Label lang="en_US">Control word</Label>
             </Labels>

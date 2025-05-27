@@ -2,7 +2,7 @@ import pytest
 
 from ingenialink.enums.register import RegDtype
 from ingenialink.exceptions import ILValueError
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
 
 
 @pytest.mark.no_connection
@@ -43,3 +43,28 @@ def test_convert_bytes_to_dtype_wrong_string():
     wrong_data = b"\xff\xff\xff\xff\xff\x00"
     with pytest.raises(ILValueError):
         convert_bytes_to_dtype(wrong_data, RegDtype.STR)
+
+
+class ExpensiveCalculator:
+    def __init__(self, factor):
+        self.factor = factor
+        self.calls = 0
+
+    @weak_lru(maxsize=32)
+    def compute(self, x):
+        self.calls += 1
+        return x * self.factor
+
+
+@pytest.mark.no_connection
+def test_weak_lru_cache():
+    calc = ExpensiveCalculator(10)
+
+    result1 = calc.compute(5)
+    result2 = calc.compute(5)
+
+    # The compute method is called only once
+    assert calc.calls == 1
+
+    assert result1 == 50
+    assert result2 == 50
