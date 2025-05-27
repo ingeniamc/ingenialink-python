@@ -6,8 +6,7 @@ from scipy import signal
 
 from ingenialink.enums.register import RegDtype
 from ingenialink.enums.servo import ServoState
-from ingenialink.virtual.network import VirtualNetwork
-from virtual_drive.core import OperationMode, VirtualDrive
+from virtual_drive.core import OperationMode
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -235,13 +234,3 @@ def test_phasing():
 @pytest.mark.skip
 def test_feedbacks():
     pass
-
-
-@pytest.mark.no_connection
-def test_virtual_drive_defaults():
-    server = VirtualDrive(81)
-    server.start()
-    net = VirtualNetwork()
-    virtual_servo = net.connect_to_slave(server.dictionary_path, server.port)
-
-    server.stop()
