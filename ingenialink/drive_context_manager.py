@@ -1,9 +1,13 @@
 from typing import Optional, Union, cast
 
+from ingenialogger import get_logger
+
 from ingenialink.enums.register import RegAccess
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import Servo
+
+logger = get_logger(__name__)
 
 
 class DriveContextManager:
@@ -59,10 +63,17 @@ class DriveContextManager:
             register: register.
             value: changed value.
         """
+        if register.access in [RegAccess.WO, RegAccess.RO]:
+            return
         if register.identifier in self._do_not_restore_registers:
             return
         if register.subnode not in self._registers_changed:
             self._registers_changed[register.subnode] = {}
+        logger.warning(
+            f"will add register {register.identifier} with access {register.access}, "
+            f"prev_value={self._original_register_values[register.subnode][register.identifier]}, "
+            f"new_value={value}, "
+        )
         self._registers_changed[register.subnode][cast("str", register.identifier)] = value
 
     def _store_register_data(self) -> None:
