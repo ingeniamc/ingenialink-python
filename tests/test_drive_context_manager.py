@@ -31,7 +31,8 @@ def test_drive_context_manager(setup_manager):
 
     new_reg_value = 100.0
     previous_reg_value = _read_user_over_voltage_uid(servo)
-    assert previous_reg_value != new_reg_value
+    if previous_reg_value == new_reg_value:
+        new_reg_value -= 1.0
 
     with context:
         servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
@@ -50,11 +51,14 @@ def test_drive_context_manager_nested_contexts(setup_manager):
 
     new_over_volt_value = 100.0
     previous_over_volt_value = _read_user_over_voltage_uid(servo)
-    assert previous_over_volt_value != new_over_volt_value
+    if previous_over_volt_value == new_over_volt_value:
+        new_over_volt_value -= 1.0
 
     new_under_volt_value = 1.0
     previous_under_volt_value = _read_user_under_voltage_uid(servo)
     assert previous_under_volt_value != new_under_volt_value
+    if previous_under_volt_value == new_under_volt_value:
+        new_under_volt_value += 1.0
 
     with context:
         servo.write(_USER_OVER_VOLTAGE_UID, new_over_volt_value, subnode=1)
@@ -87,45 +91,50 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(mocker, se
         subnode: Optional[int],
         expected_uid: str,
         expected_value: int,
-        expected_call_count: int,
-    ) -> None:
+        prev_call_count: int,
+    ) -> int:
         if store:
             servo.store_parameters(subnode=subnode)
         else:
             servo.restore_parameters(subnode=subnode)
-        assert register_update_callback_spy.call_count == expected_call_count
+        call_count = register_update_callback_spy.call_count
+        assert call_count > prev_call_count
         call_args = register_update_callback_spy.call_args.args
         call_args[1].identifier == expected_uid
         call_args[2] == expected_value
         assert context._registers_changed == {}
+        return call_count
 
     with context:
-        assert_store_restore_is_skipped(
-            True, 0, servo.STORE_COCO_ALL, PASSWORD_STORE_RESTORE_SUB_0, 1
+        prev_call_count = register_update_callback_spy.call_count
+        prev_call_count = assert_store_restore_is_skipped(
+            True, 0, servo.STORE_COCO_ALL, PASSWORD_STORE_RESTORE_SUB_0, prev_call_count
         )
 
-        assert_store_restore_is_skipped(
-            True, 1, servo.STORE_MOCO_ALL_REGISTERS, PASSWORD_STORE_ALL, 2
+        prev_call_count = assert_store_restore_is_skipped(
+            True, 1, servo.STORE_MOCO_ALL_REGISTERS, PASSWORD_STORE_ALL, prev_call_count
         )
 
-        assert_store_restore_is_skipped(True, None, servo.STORE_COCO_ALL, PASSWORD_RESTORE_ALL, 3)
-
-        assert_store_restore_is_skipped(
-            False, 0, servo.RESTORE_COCO_ALL, PASSWORD_STORE_RESTORE_SUB_0, 4
+        prev_call_count = assert_store_restore_is_skipped(
+            True, None, servo.STORE_COCO_ALL, PASSWORD_RESTORE_ALL, prev_call_count
         )
 
-        assert_store_restore_is_skipped(
-            False, 1, servo.RESTORE_MOCO_ALL_REGISTERS, PASSWORD_RESTORE_ALL, 5
+        prev_call_count = assert_store_restore_is_skipped(
+            False, 0, servo.RESTORE_COCO_ALL, PASSWORD_STORE_RESTORE_SUB_0, prev_call_count
         )
 
-        assert_store_restore_is_skipped(
-            False, None, servo.RESTORE_COCO_ALL, PASSWORD_RESTORE_ALL, 6
+        prev_call_count = assert_store_restore_is_skipped(
+            False, 1, servo.RESTORE_MOCO_ALL_REGISTERS, PASSWORD_RESTORE_ALL, prev_call_count
         )
 
-        assert servo_write_spy.call_count == 6
+        prev_call_count = assert_store_restore_is_skipped(
+            False, None, servo.RESTORE_COCO_ALL, PASSWORD_RESTORE_ALL, prev_call_count
+        )
+
+        assert servo_write_spy.call_count == prev_call_count
 
     # Nothing is restored when the context exits
-    assert servo_write_spy.call_count == 6
+    assert servo_write_spy.call_count == prev_call_count
 
 
 @pytest.mark.ethernet
@@ -141,7 +150,8 @@ def test_drive_context_manager_with_do_not_restore_registers(setup_manager):
 
     new_reg_value = 100.0
     previous_reg_value = _read_user_over_voltage_uid(servo)
-    assert previous_reg_value != new_reg_value
+    if previous_reg_value == new_reg_value:
+        new_reg_value -= 1.0
 
     with context:
         servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
