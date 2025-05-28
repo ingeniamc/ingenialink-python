@@ -91,6 +91,9 @@ class DriveContextManager:
                     continue
                 if register.access in [RegAccess.WO, RegAccess.RO]:
                     continue
+                logger.warning(
+                    f"will try to read register {register.identifier} with access {register.access}"
+                )
                 try:
                     register_value = self.drive.read(uid, subnode=axis)
                 except ILIOError:
