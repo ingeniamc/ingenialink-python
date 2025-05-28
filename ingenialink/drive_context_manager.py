@@ -70,10 +70,14 @@ class DriveContextManager:
         if register.subnode not in self._registers_changed:
             self._registers_changed[register.subnode] = {}
         logger.warning(
-            f"will add register {register.identifier} with access {register.access}, "
-            f"prev_value={self._original_register_values[register.subnode][register.identifier]}, "
-            f"new_value={value}, "
+            f"will add register {register.identifier} with access {register.access}, {value=}"
         )
+        if (
+            register.subnode in self._original_register_values
+            and register.identifier in self._original_register_values[register.subnode]
+        ):
+            prev_value = self._original_register_values[register.subnode][register.identifier]
+            logger.warning(f"{prev_value=}")
         self._registers_changed[register.subnode][cast("str", register.identifier)] = value
 
     def _store_register_data(self) -> None:
