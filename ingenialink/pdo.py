@@ -35,8 +35,8 @@ class PDOMapItem:
 
     """
 
-    ACCEPTED_CYCLIC: RegCyclicType
-    """Accepted cyclic: CYCLIC_TX, CYCLIC_RX or CYCLIC_RXTX."""
+    ACCEPTED_CYCLICS: tuple[RegCyclicType, ...]
+    """Accepted cyclic: CYCLIC_TX, CYCLIC_RX, CYCLIC_RXTX, CYCLIC_SI, CYCLIC_SO, CYCLIC_SISO."""
 
     def __init__(
         self,
@@ -52,7 +52,7 @@ class PDOMapItem:
                 subnode=0,
                 idx=0x0000,
                 subidx=0x00,
-                pdo_access=self.ACCEPTED_CYCLIC,
+                pdo_access=self.ACCEPTED_CYCLICS[0],
                 dtype=RegDtype.STR,
                 access=RegAccess.RW,
             )
@@ -67,10 +67,12 @@ class PDOMapItem:
         Raises:
             ILError: Tf the register is not mappable.
         """
-        if self.register.pdo_access not in [self.ACCEPTED_CYCLIC, RegCyclicType.RXTX]:
+        if self.register.pdo_access not in self.ACCEPTED_CYCLICS:
+            formatted_accepted = ", ".join([str(cyclic) for cyclic in self.ACCEPTED_CYCLICS])
+
             raise ILError(
                 f"Incorrect pdo access. "
-                f"It should be {self.ACCEPTED_CYCLIC} or {RegCyclicType.RXTX},"
+                f"It should be {formatted_accepted}."
                 f" obtained: {self.register.pdo_access}"
             )
 
@@ -161,7 +163,11 @@ class PDOMapItem:
 class RPDOMapItem(PDOMapItem):
     """Class to represent RPDO mapping items."""
 
-    ACCEPTED_CYCLIC = RegCyclicType.RX
+    ACCEPTED_CYCLICS = (
+        RegCyclicType.RX,
+        RegCyclicType.SAFETY_INPUT,
+        RegCyclicType.SAFETY_INPUT_OUTPUT,
+    )
 
     def __init__(
         self,
@@ -193,7 +199,11 @@ class RPDOMapItem(PDOMapItem):
 class TPDOMapItem(PDOMapItem):
     """Class to represent TPDO mapping items."""
 
-    ACCEPTED_CYCLIC = RegCyclicType.TX
+    ACCEPTED_CYCLICS = (
+        RegCyclicType.TX,
+        RegCyclicType.SAFETY_OUTPUT,
+        RegCyclicType.SAFETY_INPUT_OUTPUT,
+    )
 
 
 class PDOMap:
