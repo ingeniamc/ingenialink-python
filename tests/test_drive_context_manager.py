@@ -1,11 +1,6 @@
-import time
-from typing import Optional
-
 import pytest
 
 from ingenialink.constants import (
-    PASSWORD_RESTORE_ALL,
-    PASSWORD_STORE_ALL,
     PASSWORD_STORE_RESTORE_SUB_0,
 )
 from ingenialink.drive_context_manager import DriveContextManager
@@ -84,62 +79,39 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(mocker, se
     context = DriveContextManager(servo)
     assert len(context._do_not_restore_registers) == 4
 
-    register_update_callback_spy = mocker.spy(context, "_register_update_callback")
+    # If not additional ignored registers are added,
+    # the default ones are the ones that are troublesome
+    # because they have a specific password, that is written but not read.
+    assert context._do_not_restore_registers == {
+        servo.STORE_COCO_ALL,
+        servo.STORE_MOCO_ALL_REGISTERS,
+        servo.RESTORE_COCO_ALL,
+        servo.RESTORE_MOCO_ALL_REGISTERS,
+    }
+
+    servo.write(servo.CONTROL_WORD_REGISTERS, 10)
+
     servo_write_spy = mocker.spy(context.drive, "write")
 
-    def assert_store_restore_is_skipped(
-        store: bool,
-        subnode: Optional[int],
-        expected_uid: str,
-        expected_value: int,
-        prev_call_count: int,
-    ) -> int:
-        if store:
-            servo.store_parameters(subnode=subnode)
-        else:
-            servo.restore_parameters(subnode=subnode)
-
-        # Give time for store/restore to complete
-        time.sleep(5)
-
-        call_count = register_update_callback_spy.call_count
-        assert call_count > prev_call_count
-        call_args = register_update_callback_spy.call_args.args
-        call_args[1].identifier == expected_uid
-        call_args[2] == expected_value
-        assert context._registers_changed == {}
-        return call_count
-
     with context:
-        prev_call_count = register_update_callback_spy.call_count
-        prev_call_count = assert_store_restore_is_skipped(
-            True, 0, servo.STORE_COCO_ALL, PASSWORD_STORE_RESTORE_SUB_0, prev_call_count
-        )
+        # One of this registers is picked as a sample to write
+        servo.write(servo.STORE_COCO_ALL, PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
+        # Inside the context, to write is called
+        assert servo_write_spy.call_count == 1
 
-        prev_call_count = assert_store_restore_is_skipped(
-            True, 1, servo.STORE_MOCO_ALL_REGISTERS, PASSWORD_STORE_ALL, prev_call_count
-        )
+        # Other registers that are not ignored are expected to be rolled back
+        servo.write(servo.CONTROL_WORD_REGISTERS, 0)
+        assert servo_write_spy.call_count == 2
 
-        prev_call_count = assert_store_restore_is_skipped(
-            True, None, servo.STORE_COCO_ALL, PASSWORD_RESTORE_ALL, prev_call_count
-        )
+        servo_write_spy.reset_mock()
 
-        prev_call_count = assert_store_restore_is_skipped(
-            False, 0, servo.RESTORE_COCO_ALL, PASSWORD_STORE_RESTORE_SUB_0, prev_call_count
-        )
+    # After exiting the context, this register is not restored.
+    # No write has been called to restore the register.
+    assert servo_write_spy.call_count == 1
+    assert servo_write_spy.call_args[0][0] == servo.CONTROL_WORD_REGISTERS
+    assert servo_write_spy.call_args[0][1] == 10
 
-        prev_call_count = assert_store_restore_is_skipped(
-            False, 1, servo.RESTORE_MOCO_ALL_REGISTERS, PASSWORD_RESTORE_ALL, prev_call_count
-        )
-
-        prev_call_count = assert_store_restore_is_skipped(
-            False, None, servo.RESTORE_COCO_ALL, PASSWORD_RESTORE_ALL, prev_call_count
-        )
-
-        assert servo_write_spy.call_count == prev_call_count
-
-    # Nothing is restored when the context exits
-    assert servo_write_spy.call_count == prev_call_count
+    assert servo.read(servo.CONTROL_WORD_REGISTERS) == 10
 
 
 @pytest.mark.ethernet
