@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 
 import pytest
@@ -97,6 +98,10 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(mocker, se
             servo.store_parameters(subnode=subnode)
         else:
             servo.restore_parameters(subnode=subnode)
+
+        # Give time for store/restore to complete
+        time.sleep(5)
+
         call_count = register_update_callback_spy.call_count
         assert call_count > prev_call_count
         call_args = register_update_callback_spy.call_args.args
