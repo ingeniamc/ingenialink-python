@@ -1,8 +1,6 @@
 import pytest
 
-from ingenialink.constants import (
-    PASSWORD_STORE_RESTORE_SUB_0,
-)
+from ingenialink.constants import PASSWORD_STORE_ALL
 from ingenialink.drive_context_manager import DriveContextManager
 
 _USER_OVER_VOLTAGE_UID = "DRV_PROT_USER_OVER_VOLT"
@@ -95,7 +93,7 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(mocker, se
 
     with context:
         # One of this registers is picked as a sample to write
-        servo.write(servo.STORE_COCO_ALL, PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
+        servo.write(servo.STORE_COCO_ALL, PASSWORD_STORE_ALL, subnode=0)
         # Inside the context, to write is called
         assert servo_write_spy.call_count == 1
 
