@@ -89,7 +89,7 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(mocker, se
         servo.RESTORE_MOCO_ALL_REGISTERS,
     }
 
-    servo.write(servo.CONTROL_WORD_REGISTERS, 10)
+    servo.write("MOT_RATED_TORQUE", 10)
 
     servo_write_spy = mocker.spy(context.drive, "write")
 
@@ -105,7 +105,7 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(mocker, se
         # https://novantamotion.atlassian.net/browse/INGK-1106
 
         # Other registers that are not ignored are expected to be rolled back
-        servo.write(servo.CONTROL_WORD_REGISTERS, 0)
+        servo.write("MOT_RATED_TORQUE", 0)
         assert servo_write_spy.call_count == 2
 
         servo_write_spy.reset_mock()
@@ -113,10 +113,10 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(mocker, se
     # After exiting the context, this register is not restored.
     # No write has been called to restore the register.
     assert servo_write_spy.call_count == 1
-    assert servo_write_spy.call_args[0][0] == servo.CONTROL_WORD_REGISTERS
+    assert servo_write_spy.call_args[0][0] == "MOT_RATED_TORQUE"
     assert servo_write_spy.call_args[0][1] == 10
 
-    assert servo.read(servo.CONTROL_WORD_REGISTERS) == 10
+    assert servo.read("MOT_RATED_TORQUE") == 10
 
 
 @pytest.mark.ethernet
