@@ -101,7 +101,8 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(mocker, se
 
         # Some drives are unresponsive while they are doing the store/restore
         # Wait some time
-        time.sleep(2)
+        time.sleep(8)
+        # https://novantamotion.atlassian.net/browse/INGK-1106
 
         # Other registers that are not ignored are expected to be rolled back
         servo.write(servo.CONTROL_WORD_REGISTERS, 0)
