@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 from ingenialink.constants import PASSWORD_STORE_ALL
@@ -96,6 +98,10 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(mocker, se
         servo.write(servo.STORE_COCO_ALL, PASSWORD_STORE_ALL, subnode=0)
         # Inside the context, to write is called
         assert servo_write_spy.call_count == 1
+
+        # Some drives are unresponsive while they are doing the store/restore
+        # Wait some time
+        time.sleep(2)
 
         # Other registers that are not ignored are expected to be rolled back
         servo.write(servo.CONTROL_WORD_REGISTERS, 0)
