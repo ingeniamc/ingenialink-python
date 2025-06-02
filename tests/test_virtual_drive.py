@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -6,7 +7,7 @@ from scipy import signal
 
 from ingenialink.enums.register import RegDtype
 from ingenialink.enums.servo import ServoState
-from virtual_drive.core import OperationMode
+from virtual_drive.core import OperationMode, VirtualDrive
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -234,3 +235,32 @@ def test_phasing():
 @pytest.mark.skip
 def test_feedbacks():
     pass
+
+
+class MockVirtualDrive(VirtualDrive):
+    def __init__(self, *args, **kwargs):
+        self.read_config_defaults_calls = 0
+        self.read_xdf_v3_defaults_calls = 0
+        super().__init__(*args, **kwargs)
+
+    def _read_defaults_from_config(self):
+        self.read_config_defaults_calls += 1
+        return super()._read_defaults_from_config()
+
+    def _read_defaults_from_xdf_v3(self):
+        self.read_xdf_v3_defaults_calls += 1
+        return super()._read_defaults_from_xdf_v3()
+
+
+@pytest.mark.no_connection
+def test_virtual_drive_defaults_from_config():
+    server = MockVirtualDrive(81)
+    assert server.read_config_defaults_calls == 1
+    assert server.read_xdf_v3_defaults_calls == 0
+
+
+@pytest.mark.no_connection
+def test_virtual_drive_defaults_from_xdf_v3(virtual_drive_resources_folder):
+    server = MockVirtualDrive(81, Path(virtual_drive_resources_folder) / "virtual_drive_v3.0.xdf")
+    assert server.read_config_defaults_calls == 0
+    assert server.read_xdf_v3_defaults_calls == 1
