@@ -86,6 +86,15 @@
             </Subitems>
           </CANopenObject>
         </CANopenObjects>
+        <CANopenObject id="CIA402_CL_CUR_REF_MAX" index="0x6073" datatype="VAR" axis="1">
+            <Subitems>
+              <Subitem subindex="0" address_type="NVM_INDIRECT" access="rw" dtype="u16" id="CIA402_CL_CUR_REF_MAX" pdo_access="CYCLIC_RX" desc="User allowed maximum current" units="‰ rated current" default="c05d" cat_id="CIA402">
+                <Labels>
+                  <Label lang="en_US">Max. current</Label>
+                </Labels>
+              </Subitem>
+            </Subitems>
+          </CANopenObject>
         <Errors>
           <Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
             <Labels>
