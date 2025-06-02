@@ -274,6 +274,21 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Run virtual drive tests on docker') {
+                            steps {
+                                script {
+                                    restoreIngenialinkWheelEnvVar()
+                                }
+                                sh """
+                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP
+                                """
+                            }
+                            post {
+                                always {
+                                    junit "pytest_reports\\*.xml"
+                                }
+                            }
+                        }
                     }
                 }
                 stage('EtherCAT/No Connection - Tests') {

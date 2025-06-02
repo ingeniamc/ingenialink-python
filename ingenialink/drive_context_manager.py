@@ -1,9 +1,13 @@
 from typing import Optional, Union, cast
 
+from ingenialogger import get_logger
+
 from ingenialink.enums.register import RegAccess
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import Servo
+
+logger = get_logger(__name__)
 
 
 class DriveContextManager:
@@ -16,9 +20,29 @@ class DriveContextManager:
         self,
         servo: Servo,
         axis: Optional[int] = None,
-    ):
+        do_not_restore_registers: Optional[list[str]] = None,
+    ) -> None:
+        """Initializes the registers that shouldn't be stored.
+
+        Args:
+            servo: servo.
+            axis: axis to store/restore registers. If not specified, all axis will be
+            stored/restored. Defaults to None.
+            do_not_restore_registers: list of registers that should not be stored/restored.
+                Defaults to [].
+        """
         self.drive = servo
         self._axis: Optional[int] = axis
+
+        self._do_not_restore_registers: set[str] = (
+            set(do_not_restore_registers) if isinstance(do_not_restore_registers, list) else set()
+        )
+        self._do_not_restore_registers.update([
+            servo.STORE_COCO_ALL,
+            servo.STORE_MOCO_ALL_REGISTERS,
+            servo.RESTORE_COCO_ALL,
+            servo.RESTORE_MOCO_ALL_REGISTERS,
+        ])
 
         self._original_register_values: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
         self._registers_changed: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
@@ -31,12 +55,18 @@ class DriveContextManager:
     ) -> None:
         """Saves the register uids that are changed.
 
+        It will ignore the registers that should not be restored `self._do_not_restore_registers`.
+
         Args:
             alias: servo alias.
             servo: servo.
             register: register.
             value: changed value.
         """
+        if register.access in [RegAccess.WO, RegAccess.RO]:
+            return
+        if register.identifier in self._do_not_restore_registers:
+            return
         if register.subnode not in self._registers_changed:
             self._registers_changed[register.subnode] = {}
         self._registers_changed[register.subnode][cast("str", register.identifier)] = value
@@ -48,6 +78,8 @@ class DriveContextManager:
         for axis in axes:
             self._original_register_values[axis] = {}
             for uid, register in drive.dictionary.registers(subnode=axis).items():
+                if register.identifier in self._do_not_restore_registers:
+                    continue
                 if register.access in [RegAccess.WO, RegAccess.RO]:
                     continue
                 try:
