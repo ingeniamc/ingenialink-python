@@ -36,7 +36,7 @@ class PDOMapItem:
     """
 
     ACCEPTED_CYCLICS: tuple[RegCyclicType, ...]
-    """Accepted cyclic: CYCLIC_TX, CYCLIC_RX, CYCLIC_RXTX, CYCLIC_SI, CYCLIC_SO, CYCLIC_SISO."""
+    """Accepted cyclic: CYCLIC_TX, CYCLIC_RX, CYCLIC_SI, CYCLIC_SO, CYCLIC_SISO."""
 
     def __init__(
         self,
