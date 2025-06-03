@@ -77,6 +77,7 @@ class RegCyclicType(Enum):
 
     RX = "CYCLIC_RX"
     TX = "CYCLIC_TX"
+    RXTX = "CYCLIC_RXTX"
     CONFIG = "CONFIG"
     SAFETY_INPUT = "CYCLIC_SI"
     SAFETY_OUTPUT = "CYCLIC_SO"
