@@ -8,7 +8,7 @@ from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interfa
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.register import MonitoringV3
+from ingenialink.register import MonDistV3
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -50,12 +50,12 @@ class EthernetDictionaryV2(DictionaryV2):
     def _safety_registers(self) -> list[EthercatRegister]:
         return [
             EthercatRegister(
-                identifier="FSOE_TOTAL_ERROR",
+                identifier="FSOE_MANUF_SAFETY_ADDRESS",
                 idx=0x4193,
                 subidx=0x00,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
-                subnode=0,
+                subnode=1,
             ),
             EthercatRegister(
                 identifier="MDP_CONFIGURED_MODULE_1",
@@ -71,7 +71,7 @@ class EthernetDictionaryV2(DictionaryV2):
                 subidx=0x00,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
-                subnode=0,
+                subnode=1,
             ),
             EthercatRegister(
                 identifier="FSOE_SS1_TIME_TO_STO_1",
@@ -79,7 +79,7 @@ class EthernetDictionaryV2(DictionaryV2):
                 subidx=0x01,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
-                subnode=0,
+                subnode=1,
             ),
         ]
 
@@ -116,9 +116,9 @@ class EthernetDictionaryV2(DictionaryV2):
         try:
             reg_address = int(register.attrib["address"], 16)
 
-            monitoring: Optional[MonitoringV3] = None
+            monitoring: Optional[MonDistV3] = None
             if current_read_register.pdo_access != RegCyclicType.CONFIG:
-                monitoring = MonitoringV3(
+                monitoring = MonDistV3(
                     address=reg_address,
                     subnode=current_read_register.subnode,
                     cyclic=current_read_register.pdo_access,

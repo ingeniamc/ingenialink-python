@@ -19,22 +19,18 @@
 		</Categories>
 		<Devices>
 			<CANDevice firmwareVersion="2.4.1" ProductCode="61939713" PartNumber="EVS-NET-C" RevisionNumber="196617">
-				<Subnodes>
-					<Subnode index="0">Communication</Subnode>
-					<Subnode index="1">Motion</Subnode>
-				</Subnodes>
 				<CANopenObjects>
-					<CANopenObject index="0x580F" datatype="VAR" subnode="0">
+					<CANopenObject index="0x580F" datatype="VAR">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" pdo_access="CYCLIC_TX" desc="Contains the last generated error" default="00000000" cat_id="REPORTING">
-								<MonitoringV3 address="0x000F" subnode="0" cyclic="CYCLIC_TX"/>
+								<MonDistV3 address="0x000F" subnode="0" cyclic="CYCLIC_TX"/>
 								<Labels>
 									<Label lang="en_US">Last error</Label>
 								</Labels>
 							</Subitem>
 						</Subitems>
 					</CANopenObject>
-					<CANopenObject index="0x58A0" datatype="VAR" subnode="0">
+					<CANopenObject index="0x58A0" datatype="VAR">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" units="cnt" pdo_access="CONFIG" desc="" default="0100" cat_id="IDENTIFICATION">
 								<Labels>
@@ -43,7 +39,7 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject >
-					<CANopenObject index="0x1400" datatype="RECORD" subnode="0">
+					<CANopenObject index="0x1400" datatype="RECORD">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u8" id="CIA301_COMMS_RPDO1" pdo_access="CONFIG" desc="" default="0300" cat_id="CIA402">
 								<Labels>
@@ -67,7 +63,7 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject >
-					<CANopenObject index="0x1600" datatype="RECORD" subnode="0" id="CIA301_COMMS_RPDO1_MAP">
+					<CANopenObject index="0x1600" datatype="RECORD" id="CIA301_COMMS_RPDO1_MAP">
 						<Labels>
 							<Label lang="en_US">RPDO 1 mapping parameter</Label>
 						</Labels>
@@ -84,7 +80,7 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject >
-					<CANopenObject index="0x2151" datatype="VAR" subnode="1">
+					<CANopenObject index="0x2151" datatype="VAR" axis="1">
 						<Subitems>
 							<Subitem subindex="0" address_type="NVM_CFG" access="rw" dtype="u16" id="COMMU_ANGLE_SENSOR" pdo_access="CONFIG" desc="Indicates the sensor used for angle readings" default="0400" cat_id="COMMUTATION">
 								<Labels>
@@ -102,10 +98,10 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject >
-					<CANopenObject index="0x2010" datatype="VAR" subnode="1">
+					<CANopenObject index="0x2010" datatype="VAR" axis="1">
             <Subitems>
               <Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="u16" id="DRV_STATE_CONTROL" pdo_access="CYCLIC_RX" desc="Parameter to manage the drive state machine. It is compliant with DS402." units="none" default="0000" cat_id="TARGET">
-				<MonitoringV3 address="0x0010" subnode="1" cyclic="CYCLIC_RX"/>
+				<MonDistV3 address="0x0010" subnode="1" cyclic="CYCLIC_RX"/>
                 <Labels>
                   <Label lang="en_US">Control word</Label>
                 </Labels>

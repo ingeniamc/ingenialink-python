@@ -34,10 +34,10 @@ def test_virtual_drive_disconnection(virtual_drive_custom_dict, virtual_drive_re
 @pytest.mark.no_connection
 def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict):
     dictionaries = [
-        "//azr-srv-ingfs1/pool/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-c_eth_2.4.0.xdf",
-        "//azr-srv-ingfs1/pool/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_eth_2.4.0.xdf",
-        "//azr-srv-ingfs1/pool/distext/products/EVE-XCR/firmware/2.4.0/eve-xcr-c_can_2.4.0.xdf",
-        "//azr-srv-ingfs1/pool/distext/products/CAP-XCR/firmware/2.4.0/cap-xcr-c_can_2.4.0.xdf",
+        "//azr-srv-ingfs1/pool/distext/products/EVE-XCR/firmware/2.7.0/eve-xcr-c_eth_2.7.0.xdf",
+        "//azr-srv-ingfs1/pool/distext/products/CAP-XCR/firmware/2.7.0/cap-xcr-c_eth_2.7.0.xdf",
+        "//azr-srv-ingfs1/pool/distext/products/EVE-XCR/firmware/2.7.0/eve-xcr-c_can_2.7.0.xdf",
+        "//azr-srv-ingfs1/pool/distext/products/CAP-XCR/firmware/2.7.0/cap-xcr-c_can_2.7.0.xdf",
     ]
     for dictionary in dictionaries:
         if not os.path.exists(dictionary):

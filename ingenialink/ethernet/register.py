@@ -8,7 +8,7 @@ from ingenialink.enums.register import (
     RegDtype,
     RegPhy,
 )
-from ingenialink.register import MonitoringV3, Register
+from ingenialink.register import MonDistV3, Register
 
 
 class EthernetRegister(Register):
@@ -69,7 +69,7 @@ class EthernetRegister(Register):
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
-        monitoring: Optional[MonitoringV3] = None,
+        monitoring: Optional[MonDistV3] = None,
     ):
         super().__init__(
             dtype,

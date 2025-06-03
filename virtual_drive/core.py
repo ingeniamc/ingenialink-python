@@ -16,7 +16,7 @@ from typing_extensions import override
 
 from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.constants import ETH_BUF_SIZE, MONITORING_BUFFER_SIZE
-from ingenialink.dictionary import Interface
+from ingenialink.dictionary import DictionaryV3, Interface
 from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.ethernet.servo import EthernetServo
@@ -1475,8 +1475,7 @@ class VirtualDrive(Thread):
         if self._monitoring:
             self._monitoring.disable()
 
-    def _init_registers(self) -> None:
-        """Initialize the registers using the configuration file."""
+    def _read_defaults_from_config(self) -> None:
         configuration_file = os.path.join(
             pathlib.Path(__file__).parent.resolve(), self.PATH_CONFIGURATION_RELATIVE
         )
@@ -1491,6 +1490,25 @@ class VirtualDrive(Thread):
                 conf_register.uid,
                 reg_data,
             )
+
+    def _read_defaults_from_xdf_v3(self) -> None:
+        for subnode in self.__dictionary.subnodes:
+            for uid, dict_register in self.__dictionary.registers(subnode).items():
+                if not self.__register_exists(subnode, uid) or dict_register.default is None:
+                    continue
+                self.set_value_by_id(
+                    subnode,
+                    uid,
+                    dict_register.default,
+                )
+
+    def _init_registers(self) -> None:
+        """Initialize the registers using the configuration file."""
+        if isinstance(self.__dictionary, DictionaryV3):
+            self._read_defaults_from_xdf_v3()
+        else:
+            self._read_defaults_from_config()
+
         value: Union[str, int]
         for subnode in self.__dictionary.subnodes:
             for reg_id, reg in self.__dictionary.registers(subnode).items():

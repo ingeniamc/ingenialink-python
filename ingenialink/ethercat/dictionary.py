@@ -17,7 +17,7 @@ from ingenialink.enums.register import (
     RegDtype,
 )
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.register import MonitoringV3
+from ingenialink.register import MonDistV3
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -61,12 +61,12 @@ class EthercatDictionaryV2(DictionaryV2):
     def _safety_registers(self) -> list[EthercatRegister]:
         return [
             EthercatRegister(
-                identifier="FSOE_TOTAL_ERROR",
+                identifier="FSOE_MANUF_SAFETY_ADDRESS",
                 idx=0x4193,
                 subidx=0x00,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
-                subnode=0,
+                subnode=1,
             ),
             EthercatRegister(
                 identifier="MDP_CONFIGURED_MODULE_1",
@@ -82,7 +82,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 subidx=0x00,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
-                subnode=0,
+                subnode=1,
             ),
             EthercatRegister(
                 identifier="FSOE_SS1_TIME_TO_STO_1",
@@ -90,7 +90,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 subidx=0x01,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
-                subnode=0,
+                subnode=1,
             ),
         ]
 
@@ -231,13 +231,13 @@ class EthercatDictionaryV2(DictionaryV2):
             )
             subidx = 0x00
 
-            monitoring: Optional[MonitoringV3] = None
+            monitoring: Optional[MonDistV3] = None
             if current_read_register.pdo_access != RegCyclicType.CONFIG:
                 address = idx - (
                     CANOPEN_ADDRESS_OFFSET
                     + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
                 )
-                monitoring = MonitoringV3(
+                monitoring = MonDistV3(
                     address=address,
                     subnode=current_read_register.subnode,
                     cyclic=current_read_register.pdo_access,
