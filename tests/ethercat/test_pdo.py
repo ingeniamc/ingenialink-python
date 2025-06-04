@@ -71,9 +71,11 @@ def test_rpdo_item_wrong_cyclic(open_dictionary):
     with pytest.raises(ILError) as exc_info:
         RPDOMapItem(register)
     assert (
-        str(exc_info.value)
-        == "Incorrect pdo access. It should be RegCyclicType.RX or RegCyclicType.RXTX, obtained:"
-        " RegCyclicType.TX"
+        str(exc_info.value) == "Incorrect pdo access. "
+        "It should be RegCyclicType.RX, "
+        "RegCyclicType.SAFETY_INPUT, "
+        "RegCyclicType.SAFETY_INPUT_OUTPUT. "
+        "obtained: RegCyclicType.TX"
     )
 
 
@@ -84,9 +86,11 @@ def test_tpdo_item_wrong_cyclic(open_dictionary):
     with pytest.raises(ILError) as exc_info:
         TPDOMapItem(register)
     assert (
-        str(exc_info.value)
-        == "Incorrect pdo access. It should be RegCyclicType.TX or RegCyclicType.RXTX, obtained:"
-        " RegCyclicType.RX"
+        str(exc_info.value) == "Incorrect pdo access. "
+        "It should be RegCyclicType.TX, "
+        "RegCyclicType.SAFETY_OUTPUT, "
+        "RegCyclicType.SAFETY_INPUT_OUTPUT. "
+        "obtained: RegCyclicType.RX"
     )
 
 
@@ -467,7 +471,6 @@ def test_rpdo_padding():
     size_bits = 3
     rpdo_item = RPDOMapItem(size_bits=size_bits)
     assert rpdo_item.size_bits == size_bits
-    assert rpdo_item.ACCEPTED_CYCLIC == RegCyclicType.RX
     padding_register = rpdo_item.register
     assert isinstance(padding_register, EthercatRegister)
     assert padding_register.idx == 0x0000
@@ -482,7 +485,6 @@ def test_tpdo_padding():
     size_bits = 4
     tpdo_item = TPDOMapItem(size_bits=size_bits)
     assert tpdo_item.size_bits == size_bits
-    assert tpdo_item.ACCEPTED_CYCLIC == RegCyclicType.TX
     padding_register = tpdo_item.register
     assert isinstance(padding_register, EthercatRegister)
     assert padding_register.idx == 0x0000

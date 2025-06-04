@@ -52,7 +52,7 @@ def test_read_dictionary_registers():
     expected_regs_per_subnode = {
         0: [
             "DRV_DIAG_ERROR_LAST_COM",
-            "TEST_RXTX_REGISTER",
+            "TEST_SISO_REGISTER",
             "DRV_AXIS_NUMBER",
             "CIA301_COMMS_RPDO1_MAP",
             "CIA301_COMMS_RPDO1_MAP_1",
@@ -242,7 +242,7 @@ def test_register_default_values():
         0: {
             "DRV_DIAG_ERROR_LAST_COM": 0,
             "DRV_AXIS_NUMBER": 1,
-            "TEST_RXTX_REGISTER": 0,
+            "TEST_SISO_REGISTER": 0,
             "CIA301_COMMS_RPDO1_MAP": 1,
             "CIA301_COMMS_RPDO1_MAP_1": 268451936,
         },
@@ -263,7 +263,7 @@ def test_register_description():
         0: {
             "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
             "DRV_AXIS_NUMBER": "",
-            "TEST_RXTX_REGISTER": "Test RXTX register",
+            "TEST_SISO_REGISTER": "Test SISO register",
             "CIA301_COMMS_RPDO1_MAP": "",
             "CIA301_COMMS_RPDO1_MAP_1": "",
         },
