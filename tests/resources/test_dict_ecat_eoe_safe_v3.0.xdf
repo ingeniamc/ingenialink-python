@@ -85,6 +85,48 @@
               </Subitem>
             </Subitems>
           </CANopenObject>
+          <CANopenObject id="FSOE_SAFE_INPUTS_VALUE" index="0x46D1" datatype="VAR" subnode="0">
+            <Subitems>
+              <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="bit" id="FSOE_SAFE_INPUTS_VALUE" pdo_access="CYCLIC_SI" desc="Value of the safe inputs combined with AND logic. Only updated in OP state" units="none" default="00" cat_id="FSOE">
+                <Labels>
+                  <Label lang="en_US">Safe Inputs Value</Label>
+                </Labels>
+              </Subitem>
+            </Subitems>
+          </CANopenObject>
+          <CANopenObject id="FSOE_STO" index="0x6640" datatype="VAR" subnode="0">
+            <Subitems>
+              <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="bit" id="FSOE_STO" pdo_access="CYCLIC_SISO" desc="Safe Torque Off Safety function. &#10;Commands the STO when writing. Reports the STO status when reading." units="none" default="01" cat_id="FSOE">
+                <Labels>
+                  <Label lang="en_US">STO Command</Label>
+                </Labels>
+              </Subitem>
+            </Subitems>
+          </CANopenObject>
+          <CANopenObject id="FSOE_MASTER_FRAME_ELEM" index="0x6770" datatype="RECORD" subnode="0">
+            <Subitems>
+              <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u8" id="FSOE_MASTER_FRAME_ELEM_TOTAL" pdo_access="CONFIG" desc="" units="none" default="03" cat_id="FSOE">
+                <Labels>
+                  <Label lang="en_US">Subindex 000</Label>
+                </Labels>
+              </Subitem>
+              <Subitem subindex="1" address_type="NVM_NONE" access="r" dtype="u8" id="FSOE_MASTER_FRAME_ELEM_CMD" pdo_access="CYCLIC_SO" desc="FSoE Master Command" units="none" default="2a" cat_id="FSOE">
+                <Labels>
+                  <Label lang="en_US">FSoE Master Command</Label>
+                </Labels>
+              </Subitem>
+              <Subitem subindex="2" address_type="NVM_NONE" access="r" dtype="u16" id="FSOE_MASTER_FRAME_ELEM_CONNID" pdo_access="CYCLIC_SO" desc="FSoE Master Connection ID" units="none" default="0000" cat_id="FSOE">
+                <Labels>
+                  <Label lang="en_US">FSoE Master Connection ID</Label>
+                </Labels>
+              </Subitem>
+              <Subitem subindex="3" address_type="NVM_NONE" access="r" dtype="u16" id="FSOE_MASTER_FRAME_ELEM_CRC0" pdo_access="CYCLIC_SO" desc="FSoE Master CRC_0" units="none" default="0000" cat_id="FSOE">
+                <Labels>
+                  <Label lang="en_US">FSoE Master CRC_0</Label>
+                </Labels>
+              </Subitem>
+            </Subitems>
+          </CANopenObject>
         </CANopenObjects>
         <Errors>
           <Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
