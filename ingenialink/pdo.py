@@ -165,7 +165,7 @@ class RPDOMapItem(PDOMapItem):
 
     ACCEPTED_CYCLICS = (
         RegCyclicType.RX,
-        RegCyclicType.SAFETY_INPUT,
+        RegCyclicType.SAFETY_OUTPUT,
         RegCyclicType.SAFETY_INPUT_OUTPUT,
     )
 
@@ -201,7 +201,7 @@ class TPDOMapItem(PDOMapItem):
 
     ACCEPTED_CYCLICS = (
         RegCyclicType.TX,
-        RegCyclicType.SAFETY_OUTPUT,
+        RegCyclicType.SAFETY_INPUT,
         RegCyclicType.SAFETY_INPUT_OUTPUT,
     )
 
