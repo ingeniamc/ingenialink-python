@@ -73,7 +73,7 @@ def test_rpdo_item_wrong_cyclic(open_dictionary):
     assert (
         str(exc_info.value) == "Incorrect pdo access. "
         "It should be RegCyclicType.RX, "
-        "RegCyclicType.SAFETY_INPUT, "
+        "RegCyclicType.SAFETY_OUTPUT, "
         "RegCyclicType.SAFETY_INPUT_OUTPUT. "
         "obtained: RegCyclicType.TX"
     )
@@ -88,7 +88,7 @@ def test_tpdo_item_wrong_cyclic(open_dictionary):
     assert (
         str(exc_info.value) == "Incorrect pdo access. "
         "It should be RegCyclicType.TX, "
-        "RegCyclicType.SAFETY_OUTPUT, "
+        "RegCyclicType.SAFETY_INPUT, "
         "RegCyclicType.SAFETY_INPUT_OUTPUT. "
         "obtained: RegCyclicType.RX"
     )
