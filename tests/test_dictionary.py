@@ -373,3 +373,23 @@ def test_get_register():
     # Specify the same uid, providing the subnode, registers should match
     register_2 = dictionary.get_register(uid=uid, axis=0)
     assert register_1 == register_2
+
+
+@pytest.mark.no_connection
+def test_register_description():
+    dictionary_path = join_path("./tests/resources/ethernet/", "test_dict_eth_axis.xdf")
+    expected_description_per_subnode = {
+        0: {
+            "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
+        },
+        1: {
+            "DRV_OP_CMD": "User requested mode of operation",
+        },
+    }
+    ethernet_dict = DictionaryFactory.create_dictionary(dictionary_path, Interface.ETH)
+    for subnode, registers in ethernet_dict._registers.items():
+        for register in registers.values():
+            assert (
+                register.description
+                == expected_description_per_subnode[subnode][register.identifier]
+            )
