@@ -385,11 +385,11 @@ def test_register_description():
             "disturbance mapped register 0.",
         },
         1: {
-            "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
+            "DRV_DIAG_ERROR_LAST": "Contains the last generated error",
             "DRV_OP_CMD": "User requested mode of operation",
         },
         2: {
-            "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
+            "DRV_DIAG_ERROR_LAST": "Contains the last generated error",
             "DRV_STATE_CONTROL": "Parameter to manage the drive state machine. "
             "It is compliant with DS402.",
         },
