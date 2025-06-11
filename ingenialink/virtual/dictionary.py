@@ -83,6 +83,7 @@ class VirtualDictionary(EthernetDictionaryV2):
                 address_type=current_read_register.address_type,
                 bitfields=current_read_register.bitfields,
                 monitoring=current_read_register.monitoring,
+                description=current_read_register.description,
             )
 
             return ethernet_register
