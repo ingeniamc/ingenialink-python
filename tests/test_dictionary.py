@@ -381,9 +381,17 @@ def test_register_description():
     expected_description_per_subnode = {
         0: {
             "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
+            "DIST_CFG_REG0_MAP": "This register allows configuring the "
+            "disturbance mapped register 0.",
         },
         1: {
+            "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
             "DRV_OP_CMD": "User requested mode of operation",
+        },
+        2: {
+            "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
+            "DRV_STATE_CONTROL": "Parameter to manage the drive state machine. "
+            "It is compliant with DS402.",
         },
     }
     ethernet_dict = DictionaryFactory.create_dictionary(dictionary_path, Interface.ETH)
