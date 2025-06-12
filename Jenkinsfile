@@ -48,31 +48,33 @@ def getWheelPath(tox_skip_install, python_version) {
 }
 
 def runTest(markers, setup_name, tox_skip_install = false) {
-    unstash 'wheels'
-    def firstIteration = true
-    def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-    pythonVersions.each { version ->
-        def wheelFile = getWheelPath(tox_skip_install, version)
-        env.TOX_SKIP_INSTALL = tox_skip_install.toString()
-        env.INGENIALINK_WHEEL_PATH = wheelFile
-        try {
-            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
-                    "-m \"${markers}\" " +
-                    "--setup ${setup_name} " +
-                    "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\""
+    timeout(time: 1, unit: 'MINUTES') {
+        unstash 'wheels'
+        def firstIteration = true
+        def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+        pythonVersions.each { version ->
+            def wheelFile = getWheelPath(tox_skip_install, version)
+            env.TOX_SKIP_INSTALL = tox_skip_install.toString()
+            env.INGENIALINK_WHEEL_PATH = wheelFile
+            try {
+                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
+                        "-m \"${markers}\" " +
+                        "--setup ${setup_name} " +
+                        "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\""
 
-        } catch (err) {
-            unstable(message: "Tests failed")
-        } finally {
-            junit "pytest_reports\\*.xml"
-            // Delete the junit after publishing it so it not re-published on the next stage
-            bat "del /S /Q pytest_reports\\*.xml"
-            if (firstIteration) {
-                def coverage_stash = ".coverage_${setup_name}"
-                bat "move .coverage ${coverage_stash}"
-                stash includes: coverage_stash, name: coverage_stash
-                coverage_stashes.add(coverage_stash)
-                firstIteration = false
+            } catch (err) {
+                unstable(message: "Tests failed")
+            } finally {
+                junit "pytest_reports\\*.xml"
+                // Delete the junit after publishing it so it not re-published on the next stage
+                bat "del /S /Q pytest_reports\\*.xml"
+                if (firstIteration) {
+                    def coverage_stash = ".coverage_${setup_name}"
+                    bat "move .coverage ${coverage_stash}"
+                    stash includes: coverage_stash, name: coverage_stash
+                    coverage_stashes.add(coverage_stash)
+                    firstIteration = false
+                }
             }
         }
     }
@@ -300,33 +302,21 @@ pipeline {
                     }
                     stages {
                         stage('EtherCAT Everest') {
-                            options {
-                                timeout(time: 1, unit: 'MINUTES')
-                            }
                             steps {
                                 runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true)
                             }
                         }
                         stage('EtherCAT Capitan') {
-                            options {
-                                timeout(time: 1, unit: 'MINUTES')
-                            }
                             steps {
                                 runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true)
                             }
                         }
                         stage('EtherCAT Multislave') {
-                            options {
-                                timeout(time: 1, unit: 'MINUTES')
-                            }
                             steps {
                                 runTest("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true)
                             }
                         }
                         stage('Run no-connection tests') {
-                            options {
-                                timeout(time: 1, unit: 'MINUTES')
-                            }
                             steps {
                                 runTest("no_connection", "summit_testing_framework.setups.no_drive.TESTS_SETUP", true)
                             }
@@ -342,33 +332,21 @@ pipeline {
                     }
                     stages {
                         stage('CANopen Everest') {
-                            options {
-                                timeout(time: 1, unit: 'MINUTES')
-                            }
                             steps {
                                 runTest("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP", true)
                             }
                         }
                         stage('CANopen Capitan') {
-                            options {
-                                timeout(time: 1, unit: 'MINUTES')
-                            }
                             steps {
                                 runTest("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP", true)
                             }
                         }
                         stage('Ethernet Everest') {
-                            options {
-                                timeout(time: 1, unit: 'MINUTES')
-                            }
                             steps {
                                 runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", true)
                             }
                         }
                         stage('Ethernet Capitan') {
-                            options {
-                                timeout(time: 1, unit: 'MINUTES')
-                            }
                             steps {
                                 runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", true)
                             }
