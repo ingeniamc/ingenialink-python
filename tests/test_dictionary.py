@@ -375,9 +375,16 @@ def test_get_register():
     assert register_1 == register_2
 
 
+@pytest.mark.parametrize(
+    "dictionary_path, interface",
+    [
+        ("./tests/resources/ethernet/test_dict_eth_axis.xdf", Interface.ETH),
+        ("./tests/resources/canopen/test_dict_can_axis.xdf", Interface.CAN),
+        ("./tests/resources/ethercat/test_dict_ethercat_axis.xdf", Interface.ECAT),
+    ],
+)
 @pytest.mark.no_connection
-def test_register_description():
-    dictionary_path = join_path("./tests/resources/ethernet/", "test_dict_eth_axis.xdf")
+def test_register_description(dictionary_path, interface):
     expected_description_per_subnode = {
         0: {
             "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
@@ -394,10 +401,17 @@ def test_register_description():
             "It is compliant with DS402.",
         },
     }
-    ethernet_dict = DictionaryFactory.create_dictionary(dictionary_path, Interface.ETH)
+    ethernet_dict = DictionaryFactory.create_dictionary(dictionary_path, interface)
+    checked_registers = 0
     for subnode, registers in ethernet_dict._registers.items():
         for register in registers.values():
+            if register.identifier not in expected_description_per_subnode[subnode]:
+                continue
             assert (
                 register.description
                 == expected_description_per_subnode[subnode][register.identifier]
             )
+            checked_registers += 1
+    assert checked_registers == sum(
+        len(subnode_registers) for subnode_registers in expected_description_per_subnode.values()
+    )
