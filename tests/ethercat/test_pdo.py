@@ -46,6 +46,17 @@ def create_pdo_map(open_dictionary):
 
 
 @pytest.mark.no_connection
+def test_pdo_text_representation(create_pdo_map):
+    tpdo_map, _rpdo_map = create_pdo_map
+
+    assert tpdo_map.get_text_representation(item_space=20) == (
+        "Item                 | Position bytes..bits | Size bytes..bits    \n"
+        "CL_POS_FBK_VALUE     | 0..0                 | 4..0                \n"
+        "CL_VEL_FBK_VALUE     | 4..0                 | 4..0                "
+    )
+
+
+@pytest.mark.no_connection
 def test_rpdo_item(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]

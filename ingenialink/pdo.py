@@ -402,6 +402,29 @@ class PDOMap:
         item_bits = self.get_item_bits()
         return item_bits.tobytes()
 
+    def get_text_representation(self, item_space: int = 40) -> str:
+        """Get a text representation of the map.
+
+        Returns:
+            str: Text representation of the map.
+        """
+        grid = [["Item", "Position bytes..bits", "Size bytes..bits"]]
+
+        position_bits = 0
+        for item in self.items:
+            uid = item.register.identifier
+            if uid is None:
+                uid = "Unknown register"
+            grid.append([
+                uid,
+                f"{position_bits // 8}..{position_bits % 8}",
+                f"{item.size_bits // 8}..{item.size_bits % 8}",
+            ])
+
+            position_bits += item.size_bits
+
+        return "\n".join([f"{row[0]:<{item_space}} | {row[1]:<20} | {row[2]:<20}" for row in grid])
+
 
 class RPDOMap(PDOMap):
     """Class to store RPDO mapping information."""
