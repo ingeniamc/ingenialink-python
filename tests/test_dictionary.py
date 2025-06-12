@@ -401,9 +401,9 @@ def test_register_description(dictionary_path, interface):
             "It is compliant with DS402.",
         },
     }
-    ethernet_dict = DictionaryFactory.create_dictionary(dictionary_path, interface)
+    dictionary_v2 = DictionaryFactory.create_dictionary(dictionary_path, interface)
     checked_registers = 0
-    for subnode, registers in ethernet_dict._registers.items():
+    for subnode, registers in dictionary_v2._registers.items():
         for register in registers.values():
             if register.identifier not in expected_description_per_subnode[subnode]:
                 continue
