@@ -1741,6 +1741,8 @@ class DictionaryV2(Dictionary):
             # Known bitfields.
             bitfields = self._get_known_register_bitfields(identifier)
 
+            description = register.attrib.get("desc")
+
             current_read_register = Register(
                 dtype,
                 access,
@@ -1756,6 +1758,7 @@ class DictionaryV2(Dictionary):
                 internal_use=internal_use,
                 address_type=address_type,
                 bitfields=bitfields,
+                description=description,
             )
 
             return current_read_register

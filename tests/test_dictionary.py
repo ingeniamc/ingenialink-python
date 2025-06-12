@@ -373,3 +373,45 @@ def test_get_register():
     # Specify the same uid, providing the subnode, registers should match
     register_2 = dictionary.get_register(uid=uid, axis=0)
     assert register_1 == register_2
+
+
+@pytest.mark.parametrize(
+    "dictionary_path, interface",
+    [
+        ("./tests/resources/ethernet/test_dict_eth_axis.xdf", Interface.ETH),
+        ("./tests/resources/canopen/test_dict_can_axis.xdf", Interface.CAN),
+        ("./tests/resources/ethercat/test_dict_ethercat_axis.xdf", Interface.ECAT),
+    ],
+)
+@pytest.mark.no_connection
+def test_register_description(dictionary_path, interface):
+    expected_description_per_subnode = {
+        0: {
+            "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
+            "DIST_CFG_REG0_MAP": "This register allows configuring the "
+            "disturbance mapped register 0.",
+        },
+        1: {
+            "DRV_DIAG_ERROR_LAST": "Contains the last generated error",
+            "DRV_OP_CMD": "User requested mode of operation",
+        },
+        2: {
+            "DRV_DIAG_ERROR_LAST": "Contains the last generated error",
+            "DRV_STATE_CONTROL": "Parameter to manage the drive state machine. "
+            "It is compliant with DS402.",
+        },
+    }
+    dictionary_v2 = DictionaryFactory.create_dictionary(dictionary_path, interface)
+    checked_registers = 0
+    for subnode, registers in dictionary_v2._registers.items():
+        for register in registers.values():
+            if register.identifier not in expected_description_per_subnode[subnode]:
+                continue
+            assert (
+                register.description
+                == expected_description_per_subnode[subnode][register.identifier]
+            )
+            checked_registers += 1
+    assert checked_registers == sum(
+        len(subnode_registers) for subnode_registers in expected_description_per_subnode.values()
+    )
