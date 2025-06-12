@@ -300,21 +300,33 @@ pipeline {
                     }
                     stages {
                         stage('EtherCAT Everest') {
+                            options {
+                                timeout(time: 1, unit: 'MINUTES')
+                            }
                             steps {
                                 runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true)
                             }
                         }
                         stage('EtherCAT Capitan') {
+                            options {
+                                timeout(time: 1, unit: 'MINUTES')
+                            }
                             steps {
                                 runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true)
                             }
                         }
                         stage('EtherCAT Multislave') {
+                            options {
+                                timeout(time: 1, unit: 'MINUTES')
+                            }
                             steps {
                                 runTest("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true)
                             }
                         }
                         stage('Run no-connection tests') {
+                            options {
+                                timeout(time: 1, unit: 'MINUTES')
+                            }
                             steps {
                                 runTest("no_connection", "summit_testing_framework.setups.no_drive.TESTS_SETUP", true)
                             }
@@ -330,21 +342,33 @@ pipeline {
                     }
                     stages {
                         stage('CANopen Everest') {
+                            options {
+                                timeout(time: 1, unit: 'MINUTES')
+                            }
                             steps {
                                 runTest("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP", true)
                             }
                         }
                         stage('CANopen Capitan') {
+                            options {
+                                timeout(time: 1, unit: 'MINUTES')
+                            }
                             steps {
                                 runTest("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP", true)
                             }
                         }
                         stage('Ethernet Everest') {
+                            options {
+                                timeout(time: 1, unit: 'MINUTES')
+                            }
                             steps {
                                 runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", true)
                             }
                         }
                         stage('Ethernet Capitan') {
+                            options {
+                                timeout(time: 1, unit: 'MINUTES')
+                            }
                             steps {
                                 runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", true)
                             }
