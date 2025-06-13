@@ -48,31 +48,33 @@ def getWheelPath(tox_skip_install, python_version) {
 }
 
 def runTest(markers, setup_name, tox_skip_install = false) {
-    unstash 'wheels'
-    def firstIteration = true
-    def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-    pythonVersions.each { version ->
-        def wheelFile = getWheelPath(tox_skip_install, version)
-        env.TOX_SKIP_INSTALL = tox_skip_install.toString()
-        env.INGENIALINK_WHEEL_PATH = wheelFile
-        try {
-            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
-                    "-m \"${markers}\" " +
-                    "--setup ${setup_name} " +
-                    "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\""
+    timeout(time: 1, unit: 'HOURS') {
+        unstash 'wheels'
+        def firstIteration = true
+        def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+        pythonVersions.each { version ->
+            def wheelFile = getWheelPath(tox_skip_install, version)
+            env.TOX_SKIP_INSTALL = tox_skip_install.toString()
+            env.INGENIALINK_WHEEL_PATH = wheelFile
+            try {
+                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
+                        "-m \"${markers}\" " +
+                        "--setup ${setup_name} " +
+                        "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\""
 
-        } catch (err) {
-            unstable(message: "Tests failed")
-        } finally {
-            junit "pytest_reports\\*.xml"
-            // Delete the junit after publishing it so it not re-published on the next stage
-            bat "del /S /Q pytest_reports\\*.xml"
-            if (firstIteration) {
-                def coverage_stash = ".coverage_${setup_name}"
-                bat "move .coverage ${coverage_stash}"
-                stash includes: coverage_stash, name: coverage_stash
-                coverage_stashes.add(coverage_stash)
-                firstIteration = false
+            } catch (err) {
+                unstable(message: "Tests failed")
+            } finally {
+                junit "pytest_reports\\*.xml"
+                // Delete the junit after publishing it so it not re-published on the next stage
+                bat "del /S /Q pytest_reports\\*.xml"
+                if (firstIteration) {
+                    def coverage_stash = ".coverage_${setup_name}"
+                    bat "move .coverage ${coverage_stash}"
+                    stash includes: coverage_stash, name: coverage_stash
+                    coverage_stashes.add(coverage_stash)
+                    firstIteration = false
+                }
             }
         }
     }
