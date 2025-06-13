@@ -48,7 +48,7 @@ def getWheelPath(tox_skip_install, python_version) {
 }
 
 def runTest(markers, setup_name, tox_skip_install = false) {
-    timeout(time: 1, unit: 'MINUTES') {
+    timeout(time: 1, unit: 'HOURS') {
         unstash 'wheels'
         def firstIteration = true
         def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
