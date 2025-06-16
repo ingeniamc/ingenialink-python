@@ -60,7 +60,7 @@ def runTest(markers, setup_name, tox_skip_install = false) {
                 def setupArg = setup_name ? "--setup ${setup_name} " : ""
                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
                         "-m \"${markers}\" " +
-                        "${setupArg}" + +
+                        "${setupArg}" +
                         "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\""
 
             } catch (err) {
