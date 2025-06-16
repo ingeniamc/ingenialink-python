@@ -300,3 +300,11 @@ class Register(ABC):
     def bitfields(self) -> Optional[dict[str, BitField]]:
         """Register bit fields."""
         return self.__bitfields
+
+    @property
+    def key(self):
+        """Communications access key for the register.
+
+        Values that are used to access the register in the communication protocol.
+        """
+        raise NotImplementedError

@@ -1,9 +1,10 @@
 from abc import abstractmethod
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import bitarray
 from typing_extensions import override
 
+from ingenialink.bitfield import BitField
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
@@ -14,6 +15,9 @@ from ingenialink.utils._utils import (
     convert_dtype_to_bytes,
     dtype_length_bits,
 )
+
+if TYPE_CHECKING:
+    from ingenialink.dictionary import Dictionary
 
 BIT_ENDIAN = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
@@ -37,6 +41,16 @@ class PDOMapItem:
 
     ACCEPTED_CYCLICS: tuple[RegCyclicType, ...]
     """Accepted cyclic: CYCLIC_TX, CYCLIC_RX, CYCLIC_SI, CYCLIC_SO, CYCLIC_SISO."""
+
+    __LENGTH_BITFIELD = "LENGTH"
+    __SUBINDEX_BITFIELD = "SUBINDEX"
+    __INDEX_BITFIELD = "INDEX"
+
+    __ITEM_BITFIELDS = {
+        __LENGTH_BITFIELD: BitField(0, 7),
+        __SUBINDEX_BITFIELD: BitField(8, 15),
+        __INDEX_BITFIELD: BitField(16, 31),
+    }
 
     def __init__(
         self,
@@ -154,10 +168,47 @@ class PDOMapItem:
             PDO register mapping format.
 
         """
-        index = self.register.idx
-        mapped_register = (index << 16) | self.size_bits
-        mapped_register_bytes: bytes = mapped_register.to_bytes(4, "little")
+        mapped_register = BitField.set_bitfields(
+            self.__ITEM_BITFIELDS,
+            {
+                self.__LENGTH_BITFIELD: self.size_bits,
+                self.__SUBINDEX_BITFIELD: self.register.subidx,
+                self.__INDEX_BITFIELD: self.register.idx,
+            },
+        )
+
+        mapped_register_bytes: bytes = mapped_register.to_bytes(4, BIT_ENDIAN)
         return mapped_register_bytes
+
+    @classmethod
+    def from_register_mapping(cls, mapping: int, dictionary: "Dictionary") -> "PDOMapItem":
+        """Create a PDOMapItem from a register mapping.
+
+        Args:
+            mapping: Register mapping in bytes.
+
+        Returns:
+            PDOMapItem instance.
+        """
+        fields = BitField.parse_bitfields(cls.__ITEM_BITFIELDS, mapping)
+        size_bits = fields[cls.__LENGTH_BITFIELD]
+        index = fields[cls.__INDEX_BITFIELD]
+        subindex = fields[cls.__SUBINDEX_BITFIELD]
+
+        try:
+            register = dictionary.get_register_by_key((index, subindex))
+        except KeyError:
+            register = EthercatRegister(
+                identifier="UNKNOWN_REGISTER",
+                units="",
+                subnode=0,
+                idx=index,
+                subidx=subindex,
+                pdo_access=cls.ACCEPTED_CYCLICS[0],
+                dtype=RegDtype.STR,
+                access=RegAccess.RW,
+            )
+        return cls(register, size_bits)
 
 
 class RPDOMapItem(PDOMapItem):
@@ -302,7 +353,7 @@ class PDOMap:
         if self.map_register_index is None:
             raise ValueError("map_register_index is None")
         else:
-            return self.map_register_index.to_bytes(2, "little")
+            return self.map_register_index.to_bytes(2, BIT_ENDIAN)
 
     @property
     def map_register_index(self) -> Optional[int]:
@@ -346,6 +397,28 @@ class PDOMap:
         for pdo_map_item in self.items:
             map_bytes += pdo_map_item.register_mapping
         return map_bytes
+
+    @classmethod
+    def from_pdo_value(cls, value: bytes, dictionary: "Dictionary") -> "PDOMap":
+        """Create a PDOMap from the pdo value.
+
+        Args:
+            value: Value of the pdo mapping in bytes.
+
+        Returns:
+            PDOMap instance.
+        """
+        pdo_map = cls()
+
+        # First element of 8 bits, indicates the number of elements in the mapping.
+        n_elements = value[0]
+
+        for i in range(n_elements):
+            item_map = int.from_bytes(value[2 + i * 4 : 2 + (i + 1) * 4], BIT_ENDIAN)
+            item = cls._PDO_MAP_ITEM_CLASS.from_register_mapping(item_map, dictionary)
+            pdo_map.add_item(item)
+
+        return pdo_map
 
     def set_item_bytes(self, data_bytes: bytes) -> None:
         """Set the items raw data from a byte array.

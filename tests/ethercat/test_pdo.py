@@ -324,6 +324,11 @@ def create_pdo_maps(servo, rpdo_registers, tpdo_registers):
     return rpdo_map, tpdo_map
 
 
+@pytest.mark.ethercat
+def test_read_rpdo_map_from_slave(servo: EthercatServo):
+    servo.read_rpdo_map_from_slave("ETG_COMMS_RPDO_MAP256_TOTAL")  # TODO Change for item name??
+
+
 def start_stop_pdos(net):
     net._ecat_master.read_state()
     for servo in net.servos:

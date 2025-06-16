@@ -345,6 +345,28 @@ class EthercatServo(PDOServo):
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
+    def read_rpdo_map_from_slave(self, uid: str, subnode: int = 0, buffer_size: int = 0) -> RPDOMap:
+        """Read the RPDO map from the slave.
+
+        Args:
+            uid: Unique identifier of the first element of the RPDO map.
+            subnode: Subnode of the rpdo map.
+            buffer_size: Size of the buffer to read the pdo map.
+        """
+        value = self.read_complete_access(uid, subnode, buffer_size)
+        return RPDOMap.from_pdo_value(value, self.dictionary)
+
+    def read_tpdo_map_from_slave(self, uid: str, subnode: int = 0, buffer_size: int = 0) -> TPDOMap:
+        """Read the TPDO map from the slave.
+
+        Args:
+            uid: Unique identifier of the first element of the TPDO map.
+            subnode: Subnode of the rpdo map.
+            buffer_size: Size of the buffer to read the pdo map.
+        """
+        value = self.read_complete_access(uid, subnode, buffer_size)
+        return TPDOMap.from_pdo_value(value, self.dictionary)
+
     @override
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:

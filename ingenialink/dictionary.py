@@ -480,6 +480,22 @@ class Dictionary(XMLBase, ABC):
 
         return matching_registers[0]
 
+    def get_register_by_key(self, key: tuple[int, ...]) -> Register:
+        """Gets the targeted register by key.
+
+        Args:
+            key: Values that are used to access the register in the communication protocol.
+
+        Returns:
+            register.
+        """
+        for subnode in self._registers.values():  # TODO Change by pre-computed hashmap
+            for register in subnode.values():
+                if register.key == key:
+                    return register
+
+        raise KeyError(f"Could not find register with key: {key}")
+
     @abstractmethod
     def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
