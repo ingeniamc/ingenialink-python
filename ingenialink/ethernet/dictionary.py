@@ -81,6 +81,22 @@ class EthernetDictionaryV2(DictionaryV2):
                 access=RegAccess.RW,
                 subnode=1,
             ),
+            EthercatRegister(
+                identifier="ETG_COMMS_RPDO_MAP256_TOTAL",
+                idx=0x1700,
+                subidx=0,
+                dtype=RegDtype.U8,
+                access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
+                subnode=0,
+            ),
+            EthercatRegister(
+                identifier="ETG_COMMS_TPDO_MAP256_TOTAL",
+                idx=0x1B00,
+                subidx=0,
+                dtype=RegDtype.U8,
+                access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
+                subnode=0,
+            )
         ]
 
     @cached_property

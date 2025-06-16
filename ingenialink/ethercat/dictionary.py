@@ -92,6 +92,23 @@ class EthercatDictionaryV2(DictionaryV2):
                 access=RegAccess.RW,
                 subnode=1,
             ),
+            EthercatRegister(
+                identifier="ETG_COMMS_RPDO_MAP256_TOTAL",
+                idx=0x1700,
+                subidx=0,
+                dtype=RegDtype.U8,
+                access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
+                subnode=0,
+            ),
+            EthercatRegister(
+                identifier="ETG_COMMS_TPDO_MAP256_TOTAL",
+                idx=0x1B00,
+                subidx=0,
+                dtype=RegDtype.U8,
+                access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
+                subnode=0,
+            )
+
         ]
 
     @cached_property
@@ -234,8 +251,8 @@ class EthercatDictionaryV2(DictionaryV2):
             monitoring: Optional[MonDistV3] = None
             if current_read_register.pdo_access != RegCyclicType.CONFIG:
                 address = idx - (
-                    CANOPEN_ADDRESS_OFFSET
-                    + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
+                        CANOPEN_ADDRESS_OFFSET
+                        + (MAP_ADDRESS_OFFSET * (current_read_register.subnode - 1))
                 )
                 monitoring = MonDistV3(
                     address=address,
@@ -274,7 +291,7 @@ class EthercatDictionaryV2(DictionaryV2):
             return None
 
     def _append_missing_registers(
-        self,
+            self,
     ) -> None:
         """Append missing registers to the dictionary.
 
