@@ -96,7 +96,7 @@ class EthernetDictionaryV2(DictionaryV2):
                 dtype=RegDtype.U8,
                 access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
                 subnode=0,
-            )
+            ),
         ]
 
     @cached_property

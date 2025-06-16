@@ -290,11 +290,10 @@ class EthercatServo(PDOServo):
         if not super()._is_monitoring_implemented():
             raise NotImplementedError("Monitoring is not supported by this device.")
         if not isinstance(
-            data := self.read(
+            data := self.read_complete_access(
                 self.MONITORING_DATA,
                 subnode=0,
                 buffer_size=self.MONITORING_DATA_BUFFER_SIZE,
-                complete_access=True,
             ),
             bytes,
         ):
@@ -312,7 +311,7 @@ class EthercatServo(PDOServo):
         """
         if not super()._is_disturbance_implemented():
             raise NotImplementedError("Disturbance is not supported by this device.")
-        return self.write(self.DIST_DATA, subnode=0, data=data, complete_access=True)
+        return self.write_complete_access(self.DIST_DATA, subnode=0, data=data)
 
     def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
         """Subscribe to emergency messages.
