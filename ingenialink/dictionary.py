@@ -444,6 +444,15 @@ class Dictionary(XMLBase, ABC):
         """
         return self._registers[subnode]
 
+    def all_registers(self) -> Iterator[Register]:
+        """Iterator for all registers.
+
+        Yields:
+            Register
+        """
+        for subnode in self._registers.values():
+            yield from subnode.values()
+
     @weak_lru()
     def get_register(self, uid: str, axis: Optional[int] = None) -> Register:
         """Gets the targeted register.
@@ -481,22 +490,6 @@ class Dictionary(XMLBase, ABC):
             raise ValueError(f"Register {uid} found in multiple axis. Axis should be specified.")
 
         return matching_registers[0]
-
-    def get_register_by_key(self, key: tuple[int, ...]) -> Register:
-        """Gets the targeted register by key.
-
-        Args:
-            key: Values that are used to access the register in the communication protocol.
-
-        Returns:
-            register.
-        """
-        for subnode in self._registers.values():  # TODO Change by pre-computed hashmap
-            for register in subnode.values():
-                if register.key == key:
-                    return register
-
-        raise KeyError(f"Could not find register with key: {key}")
 
     @abstractmethod
     def read_dictionary(self) -> None:

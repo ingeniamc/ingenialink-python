@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, ClassVar, Literal, Optional, TypeVar, Union
 
 import bitarray
 from typing_extensions import override
@@ -17,12 +17,15 @@ from ingenialink.utils._utils import (
 )
 
 if TYPE_CHECKING:
-    from ingenialink.dictionary import Dictionary
+    from ingenialink.canopen.dictionary import CanopenDictionary
 
-BIT_ENDIAN = "little"
+BIT_ENDIAN: Literal["little"] = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
 
 PADDING_REGISTER_IDENTIFIER = "PADDING"
+
+MAP_REGISTER_BYTES = 4
+"""Number of bytes used to store each mapping register information."""
 
 
 class PDOMapItem:
@@ -46,7 +49,7 @@ class PDOMapItem:
     __SUBINDEX_BITFIELD = "SUBINDEX"
     __INDEX_BITFIELD = "INDEX"
 
-    __ITEM_BITFIELDS = {
+    __ITEM_BITFIELDS: ClassVar[dict[str, BitField]] = {
         __LENGTH_BITFIELD: BitField(0, 7),
         __SUBINDEX_BITFIELD: BitField(8, 15),
         __INDEX_BITFIELD: BitField(16, 31),
@@ -181,11 +184,12 @@ class PDOMapItem:
         return mapped_register_bytes
 
     @classmethod
-    def from_register_mapping(cls, mapping: int, dictionary: "Dictionary") -> "PDOMapItem":
+    def from_register_mapping(cls, mapping: int, dictionary: "CanopenDictionary") -> "PDOMapItem":
         """Create a PDOMapItem from a register mapping.
 
         Args:
             mapping: Register mapping in bytes.
+            dictionary: Canopen dictionary to retrieve the registers.
 
         Returns:
             PDOMapItem instance.
@@ -195,8 +199,12 @@ class PDOMapItem:
         index = fields[cls.__INDEX_BITFIELD]
         subindex = fields[cls.__SUBINDEX_BITFIELD]
 
+        if index == 0 and subindex == 0:
+            # This is a padding register, return a padding item.
+            return cls(size_bits=size_bits)
+
         try:
-            register = dictionary.get_register_by_key((index, subindex))
+            register = dictionary.get_register_by_index_subindex(index, subindex)
         except KeyError:
             register = EthercatRegister(
                 identifier="UNKNOWN_REGISTER",
@@ -209,6 +217,15 @@ class PDOMapItem:
                 access=RegAccess.RW,
             )
         return cls(register, size_bits)
+
+    def __repr__(self) -> str:
+        """String representation of the PDOMapItem class.
+
+        Returns:
+            str: String representation of the PDOMapItem instance.
+        """
+        return (f"<{self.__class__.__name__} {self.register.identifier} "
+                f"({self.size_bits} bits) at 0x{id(self):X} >")
 
 
 class RPDOMapItem(PDOMapItem):
@@ -255,6 +272,9 @@ class TPDOMapItem(PDOMapItem):
         RegCyclicType.SAFETY_INPUT,
         RegCyclicType.SAFETY_INPUT_OUTPUT,
     )
+
+
+PDO_MAP_TYPE = TypeVar("PDO_MAP_TYPE", bound="PDOMap")
 
 
 class PDOMap:
@@ -399,11 +419,14 @@ class PDOMap:
         return map_bytes
 
     @classmethod
-    def from_pdo_value(cls, value: bytes, dictionary: "Dictionary") -> "PDOMap":
+    def from_pdo_value(
+        cls: type[PDO_MAP_TYPE], value: bytes, dictionary: "CanopenDictionary"
+    ) -> PDO_MAP_TYPE:
         """Create a PDOMap from the pdo value.
 
         Args:
             value: Value of the pdo mapping in bytes.
+            dictionary: Canopen dictionary to retrieve the registers.
 
         Returns:
             PDOMap instance.
@@ -413,8 +436,13 @@ class PDOMap:
         # First element of 8 bits, indicates the number of elements in the mapping.
         n_elements = value[0]
 
+        # Second byte is padding
+
         for i in range(n_elements):
-            item_map = int.from_bytes(value[2 + i * 4 : 2 + (i + 1) * 4], BIT_ENDIAN)
+            # Start reading from the third byte
+            item_map = int.from_bytes(
+                value[2 + i * MAP_REGISTER_BYTES : 2 + (i + 1) * MAP_REGISTER_BYTES], BIT_ENDIAN
+            )
             item = cls._PDO_MAP_ITEM_CLASS.from_register_mapping(item_map, dictionary)
             pdo_map.add_item(item)
 

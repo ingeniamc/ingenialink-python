@@ -326,7 +326,14 @@ def create_pdo_maps(servo, rpdo_registers, tpdo_registers):
 
 @pytest.mark.ethercat
 def test_read_rpdo_map_from_slave(servo: EthercatServo):
-    servo.read_rpdo_map_from_slave("ETG_COMMS_RPDO_MAP256_TOTAL")  # TODO Change for item name??
+    pdo_map = servo.read_rpdo_map_from_slave("ETG_COMMS_RPDO_MAP256_TOTAL", subnode=1)
+    assert isinstance(pdo_map, RPDOMap)
+
+
+@pytest.mark.ethercat
+def test_read_tpdo_map_from_slave(servo: EthercatServo):
+    pdo_map = servo.read_rpdo_map_from_slave("ETG_COMMS_TPDO_MAP256_TOTAL", subnode=1)
+    assert isinstance(pdo_map, TPDOMap)
 
 
 def start_stop_pdos(net):

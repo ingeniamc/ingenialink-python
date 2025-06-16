@@ -301,10 +301,10 @@ class Register(ABC):
         """Register bit fields."""
         return self.__bitfields
 
-    @property
-    def key(self):
-        """Communications access key for the register.
+    def __repr__(self) -> str:
+        """String representation of the Register class.
 
-        Values that are used to access the register in the communication protocol.
+        Returns:
+            str: String representation of the Register instance.
         """
-        raise NotImplementedError
+        return f"<{self.__class__.__name__} {self.identifier} at 0x{id(self):X} >"

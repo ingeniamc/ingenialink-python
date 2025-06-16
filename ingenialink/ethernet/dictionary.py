@@ -31,7 +31,7 @@ class EoEDictionary(Dictionary):
     interface = Interface.EoE
 
 
-class EthernetDictionaryV2(DictionaryV2, EthernetDictionary):
+class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
     """Contains all registers and information of a Ethernet dictionary.
 
     Args:
@@ -103,7 +103,7 @@ class EthernetDictionaryV2(DictionaryV2, EthernetDictionary):
                 subidx=0,
                 dtype=RegDtype.U8,
                 access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
-                subnode=0,
+                subnode=1,
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_TPDO_MAP256_TOTAL",
@@ -186,7 +186,7 @@ class EthernetDictionaryV2(DictionaryV2, EthernetDictionary):
             return None
 
 
-class EthernetDictionaryV3(DictionaryV3, EthernetDictionary):
+class EthernetDictionaryV3(EthernetDictionary, DictionaryV3):
     """Contains all registers and information of a Ethernet dictionary.
 
     Args:
@@ -195,7 +195,7 @@ class EthernetDictionaryV3(DictionaryV3, EthernetDictionary):
     """
 
 
-class EoEDictionaryV3(DictionaryV3, EoEDictionary):
+class EoEDictionaryV3(EoEDictionary, DictionaryV3):
     """Contains all registers and information of a EoE dictionary.
 
     Args:

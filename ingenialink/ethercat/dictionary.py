@@ -4,13 +4,13 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
+from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.constants import (
     CANOPEN_ADDRESS_OFFSET,
     CANOPEN_SUBNODE_0_ADDRESS_OFFSET,
     MAP_ADDRESS_OFFSET,
 )
 from ingenialink.dictionary import (
-    Dictionary,
     DictionarySafetyModule,
     DictionaryV2,
     DictionaryV3,
@@ -28,13 +28,13 @@ from ingenialink.register import MonDistV3
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthercatDictionary(Dictionary):
+class EthercatDictionary(CanopenDictionary):
     """Base class for EtherCAT dictionaries."""
 
     interface = Interface.ECAT
 
 
-class EthercatDictionaryV2(DictionaryV2, EthercatDictionary):
+class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
     """Contains all registers and information of a EtherCAT dictionary.
 
     Args:
@@ -108,7 +108,7 @@ class EthercatDictionaryV2(DictionaryV2, EthercatDictionary):
                 subidx=0,
                 dtype=RegDtype.U8,
                 access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
-                subnode=0,
+                subnode=1,
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_TPDO_MAP256_TOTAL",
@@ -313,7 +313,7 @@ class EthercatDictionaryV2(DictionaryV2, EthercatDictionary):
                 self._registers[register.subnode][register.identifier] = register
 
 
-class EthercatDictionaryV3(DictionaryV3, EthercatDictionary):
+class EthercatDictionaryV3(EthercatDictionary, DictionaryV3):
     """Contains all registers and information of a EtherCAT dictionary.
 
     Args:

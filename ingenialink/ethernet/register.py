@@ -106,7 +106,3 @@ class EthernetRegister(Register):
         if self.subnode > 1:
             return self.address + self.MAP_ADDRESS_OFFSET * (self.subnode - 1)
         return self.address
-
-    @property
-    def key(self):
-        return self.subnode, self.address

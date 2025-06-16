@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Optional
+from typing import Any, Optional, cast
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -28,8 +28,36 @@ class CanopenDictionary(Dictionary):
 
     interface = Interface.CAN
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
 
-class CanopenDictionaryV2(DictionaryV2, CanopenDictionary):
+        self.__idx_subindex_map: dict[int, dict[int, CanopenRegister]] = {
+            # Idx -> {subindex -> register}
+        }
+
+        for register in self.all_registers():
+            register = cast("CanopenRegister", register)
+            index = register.idx
+            subindex = register.subidx
+            if index not in self.__idx_subindex_map:
+                self.__idx_subindex_map[index] = {subindex: register}
+            else:
+                self.__idx_subindex_map[index][subindex] = register
+
+    def get_register_by_index_subindex(self, index: int, subindex: int) -> CanopenRegister:
+        """Get a register by its index and subindex.
+
+        Args:
+            index: The index of the register.
+            subindex: The subindex of the register.
+
+        Returns:
+            CanopenRegister: The register with the given index and subindex.
+        """
+        return self.__idx_subindex_map[index][subindex]
+
+
+class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
     """Contains all registers and information of a CANopen dictionary.
 
     Args:
@@ -120,7 +148,7 @@ class CanopenDictionaryV2(DictionaryV2, CanopenDictionary):
             return None
 
 
-class CanopenDictionaryV3(DictionaryV3, CanopenDictionary):
+class CanopenDictionaryV3(CanopenDictionary, DictionaryV3):
     """Contains all registers and information of a CANopen dictionary.
 
     Args:

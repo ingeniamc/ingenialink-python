@@ -8,6 +8,7 @@ from typing_extensions import override
 
 from ingenialink import Servo
 from ingenialink.emcy import EmergencyMessage
+from ingenialink.ethercat.dictionary import EthercatDictionary
 
 try:
     import pysoem
@@ -105,6 +106,11 @@ class EthercatServo(PDOServo):
         self.__slave.add_emergency_callback(self._on_emcy)
         self.__sdo_read_write_release_gil = sdo_read_write_release_gil
         super().__init__(slave_id, dictionary_path, servo_status_listener)
+
+    @property  # type: ignore[misc]
+    def dictionary(self) -> EthercatDictionary:  # type: ignore[override]
+        """Ethercat dictionary."""
+        return self._dictionary  # type: ignore[return-value]
 
     def teardown(self) -> None:
         """Perform the necessary actions for teardown."""
@@ -352,6 +358,9 @@ class EthercatServo(PDOServo):
             uid: Unique identifier of the first element of the RPDO map.
             subnode: Subnode of the rpdo map.
             buffer_size: Size of the buffer to read the pdo map.
+
+        Returns:
+            RPDOMap: The RPDO map read from the slave.
         """
         value = self.read_complete_access(uid, subnode, buffer_size)
         return RPDOMap.from_pdo_value(value, self.dictionary)
@@ -363,6 +372,9 @@ class EthercatServo(PDOServo):
             uid: Unique identifier of the first element of the TPDO map.
             subnode: Subnode of the rpdo map.
             buffer_size: Size of the buffer to read the pdo map.
+
+        Returns:
+            TPDOMap: The TPDO map read from the slave.
         """
         value = self.read_complete_access(uid, subnode, buffer_size)
         return TPDOMap.from_pdo_value(value, self.dictionary)
