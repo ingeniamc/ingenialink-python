@@ -236,7 +236,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker --setup summit_testing_framework.setups.no_drive.TESTS_SETUP"
+                                        "-m docker"
                             }
                             post {
                                 always {
