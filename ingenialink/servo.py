@@ -9,7 +9,7 @@ import ingenialogger
 import numpy as np
 
 from ingenialink.bitfield import BitField
-from ingenialink.canopen.dictionary import CanopenDictionaryV2
+from ingenialink.canopen.dictionary import CanopenDictionaryV2, CanopenDictionaryV3
 from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
@@ -31,8 +31,12 @@ from ingenialink.dictionary import (
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.enums.register import RegAccess, RegAddressType, RegDtype
 from ingenialink.enums.servo import ServoState
-from ingenialink.ethercat.dictionary import EthercatDictionaryV2
-from ingenialink.ethernet.dictionary import EthernetDictionaryV2
+from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictionaryV3
+from ingenialink.ethernet.dictionary import (
+    EoEDictionaryV3,
+    EthernetDictionaryV2,
+    EthernetDictionaryV3,
+)
 from ingenialink.exceptions import (
     ILAccessError,
     ILConfigurationError,
@@ -84,7 +88,14 @@ class DictionaryFactory:
         """
         major_version, _ = cls.__get_dictionary_version(dictionary_path)
         if major_version == 3:
-            return DictionaryV3(dictionary_path, interface)
+            if interface == Interface.CAN:
+                return CanopenDictionaryV3(dictionary_path)
+            if interface == Interface.ECAT:
+                return EthercatDictionaryV3(dictionary_path)
+            if interface == Interface.EoE:
+                return EoEDictionaryV3(dictionary_path)
+            if interface in [Interface.ETH, Interface.VIRTUAL]:
+                return EthernetDictionaryV3(dictionary_path)
         if major_version == 2:
             if interface == Interface.CAN:
                 return CanopenDictionaryV2(dictionary_path)
@@ -94,7 +105,9 @@ class DictionaryFactory:
                 return EthernetDictionaryV2(dictionary_path)
             if interface == Interface.VIRTUAL:
                 return VirtualDictionary(dictionary_path)
-        raise NotImplementedError(f"Dictionary version {major_version} is not supported")
+        raise NotImplementedError(
+            f"Dictionary version {major_version} is not supported for interface {interface.name}"
+        )
 
     @classmethod
     def get_dictionary_description(

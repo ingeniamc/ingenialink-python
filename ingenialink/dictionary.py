@@ -779,6 +779,16 @@ class DictionaryV3(Dictionary):
     __APPLICATION_PARAMETER_ELEMENT = "ApplicationParameter"
     __APPLICATION_PARAMETER_UID_ATTR = "id"
 
+    def __init__(self, dictionary_path: str) -> None:
+        """Initialize the DictionaryV3 instance.
+
+        Args:
+            dictionary_path: Path to the Ingenia dictionary.
+            interface: communication interface.
+
+        """
+        super().__init__(dictionary_path, self.interface)
+
     @staticmethod
     def _interface_to_device_element(interface: Interface) -> str:
         """Returns the device element associated with each interface.

@@ -9,7 +9,13 @@ from ingenialink.constants import (
     CANOPEN_SUBNODE_0_ADDRESS_OFFSET,
     MAP_ADDRESS_OFFSET,
 )
-from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
+from ingenialink.dictionary import (
+    Dictionary,
+    DictionarySafetyModule,
+    DictionaryV2,
+    DictionaryV3,
+    Interface,
+)
 from ingenialink.enums.register import (
     RegAccess,
     RegAddressType,
@@ -22,15 +28,19 @@ from ingenialink.register import MonDistV3
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthercatDictionaryV2(DictionaryV2):
+class EthercatDictionary(Dictionary):
+    """Base class for EtherCAT dictionaries."""
+
+    interface = Interface.ECAT
+
+
+class EthercatDictionaryV2(DictionaryV2, EthercatDictionary):
     """Contains all registers and information of a EtherCAT dictionary.
 
     Args:
         dictionary_path: Path to the Ingenia dictionary.
 
     """
-
-    interface = Interface.ECAT
 
     @cached_property
     def _monitoring_disturbance_registers(self) -> list[EthercatRegister]:
@@ -301,3 +311,12 @@ class EthercatDictionaryV2(DictionaryV2):
         for register in self.__pdo_registers:
             if register.identifier is not None:
                 self._registers[register.subnode][register.identifier] = register
+
+
+class EthercatDictionaryV3(DictionaryV3, EthercatDictionary):
+    """Contains all registers and information of a EtherCAT dictionary.
+
+    Args:
+        dictionary_path: Path to the Ingenia dictionary.
+
+    """

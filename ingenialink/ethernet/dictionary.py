@@ -4,7 +4,13 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
-from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
+from ingenialink.dictionary import (
+    Dictionary,
+    DictionarySafetyModule,
+    DictionaryV2,
+    DictionaryV3,
+    Interface,
+)
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
@@ -13,15 +19,25 @@ from ingenialink.register import MonDistV3
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthernetDictionaryV2(DictionaryV2):
+class EthernetDictionary(Dictionary):
+    """Base class for Ethernet dictionaries."""
+
+    interface = Interface.ETH
+
+
+class EoEDictionary(Dictionary):
+    """Base class for EoE dictionaries."""
+
+    interface = Interface.EoE
+
+
+class EthernetDictionaryV2(DictionaryV2, EthernetDictionary):
     """Contains all registers and information of a Ethernet dictionary.
 
     Args:
         dictionary_path: Path to the Ingenia dictionary.
 
     """
-
-    interface = Interface.ETH
 
     @cached_property
     def _monitoring_disturbance_registers(self) -> list[EthernetRegister]:
@@ -168,3 +184,21 @@ class EthernetDictionaryV2(DictionaryV2):
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}"
             )
             return None
+
+
+class EthernetDictionaryV3(DictionaryV3, EthernetDictionary):
+    """Contains all registers and information of a Ethernet dictionary.
+
+    Args:
+        dictionary_path: Path to the Ingenia dictionary.
+
+    """
+
+
+class EoEDictionaryV3(DictionaryV3, EoEDictionary):
+    """Contains all registers and information of a EoE dictionary.
+
+    Args:
+        dictionary_path: Path to the Ingenia dictionary.
+
+    """

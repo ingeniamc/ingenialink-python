@@ -6,16 +6,18 @@ from xml.etree import ElementTree
 
 import pytest
 
-from ingenialink.canopen.dictionary import CanopenDictionaryV2
+from ingenialink.canopen.dictionary import CanopenDictionaryV2, CanopenDictionaryV3
 from ingenialink.dictionary import (
     DictionaryDescriptor,
     DictionaryV2,
-    DictionaryV3,
     ILDictionaryParseError,
     Interface,
 )
-from ingenialink.ethercat.dictionary import EthercatDictionaryV2
-from ingenialink.ethernet.dictionary import EthernetDictionaryV2
+from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictionaryV3
+from ingenialink.ethernet.dictionary import (
+    EoEDictionaryV3,
+    EthernetDictionaryV2,
+)
 from ingenialink.servo import DictionaryFactory
 
 PATH_RESOURCE = "./tests/resources/"
@@ -130,14 +132,14 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
     "dict_path, interface, dict_class",
     [
         (f"{PATH_RESOURCE}canopen/test_dict_can.xdf", Interface.CAN, CanopenDictionaryV2),
-        (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.CAN, DictionaryV3),
+        (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.CAN, CanopenDictionaryV3),
         (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.ECAT, EthercatDictionaryV2),
         (f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf", Interface.ETH, EthernetDictionaryV2),
         (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.EoE, EthernetDictionaryV2),
-        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.ECAT, DictionaryV3),
-        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.EoE, DictionaryV3),
-        (f"{PATH_RESOURCE}test_dict_ecat_eoe_safe_v3.0.xdf", Interface.ECAT, DictionaryV3),
-        (f"{PATH_RESOURCE}test_dict_ecat_eoe_safe_v3.0.xdf", Interface.EoE, DictionaryV3),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.ECAT, EthercatDictionaryV3),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.EoE, EoEDictionaryV3),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_safe_v3.0.xdf", Interface.ECAT, EthercatDictionaryV3),
+        (f"{PATH_RESOURCE}test_dict_ecat_eoe_safe_v3.0.xdf", Interface.EoE, EoEDictionaryV3),
     ],
 )
 def test_dictionary_factory(dict_path, interface, dict_class):

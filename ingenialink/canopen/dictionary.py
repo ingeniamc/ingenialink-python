@@ -9,7 +9,13 @@ from ingenialink.constants import (
     CANOPEN_ADDRESS_OFFSET,
     MAP_ADDRESS_OFFSET,
 )
-from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
+from ingenialink.dictionary import (
+    Dictionary,
+    DictionarySafetyModule,
+    DictionaryV2,
+    DictionaryV3,
+    Interface,
+)
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.register import MonDistV3
@@ -17,15 +23,19 @@ from ingenialink.register import MonDistV3
 logger = ingenialogger.get_logger(__name__)
 
 
-class CanopenDictionaryV2(DictionaryV2):
+class CanopenDictionary(Dictionary):
+    """Base class for CANopen dictionaries."""
+
+    interface = Interface.CAN
+
+
+class CanopenDictionaryV2(DictionaryV2, CanopenDictionary):
     """Contains all registers and information of a CANopen dictionary.
 
     Args:
         dictionary_path: Path to the Ingenia dictionary.
 
     """
-
-    interface = Interface.CAN
 
     @cached_property
     def _monitoring_disturbance_registers(self) -> list[CanopenRegister]:
@@ -108,3 +118,12 @@ class CanopenDictionaryV2(DictionaryV2):
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}"
             )
             return None
+
+
+class CanopenDictionaryV3(DictionaryV3, CanopenDictionary):
+    """Contains all registers and information of a CANopen dictionary.
+
+    Args:
+        dictionary_path: Path to the Ingenia dictionary.
+
+    """
