@@ -3,7 +3,8 @@ from os.path import join as join_path
 import pytest
 
 from ingenialink.bitfield import BitField
-from ingenialink.dictionary import DictionaryV3, Interface, SubnodeType
+from ingenialink.dictionary import Interface, SubnodeType
+from ingenialink.ethernet.dictionary import EoEDictionaryV3
 
 path_resources = "./tests/resources/"
 dict_eoe_v3 = "test_dict_ecat_eoe_v3.0.xdf"
@@ -26,7 +27,7 @@ def test_read_dictionary():
         "image": "image-text",
     }
 
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
+    ethercat_dict = EoEDictionaryV3(dictionary_path)
 
     for attr, value in expected_device_attr.items():
         assert getattr(ethercat_dict, attr) == value
@@ -37,7 +38,7 @@ def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
     with pytest.raises(FileNotFoundError):
-        DictionaryV3(dictionary_path, Interface.EoE)
+        EoEDictionaryV3(dictionary_path)
 
 
 @pytest.mark.no_connection
@@ -51,7 +52,7 @@ def test_read_dictionary_registers():
         1: ["COMMU_ANGLE_SENSOR", "DRV_STATE_CONTROL"],
     }
 
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
+    ethercat_dict = EoEDictionaryV3(dictionary_path)
 
     for subnode in expected_regs_per_subnode:
         assert expected_regs_per_subnode[subnode] == list(ethercat_dict.registers(subnode))
@@ -65,7 +66,7 @@ def test_read_dictionary_categories():
     ]
     dictionary_path = join_path(path_resources, dict_eoe_v3)
 
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
+    ethercat_dict = EoEDictionaryV3(dictionary_path)
 
     assert ethercat_dict.categories.category_ids == expected_categories
 
@@ -78,7 +79,7 @@ def test_read_dictionary_errors():
     ]
     dictionary_path = join_path(path_resources, dict_eoe_v3)
 
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
+    ethercat_dict = EoEDictionaryV3(dictionary_path)
 
     assert list(ethercat_dict.errors) == expected_errors
 
@@ -86,7 +87,7 @@ def test_read_dictionary_errors():
 @pytest.mark.no_connection
 def test_object_not_exist():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
-    ethernet_dict = DictionaryV3(dictionary_path, Interface.EoE)
+    ethernet_dict = EoEDictionaryV3(dictionary_path)
     with pytest.raises(KeyError):
         ethernet_dict.get_object("NOT_EXISTING_UID", 0)
 
@@ -94,7 +95,7 @@ def test_object_not_exist():
 @pytest.mark.no_connection
 def test_safety_pdo_not_implemented():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
-    ethernet_dict = DictionaryV3(dictionary_path, Interface.EoE)
+    ethernet_dict = EoEDictionaryV3(dictionary_path)
     with pytest.raises(NotImplementedError):
         ethernet_dict.get_safety_rpdo("NOT_EXISTING_UID")
     with pytest.raises(NotImplementedError):
@@ -113,7 +114,7 @@ def test_register_default_values():
         },
         1: {"COMMU_ANGLE_SENSOR": 4, "DRV_STATE_CONTROL": 0},
     }
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
+    ethercat_dict = EoEDictionaryV3(dictionary_path)
     for subnode, registers in ethercat_dict._registers.items():
         for register in registers.values():
             assert register.default == expected_defaults_per_subnode[subnode][register.identifier]
@@ -135,7 +136,7 @@ def test_register_description():
             "It is compliant with DS402.",
         },
     }
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.EoE)
+    ethercat_dict = EoEDictionaryV3(dictionary_path)
     for subnode, registers in ethercat_dict._registers.items():
         for register in registers.values():
             assert (
@@ -147,7 +148,7 @@ def test_register_description():
 @pytest.mark.no_connection
 def test_register_bitfields():
     dictionary_path = join_path(path_resources, dict_eoe_v3)
-    canopen_dict = DictionaryV3(dictionary_path, Interface.EoE)
+    canopen_dict = EoEDictionaryV3(dictionary_path)
 
     for registers in canopen_dict._registers.values():
         for register in registers.values():

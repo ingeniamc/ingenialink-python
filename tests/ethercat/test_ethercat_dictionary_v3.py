@@ -7,9 +7,9 @@ from ingenialink.bitfield import BitField
 from ingenialink.dictionary import (
     DictionarySafetyModule,
     DictionarySafetyPDO,
-    DictionaryV3,
     Interface,
 )
+from ingenialink.ethercat.dictionary import EthercatDictionaryV3
 from ingenialink.exceptions import ILDictionaryParseError
 
 path_resources = "./tests/resources/"
@@ -32,7 +32,7 @@ def test_read_dictionary():
         "image": "image-text",
     }
 
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
 
     for attr, value in expected_device_attr.items():
         assert getattr(ethercat_dict, attr) == value
@@ -43,7 +43,7 @@ def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
     with pytest.raises(FileNotFoundError):
-        DictionaryV3(dictionary_path, Interface.ECAT)
+        EthercatDictionaryV3(dictionary_path)
 
 
 @pytest.mark.no_connection
@@ -60,7 +60,7 @@ def test_read_dictionary_registers():
         1: ["COMMU_ANGLE_SENSOR"],
     }
 
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
 
     for subnode in expected_regs_per_subnode:
         assert expected_regs_per_subnode[subnode] == list(ethercat_dict.registers(subnode))
@@ -74,7 +74,7 @@ def test_read_dictionary_categories():
     ]
     dictionary_path = join_path(path_resources, dict_ecat_v3)
 
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
 
     assert ethercat_dict.categories.category_ids == expected_categories
 
@@ -87,7 +87,7 @@ def test_read_dictionary_errors():
     ]
     dictionary_path = join_path(path_resources, dict_ecat_v3)
 
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
 
     assert list(ethercat_dict.errors) == expected_errors
 
@@ -100,7 +100,7 @@ def test_read_xdf_register():
     reg_id = "DRV_DIAG_ERROR_LAST_COM"
     subnode = 0
 
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
     target_register = ethercat_dict.registers(subnode)[reg_id]
 
     assert isinstance(target_register, CanopenRegister)
@@ -111,7 +111,7 @@ def test_read_xdf_register():
 @pytest.mark.no_connection
 def test_object_registers():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
     canopen_object = ethercat_dict.get_object("CIA301_COMMS_RPDO1_MAP", 0)
     reg_subindex = [0, 1]
     reg_uids = ["CIA301_COMMS_RPDO1_MAP", "CIA301_COMMS_RPDO1_MAP_1"]
@@ -126,7 +126,7 @@ def test_object_registers():
 @pytest.mark.no_connection
 def test_object_not_exist():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
     with pytest.raises(KeyError):
         ethercat_dict.get_object("NOT_EXISTING_UID", 0)
 
@@ -134,7 +134,7 @@ def test_object_not_exist():
 @pytest.mark.no_connection
 def test_safety_rpdo():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
     safety_rpdo = ethercat_dict.get_safety_rpdo("READ_ONLY_RPDO_1")
     assert isinstance(safety_rpdo, DictionarySafetyPDO)
     assert safety_rpdo.index == 0x1700
@@ -156,7 +156,7 @@ def test_safety_rpdo():
 @pytest.mark.no_connection
 def test_safety_rpdo_not_exist():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
     with pytest.raises(KeyError):
         ethercat_dict.get_safety_rpdo("READ_ONLY_TPDO_1")
 
@@ -164,7 +164,7 @@ def test_safety_rpdo_not_exist():
 @pytest.mark.no_connection
 def test_safety_tpdo():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
     safety_rpdo = ethercat_dict.get_safety_tpdo("READ_ONLY_TPDO_1")
     assert isinstance(safety_rpdo, DictionarySafetyPDO)
     assert safety_rpdo.index == 0x1B00
@@ -186,7 +186,7 @@ def test_safety_tpdo():
 @pytest.mark.no_connection
 def test_safety_tpdo_not_exist():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
     with pytest.raises(KeyError):
         ethercat_dict.get_safety_tpdo("READ_ONLY_RPDO_1")
 
@@ -194,7 +194,7 @@ def test_safety_tpdo_not_exist():
 @pytest.mark.no_connection
 def test_safety_modules():
     dictionary_path = join_path(path_resources, dict_ecat_v3_safe)
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
 
     # Expected data
     module_ident_to_application_parameters = {
@@ -222,7 +222,7 @@ def test_safety_modules():
 @pytest.mark.no_connection
 def test_safety_module_not_exist():
     dictionary_path = join_path(path_resources, dict_ecat_v3_safe)
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
     with pytest.raises(KeyError):
         ethercat_dict.get_safety_module("0x3800007")
 
@@ -232,7 +232,7 @@ def test_wrong_dictionary():
     with pytest.raises(
         ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication"
     ):
-        DictionaryV3("./tests/resources/canopen/test_dict_can_v3.0.xdf", Interface.ECAT)
+        EthercatDictionaryV3("./tests/resources/canopen/test_dict_can_v3.0.xdf", Interface.ECAT)
 
 
 @pytest.mark.no_connection
@@ -250,7 +250,7 @@ def test_register_default_values():
             "COMMU_ANGLE_SENSOR": 4,
         },
     }
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
     for subnode, registers in ethercat_dict._registers.items():
         for register in registers.values():
             assert register.default == expected_defaults_per_subnode[subnode][register.identifier]
@@ -271,7 +271,7 @@ def test_register_description():
             "COMMU_ANGLE_SENSOR": "Indicates the sensor used for angle readings",
         },
     }
-    ethercat_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
     for subnode, registers in ethercat_dict._registers.items():
         for register in registers.values():
             assert (
@@ -283,7 +283,7 @@ def test_register_description():
 @pytest.mark.no_connection
 def test_register_bitfields():
     dictionary_path = join_path(path_resources, dict_ecat_v3)
-    canopen_dict = DictionaryV3(dictionary_path, Interface.ECAT)
+    canopen_dict = EthercatDictionaryV3(dictionary_path)
 
     for registers in canopen_dict._registers.values():
         for register in registers.values():
