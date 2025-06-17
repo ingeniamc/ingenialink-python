@@ -63,13 +63,25 @@ class DriveContextManager:
             register: register.
             value: changed value.
         """
+        uid: str = cast("str", register.identifier)
         if register.access in [RegAccess.WO, RegAccess.RO]:
             return
-        if register.identifier in self._do_not_restore_registers:
+        if uid in self._do_not_restore_registers:
             return
+
         if register.subnode not in self._registers_changed:
             self._registers_changed[register.subnode] = {}
-        self._registers_changed[register.subnode][cast("str", register.identifier)] = value
+
+        # Check if the new value is different from the previous one
+        if uid in self._registers_changed[register.subnode]:
+            previous_value = self._registers_changed[register.subnode][uid]
+        else:
+            previous_value = self._original_register_values[register.subnode].get(uid, None)
+        if value == previous_value:
+            return
+
+        self._registers_changed[register.subnode][uid] = value
+        logger.info(f"{id(self)}: {uid=} changed from {previous_value} to {value}")
 
     def _store_register_data(self) -> None:
         """Saves the value of all registers."""
@@ -95,7 +107,13 @@ class DriveContextManager:
                 restore_value = self._original_register_values[axis].get(uid, None)
                 if restore_value is None or current_value == restore_value:
                     continue
-                self.drive.write(uid, restore_value, subnode=axis)
+                try:
+                    self.drive.write(uid, restore_value, subnode=axis)
+                except Exception as e:
+                    logger.error(
+                        f"{id(self)}: {uid=} failed to write {current_value=}, {restore_value=}"
+                    )
+                    raise e
 
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
