@@ -375,3 +375,14 @@ def test_get_register():
     # Specify the same uid, providing the subnode, registers should match
     register_2 = dictionary.get_register(uid=uid, axis=0)
     assert register_1 == register_2
+
+
+def test_canopen_dictionary_get_register_by_index_subindex():
+    dict_path = f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf"
+    dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.CAN)
+
+    idx = 0x2010
+    subidx = 0x0
+    register = dictionary.get_register_by_index_subindex(idx, subidx)
+    assert register.idx == idx
+    assert register.subidx == subidx

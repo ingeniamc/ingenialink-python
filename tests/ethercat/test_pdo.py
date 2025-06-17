@@ -326,14 +326,39 @@ def create_pdo_maps(servo, rpdo_registers, tpdo_registers):
 
 @pytest.mark.ethercat
 def test_read_rpdo_map_from_slave(servo: EthercatServo):
-    pdo_map = servo.read_rpdo_map_from_slave("ETG_COMMS_RPDO_MAP256_TOTAL", subnode=1)
+    pdo_map = servo.read_rpdo_map_from_slave("ETG_COMMS_RPDO_MAP1_TOTAL", subnode=1)
     assert isinstance(pdo_map, RPDOMap)
 
 
 @pytest.mark.ethercat
 def test_read_tpdo_map_from_slave(servo: EthercatServo):
-    pdo_map = servo.read_rpdo_map_from_slave("ETG_COMMS_TPDO_MAP256_TOTAL", subnode=1)
+    pdo_map = servo.read_rpdo_map_from_slave("ETG_COMMS_TPDO_MAP1_TOTAL", subnode=1)
     assert isinstance(pdo_map, TPDOMap)
+
+
+def test_pdo_map_from_value(open_dictionary):
+    tpdo_map = TPDOMap()
+
+    # Full register mapped
+    tpdo_map.add_registers(open_dictionary.get_register("CL_POS_FBK_VALUE"))
+    # Padding item
+    tpdo_map.add_item(TPDOMapItem(size_bits=8))
+    # Partial register mapped
+    tpdo_map.add_item(TPDOMapItem(open_dictionary.get_register("CL_VEL_FBK_VALUE"), size_bits=4))
+
+    tpdo_value = tpdo_map.to_pdo_value()
+
+    rebuild_tpdo_map = TPDOMap.from_pdo_value(tpdo_value, open_dictionary)
+
+    for original, rebuild in zip(tpdo_map.items, rebuild_tpdo_map.items):
+        if original.register.idx == 0:
+            # Padding item
+            assert rebuild.register.idx == 0
+            assert rebuild.register.subidx == 0
+        else:
+            assert original.register == rebuild.register
+
+        assert original.size_bits == rebuild.size_bits
 
 
 def start_stop_pdos(net):

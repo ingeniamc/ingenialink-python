@@ -180,7 +180,7 @@ class PDOMapItem:
             },
         )
 
-        mapped_register_bytes: bytes = mapped_register.to_bytes(4, BIT_ENDIAN)
+        mapped_register_bytes: bytes = mapped_register.to_bytes(MAP_REGISTER_BYTES, BIT_ENDIAN)
         return mapped_register_bytes
 
     @classmethod
@@ -224,8 +224,10 @@ class PDOMapItem:
         Returns:
             str: String representation of the PDOMapItem instance.
         """
-        return (f"<{self.__class__.__name__} {self.register.identifier} "
-                f"({self.size_bits} bits) at 0x{id(self):X} >")
+        return (
+            f"<{self.__class__.__name__} {self.register.identifier} "
+            f"({self.size_bits} bits) at 0x{id(self):X} >"
+        )
 
 
 class RPDOMapItem(PDOMapItem):
@@ -418,11 +420,25 @@ class PDOMap:
             map_bytes += pdo_map_item.register_mapping
         return map_bytes
 
+    def to_pdo_value(self) -> bytes:
+        """Convert the PDOMap to the full pdo value (accessed via complete access).
+
+        Returns:
+            Value of the pdo mapping in bytes.
+        """
+        return (
+            len(self.items).to_bytes(
+                length=1, byteorder=BIT_ENDIAN
+            )  # First byte is the number of items
+            + b"\x00"  # Second byte is padding
+            + self.items_mapping
+        )
+
     @classmethod
     def from_pdo_value(
         cls: type[PDO_MAP_TYPE], value: bytes, dictionary: "CanopenDictionary"
     ) -> PDO_MAP_TYPE:
-        """Create a PDOMap from the pdo value.
+        """Create a PDOMap from the full pdo value (accessed via complete access).
 
         Args:
             value: Value of the pdo mapping in bytes.
