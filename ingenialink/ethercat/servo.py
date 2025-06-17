@@ -1,7 +1,7 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 import ingenialogger
 from typing_extensions import override
@@ -9,6 +9,7 @@ from typing_extensions import override
 from ingenialink import Servo
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.register import Register
 
 try:
     import pysoem
@@ -351,32 +352,36 @@ class EthercatServo(PDOServo):
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
-    def read_rpdo_map_from_slave(self, uid: str, subnode: int = 0, buffer_size: int = 0) -> RPDOMap:
+    def read_rpdo_map_from_slave(
+        self, reg: Union[str, Register], subnode: int = 0, buffer_size: int = 0
+    ) -> RPDOMap:
         """Read the RPDO map from the slave.
 
         Args:
-            uid: Unique identifier of the first element of the RPDO map.
+            reg: First register of the RPDO map.
             subnode: Subnode of the rpdo map.
             buffer_size: Size of the buffer to read the pdo map.
 
         Returns:
             RPDOMap: The RPDO map read from the slave.
         """
-        value = self.read_complete_access(uid, subnode, buffer_size)
+        value = self.read_complete_access(reg, subnode, buffer_size)
         return RPDOMap.from_pdo_value(value, self.dictionary)
 
-    def read_tpdo_map_from_slave(self, uid: str, subnode: int = 0, buffer_size: int = 0) -> TPDOMap:
+    def read_tpdo_map_from_slave(
+        self, reg: Union[str, Register], subnode: int = 0, buffer_size: int = 0
+    ) -> TPDOMap:
         """Read the TPDO map from the slave.
 
         Args:
-            uid: Unique identifier of the first element of the TPDO map.
+            reg: First register of the RPDO map.
             subnode: Subnode of the rpdo map.
             buffer_size: Size of the buffer to read the pdo map.
 
         Returns:
             TPDOMap: The TPDO map read from the slave.
         """
-        value = self.read_complete_access(uid, subnode, buffer_size)
+        value = self.read_complete_access(reg, subnode, buffer_size)
         return TPDOMap.from_pdo_value(value, self.dictionary)
 
     @override
