@@ -10,6 +10,11 @@ from ingenialink.servo import Servo
 
 logger = get_logger(__name__)
 
+# These registers cannot be restored in whatever order, if
+# they have been altered, just restore the rpdo and tpdo maps
+_PDO_RPDO_MAP_REGISTER_UID = "ETG_COMMS_RPDO_"
+_PDO_TPDO_MAP_REGISTER_UID = "ETG_COMMS_TPDO_"
+
 
 @dataclass
 class RegisterChange:
@@ -58,6 +63,12 @@ class DriveContextManager:
         self._registers_changed: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
         self._registers_changed_ordered: list[RegisterChange] = []
 
+        # If registers that contain the prefixes defined in _PDO_MAP_REGISTERS_UID
+        # present a change, do not restore the exact same value because there is an
+        # order that must be followed for that, just restore the whole mapping
+        self._reset_rpdo_mapping: bool = False
+        self._reset_tpdo_mapping: bool = False
+
     def _register_update_callback(
         self,
         servo: Servo,  # noqa: ARG002
@@ -91,6 +102,20 @@ class DriveContextManager:
         else:
             previous_value = self._original_register_values[register.subnode][uid]
         if value == previous_value:
+            return
+
+        # Reset the whole rpdo/tpdo mapping if needed
+        if _PDO_RPDO_MAP_REGISTER_UID in uid:
+            logger.warning(
+                f"{id(self)}: {uid=} has been changed, will reset rpdo mapping on context exit"
+            )
+            self._reset_rpdo_mapping = True
+            return
+        if _PDO_TPDO_MAP_REGISTER_UID in uid:
+            logger.warning(
+                f"{id(self)}: {uid=} has been changed, will reset tpdo mapping on context exit"
+            )
+            self._reset_tpdo_mapping = True
             return
 
         self._registers_changed[register.subnode][uid] = value
@@ -150,6 +175,13 @@ class DriveContextManager:
                 )
                 self.drive.write(reg_change.uid, restore_value, subnode=reg_change.axis)
             restored_registers[reg_change.axis].append(reg_change.uid)
+
+        if self._reset_tpdo_mapping:
+            logger.warning(f"{id(self)}: Will reset tpdo mapping")
+            self.drive.reset_tpdo_mapping()
+        if self._reset_rpdo_mapping:
+            logger.warning(f"{id(self)}: Will reset rpdo mapping")
+            self.drive.reset_rpdo_mapping()
 
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
