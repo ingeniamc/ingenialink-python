@@ -94,10 +94,20 @@ class DriveContextManager:
                     continue
                 if register.access in [RegAccess.WO, RegAccess.RO]:
                     continue
+
                 try:
                     register_value = self.drive.read(uid, subnode=axis)
                 except ILIOError:
                     continue
+                except Exception as e:
+                    logger.warning(
+                        f"{id(self)}: '{e}' happened while trying to read {uid=} from {axis=}, "
+                        "trying again..."
+                    )
+                    try:
+                        register_value = self.drive.read(uid, subnode=axis)
+                    except ILIOError:
+                        continue
                 self._original_register_values[axis][uid] = register_value
 
     def _restore_register_data(self) -> None:
@@ -111,9 +121,10 @@ class DriveContextManager:
                     self.drive.write(uid, restore_value, subnode=axis)
                 except Exception as e:
                     logger.error(
-                        f"{id(self)}: {uid=} failed to write {current_value=}, {restore_value=}"
+                        f"{id(self)}: {uid=} failed to write {current_value=}, {restore_value=}, "
+                        f"with exception '{e}', trying again..."
                     )
-                    raise e
+                    self.drive.write(uid, restore_value, subnode=axis)
 
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
