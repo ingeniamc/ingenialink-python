@@ -17,7 +17,7 @@ class RegisterChange:
 
     uid: str
     axis: int
-    value: dict[str, Union[int, float, str, bytes]]
+    value: Union[int, float, str, bytes]
 
 
 class DriveContextManager:
@@ -145,8 +145,8 @@ class DriveContextManager:
                 self.drive.write(reg_change.uid, restore_value, subnode=reg_change.axis)
             except Exception as e:
                 logger.error(
-                    f"{id(self)}: {reg_change.uid} failed to restore value={reg_change.value} "
-                    f"to {restore_value} with exception '{e}', trying again..."
+                    f"{id(self)}: {reg_change.uid} failed to restore value={reg_change.value!r} "
+                    f"to {restore_value!r} with exception '{e}', trying again..."
                 )
                 self.drive.write(reg_change.uid, restore_value, subnode=reg_change.axis)
             restored_registers[reg_change.axis].append(reg_change.uid)
