@@ -1255,6 +1255,9 @@ class DictionaryV3(Dictionary):
         Returns:
             Subitem register
 
+        Raises:
+            ValueError: if Canopen/Ethercat register cannot be created for
+                the communication interface.
         """
         reg_subindex = int(subitem.attrib[self.__SUBINDEX_ATTR])
         address_type = Dictionary._get_address_type_xdf_options(
@@ -1288,28 +1291,36 @@ class DictionaryV3(Dictionary):
         bitfields_element = subitem.find(self.__BITFIELDS_ELEMENT)
         bitfields = self.__read_bitfields(bitfields_element)
 
-        canopen_register = CanopenRegister(
-            reg_index,
-            reg_subindex,
-            dtype,
-            access,
-            identifier=identifier,
-            units=units,
-            pdo_access=pdo_access,
-            subnode=subnode,
-            reg_range=reg_range,
-            labels=labels,
-            enums=enums,
-            cat_id=cat_id,
-            address_type=address_type,
-            description=description,
-            default=default,
-            bitfields=bitfields,
-            monitoring=monitoring,
-            is_node_id_dependent=is_node_id_dependent,
-        )
-        self.__add_register(register=canopen_register, axis=subnode)
-        return canopen_register
+        register_kwargs = {
+            "idx": reg_index,
+            "subidx": reg_subindex,
+            "dtype": dtype,
+            "access": access,
+            "identifier": identifier,
+            "units": units,
+            "pdo_access": pdo_access,
+            "subnode": subnode,
+            "reg_range": reg_range,
+            "labels": labels,
+            "enums": enums,
+            "cat_id": cat_id,
+            "address_type": address_type,
+            "description": description,
+            "default": default,
+            "bitfields": bitfields,
+            "monitoring": monitoring,
+            "is_node_id_dependent": is_node_id_dependent,
+        }
+
+        if self.interface == Interface.CAN:
+            canopen_register = CanopenRegister(**register_kwargs)
+            self.__add_register(register=canopen_register, axis=subnode)
+            return canopen_register
+        elif self.interface == Interface.ECAT:
+            ethercat_register = EthercatRegister(**register_kwargs)
+            self.__add_register(register=ethercat_register, axis=subnode)
+            return ethercat_register
+        raise ValueError(f"Cannot create Canopen/Ethercat register for interface {self.interface}")
 
     def __read_safety_pdos(self, root: ElementTree.Element) -> None:
         """Process SafetyPDOs element.

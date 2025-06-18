@@ -63,7 +63,10 @@ def test_read_dictionary_registers():
     canopen_dict = DictionaryV3(dictionary_path, Interface.CAN)
 
     for subnode in expected_regs_per_subnode:
-        assert expected_regs_per_subnode[subnode] == list(canopen_dict.registers(subnode))
+        subnode_registers = canopen_dict.registers(subnode)
+        assert expected_regs_per_subnode[subnode] == list(subnode_registers)
+        for reg in subnode_registers.values():
+            assert isinstance(reg, CanopenRegister)
 
 
 @pytest.mark.no_connection
