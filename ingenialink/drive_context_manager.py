@@ -68,6 +68,8 @@ class DriveContextManager:
             return
         if uid in self._do_not_restore_registers:
             return
+        if uid not in self._original_register_values[register.subnode]:
+            return
 
         if register.subnode not in self._registers_changed:
             self._registers_changed[register.subnode] = {}
@@ -76,12 +78,12 @@ class DriveContextManager:
         if uid in self._registers_changed[register.subnode]:
             previous_value = self._registers_changed[register.subnode][uid]
         else:
-            previous_value = self._original_register_values[register.subnode].get(uid, None)
+            previous_value = self._original_register_values[register.subnode][uid]
         if value == previous_value:
             return
 
         self._registers_changed[register.subnode][uid] = value
-        logger.info(f"{id(self)}: {uid=} changed from {previous_value} to {value}")
+        logger.info(f"{id(self)}: {uid=} changed from {previous_value!r} to {value!r}")
 
     def _store_register_data(self) -> None:
         """Saves the value of all registers."""
