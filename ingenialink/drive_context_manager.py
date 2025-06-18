@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional, Union, cast
 
 from ingenialogger import get_logger
@@ -8,6 +9,15 @@ from ingenialink.register import Register
 from ingenialink.servo import Servo
 
 logger = get_logger(__name__)
+
+
+@dataclass
+class RegisterChange:
+    """Register change."""
+
+    uid: str
+    axis: int
+    value: dict[str, Union[int, float, str, bytes]]
 
 
 class DriveContextManager:
@@ -46,6 +56,7 @@ class DriveContextManager:
 
         self._original_register_values: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
         self._registers_changed: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
+        self._registers_changed_ordered: list[RegisterChange] = []
 
     def _register_update_callback(
         self,
@@ -83,15 +94,17 @@ class DriveContextManager:
             return
 
         self._registers_changed[register.subnode][uid] = value
+        self._registers_changed_ordered.append(
+            RegisterChange(uid=uid, axis=register.subnode, value=value)
+        )
         logger.info(f"{id(self)}: {uid=} changed from {previous_value!r} to {value!r}")
 
     def _store_register_data(self) -> None:
         """Saves the value of all registers."""
-        drive = self.drive
-        axes = list(drive.dictionary.subnodes) if self._axis is None else [self._axis]
+        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
         for axis in axes:
             self._original_register_values[axis] = {}
-            for uid, register in drive.dictionary.registers(subnode=axis).items():
+            for uid, register in self.drive.dictionary.registers(subnode=axis).items():
                 if register.identifier in self._do_not_restore_registers:
                     continue
                 if register.access in [RegAccess.WO, RegAccess.RO]:
@@ -114,19 +127,29 @@ class DriveContextManager:
 
     def _restore_register_data(self) -> None:
         """Restores the drive values."""
-        for axis, registers in self._registers_changed.items():
-            for uid, current_value in registers.items():
-                restore_value = self._original_register_values[axis].get(uid, None)
-                if restore_value is None or current_value == restore_value:
-                    continue
-                try:
-                    self.drive.write(uid, restore_value, subnode=axis)
-                except Exception as e:
-                    logger.error(
-                        f"{id(self)}: {uid=} failed to write {current_value=}, {restore_value=}, "
-                        f"with exception '{e}', trying again..."
-                    )
-                    self.drive.write(uid, restore_value, subnode=axis)
+        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
+        restored_registers: dict[int, list[str]] = {axis: [] for axis in axes}
+        for reg_change in self._registers_changed_ordered[::-1]:
+            # No original data for the register
+            if reg_change.uid not in self._original_register_values[reg_change.axis]:
+                continue
+            # Register has already been restored with a newer value than the evaluated one
+            if reg_change.uid in restored_registers[reg_change.axis]:
+                continue
+            restore_value = self._original_register_values[reg_change.axis][reg_change.uid]
+            # No change with respect to the original value
+            if reg_change.value == restore_value:
+                continue
+
+            try:
+                self.drive.write(reg_change.uid, restore_value, subnode=reg_change.axis)
+            except Exception as e:
+                logger.error(
+                    f"{id(self)}: {reg_change.uid} failed to restore value={reg_change.value} "
+                    f"to {restore_value} with exception '{e}', trying again..."
+                )
+                self.drive.write(reg_change.uid, restore_value, subnode=reg_change.axis)
+            restored_registers[reg_change.axis].append(reg_change.uid)
 
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
