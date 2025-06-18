@@ -5,6 +5,7 @@ from ingenialogger import get_logger
 
 from ingenialink.enums.register import RegAccess
 from ingenialink.exceptions import ILIOError
+from ingenialink.pdo import PDOServo
 from ingenialink.register import Register
 from ingenialink.servo import Servo
 
@@ -176,6 +177,8 @@ class DriveContextManager:
                 self.drive.write(reg_change.uid, restore_value, subnode=reg_change.axis)
             restored_registers[reg_change.axis].append(reg_change.uid)
 
+        if not isinstance(self.drive, PDOServo):
+            return
         if self._reset_tpdo_mapping:
             logger.warning(f"{id(self)}: Will reset tpdo mapping")
             self.drive.reset_tpdo_mapping()
