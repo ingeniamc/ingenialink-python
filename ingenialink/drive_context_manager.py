@@ -81,7 +81,6 @@ class DriveContextManager:
         It will ignore the registers that should not be restored `self._do_not_restore_registers`.
 
         Args:
-            alias: servo alias.
             servo: servo.
             register: register.
             value: changed value.
