@@ -1,4 +1,5 @@
 import itertools
+import logging
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,24 @@ pytest_plugins = [
 # The issue is solved by dynamically importing them before the tests start. All modules that should
 # be imported and ARE NOT part of the package should be specified here
 _DYNAMIC_MODULES_IMPORT = ["tests"]
+
+
+class SuppressSpecificLogs(logging.Filter):
+    def filter(self, record):
+        message = record.getMessage()
+        # Suppress logs containing this specific message
+        return not (
+            "Exception during load_configuration" in message
+            or record.name
+            == "ingenialink.configuration_file"  # https://novantamotion.atlassian.net/browse/CIT-433
+        )
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_configure(config):  # noqa: ARG001
+    logging.getLogger("ingenialink.servo").addFilter(SuppressSpecificLogs())
+    # https://novantamotion.atlassian.net/browse/CIT-433
+    logging.getLogger("ingenialink.configuration_file").addFilter(SuppressSpecificLogs())
 
 
 def pytest_sessionstart(session):
