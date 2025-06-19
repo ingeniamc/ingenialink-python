@@ -24,8 +24,12 @@ _DYNAMIC_MODULES_IMPORT = ["tests"]
 
 class SuppressSpecificLogs(logging.Filter):
     def filter(self, record):
+        message = record.getMessage()
         # Suppress logs containing this specific message
-        return "Exception during load_configuration" not in record.getMessage()
+        return not (
+            "Exception during load_configuration" in message
+            or record.name == "ingenialink.configuration_file"
+        )
 
 
 @pytest.hookimpl(tryfirst=True)
