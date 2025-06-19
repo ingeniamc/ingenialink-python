@@ -28,13 +28,16 @@ class SuppressSpecificLogs(logging.Filter):
         # Suppress logs containing this specific message
         return not (
             "Exception during load_configuration" in message
-            or record.name == "ingenialink.configuration_file"
+            or record.name
+            == "ingenialink.configuration_file"  # https://novantamotion.atlassian.net/browse/CIT-433
         )
 
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_configure(config):  # noqa: ARG001
     logging.getLogger("ingenialink.servo").addFilter(SuppressSpecificLogs())
+    # https://novantamotion.atlassian.net/browse/CIT-433
+    logging.getLogger("ingenialink.configuration_file").addFilter(SuppressSpecificLogs())
 
 
 def pytest_sessionstart(session):
