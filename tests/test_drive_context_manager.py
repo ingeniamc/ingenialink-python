@@ -1,6 +1,6 @@
 import pytest
 
-from ingenialink.drive_context_manager import DriveContextManager, RegisterChange
+from ingenialink.drive_context_manager import DriveContextManager
 
 _USER_OVER_VOLTAGE_UID = "DRV_PROT_USER_OVER_VOLT"
 _USER_UNDER_VOLTAGE_UID = "DRV_PROT_USER_UNDER_VOLT"
@@ -33,19 +33,12 @@ def test_drive_context_manager(setup_manager):
     with context:
         servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
         assert _read_user_over_voltage_uid(servo) == new_reg_value
-        assert context._registers_changed == {1: {_USER_OVER_VOLTAGE_UID: new_reg_value}}
-        assert context._registers_changed_ordered == [
-            RegisterChange(uid=_USER_OVER_VOLTAGE_UID, axis=1, value=new_reg_value)
-        ]
+        assert context._registers_changed == {(1, _USER_OVER_VOLTAGE_UID): new_reg_value}
 
         # Change the register a second time, it should register the change
         servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value_2, subnode=1)
         assert _read_user_over_voltage_uid(servo) == new_reg_value_2
-        assert context._registers_changed == {1: {_USER_OVER_VOLTAGE_UID: new_reg_value_2}}
-        assert context._registers_changed_ordered == [
-            RegisterChange(uid=_USER_OVER_VOLTAGE_UID, axis=1, value=new_reg_value),
-            RegisterChange(uid=_USER_OVER_VOLTAGE_UID, axis=1, value=new_reg_value_2),
-        ]
+        assert context._registers_changed == {(1, _USER_OVER_VOLTAGE_UID): new_reg_value_2}
 
     assert _read_user_over_voltage_uid(servo) == previous_reg_value
 

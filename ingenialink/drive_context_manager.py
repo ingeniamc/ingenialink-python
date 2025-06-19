@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from collections import OrderedDict
 from typing import Optional, Union, cast
 
 from ingenialogger import get_logger
@@ -15,15 +15,6 @@ logger = get_logger(__name__)
 # they have been altered, just restore the rpdo and tpdo maps
 _PDO_RPDO_MAP_REGISTER_UID = "ETG_COMMS_RPDO_"
 _PDO_TPDO_MAP_REGISTER_UID = "ETG_COMMS_TPDO_"
-
-
-@dataclass
-class RegisterChange:
-    """Register change."""
-
-    uid: str
-    axis: int
-    value: Union[int, float, str, bytes]
 
 
 class DriveContextManager:
@@ -61,8 +52,9 @@ class DriveContextManager:
         ])
 
         self._original_register_values: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
-        self._registers_changed: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
-        self._registers_changed_ordered: list[RegisterChange] = []
+        self._registers_changed: OrderedDict[tuple[int, str], Union[int, float, str, bytes]] = (
+            OrderedDict()
+        )
 
         # If registers that contain the prefixes defined in _PDO_MAP_REGISTERS_UID
         # present a change, do not restore the exact same value because there is an
@@ -93,12 +85,11 @@ class DriveContextManager:
         if uid not in self._original_register_values[register.subnode]:
             return
 
-        if register.subnode not in self._registers_changed:
-            self._registers_changed[register.subnode] = {}
+        dict_key = (register.subnode, uid)
 
         # Check if the new value is different from the previous one
-        if uid in self._registers_changed[register.subnode]:
-            previous_value = self._registers_changed[register.subnode][uid]
+        if dict_key in self._registers_changed:
+            previous_value = self._registers_changed[dict_key]
         else:
             previous_value = self._original_register_values[register.subnode][uid]
         if value == previous_value:
@@ -118,10 +109,7 @@ class DriveContextManager:
             self._reset_tpdo_mapping = True
             return
 
-        self._registers_changed[register.subnode][uid] = value
-        self._registers_changed_ordered.append(
-            RegisterChange(uid=uid, axis=register.subnode, value=value)
-        )
+        self._registers_changed[dict_key] = value
         logger.info(f"{id(self)}: {uid=} changed from {previous_value!r} to {value!r}")
 
     def _store_register_data(self) -> None:
@@ -154,27 +142,27 @@ class DriveContextManager:
         """Restores the drive values."""
         axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
         restored_registers: dict[int, list[str]] = {axis: [] for axis in axes}
-        for reg_change in self._registers_changed_ordered[::-1]:
+        for (axis, uid), current_value in reversed(self._registers_changed.items()):
             # No original data for the register
-            if reg_change.uid not in self._original_register_values[reg_change.axis]:
+            if uid not in self._original_register_values[axis]:
                 continue
             # Register has already been restored with a newer value than the evaluated one
-            if reg_change.uid in restored_registers[reg_change.axis]:
+            if uid in restored_registers[axis]:
                 continue
-            restore_value = self._original_register_values[reg_change.axis][reg_change.uid]
+            restore_value = self._original_register_values[axis][uid]
             # No change with respect to the original value
-            if reg_change.value == restore_value:
+            if current_value == restore_value:
                 continue
 
             try:
-                self.drive.write(reg_change.uid, restore_value, subnode=reg_change.axis)
+                self.drive.write(uid, restore_value, subnode=axis)
             except Exception as e:
                 logger.error(
-                    f"{id(self)}: {reg_change.uid} failed to restore value={reg_change.value!r} "
+                    f"{id(self)}: {uid} failed to restore value={current_value!r} "
                     f"to {restore_value!r} with exception '{e}', trying again..."
                 )
-                self.drive.write(reg_change.uid, restore_value, subnode=reg_change.axis)
-            restored_registers[reg_change.axis].append(reg_change.uid)
+                self.drive.write(uid, restore_value, subnode=axis)
+            restored_registers[axis].append(uid)
 
         if not isinstance(self.drive, PDOServo):
             return
