@@ -21,6 +21,7 @@ def is_coco_moco(servo):
 
 @pytest.mark.canopen
 @pytest.mark.ethercat
+@pytest.mark.skip("https://novantamotion.atlassian.net/browse/COMOCOAPP-455")
 def test_emcy_callback(servo):
     if isinstance(servo, EthercatServo) and is_coco_moco(servo):
         pytest.skip("The test is not supported for COCO MOCO EtherCAT drives")

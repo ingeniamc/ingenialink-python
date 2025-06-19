@@ -1,13 +1,20 @@
+from collections import OrderedDict
 from typing import Optional, Union, cast
 
 from ingenialogger import get_logger
 
 from ingenialink.enums.register import RegAccess
 from ingenialink.exceptions import ILIOError
+from ingenialink.pdo import PDOServo
 from ingenialink.register import Register
 from ingenialink.servo import Servo
 
 logger = get_logger(__name__)
+
+# These registers cannot be restored in whatever order, if
+# they have been altered, just restore the rpdo and tpdo maps
+_PDO_RPDO_MAP_REGISTER_UID = "ETG_COMMS_RPDO_"
+_PDO_TPDO_MAP_REGISTER_UID = "ETG_COMMS_TPDO_"
 
 
 class DriveContextManager:
@@ -45,7 +52,15 @@ class DriveContextManager:
         ])
 
         self._original_register_values: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
-        self._registers_changed: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
+        self._registers_changed: OrderedDict[tuple[int, str], Union[int, float, str, bytes]] = (
+            OrderedDict()
+        )
+
+        # If registers that contain the prefixes defined in _PDO_MAP_REGISTERS_UID
+        # present a change, do not restore the exact same value because there is an
+        # order that must be followed for that, just restore the whole mapping
+        self._reset_rpdo_mapping: bool = False
+        self._reset_tpdo_mapping: bool = False
 
     def _register_update_callback(
         self,
@@ -58,44 +73,105 @@ class DriveContextManager:
         It will ignore the registers that should not be restored `self._do_not_restore_registers`.
 
         Args:
-            alias: servo alias.
             servo: servo.
             register: register.
             value: changed value.
         """
+        uid: str = cast("str", register.identifier)
         if register.access in [RegAccess.WO, RegAccess.RO]:
             return
-        if register.identifier in self._do_not_restore_registers:
+        if uid in self._do_not_restore_registers:
             return
-        if register.subnode not in self._registers_changed:
-            self._registers_changed[register.subnode] = {}
-        self._registers_changed[register.subnode][cast("str", register.identifier)] = value
+        if uid not in self._original_register_values[register.subnode]:
+            return
+
+        dict_key = (register.subnode, uid)
+
+        # Check if the new value is different from the previous one
+        if dict_key in self._registers_changed:
+            previous_value = self._registers_changed[dict_key]
+        else:
+            previous_value = self._original_register_values[register.subnode][uid]
+        if value == previous_value:
+            return
+
+        # Reset the whole rpdo/tpdo mapping if needed
+        if _PDO_RPDO_MAP_REGISTER_UID in uid:
+            logger.info(
+                f"{id(self)}: {uid=} has been changed, will reset rpdo mapping on context exit"
+            )
+            self._reset_rpdo_mapping = True
+            return
+        if _PDO_TPDO_MAP_REGISTER_UID in uid:
+            logger.info(
+                f"{id(self)}: {uid=} has been changed, will reset tpdo mapping on context exit"
+            )
+            self._reset_tpdo_mapping = True
+            return
+
+        self._registers_changed[dict_key] = value
+        logger.info(f"{id(self)}: {uid=} changed from {previous_value!r} to {value!r}")
 
     def _store_register_data(self) -> None:
         """Saves the value of all registers."""
-        drive = self.drive
-        axes = list(drive.dictionary.subnodes) if self._axis is None else [self._axis]
+        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
         for axis in axes:
             self._original_register_values[axis] = {}
-            for uid, register in drive.dictionary.registers(subnode=axis).items():
+            for uid, register in self.drive.dictionary.registers(subnode=axis).items():
                 if register.identifier in self._do_not_restore_registers:
                     continue
                 if register.access in [RegAccess.WO, RegAccess.RO]:
                     continue
+
                 try:
                     register_value = self.drive.read(uid, subnode=axis)
                 except ILIOError:
                     continue
+                except Exception as e:
+                    logger.warning(
+                        f"{id(self)}: '{e}' happened while trying to read {uid=} from {axis=}, "
+                        "trying again..."
+                    )
+                    try:
+                        register_value = self.drive.read(uid, subnode=axis)
+                    except ILIOError:
+                        continue
                 self._original_register_values[axis][uid] = register_value
 
     def _restore_register_data(self) -> None:
         """Restores the drive values."""
-        for axis, registers in self._registers_changed.items():
-            for uid, current_value in registers.items():
-                restore_value = self._original_register_values[axis].get(uid, None)
-                if restore_value is None or current_value == restore_value:
-                    continue
+        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
+        restored_registers: dict[int, list[str]] = {axis: [] for axis in axes}
+        for (axis, uid), current_value in reversed(self._registers_changed.items()):
+            # No original data for the register
+            if uid not in self._original_register_values[axis]:
+                continue
+            # Register has already been restored with a newer value than the evaluated one
+            if uid in restored_registers[axis]:
+                continue
+            restore_value = self._original_register_values[axis][uid]
+            # No change with respect to the original value
+            if current_value == restore_value:
+                continue
+
+            try:
                 self.drive.write(uid, restore_value, subnode=axis)
+            except Exception as e:
+                logger.error(
+                    f"{id(self)}: {uid} failed to restore value={current_value!r} "
+                    f"to {restore_value!r} with exception '{e}', trying again..."
+                )
+                self.drive.write(uid, restore_value, subnode=axis)
+            restored_registers[axis].append(uid)
+
+        if not isinstance(self.drive, PDOServo):
+            return
+        if self._reset_tpdo_mapping:
+            logger.warning(f"{id(self)}: Will reset tpdo mapping")
+            self.drive.reset_tpdo_mapping()
+        if self._reset_rpdo_mapping:
+            logger.warning(f"{id(self)}: Will reset rpdo mapping")
+            self.drive.reset_rpdo_mapping()
 
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
