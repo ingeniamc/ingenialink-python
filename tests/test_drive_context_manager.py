@@ -26,10 +26,19 @@ def test_drive_context_manager(setup_manager):
     previous_reg_value = _read_user_over_voltage_uid(servo)
     if previous_reg_value == new_reg_value:
         new_reg_value -= 1.0
+    new_reg_value_2 = new_reg_value - 10
+    if previous_reg_value == new_reg_value_2:
+        new_reg_value_2 -= 1.0
 
     with context:
         servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
         assert _read_user_over_voltage_uid(servo) == new_reg_value
+        assert context._registers_changed == {(1, _USER_OVER_VOLTAGE_UID): new_reg_value}
+
+        # Change the register a second time, it should register the change
+        servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value_2, subnode=1)
+        assert _read_user_over_voltage_uid(servo) == new_reg_value_2
+        assert context._registers_changed == {(1, _USER_OVER_VOLTAGE_UID): new_reg_value_2}
 
     assert _read_user_over_voltage_uid(servo) == previous_reg_value
 

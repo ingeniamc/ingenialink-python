@@ -367,6 +367,8 @@ class Dictionary(XMLBase, ABC):
             return RegAddressType.NVM_LOCK
         if address_type == "NVM_HW":
             return RegAddressType.NVM_HW
+        if address_type == "NVM_INDIRECT":
+            return RegAddressType.NVM_INDIRECT
         raise ILDictionaryParseError(f"The address type {address_type} does not exist.")
 
     @staticmethod

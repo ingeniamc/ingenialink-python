@@ -60,7 +60,8 @@ def runTest(markers, setup_name, tox_skip_install = false) {
                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
                         "-m \"${markers}\" " +
                         "--setup ${setup_name} " +
-                        "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\""
+                        "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" " +
+                        "-o log_cli=True"
 
             } catch (err) {
                 unstable(message: "Tests failed")
@@ -236,7 +237,8 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker --setup summit_testing_framework.setups.no_drive.TESTS_SETUP"
+                                        "-m docker --setup summit_testing_framework.setups.no_drive.TESTS_SETUP " +
+                                        "-o log_cli=True"
                             }
                             post {
                                 always {
@@ -267,7 +269,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m no_connection --setup summit_testing_framework.setups.no_drive.TESTS_SETUP
+                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m no_connection --setup summit_testing_framework.setups.no_drive.TESTS_SETUP -o log_cli=True
                                 """
                             }
                             post {
@@ -282,7 +284,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP
+                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
                                 """
                             }
                             post {
