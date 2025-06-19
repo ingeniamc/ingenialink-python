@@ -1,4 +1,5 @@
 import itertools
+import logging
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,21 @@ pytest_plugins = [
 # The issue is solved by dynamically importing them before the tests start. All modules that should
 # be imported and ARE NOT part of the package should be specified here
 _DYNAMIC_MODULES_IMPORT = ["tests"]
+
+
+class SuppressLogPrefixFilter(logging.Filter):
+    def __init__(self, prefix):
+        self.prefix = prefix
+
+    def filter(self, record):
+        return not record.getMessage().startswith(self.prefix)
+
+
+# Skip load configuration logs
+def pytest_configure(config: pytest.Config):  # noqa: ARG001
+    suppress_prefix = "Exception during load_configuration"
+    for handler in logging.root.handlers:
+        handler.addFilter(SuppressLogPrefixFilter(suppress_prefix))
 
 
 def pytest_sessionstart(session):
