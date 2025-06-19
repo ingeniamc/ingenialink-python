@@ -22,19 +22,15 @@ pytest_plugins = [
 _DYNAMIC_MODULES_IMPORT = ["tests"]
 
 
-class SuppressLogPrefixFilter(logging.Filter):
-    def __init__(self, prefix):
-        self.prefix = prefix
-
+class SuppressSpecificLogs(logging.Filter):
     def filter(self, record):
-        return not record.getMessage().startswith(self.prefix)
+        # Suppress logs containing this specific message
+        return "Exception during load_configuration" not in record.getMessage()
 
 
-# Skip load configuration logs
-def pytest_configure(config: pytest.Config):  # noqa: ARG001
-    suppress_prefix = "Exception during load_configuration"
-    for handler in logging.root.handlers:
-        handler.addFilter(SuppressLogPrefixFilter(suppress_prefix))
+@pytest.hookimpl(tryfirst=True)
+def pytest_configure(config):  # noqa: ARG001
+    logging.getLogger("ingenialink.servo").addFilter(SuppressSpecificLogs())
 
 
 def pytest_sessionstart(session):
