@@ -9,7 +9,7 @@ from ingenialink.dictionary import (
     DictionarySafetyPDO,
     Interface,
 )
-from ingenialink.ethercat.dictionary import EthercatDictionaryV3
+from ingenialink.ethercat.dictionary import EthercatDictionaryV3, EthercatRegister
 from ingenialink.exceptions import ILDictionaryParseError
 
 path_resources = "./tests/resources/"
@@ -63,7 +63,10 @@ def test_read_dictionary_registers():
     ethercat_dict = EthercatDictionaryV3(dictionary_path)
 
     for subnode in expected_regs_per_subnode:
-        assert expected_regs_per_subnode[subnode] == list(ethercat_dict.registers(subnode))
+        subnode_registers = ethercat_dict.registers(subnode)
+        assert expected_regs_per_subnode[subnode] == list(subnode_registers)
+        for reg in subnode_registers.values():
+            assert isinstance(reg, EthercatRegister)
 
 
 @pytest.mark.no_connection

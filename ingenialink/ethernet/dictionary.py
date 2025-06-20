@@ -175,6 +175,7 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
                 address_type=current_read_register.address_type,
                 bitfields=current_read_register.bitfields,
                 monitoring=monitoring,
+                description=current_read_register.description,
             )
 
             return ethernet_register

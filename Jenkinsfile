@@ -48,41 +48,48 @@ def getWheelPath(tox_skip_install, python_version) {
 }
 
 def runTest(markers, setup_name, tox_skip_install = false) {
-    unstash 'wheels'
-    def firstIteration = true
-    def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-    pythonVersions.each { version ->
-        def wheelFile = getWheelPath(tox_skip_install, version)
-        env.TOX_SKIP_INSTALL = tox_skip_install.toString()
-        env.INGENIALINK_WHEEL_PATH = wheelFile
-        try {
-            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
-                    "-m \"${markers}\" " +
-                    "--setup ${setup_name} " +
-                    "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\""
+    timeout(time: 1, unit: 'HOURS') {
+        unstash 'wheels'
+        def firstIteration = true
+        def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+        pythonVersions.each { version ->
+            def wheelFile = getWheelPath(tox_skip_install, version)
+            env.TOX_SKIP_INSTALL = tox_skip_install.toString()
+            env.INGENIALINK_WHEEL_PATH = wheelFile
+            try {
+                def setupArg = setup_name ? "--setup ${setup_name} " : ""
+                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
+                        "-m \"${markers}\" " +
+                        "${setupArg}" +
+                        "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" " +
+                        "-o log_cli=True"
 
-        } catch (err) {
-            unstable(message: "Tests failed")
-        } finally {
-            junit "pytest_reports\\*.xml"
-            // Delete the junit after publishing it so it not re-published on the next stage
-            bat "del /S /Q pytest_reports\\*.xml"
-            if (firstIteration) {
-                def coverage_stash = ".coverage_${setup_name}"
-                bat "move .coverage ${coverage_stash}"
-                stash includes: coverage_stash, name: coverage_stash
-                coverage_stashes.add(coverage_stash)
-                firstIteration = false
+            } catch (err) {
+                unstable(message: "Tests failed")
+            } finally {
+                junit "pytest_reports\\*.xml"
+                // Delete the junit after publishing it so it not re-published on the next stage
+                bat "del /S /Q pytest_reports\\*.xml"
+                if (firstIteration) {
+                    def coverage_stash = ".coverage_${setup_name}"
+                    bat "move .coverage ${coverage_stash}"
+                    stash includes: coverage_stash, name: coverage_stash
+                    coverage_stashes.add(coverage_stash)
+                    firstIteration = false
+                }
             }
         }
     }
 }
 
-/* Build develop everyday at 19:00 UTC (21:00 Barcelona Time), running all tests */
-CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19 * * *''' : ""
+/* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
+CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * *''' : ""
 
 pipeline {
     agent none
+    options {
+        timestamps()
+    }
     triggers {
         cron(CRON_SETTINGS)
     }
@@ -234,7 +241,8 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker --setup summit_testing_framework.setups.no_drive.TESTS_SETUP"
+                                        "-m docker " +
+                                        "-o log_cli=True"
                             }
                             post {
                                 always {
@@ -265,7 +273,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m no_connection --setup summit_testing_framework.setups.no_drive.TESTS_SETUP
+                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m no_connection -o log_cli=True
                                 """
                             }
                             post {
@@ -280,7 +288,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP
+                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
                                 """
                             }
                             post {
@@ -316,7 +324,7 @@ pipeline {
                         }
                         stage('Run no-connection tests') {
                             steps {
-                                runTest("no_connection", "summit_testing_framework.setups.no_drive.TESTS_SETUP", true)
+                                runTest("no_connection", null, true)
                             }
                         }
                     }

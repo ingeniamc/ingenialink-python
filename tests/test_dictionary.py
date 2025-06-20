@@ -377,6 +377,48 @@ def test_get_register():
     assert register_1 == register_2
 
 
+@pytest.mark.parametrize(
+    "dictionary_path, interface",
+    [
+        ("./tests/resources/ethernet/test_dict_eth_axis.xdf", Interface.ETH),
+        ("./tests/resources/canopen/test_dict_can_axis.xdf", Interface.CAN),
+        ("./tests/resources/ethercat/test_dict_ethercat_axis.xdf", Interface.ECAT),
+    ],
+)
+@pytest.mark.no_connection
+def test_register_description(dictionary_path, interface):
+    expected_description_per_subnode = {
+        0: {
+            "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
+            "DIST_CFG_REG0_MAP": "This register allows configuring the "
+            "disturbance mapped register 0.",
+        },
+        1: {
+            "DRV_DIAG_ERROR_LAST": "Contains the last generated error",
+            "DRV_OP_CMD": "User requested mode of operation",
+        },
+        2: {
+            "DRV_DIAG_ERROR_LAST": "Contains the last generated error",
+            "DRV_STATE_CONTROL": "Parameter to manage the drive state machine. "
+            "It is compliant with DS402.",
+        },
+    }
+    dictionary_v2 = DictionaryFactory.create_dictionary(dictionary_path, interface)
+    checked_registers = 0
+    for subnode, registers in dictionary_v2._registers.items():
+        for register in registers.values():
+            if register.identifier not in expected_description_per_subnode[subnode]:
+                continue
+            assert (
+                register.description
+                == expected_description_per_subnode[subnode][register.identifier]
+            )
+            checked_registers += 1
+    assert checked_registers == sum(
+        len(subnode_registers) for subnode_registers in expected_description_per_subnode.values()
+    )
+
+
 def test_canopen_dictionary_get_register_by_index_subindex():
     dict_path = f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf"
     dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.CAN)
