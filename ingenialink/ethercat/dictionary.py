@@ -116,7 +116,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 subidx=0,
                 dtype=RegDtype.U8,
                 access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
-                subnode=0,
+                subnode=1,
             ),
         ]
 
