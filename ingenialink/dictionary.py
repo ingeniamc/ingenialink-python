@@ -1246,7 +1246,7 @@ class DictionaryV3(Dictionary):
 
     def __read_canopen_subitem(
         self, subitem: ElementTree.Element, reg_index: int, subnode: int
-    ) -> CanopenRegister:
+    ) -> Union[CanopenRegister, EthercatRegister]:
         """Process Subitem element and add it to _registers.
 
         Args:
@@ -1257,8 +1257,11 @@ class DictionaryV3(Dictionary):
         Returns:
             Subitem register
 
+        Raises:
+            ValueError: if Canopen/Ethercat register cannot be created for
+                the communication interface.
         """
-        reg_subindex = int(subitem.attrib[self.__SUBINDEX_ATTR])
+        reg_subindex: int = int(subitem.attrib[self.__SUBINDEX_ATTR])
         address_type = Dictionary._get_address_type_xdf_options(
             subitem.attrib[self.__ADDRESS_TYPE_ATTR]
         )
@@ -1290,11 +1293,20 @@ class DictionaryV3(Dictionary):
         bitfields_element = subitem.find(self.__BITFIELDS_ELEMENT)
         bitfields = self.__read_bitfields(bitfields_element)
 
-        canopen_register = CanopenRegister(
-            reg_index,
-            reg_subindex,
-            dtype,
-            access,
+        if self.interface == Interface.CAN:
+            register_instance = CanopenRegister
+        elif self.interface == Interface.ECAT:
+            register_instance = EthercatRegister
+        else:
+            raise ValueError(
+                f"Cannot create Canopen/Ethercat register for interface {self.interface}"
+            )
+
+        reg = register_instance(
+            idx=reg_index,
+            subidx=reg_subindex,
+            dtype=dtype,
+            access=access,
             identifier=identifier,
             units=units,
             pdo_access=pdo_access,
@@ -1310,8 +1322,8 @@ class DictionaryV3(Dictionary):
             monitoring=monitoring,
             is_node_id_dependent=is_node_id_dependent,
         )
-        self.__add_register(register=canopen_register, axis=subnode)
-        return canopen_register
+        self.__add_register(register=reg, axis=subnode)
+        return reg
 
     def __read_safety_pdos(self, root: ElementTree.Element) -> None:
         """Process SafetyPDOs element.
