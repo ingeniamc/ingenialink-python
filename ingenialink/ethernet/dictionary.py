@@ -113,6 +113,33 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
                 access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
                 subnode=0,
             ),
+            EthercatRegister(
+                identifier="FSOE_STO",
+                idx=0x6640,
+                subidx=0,
+                dtype=RegDtype.BOOL,
+                access=RegAccess.RO,
+                pdo_access=RegCyclicType.SAFETY_INPUT_OUTPUT,
+                subnode=1,
+            ),
+            EthercatRegister(
+                identifier="FSOE_SS1_1",
+                idx=0x6650,
+                subidx=1,
+                dtype=RegDtype.BOOL,
+                access=RegAccess.RO,
+                pdo_access=RegCyclicType.SAFETY_INPUT_OUTPUT,
+                subnode=1,
+            ),
+            EthercatRegister(
+                identifier="FSOE_SAFE_INPUTS_VALUE",
+                idx=0x46D1,
+                subidx=0,
+                dtype=RegDtype.BOOL,
+                access=RegAccess.RO,
+                pdo_access=RegCyclicType.SAFETY_INPUT,
+                subnode=1,
+            ),
         ]
 
     @cached_property
