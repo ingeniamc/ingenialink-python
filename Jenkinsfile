@@ -57,9 +57,10 @@ def runTest(markers, setup_name, tox_skip_install = false) {
             env.TOX_SKIP_INSTALL = tox_skip_install.toString()
             env.INGENIALINK_WHEEL_PATH = wheelFile
             try {
+                def setupArg = setup_name ? "--setup ${setup_name} " : ""
                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
                         "-m \"${markers}\" " +
-                        "--setup ${setup_name} " +
+                        "${setupArg}" +
                         "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" " +
                         "-o log_cli=True"
 
@@ -237,7 +238,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker --setup summit_testing_framework.setups.no_drive.TESTS_SETUP " +
+                                        "-m docker " +
                                         "-o log_cli=True"
                             }
                             post {
@@ -269,7 +270,7 @@ pipeline {
                                     restoreIngenialinkWheelEnvVar()
                                 }
                                 sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m no_connection --setup summit_testing_framework.setups.no_drive.TESTS_SETUP -o log_cli=True
+                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m no_connection -o log_cli=True
                                 """
                             }
                             post {
@@ -320,7 +321,7 @@ pipeline {
                         }
                         stage('Run no-connection tests') {
                             steps {
-                                runTest("no_connection", "summit_testing_framework.setups.no_drive.TESTS_SETUP", true)
+                                runTest("no_connection", null, true)
                             }
                         }
                     }
