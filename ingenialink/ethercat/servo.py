@@ -1,7 +1,7 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from typing import TYPE_CHECKING, Callable, Optional, Union, cast
 
 import ingenialogger
 from typing_extensions import override
@@ -365,8 +365,9 @@ class EthercatServo(PDOServo):
         Returns:
             RPDOMap: The RPDO map read from the slave.
         """
-        value = self.read_complete_access(reg, subnode, buffer_size)
-        return RPDOMap.from_pdo_value(value, self.dictionary)
+        _reg = cast("EthercatRegister", self._get_reg(reg, subnode))
+        value = self.read_complete_access(_reg, subnode, buffer_size)
+        return RPDOMap.from_pdo_value(value, _reg.idx, self.dictionary)
 
     def read_tpdo_map_from_slave(
         self, reg: Union[str, Register], subnode: int = 0, buffer_size: int = 0
@@ -381,8 +382,9 @@ class EthercatServo(PDOServo):
         Returns:
             TPDOMap: The TPDO map read from the slave.
         """
+        _reg = cast("EthercatRegister", self._get_reg(reg, subnode))
         value = self.read_complete_access(reg, subnode, buffer_size)
-        return TPDOMap.from_pdo_value(value, self.dictionary)
+        return TPDOMap.from_pdo_value(value, _reg.idx, self.dictionary)
 
     @override
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:

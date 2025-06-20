@@ -286,7 +286,7 @@ class PDOMap:
 
     def __init__(self) -> None:
         self.__items: list[PDOMapItem] = []
-        self.__map_register_address: Optional[int] = None
+        self.__map_register_index: Optional[int] = None
         self.__slave: Optional[PDOServo] = None
 
     @property
@@ -384,11 +384,11 @@ class PDOMap:
         Returns:
             Index of the mapping register.
         """
-        return self.__map_register_address
+        return self.__map_register_index
 
     @map_register_index.setter
-    def map_register_index(self, address: int) -> None:
-        self.__map_register_address = address
+    def map_register_index(self, index: int) -> None:
+        self.__map_register_index = index
 
     @property
     def data_length_bits(self) -> int:
@@ -436,18 +436,20 @@ class PDOMap:
 
     @classmethod
     def from_pdo_value(
-        cls: type[PDO_MAP_TYPE], value: bytes, dictionary: "CanopenDictionary"
+        cls: type[PDO_MAP_TYPE], value: bytes, index: int, dictionary: "CanopenDictionary"
     ) -> PDO_MAP_TYPE:
         """Create a PDOMap from the full pdo value (accessed via complete access).
 
         Args:
             value: Value of the pdo mapping in bytes.
+            index: Index of the mapping register.
             dictionary: Canopen dictionary to retrieve the registers.
 
         Returns:
             PDOMap instance.
         """
         pdo_map = cls()
+        pdo_map.map_register_index = index
 
         # First element of 8 bits, indicates the number of elements in the mapping.
         n_elements = value[0]
