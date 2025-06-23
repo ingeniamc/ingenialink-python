@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from typing import Optional
 
 
 def _bit_mask(selected_bits: Iterable[int]) -> int:
@@ -75,7 +76,9 @@ class BitField:
         }
 
     @staticmethod
-    def set_bitfields(bitfields: dict[str, "BitField"], values: dict[str, int], value: int) -> int:
+    def set_bitfields(
+        bitfields: dict[str, "BitField"], values: dict[str, int], value: Optional[int] = None
+    ) -> int:
         """Set bitfields to a value.
 
         Args:
@@ -85,7 +88,8 @@ class BitField:
             values: Dictionary with values of the bitfields.
                 Key is the name of the bitfield.
                 Value is the value to set.
-            value: Previous integer value of the register
+            value: Previous integer value of the register.
+                If not provided, it defaults to 0.
 
         Raises:
             KeyError: If the bitfield name does not exist.
@@ -94,6 +98,8 @@ class BitField:
         Returns:
             New integer value of the register with the bitfields set
         """
+        if value is None:
+            value = 0
         for name, new_bitfields_value in values.items():
             if name not in bitfields:
                 raise KeyError(f"Bitfield {name} does not exist")

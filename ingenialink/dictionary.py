@@ -1,5 +1,6 @@
 import copy
 import enum
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -444,6 +445,15 @@ class Dictionary(XMLBase, ABC):
         """
         return self._registers[subnode]
 
+    def all_registers(self) -> Iterator[Register]:
+        """Iterator for all registers.
+
+        Yields:
+            Register
+        """
+        for subnode in self._registers.values():
+            yield from subnode.values()
+
     @weak_lru()
     def get_register(self, uid: str, axis: Optional[int] = None) -> Register:
         """Gets the targeted register.
@@ -764,6 +774,28 @@ class DictionaryV3(Dictionary):
     __APPLICATION_PARAMETERS_ELEMENT = "ApplicationParameters"
     __APPLICATION_PARAMETER_ELEMENT = "ApplicationParameter"
     __APPLICATION_PARAMETER_UID_ATTR = "id"
+
+    def __init__(self, dictionary_path: str, interface: Optional[Interface] = None) -> None:
+        """Initialize the DictionaryV3 instance.
+
+        Args:
+            dictionary_path: Path to the Ingenia dictionary.
+            interface: communication interface for retro compatibility,
+                specific classes should be used instead of this argument.
+
+        """
+        if self.__class__ is DictionaryV3 or interface:
+            warnings.warn(
+                "Using DictionaryV3 as an instance classis deprecated, "
+                "use a specific class instead, like EthercatDictionaryV3",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if interface is None:
+            interface = self.interface
+
+        super().__init__(dictionary_path, interface)
 
     @staticmethod
     def _interface_to_device_element(interface: Interface) -> str:

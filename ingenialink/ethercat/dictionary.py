@@ -4,12 +4,18 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
+from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.constants import (
     CANOPEN_ADDRESS_OFFSET,
     CANOPEN_SUBNODE_0_ADDRESS_OFFSET,
     MAP_ADDRESS_OFFSET,
 )
-from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
+from ingenialink.dictionary import (
+    DictionarySafetyModule,
+    DictionaryV2,
+    DictionaryV3,
+    Interface,
+)
 from ingenialink.enums.register import (
     RegAccess,
     RegAddressType,
@@ -22,15 +28,19 @@ from ingenialink.register import MonDistV3
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthercatDictionaryV2(DictionaryV2):
+class EthercatDictionary(CanopenDictionary):
+    """Base class for EtherCAT dictionaries."""
+
+    interface = Interface.ECAT
+
+
+class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
     """Contains all registers and information of a EtherCAT dictionary.
 
     Args:
         dictionary_path: Path to the Ingenia dictionary.
 
     """
-
-    interface = Interface.ECAT
 
     @cached_property
     def _monitoring_disturbance_registers(self) -> list[EthercatRegister]:
@@ -90,6 +100,22 @@ class EthercatDictionaryV2(DictionaryV2):
                 subidx=0x01,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
+                subnode=1,
+            ),
+            EthercatRegister(
+                identifier="ETG_COMMS_RPDO_MAP256_TOTAL",
+                idx=0x1700,
+                subidx=0,
+                dtype=RegDtype.U8,
+                access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
+                subnode=1,
+            ),
+            EthercatRegister(
+                identifier="ETG_COMMS_TPDO_MAP256_TOTAL",
+                idx=0x1B00,
+                subidx=0,
+                dtype=RegDtype.U8,
+                access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
                 subnode=1,
             ),
         ]
@@ -286,3 +312,12 @@ class EthercatDictionaryV2(DictionaryV2):
         for register in self.__pdo_registers:
             if register.identifier is not None:
                 self._registers[register.subnode][register.identifier] = register
+
+
+class EthercatDictionaryV3(EthercatDictionary, DictionaryV3):
+    """Contains all registers and information of a EtherCAT dictionary.
+
+    Args:
+        dictionary_path: Path to the Ingenia dictionary.
+
+    """

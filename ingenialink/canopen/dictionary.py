@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Optional
+from typing import Any, Optional, cast
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -9,7 +9,13 @@ from ingenialink.constants import (
     CANOPEN_ADDRESS_OFFSET,
     MAP_ADDRESS_OFFSET,
 )
-from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
+from ingenialink.dictionary import (
+    Dictionary,
+    DictionarySafetyModule,
+    DictionaryV2,
+    DictionaryV3,
+    Interface,
+)
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.register import MonDistV3
@@ -17,15 +23,47 @@ from ingenialink.register import MonDistV3
 logger = ingenialogger.get_logger(__name__)
 
 
-class CanopenDictionaryV2(DictionaryV2):
+class CanopenDictionary(Dictionary):
+    """Base class for CANopen dictionaries."""
+
+    interface = Interface.CAN
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.__idx_subindex_map: dict[int, dict[int, CanopenRegister]] = {
+            # Idx -> {subindex -> register}
+        }
+
+        for register in self.all_registers():
+            register = cast("CanopenRegister", register)
+            index = register.idx
+            subindex = register.subidx
+            if index not in self.__idx_subindex_map:
+                self.__idx_subindex_map[index] = {subindex: register}
+            else:
+                self.__idx_subindex_map[index][subindex] = register
+
+    def get_register_by_index_subindex(self, index: int, subindex: int) -> CanopenRegister:
+        """Get a register by its index and subindex.
+
+        Args:
+            index: The index of the register.
+            subindex: The subindex of the register.
+
+        Returns:
+            CanopenRegister: The register with the given index and subindex.
+        """
+        return self.__idx_subindex_map[index][subindex]
+
+
+class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
     """Contains all registers and information of a CANopen dictionary.
 
     Args:
         dictionary_path: Path to the Ingenia dictionary.
 
     """
-
-    interface = Interface.CAN
 
     @cached_property
     def _monitoring_disturbance_registers(self) -> list[CanopenRegister]:
@@ -109,3 +147,12 @@ class CanopenDictionaryV2(DictionaryV2):
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}"
             )
             return None
+
+
+class CanopenDictionaryV3(CanopenDictionary, DictionaryV3):
+    """Contains all registers and information of a CANopen dictionary.
+
+    Args:
+        dictionary_path: Path to the Ingenia dictionary.
+
+    """

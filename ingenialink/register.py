@@ -300,3 +300,11 @@ class Register(ABC):
     def bitfields(self) -> Optional[dict[str, BitField]]:
         """Register bit fields."""
         return self.__bitfields
+
+    def __repr__(self) -> str:
+        """String representation of the Register class.
+
+        Returns:
+            str: String representation of the Register instance.
+        """
+        return f"<{self.__class__.__name__} {self.identifier} at 0x{id(self):X} >"

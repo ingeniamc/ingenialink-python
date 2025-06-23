@@ -4,7 +4,13 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
-from ingenialink.dictionary import DictionarySafetyModule, DictionaryV2, Interface
+from ingenialink.dictionary import (
+    Dictionary,
+    DictionarySafetyModule,
+    DictionaryV2,
+    DictionaryV3,
+    Interface,
+)
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
@@ -13,15 +19,25 @@ from ingenialink.register import MonDistV3
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthernetDictionaryV2(DictionaryV2):
+class EthernetDictionary(Dictionary):
+    """Base class for Ethernet dictionaries."""
+
+    interface = Interface.ETH
+
+
+class EoEDictionary(Dictionary):
+    """Base class for EoE dictionaries."""
+
+    interface = Interface.EoE
+
+
+class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
     """Contains all registers and information of a Ethernet dictionary.
 
     Args:
         dictionary_path: Path to the Ingenia dictionary.
 
     """
-
-    interface = Interface.ETH
 
     @cached_property
     def _monitoring_disturbance_registers(self) -> list[EthernetRegister]:
@@ -80,6 +96,22 @@ class EthernetDictionaryV2(DictionaryV2):
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
                 subnode=1,
+            ),
+            EthercatRegister(
+                identifier="ETG_COMMS_RPDO_MAP256_TOTAL",
+                idx=0x1700,
+                subidx=0,
+                dtype=RegDtype.U8,
+                access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
+                subnode=1,
+            ),
+            EthercatRegister(
+                identifier="ETG_COMMS_TPDO_MAP256_TOTAL",
+                idx=0x1B00,
+                subidx=0,
+                dtype=RegDtype.U8,
+                access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
+                subnode=0,
             ),
         ]
 
@@ -153,3 +185,21 @@ class EthernetDictionaryV2(DictionaryV2):
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}"
             )
             return None
+
+
+class EthernetDictionaryV3(EthernetDictionary, DictionaryV3):
+    """Contains all registers and information of a Ethernet dictionary.
+
+    Args:
+        dictionary_path: Path to the Ingenia dictionary.
+
+    """
+
+
+class EoEDictionaryV3(EoEDictionary, DictionaryV3):
+    """Contains all registers and information of a EoE dictionary.
+
+    Args:
+        dictionary_path: Path to the Ingenia dictionary.
+
+    """

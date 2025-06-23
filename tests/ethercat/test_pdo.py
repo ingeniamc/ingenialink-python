@@ -324,6 +324,64 @@ def create_pdo_maps(servo, rpdo_registers, tpdo_registers):
     return rpdo_map, tpdo_map
 
 
+@pytest.mark.ethercat
+def test_read_rpdo_map_from_slave(servo: EthercatServo):
+    pdo_map = servo.read_rpdo_map_from_slave("ETG_COMMS_RPDO_MAP1_TOTAL", subnode=0)
+    assert pdo_map.map_register_index == 0x1600
+    assert isinstance(pdo_map, RPDOMap)
+
+
+@pytest.mark.ethercat
+def test_read_tpdo_map_from_slave(servo: EthercatServo):
+    pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1_TOTAL", subnode=0)
+    assert pdo_map.map_register_index == 0x1A00
+    assert isinstance(pdo_map, TPDOMap)
+
+
+def test_pdo_map_from_value(open_dictionary):
+    tpdo_map = TPDOMap()
+
+    # Full register mapped
+    tpdo_map.add_registers(open_dictionary.get_register("CL_POS_FBK_VALUE"))
+    # Padding item
+    tpdo_map.add_item(TPDOMapItem(size_bits=8))
+    # Partial register mapped
+    tpdo_map.add_item(TPDOMapItem(open_dictionary.get_register("CL_VEL_FBK_VALUE"), size_bits=4))
+    # Register that does not exist in the dictionary
+    unknown_idx = 0x1234
+    unknown_subidx = 0x10
+    with pytest.raises(KeyError):
+        open_dictionary.get_register_by_index_subindex(unknown_idx, unknown_subidx)
+    not_existing_reg = EthercatRegister(
+        identifier="CUSTOM_REGISTER",
+        idx=unknown_idx,
+        subidx=unknown_subidx,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        pdo_access=RegCyclicType.TX,
+    )
+    tpdo_map.add_registers(not_existing_reg)
+
+    tpdo_value = tpdo_map.to_pdo_value()
+
+    rebuild_tpdo_map = TPDOMap.from_pdo_value(tpdo_value, open_dictionary)
+
+    for original, rebuild in zip(tpdo_map.items, rebuild_tpdo_map.items):
+        if original.register.idx == 0:
+            # Padding item
+            assert rebuild.register.idx == 0
+            assert rebuild.register.subidx == 0
+        elif original.register.idx == unknown_idx:
+            # Register that does not exist in the dictionary
+            assert rebuild.register.idx == unknown_idx
+            assert rebuild.register.subidx == unknown_subidx
+            assert rebuild.register.identifier == "UNKNOWN_REGISTER"
+        else:
+            assert original.register == rebuild.register
+
+        assert original.size_bits == rebuild.size_bits
+
+
 def start_stop_pdos(net):
     net._ecat_master.read_state()
     for servo in net.servos:

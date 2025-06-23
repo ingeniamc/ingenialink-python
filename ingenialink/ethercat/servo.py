@@ -1,13 +1,15 @@
 import os
 import time
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional, Union, cast
 
 import ingenialogger
 from typing_extensions import override
 
 from ingenialink import Servo
 from ingenialink.emcy import EmergencyMessage
+from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.register import Register
 
 try:
     import pysoem
@@ -105,6 +107,11 @@ class EthercatServo(PDOServo):
         self.__slave.add_emergency_callback(self._on_emcy)
         self.__sdo_read_write_release_gil = sdo_read_write_release_gil
         super().__init__(slave_id, dictionary_path, servo_status_listener)
+
+    @property  # type: ignore[misc]
+    def dictionary(self) -> EthercatDictionary:  # type: ignore[override]
+        """Ethercat dictionary."""
+        return self._dictionary  # type: ignore[return-value]
 
     def teardown(self) -> None:
         """Perform the necessary actions for teardown."""
@@ -290,11 +297,10 @@ class EthercatServo(PDOServo):
         if not super()._is_monitoring_implemented():
             raise NotImplementedError("Monitoring is not supported by this device.")
         if not isinstance(
-            data := self.read(
+            data := self.read_complete_access(
                 self.MONITORING_DATA,
                 subnode=0,
                 buffer_size=self.MONITORING_DATA_BUFFER_SIZE,
-                complete_access=True,
             ),
             bytes,
         ):
@@ -312,7 +318,7 @@ class EthercatServo(PDOServo):
         """
         if not super()._is_disturbance_implemented():
             raise NotImplementedError("Disturbance is not supported by this device.")
-        return self.write(self.DIST_DATA, subnode=0, data=data, complete_access=True)
+        return self.write_complete_access(self.DIST_DATA, subnode=0, data=data)
 
     def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
         """Subscribe to emergency messages.
@@ -345,6 +351,40 @@ class EthercatServo(PDOServo):
         logger.warning(f"Emergency message received from slave {self.target}: {emergency_message}")
         for callback in self.__emcy_observers:
             callback(emergency_message)
+
+    def read_rpdo_map_from_slave(
+        self, reg: Union[str, Register], subnode: int = 0, buffer_size: int = 0
+    ) -> RPDOMap:
+        """Read the RPDO map from the slave.
+
+        Args:
+            reg: First register of the RPDO map.
+            subnode: Subnode of the rpdo map.
+            buffer_size: Size of the buffer to read the pdo map.
+
+        Returns:
+            RPDOMap: The RPDO map read from the slave.
+        """
+        _reg = cast("EthercatRegister", self._get_reg(reg, subnode))
+        value = self.read_complete_access(_reg, subnode, buffer_size)
+        return RPDOMap.from_pdo_value(value, _reg.idx, self.dictionary)
+
+    def read_tpdo_map_from_slave(
+        self, reg: Union[str, Register], subnode: int = 0, buffer_size: int = 0
+    ) -> TPDOMap:
+        """Read the TPDO map from the slave.
+
+        Args:
+            reg: First register of the RPDO map.
+            subnode: Subnode of the rpdo map.
+            buffer_size: Size of the buffer to read the pdo map.
+
+        Returns:
+            TPDOMap: The TPDO map read from the slave.
+        """
+        _reg = cast("EthercatRegister", self._get_reg(reg, subnode))
+        value = self.read_complete_access(reg, subnode, buffer_size)
+        return TPDOMap.from_pdo_value(value, _reg.idx, self.dictionary)
 
     @override
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:

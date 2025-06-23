@@ -1,9 +1,10 @@
 from abc import abstractmethod
-from typing import Optional, Union
+from typing import TYPE_CHECKING, ClassVar, Literal, Optional, TypeVar, Union
 
 import bitarray
 from typing_extensions import override
 
+from ingenialink.bitfield import BitField
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
@@ -15,10 +16,16 @@ from ingenialink.utils._utils import (
     dtype_length_bits,
 )
 
-BIT_ENDIAN = "little"
+if TYPE_CHECKING:
+    from ingenialink.canopen.dictionary import CanopenDictionary
+
+BIT_ENDIAN: Literal["little"] = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
 
 PADDING_REGISTER_IDENTIFIER = "PADDING"
+
+MAP_REGISTER_BYTES = 4
+"""Number of bytes used to store each mapping register information."""
 
 
 class PDOMapItem:
@@ -37,6 +44,16 @@ class PDOMapItem:
 
     ACCEPTED_CYCLICS: tuple[RegCyclicType, ...]
     """Accepted cyclic: CYCLIC_TX, CYCLIC_RX, CYCLIC_SI, CYCLIC_SO, CYCLIC_SISO."""
+
+    __LENGTH_BITFIELD = "LENGTH"
+    __SUBINDEX_BITFIELD = "SUBINDEX"
+    __INDEX_BITFIELD = "INDEX"
+
+    __ITEM_BITFIELDS: ClassVar[dict[str, BitField]] = {
+        __LENGTH_BITFIELD: BitField(0, 7),
+        __SUBINDEX_BITFIELD: BitField(8, 15),
+        __INDEX_BITFIELD: BitField(16, 31),
+    }
 
     def __init__(
         self,
@@ -154,10 +171,63 @@ class PDOMapItem:
             PDO register mapping format.
 
         """
-        index = self.register.idx
-        mapped_register = (index << 16) | self.size_bits
-        mapped_register_bytes: bytes = mapped_register.to_bytes(4, "little")
+        mapped_register = BitField.set_bitfields(
+            self.__ITEM_BITFIELDS,
+            {
+                self.__LENGTH_BITFIELD: self.size_bits,
+                self.__SUBINDEX_BITFIELD: self.register.subidx,
+                self.__INDEX_BITFIELD: self.register.idx,
+            },
+        )
+
+        mapped_register_bytes: bytes = mapped_register.to_bytes(MAP_REGISTER_BYTES, BIT_ENDIAN)
         return mapped_register_bytes
+
+    @classmethod
+    def from_register_mapping(cls, mapping: int, dictionary: "CanopenDictionary") -> "PDOMapItem":
+        """Create a PDOMapItem from a register mapping.
+
+        Args:
+            mapping: Register mapping in bytes.
+            dictionary: Canopen dictionary to retrieve the registers.
+
+        Returns:
+            PDOMapItem instance.
+        """
+        fields = BitField.parse_bitfields(cls.__ITEM_BITFIELDS, mapping)
+        size_bits = fields[cls.__LENGTH_BITFIELD]
+        index = fields[cls.__INDEX_BITFIELD]
+        subindex = fields[cls.__SUBINDEX_BITFIELD]
+
+        if index == 0 and subindex == 0:
+            # This is a padding register, return a padding item.
+            return cls(size_bits=size_bits)
+
+        try:
+            register = dictionary.get_register_by_index_subindex(index, subindex)
+        except KeyError:
+            register = EthercatRegister(
+                identifier="UNKNOWN_REGISTER",
+                units="",
+                subnode=0,
+                idx=index,
+                subidx=subindex,
+                pdo_access=cls.ACCEPTED_CYCLICS[0],
+                dtype=RegDtype.STR,
+                access=RegAccess.RW,
+            )
+        return cls(register, size_bits)
+
+    def __repr__(self) -> str:
+        """String representation of the PDOMapItem class.
+
+        Returns:
+            str: String representation of the PDOMapItem instance.
+        """
+        return (
+            f"<{self.__class__.__name__} {self.register.identifier} "
+            f"({self.size_bits} bits) at 0x{id(self):X} >"
+        )
 
 
 class RPDOMapItem(PDOMapItem):
@@ -206,6 +276,9 @@ class TPDOMapItem(PDOMapItem):
     )
 
 
+PDO_MAP_TYPE = TypeVar("PDO_MAP_TYPE", bound="PDOMap")
+
+
 class PDOMap:
     """Abstract class that contains PDO mapping information."""
 
@@ -213,7 +286,7 @@ class PDOMap:
 
     def __init__(self) -> None:
         self.__items: list[PDOMapItem] = []
-        self.__map_register_address: Optional[int] = None
+        self.__map_register_index: Optional[int] = None
         self.__slave: Optional[PDOServo] = None
 
     @property
@@ -302,7 +375,7 @@ class PDOMap:
         if self.map_register_index is None:
             raise ValueError("map_register_index is None")
         else:
-            return self.map_register_index.to_bytes(2, "little")
+            return self.map_register_index.to_bytes(2, BIT_ENDIAN)
 
     @property
     def map_register_index(self) -> Optional[int]:
@@ -311,11 +384,11 @@ class PDOMap:
         Returns:
             Index of the mapping register.
         """
-        return self.__map_register_address
+        return self.__map_register_index
 
     @map_register_index.setter
-    def map_register_index(self, address: int) -> None:
-        self.__map_register_address = address
+    def map_register_index(self, index: int) -> None:
+        self.__map_register_index = index
 
     @property
     def data_length_bits(self) -> int:
@@ -346,6 +419,52 @@ class PDOMap:
         for pdo_map_item in self.items:
             map_bytes += pdo_map_item.register_mapping
         return map_bytes
+
+    def to_pdo_value(self) -> bytes:
+        """Convert the PDOMap to the full pdo value (accessed via complete access).
+
+        Returns:
+            Value of the pdo mapping in bytes.
+        """
+        return (
+            len(self.items).to_bytes(
+                length=1, byteorder=BIT_ENDIAN
+            )  # First byte is the number of items
+            + b"\x00"  # Second byte is padding
+            + self.items_mapping
+        )
+
+    @classmethod
+    def from_pdo_value(
+        cls: type[PDO_MAP_TYPE], value: bytes, index: int, dictionary: "CanopenDictionary"
+    ) -> PDO_MAP_TYPE:
+        """Create a PDOMap from the full pdo value (accessed via complete access).
+
+        Args:
+            value: Value of the pdo mapping in bytes.
+            index: Index of the mapping register.
+            dictionary: Canopen dictionary to retrieve the registers.
+
+        Returns:
+            PDOMap instance.
+        """
+        pdo_map = cls()
+        pdo_map.map_register_index = index
+
+        # First element of 8 bits, indicates the number of elements in the mapping.
+        n_elements = value[0]
+
+        # Second byte is padding
+
+        for i in range(n_elements):
+            # Start reading from the third byte
+            item_map = int.from_bytes(
+                value[2 + i * MAP_REGISTER_BYTES : 2 + (i + 1) * MAP_REGISTER_BYTES], BIT_ENDIAN
+            )
+            item = cls._PDO_MAP_ITEM_CLASS.from_register_mapping(item_map, dictionary)
+            pdo_map.add_item(item)
+
+        return pdo_map
 
     def set_item_bytes(self, data_bytes: bytes) -> None:
         """Set the items raw data from a byte array.
@@ -518,7 +637,7 @@ class PDOServo(Servo):
                 self._set_rpdo_map_register(custom_map_index, rpdo_map)
                 custom_map_index += 1
             rpdo_assigns += rpdo_map.map_register_index_bytes
-        self.write(self.ETG_COMMS_RPDO_ASSIGN_1, rpdo_assigns, complete_access=True, subnode=0)
+        self.write_complete_access(self.ETG_COMMS_RPDO_ASSIGN_1, rpdo_assigns, subnode=0)
 
     def _set_rpdo_map_register(self, rpdo_map_register_index: int, rpdo_map: RPDOMap) -> None:
         """Fill RPDO map register with PRDOMap object data.
@@ -535,10 +654,9 @@ class PDOServo(Servo):
             len(rpdo_map.items),
             subnode=0,
         )
-        self.write(
+        self.write_complete_access(
             self.ETG_COMMS_RPDO_MAP1_1[rpdo_map_register_index],
             bytes(rpdo_map.items_mapping),
-            complete_access=True,
             subnode=0,
         )
         rpdo_map_register = self.dictionary.registers(0)[
@@ -575,7 +693,7 @@ class PDOServo(Servo):
                 self._set_tpdo_map_register(custom_map_index, tpdo_map)
                 custom_map_index += 1
             tpdo_assigns += tpdo_map.map_register_index_bytes
-        self.write(self.ETG_COMMS_TPDO_ASSIGN_1, tpdo_assigns, complete_access=True, subnode=0)
+        self.write_complete_access(self.ETG_COMMS_TPDO_ASSIGN_1, tpdo_assigns, subnode=0)
 
     def _set_tpdo_map_register(self, tpdo_map_register_index: int, tpdo_map: TPDOMap) -> None:
         """Fill TPDO map register with TRDOMap object data.
@@ -592,10 +710,9 @@ class PDOServo(Servo):
             len(tpdo_map.items),
             subnode=0,
         )
-        self.write(
+        self.write_complete_access(
             self.ETG_COMMS_TPDO_MAP1_1[tpdo_map_register_index],
             bytes(tpdo_map.items_mapping),
-            complete_access=True,
             subnode=0,
         )
         tpdo_map_register = self.dictionary.registers(0)[

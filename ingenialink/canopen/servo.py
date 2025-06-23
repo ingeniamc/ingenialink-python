@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Union
+from typing import Callable, Optional, Union
 
 import canopen
 import ingenialogger
@@ -66,7 +66,9 @@ class CanopenServo(Servo):
 
     @override
     def read(
-        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
+        self,
+        reg: Union[str, Register],
+        subnode: int = 1,
     ) -> Union[int, float, str, bytes]:
         value = super().read(reg, subnode=subnode)
         if isinstance(value, str):

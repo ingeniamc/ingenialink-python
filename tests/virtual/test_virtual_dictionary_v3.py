@@ -2,7 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from ingenialink.dictionary import DictionaryV3, Interface, SubnodeType
+from ingenialink.dictionary import Interface, SubnodeType
+from ingenialink.ethernet.dictionary import EthernetDictionaryV3
 
 SINGLE_AXIS_SUBNODES = {
     0: SubnodeType.COMMUNICATION,
@@ -30,7 +31,7 @@ def test_read_dictionary(virtual_dictionary_v3):
         "image": "image-text",
     }
 
-    virtual_dict = DictionaryV3(virtual_dictionary_v3.as_posix(), Interface.ETH)
+    virtual_dict = EthernetDictionaryV3(virtual_dictionary_v3.as_posix())
 
     for attr, value in expected_device_attr.items():
         assert getattr(virtual_dict, attr) == value
@@ -41,4 +42,4 @@ def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
     with pytest.raises(FileNotFoundError):
-        DictionaryV3(dictionary_path, Interface.ETH)
+        EthernetDictionaryV3(dictionary_path, Interface.ETH)

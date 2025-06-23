@@ -1,8 +1,16 @@
 # Changelog
 
 ## Unreleased
+### Added
+- Added generic dictionaries specific for communication protocols.
+- Method to obtain a canopen/ethercat register from index and subindex.
+- Specific methods for complete-access
+- Methods to read RPDOs and TPDOs from the ethercat slave.
+
 ### Fixed
 - Default xdf v2 injected safety registers
+- Fixed complete-access for reading registers
+- Removed value updated notification when accessing with complete access
 
 ### Changed
 - Added Safety Cyclic types for xdf v3 dictionaries.
