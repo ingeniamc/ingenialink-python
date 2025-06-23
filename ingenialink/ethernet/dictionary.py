@@ -72,7 +72,7 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
                 subnode=1,
-                cat_id="FSOE"
+                cat_id="FSOE",
             ),
             EthercatRegister(
                 identifier="MDP_CONFIGURED_MODULE_1",
@@ -89,7 +89,7 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
                 subnode=1,
-                cat_id="FSOE"
+                cat_id="FSOE",
             ),
             EthercatRegister(
                 identifier="FSOE_SS1_TIME_TO_STO_1",
@@ -98,7 +98,7 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
                 subnode=1,
-                cat_id="FSOE"
+                cat_id="FSOE",
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_RPDO_MAP256_TOTAL",
@@ -124,7 +124,7 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
                 access=RegAccess.RO,
                 pdo_access=RegCyclicType.SAFETY_INPUT_OUTPUT,
                 subnode=1,
-                cat_id="FSOE"
+                cat_id="FSOE",
             ),
             EthercatRegister(
                 identifier="FSOE_SS1_1",
@@ -134,7 +134,7 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
                 access=RegAccess.RO,
                 pdo_access=RegCyclicType.SAFETY_INPUT_OUTPUT,
                 subnode=1,
-                cat_id="FSOE"
+                cat_id="FSOE",
             ),
             EthercatRegister(
                 identifier="FSOE_SAFE_INPUTS_VALUE",
@@ -144,7 +144,7 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
                 access=RegAccess.RO,
                 pdo_access=RegCyclicType.SAFETY_INPUT,
                 subnode=1,
-                cat_id="FSOE"
+                cat_id="FSOE",
             ),
         ]
 
