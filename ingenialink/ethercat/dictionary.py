@@ -43,6 +43,8 @@ class EthercatDictionaryV2(DictionaryV2):
                 cyclic=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.RO,
+                labels={"en_US": "Monitoring data"},
+                cat_id="MONITORING",
             ),
             EthercatRegister(
                 identifier="DIST_DATA_VALUE",
@@ -53,6 +55,8 @@ class EthercatDictionaryV2(DictionaryV2):
                 cyclic=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.WO,
+                labels={"en_US": "Disturbance data"},
+                cat_id="MONITORING",
             ),
         ]
 
@@ -60,36 +64,48 @@ class EthercatDictionaryV2(DictionaryV2):
     def _safety_registers(self) -> list[EthercatRegister]:
         return [
             EthercatRegister(
-                identifier="FSOE_TOTAL_ERROR",
+                identifier="FSOE_MANUF_SAFETY_ADDRESS",
                 idx=0x4193,
                 subidx=0x00,
+                cyclic=RegCyclicType.CONFIG,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
-                subnode=0,
+                subnode=1,
+                labels={"en_US": "Safety address"},
+                cat_id="FSOE",
             ),
             EthercatRegister(
                 identifier="MDP_CONFIGURED_MODULE_1",
                 idx=0xF030,
                 subidx=0x01,
+                cyclic=RegCyclicType.CONFIG,
                 dtype=RegDtype.U32,
                 access=RegAccess.RW,
                 subnode=0,
+                labels={"en_US": "Configured module ident of the module 1"},
+                cat_id="MDP",
             ),
             EthercatRegister(
                 identifier="FSOE_SAFE_INPUTS_MAP",
                 idx=0x46D2,
                 subidx=0x00,
+                cyclic=RegCyclicType.CONFIG,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
                 subnode=0,
+                labels={"en_US": "Safe Inputs Map"},
+                cat_id="FSOE",
             ),
             EthercatRegister(
                 identifier="FSOE_SS1_TIME_TO_STO_1",
                 idx=0x6651,
                 subidx=0x01,
+                cyclic=RegCyclicType.CONFIG,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
                 subnode=0,
+                labels={"en_US": "SS1 Time to STO"},
+                cat_id="FSOE",
             ),
         ]
 
@@ -124,13 +140,16 @@ class EthercatDictionaryV2(DictionaryV2):
         return [
             EthercatRegister(
                 identifier="ETG_COMMS_RPDO_ASSIGN_TOTAL",
-                units="",
+                units="cnt",
                 subnode=0,
                 idx=0x1C12,
                 subidx=0x00,
-                dtype=RegDtype.S32,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.U8,
                 access=RegAccess.RW,
                 address_type=RegAddressType.NVM_NONE,
+                labels={"en_US": "SubIndex 000"},
+                cat_id="COMMUNICATIONS",
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_RPDO_ASSIGN_1",
@@ -138,9 +157,12 @@ class EthercatDictionaryV2(DictionaryV2):
                 subnode=0,
                 idx=0x1C12,
                 subidx=0x01,
-                dtype=RegDtype.S32,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.U16,
                 access=RegAccess.RW,
                 address_type=RegAddressType.NVM_NONE,
+                labels={"en_US": "RxPDO assign Element 1"},
+                cat_id="COMMUNICATIONS",
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_RPDO_MAP1_TOTAL",
@@ -148,9 +170,12 @@ class EthercatDictionaryV2(DictionaryV2):
                 subnode=0,
                 idx=0x1600,
                 subidx=0x00,
-                dtype=RegDtype.S32,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.U8,
                 access=RegAccess.RW,
                 address_type=RegAddressType.NVM_NONE,
+                labels={"en_US": "Subindex 000"},
+                cat_id="COMMUNICATIONS",
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_RPDO_MAP1_1",
@@ -158,9 +183,12 @@ class EthercatDictionaryV2(DictionaryV2):
                 subnode=0,
                 idx=0x1600,
                 subidx=0x01,
-                dtype=RegDtype.STR,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.U32,
                 access=RegAccess.RW,
                 address_type=RegAddressType.NVM_NONE,
+                labels={"en_US": "RxPDO Map 1 Element 1"},
+                cat_id="COMMUNICATIONS",
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_TPDO_ASSIGN_TOTAL",
@@ -168,9 +196,12 @@ class EthercatDictionaryV2(DictionaryV2):
                 subnode=0,
                 idx=0x1C13,
                 subidx=0x00,
-                dtype=RegDtype.S32,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.U8,
                 access=RegAccess.RW,
                 address_type=RegAddressType.NVM_NONE,
+                labels={"en_US": "SubIndex 000"},
+                cat_id="COMMUNICATIONS",
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_TPDO_ASSIGN_1",
@@ -178,9 +209,12 @@ class EthercatDictionaryV2(DictionaryV2):
                 subnode=0,
                 idx=0x1C13,
                 subidx=0x01,
-                dtype=RegDtype.S32,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.U16,
                 access=RegAccess.RW,
                 address_type=RegAddressType.NVM_NONE,
+                labels={"en_US": "TxPDO assign Element 1"},
+                cat_id="COMMUNICATIONS",
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_TPDO_MAP1_TOTAL",
@@ -188,9 +222,12 @@ class EthercatDictionaryV2(DictionaryV2):
                 subnode=0,
                 idx=0x1A00,
                 subidx=0x00,
-                dtype=RegDtype.S32,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.U8,
                 access=RegAccess.RW,
                 address_type=RegAddressType.NVM_NONE,
+                labels={"en_US": "Subindex 000"},
+                cat_id="COMMUNICATIONS",
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_TPDO_MAP1_1",
@@ -198,9 +235,12 @@ class EthercatDictionaryV2(DictionaryV2):
                 subnode=0,
                 idx=0x1A00,
                 subidx=0x01,
-                dtype=RegDtype.STR,
+                cyclic=RegCyclicType.CONFIG,
+                dtype=RegDtype.U32,
                 access=RegAccess.RW,
                 address_type=RegAddressType.NVM_NONE,
+                labels={"en_US": "TxPDO Map 1 Element 1"},
+                cat_id="COMMUNICATIONS",
             ),
         ]
 
@@ -270,6 +310,8 @@ class EthercatDictionaryV2(DictionaryV2):
         super()._append_missing_registers()
         for register in self.__pdo_registers:
             if register.identifier is not None:
+                if register.cat_id not in self.categories.category_ids:
+                    self._append_missing_category(register.cat_id)
                 self._registers[register.subnode][register.identifier] = register
         if self.part_number not in ["DEN-S-NET-E", "EVS-S-NET-E"]:
             return
@@ -278,4 +320,6 @@ class EthercatDictionaryV2(DictionaryV2):
             self.safety_modules[safety_submodule.module_ident] = safety_submodule
         for register in self._safety_registers:
             if register.identifier is not None:
+                if register.cat_id not in self.categories.category_ids:
+                    self._append_missing_category(register.cat_id)
                 self._registers[register.subnode][register.identifier] = register
