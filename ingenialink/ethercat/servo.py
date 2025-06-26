@@ -80,6 +80,7 @@ class EthercatServo(PDOServo):
     NO_RESPONSE_WORKING_COUNTER = 0
     TIMEOUT_WORKING_COUNTER = -5
     NOFRAME_WORKING_COUNTER = -1
+    UNKNOWN_FRAME_WORKING_COUNTER = -2
 
     ETHERCAT_PDO_WATCHDOG = "processdata"
     SECONDS_TO_MS_CONVERSION_FACTOR = 1000
@@ -265,8 +266,9 @@ class EthercatServo(PDOServo):
                 self.NO_RESPONSE_WORKING_COUNTER: "The working counter remained unchanged.",
                 self.NOFRAME_WORKING_COUNTER: "No frame.",
                 self.TIMEOUT_WORKING_COUNTER: "Timeout.",
+                self.UNKNOWN_FRAME_WORKING_COUNTER: "Unknown frame received.",
             }
-            reason = wkc_errors[exception.wkc]
+            reason = wkc_errors.get(exception.wkc, f"Working counter: {exception.wkc}")
         elif isinstance(exception, (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError)):
             reason = f"{type(exception).__name__}: Slave {exception.slave_pos}, "
             if isinstance(exception, pysoem.SdoError):
