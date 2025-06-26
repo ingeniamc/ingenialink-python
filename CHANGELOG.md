@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Fixed
+- Safety registers/modules availability.
+
 ## [7.4.2] - 2025-05-07
 ### Added
 - Implement the scan method for Ethernet networks.

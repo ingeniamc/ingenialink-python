@@ -45,68 +45,13 @@ class EthernetDictionaryV2(DictionaryV2):
             ),
         ]
 
-    @cached_property
+    @property
     def _safety_registers(self) -> list[EthercatRegister]:
-        return [
-            EthercatRegister(
-                identifier="FSOE_TOTAL_ERROR",
-                idx=0x4193,
-                subidx=0x00,
-                dtype=RegDtype.U16,
-                access=RegAccess.RW,
-                subnode=0,
-            ),
-            EthercatRegister(
-                identifier="MDP_CONFIGURED_MODULE_1",
-                idx=0xF030,
-                subidx=0x01,
-                dtype=RegDtype.U32,
-                access=RegAccess.RW,
-                subnode=0,
-            ),
-            EthercatRegister(
-                identifier="FSOE_SAFE_INPUTS_MAP",
-                idx=0x46D2,
-                subidx=0x00,
-                dtype=RegDtype.U16,
-                access=RegAccess.RW,
-                subnode=0,
-            ),
-            EthercatRegister(
-                identifier="FSOE_SS1_TIME_TO_STO_1",
-                idx=0x6651,
-                subidx=0x01,
-                dtype=RegDtype.U16,
-                access=RegAccess.RW,
-                subnode=0,
-            ),
-        ]
+        raise NotImplementedError("Safety registers are not implemented for this device.")
 
-    @cached_property
+    @property
     def _safety_modules(self) -> list[DictionarySafetyModule]:
-        def __module_ident(module_idx: int) -> int:
-            if self.product_code is None:
-                raise ValueError("Module ident cannot be calculated, product code missing.")
-            return (self.product_code & 0x7F00000) + module_idx
-
-        return [
-            DictionarySafetyModule(
-                uses_sra=False,
-                module_ident=__module_ident(0),
-                application_parameters=[
-                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SAFE_INPUTS_MAP"),
-                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SS1_TIME_TO_STO_1"),
-                ],
-            ),
-            DictionarySafetyModule(
-                uses_sra=True,
-                module_ident=__module_ident(1),
-                application_parameters=[
-                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SAFE_INPUTS_MAP"),
-                    DictionarySafetyModule.ApplicationParameter(uid="FSOE_SS1_TIME_TO_STO_1"),
-                ],
-            ),
-        ]
+        raise NotImplementedError("Safety modules are not implemented for this device.")
 
     def _read_xdf_register(self, register: ElementTree.Element) -> Optional[EthernetRegister]:
         current_read_register = super()._read_xdf_register(register)
