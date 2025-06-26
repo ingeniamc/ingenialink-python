@@ -312,6 +312,14 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
         for register in self.__pdo_registers:
             if register.identifier is not None:
                 self._registers[register.subnode][register.identifier] = register
+        if self.part_number not in ["DEN-S-NET-E", "EVS-S-NET-E"]:
+            return
+        self.is_safe = True
+        for safety_submodule in self._safety_modules:
+            self.safety_modules[safety_submodule.module_ident] = safety_submodule
+        for register in self._safety_registers:
+            if register.identifier is not None:
+                self._registers[register.subnode][register.identifier] = register
 
 
 class EthercatDictionaryV3(EthercatDictionary, DictionaryV3):

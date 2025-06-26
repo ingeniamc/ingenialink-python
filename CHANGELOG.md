@@ -15,6 +15,10 @@
 ### Changed
 - Added Safety Cyclic types for xdf v3 dictionaries.
 
+## [7.4.3]
+### Fixed
+- Safety registers/modules availability.
+
 ## [7.4.2] - 2025-05-07
 ### Added
 - Implement the scan method for Ethernet networks.
