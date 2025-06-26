@@ -1713,7 +1713,6 @@ class DictionaryV2(Dictionary):
             logger.error(f"Dictionary {Path(self.path).name} has no image section.")
         # Closing xdf file
         xdf_file.close()
-        self._append_missing_safety_modules()
         self._append_missing_registers()
 
     def _read_xdf_register(self, register: ElementTree.Element) -> Optional[Register]:
@@ -1829,17 +1828,6 @@ class DictionaryV2(Dictionary):
             return
         self._registers[subnode][identifier] = register
 
-    def _append_missing_safety_modules(self) -> None:
-        """Append  missing safety modules to the dictionary.
-
-        It will also create the safety subnode and initialize safe registers.
-        """
-        if not self.is_safe and self.part_number not in ["DEN-S-NET-E", "EVS-S-NET-E"]:
-            return
-        self.is_safe = True
-        for safety_submodule in self._safety_modules:
-            self.safety_modules[safety_submodule.module_ident] = safety_submodule
-
     def _append_missing_registers(
         self,
     ) -> None:
@@ -1852,11 +1840,3 @@ class DictionaryV2(Dictionary):
             for register in self._monitoring_disturbance_registers:
                 if register.identifier is not None:
                     self._registers[register.subnode][register.identifier] = register
-
-        if not self.is_safe:
-            return
-
-        # Append safety registers
-        for register in self._safety_registers:
-            if register.identifier is not None:
-                self._registers[register.subnode][register.identifier] = register

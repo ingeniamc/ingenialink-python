@@ -81,4 +81,4 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 
-__version__ = "7.4.2"
+__version__ = "7.4.3"
