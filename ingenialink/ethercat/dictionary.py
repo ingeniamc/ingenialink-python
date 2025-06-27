@@ -77,6 +77,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
                 subnode=1,
+                cat_id="FSOE",
             ),
             EthercatRegister(
                 identifier="MDP_CONFIGURED_MODULE_1",
@@ -93,6 +94,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
                 subnode=1,
+                cat_id="FSOE",
             ),
             EthercatRegister(
                 identifier="FSOE_SS1_TIME_TO_STO_1",
@@ -101,6 +103,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
                 subnode=1,
+                cat_id="FSOE",
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_RPDO_MAP256_TOTAL",
@@ -117,6 +120,36 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 dtype=RegDtype.U8,
                 access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
                 subnode=1,
+            ),
+            EthercatRegister(
+                identifier="FSOE_STO",
+                idx=0x6640,
+                subidx=0,
+                dtype=RegDtype.BOOL,
+                access=RegAccess.RO,
+                pdo_access=RegCyclicType.SAFETY_INPUT_OUTPUT,
+                subnode=1,
+                cat_id="FSOE",
+            ),
+            EthercatRegister(
+                identifier="FSOE_SS1_1",
+                idx=0x6650,
+                subidx=1,
+                dtype=RegDtype.BOOL,
+                access=RegAccess.RO,
+                pdo_access=RegCyclicType.SAFETY_INPUT_OUTPUT,
+                subnode=1,
+                cat_id="FSOE",
+            ),
+            EthercatRegister(
+                identifier="FSOE_SAFE_INPUTS_VALUE",
+                idx=0x46D1,
+                subidx=0,
+                dtype=RegDtype.BOOL,
+                access=RegAccess.RO,
+                pdo_access=RegCyclicType.SAFETY_INPUT,
+                subnode=1,
+                cat_id="FSOE",
             ),
         ]
 
