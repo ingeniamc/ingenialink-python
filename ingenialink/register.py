@@ -243,7 +243,7 @@ class Register(ABC):
         return self._cat_id
 
     @cat_id.setter
-    def cat_id(self, category: str) -> Optional[str]:
+    def cat_id(self, category: str) -> None:
         """Category ID."""
         self._cat_id = category
 
