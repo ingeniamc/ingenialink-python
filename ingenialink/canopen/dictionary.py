@@ -27,7 +27,7 @@ class CanopenDictionaryV2(DictionaryV2):
         return [
             CanopenRegister(
                 identifier="MON_DATA_VALUE",
-                units="",
+                units="none",
                 idx=0x58B2,
                 subidx=0x00,
                 cyclic=RegCyclicType.CONFIG,
@@ -39,7 +39,7 @@ class CanopenDictionaryV2(DictionaryV2):
             ),
             CanopenRegister(
                 identifier="DIST_DATA_VALUE",
-                units="",
+                units="none",
                 idx=0x58B4,
                 subidx=0x00,
                 cyclic=RegCyclicType.CONFIG,

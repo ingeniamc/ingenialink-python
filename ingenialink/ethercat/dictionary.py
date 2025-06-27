@@ -36,7 +36,7 @@ class EthercatDictionaryV2(DictionaryV2):
         return [
             EthercatRegister(
                 identifier="MON_DATA_VALUE",
-                units="",
+                units="none",
                 subnode=0,
                 idx=0x58B2,
                 subidx=0x01,
@@ -48,7 +48,7 @@ class EthercatDictionaryV2(DictionaryV2):
             ),
             EthercatRegister(
                 identifier="DIST_DATA_VALUE",
-                units="",
+                units="none",
                 subnode=0,
                 idx=0x58B4,
                 subidx=0x01,
@@ -153,7 +153,7 @@ class EthercatDictionaryV2(DictionaryV2):
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_RPDO_ASSIGN_1",
-                units="",
+                units="none",
                 subnode=0,
                 idx=0x1C12,
                 subidx=0x01,
@@ -166,7 +166,7 @@ class EthercatDictionaryV2(DictionaryV2):
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_RPDO_MAP1_TOTAL",
-                units="",
+                units="none",
                 subnode=0,
                 idx=0x1600,
                 subidx=0x00,
@@ -179,7 +179,7 @@ class EthercatDictionaryV2(DictionaryV2):
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_RPDO_MAP1_1",
-                units="",
+                units="none",
                 subnode=0,
                 idx=0x1600,
                 subidx=0x01,
@@ -192,7 +192,7 @@ class EthercatDictionaryV2(DictionaryV2):
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_TPDO_ASSIGN_TOTAL",
-                units="",
+                units="cnt",
                 subnode=0,
                 idx=0x1C13,
                 subidx=0x00,
@@ -205,7 +205,7 @@ class EthercatDictionaryV2(DictionaryV2):
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_TPDO_ASSIGN_1",
-                units="",
+                units="none",
                 subnode=0,
                 idx=0x1C13,
                 subidx=0x01,
@@ -218,7 +218,7 @@ class EthercatDictionaryV2(DictionaryV2):
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_TPDO_MAP1_TOTAL",
-                units="",
+                units="none",
                 subnode=0,
                 idx=0x1A00,
                 subidx=0x00,
@@ -231,7 +231,7 @@ class EthercatDictionaryV2(DictionaryV2):
             ),
             EthercatRegister(
                 identifier="ETG_COMMS_TPDO_MAP1_1",
-                units="",
+                units="none",
                 subnode=0,
                 idx=0x1A00,
                 subidx=0x01,
