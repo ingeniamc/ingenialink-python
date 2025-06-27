@@ -105,7 +105,6 @@ class EthercatDictionaryV2(DictionaryV2):
                 access=RegAccess.RW,
                 subnode=0,
                 labels={"en_US": "SS1 Time to STO"},
-                cat_id="FSOE",
             ),
         ]
 
@@ -309,17 +308,11 @@ class EthercatDictionaryV2(DictionaryV2):
         """
         super()._append_missing_registers()
         for register in self.__pdo_registers:
-            if register.identifier is not None:
-                if register.cat_id not in self.categories.category_ids:
-                    self._append_missing_category(register.cat_id)
-                self._registers[register.subnode][register.identifier] = register
+            self._add_register_list(register)
         if self.part_number not in ["DEN-S-NET-E", "EVS-S-NET-E"]:
             return
         self.is_safe = True
         for safety_submodule in self._safety_modules:
             self.safety_modules[safety_submodule.module_ident] = safety_submodule
         for register in self._safety_registers:
-            if register.identifier is not None:
-                if register.cat_id not in self.categories.category_ids:
-                    self._append_missing_category(register.cat_id)
-                self._registers[register.subnode][register.identifier] = register
+            self._add_register_list(register)

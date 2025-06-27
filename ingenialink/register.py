@@ -242,6 +242,11 @@ class Register(ABC):
         """Category ID."""
         return self._cat_id
 
+    @cat_id.setter
+    def cat_id(self, category: str) -> Optional[str]:
+        """Category ID."""
+        self._cat_id = category
+
     @property
     def scat_id(self) -> Optional[str]:
         """Sub-Category ID."""
