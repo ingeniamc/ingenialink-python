@@ -105,6 +105,7 @@ class EthercatDictionaryV2(DictionaryV2):
                 access=RegAccess.RW,
                 subnode=0,
                 labels={"en_US": "SS1 Time to STO"},
+                cat_id="FSOE",
             ),
         ]
 
