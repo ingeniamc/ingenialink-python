@@ -1696,6 +1696,12 @@ class DictionaryV2(Dictionary):
         subnode = register.subnode
         if identifier is None:
             return
+        # Check category
+        register.cat_id = register.cat_id or "UNCATEGORIZED"
+        category = register.cat_id
+        if category not in self.categories.category_ids:
+            self.categories._cat_ids.append(category)
+            self.categories._categories[category] = {"en_US": category.capitalize()}
         self._registers[subnode][identifier] = register
 
     def _append_missing_registers(
@@ -1708,5 +1714,4 @@ class DictionaryV2(Dictionary):
         """
         if self.__MON_DIST_STATUS_REGISTER in self._registers[0]:
             for register in self._monitoring_disturbance_registers:
-                if register.identifier is not None:
-                    self._registers[register.subnode][register.identifier] = register
+                self._add_register_list(register)

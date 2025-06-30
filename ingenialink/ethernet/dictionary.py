@@ -27,21 +27,25 @@ class EthernetDictionaryV2(DictionaryV2):
         return [
             EthernetRegister(
                 identifier="MON_DATA_VALUE",
-                units="",
+                units="none",
                 subnode=0,
                 address=0x00B2,
                 cyclic=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.RO,
+                labels={"en_US": "Monitoring data"},
+                cat_id="MONITORING",
             ),
             EthernetRegister(
                 identifier="DIST_DATA_VALUE",
-                units="",
+                units="none",
                 subnode=0,
                 address=0x00B4,
                 cyclic=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.WO,
+                labels={"en_US": "Disturbance data"},
+                cat_id="MONITORING",
             ),
         ]
 
