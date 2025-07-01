@@ -134,7 +134,8 @@ def test_pdo_item_register_mapping(open_dictionary, uid, expected_value):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(1)[uid]
     tpdo_item = TPDOMapItem(register)
-    assert expected_value.to_bytes(4, "little") == tpdo_item.register_mapping
+
+    assert expected_value == tpdo_item.register_mapping
 
 
 @pytest.mark.no_connection

@@ -164,14 +164,14 @@ class PDOMapItem:
         return value
 
     @property
-    def register_mapping(self) -> bytes:
+    def register_mapping(self) -> int:
         """Arrange register information into PDO mapping format.
 
         Returns:
             PDO register mapping format.
 
         """
-        mapped_register = BitField.set_bitfields(
+        return BitField.set_bitfields(
             self.__ITEM_BITFIELDS,
             {
                 self.__LENGTH_BITFIELD: self.size_bits,
@@ -179,9 +179,6 @@ class PDOMapItem:
                 self.__INDEX_BITFIELD: self.register.idx,
             },
         )
-
-        mapped_register_bytes: bytes = mapped_register.to_bytes(MAP_REGISTER_BYTES, BIT_ENDIAN)
-        return mapped_register_bytes
 
     @classmethod
     def from_register_mapping(cls, mapping: int, dictionary: "CanopenDictionary") -> "PDOMapItem":
@@ -417,7 +414,7 @@ class PDOMap:
         """
         map_bytes = bytearray()
         for pdo_map_item in self.items:
-            map_bytes += pdo_map_item.register_mapping
+            map_bytes += pdo_map_item.register_mapping.to_bytes(MAP_REGISTER_BYTES, BIT_ENDIAN)
         return map_bytes
 
     def to_pdo_value(self) -> bytes:
