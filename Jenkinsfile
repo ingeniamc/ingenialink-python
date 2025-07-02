@@ -331,24 +331,37 @@ pipeline {
                         label ECAT_NODE
                     }
                     stages {
+                        stage ("Clear Wireshark logs") {
+                            steps {
+                                clearWiresharkLogs()
+                            }
+                        }
                         stage('EtherCAT Everest') {
                             steps {
                                 runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
+                                archiveWiresharkLogs()
+                                clearWiresharkLogs()
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
                                 runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
+                                archiveWiresharkLogs()
+                                clearWiresharkLogs()
                             }
                         }
                         stage('EtherCAT Multislave') {
                             steps {
                                 runTest("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true, USE_WIRESHARK_LOGGING)
+                                archiveWiresharkLogs()
+                                clearWiresharkLogs()
                             }
                         }
                         stage('Run no-connection tests') {
                             steps {
                                 runTest("no_connection", null, true, USE_WIRESHARK_LOGGING)
+                                archiveWiresharkLogs()
+                                clearWiresharkLogs()
                             }
                         }
                     }
