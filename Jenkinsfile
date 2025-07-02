@@ -359,9 +359,7 @@ pipeline {
                         }
                         stage('Run no-connection tests') {
                             steps {
-                                runTest("no_connection", null, true, USE_WIRESHARK_LOGGING)
-                                archiveWiresharkLogs()
-                                clearWiresharkLogs()
+                                runTest("no_connection", null, true)
                             }
                         }
                     }
