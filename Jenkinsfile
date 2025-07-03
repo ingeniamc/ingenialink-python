@@ -338,23 +338,32 @@ pipeline {
                         }
                         stage('EtherCAT Everest') {
                             steps {
-                                runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
-                                archiveWiresharkLogs()
-                                clearWiresharkLogs()
+                                try {
+                                    runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
+                                } finally {
+                                    archiveWiresharkLogs()
+                                    clearWiresharkLogs()
+                                }
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
-                                archiveWiresharkLogs()
-                                clearWiresharkLogs()
+                                try {
+                                    runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
+                                } finally {
+                                    archiveWiresharkLogs()
+                                    clearWiresharkLogs()
+                                }
                             }
                         }
                         stage('EtherCAT Multislave') {
                             steps {
-                                runTest("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true, USE_WIRESHARK_LOGGING)
-                                archiveWiresharkLogs()
-                                clearWiresharkLogs()
+                                try {
+                                    runTest("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true, USE_WIRESHARK_LOGGING)
+                                } finally {
+                                    archiveWiresharkLogs()
+                                    clearWiresharkLogs()
+                                }
                             }
                         }
                         stage('Run no-connection tests') {
