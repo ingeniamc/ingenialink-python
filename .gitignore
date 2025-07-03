@@ -43,3 +43,6 @@ temp/*
 
 # tests setups
 tests/setups/tests_setup.py
+
+# Wireshark logs
+wireshark/
