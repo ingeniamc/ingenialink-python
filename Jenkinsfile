@@ -23,7 +23,7 @@ def RACK_SPECIFIERS_PATH = "tests.setups.rack_specifiers"
 
 WIRESHARK_DIR = "wireshark"
 USE_WIRESHARK_LOGGING = ""
-START_WIRESHARK_TIMEOUT_S = 5.0
+START_WIRESHARK_TIMEOUT_S = 10.0
 
 coverage_stashes = []
 
