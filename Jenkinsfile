@@ -339,31 +339,37 @@ pipeline {
                         }
                         stage('EtherCAT Everest') {
                             steps {
-                                try {
-                                    runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
-                                } finally {
-                                    archiveWiresharkLogs()
-                                    clearWiresharkLogs()
+                                script {
+                                    try {
+                                        runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
+                                    } finally {
+                                        archiveWiresharkLogs()
+                                        clearWiresharkLogs()
+                                    }
                                 }
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                try {
-                                    runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
-                                } finally {
-                                    archiveWiresharkLogs()
-                                    clearWiresharkLogs()
+                                script {
+                                    try {
+                                        runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
+                                    } finally {
+                                        archiveWiresharkLogs()
+                                        clearWiresharkLogs()
+                                    }
                                 }
                             }
                         }
                         stage('EtherCAT Multislave') {
                             steps {
-                                try {
-                                    runTest("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true, USE_WIRESHARK_LOGGING)
-                                } finally {
-                                    archiveWiresharkLogs()
-                                    clearWiresharkLogs()
+                                script {
+                                    try {
+                                        runTest("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true, USE_WIRESHARK_LOGGING)
+                                    } finally {
+                                        archiveWiresharkLogs()
+                                        clearWiresharkLogs()
+                                    }
                                 }
                             }
                         }
