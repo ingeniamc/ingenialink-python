@@ -1,5 +1,9 @@
 # Changelog
 
+## [7.4.4] - 2025-07-08
+### Fixed
+- PyPI publishing.
+
 ## [7.4.3] - 2025-07-08
 ### Fixed
 - Safety registers/modules availability.
