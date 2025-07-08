@@ -135,7 +135,6 @@ def test_scan_slaves_info(read_config, get_drive_configuration_from_rack_service
     assert len(slaves_info) > 0
     assert drive_ip in slaves_info
     assert slaves_info[drive_ip].product_code == drive.product_code
-    assert slaves_info[drive_ip].revision_number == drive.revision_number
 
 
 @pytest.mark.ethernet

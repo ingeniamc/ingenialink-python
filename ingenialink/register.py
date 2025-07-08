@@ -73,7 +73,7 @@ class Register(ABC):
         cat_id: Optional[str] = None,
         scat_id: Optional[str] = None,
         internal_use: int = 0,
-        address_type: Optional[RegAddressType] = None,
+        address_type: Optional[RegAddressType] = RegAddressType.NVM_NONE,
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
@@ -241,6 +241,11 @@ class Register(ABC):
     def cat_id(self) -> Optional[str]:
         """Category ID."""
         return self._cat_id
+
+    @cat_id.setter
+    def cat_id(self, category: str) -> None:
+        """Category ID."""
+        self._cat_id = category
 
     @property
     def scat_id(self) -> Optional[str]:

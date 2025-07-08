@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.4.3] - 2025-07-08
+### Fixed
+- Safety registers/modules availability.
+
+### Added
+- Unknown EtherCAT frame error.
+
 ## [7.4.2] - 2025-05-07
 ### Added
 - Implement the scan method for Ethernet networks.

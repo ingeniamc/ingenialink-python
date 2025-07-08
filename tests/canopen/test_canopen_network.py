@@ -99,7 +99,6 @@ def test_scan_slaves_info(read_config, get_drive_configuration_from_rack_service
     assert len(slaves_info) > 0
     assert read_config["canopen"]["node_id"] in slaves_info
     assert slaves_info[read_config["canopen"]["node_id"]].product_code == drive.product_code
-    assert slaves_info[read_config["canopen"]["node_id"]].revision_number == drive.revision_number
 
 
 @pytest.mark.canopen

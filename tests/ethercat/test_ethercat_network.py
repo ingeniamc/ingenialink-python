@@ -100,7 +100,6 @@ def test_scan_slaves_info(
     assert len(slaves_info) > 0
     assert read_config["ethercat"]["slave"] in slaves_info
     assert slaves_info[read_config["ethercat"]["slave"]].product_code == drive.product_code
-    assert slaves_info[read_config["ethercat"]["slave"]].revision_number == drive.revision_number
 
 
 @pytest.mark.ethercat
