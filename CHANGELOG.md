@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.4.3] - 2025-07-08
 ### Fixed
 - Safety registers/modules availability.
 
