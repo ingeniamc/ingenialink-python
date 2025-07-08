@@ -51,7 +51,6 @@ class DriveContextManager:
             servo.RESTORE_COCO_ALL,
             servo.RESTORE_MOCO_ALL_REGISTERS,
         ]
-        # COMMS_ETH_MAC should be Read-Only
         if isinstance(servo, EthernetServo):
             default_do_not_restore_registers.append(servo.COMMS_ETH_MAC)
         self._do_not_restore_registers.update(default_do_not_restore_registers)
