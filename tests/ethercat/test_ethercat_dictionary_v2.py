@@ -98,6 +98,7 @@ def test_read_dictionary_categories():
         "COMMUNICATIONS",
         "REPORTING",
         "MONITORING",
+        "TARGET",
     ]
     dictionary_path = join_path(path_resources, "test_dict_ethercat.xdf")
 
