@@ -1,6 +1,7 @@
 import pytest
 
 from ingenialink.drive_context_manager import DriveContextManager
+from ingenialink.ethernet.servo import EthernetServo
 
 _USER_OVER_VOLTAGE_UID = "DRV_PROT_USER_OVER_VOLT"
 _USER_UNDER_VOLTAGE_UID = "DRV_PROT_USER_UNDER_VOLT"
@@ -12,6 +13,18 @@ def _read_user_over_voltage_uid(servo):
 
 def _read_user_under_voltage_uid(servo):
     return servo.read(_USER_UNDER_VOLTAGE_UID, subnode=1)
+
+
+def _get_expected_do_not_restore_registers(servo):
+    expected_do_not_restore_registers = [
+        servo.STORE_COCO_ALL,
+        servo.STORE_MOCO_ALL_REGISTERS,
+        servo.RESTORE_COCO_ALL,
+        servo.RESTORE_MOCO_ALL_REGISTERS,
+    ]
+    if isinstance(servo, EthernetServo):
+        expected_do_not_restore_registers.append(servo.COMMS_ETH_MAC)
+    return expected_do_not_restore_registers
 
 
 @pytest.mark.ethernet
@@ -83,17 +96,15 @@ def test_drive_context_manager_nested_contexts(setup_manager):
 def test_drive_context_manager_skips_default_do_not_restore_registers(setup_manager):
     servo, _, _, _ = setup_manager
     context = DriveContextManager(servo)
-    assert len(context._do_not_restore_registers) == 4
+
+    expected_do_not_restore_registers = _get_expected_do_not_restore_registers(servo)
+
+    assert len(context._do_not_restore_registers) == len(expected_do_not_restore_registers)
 
     # If not additional ignored registers are added,
     # the default ones are the ones that are troublesome
     # because they have a specific password, that is written but not read.
-    assert context._do_not_restore_registers == {
-        servo.STORE_COCO_ALL,
-        servo.STORE_MOCO_ALL_REGISTERS,
-        servo.RESTORE_COCO_ALL,
-        servo.RESTORE_MOCO_ALL_REGISTERS,
-    }
+    assert context._do_not_restore_registers == set(expected_do_not_restore_registers)
 
 
 @pytest.mark.ethernet
@@ -103,8 +114,10 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(setup_mana
 def test_drive_context_manager_with_do_not_restore_registers(setup_manager):
     servo, _, _, _ = setup_manager
     context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
+    expected_do_not_restore_registers = _get_expected_do_not_restore_registers(servo)
+
     assert (
-        len(context._do_not_restore_registers) == 5
+        len(context._do_not_restore_registers) == expected_do_not_restore_registers + 1
     )  # COCO-MOCO store/restore registers + _USER_OVER_VOLTAGE_UID
 
     new_reg_value = 100.0
