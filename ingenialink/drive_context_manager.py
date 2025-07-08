@@ -4,6 +4,7 @@ from typing import Optional, Union, cast
 from ingenialogger import get_logger
 
 from ingenialink.enums.register import RegAccess
+from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.exceptions import ILIOError
 from ingenialink.pdo import PDOServo
 from ingenialink.register import Register
@@ -44,12 +45,16 @@ class DriveContextManager:
         self._do_not_restore_registers: set[str] = (
             set(do_not_restore_registers) if isinstance(do_not_restore_registers, list) else set()
         )
-        self._do_not_restore_registers.update([
+        default_do_not_restore_registers = [
             servo.STORE_COCO_ALL,
             servo.STORE_MOCO_ALL_REGISTERS,
             servo.RESTORE_COCO_ALL,
             servo.RESTORE_MOCO_ALL_REGISTERS,
-        ])
+        ]
+        # COMMS_ETH_MAC should be Read-Only
+        if isinstance(servo, EthernetServo):
+            default_do_not_restore_registers.append(servo.COMMS_ETH_MAC)
+        self._do_not_restore_registers.update(default_do_not_restore_registers)
 
         self._original_register_values: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
         self._registers_changed: OrderedDict[tuple[int, str], Union[int, float, str, bytes]] = (
