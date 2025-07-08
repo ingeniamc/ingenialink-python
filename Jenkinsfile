@@ -49,7 +49,7 @@ def clearWiresharkLogs() {
 }
 
 def archiveWiresharkLogs() {
-    archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*", allowEmptyArchive: true
+    archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
 }
 
 def runTest(markers, setup_name, tox_skip_install = false, extra_args = "") {
@@ -400,12 +400,26 @@ pipeline {
                         }
                         stage('Ethernet Everest') {
                             steps {
-                                runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", true)
+                                script {
+                                    try {
+                                        runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
+                                    } finally {
+                                        archiveWiresharkLogs()
+                                        clearWiresharkLogs()
+                                    }
+                                }
                             }
                         }
                         stage('Ethernet Capitan') {
                             steps {
-                                runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", true)
+                                script {
+                                    try {
+                                        runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
+                                    } finally {
+                                        archiveWiresharkLogs()
+                                        clearWiresharkLogs()
+                                    }
+                                }
                             }
                         }
                     }
