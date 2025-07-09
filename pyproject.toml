@@ -1,3 +1,55 @@
+[project]
+dynamic = ["version", "urls"]
+
+name = "ingenialink"
+description = "IngeniaLink Communications Library"
+authors = [
+  { name = "Novanta", email = "support@ingeniamc.com" }
+]
+readme = { file = "README.rst", content-type = "text/x-rst" }
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Cython",
+  "Topic :: Communications",
+  "Topic :: Software Development :: Libraries"
+]
+
+requires-python = ">=3.9"
+dependencies = [
+    "canopen==2.2.0",
+    "python-can==4.4.2",
+    "ingenialogger>=0.2.1",
+    "ping3==4.0.3",
+    "pysoem>=1.1.11, <1.2.0",
+    "numpy>=1.26.0",
+    "scipy==1.12.0",
+    "bitarray==2.9.2",
+    "multiping==1.1.2",
+]
+
 [build-system]
-requires = ["setuptools>=42", "wheel==0.42.0", "Cython==3.0.11"]
+requires = ["setuptools>=75.6.0", "setuptools_scm[toml]>=8", "wheel==0.42.0", "Cython==3.0.11"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_scheme = "only-version"
+local_scheme = "node-and-date"
+write_to = "ingenialink/_version.py"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["ingenialink", "virtual_drive"]
+
+[tool.setuptools.package-data]
+ingenialink = ["py.typed", "*.pyd"]
+virtual_drive = ["py.typed", "resources/*"]

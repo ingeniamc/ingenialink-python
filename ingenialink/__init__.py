@@ -22,6 +22,12 @@ from .ethernet.network import EthernetNetwork
 from .ethernet.servo import EthernetServo
 from .network import NetDevEvt, NetProt, NetState, Network
 
+try:
+    from ._version import __version__  # noqa: F401
+except ModuleNotFoundError:
+    __version__ = "development"
+
+
 __all__ = [
     "NetProt",
     "NetDevEvt",
@@ -79,6 +85,3 @@ def __getattr__(name: str) -> Any:
         )
         return globals()[_DEPRECATED[name]]
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
-
-
-__version__ = "7.4.4"

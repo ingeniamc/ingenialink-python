@@ -30,6 +30,20 @@ def restoreIngenialinkWheelEnvVar() {
     env.TOX_SKIP_INSTALL = false
 }
 
+def getVersionForPR() {
+    if (!env.CHANGE_ID) {
+        return ""
+    }
+    def latest_tag = ''
+    if (isUnix()) {
+        sh "git config --global --add safe.directory '*'"
+        latest_tag = sh(returnStdout: true, script: 'git describe --tags --abbrev=0').trim()
+    } else {
+        latest_tag = powershell(returnStdout: true, script: 'git describe --tags --abbrev=0').trim()
+    }
+    return "${latest_tag}+PR${env.CHANGE_ID}B${env.BUILD_NUMBER}"
+}
+
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
         script {
@@ -118,6 +132,9 @@ pipeline {
                             label SW_NODE
                             image WIN_DOCKER_IMAGE
                         }
+                    }
+                    environment {
+                        SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
                     }
                     stages {
                         stage ('Git Commit to Build description') {
