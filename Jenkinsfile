@@ -52,39 +52,44 @@ def archiveWiresharkLogs() {
     archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
 }
 
-def runTest(markers, setup_name, tox_skip_install = false, extra_args = "") {
-    timeout(time: 1, unit: 'HOURS') {
-        unstash 'wheels'
-        def firstIteration = true
-        def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-        pythonVersions.each { version ->
-            def wheelFile = getWheelPath(tox_skip_install, version)
-            withEnv(["INGENIALINK_WHEEL_PATH=${wheelFile}", "TOX_SKIP_INSTALL=${tox_skip_install.toString()}", "WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
-                try {
-                    def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                    bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
-                            "-m \"${markers}\" " +
-                            "${setupArg}" +
-                            "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" " +
-                            "-o log_cli=True " +
-                            "${extra_args}"
+def runTestHW(markers, setup_name, tox_skip_install = false, extra_args = "") {
+    try {
+        timeout(time: 1, unit: 'HOURS') {
+            unstash 'wheels'
+            def firstIteration = true
+            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+            pythonVersions.each { version ->
+                def wheelFile = getWheelPath(tox_skip_install, version)
+                withEnv(["INGENIALINK_WHEEL_PATH=${wheelFile}", "TOX_SKIP_INSTALL=${tox_skip_install.toString()}", "WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
+                    try {
+                        def setupArg = setup_name ? "--setup ${setup_name} " : ""
+                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
+                                "-m \"${markers}\" " +
+                                "${setupArg}" +
+                                "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" " +
+                                "-o log_cli=True " +
+                                "${extra_args}"
 
-                } catch (err) {
-                    unstable(message: "Tests failed")
-                } finally {
-                    junit "pytest_reports\\*.xml"
-                    // Delete the junit after publishing it so it not re-published on the next stage
-                    bat "del /S /Q pytest_reports\\*.xml"
-                    if (firstIteration) {
-                        def coverage_stash = ".coverage_${setup_name}"
-                        bat "move .coverage ${coverage_stash}"
-                        stash includes: coverage_stash, name: coverage_stash
-                        coverage_stashes.add(coverage_stash)
-                        firstIteration = false
+                    } catch (err) {
+                        unstable(message: "Tests failed")
+                    } finally {
+                        junit "pytest_reports\\*.xml"
+                        // Delete the junit after publishing it so it not re-published on the next stage
+                        bat "del /S /Q pytest_reports\\*.xml"
+                        if (firstIteration) {
+                            def coverage_stash = ".coverage_${setup_name}"
+                            bat "move .coverage ${coverage_stash}"
+                            stash includes: coverage_stash, name: coverage_stash
+                            coverage_stashes.add(coverage_stash)
+                            firstIteration = false
+                        }
                     }
                 }
             }
         }
+    } finally {
+        archiveWiresharkLogs()
+        clearWiresharkLogs()
     }
 }
 
@@ -339,43 +344,22 @@ pipeline {
                         }
                         stage('EtherCAT Everest') {
                             steps {
-                                script {
-                                    try {
-                                        runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
-                                    } finally {
-                                        archiveWiresharkLogs()
-                                        clearWiresharkLogs()
-                                    }
-                                }
+                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                script {
-                                    try {
-                                        runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
-                                    } finally {
-                                        archiveWiresharkLogs()
-                                        clearWiresharkLogs()
-                                    }
-                                }
+                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Multislave') {
                             steps {
-                                script {
-                                    try {
-                                        runTest("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true, USE_WIRESHARK_LOGGING)
-                                    } finally {
-                                        archiveWiresharkLogs()
-                                        clearWiresharkLogs()
-                                    }
-                                }
+                                runTestHW("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true, USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Run no-connection tests') {
                             steps {
-                                runTest("no_connection", null, true)
+                                runTestHW("no_connection", null, true)
                             }
                         }
                     }
@@ -390,36 +374,22 @@ pipeline {
                     stages {
                         stage('CANopen Everest') {
                             steps {
-                                runTest("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP", true)
+                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP", true)
                             }
                         }
                         stage('CANopen Capitan') {
                             steps {
-                                runTest("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP", true)
+                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP", true)
                             }
                         }
                         stage('Ethernet Everest') {
                             steps {
-                                script {
-                                    try {
-                                        runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
-                                    } finally {
-                                        archiveWiresharkLogs()
-                                        clearWiresharkLogs()
-                                    }
-                                }
+                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Ethernet Capitan') {
                             steps {
-                                script {
-                                    try {
-                                        runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
-                                    } finally {
-                                        archiveWiresharkLogs()
-                                        clearWiresharkLogs()
-                                    }
-                                }
+                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
                             }
                         }
                     }
