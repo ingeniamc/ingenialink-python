@@ -223,20 +223,31 @@ pipeline {
                         publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                     }
                 }
-                stage('Publish to pypi') {
-                    when {
-                        beforeAgent true
-                        branch BRANCH_NAME_MASTER
-                    }
+                stage('Publish wheels') {
                     agent {
                         docker {
                             label 'worker'
                             image PUBLISHER_DOCKER_IMAGE
                         }
                     }
-                    steps {
-                        unstash 'wheels'
-                        publishPyPi("dist/*")
+                    stage('Unstash')
+                    {
+                        steps {
+                            unstash 'wheels'
+                        }
+                    }
+                    stage('Publish Ingenia PyPi') {
+                        steps {
+                            publishIngeniaPyPi('dist/*')
+                        }
+                    }
+                    stage('Publish PyPi') {
+                        when {
+                            branch 'master'
+                        }
+                        steps {
+                            publishPyPi('dist/*')
+                        }
                     }
                 }
             }
