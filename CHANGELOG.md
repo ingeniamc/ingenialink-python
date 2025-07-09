@@ -15,9 +15,16 @@
 ### Changed
 - Added Safety Cyclic types for xdf v3 dictionaries.
 
+## [7.4.4] - 2025-07-08
+### Fixed
+- PyPI publishing.
+
 ## [7.4.3]
 ### Fixed
 - Safety registers/modules availability.
+
+### Added
+- Unknown EtherCAT frame error.
 
 ## [7.4.2] - 2025-05-07
 ### Added

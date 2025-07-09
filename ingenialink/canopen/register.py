@@ -65,7 +65,7 @@ class CanopenRegister(Register):
         cat_id: Optional[str] = None,
         scat_id: Optional[str] = None,
         internal_use: int = 0,
-        address_type: Optional[RegAddressType] = None,
+        address_type: Optional[RegAddressType] = RegAddressType.NVM_NONE,
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,

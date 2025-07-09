@@ -70,21 +70,27 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
         return [
             CanopenRegister(
                 identifier="MON_DATA_VALUE",
+                units="none",
                 idx=0x58B2,
                 subidx=0x00,
                 pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.RO,
                 subnode=0,
+                labels={"en_US": "Monitoring data"},
+                cat_id="MONITORING",
             ),
             CanopenRegister(
                 identifier="DIST_DATA_VALUE",
+                units="none",
                 idx=0x58B4,
                 subidx=0x00,
                 pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.BYTE_ARRAY_512,
                 access=RegAccess.WO,
                 subnode=0,
+                labels={"en_US": "Disturbance data"},
+                cat_id="MONITORING",
             ),
         ]
 
