@@ -230,23 +230,25 @@ pipeline {
                             image PUBLISHER_DOCKER_IMAGE
                         }
                     }
-                    stage('Unstash')
-                    {
-                        steps {
-                            unstash 'wheels'
+                    stages {
+                        stage('Unstash')
+                        {
+                            steps {
+                                unstash 'wheels'
+                            }
                         }
-                    }
-                    stage('Publish Ingenia PyPi') {
-                        steps {
-                            publishIngeniaPyPi('dist/*')
+                        stage('Publish Ingenia PyPi') {
+                            steps {
+                                publishIngeniaPyPi('dist/*')
+                            }
                         }
-                    }
-                    stage('Publish PyPi') {
-                        when {
-                            branch 'master'
-                        }
-                        steps {
-                            publishPyPi('dist/*')
+                        stage('Publish PyPi') {
+                            when {
+                                branch 'master'
+                            }
+                            steps {
+                                publishPyPi('dist/*')
+                            }
                         }
                     }
                 }
