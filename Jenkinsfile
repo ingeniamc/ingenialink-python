@@ -21,14 +21,11 @@ def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 def RACK_SPECIFIERS_PATH = "tests.setups.rack_specifiers"
 
-coverage_stashes = []
+WIRESHARK_DIR = "wireshark"
+USE_WIRESHARK_LOGGING = ""
+START_WIRESHARK_TIMEOUT_S = 10.0
 
-// Run this before PYTEST tox command that requires develop ingenialink installation and that 
-// may run in parallel/after with EtherCAT/CANopen tests, because these tests alter its value
-def restoreIngenialinkWheelEnvVar() {
-    env.INGENIALINK_WHEEL_PATH = null
-    env.TOX_SKIP_INSTALL = false
-}
+coverage_stashes = []
 
 def getVersionForPR() {
     if (!env.CHANGE_ID) {
@@ -61,38 +58,52 @@ def getWheelPath(tox_skip_install, python_version) {
     }
 }
 
-def runTest(markers, setup_name, tox_skip_install = false) {
-    timeout(time: 1, unit: 'HOURS') {
-        unstash 'wheels'
-        def firstIteration = true
-        def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-        pythonVersions.each { version ->
-            def wheelFile = getWheelPath(tox_skip_install, version)
-            env.TOX_SKIP_INSTALL = tox_skip_install.toString()
-            env.INGENIALINK_WHEEL_PATH = wheelFile
-            try {
-                def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
-                        "-m \"${markers}\" " +
-                        "${setupArg}" +
-                        "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" " +
-                        "-o log_cli=True"
+def clearWiresharkLogs() {
+    bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
+}
 
-            } catch (err) {
-                unstable(message: "Tests failed")
-            } finally {
-                junit "pytest_reports\\*.xml"
-                // Delete the junit after publishing it so it not re-published on the next stage
-                bat "del /S /Q pytest_reports\\*.xml"
-                if (firstIteration) {
-                    def coverage_stash = ".coverage_${setup_name}"
-                    bat "move .coverage ${coverage_stash}"
-                    stash includes: coverage_stash, name: coverage_stash
-                    coverage_stashes.add(coverage_stash)
-                    firstIteration = false
+def archiveWiresharkLogs() {
+    archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
+}
+
+def runTestHW(markers, setup_name, tox_skip_install = false, extra_args = "") {
+    try {
+        timeout(time: 1, unit: 'HOURS') {
+            unstash 'wheels'
+            def firstIteration = true
+            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+            pythonVersions.each { version ->
+                def wheelFile = getWheelPath(tox_skip_install, version)
+                withEnv(["INGENIALINK_WHEEL_PATH=${wheelFile}", "TOX_SKIP_INSTALL=${tox_skip_install.toString()}", "WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
+                    try {
+                        def setupArg = setup_name ? "--setup ${setup_name} " : ""
+                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
+                                "-m \"${markers}\" " +
+                                "${setupArg}" +
+                                "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" " +
+                                "-o log_cli=True " +
+                                "${extra_args}"
+
+                    } catch (err) {
+                        unstable(message: "Tests failed")
+                    } finally {
+                        junit "pytest_reports\\*.xml"
+                        // Delete the junit after publishing it so it not re-published on the next stage
+                        bat "del /S /Q pytest_reports\\*.xml"
+                        if (firstIteration) {
+                            def coverage_stash = ".coverage_${setup_name}"
+                            bat "move .coverage ${coverage_stash}"
+                            stash includes: coverage_stash, name: coverage_stash
+                            coverage_stashes.add(coverage_stash)
+                            firstIteration = false
+                        }
+                    }
                 }
             }
         }
+    } finally {
+        archiveWiresharkLogs()
+        clearWiresharkLogs()
     }
 }
 
@@ -107,8 +118,20 @@ pipeline {
     triggers {
         cron(CRON_SETTINGS)
     }
+    parameters {
+        choice(
+                choices: ['MIN', 'MAX', 'MIN_MAX', 'All'],
+                name: 'PYTHON_VERSIONS'
+        )
+        booleanParam(name: 'WIRESHARK_LOGGING', defaultValue: true, description: 'Enable Wireshark logging')
+        choice(
+                choices: ['function', 'module', 'session'],
+                name: 'WIRESHARK_LOGGING_SCOPE'
+        )
+        booleanParam(name: 'CLEAR_SUCCESSFUL_WIRESHARK_LOGS', defaultValue: true, description: 'Clears Wireshark logs if the test passed')
+    }
     stages {
-        stage("Set run python versions") {
+        stage("Set env") {
             steps {
                 script {
                     if (env.BRANCH_NAME == 'master') {
@@ -118,7 +141,23 @@ pipeline {
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                     } else {
-                        RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
+                        if (env.PYTHON_VERSIONS == "MIN_MAX") {
+                          RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
+                        } else if (env.PYTHON_VERSIONS == "MIN") {
+                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
+                        } else if (env.PYTHON_VERSIONS == "MAX") {
+                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MAX
+                        } else if (env.PYTHON_VERSIONS == "All") {
+                          RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
+                        } else { // Branch-indexing
+                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
+                        }
+                    }
+
+                    if (params.WIRESHARK_LOGGING) {
+                        USE_WIRESHARK_LOGGING = "--run_wireshark"
+                    } else {
+                        USE_WIRESHARK_LOGGING = ""
                     }
                 }
             }
@@ -267,9 +306,6 @@ pipeline {
                     stages {
                         stage('Run no-connection tests on docker') {
                             steps {
-                                script {
-                                    restoreIngenialinkWheelEnvVar()
-                                }
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
                                         "-m docker " +
                                         "-o log_cli=True"
@@ -299,9 +335,6 @@ pipeline {
                     stages {
                         stage('Run no-connection tests on docker') {
                             steps {
-                                script {
-                                    restoreIngenialinkWheelEnvVar()
-                                }
                                 sh """
                                     python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m no_connection -o log_cli=True
                                 """
@@ -314,9 +347,6 @@ pipeline {
                         }
                         stage('Run virtual drive tests on docker') {
                             steps {
-                                script {
-                                    restoreIngenialinkWheelEnvVar()
-                                }
                                 sh """
                                     python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
                                 """
@@ -337,24 +367,29 @@ pipeline {
                         label ECAT_NODE
                     }
                     stages {
+                        stage ("Clear Wireshark logs") {
+                            steps {
+                                clearWiresharkLogs()
+                            }
+                        }
                         stage('EtherCAT Everest') {
                             steps {
-                                runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true)
+                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                runTest("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true)
+                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Multislave') {
                             steps {
-                                runTest("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true)
+                                runTestHW("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true, USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Run no-connection tests') {
                             steps {
-                                runTest("no_connection", null, true)
+                                runTestHW("no_connection", null, true)
                             }
                         }
                     }
@@ -369,22 +404,22 @@ pipeline {
                     stages {
                         stage('CANopen Everest') {
                             steps {
-                                runTest("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP", true)
+                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP", true)
                             }
                         }
                         stage('CANopen Capitan') {
                             steps {
-                                runTest("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP", true)
+                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP", true)
                             }
                         }
                         stage('Ethernet Everest') {
                             steps {
-                                runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", true)
+                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Ethernet Capitan') {
                             steps {
-                                runTest("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", true)
+                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
                             }
                         }
                     }
