@@ -12,10 +12,10 @@ def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
 DEFAULT_PYTHON_VERSION = "3.9"
 
-ALL_PYTHON_VERSIONS = "py39,py310,py311,py312"
+ALL_PYTHON_VERSIONS = "3.9,3.10,3.11,3.12"
 RUN_PYTHON_VERSIONS = ""
-PYTHON_VERSION_MIN = "py39"
-def PYTHON_VERSION_MAX = "py312"
+def PYTHON_VERSION_MIN = "3.9"
+def PYTHON_VERSION_MAX = "3.12"
 
 def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
@@ -44,7 +44,7 @@ def getVersionForPR() {
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
         script {
-            def pythonVersionTag = "cp${python_version.replace('py', '')}"
+            def pythonVersionTag = "cp${python_version.replace('.', '')}"
             def files = findFiles(glob: "dist/*${pythonVersionTag}*.whl")
             if (files.length == 0) {
                 error "No .whl file found for Python version ${python_version} in the dist directory."
@@ -76,8 +76,9 @@ def runTestHW(markers, setup_name, tox_skip_install = false, extra_args = "") {
                 def wheelFile = getWheelPath(tox_skip_install, version)
                 withEnv(["INGENIALINK_WHEEL_PATH=${wheelFile}", "TOX_SKIP_INSTALL=${tox_skip_install.toString()}", "WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
                     try {
+                        def py_version = "py" + DEFAULT_PYTHON_VERSION.replace(".", "")
                         def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
+                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${py_version} -- " +
                                 "-m \"${markers}\" " +
                                 "${setupArg}" +
                                 "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" " +
@@ -307,9 +308,12 @@ pipeline {
                     stages {
                         stage('Run no-connection tests on docker') {
                             steps {
-                                sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m no_connection -o log_cli=True
-                                """
+                                script {
+                                    def run_py_versions = RUN_PYTHON_VERSIONS.split(',').collect { "py" + it.replace('.', '') }.join(',')
+                                    sh """
+                                        python${DEFAULT_PYTHON_VERSION} -m tox -e ${run_py_versions} -- -m no_connection -o log_cli=True
+                                    """
+                                }
                             }
                             post {
                                 always {
@@ -319,9 +323,12 @@ pipeline {
                         }
                         stage('Run virtual drive tests on docker') {
                             steps {
-                                sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
-                                """
+                                script {
+                                    def run_py_versions = RUN_PYTHON_VERSIONS.split(',').collect { "py" + it.replace('.', '') }.join(',')
+                                    sh """
+                                        python${DEFAULT_PYTHON_VERSION} -m tox -e ${run_py_versions} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
+                                    """
+                                }
                             }
                             post {
                                 always {
