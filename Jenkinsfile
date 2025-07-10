@@ -207,95 +207,97 @@ pipeline {
         stage('Build and publish') {
             stages {
                 stage('Build') {
-                    axes {
-                        axis {
-                            name 'PLATFORM'
-                            values 'linux', 'windows'
-                        }
-                    }
-                    agent {
-                        docker {
-                            label getAgentForPlatform(env.PLATFORM)
-                            image getImageForPlatform(env.PLATFORM)
-                        }
-                    }
-                    environment {
-                        SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
-                    }
-                    stages {
-                        stage('Move workspace') {
-                            when {
-                                expression { env.PLATFORM == 'windows' };
-                            }
-                            steps {
-                                bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
+                    matrix {
+                        axes {
+                            axis {
+                                name 'PLATFORM'
+                                values 'linux', 'windows'
                             }
                         }
-                        stage('Type checking') {
-                            steps {
-                                python("-m tox -e type")
+                        agent {
+                            docker {
+                                label getAgentForPlatform(env.PLATFORM)
+                                image getImageForPlatform(env.PLATFORM)
                             }
                         }
-                        stage('Format checking') {
-                            steps {
-                                python("-m tox -e format")
-                            }
+                        environment {
+                            SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
                         }
-                        stage('Build') {
-                            steps {
-                                script {
-                                    def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
-                                    pythonVersions.each { version ->
-                                        python("-m tox -e build", version)
-                                        if (env.PLATFORM == 'windows') {
-                                            def result = bat(returnStatus: true, script: """
-                                                    cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-                                                    robocopy dist ${env.WORKSPACE}\\dist *.whl /XO /NFL /NDL /NJH /NJS
-                                                """)
-                                            if (result > 7) {
-                                                error "Robocopy failed with exit code ${result}"
+                        stages {
+                            stage('Move workspace') {
+                                when {
+                                    expression { env.PLATFORM == 'windows' };
+                                }
+                                steps {
+                                    bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
+                                }
+                            }
+                            stage('Type checking') {
+                                steps {
+                                    python("-m tox -e type")
+                                }
+                            }
+                            stage('Format checking') {
+                                steps {
+                                    python("-m tox -e format")
+                                }
+                            }
+                            stage('Build') {
+                                steps {
+                                    script {
+                                        def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
+                                        pythonVersions.each { version ->
+                                            python("-m tox -e build", version)
+                                            if (env.PLATFORM == 'windows') {
+                                                def result = bat(returnStatus: true, script: """
+                                                        cd C:\\Users\\ContainerAdministrator\\ingenialink_python
+                                                        robocopy dist ${env.WORKSPACE}\\dist *.whl /XO /NFL /NDL /NJH /NJS
+                                                    """)
+                                                if (result > 7) {
+                                                    error "Robocopy failed with exit code ${result}"
+                                                }
                                             }
-                                        }
 
+                                        }
+                                    }
+                                }
+                                post {
+                                    always {
+                                        reassignFilePermissions()
                                     }
                                 }
                             }
-                            post {
-                                always {
-                                    reassignFilePermissions()
+
+                            stage('Repair Linux Wheel') {
+                                when {
+                                    environment name: 'PLATFORM', value: 'linux'
+                                }
+                                steps {
+                                    sh 'auditwheel repair dist/*.whl -w dist/'
+                                    sh "find dist -type f -not -name '*many*.whl' -delete"
+                                }
+                                post {
+                                    always {
+                                        reassignFilePermissions()
+                                    }
                                 }
                             }
-                        }
 
-                        stage('Repair Linux Wheel') {
-                            when {
-                                environment name: 'PLATFORM', value: 'linux'
-                            }
-                            steps {
-                                sh 'auditwheel repair dist/*.whl -w dist/'
-                                sh "find dist -type f -not -name '*many*.whl' -delete"
-                            }
-                            post {
-                                always {
-                                    reassignFilePermissions()
+                            stage('Archive artifacts') {
+                                steps {
+                                    archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
+                                    stash includes: "dist\\*", name: 'wheels'
                                 }
                             }
-                        }
-
-                        stage('Archive artifacts') {
-                            steps {
-                                archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
-                                stash includes: "dist\\*", name: 'wheels'
-                            }
-                        }
-                        stage('Generate documentation') {
-                            when {
-                                expression { env.PLATFORM == 'windows' };
-                            }
-                            steps {
-                                python("-m tox -e docs")
-                                bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
-                                stash includes: 'docs.zip', name: 'docs'
+                            stage('Generate documentation') {
+                                when {
+                                    expression { env.PLATFORM == 'windows' };
+                                }
+                                steps {
+                                    python("-m tox -e docs")
+                                    bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
+                                    stash includes: 'docs.zip', name: 'docs'
+                                }
                             }
                         }
                     }
