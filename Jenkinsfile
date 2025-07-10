@@ -215,34 +215,7 @@ pipeline {
         }
 
         stage('Build') {
-            parallel {
-                stage('Type checking and Documentation') {
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage('Type checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
-                            }
-                        }
-                        stage('Format checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                            }
-                        }
-                        stage('Generate documentation') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
-                                bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
-                                stash includes: 'docs.zip', name: 'docs'
-                            }
-                        }
-                    }
-                }
+            stages {
                 stage('Build') {
                     matrix {
                         axes {
@@ -320,8 +293,33 @@ pipeline {
                         }
                     }
                 }
-            }
-            stage ('Publish') {
+                stage('Type checking and Documentation') {
+                    agent {
+                        docker {
+                            label SW_NODE
+                            image WIN_DOCKER_IMAGE
+                        }
+                    }
+                    stages {
+                        stage('Type checking') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                            }
+                        }
+                        stage('Format checking') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                            }
+                        }
+                        stage('Generate documentation') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                                bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
+                                stash includes: 'docs.zip', name: 'docs'
+                            }
+                        }
+                    }
+                }
                 stage('Publish documentation') {
                     when {
                         beforeAgent true
