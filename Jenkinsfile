@@ -201,7 +201,7 @@ pipeline {
                         }
                         stage('Move workspace') {
                             steps {
-                                bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y"
+                                bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
                             }
                         }
                         stage('Type checking') {
