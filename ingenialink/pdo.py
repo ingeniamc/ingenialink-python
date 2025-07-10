@@ -1,10 +1,11 @@
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Literal, Optional, TypeVar, Union
+from typing import ClassVar, Literal, Optional, TypeVar, Union
 
 import bitarray
 from typing_extensions import override
 
 from ingenialink.bitfield import BitField
+from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
@@ -15,9 +16,6 @@ from ingenialink.utils._utils import (
     convert_dtype_to_bytes,
     dtype_length_bits,
 )
-
-if TYPE_CHECKING:
-    from ingenialink.canopen.dictionary import CanopenDictionary
 
 BIT_ENDIAN: Literal["little"] = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
@@ -463,21 +461,27 @@ class PDOMap:
 
         return pdo_map
 
-    def write_to_slave(self, slave: "PDOServo") -> None:
+    def write_to_slave(self) -> None:
         """Write the PDOMap to the slave.
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
 
-        Args:
-            slave: Servo to which the PDOMap will be written.
+        Raises:
+            ValueError: If the slave is not set or the map_register_index is None.
+
         """
         self.__check_servo_is_in_preoperational_state()
-        reg = slave.get_register_by_index_subindex(
+        if self.__slave is None:
+            raise ValueError("To write the PDOMap to the slave, the slave must be set.")
+        if self.map_register_index is None:
+            raise ValueError(
+                "To write the PDOMap to the slave, the map_register_index must be set."
+            )
+
+        reg = self.__slave.dictionary.get_register_by_index_subindex(
             self.map_register_index, subindex=0
         )
-        slave.write_complete_access(
-            reg, self.to_pdo_value()
-        )
+        self.__slave.write_complete_access(reg, self.to_pdo_value())
 
     def set_item_bytes(self, data_bytes: bytes) -> None:
         """Set the items raw data from a byte array.
@@ -594,6 +598,11 @@ class PDOServo(Servo):
         super().__init__(target, dictionary_path, servo_status_listener)
         self._rpdo_maps: list[RPDOMap] = []
         self._tpdo_maps: list[TPDOMap] = []
+
+    @property  # type: ignore[misc]
+    def dictionary(self) -> CanopenDictionary:  # type: ignore[override]
+        """Canopen dictionary."""
+        return self._dictionary  # type: ignore[return-value]
 
     @abstractmethod
     def check_servo_is_in_preoperational_state(self) -> None:
