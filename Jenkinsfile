@@ -61,6 +61,16 @@ def getImageForPlatform(String platform) {
     }
 }
 
+def getArgsForPlatform(String platform) {
+    if (platform == 'windows') {
+        return ''
+    } else if (platform == 'linux') {
+        return '-u root:root'
+    } else {
+        throw new Exception('Unknown platform')
+    }
+}
+
 LINUX_PYTHON_PATH = ['3.9' : '/opt/python/cp39-cp39/bin', '3.10': '/opt/python/cp310-cp310/bin',
                      '3.11': '/opt/python/cp311-cp311/bin', '3.12': '/opt/python/cp312-cp312/bin']
 
@@ -218,6 +228,7 @@ pipeline {
                             docker {
                                 label getAgentForPlatform(env.PLATFORM)
                                 image getImageForPlatform(env.PLATFORM)
+                                args getArgsForPlatform(env.PLATFORM)
                             }
                         }
                         environment {
