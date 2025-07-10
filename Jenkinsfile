@@ -41,6 +41,46 @@ def getVersionForPR() {
     return "${latest_tag}+PR${env.CHANGE_ID}B${env.BUILD_NUMBER}"
 }
 
+def getAgentForPlatform(String platform) {
+    if (platform == 'windows') {
+        return 'windows-slave'
+    } else if (platform == 'linux') {
+        return 'worker'
+    } else {
+        throw new Exception('Unknown platform')
+    }
+}
+
+def getImageForPlatform(String platform) {
+    if (platform == 'windows') {
+        return WIN_DOCKER_IMAGE
+    } else if (platform == 'linux') {
+        return LIN_DOCKER_IMAGE
+    } else {
+        throw new Exception('Unknown platform')
+    }
+}
+
+LINUX_PYTHON_PATH = ['3.9' : '/opt/python/cp39-cp39/bin', '3.10': '/opt/python/cp310-cp310/bin',
+                     '3.11': '/opt/python/cp311-cp311/bin', '3.12': '/opt/python/cp312-cp312/bin']
+
+def python(String command, String py_version=DEFAULT_PYTHON_VERSION) {
+    if (isUnix()) {
+        sh "${LINUX_PYTHON_PATH[py_version]}/python ${command}"
+    } else {
+        bat """
+            cd C:\\Users\\ContainerAdministrator\\fsoe_master_python
+            py -${py_version} ${command}
+        """
+    }
+}
+
+def reassignFilePermissions() {
+    if (isUnix()) {
+        sh 'chmod -R 777 .'
+    }
+}
+
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
         script {
@@ -167,10 +207,16 @@ pipeline {
         stage('Build and publish') {
             stages {
                 stage('Build') {
+                    axes {
+                        axis {
+                            name 'PLATFORM'
+                            values 'linux', 'windows'
+                        }
+                    }
                     agent {
                         docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
+                            label getAgentForPlatform(env.PLATFORM)
+                            image getImageForPlatform(env.PLATFORM)
                         }
                     }
                     environment {
@@ -178,18 +224,21 @@ pipeline {
                     }
                     stages {
                         stage('Move workspace') {
+                            when {
+                                expression { env.PLATFORM == 'windows' };
+                            }
                             steps {
                                 bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
                             }
                         }
                         stage('Type checking') {
                             steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                                python("-m tox -e type")
                             }
                         }
                         stage('Format checking') {
                             steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                                python("-m tox -e format")
                             }
                         }
                         stage('Build') {
@@ -197,19 +246,42 @@ pipeline {
                                 script {
                                     def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
                                     pythonVersions.each { version ->
-                                        def result = bat(returnStatus: true, script: """
-                                                cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-                                                py -${version} -m tox -e build
-                                                robocopy dist ${env.WORKSPACE}\\dist *.whl /XO /NFL /NDL /NJH /NJS
-                                            """)
-                                        if (result > 7) {
-                                            error "Robocopy failed with exit code ${result}"
+                                        python("-m tox -e build", version)
+                                        if (env.PLATFORM == 'windows') {
+                                            def result = bat(returnStatus: true, script: """
+                                                    cd C:\\Users\\ContainerAdministrator\\ingenialink_python
+                                                    robocopy dist ${env.WORKSPACE}\\dist *.whl /XO /NFL /NDL /NJH /NJS
+                                                """)
+                                            if (result > 7) {
+                                                error "Robocopy failed with exit code ${result}"
+                                            }
                                         }
 
                                     }
                                 }
                             }
+                            post {
+                                always {
+                                    reassignFilePermissions()
+                                }
+                            }
                         }
+
+                        stage('Repair Linux Wheel') {
+                            when {
+                                environment name: 'PLATFORM', value: 'linux'
+                            }
+                            steps {
+                                sh 'auditwheel repair dist/*.whl -w dist/'
+                                sh "find dist -type f -not -name '*many*.whl' -delete"
+                            }
+                            post {
+                                always {
+                                    reassignFilePermissions()
+                                }
+                            }
+                        }
+
                         stage('Archive artifacts') {
                             steps {
                                 archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
@@ -217,8 +289,11 @@ pipeline {
                             }
                         }
                         stage('Generate documentation') {
+                            when {
+                                expression { env.PLATFORM == 'windows' };
+                            }
                             steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                                python("-m tox -e docs"
                                 bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
                                 stash includes: 'docs.zip', name: 'docs'
                             }
