@@ -221,8 +221,8 @@ pipeline {
                                     pythonVersions.each { version ->
                                         bat """
                                             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-                                            py -${DEFAULT_PYTHON_VERSION} -m tox -e build
-                                            XCOPY dist\\*.whl ${env.WORKSPACE}\\dist /s /i /y
+                                            py -${version} -m tox -e build
+                                            XCOPY dist\\*.whl ${env.WORKSPACE}\\dist /s /i
                                         """
                                     }
                                 }
