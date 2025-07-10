@@ -71,9 +71,13 @@ def getArgsForPlatform(String platform) {
     }
 }
 
+LINUX_PYTHON_PATH = ['3.9' : '/opt/python/cp39-cp39/bin', '3.10': '/opt/python/cp310-cp310/bin',
+                     '3.11': '/opt/python/cp311-cp311/bin', '3.12': '/opt/python/cp312-cp312/bin']
+
+
 def python(String command) {
     if (isUnix()) {
-        sh "python${env.PYTHON_BUILD_VERSION} ${command}"
+        sh "${LINUX_PYTHON_PATH[env.PYTHON_BUILD_VERSION]}/python ${command}"
     } else {
         bat """
             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
