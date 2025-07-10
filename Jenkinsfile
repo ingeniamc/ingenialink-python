@@ -217,17 +217,12 @@ pipeline {
                         stage('Build') {
                             steps {
                                 script {
-                                    def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                    def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
                                     pythonVersions.each { version ->
-                                        def distDir = version == PYTHON_VERSION_MIN ? "dist" : "dist_${version}"
-                                        def buildDir = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
-                                        env.TOX_PYTHON_VERSION = version
-                                        env.TOX_DIST_DIR = distDir
-                                        env.TOX_BUILD_ENV_DIR = buildDir
                                         bat """
                                             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
                                             py -${DEFAULT_PYTHON_VERSION} -m tox -e build
-                                            XCOPY ${distDir}\\*.whl ${env.WORKSPACE}\\dist /s /i
+                                            XCOPY dist\\*.whl ${env.WORKSPACE}\\dist /s /i
                                         """
                                     }
                                 }
