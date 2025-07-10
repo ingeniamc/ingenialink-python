@@ -227,12 +227,12 @@ pipeline {
                         stages {
                             stage('Type checking') {
                                 steps {
-                                    bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type")
+                                    bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
                                 }
                             }
                             stage('Format checking') {
                                 steps {
-                                    bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format")
+                                    bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
                                 }
                             }
                             stage('Generate documentation') {
