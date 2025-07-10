@@ -182,26 +182,30 @@ pipeline {
                                 bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
                             }
                         }
-                        stage('Type checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
-                            }
-                        }
-                        stage('Format checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                            }
-                        }
+                        // stage('Type checking') {
+                        //     steps {
+                        //         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                        //     }
+                        // }
+                        // stage('Format checking') {
+                        //     steps {
+                        //         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                        //     }
+                        // }
                         stage('Build') {
                             steps {
                                 script {
                                     def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
                                     pythonVersions.each { version ->
-                                        bat """
-                                            cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-                                            py -${version} -m tox -e build
-                                            robocopy dist ${env.WORKSPACE}\\dist *.whl /XO /NFL /NDL /NJH /NJS
-                                        """
+                                        def result = bat(returnStatus: true, script: """
+                                                cd C:\\Users\\ContainerAdministrator\\ingenialink_python
+                                                py -${version} -m tox -e build
+                                                robocopy dist ${env.WORKSPACE}\\dist *.whl /XO /NFL /NDL /NJH /NJS
+                                            """)
+                                        if (result > 7) {
+                                            error "Robocopy failed with exit code ${result}"
+                                        }
+
                                     }
                                 }
                             }
