@@ -6,7 +6,7 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.5"
+LIN_DOCKER_IMAGE = "quay.io/pypa/manylinux2014_x86_64:2024.07.02-0"
 WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.6"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
@@ -265,6 +265,22 @@ pipeline {
                                     }
                                 }
                             }
+
+                            stage('Repair Linux Wheel') {
+                                when {
+                                    environment name: 'PLATFORM', value: 'linux'
+                                }
+                                steps {
+                                    sh 'auditwheel repair dist/*.whl -w dist/'
+                                    sh "find dist -type f -not -name '*many*.whl' -delete"
+                                }
+                                post {
+                                    always {
+                                        reassignFilePermissions()
+                                    }
+                                }
+                            }
+
                             stage('Archive artifacts') {
                                 steps {
                                     archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
