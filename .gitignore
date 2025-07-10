@@ -43,3 +43,9 @@ temp/*
 
 # tests setups
 tests/setups/tests_setup.py
+
+# ATT downloaded files
+resources/
+
+# Wireshark logs
+wireshark/
