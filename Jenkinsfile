@@ -176,29 +176,6 @@ pipeline {
                         SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
                     }
                     stages {
-                        stage ('Git Commit to Build description') {
-                            steps {
-                                // Build description should follow the format VAR1=value1;VAR2=value2...
-                                script {
-                                    def currentCommit = bat(script: "git rev-parse HEAD", returnStdout: true).trim()
-                                    def currentCommitHash = (currentCommit =~ /\b[0-9a-f]{40}\b/)[0]
-                                    echo "Current Commit Hash: ${currentCommitHash}"
-                                    def currentCommitBranch = bat(script: "git branch --contains ${currentCommitHash}", returnStdout: true).trim().split("\n").find { it.contains('*') }.replace('* ', '').trim()
-                                    echo "currentCommitBranch: ${currentCommitBranch}"
-                                    
-                                    if (currentCommitBranch.contains('detached')) {
-                                        def shortCommitHash = (currentCommitBranch =~ /\b[0-9a-f]{7,40}\b/)[0]
-                                        def detachedCommit = bat(script: "git rev-parse ${shortCommitHash}", returnStdout: true).trim()
-                                        def detachedCommitHash = (detachedCommit =~ /\b[0-9a-f]{40}\b/)[0]
-                                        echo "Detached Commit Hash: ${detachedCommitHash}"
-                                        currentBuild.description = "ORIGINAL_GIT_COMMIT_HASH=${detachedCommitHash}"
-                                    } else {
-                                        echo "No detached HEAD state found. Using current commit hash ${currentCommitHash}."
-                                        currentBuild.description = "ORIGINAL_GIT_COMMIT_HASH=${currentCommitHash}"
-                                    }
-                                }
-                            }
-                        }
                         stage('Move workspace') {
                             steps {
                                 bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
