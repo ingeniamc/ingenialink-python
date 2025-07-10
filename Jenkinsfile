@@ -182,16 +182,16 @@ pipeline {
                                 bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
                             }
                         }
-                        // stage('Type checking') {
-                        //     steps {
-                        //         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
-                        //     }
-                        // }
-                        // stage('Format checking') {
-                        //     steps {
-                        //         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                        //     }
-                        // }
+                        stage('Type checking') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                            }
+                        }
+                        stage('Format checking') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                            }
+                        }
                         stage('Build') {
                             steps {
                                 script {
@@ -216,29 +216,29 @@ pipeline {
                                 stash includes: "dist\\*", name: 'wheels'
                             }
                         }
-                        // stage('Generate documentation') {
-                        //     steps {
-                        //         bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
-                        //         bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
-                        //         stash includes: 'docs.zip', name: 'docs'
-                        //     }
-                        // }
+                        stage('Generate documentation') {
+                            steps {
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                                bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
+                                stash includes: 'docs.zip', name: 'docs'
+                            }
+                        }
                     }
                 }
-                // stage('Publish documentation') {
-                //     when {
-                //         beforeAgent true
-                //         branch BRANCH_NAME_MASTER
-                //     }
-                //     agent {
-                //         label 'worker'
-                //     }
-                //     steps {
-                //         unstash 'docs'
-                //         unzip zipFile: 'docs.zip', dir: '.'
-                //         publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
-                //     }
-                // }
+                stage('Publish documentation') {
+                    when {
+                        beforeAgent true
+                        branch BRANCH_NAME_MASTER
+                    }
+                    agent {
+                        label 'worker'
+                    }
+                    steps {
+                        unstash 'docs'
+                        unzip zipFile: 'docs.zip', dir: '.'
+                        publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
+                    }
+                }
                 stage('Publish wheels') {
                     agent {
                         docker {
