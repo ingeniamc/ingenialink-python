@@ -265,22 +265,6 @@ pipeline {
                                     }
                                 }
                             }
-
-                            stage('Repair Linux Wheel') {
-                                when {
-                                    environment name: 'PLATFORM', value: 'linux'
-                                }
-                                steps {
-                                    sh 'auditwheel repair dist/*.whl -w dist/'
-                                    sh "find dist -type f -not -name '*many*.whl' -delete"
-                                }
-                                post {
-                                    always {
-                                        reassignFilePermissions()
-                                    }
-                                }
-                            }
-
                             stage('Archive artifacts') {
                                 steps {
                                     archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
