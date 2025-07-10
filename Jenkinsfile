@@ -200,7 +200,7 @@ pipeline {
                                         bat """
                                             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
                                             py -${version} -m tox -e build
-                                            XCOPY dist\\*.whl ${env.WORKSPACE}\\dist /s /i
+                                            echo N | XCOPY dist\\*.whl ${env.WORKSPACE}\\dist /s /i /-Y
                                         """
                                     }
                                 }
