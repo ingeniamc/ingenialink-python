@@ -463,6 +463,22 @@ class PDOMap:
 
         return pdo_map
 
+    def write_to_slave(self, slave: "PDOServo") -> None:
+        """Write the PDOMap to the slave.
+
+        WARNING: This operation can not be done if the servo is not in pre-operational state.
+
+        Args:
+            slave: Servo to which the PDOMap will be written.
+        """
+        self.__check_servo_is_in_preoperational_state()
+        reg = slave.get_register_by_index_subindex(
+            self.map_register_index, subindex=0
+        )
+        slave.write_complete_access(
+            reg, self.to_pdo_value()
+        )
+
     def set_item_bytes(self, data_bytes: bytes) -> None:
         """Set the items raw data from a byte array.
 
