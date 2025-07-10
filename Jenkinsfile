@@ -293,7 +293,7 @@ pipeline {
                                 expression { env.PLATFORM == 'windows' };
                             }
                             steps {
-                                python("-m tox -e docs"
+                                python("-m tox -e docs")
                                 bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
                                 stash includes: 'docs.zip', name: 'docs'
                             }
