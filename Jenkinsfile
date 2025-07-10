@@ -222,7 +222,7 @@ pipeline {
                                         bat """
                                             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
                                             py -${DEFAULT_PYTHON_VERSION} -m tox -e build
-                                            XCOPY dist\\*.whl ${env.WORKSPACE}\\dist /s /i
+                                            XCOPY dist\\*.whl ${env.WORKSPACE}\\dist /s /i /y
                                         """
                                     }
                                 }
