@@ -41,48 +41,6 @@ def getVersionForPR() {
     return "${latest_tag}+PR${env.CHANGE_ID}B${env.BUILD_NUMBER}"
 }
 
-def getAgentForPlatform(String platform) {
-    if (platform == 'windows') {
-        return 'windows-slave'
-    } else if (platform == 'linux') {
-        return 'worker'
-    } else {
-        throw new Exception('Unknown platform')
-    }
-}
-
-def getImageForPlatform(String platform) {
-    if (platform == 'windows') {
-        return WIN_DOCKER_IMAGE
-    } else if (platform == 'linux') {
-        return LIN_DOCKER_IMAGE
-    } else {
-        throw new Exception('Unknown platform')
-    }
-}
-
-def getArgsForPlatform(String platform) {
-    if (platform == 'windows') {
-        return ''
-    } else if (platform == 'linux') {
-        return '-u root:root'
-    } else {
-        throw new Exception('Unknown platform')
-    }
-}
-
-
-def python(String command) {
-    if (isUnix()) {
-        sh "python${env.PYTHON_BUILD_VERSION} ${command}"
-    } else {
-        bat """
-            cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-            py -${env.PYTHON_BUILD_VERSION} ${command}
-        """
-    }
-}
-
 def reassignFilePermissions() {
     if (isUnix()) {
         sh 'chmod -R 777 .'
@@ -159,6 +117,8 @@ def runTestHW(markers, setup_name, tox_skip_install = false, extra_args = "") {
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
 CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * *''' : ""
 
+def wheel_stashes = []
+
 pipeline {
     agent none
     options {
@@ -212,93 +172,104 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build and publish') {
             stages {
                 stage('Build') {
-                    matrix {
-                        axes {
-                            axis {
-                                name 'PLATFORM'
-                                values 'linux', 'windows'
-                            }
-                            axis {
-                                name 'PYTHON_BUILD_VERSION'
-                                values '3.9', '3.10', '3.11', '3.12'
-                            }
-                        }
-                        agent {
-                            docker {
-                                label getAgentForPlatform(env.PLATFORM)
-                                image getImageForPlatform(env.PLATFORM)
-                                args getArgsForPlatform(env.PLATFORM)
-                            }
-                        }
-                        environment {
-                            SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
-                        }
-                        stages {
-                            stage('Move workspace') {
-                                when {
-                                    expression { env.PLATFORM == 'windows' };
-                                }
-                                steps {
-                                    bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
+                    parallel {
+                        stage('Build Windows') {
+                            agent {
+                                docker {
+                                    label SW_NODE
+                                    image WIN_DOCKER_IMAGE
                                 }
                             }
-                            stage('Build') {
-                                steps {
-                                    script {
-                                        python("-m tox -e build")
-                                        if (env.PLATFORM == 'windows') {
-                                            def result = bat(returnStatus: true, script: """
-                                                    cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-                                                    robocopy dist ${env.WORKSPACE}\\dist *.whl /XO /NFL /NDL /NJH /NJS
-                                                """)
-                                            if (result > 7) {
-                                                error "Robocopy failed with exit code ${result}"
+                            environment {
+                                SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
+                            }
+                            stages {
+                                stage('Move workspace') {
+                                    steps {
+                                        bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
+                                    }
+                                }
+                                stage('Type checking') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                                    }
+                                }
+                                stage('Format checking') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                                    }
+                                }
+                                stage('Build') {
+                                    steps {
+                                        script {
+                                            def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
+                                            pythonVersions.each { version ->
+                                                def result = bat(returnStatus: true, script: """
+                                                        cd C:\\Users\\ContainerAdministrator\\ingenialink_python
+                                                        py -${version} -m tox -e build
+                                                        robocopy dist ${env.WORKSPACE}\\dist *.whl /XO /NFL /NDL /NJH /NJS
+                                                    """)
+                                                if (result > 7) {
+                                                    error "Robocopy failed with exit code ${result}"
+                                                }
                                             }
                                         }
                                     }
                                 }
-                                post {
-                                    always {
-                                        reassignFilePermissions()
+                                stage('Archive artifacts') {
+                                    steps {
+                                        archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
+                                        script {
+                                            stash_name = "publish_wheels-windows"
+                                            wheel_stashes.add(stash_name)
+                                            stash includes: "dist\\*", name: stash_name
+                                        }
+                                    }
+                                }
+                                stage('Generate documentation') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                                        bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
+                                        stash includes: 'docs.zip', name: 'docs'
                                     }
                                 }
                             }
-
-                            stage('Archive artifacts') {
-                                steps {
-                                    archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
-                                    stash includes: "dist\\*", name: 'wheels'
+                        }
+                        stage('Build Linux') {
+                            agent {
+                                docker {
+                                    label 'worker'
+                                    image LIN_DOCKER_IMAGE
+                                    args '-u root:root'
                                 }
                             }
-                        }
-                    }
-                }
-                stage('Type checking and Documentation') {
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage('Type checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                            environment {
+                                SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
                             }
-                        }
-                        stage('Format checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                            }
-                        }
-                        stage('Generate documentation') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
-                                bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
-                                stash includes: 'docs.zip', name: 'docs'
+                            stages {
+                                stage('Build') {
+                                    steps {
+                                        sh "python${DEFAULT_PYTHON_VERSION} -m tox -e build"
+                                    }
+                                    post {
+                                        always {
+                                            reassignFilePermissions()
+                                        }
+                                    }
+                                }
+                                stage('Archive artifacts') {
+                                    steps {
+                                        archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
+                                        script {
+                                            stash_name = "publish_wheels-linux"
+                                            wheel_stashes.add(stash_name)
+                                            stash includes: "dist\\*", name: stash_name
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -328,7 +299,11 @@ pipeline {
                         stage('Unstash')
                         {
                             steps {
-                                unstash 'wheels'
+                                script {
+                                    for (stash_name in wheel_stashes) {
+                                        unstash stash_name
+                                    }
+                                }
                             }
                         }
                         stage('Publish Ingenia PyPi') {
