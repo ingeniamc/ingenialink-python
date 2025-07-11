@@ -25,6 +25,7 @@ WIRESHARK_DIR = "wireshark"
 USE_WIRESHARK_LOGGING = ""
 START_WIRESHARK_TIMEOUT_S = 10.0
 
+wheel_stashes = []
 coverage_stashes = []
 
 def getVersionForPR() {
@@ -75,7 +76,6 @@ def archiveWiresharkLogs() {
 def runTestHW(markers, setup_name, tox_skip_install = false, extra_args = "") {
     try {
         timeout(time: 1, unit: 'HOURS') {
-            unstash 'wheels'
             def firstIteration = true
             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
             pythonVersions.each { version ->
@@ -116,8 +116,6 @@ def runTestHW(markers, setup_name, tox_skip_install = false, extra_args = "") {
 
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
 CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * *''' : ""
-
-def wheel_stashes = []
 
 pipeline {
     agent none
@@ -408,6 +406,16 @@ pipeline {
                                 clearWiresharkLogs()
                             }
                         }
+                        stage('Unstash')
+                        {
+                            steps {
+                                script {
+                                    for (stash_name in wheel_stashes) {
+                                        unstash stash_name
+                                    }
+                                }
+                            }
+                        }
                         stage('EtherCAT Everest') {
                             steps {
                                 runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
@@ -438,6 +446,16 @@ pipeline {
                         label CAN_NODE
                     }
                     stages {
+                        stage('Unstash')
+                        {
+                            steps {
+                                script {
+                                    for (stash_name in wheel_stashes) {
+                                        unstash stash_name
+                                    }
+                                }
+                            }
+                        }
                         stage('CANopen Everest') {
                             steps {
                                 runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP", true)
