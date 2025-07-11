@@ -6,7 +6,7 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-LIN_DOCKER_IMAGE = "quay.io/pypa/manylinux2014_x86_64:2024.07.02-0"
+LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.5"
 WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.6"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
@@ -71,13 +71,10 @@ def getArgsForPlatform(String platform) {
     }
 }
 
-LINUX_PYTHON_PATH = ['3.9' : '/opt/python/cp39-cp39/bin', '3.10': '/opt/python/cp310-cp310/bin',
-                     '3.11': '/opt/python/cp311-cp311/bin', '3.12': '/opt/python/cp312-cp312/bin']
-
 
 def python(String command) {
     if (isUnix()) {
-        sh "${LINUX_PYTHON_PATH[env.PYTHON_BUILD_VERSION]}/python ${command}"
+        sh "python${env.PYTHON_BUILD_VERSION} ${command}"
     } else {
         bat """
             cd C:\\Users\\ContainerAdministrator\\ingenialink_python
@@ -262,21 +259,6 @@ pipeline {
                                             }
                                         }
                                     }
-                                }
-                                post {
-                                    always {
-                                        reassignFilePermissions()
-                                    }
-                                }
-                            }
-
-                            stage('Repair Linux Wheel') {
-                                when {
-                                    environment name: 'PLATFORM', value: 'linux'
-                                }
-                                steps {
-                                    sh 'auditwheel repair dist/*.whl -w dist/'
-                                    sh "find dist -type f -not -name '*many*.whl' -delete"
                                 }
                                 post {
                                     always {
