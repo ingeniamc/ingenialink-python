@@ -271,7 +271,9 @@ class Servo:
     DICTIONARY_INTERFACE_ATTR_CAN = "CAN"
     DICTIONARY_INTERFACE_ATTR_ETH = "ETH"
 
-    DEFAULT_STORE_RECOVERY_TIMEOUT_S = 2
+    __DEFAULT_STORE_RECOVERY_TIMEOUT_S = 2
+
+    __WAIT_UNTIL_ALIVE_SLEEP_INTERVAL_S = 0.1
 
     interface: Interface
 
@@ -581,7 +583,7 @@ class Servo:
                 f"The drive's configuration cannot be restored. The subnode value: {subnode} is"
                 " invalid."
             )
-        self._wait_until_alive(self.DEFAULT_STORE_RECOVERY_TIMEOUT_S)
+        self._wait_until_alive(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
 
     def store_parameters(self, subnode: Optional[int] = None) -> None:
         """Store all the current parameters of the target subnode.
@@ -624,7 +626,7 @@ class Servo:
                 f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
                 " invalid."
             )
-        self._wait_until_alive(self.DEFAULT_STORE_RECOVERY_TIMEOUT_S)
+        self._wait_until_alive(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
 
     def _wait_until_alive(self, timeout: Optional[float]) -> None:
         """Wait until the drive becomes responsive.
@@ -639,6 +641,7 @@ class Servo:
             if timeout is not None and (init_time + timeout) < time.time():
                 logger.info("The drive is unresponsive after the recovery timeout.")
                 break
+            time.sleep(self.__WAIT_UNTIL_ALIVE_SLEEP_INTERVAL_S)
 
     def _get_drive_identification(
         self,

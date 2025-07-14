@@ -308,6 +308,8 @@ def test_store_parameters(servo, environment):
 
     servo.store_parameters()
 
+    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
+
     environment.power_cycle(wait_for_drives=False)
 
     wait_until_alive(servo, timeout=20)
@@ -328,6 +330,8 @@ def test_restore_parameters(servo, environment):
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
     servo.restore_parameters()
+
+    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
     environment.power_cycle(wait_for_drives=False)
 
