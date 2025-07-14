@@ -495,7 +495,10 @@ pipeline {
                         unstash coverage_stash
                         coverage_files += " " + coverage_stash
                     }
-                    bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e coverage -- ${coverage_files}"
+
+                    bat "py -3.9 -m pip install pytest==7.0.1 pytest-cov==2.12.1"
+                    bat "py -3.9 -m coverage combine ${coverage_files}"
+                    bat "py -3.9 -m coverage coverage xml --include='*/ingenialink/*'"
                 }
                 recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
                 archiveArtifacts artifacts: '*.xml'
