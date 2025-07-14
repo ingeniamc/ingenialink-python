@@ -583,7 +583,7 @@ class Servo:
                 f"The drive's configuration cannot be restored. The subnode value: {subnode} is"
                 " invalid."
             )
-        self._wait_until_alive(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
+        time.sleep(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
 
     def store_parameters(self, subnode: Optional[int] = None) -> None:
         """Store all the current parameters of the target subnode.
@@ -626,7 +626,7 @@ class Servo:
                 f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
                 " invalid."
             )
-        self._wait_until_alive(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
+        time.sleep(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
 
     def _wait_until_alive(self, timeout: Optional[float]) -> None:
         """Wait until the drive becomes responsive.
