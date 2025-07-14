@@ -308,8 +308,6 @@ def test_store_parameters(servo, environment):
 
     servo.store_parameters()
 
-    time.sleep(5)
-
     environment.power_cycle(wait_for_drives=False)
 
     wait_until_alive(servo, timeout=20)
