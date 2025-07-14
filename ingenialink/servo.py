@@ -271,8 +271,8 @@ class Servo:
     DICTIONARY_INTERFACE_ATTR_CAN = "CAN"
     DICTIONARY_INTERFACE_ATTR_ETH = "ETH"
 
-    __DEFAULT_STORE_RECOVERY_TIMEOUT_S = 2
-
+    __DEFAULT_STORE_RECOVERY_TIMEOUT_S = 4
+    __DEFAULT_RESTORE_RECOVERY_TIMEOUT_S = 1.5
     __WAIT_UNTIL_ALIVE_SLEEP_INTERVAL_S = 0.1
 
     interface: Interface
@@ -583,7 +583,7 @@ class Servo:
                 f"The drive's configuration cannot be restored. The subnode value: {subnode} is"
                 " invalid."
             )
-        time.sleep(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
+        time.sleep(self.__DEFAULT_RESTORE_RECOVERY_TIMEOUT_S)
 
     def store_parameters(self, subnode: Optional[int] = None) -> None:
         """Store all the current parameters of the target subnode.
