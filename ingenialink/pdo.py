@@ -461,10 +461,14 @@ class PDOMap:
 
         return pdo_map
 
-    def write_to_slave(self) -> None:
+    def write_to_slave(self, max_pdo_items_for_padding: Optional[int] = None) -> None:
         """Write the PDOMap to the slave.
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
+
+        Args:
+            max_pdo_items_for_padding: Maximum number of items for padding. If set, it will pad the
+                PDOMap with empty items to reach this number. If None, no padding is done.
 
         Raises:
             ValueError: If the slave is not set or the map_register_index is None.
@@ -481,7 +485,11 @@ class PDOMap:
         reg = self.__slave.dictionary.get_register_by_index_subindex(
             self.map_register_index, subindex=0
         )
-        self.__slave.write_complete_access(reg, self.to_pdo_value())
+        value = self.to_pdo_value()
+        if max_pdo_items_for_padding:
+            unused_items = max_pdo_items_for_padding - len(self.__items)
+            value += b"\x00" * (unused_items * MAP_REGISTER_BYTES)
+        self.__slave.write_complete_access(reg, value)
 
     def set_item_bytes(self, data_bytes: bytes) -> None:
         """Set the items raw data from a byte array.
