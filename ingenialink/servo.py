@@ -273,7 +273,6 @@ class Servo:
 
     __DEFAULT_STORE_RECOVERY_TIMEOUT_S = 4
     __DEFAULT_RESTORE_RECOVERY_TIMEOUT_S = 1.5
-    __WAIT_UNTIL_ALIVE_SLEEP_INTERVAL_S = 0.1
 
     interface: Interface
 
@@ -583,7 +582,7 @@ class Servo:
                 f"The drive's configuration cannot be restored. The subnode value: {subnode} is"
                 " invalid."
             )
-        time.sleep(self.__DEFAULT_RESTORE_RECOVERY_TIMEOUT_S)
+        self._wait_for_drive_to_recover(self.__DEFAULT_RESTORE_RECOVERY_TIMEOUT_S)
 
     def store_parameters(self, subnode: Optional[int] = None) -> None:
         """Store all the current parameters of the target subnode.
@@ -626,22 +625,20 @@ class Servo:
                 f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
                 " invalid."
             )
-        time.sleep(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
+        self._wait_for_drive_to_recover(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
 
-    def _wait_until_alive(self, timeout: Optional[float]) -> None:
-        """Wait until the drive becomes responsive.
+    def _wait_for_drive_to_recover(self, recovery_time: float) -> None:
+        """Wait until the drive recovers from a store/restore operation.
 
         Args:
-            timeout : how many seconds to wait for the drive to become responsive.
-            If ``None`` it will wait forever.
+            recovery_time: how many seconds to wait for the drive.
 
         """
-        init_time = time.time()
-        while not self.is_alive():
-            if timeout is not None and (init_time + timeout) < time.time():
-                logger.info("The drive is unresponsive after the recovery timeout.")
-                break
-            time.sleep(self.__WAIT_UNTIL_ALIVE_SLEEP_INTERVAL_S)
+        time.sleep(recovery_time)
+        # To avoid an error on the first read/write after the drive is
+        # recovered, we try to read the status word register.
+        # Check issue EVR-906.
+        self.is_alive()
 
     def _get_drive_identification(
         self,
