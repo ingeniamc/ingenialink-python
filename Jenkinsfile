@@ -14,12 +14,14 @@ DEFAULT_PYTHON_VERSION = "3.9"
 
 ALL_PYTHON_VERSIONS = "3.9,3.10,3.11,3.12"
 RUN_PYTHON_VERSIONS = ""
-def PYTHON_VERSION_MIN = "3.9"
-def PYTHON_VERSION_MAX = "3.12"
+PYTHON_VERSION_MIN = "3.9"
+PYTHON_VERSION_MAX = "3.12"
 
 def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 def RACK_SPECIFIERS_PATH = "tests.setups.rack_specifiers"
+
+DOCKER_TMP_PATH = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
 
 WIRESHARK_DIR = "wireshark"
 USE_WIRESHARK_LOGGING = ""
@@ -69,8 +71,46 @@ def clearWiresharkLogs() {
     bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
 }
 
+def runPython(command, py_version = DEFAULT_PYTHON_VERSION) {
+    if (isUnix()) {
+        sh "python${py_version} -I -m ${command}"
+    } else {
+        bat "py -${py_version} -I -m ${command}"
+    }
+}
+
 def archiveWiresharkLogs() {
     archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
+}
+
+def activatePoetryEnv(py_version) {
+    runPython("poetry env use ${py_version}")
+}
+
+def setupEnvironments(py_version = null) {
+    runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION) // Remove poetry install: https://novantamotion.atlassian.net/browse/CIT-412
+    def pythonVersions = py_version != null ? [py_version] : RUN_PYTHON_VERSIONS.split(',')
+    pythonVersions.each { version ->
+        activatePoetryEnv(version)
+        runPython("poetry sync --with dev") // Remove all dependencies that are not in the lock file + install main dependencies
+    }
+}
+
+def buildWheel(py_version, is_docker) {
+    if (is_docker) {
+        echo "Running build for Python ${py_version} in Docker environment"
+        // Remove poetry install: https://novantamotion.atlassian.net/browse/CIT-412
+        bat """
+            cd ${DOCKER_TMP_PATH}
+            poetry env use ${py_version}
+            poetry sync --no-root --only build,dev
+            poetry run poe build
+        """
+    }
+    else {
+        runPython("poetry install --no-root --only build,dev") // Install build dependencies
+        runPython("poetry run poe build") // Build wheel
+    }
 }
 
 def runTestHW(markers, setup_name, tox_skip_install = false, extra_args = "") {
@@ -181,40 +221,46 @@ pipeline {
                                     image WIN_DOCKER_IMAGE
                                 }
                             }
-                            environment {
-                                SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
-                            }
                             stages {
                                 stage('Move workspace') {
                                     steps {
                                         bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
                                     }
                                 }
-                                stage('Type checking') {
+                                stage ('Setup Poetry environments') {
                                     steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                                        setupEnvironments()
+                                        activatePoetryEnv(DEFAULT_PYTHON_VERSION)
                                     }
                                 }
-                                stage('Format checking') {
-                                    steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                                stage('Build wheels') {
+                                    environment {
+                                        SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
                                     }
-                                }
-                                stage('Build') {
                                     steps {
                                         script {
                                             def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
-                                                def result = bat(returnStatus: true, script: """
-                                                        cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-                                                        py -${version} -m tox -e build
-                                                        robocopy dist ${env.WORKSPACE}\\dist *.whl /XO /NFL /NDL /NJH /NJS
-                                                    """)
-                                                if (result > 7) {
-                                                    error "Robocopy failed with exit code ${result}"
-                                                }
+                                                buildWheel(version, true)
                                             }
                                         }
+                                        bat """
+                                            cd ${DOCKER_TMP_PATH}
+                                            COPY ingenialink\\_version.py ${env.WORKSPACE}\\ingenialink\\_version.py
+                                            XCOPY dist ${env.WORKSPACE}\\dist /s /i
+                                        """
+                                    }
+                                }
+                                stage('Make a static type analysis') {
+                                    steps {
+                                        runPython("poetry install --with type,dev")
+                                        runPython("poetry run poe type")
+                                    }
+                                }
+                                stage('Check formatting') {
+                                    steps {
+                                        runPython("poetry install --with format,dev")
+                                        runPython("poetry run poe format")
                                     }
                                 }
                                 stage('Archive artifacts') {
@@ -244,13 +290,19 @@ pipeline {
                                     args '-u root:root'
                                 }
                             }
-                            environment {
-                                SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
-                            }
                             stages {
-                                stage('Build') {
+                                stage ('Setup Poetry environments') {
                                     steps {
-                                        sh "python${DEFAULT_PYTHON_VERSION} -m tox -e build"
+                                        setupEnvironments()
+                                        activatePoetryEnv(DEFAULT_PYTHON_VERSION)
+                                    }
+                                }
+                                stage('Build wheels') {
+                                    environment {
+                                        SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
+                                    }
+                                    steps {
+                                        buildWheel(PYTHON_VERSION_MAX, false)
                                     }
                                     post {
                                         always {
