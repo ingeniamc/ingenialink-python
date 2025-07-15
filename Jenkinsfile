@@ -481,6 +481,9 @@ pipeline {
             }
         }
         stage('Publish coverage') {
+            options {
+                skipDefaultCheckout()
+            }
             agent {
                 docker {
                     label SW_NODE
@@ -489,6 +492,8 @@ pipeline {
             }
             steps {
                 script {
+                    cleanWs()
+
                     def coverage_files = ""
 
                     for (coverage_stash in coverage_stashes) {
