@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import ClassVar, Literal, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, ClassVar, Literal, Optional, TypeVar, Union
 
 import bitarray
 from typing_extensions import override
@@ -16,6 +16,9 @@ from ingenialink.utils._utils import (
     convert_dtype_to_bytes,
     dtype_length_bits,
 )
+
+if TYPE_CHECKING:
+    from ingenialink.dictionary import CanOpenObject
 
 BIT_ENDIAN: Literal["little"] = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
@@ -282,6 +285,7 @@ class PDOMap:
     def __init__(self) -> None:
         self.__items: list[PDOMapItem] = []
         self.__map_register_index: Optional[int] = None
+        self.__map_object: Optional[CanOpenObject] = None
         self.__slave: Optional[PDOServo] = None
 
     @property

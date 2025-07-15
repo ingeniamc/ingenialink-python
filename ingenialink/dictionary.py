@@ -103,6 +103,7 @@ class CanOpenObject:
     """CanOpenObject."""
 
     uid: Optional[str]
+    idx: int
     object_type: CanOpenObjectType
     registers: list[CanopenRegister]
 
@@ -496,7 +497,7 @@ class Dictionary(XMLBase, ABC):
     def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
 
-    def get_object(self, uid: str, subnode: int) -> CanOpenObject:
+    def get_object(self, uid: str, subnode: Optional[int] = None) -> CanOpenObject:
         """Return object by an UID and subnode.
 
         Args:
@@ -510,6 +511,8 @@ class Dictionary(XMLBase, ABC):
             KeyError: Object does not exist
 
         """
+        if subnode is None:
+            subnode = 0
         if subnode in self.items and uid in self.items[subnode]:
             return self.items[subnode][uid]
         raise KeyError(f"Object {uid} in subnode {subnode} not exist")
@@ -1260,7 +1263,7 @@ class DictionaryV3(Dictionary):
 
         """
         object_uid = root.attrib.get(self.__UID_ATTR)
-        reg_index = int(root.attrib[self.__INDEX_ATTR], 16)
+        obj_index = int(root.attrib[self.__INDEX_ATTR], 16)
         axis = int(root.attrib[self.__AXIS_ATTR]) if self.__AXIS_ATTR in root.attrib else 0
         data_type = DictionaryV3._get_canopen_object_data_type_options(
             root.attrib[self.__OBJECT_DATA_TYPE_ATTR]
@@ -1268,13 +1271,15 @@ class DictionaryV3(Dictionary):
         subitems_element = self._find_and_check(root, self.__SUBITEMS_ELEMENT)
         subitem_list = self._findall_and_check(subitems_element, self.__SUBITEM_ELEMENT)
         register_list = [
-            self.__read_canopen_subitem(subitem, reg_index, axis) for subitem in subitem_list
+            self.__read_canopen_subitem(subitem, obj_index, axis) for subitem in subitem_list
         ]
         if object_uid:
             register_list.sort(key=lambda val: val.subidx)
             if axis not in self.items:
                 self.items[axis] = {}
-            self.items[axis][object_uid] = CanOpenObject(object_uid, data_type, register_list)
+            self.items[axis][object_uid] = CanOpenObject(
+                object_uid, obj_index, data_type, register_list
+            )
 
     def __read_canopen_subitem(
         self, subitem: ElementTree.Element, reg_index: int, subnode: int

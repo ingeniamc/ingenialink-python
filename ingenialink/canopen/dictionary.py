@@ -10,6 +10,7 @@ from ingenialink.constants import (
     MAP_ADDRESS_OFFSET,
 )
 from ingenialink.dictionary import (
+    CanOpenObject,
     Dictionary,
     DictionarySafetyModule,
     DictionaryV2,
@@ -34,6 +35,14 @@ class CanopenDictionary(Dictionary):
         self.__idx_subindex_map: dict[int, dict[int, CanopenRegister]] = {
             # Idx -> {subindex -> register}
         }
+        self.__idx_map: dict[int, CanOpenObject] = {
+            # Idx -> object
+        }
+
+        for objs in self.items.values():
+            for obj in objs.values():
+                index = obj.idx
+                self.__idx_map[index] = obj
 
         for register in self.all_registers():
             register = cast("CanopenRegister", register)
@@ -55,6 +64,17 @@ class CanopenDictionary(Dictionary):
             CanopenRegister: The register with the given index and subindex.
         """
         return self.__idx_subindex_map[index][subindex]
+
+    def get_object_by_index(self, index: int) -> CanOpenObject:
+        """Get an object by its index.
+
+        Args:
+            index: The index of the object.
+
+        Returns:
+            CanOpenObject: The object with the given index.
+        """
+        return self.__idx_map[index]
 
 
 class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):

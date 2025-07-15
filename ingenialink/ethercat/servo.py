@@ -23,7 +23,7 @@ from ingenialink.constants import (
     CAN_MAX_WRITE_SIZE,
     ECAT_STATE_CHANGE_TIMEOUT_US,
 )
-from ingenialink.dictionary import Interface
+from ingenialink.dictionary import CanOpenObject, Interface
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILEcatStateError, ILIOError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
@@ -304,24 +304,31 @@ class EthercatServo(PDOServo):
             callback(emergency_message)
 
     def read_rpdo_map_from_slave(
-        self, reg: Union[str, Register], subnode: int = 0, buffer_size: int = 0
+        self, map_obj: Union[str, CanOpenObject], subnode: int = 0, buffer_size: Optional[int] = 0
     ) -> RPDOMap:
         """Read the RPDO map from the slave.
 
         Args:
-            reg: First register of the RPDO map.
+            map_obj: First register of the RPDO map.
             subnode: Subnode of the rpdo map.
             buffer_size: Size of the buffer to read the pdo map.
 
         Returns:
             RPDOMap: The RPDO map read from the slave.
         """
-        _reg = cast("EthercatRegister", self._get_reg(reg, subnode))
+        _map_obj: Optional[CanOpenObject] = None
+        if not isinstance(map_obj, CanOpenObject):
+            try:
+                _map_obj = self.dictionary.get_object(map_obj, subnode)
+            except KeyError:
+                # XDF V2 do not have CanOpenObjects.
+                pass
+        _reg = cast("EthercatRegister", self._get_reg(map_obj, subnode))
         value = self.read_complete_access(_reg, subnode, buffer_size)
         return RPDOMap.from_pdo_value(value, _reg.idx, self.dictionary)
 
     def read_tpdo_map_from_slave(
-        self, reg: Union[str, Register], subnode: int = 0, buffer_size: int = 0
+        self, map_obj: Union[str, Register], subnode: int = 0, buffer_size: Optional[int] = 0
     ) -> TPDOMap:
         """Read the TPDO map from the slave.
 
@@ -333,8 +340,8 @@ class EthercatServo(PDOServo):
         Returns:
             TPDOMap: The TPDO map read from the slave.
         """
-        _reg = cast("EthercatRegister", self._get_reg(reg, subnode))
-        value = self.read_complete_access(reg, subnode, buffer_size)
+        _reg = cast("EthercatRegister", self._get_reg(map_obj, subnode))
+        value = self.read_complete_access(map_obj, subnode, buffer_size)
         return TPDOMap.from_pdo_value(value, _reg.idx, self.dictionary)
 
     @override
