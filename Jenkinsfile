@@ -96,8 +96,11 @@ def setupEnvironments(py_version = null) {
     }
 }
 
-def buildWheel(py_version, is_docker) {
-    if (is_docker) {
+def buildWheel(py_version) {
+    if (isUnix()) {
+        runPython("poetry install --no-root --only build,dev") // Install build dependencies
+        runPython("poetry run poe build") // Build wheel
+    } else {
         echo "Running build for Python ${py_version} in Docker environment"
         // Remove poetry install: https://novantamotion.atlassian.net/browse/CIT-412
         bat """
@@ -106,10 +109,6 @@ def buildWheel(py_version, is_docker) {
             poetry sync --no-root --only build,dev
             poetry run poe build
         """
-    }
-    else {
-        runPython("poetry install --no-root --only build,dev") // Install build dependencies
-        runPython("poetry run poe build") // Build wheel
     }
 }
 
@@ -241,7 +240,7 @@ pipeline {
                                         script {
                                             def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
-                                                buildWheel(version, true)
+                                                buildWheel(version)
                                             }
                                         }
                                         bat """
@@ -293,7 +292,7 @@ pipeline {
                             stages {
                                 stage ('Setup Poetry environments') {
                                     steps {
-                                        setupEnvironments()
+                                        setupEnvironments(PYTHON_VERSION_MAX)
                                         activatePoetryEnv(DEFAULT_PYTHON_VERSION)
                                     }
                                 }
@@ -302,7 +301,7 @@ pipeline {
                                         SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
                                     }
                                     steps {
-                                        buildWheel(PYTHON_VERSION_MAX, false)
+                                        buildWheel(PYTHON_VERSION_MAX)
                                     }
                                     post {
                                         always {
