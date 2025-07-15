@@ -69,6 +69,10 @@ def clearWiresharkLogs() {
     bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
 }
 
+def clearCoverageFiles() {
+    bat(script: 'del /f "*.coverage*"', returnStatus: true)
+}
+
 def archiveWiresharkLogs() {
     archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
 }
@@ -76,6 +80,7 @@ def archiveWiresharkLogs() {
 def runTestHW(markers, setup_name, tox_skip_install = false, extra_args = "") {
     try {
         timeout(time: 1, unit: 'HOURS') {
+            clearCoverageFiles()
             def firstIteration = true
             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
             pythonVersions.each { version ->
@@ -334,6 +339,7 @@ pipeline {
                     stages {
                         stage('Run no-connection tests on docker') {
                             steps {
+                                clearCoverageFiles()
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
                                         "-m docker " +
                                         "-o log_cli=True"
@@ -492,8 +498,6 @@ pipeline {
             }
             steps {
                 script {
-                    cleanWs()
-
                     def coverage_files = ""
 
                     for (coverage_stash in coverage_stashes) {
