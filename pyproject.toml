@@ -77,6 +77,16 @@ optional = true
 [tool.poetry.group.type.dependencies]
 mypy = "==1.10.0"
 
+[tool.poetry.group.docs]
+optional = true
+[tool.poetry.group.docs.dependencies]
+sphinx = "==7.3.7"
+sphinx-rtd-theme = "==2.0.0"
+sphinxcontrib-bibtex = "==2.6.2"
+nbsphinx = "==0.9.4"
+m2r2 = "==0.3.4"
+jinja2 = "==3.1.4"
+
 # -----------------------------------------------------------------------
 #                                   TASKS
 # -----------------------------------------------------------------------
@@ -119,3 +129,8 @@ sequence = ["ruff-format", "ruff-check-fix"]
 [tool.poe.tasks.type]
 help = "Run type checks"
 cmd = "mypy ingenialink virtual_drive examples"
+
+# ----------------------------- Documentation -----------------------------
+[tool.poe.tasks.docs]
+help = "Build documentation"
+cmd = "python -I -m sphinx -b html docs _docs"

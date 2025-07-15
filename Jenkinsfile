@@ -238,7 +238,7 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
+                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
                                                 buildWheel(version)
                                             }
@@ -274,7 +274,8 @@ pipeline {
                                 }
                                 stage('Generate documentation') {
                                     steps {
-                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                                        runPython("poetry install --with docs,dev")
+                                        runPython("poetry run poe docs")
                                         bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
                                         stash includes: 'docs.zip', name: 'docs'
                                     }
