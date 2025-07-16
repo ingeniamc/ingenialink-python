@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.12') _
+@Library('cicd-lib@0.14') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -6,16 +6,16 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.5"
-def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.6"
+LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.5"
+WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.6"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
 DEFAULT_PYTHON_VERSION = "3.9"
 
-ALL_PYTHON_VERSIONS = "py39,py310,py311,py312"
+ALL_PYTHON_VERSIONS = "3.9,3.10,3.11,3.12"
 RUN_PYTHON_VERSIONS = ""
-PYTHON_VERSION_MIN = "py39"
-def PYTHON_VERSION_MAX = "py312"
+def PYTHON_VERSION_MIN = "3.9"
+def PYTHON_VERSION_MAX = "3.12"
 
 def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
@@ -25,12 +25,33 @@ WIRESHARK_DIR = "wireshark"
 USE_WIRESHARK_LOGGING = ""
 START_WIRESHARK_TIMEOUT_S = 10.0
 
+wheel_stashes = []
 coverage_stashes = []
+
+def getVersionForPR() {
+    if (!env.CHANGE_ID) {
+        return ""
+    }
+    def latest_tag = ''
+    if (isUnix()) {
+        sh "git config --global --add safe.directory '*'"
+        latest_tag = sh(returnStdout: true, script: 'git describe --tags --abbrev=0').trim()
+    } else {
+        latest_tag = powershell(returnStdout: true, script: 'git describe --tags --abbrev=0').trim()
+    }
+    return "${latest_tag}+PR${env.CHANGE_ID}B${env.BUILD_NUMBER}"
+}
+
+def reassignFilePermissions() {
+    if (isUnix()) {
+        sh 'chmod -R 777 .'
+    }
+}
 
 def getWheelPath(tox_skip_install, python_version) {
     if (tox_skip_install) {
         script {
-            def pythonVersionTag = "cp${python_version.replace('py', '')}"
+            def pythonVersionTag = "cp${python_version.replace('.', '')}"
             def files = findFiles(glob: "dist/*${pythonVersionTag}*.whl")
             if (files.length == 0) {
                 error "No .whl file found for Python version ${python_version} in the dist directory."
@@ -48,6 +69,10 @@ def clearWiresharkLogs() {
     bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
 }
 
+def clearCoverageFiles() {
+    bat(script: 'del /f "*.coverage*"', returnStatus: true)
+}
+
 def archiveWiresharkLogs() {
     archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
 }
@@ -55,15 +80,16 @@ def archiveWiresharkLogs() {
 def runTestHW(markers, setup_name, tox_skip_install = false, extra_args = "") {
     try {
         timeout(time: 1, unit: 'HOURS') {
-            unstash 'wheels'
+            clearCoverageFiles()
             def firstIteration = true
             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
             pythonVersions.each { version ->
                 def wheelFile = getWheelPath(tox_skip_install, version)
                 withEnv(["INGENIALINK_WHEEL_PATH=${wheelFile}", "TOX_SKIP_INSTALL=${tox_skip_install.toString()}", "WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
                     try {
+                        def py_version = "py" + DEFAULT_PYTHON_VERSION.replace(".", "")
                         def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
+                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${py_version} -- " +
                                 "-m \"${markers}\" " +
                                 "${setupArg}" +
                                 "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" " +
@@ -152,81 +178,101 @@ pipeline {
         stage('Build and publish') {
             stages {
                 stage('Build') {
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage ('Git Commit to Build description') {
-                            steps {
-                                // Build description should follow the format VAR1=value1;VAR2=value2...
-                                script {
-                                    def currentCommit = bat(script: "git rev-parse HEAD", returnStdout: true).trim()
-                                    def currentCommitHash = (currentCommit =~ /\b[0-9a-f]{40}\b/)[0]
-                                    echo "Current Commit Hash: ${currentCommitHash}"
-                                    def currentCommitBranch = bat(script: "git branch --contains ${currentCommitHash}", returnStdout: true).trim().split("\n").find { it.contains('*') }.replace('* ', '').trim()
-                                    echo "currentCommitBranch: ${currentCommitBranch}"
-                                    
-                                    if (currentCommitBranch.contains('detached')) {
-                                        def shortCommitHash = (currentCommitBranch =~ /\b[0-9a-f]{7,40}\b/)[0]
-                                        def detachedCommit = bat(script: "git rev-parse ${shortCommitHash}", returnStdout: true).trim()
-                                        def detachedCommitHash = (detachedCommit =~ /\b[0-9a-f]{40}\b/)[0]
-                                        echo "Detached Commit Hash: ${detachedCommitHash}"
-                                        currentBuild.description = "ORIGINAL_GIT_COMMIT_HASH=${detachedCommitHash}"
-                                    } else {
-                                        echo "No detached HEAD state found. Using current commit hash ${currentCommitHash}."
-                                        currentBuild.description = "ORIGINAL_GIT_COMMIT_HASH=${currentCommitHash}"
+                    parallel {
+                        stage('Build Windows') {
+                            agent {
+                                docker {
+                                    label SW_NODE
+                                    image WIN_DOCKER_IMAGE
+                                }
+                            }
+                            environment {
+                                SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
+                            }
+                            stages {
+                                stage('Move workspace') {
+                                    steps {
+                                        bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
+                                    }
+                                }
+                                stage('Type checking') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
+                                    }
+                                }
+                                stage('Format checking') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
+                                    }
+                                }
+                                stage('Build') {
+                                    steps {
+                                        script {
+                                            def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
+                                            pythonVersions.each { version ->
+                                                def result = bat(returnStatus: true, script: """
+                                                        cd C:\\Users\\ContainerAdministrator\\ingenialink_python
+                                                        py -${version} -m tox -e build
+                                                        robocopy dist ${env.WORKSPACE}\\dist *.whl /XO /NFL /NDL /NJH /NJS
+                                                    """)
+                                                if (result > 7) {
+                                                    error "Robocopy failed with exit code ${result}"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                stage('Archive artifacts') {
+                                    steps {
+                                        archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
+                                        script {
+                                            stash_name = "publish_wheels-windows"
+                                            wheel_stashes.add(stash_name)
+                                            stash includes: "dist\\*", name: stash_name
+                                        }
+                                    }
+                                }
+                                stage('Generate documentation') {
+                                    steps {
+                                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
+                                        bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
+                                        stash includes: 'docs.zip', name: 'docs'
                                     }
                                 }
                             }
                         }
-                        stage('Move workspace') {
-                            steps {
-                                bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y"
-                            }
-                        }
-                        stage('Type checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
-                            }
-                        }
-                        stage('Format checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                            }
-                        }
-                        stage('Build') {
-                            steps {
-                                script {
-                                    def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                    pythonVersions.each { version ->
-                                        def distDir = version == PYTHON_VERSION_MIN ? "dist" : "dist_${version}"
-                                        def buildDir = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
-                                        env.TOX_PYTHON_VERSION = version
-                                        env.TOX_DIST_DIR = distDir
-                                        env.TOX_BUILD_ENV_DIR = buildDir
-                                        bat """
-                                            cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-                                            py -${DEFAULT_PYTHON_VERSION} -m tox -e build
-                                            XCOPY ${distDir}\\*.whl ${env.WORKSPACE}\\dist /s /i
-                                        """
-                                    }
+                        stage('Build Linux') {
+                            agent {
+                                docker {
+                                    label 'worker'
+                                    image LIN_DOCKER_IMAGE
+                                    args '-u root:root'
                                 }
                             }
-                        }
-                        stage('Archive artifacts') {
-                            steps {
-                                archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
-                                stash includes: "dist\\*", name: 'wheels'
+                            environment {
+                                SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
                             }
-                        }
-                        stage('Generate documentation') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
-                                bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
-                                stash includes: 'docs.zip', name: 'docs'
+                            stages {
+                                stage('Build') {
+                                    steps {
+                                        sh "python${DEFAULT_PYTHON_VERSION} -m tox -e build"
+                                    }
+                                    post {
+                                        always {
+                                            reassignFilePermissions()
+                                        }
+                                    }
+                                }
+                                stage('Archive artifacts') {
+                                    steps {
+                                        archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
+                                        script {
+                                            stash_name = "publish_wheels-linux"
+                                            wheel_stashes.add(stash_name)
+                                            stash includes: "dist\\*", name: stash_name
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -245,20 +291,37 @@ pipeline {
                         publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                     }
                 }
-                stage('Publish to pypi') {
-                    when {
-                        beforeAgent true
-                        branch BRANCH_NAME_MASTER
-                    }
+                stage('Publish wheels') {
                     agent {
                         docker {
                             label 'worker'
                             image PUBLISHER_DOCKER_IMAGE
                         }
                     }
-                    steps {
-                        unstash 'wheels'
-                        publishPyPi("dist/*")
+                    stages {
+                        stage('Unstash')
+                        {
+                            steps {
+                                script {
+                                    for (stash_name in wheel_stashes) {
+                                        unstash stash_name
+                                    }
+                                }
+                            }
+                        }
+                        stage('Publish Ingenia PyPi') {
+                            steps {
+                                publishIngeniaPyPi('dist/*')
+                            }
+                        }
+                        stage('Publish PyPi') {
+                            when {
+                                branch 'master'
+                            }
+                            steps {
+                                publishPyPi('dist/*')
+                            }
+                        }
                     }
                 }
             }
@@ -276,6 +339,7 @@ pipeline {
                     stages {
                         stage('Run no-connection tests on docker') {
                             steps {
+                                clearCoverageFiles()
                                 bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
                                         "-m docker " +
                                         "-o log_cli=True"
@@ -305,9 +369,12 @@ pipeline {
                     stages {
                         stage('Run no-connection tests on docker') {
                             steps {
-                                sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m no_connection -o log_cli=True
-                                """
+                                script {
+                                    def run_py_versions = RUN_PYTHON_VERSIONS.split(',').collect { "py" + it.replace('.', '') }.join(',')
+                                    sh """
+                                        python${DEFAULT_PYTHON_VERSION} -m tox -e ${run_py_versions} -- -m no_connection -o log_cli=True
+                                    """
+                                }
                             }
                             post {
                                 always {
@@ -317,9 +384,12 @@ pipeline {
                         }
                         stage('Run virtual drive tests on docker') {
                             steps {
-                                sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
-                                """
+                                script {
+                                    def run_py_versions = RUN_PYTHON_VERSIONS.split(',').collect { "py" + it.replace('.', '') }.join(',')
+                                    sh """
+                                        python${DEFAULT_PYTHON_VERSION} -m tox -e ${run_py_versions} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
+                                    """
+                                }
                             }
                             post {
                                 always {
@@ -340,6 +410,16 @@ pipeline {
                         stage ("Clear Wireshark logs") {
                             steps {
                                 clearWiresharkLogs()
+                            }
+                        }
+                        stage('Unstash')
+                        {
+                            steps {
+                                script {
+                                    for (stash_name in wheel_stashes) {
+                                        unstash stash_name
+                                    }
+                                }
                             }
                         }
                         stage('EtherCAT Everest') {
@@ -372,6 +452,16 @@ pipeline {
                         label CAN_NODE
                     }
                     stages {
+                        stage('Unstash')
+                        {
+                            steps {
+                                script {
+                                    for (stash_name in wheel_stashes) {
+                                        unstash stash_name
+                                    }
+                                }
+                            }
+                        }
                         stage('CANopen Everest') {
                             steps {
                                 runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP", true)
@@ -394,27 +484,6 @@ pipeline {
                         }
                     }
                 }
-            }
-        }
-        stage('Publish coverage') {
-            agent {
-                docker {
-                    label SW_NODE
-                    image WIN_DOCKER_IMAGE
-                }
-            }
-            steps {
-                script {
-                    def coverage_files = ""
-
-                    for (coverage_stash in coverage_stashes) {
-                        unstash coverage_stash
-                        coverage_files += " " + coverage_stash
-                    }
-                    bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e coverage -- ${coverage_files}"
-                }
-                recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
-                archiveArtifacts artifacts: '*.xml'
             }
         }
     }

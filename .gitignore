@@ -49,3 +49,6 @@ resources/
 
 # Wireshark logs
 wireshark/
+
+# Version
+ingenialink/_version.py
