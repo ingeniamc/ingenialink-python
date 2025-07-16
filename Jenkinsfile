@@ -486,36 +486,5 @@ pipeline {
                 }
             }
         }
-        stage('Publish coverage') {
-            options {
-                skipDefaultCheckout()
-            }
-            agent {
-                docker {
-                    label SW_NODE
-                    image WIN_DOCKER_IMAGE
-                }
-            }
-            steps {
-                script {
-                    def coverage_files = ""
-
-                    for (coverage_stash in coverage_stashes) {
-                        unstash coverage_stash
-                        coverage_files += " " + coverage_stash
-                    }
-                    // Archive coverage before combining it
-                    archiveArtifacts artifacts: '*'
-
-                    bat "py -3.9 -m pip install pytest==7.0.1 pytest-cov==2.12.1"
-                    bat "py -3.9 -m coverage combine ${coverage_files}"
-                    // Archive coverage combined
-                    archiveArtifacts artifacts: '*'
-                    bat "py -3.9 -m coverage xml --include='*/ingenialink/*'"
-                }
-                recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
-                archiveArtifacts artifacts: '*.xml'
-            }
-        }
     }
 }
