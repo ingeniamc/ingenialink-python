@@ -54,6 +54,10 @@ def clearWiresharkLogs() {
     bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
 }
 
+def clearCoverageFiles() {
+    bat(script: 'del /f "*.coverage*"', returnStatus: true)
+}
+
 def runPython(command, py_version = DEFAULT_PYTHON_VERSION) {
     if (isUnix()) {
         sh "python${py_version} -I -m ${command}"
@@ -98,6 +102,7 @@ def buildWheel(py_version) {
 def runTestHW(markers, setup_name, extra_args = "") {
     try {
         timeout(time: 1, unit: 'HOURS') {
+            clearCoverageFiles()
             def firstIteration = true
             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
             pythonVersions.each { version ->
@@ -417,6 +422,76 @@ pipeline {
         
         stage('Tests') {
             parallel {
+                stage('Docker Windows - Tests') {
+                    agent {
+                        docker {
+                            label SW_NODE
+                            image WIN_DOCKER_IMAGE
+                        }
+                    }
+                    stages {
+                        stage('Run no-connection tests on docker') {
+                            steps {
+                                clearCoverageFiles()
+                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
+                                        "-m docker " +
+                                        "-o log_cli=True"
+                            }
+                            post {
+                                always {
+                                    bat "move .coverage .coverage_docker"
+                                    junit "pytest_reports\\*.xml"
+                                    // Delete the junit after publishing it so it not re-published on the next stage
+                                    bat "del /S /Q pytest_reports\\*.xml"
+                                    stash includes: '.coverage_docker', name: '.coverage_docker'
+                                    script {
+                                        coverage_stashes.add(".coverage_docker")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('Docker Linux - Tests') {
+                    agent {
+                        docker {
+                            label "worker"
+                            image LIN_DOCKER_IMAGE
+                        }
+                    }
+                    stages {
+                        stage('Run no-connection tests on docker') {
+                            steps {
+                                script {
+                                    def run_py_versions = RUN_PYTHON_VERSIONS.split(',').collect { "py" + it.replace('.', '') }.join(',')
+                                    sh """
+                                        python${DEFAULT_PYTHON_VERSION} -m tox -e ${run_py_versions} -- -m no_connection -o log_cli=True
+                                    """
+                                }
+                            }
+                            post {
+                                always {
+                                    junit "pytest_reports\\*.xml"
+                                }
+                            }
+                        }
+                        stage('Run virtual drive tests on docker') {
+                            steps {
+                                script {
+                                    def run_py_versions = RUN_PYTHON_VERSIONS.split(',').collect { "py" + it.replace('.', '') }.join(',')
+                                    sh """
+                                        python${DEFAULT_PYTHON_VERSION} -m tox -e ${run_py_versions} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
+                                    """
+                                }
+                            }
+                            post {
+                                always {
+                                    junit "pytest_reports\\*.xml"
+                                }
+                            }
+                        }
+                    }
+                }
                 stage('EtherCAT/No Connection - Tests') {
                     options {
                         lock(ECAT_NODE_LOCK)
@@ -516,18 +591,20 @@ pipeline {
             }
             steps {
                 script {
-                    cleanWs()
-
                     def coverage_files = ""
 
                     for (coverage_stash in coverage_stashes) {
                         unstash coverage_stash
                         coverage_files += " " + coverage_stash
                     }
+                    // Archive coverage before combining it
+                    archiveArtifacts artifacts: '*'
 
                     bat "py -3.9 -m pip install pytest==7.0.1 pytest-cov==2.12.1"
                     bat "py -3.9 -m coverage combine ${coverage_files}"
-                    bat "py -3.9 -m coverage xml --include='ingenialink/*'"
+                    // Archive coverage combined
+                    archiveArtifacts artifacts: '*'
+                    bat "py -3.9 -m coverage xml --include='*/ingenialink/*'"
                 }
                 recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
                 archiveArtifacts artifacts: '*.xml'
