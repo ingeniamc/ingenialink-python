@@ -462,7 +462,7 @@ pipeline {
                         }
                         stage('Run no-connection tests') {
                             steps {
-                                runTestHW("no_connection", null, true)
+                                runTestHW("no_connection", null)
                             }
                         }
                     }
