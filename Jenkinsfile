@@ -101,7 +101,7 @@ def runTestHW(markers, setup_name, extra_args = "") {
             def firstIteration = true
             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
             pythonVersions.each { version ->
-                withEnv(["INGENIALINK_WHEEL_PATH=${wheelFile}", "WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
+                withEnv(["WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
                     try {
                         def py_version = "py" + DEFAULT_PYTHON_VERSION.replace(".", "")
                         def setupArg = setup_name ? "--setup ${setup_name} " : ""
@@ -309,11 +309,6 @@ pipeline {
                                     steps {
                                         buildWheel(PYTHON_VERSION_MAX)
                                     }
-                                    post {
-                                        always {
-                                            reassignFilePermissions()
-                                        }
-                                    }
                                 }
                                 stage('Archive artifacts') {
                                     steps {
@@ -360,6 +355,11 @@ pipeline {
                                             junit "pytest_reports\\*.xml"
                                         }
                                     }
+                                }
+                            }
+                            post {
+                                always {
+                                    reassignFilePermissions()
                                 }
                             }
                         }
