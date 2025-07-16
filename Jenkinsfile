@@ -50,23 +50,6 @@ def reassignFilePermissions() {
     }
 }
 
-def getWheelPath(tox_skip_install, python_version) {
-    if (tox_skip_install) {
-        script {
-            def pythonVersionTag = "cp${python_version.replace('.', '')}"
-            def files = findFiles(glob: "dist/*${pythonVersionTag}*.whl")
-            if (files.length == 0) {
-                error "No .whl file found for Python version ${python_version} in the dist directory."
-            }
-            def wheelFile = files[0].name
-            return "dist\\${wheelFile}"
-        }
-    }
-    else {
-        return ""
-    }
-}
-
 def clearWiresharkLogs() {
     bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
 }
@@ -112,23 +95,20 @@ def buildWheel(py_version) {
     }
 }
 
-def runTestHW(markers, setup_name, tox_skip_install = false, extra_args = "") {
+def runTestHW(markers, setup_name, extra_args = "") {
     try {
         timeout(time: 1, unit: 'HOURS') {
             def firstIteration = true
             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
             pythonVersions.each { version ->
-                def wheelFile = getWheelPath(tox_skip_install, version)
-                withEnv(["INGENIALINK_WHEEL_PATH=${wheelFile}", "TOX_SKIP_INSTALL=${tox_skip_install.toString()}", "WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
+                withEnv(["INGENIALINK_WHEEL_PATH=${wheelFile}", "WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
                     try {
                         def py_version = "py" + DEFAULT_PYTHON_VERSION.replace(".", "")
                         def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${py_version} -- " +
-                                "-m \"${markers}\" " +
-                                "${setupArg}" +
-                                "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" " +
-                                "-o log_cli=True " +
-                                "${extra_args}"
+                        activatePoetryEnv(version)
+                        runPython("poetry sync --with dev,tests") // Remove all dependencies except poethepoet (importlib mode)
+                        runPython("poetry run poe install-wheel")
+                        runPython("poetry run poe tests -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}")
 
                     } catch (err) {
                         unstable(message: "Tests failed")
@@ -280,6 +260,31 @@ pipeline {
                                         stash includes: 'docs.zip', name: 'docs'
                                     }
                                 }
+                                stage('Run no-connection tests on docker') {
+                                    steps {
+                                        script {
+                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                            pythonVersions.each { version ->
+                                                activatePoetryEnv(version)
+                                                runPython("poetry install --with dev,tests")
+                                                runPython("poetry run poe install-wheel")
+                                                runPython("poetry run poe tests -- -m docker -o log_cli=True")
+                                            }
+                                        }
+                                    }
+                                    post {
+                                        always {
+                                            bat "move .coverage .coverage_docker"
+                                            junit "pytest_reports\\*.xml"
+                                            // Delete the junit after publishing it so it not re-published on the next stage
+                                            bat "del /S /Q pytest_reports\\*.xml"
+                                            stash includes: '.coverage_docker', name: '.coverage_docker'
+                                            script {
+                                                coverage_stashes.add(".coverage_docker")
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                         stage('Build Linux') {
@@ -317,6 +322,42 @@ pipeline {
                                             stash_name = "publish_wheels-linux"
                                             wheel_stashes.add(stash_name)
                                             stash includes: "dist\\*", name: stash_name
+                                        }
+                                    }
+                                }
+                                stage('Run no-connection tests on docker') {
+                                    steps {
+                                        script {
+                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                            pythonVersions.each { version ->
+                                                activatePoetryEnv(version)
+                                                runPython("poetry install --with dev,tests")
+                                                runPython("poetry run poe install-wheel")
+                                                runPython("poetry run poe tests -- -m no_connection -o log_cli=True")
+                                            }
+                                        }
+                                    }
+                                    post {
+                                        always {
+                                            junit "pytest_reports\\*.xml"
+                                        }
+                                    }
+                                }
+                                stage('Run virtual drive tests on docker') {
+                                    steps {
+                                        script {
+                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                            pythonVersions.each { version ->
+                                                activatePoetryEnv(version)
+                                                runPython("poetry install --with dev,tests")
+                                                runPython("poetry run poe install-wheel")
+                                                runPython("poetry run poe tests -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP  -o log_cli=True")
+                                            }
+                                        }
+                                    }
+                                    post {
+                                        always {
+                                            junit "pytest_reports\\*.xml"
                                         }
                                     }
                                 }
@@ -376,75 +417,6 @@ pipeline {
         
         stage('Tests') {
             parallel {
-                stage('Docker Windows - Tests') {
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage('Run no-connection tests on docker') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker " +
-                                        "-o log_cli=True"
-                            }
-                            post {
-                                always {
-                                    bat "move .coverage .coverage_docker"
-                                    junit "pytest_reports\\*.xml"
-                                    // Delete the junit after publishing it so it not re-published on the next stage
-                                    bat "del /S /Q pytest_reports\\*.xml"
-                                    stash includes: '.coverage_docker', name: '.coverage_docker'
-                                    script {
-                                        coverage_stashes.add(".coverage_docker")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('Docker Linux - Tests') {
-                    agent {
-                        docker {
-                            label "worker"
-                            image LIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage('Run no-connection tests on docker') {
-                            steps {
-                                script {
-                                    def run_py_versions = RUN_PYTHON_VERSIONS.split(',').collect { "py" + it.replace('.', '') }.join(',')
-                                    sh """
-                                        python${DEFAULT_PYTHON_VERSION} -m tox -e ${run_py_versions} -- -m no_connection -o log_cli=True
-                                    """
-                                }
-                            }
-                            post {
-                                always {
-                                    junit "pytest_reports\\*.xml"
-                                }
-                            }
-                        }
-                        stage('Run virtual drive tests on docker') {
-                            steps {
-                                script {
-                                    def run_py_versions = RUN_PYTHON_VERSIONS.split(',').collect { "py" + it.replace('.', '') }.join(',')
-                                    sh """
-                                        python${DEFAULT_PYTHON_VERSION} -m tox -e ${run_py_versions} -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
-                                    """
-                                }
-                            }
-                            post {
-                                always {
-                                    junit "pytest_reports\\*.xml"
-                                }
-                            }
-                        }
-                    }
-                }
                 stage('EtherCAT/No Connection - Tests') {
                     options {
                         lock(ECAT_NODE_LOCK)
@@ -470,17 +442,17 @@ pipeline {
                         }
                         stage('EtherCAT Everest') {
                             steps {
-                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
+                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
+                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Multislave') {
                             steps {
-                                runTestHW("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", true, USE_WIRESHARK_LOGGING)
+                                runTestHW("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Run no-connection tests') {
@@ -510,22 +482,22 @@ pipeline {
                         }
                         stage('CANopen Everest') {
                             steps {
-                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP", true)
+                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP")
                             }
                         }
                         stage('CANopen Capitan') {
                             steps {
-                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP", true)
+                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP")
                             }
                         }
                         stage('Ethernet Everest') {
                             steps {
-                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", true, USE_WIRESHARK_LOGGING)
+                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Ethernet Capitan') {
                             steps {
-                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", true, USE_WIRESHARK_LOGGING)
+                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                     }
