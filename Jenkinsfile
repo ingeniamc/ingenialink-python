@@ -223,7 +223,7 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                            def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
                                                 buildWheel(version)
                                             }
