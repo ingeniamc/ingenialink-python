@@ -217,6 +217,15 @@ class EthercatNetwork(Network):
         set_network_reference(network=self)
 
     @staticmethod
+    def pysoem_available() -> bool:
+        """Check if pysoem is available.
+
+        Returns:
+            True if pysoem is available, False otherwise.
+        """
+        return pysoem is not None
+
+    @staticmethod
     def find_adapters() -> list[tuple[int, str, str]]:
         """Finds all available EtherCAT adapters.
 
