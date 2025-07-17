@@ -327,14 +327,14 @@ def create_pdo_maps(servo, rpdo_registers, tpdo_registers):
 
 @pytest.mark.ethercat
 def test_read_rpdo_map_from_slave(servo: EthercatServo):
-    pdo_map = servo.read_rpdo_map_from_slave("ETG_COMMS_RPDO_MAP1_TOTAL", subnode=0)
+    pdo_map = servo.read_rpdo_map_from_slave("ETG_COMMS_RPDO_MAP1", subnode=0)
     assert pdo_map.map_register_index == 0x1600
     assert isinstance(pdo_map, RPDOMap)
 
 
 @pytest.mark.ethercat
 def test_read_tpdo_map_from_slave(servo: EthercatServo):
-    pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1_TOTAL", subnode=0)
+    pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1", subnode=0)
     assert pdo_map.map_register_index == 0x1A00
     assert isinstance(pdo_map, TPDOMap)
 
