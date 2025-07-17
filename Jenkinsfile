@@ -281,7 +281,9 @@ pipeline {
                                         always {
                                             bat """
                                                 move ${DOCKER_TMP_PATH}\\.coverage .coverage_docker
+                                                move ${DOCKER_TMP_PATH}\\pytest_reports\\junit-tests.xml junit-tests.xml
                                             """
+                                            junit "junit-tests.xml"
                                             stash includes: '.coverage_docker', name: '.coverage_docker'
                                             script {
                                                 coverage_stashes.add(".coverage_docker")
