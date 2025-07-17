@@ -82,14 +82,15 @@ def runTestHW(markers, setup_name, tox_skip_install = false, extra_args = "") {
         timeout(time: 1, unit: 'HOURS') {
             clearCoverageFiles()
             def firstIteration = true
+            def runPythonVersion = "py" + DEFAULT_PYTHON_VERSION.replace(".", "")
             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
             pythonVersions.each { version ->
                 def wheelFile = getWheelPath(tox_skip_install, version)
                 withEnv(["INGENIALINK_WHEEL_PATH=${wheelFile}", "TOX_SKIP_INSTALL=${tox_skip_install.toString()}", "WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
                     try {
-                        def py_version = "py" + DEFAULT_PYTHON_VERSION.replace(".", "")
+                        def py_version = "py" + version.replace(".", "")
                         def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                        bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${py_version} -- " +
+                        bat "py -${runPythonVersion} -m tox -e ${py_version} -- " +
                                 "-m \"${markers}\" " +
                                 "${setupArg}" +
                                 "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" " +
