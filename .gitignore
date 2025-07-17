@@ -26,29 +26,29 @@ out.txt
 .DS_Store
 
 # Pipenv and venv
-Pipfile.lock
-venv
+/Pipfile.lock
+/venv
 
 # Test files
-pytest_reports/
-.coverage
-coverage.xml
+/pytest_reports/
+/.coverage
+/coverage.xml
 
 # Documentation
-_docs
+/_docs
 
 # Cython compilation
-ingenialink/cython_files/*.cpp
+/ingenialink/cython_files/*.cpp
 temp/*
 
 # tests setups
-tests/setups/tests_setup.py
+/tests/setups/tests_setup.py
 
 # ATT downloaded files
-resources/
+/resources/
 
 # Wireshark logs
-wireshark/
+/wireshark/
 
 # Version
-ingenialink/_version.py
+/ingenialink/_version.py

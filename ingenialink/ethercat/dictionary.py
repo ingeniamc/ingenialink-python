@@ -5,8 +5,8 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
-from ingenialink import CanopenRegister
 from ingenialink.canopen.dictionary import CanopenDictionary
+from ingenialink.canopen.register import CanopenRegister
 from ingenialink.constants import (
     CANOPEN_ADDRESS_OFFSET,
     CANOPEN_SUBNODE_0_ADDRESS_OFFSET,
