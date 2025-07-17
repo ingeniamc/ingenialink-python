@@ -131,7 +131,7 @@ class CyFirstPrefix:
 @cython.cclass
 @dataclasses.dataclass
 class CyFirstDnsSuffix:
-    String: list[str]
+    String: str
 
 @cython.cclass
 @dataclasses.dataclass
@@ -285,11 +285,11 @@ cdef list[CyFirstDnsSuffix] _parse_dns_suffix(IP_ADAPTER_DNS_SUFFIX* data):
     parsed_data = []
 
     while current_data:
-        parsed_data.append(
-            CyFirstDnsSuffix(
-                String=[current_data.String[i].decode("utf-8") for i in range(MAX_DNS_SUFFIX_STRING_LENGTH) if current_data.String[i] is not None]
+        dns_suffix_string = _pwchar_to_str(current_data.String)
+        if dns_suffix_string: 
+            parsed_data.append(
+                CyFirstDnsSuffix(String=dns_suffix_string)
             )
-        )
         current_data = current_data.Next
     return parsed_data
 
