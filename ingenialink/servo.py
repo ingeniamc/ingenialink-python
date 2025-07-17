@@ -20,6 +20,7 @@ from ingenialink.constants import (
     PASSWORD_STORE_RESTORE_SUB_0,
 )
 from ingenialink.dictionary import (
+    CanOpenObject,
     Dictionary,
     DictionaryDescriptor,
     DictionaryError,
@@ -1336,7 +1337,7 @@ class Servo:
         return value
 
     def write_complete_access(
-        self, reg: Union[str, Register], data: bytes, subnode: int = 1
+        self, reg: Union[str, Register, CanOpenObject], data: bytes, subnode: int = 1
     ) -> None:
         """Write a complete access register.
 
@@ -1345,11 +1346,13 @@ class Servo:
             data: Data to be written.
             subnode: Target subnode of the drive.
         """
+        if isinstance(reg, CanOpenObject):
+            _reg = reg.registers[0]
         _reg = self._get_reg(reg, subnode)
         self._write_raw(_reg, data, complete_access=True)
 
     def read_complete_access(
-        self, reg: Union[str, Register], subnode: int = 1, buffer_size: int = 0
+        self, reg: Union[str, Register, CanOpenObject], subnode: int = 1, buffer_size: int = 0
     ) -> bytes:
         """Read a complete access register.
 
@@ -1361,6 +1364,8 @@ class Servo:
         Returns:
             Data read from the register.
         """
+        if isinstance(reg, CanOpenObject):
+            _reg = reg.registers[0]
         _reg = self._get_reg(reg, subnode)
         return self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
 

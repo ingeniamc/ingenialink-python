@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional, Union, cast
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 import ingenialogger
 from typing_extensions import override
@@ -309,23 +309,16 @@ class EthercatServo(PDOServo):
         """Read the RPDO map from the slave.
 
         Args:
-            map_obj: First register of the RPDO map.
+            map_obj: UID or object of the RPDO map.
             subnode: Subnode of the rpdo map.
             buffer_size: Size of the buffer to read the pdo map.
 
         Returns:
             RPDOMap: The RPDO map read from the slave.
         """
-        _map_obj: Optional[CanOpenObject] = None
-        if not isinstance(map_obj, CanOpenObject):
-            try:
-                _map_obj = self.dictionary.get_object(map_obj, subnode)
-            except KeyError:
-                # XDF V2 do not have CanOpenObjects.
-                pass
-        _reg = cast("EthercatRegister", self._get_reg(map_obj, subnode))
-        value = self.read_complete_access(_reg, subnode, buffer_size)
-        return RPDOMap.from_pdo_value(value, _reg.idx, self.dictionary)
+        _map_obj = self.dictionary.get_object(map_obj, subnode)
+        value = self.read_complete_access(_map_obj, subnode, buffer_size)
+        return RPDOMap.from_pdo_value(value, _map_obj.idx, self.dictionary)
 
     def read_tpdo_map_from_slave(
         self, map_obj: Union[str, Register], subnode: int = 0, buffer_size: Optional[int] = 0
@@ -333,16 +326,16 @@ class EthercatServo(PDOServo):
         """Read the TPDO map from the slave.
 
         Args:
-            reg: First register of the RPDO map.
+            map_obj: UID or object of the RPDO map.
             subnode: Subnode of the rpdo map.
             buffer_size: Size of the buffer to read the pdo map.
 
         Returns:
             TPDOMap: The TPDO map read from the slave.
         """
-        _reg = cast("EthercatRegister", self._get_reg(map_obj, subnode))
+        _map_obj = self.dictionary.get_object(map_obj, subnode)
         value = self.read_complete_access(map_obj, subnode, buffer_size)
-        return TPDOMap.from_pdo_value(value, _reg.idx, self.dictionary)
+        return TPDOMap.from_pdo_value(value, _map_obj.idx, self.dictionary)
 
     @override
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
