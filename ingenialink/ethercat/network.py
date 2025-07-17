@@ -6,7 +6,7 @@ import time
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
 import ingenialogger
 
@@ -217,7 +217,7 @@ class EthercatNetwork(Network):
         set_network_reference(network=self)
 
     @staticmethod
-    def find_adapters() -> tuple[str, str]:
+    def find_adapters() -> list[tuple[int, str, str]]:
         """Finds all available EtherCAT adapters.
 
         Returns:
@@ -237,7 +237,7 @@ class EthercatNetwork(Network):
             adapters.append((
                 interface_index,
                 interface_guid.group(0),
-                adapter.desc.decode("utf-8"),
+                cast("str", adapter.desc.decode("utf-8")),
             ))
         return adapters
 
