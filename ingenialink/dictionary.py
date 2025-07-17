@@ -1,5 +1,6 @@
 import copy
 import enum
+import math
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
@@ -114,6 +115,28 @@ class CanOpenObject:
             Iterator operator.
         """
         return self.registers.__iter__()
+
+    @property
+    def bit_length(self) -> int:
+        """Get the bit length of the object.
+
+        Returns:
+            int: bit length of the object.
+        """
+        bit_length = sum(register.bit_length for register in self.registers)
+        if self.object_type in [CanOpenObjectType.ARRAY, CanOpenObjectType.RECORD]:
+            # In arrays and records, between index 0 and 1 there's a padding of 8 bits
+            bit_length += 8
+        return bit_length
+
+    @property
+    def byte_length(self) -> int:
+        """Get the byte length of the object.
+
+        Returns:
+            int: Byte length of the object.
+        """
+        return math.ceil(self.bit_length / 8)
 
 
 @dataclass

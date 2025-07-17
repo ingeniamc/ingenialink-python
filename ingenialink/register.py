@@ -11,7 +11,7 @@ from ingenialink.enums.register import (
     RegDtype,
     RegPhy,
 )
-from ingenialink.utils._utils import convert_bytes_to_dtype
+from ingenialink.utils._utils import convert_bytes_to_dtype, dtype_length_bits
 
 dtypes_ranges: dict[RegDtype, dict[str, Union[int, float]]] = {
     RegDtype.U8: {"max": 255, "min": 0},
@@ -305,6 +305,15 @@ class Register(ABC):
     def bitfields(self) -> Optional[dict[str, BitField]]:
         """Register bit fields."""
         return self.__bitfields
+
+    @property
+    def bit_length(self) -> int:
+        """Get the bit length of the register.
+
+        Returns:
+            int: bit length of the register.
+        """
+        return dtype_length_bits[self.dtype]
 
     def __repr__(self) -> str:
         """String representation of the Register class.

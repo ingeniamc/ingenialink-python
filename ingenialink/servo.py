@@ -1347,12 +1347,16 @@ class Servo:
             subnode: Target subnode of the drive.
         """
         if isinstance(reg, CanOpenObject):
-            _reg = reg.registers[0]
-        _reg = self._get_reg(reg, subnode)
+            _reg: Register = reg.registers[0]
+        else:
+            _reg = self._get_reg(reg, subnode)
         self._write_raw(_reg, data, complete_access=True)
 
     def read_complete_access(
-        self, reg: Union[str, Register, CanOpenObject], subnode: int = 1, buffer_size: int = 0
+        self,
+        reg: Union[str, Register, CanOpenObject],
+        subnode: int = 1,
+        buffer_size: Optional[int] = None,
     ) -> bytes:
         """Read a complete access register.
 
@@ -1361,12 +1365,25 @@ class Servo:
             subnode: Target subnode of the drive.
             buffer_size: Size of the buffer to read.
 
+        Raises:
+            ValueError: if buffer size is not specified or cannot be detected
+
         Returns:
             Data read from the register.
         """
         if isinstance(reg, CanOpenObject):
-            _reg = reg.registers[0]
-        _reg = self._get_reg(reg, subnode)
+            _reg: Register = reg.registers[0]
+            buffer_size = reg.byte_length
+        else:
+            _reg = self._get_reg(reg, subnode)
+
+        if buffer_size is None:
+            raise ValueError(
+                "Buffer size must be specified for complete access read."
+                "Alternatively, use a CanOpenObject to infer the size required "
+                "automatically."
+            )
+
         return self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
 
     def read_bitfields(

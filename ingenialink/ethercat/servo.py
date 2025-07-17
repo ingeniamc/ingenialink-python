@@ -8,7 +8,6 @@ from typing_extensions import override
 from ingenialink import Servo
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
-from ingenialink.register import Register
 
 try:
     import pysoem
@@ -316,12 +315,16 @@ class EthercatServo(PDOServo):
         Returns:
             RPDOMap: The RPDO map read from the slave.
         """
-        _map_obj = self.dictionary.get_object(map_obj, subnode)
-        value = self.read_complete_access(_map_obj, subnode, buffer_size)
-        return RPDOMap.from_pdo_value(value, _map_obj.idx, self.dictionary)
+        if isinstance(map_obj, str):
+            map_obj = self.dictionary.get_object(map_obj, subnode)
+        value = self.read_complete_access(map_obj, subnode, buffer_size)
+        return RPDOMap.from_pdo_value(value, map_obj.idx, self.dictionary)
 
     def read_tpdo_map_from_slave(
-        self, map_obj: Union[str, Register], subnode: int = 0, buffer_size: Optional[int] = 0
+        self,
+        map_obj: Union[str, CanOpenObject],
+        subnode: int = 0,
+        buffer_size: Optional[int] = None,
     ) -> TPDOMap:
         """Read the TPDO map from the slave.
 
@@ -333,9 +336,10 @@ class EthercatServo(PDOServo):
         Returns:
             TPDOMap: The TPDO map read from the slave.
         """
-        _map_obj = self.dictionary.get_object(map_obj, subnode)
+        if isinstance(map_obj, str):
+            map_obj = self.dictionary.get_object(map_obj, subnode)
         value = self.read_complete_access(map_obj, subnode, buffer_size)
-        return TPDOMap.from_pdo_value(value, _map_obj.idx, self.dictionary)
+        return TPDOMap.from_pdo_value(value, map_obj.idx, self.dictionary)
 
     @override
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
