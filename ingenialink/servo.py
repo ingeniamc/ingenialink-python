@@ -271,6 +271,9 @@ class Servo:
     DICTIONARY_INTERFACE_ATTR_CAN = "CAN"
     DICTIONARY_INTERFACE_ATTR_ETH = "ETH"
 
+    __DEFAULT_STORE_RECOVERY_TIMEOUT_S = 4
+    __DEFAULT_RESTORE_RECOVERY_TIMEOUT_S = 1.5
+
     interface: Interface
 
     def __init__(
@@ -579,7 +582,7 @@ class Servo:
                 f"The drive's configuration cannot be restored. The subnode value: {subnode} is"
                 " invalid."
             )
-        time.sleep(1.5)
+        self._wait_for_drive_to_recover(self.__DEFAULT_RESTORE_RECOVERY_TIMEOUT_S)
 
     def store_parameters(self, subnode: Optional[int] = None) -> None:
         """Store all the current parameters of the target subnode.
@@ -593,40 +596,49 @@ class Servo:
 
         """
         r = 0
-        try:
-            if subnode is None:
-                # Store all
-                try:
-                    self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_ALL, subnode=0)
-                    logger.info("Store all successfully done.")
-                except ILError as e:
-                    logger.warning(f"Store all COCO failed. Reason: {e}. Trying MOCO...")
-                    r = -1
-                if r < 0:
-                    for dict_subnode in self.dictionary.subnodes:
-                        if self.dictionary.subnodes[dict_subnode] == SubnodeType.MOTION:
-                            self.write(
-                                reg=self.STORE_MOCO_ALL_REGISTERS,
-                                data=PASSWORD_STORE_ALL,
-                                subnode=dict_subnode,
-                            )
-                            logger.info(f"Store axis {dict_subnode} successfully done.")
-            elif subnode == 0:
-                # Store subnode 0
-                self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
-            elif subnode > 0:
-                # Store axis
-                self.write(
-                    reg=self.STORE_MOCO_ALL_REGISTERS, data=PASSWORD_STORE_ALL, subnode=subnode
-                )
-                logger.info(f"Store axis {subnode} successfully done.")
-            else:
-                raise ILError(
-                    f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
-                    " invalid."
-                )
-        finally:
-            time.sleep(1.5)
+        if subnode is None:
+            # Store all
+            try:
+                self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_ALL, subnode=0)
+                logger.info("Store all successfully done.")
+            except ILError as e:
+                logger.warning(f"Store all COCO failed. Reason: {e}. Trying MOCO...")
+                r = -1
+            if r < 0:
+                for dict_subnode in self.dictionary.subnodes:
+                    if self.dictionary.subnodes[dict_subnode] == SubnodeType.MOTION:
+                        self.write(
+                            reg=self.STORE_MOCO_ALL_REGISTERS,
+                            data=PASSWORD_STORE_ALL,
+                            subnode=dict_subnode,
+                        )
+                        logger.info(f"Store axis {dict_subnode} successfully done.")
+        elif subnode == 0:
+            # Store subnode 0
+            self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
+        elif subnode > 0:
+            # Store axis
+            self.write(reg=self.STORE_MOCO_ALL_REGISTERS, data=PASSWORD_STORE_ALL, subnode=subnode)
+            logger.info(f"Store axis {subnode} successfully done.")
+        else:
+            raise ILError(
+                f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
+                " invalid."
+            )
+        self._wait_for_drive_to_recover(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
+
+    def _wait_for_drive_to_recover(self, recovery_time: float) -> None:
+        """Wait until the drive recovers from a store/restore operation.
+
+        Args:
+            recovery_time: how many seconds to wait for the drive.
+
+        """
+        time.sleep(recovery_time)
+        # To avoid an error on the first read/write after the drive is
+        # recovered, we try to read the status word register.
+        # Check issue EVR-906.
+        self.is_alive()
 
     def _get_drive_identification(
         self,

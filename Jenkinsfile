@@ -109,7 +109,7 @@ def runTestHW(markers, setup_name, extra_args = "") {
             pythonVersions.each { version ->
                 withEnv(["WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
                     try {
-                        def py_version = "py" + DEFAULT_PYTHON_VERSION.replace(".", "")
+                        def py_version = "py" + version.replace(".", "")
                         def setupArg = setup_name ? "--setup ${setup_name} " : ""
                         activatePoetryEnv(version)
                         runPython("poetry sync --with dev,tests") // Remove all dependencies except poethepoet (importlib mode)
