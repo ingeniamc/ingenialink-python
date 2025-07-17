@@ -103,7 +103,7 @@ class CanOpenObjectType(enum.Enum):
 class CanOpenObject:
     """CanOpenObject."""
 
-    uid: Optional[str]
+    uid: str
     idx: int
     object_type: CanOpenObjectType
     registers: list[CanopenRegister]
@@ -476,6 +476,15 @@ class Dictionary(XMLBase, ABC):
             Register
         """
         for subnode in self._registers.values():
+            yield from subnode.values()
+
+    def all_objs(self) -> Iterator[CanOpenObject]:
+        """Iterator for all items.
+
+        Yields:
+            CanOpenObject
+        """
+        for subnode in self.items.values():
             yield from subnode.values()
 
     @weak_lru()

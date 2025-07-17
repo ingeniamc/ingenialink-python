@@ -113,6 +113,26 @@ def test_pdo_maps_equivalence():
             assert register_v3.address_type == register_v2.address_type
             assert register_v3.monitoring == register_v2.monitoring
 
+    item_uids = {obj.uid for obj in ethercat_dict_v2.all_objs()}
+    assert {
+        "ETG_COMMS_RPDO_MAP3",
+        "ETG_COMMS_TPDO_MAP3",
+        "ETG_COMMS_TPDO_MAP1",
+        "ETG_COMMS_RPDO_ASSIGN",
+        "ETG_COMMS_RPDO_MAP2",
+        "ETG_COMMS_TPDO_ASSIGN",
+        "ETG_COMMS_TPDO_MAP2",
+        "ETG_COMMS_RPDO_MAP1",
+    } == item_uids
+
+    for item_v3 in ethercat_dict_v3.all_objs():
+        if item_v3.uid.startswith(("ETG_COMMS_TPDO", "ETG_COMMS_RPDO")):
+            item_v2 = ethercat_dict_v2.get_object(item_v3.uid)
+            assert item_v3.uid == item_v2.uid
+            assert item_v3.idx == item_v2.idx
+            assert item_v3.object_type == item_v2.object_type
+            assert len(item_v3.registers) == len(item_v2.registers)
+
 
 @pytest.mark.no_connection
 def test_read_dictionary_registers_multiaxis():

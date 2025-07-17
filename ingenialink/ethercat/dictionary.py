@@ -5,6 +5,7 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
+from ingenialink import CanopenRegister
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.constants import (
     CANOPEN_ADDRESS_OFFSET,
@@ -12,6 +13,8 @@ from ingenialink.constants import (
     MAP_ADDRESS_OFFSET,
 )
 from ingenialink.dictionary import (
+    CanOpenObject,
+    CanOpenObjectType,
     DictionarySafetyModule,
     DictionaryV2,
     DictionaryV3,
@@ -193,9 +196,9 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             ),
         ]
 
-    def __pdo_map_assign_registers(
+    def __create_pdo_map_assign(
         self, idx: int, base_uid: str, base_label: str, n_elements: int
-    ) -> Iterator[EthercatRegister]:
+    ) -> CanOpenObject:
         """Generate PDO assignment registers.
 
         Args:
@@ -204,43 +207,53 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             base_label (str): Base label.
             n_elements (int): Number of elements of the pdo assign
 
-        Yields:
-            Registers for a pdo assignment object
+        Returns:
+            CanOpenObject: Object containing the registers for a pdo map assign.
         """
-        # Total register
-        yield EthercatRegister(
-            identifier=f"{base_uid}_TOTAL",
-            units="cnt",
-            subnode=0,
+        return CanOpenObject(
+            uid=base_uid,
             idx=idx,
-            subidx=0x00,
-            pdo_access=RegCyclicType.CONFIG,
-            dtype=RegDtype.U8,
-            access=RegAccess.RW,
-            address_type=RegAddressType.NVM_NONE,
-            labels={"en_US": "SubIndex 000"},
-            cat_id="COMMUNICATIONS",
+            object_type=CanOpenObjectType.ARRAY,
+            registers=list[CanopenRegister](
+                [
+                    # Total register
+                    EthercatRegister(
+                        identifier=f"{base_uid}_TOTAL",
+                        units="cnt",
+                        subnode=0,
+                        idx=idx,
+                        subidx=0x00,
+                        pdo_access=RegCyclicType.CONFIG,
+                        dtype=RegDtype.U8,
+                        access=RegAccess.RW,
+                        address_type=RegAddressType.NVM_NONE,
+                        labels={"en_US": "SubIndex 000"},
+                        cat_id="COMMUNICATIONS",
+                    )
+                ]
+                + [
+                    # Element registers
+                    EthercatRegister(
+                        identifier=f"{base_uid}_{i}",
+                        units="none",
+                        subnode=0,
+                        idx=idx,
+                        subidx=i,
+                        pdo_access=RegCyclicType.CONFIG,
+                        dtype=RegDtype.U16,
+                        access=RegAccess.RW,
+                        address_type=RegAddressType.NVM_NONE,
+                        labels={"en_US": f"{base_label} Element {i}"},
+                        cat_id="COMMUNICATIONS",
+                    )
+                    for i in range(1, n_elements + 1)
+                ],
+            ),
         )
 
-        # Element registers
-        for i in range(1, n_elements + 1):
-            yield EthercatRegister(
-                identifier=f"{base_uid}_{i}",
-                units="none",
-                subnode=0,
-                idx=idx,
-                subidx=i,
-                pdo_access=RegCyclicType.CONFIG,
-                dtype=RegDtype.U16,
-                access=RegAccess.RW,
-                address_type=RegAddressType.NVM_NONE,
-                labels={"en_US": f"{base_label} Element {i}"},
-                cat_id="COMMUNICATIONS",
-            )
-
-    def __pdo_map_registers(
+    def __create_pdo_map(
         self, idx: int, base_uid: str, base_label: str, n_elements: int
-    ) -> Iterator[EthercatRegister]:
+    ) -> CanOpenObject:
         """Generate PDO map registers.
 
         Args:
@@ -249,92 +262,102 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             base_label: Base label.
             n_elements: Number of elements of the pdo map.
 
-        Yields:
-            Registers for a pdo map object
+        Returns:
+            CanOpenObject: Object containing the registers for a pdo map.
         """
-        # Total register
-        yield EthercatRegister(
-            identifier=f"{base_uid}_TOTAL",
-            units="none",
-            subnode=0,
+        return CanOpenObject(
+            uid=base_uid,
             idx=idx,
-            subidx=0x00,
-            pdo_access=RegCyclicType.CONFIG,
-            dtype=RegDtype.U8,
-            access=RegAccess.RW,
-            address_type=RegAddressType.NVM_NONE,
-            labels={"en_US": "SubIndex 000"},
-            cat_id="COMMUNICATIONS",
+            object_type=CanOpenObjectType.RECORD,
+            registers=list[CanopenRegister](
+                [
+                    # Total register
+                    EthercatRegister(
+                        identifier=f"{base_uid}_TOTAL",
+                        units="none",
+                        subnode=0,
+                        idx=idx,
+                        subidx=0x00,
+                        pdo_access=RegCyclicType.CONFIG,
+                        dtype=RegDtype.U8,
+                        access=RegAccess.RW,
+                        address_type=RegAddressType.NVM_NONE,
+                        labels={"en_US": "SubIndex 000"},
+                        cat_id="COMMUNICATIONS",
+                    )
+                ]
+                + [
+                    # Element registers
+                    EthercatRegister(
+                        identifier=f"{base_uid}_{i}",
+                        units="none",
+                        subnode=0,
+                        idx=idx,
+                        subidx=i,
+                        pdo_access=RegCyclicType.CONFIG,
+                        dtype=RegDtype.U32,
+                        access=RegAccess.RW,
+                        address_type=RegAddressType.NVM_NONE,
+                        labels={"en_US": f"{base_label} Element {i}"},
+                        cat_id="COMMUNICATIONS",
+                    )
+                    for i in range(1, n_elements + 1)
+                ]
+            ),
         )
 
-        # Element registers
-        for i in range(1, n_elements + 1):
-            yield EthercatRegister(
-                identifier=f"{base_uid}_{i}",
-                units="none",
-                subnode=0,
-                idx=idx,
-                subidx=i,
-                pdo_access=RegCyclicType.CONFIG,
-                dtype=RegDtype.U32,
-                access=RegAccess.RW,
-                address_type=RegAddressType.NVM_NONE,
-                labels={"en_US": f"{base_label} Element {i}"},
-                cat_id="COMMUNICATIONS",
-            )
-
-    def __pdo_registers(self) -> Iterator[EthercatRegister]:
+    def __create_pdo_objects(self) -> Iterator[CanOpenObject]:
         # RPDO Assignments
-        yield from self.__pdo_map_assign_registers(
+        yield self.__create_pdo_map_assign(
             idx=0x1C12,
             base_uid="ETG_COMMS_RPDO_ASSIGN",
             base_label="RxPDO assign",
             n_elements=3,
         )
         # RPDO Map 1
-        yield from self.__pdo_map_registers(
+        yield self.__create_pdo_map(
             idx=0x1600,
             base_uid="ETG_COMMS_RPDO_MAP1",
             base_label="RxPDO Map 1",
             n_elements=15,
         )
         # RPDO Map 2
-        yield from self.__pdo_map_registers(
+        yield self.__create_pdo_map(
             idx=0x1601,
             base_uid="ETG_COMMS_RPDO_MAP2",
             base_label="RxPDO Map 2",
             n_elements=15,
         )
         # RPDO Map 3
-        yield from self.__pdo_map_registers(
+        yield self.__create_pdo_map(
             idx=0x1602,
             base_uid="ETG_COMMS_RPDO_MAP3",
             base_label="RxPDO Map 3",
             n_elements=15,
         )
         # TPDO Assignments
-        yield from self.__pdo_map_assign_registers(
+        yield self.__create_pdo_map_assign(
             idx=0x1C13,
             base_uid="ETG_COMMS_TPDO_ASSIGN",
             base_label="TxPDO assign",
             n_elements=3,
         )
         # TPDO Map
-        yield from self.__pdo_map_registers(
+        yield self.__create_pdo_map(
             idx=0x1A00,
             base_uid="ETG_COMMS_TPDO_MAP1",
             base_label="TxPDO Map 1",
             n_elements=15,
         )
         # TPDO Map
-        yield from self.__pdo_map_registers(
+        yield self.__create_pdo_map(
             idx=0x1A01,
             base_uid="ETG_COMMS_TPDO_MAP2",
             base_label="TxPDO Map 2",
             n_elements=15,
         )
         # TPDO Map
-        yield from self.__pdo_map_registers(
+        yield self.__create_pdo_map(
             idx=0x1A02,
             base_uid="ETG_COMMS_TPDO_MAP3",
             base_label="TxPDO Map 3",
@@ -419,8 +442,14 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
 
         """
         super()._append_missing_registers()
-        for register in self.__pdo_registers():
-            self._add_register_list(register)
+        # Initialize "subnode/axis 0"
+        subnode_0 = 0
+        if subnode_0 not in self.items:
+            self.items[subnode_0] = {}
+        for obj in self.__create_pdo_objects():
+            for register in obj.registers:
+                self._add_register_list(register)
+            self.items[subnode_0][obj.uid] = obj
         if self.part_number not in ["DEN-S-NET-E", "EVS-S-NET-E"]:
             return
         self.is_safe = True
