@@ -50,6 +50,14 @@ def test_load_firmware_no_slave_detected_error(mocker, read_config, ethercat_net
 
 
 @pytest.mark.ethercat
+def test_find_adapters():
+    """Test that find_adapters returns a list of EtherCATNetwork instances."""
+    adapters = EthercatNetwork.find_adapters()
+    assert isinstance(adapters, list)
+    assert len(adapters) > 0
+
+
+@pytest.mark.ethercat
 def test_wrong_interface_name_error(read_config, ethercat_network_teardown):  # noqa: ARG001
     with pytest.raises(ConnectionError):
         net = EthercatNetwork("not existing ifname")
