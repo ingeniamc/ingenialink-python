@@ -158,8 +158,16 @@ cmd = "python -I -m sphinx -b html docs _docs"
 
 # ----------------------------- Install wheel -----------------------------
 [tool.poe.tasks.install-wheel]
-cmd = """pip install --force-reinstall --no-deps --no-index --find-links dist/ ingenialink"""
+cmd = "pip install --force-reinstall --no-deps --no-index --find-links dist/ ingenialink"
 
 # ----------------------------- Run unit tests -----------------------------
 [tool.poe.tasks.tests]
-cmd = """python -I -m pytest tests --import-mode=importlib --cov={envsitepackagesdir}/ingenialink --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests"""
+cmd = "python -I -m pytest tests"
+
+# ----------------------------- Coverage combine -----------------------------
+[tool.poe.tasks.cov-combine]
+cmd = "python -I -m coverage combine"
+
+# ----------------------------- Coverage report -----------------------------
+[tool.poe.tasks.cov-report]
+cmd = "python -I -m coverage xml"

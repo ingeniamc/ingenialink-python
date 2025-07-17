@@ -95,6 +95,7 @@ def buildWheel(py_version) {
             poetry env use ${py_version}
             poetry sync --no-root --only build,dev
             poetry run poe build
+            poetry env remove
         """
     }
 }
@@ -113,7 +114,7 @@ def runTestHW(markers, setup_name, extra_args = "") {
                         activatePoetryEnv(version)
                         runPython("poetry sync --with dev,tests") // Remove all dependencies except poethepoet (importlib mode)
                         runPython("poetry run poe install-wheel")
-                        runPython("poetry run poe tests -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}")
+                        runPython("poetry run poe tests --import-mode=importlib --cov=.venv\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}")
 
                     } catch (err) {
                         unstable(message: "Tests failed")
@@ -211,18 +212,13 @@ pipeline {
                                         bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
                                     }
                                 }
-                                stage ('Setup Poetry environments') {
-                                    steps {
-                                        setupEnvironments()
-                                        activatePoetryEnv(DEFAULT_PYTHON_VERSION)
-                                    }
-                                }
                                 stage('Build wheels') {
                                     environment {
                                         SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
                                     }
                                     steps {
                                         script {
+                                            runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION)
                                             def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
                                                 buildWheel(version)
@@ -270,19 +266,22 @@ pipeline {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
-                                                activatePoetryEnv(version)
-                                                runPython("poetry install --with dev,tests")
-                                                runPython("poetry run poe install-wheel")
-                                                runPython("poetry run poe tests -- -m docker -o log_cli=True")
+                                                bat """
+                                                    cd ${DOCKER_TMP_PATH}
+                                                    poetry env use ${version}
+                                                    poetry install --with dev,tests
+                                                    poetry run poe install-wheel
+                                                    poetry run poe tests -- --import-mode=importlib --cov=.venv\\lib\\site-packages\\ingenialink --junitxml=pytest_reports\\junit-tests.xml --junit-prefix=tests -m docker -o log_cli=True
+                                                    poetry env remove
+                                                """
                                             }
                                         }
                                     }
                                     post {
                                         always {
-                                            bat "move .coverage .coverage_docker"
-                                            junit "pytest_reports\\*.xml"
-                                            // Delete the junit after publishing it so it not re-published on the next stage
-                                            bat "del /S /Q pytest_reports\\*.xml"
+                                            bat """
+                                                move ${DOCKER_TMP_PATH}\\.coverage .coverage_docker
+                                            """
                                             stash includes: '.coverage_docker', name: '.coverage_docker'
                                             script {
                                                 coverage_stashes.add(".coverage_docker")
@@ -333,7 +332,7 @@ pipeline {
                                                 activatePoetryEnv(version)
                                                 runPython("poetry install --with dev,tests")
                                                 runPython("poetry run poe install-wheel")
-                                                runPython("poetry run poe tests -- -m no_connection -o log_cli=True")
+                                                runPython("poetry run poe tests -- --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m no_connection -o log_cli=True")
                                             }
                                         }
                                     }
@@ -351,7 +350,7 @@ pipeline {
                                                 activatePoetryEnv(version)
                                                 runPython("poetry install --with dev,tests")
                                                 runPython("poetry run poe install-wheel")
-                                                runPython("poetry run poe tests -- -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP  -o log_cli=True")
+                                                runPython("poetry run poe tests -- --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP  -o log_cli=True")
                                             }
                                         }
                                     }
@@ -510,9 +509,6 @@ pipeline {
             }
         }
         stage('Publish coverage') {
-            options {
-                skipDefaultCheckout()
-            }
             agent {
                 docker {
                     label SW_NODE
@@ -522,22 +518,27 @@ pipeline {
             steps {
                 script {
                     def coverage_files = ""
-
                     for (coverage_stash in coverage_stashes) {
                         unstash coverage_stash
                         coverage_files += " " + coverage_stash
                     }
-                    // Archive coverage before combining it
-                    archiveArtifacts artifacts: '*'
-
-                    bat "py -3.9 -m pip install pytest==7.0.1 pytest-cov==2.12.1"
-                    bat "py -3.9 -m coverage combine ${coverage_files}"
-                    // Archive coverage combined
-                    archiveArtifacts artifacts: '*'
-                    bat "py -3.9 -m coverage xml --include='*/ingenialink/*'"
+                    for (stash_name in wheel_stashes) {
+                        unstash stash_name
+                    }
+                    bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
+                    runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION)
+                    bat """
+                        cd ${DOCKER_TMP_PATH}
+                        poetry env use ${PYTHON_VERSION_MAX}
+                        poetry install --with dev,tests
+                        poetry run poe cov-combine --${coverage_files}
+                        poetry run poe cov-report
+                        poetry env remove
+                        XCOPY coverage.xml ${env.WORKSPACE}
+                    """
+                    recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
+                    archiveArtifacts artifacts: '*.xml'
                 }
-                recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
-                archiveArtifacts artifacts: '*.xml'
             }
         }
     }
