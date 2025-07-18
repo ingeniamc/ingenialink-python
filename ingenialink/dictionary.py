@@ -134,7 +134,7 @@ class CanOpenObject:
         """Get the byte length of the object.
 
         Returns:
-            int: Byte length of the object.
+            int: byte length of the object.
         """
         return math.ceil(self.bit_length / 8)
 

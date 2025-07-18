@@ -390,6 +390,21 @@ class PDOMap:
         self.__map_register_index = index
 
     @property
+    def map_object(self) -> Optional["CanOpenObject"]:
+        """CanOpen object of the mapping register.
+
+        Returns:
+            CanOpen object of the mapping register.
+        """
+        return self.__map_object
+
+    @map_object.setter
+    def map_object(self, map_obj: "CanOpenObject") -> None:
+        """Set the CanOpen object of the mapping register."""
+        self.__map_object = map_obj
+        self.__map_register_index = map_obj.idx
+
+    @property
     def data_length_bits(self) -> int:
         """Length of the map in bits.
 
@@ -435,20 +450,23 @@ class PDOMap:
 
     @classmethod
     def from_pdo_value(
-        cls: type[PDO_MAP_TYPE], value: bytes, index: int, dictionary: "CanopenDictionary"
+        cls: type[PDO_MAP_TYPE],
+        value: bytes,
+        map_obj: "CanOpenObject",
+        dictionary: "CanopenDictionary",
     ) -> PDO_MAP_TYPE:
         """Create a PDOMap from the full pdo value (accessed via complete access).
 
         Args:
             value: Value of the pdo mapping in bytes.
-            index: Index of the mapping register.
+            map_obj: Mapping Canopen object.
             dictionary: Canopen dictionary to retrieve the registers.
 
         Returns:
             PDOMap instance.
         """
         pdo_map = cls()
-        pdo_map.map_register_index = index
+        pdo_map.map_object = map_obj
 
         # First element of 8 bits, indicates the number of elements in the mapping.
         n_elements = value[0]

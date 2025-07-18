@@ -7,7 +7,7 @@ with contextlib.suppress(ImportError):
     import pysoem
 import pytest
 
-from ingenialink.dictionary import Interface
+from ingenialink.dictionary import CanOpenObject, CanOpenObjectType, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
@@ -325,18 +325,42 @@ def create_pdo_maps(servo, rpdo_registers, tpdo_registers):
     return rpdo_map, tpdo_map
 
 
+@pytest.mark.parametrize("from_uid", [True, False])
 @pytest.mark.ethercat
-def test_read_rpdo_map_from_slave(servo: EthercatServo):
-    pdo_map = servo.read_rpdo_map_from_slave("ETG_COMMS_RPDO_MAP1", subnode=0)
+def test_read_rpdo_map_from_slave(servo: EthercatServo, from_uid: bool):
+    uid = "ETG_COMMS_RPDO_MAP1"
+    if from_uid:
+        pdo_map = servo.read_rpdo_map_from_slave(uid)
+    else:
+        obj = servo.dictionary.get_object(uid)
+        pdo_map = servo.read_rpdo_map_from_slave(obj)
+
     assert pdo_map.map_register_index == 0x1600
     assert isinstance(pdo_map, RPDOMap)
+    assert isinstance(pdo_map.map_object, CanOpenObject)
+    assert pdo_map.map_object.idx == 0x1600
+    assert pdo_map.map_object.object_type == CanOpenObjectType.RECORD
+    assert pdo_map.map_object.uid == uid
+    assert len(pdo_map.map_object.registers) == 16
 
 
+@pytest.mark.parametrize("from_uid", [True, False])
 @pytest.mark.ethercat
-def test_read_tpdo_map_from_slave(servo: EthercatServo):
-    pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1", subnode=0)
+def test_read_tpdo_map_from_slave(servo: EthercatServo, from_uid: bool):
+    uid = "ETG_COMMS_TPDO_MAP1"
+    if from_uid:
+        pdo_map = servo.read_tpdo_map_from_slave(uid)
+    else:
+        obj = servo.dictionary.get_object(uid)
+        pdo_map = servo.read_tpdo_map_from_slave(obj)
+
     assert pdo_map.map_register_index == 0x1A00
     assert isinstance(pdo_map, TPDOMap)
+    assert isinstance(pdo_map.map_object, CanOpenObject)
+    assert pdo_map.map_object.idx == 0x1A00
+    assert pdo_map.map_object.object_type == CanOpenObjectType.RECORD
+    assert pdo_map.map_object.uid == uid
+    assert len(pdo_map.map_object.registers) == 16
 
 
 def test_pdo_map_from_value(open_dictionary):
