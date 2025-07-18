@@ -136,7 +136,7 @@ def test_pdo_maps_equivalence():
 
 @pytest.mark.no_connection
 def test_read_dictionary_registers_multiaxis():
-    expected_num_registers_per_subnode = {0: 10, 1: 2, 2: 2}
+    expected_num_registers_per_subnode = {0: 106, 1: 2, 2: 2}
     dictionary_path = join_path(path_resources, "test_dict_ethercat_axis.xdf")
 
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
