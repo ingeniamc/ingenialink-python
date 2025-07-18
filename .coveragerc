@@ -9,14 +9,10 @@ omit = tests/*
 [paths]
 source =
     ingenialink
-    .tox/py39/Lib/site-packages/ingenialink
-    .tox/py310/Lib/site-packages/ingenialink
-    .tox/py311/Lib/site-packages/ingenialink
-    .tox/py312/Lib/site-packages/ingenialink
+    .venv/lib/site-packages/ingenialink
 
 ; Skip empty files
 [report]
 skip_empty = true
 omit =
-    */__init__.py
     */ingenialink/_version.py
