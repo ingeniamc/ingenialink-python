@@ -95,7 +95,6 @@ def buildWheel(py_version) {
             poetry env use ${py_version}
             poetry sync --no-root --only build,dev
             poetry run poe build
-            poetry env remove
         """
     }
 }
@@ -272,7 +271,6 @@ pipeline {
                                                     poetry install --with dev,tests
                                                     poetry run poe install-wheel
                                                     poetry run poe tests -- --import-mode=importlib --cov=.venv\\lib\\site-packages\\ingenialink --junitxml=pytest_reports\\junit-tests.xml --junit-prefix=tests -m docker -o log_cli=True
-                                                    poetry env remove
                                                 """
                                             }
                                         }
@@ -304,7 +302,7 @@ pipeline {
                             stages {
                                 stage ('Setup Poetry environments') {
                                     steps {
-                                        setupEnvironments(PYTHON_VERSION_MAX)
+                                        setupEnvironments(DEFAULT_PYTHON_VERSION)
                                         activatePoetryEnv(DEFAULT_PYTHON_VERSION)
                                     }
                                 }
@@ -535,7 +533,6 @@ pipeline {
                         poetry install --with dev,tests
                         poetry run poe cov-combine --${coverage_files}
                         poetry run poe cov-report
-                        poetry env remove
                         XCOPY coverage.xml ${env.WORKSPACE}
                     """
                     recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
