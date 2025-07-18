@@ -64,11 +64,10 @@ Use an environment with a certain Python version::
 
     poetry env use 3.12
 
-This command will start the poetry environment. If no Python environment exists, it will create one.
 
-To switch to Python 3.9 environment::
+Install all dependencies::
 
-    poetry env use 3.9
+    poetry install --all-groups
 
 
 Project Tasks - Poe The Poet plugin
