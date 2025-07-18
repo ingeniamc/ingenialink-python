@@ -56,7 +56,7 @@ def test_find_adapters(read_config):
     ifname = read_config["ethercat"]["ifname"]
     for adapter in EthercatNetwork.find_adapters():
         _, interface_guid, _ = adapter
-        interface_guid = f"\\Device\\NPF{interface_guid}"
+        interface_guid = f"\\Device\\NPF_{interface_guid}"
         if interface_guid == ifname:
             adapter_found = True
             break
