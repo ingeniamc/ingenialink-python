@@ -514,3 +514,22 @@ def get_adapters_addresses(
     for adapter_family in adapter_families:
         adapters.extend(_get_adapters_addresses_by_family(adapter_family, scan_flags))
     return adapters
+
+def get_adapter(ifname: str, adapter_family: AdapterFamily = AdapterFamily.UNSPEC, scan_flags: list[ScanFlags] | ScanFlags = [ScanFlags.INCLUDE_PREFIX, ScanFlags.INCLUDE_ALL_INTERFACES]) -> CyAdapter | None:
+    """Retrieves the address of a specific adapter by its name.
+
+    Args:
+        ifname: The name of the adapter to retrieve.
+            Should match the AdapterName field in the CyAdapter structure, ex:
+                AdapterName='{129BCE68-6859-4A78-B17E-6A80054E9F98}'
+        adapter_family: The address family to filter by (default is UNSPEC).
+        scan_flags: Flags to control the scanning behavior (default includes prefix).
+
+    Returns:
+        The adapter information or None if not found.
+    """
+    adapters = get_adapters_addresses(adapter_families=adapter_family, scan_flags=scan_flags)
+    for adapter in adapters:
+        if adapter.AdapterName == ifname:
+            return adapter
+    return None
