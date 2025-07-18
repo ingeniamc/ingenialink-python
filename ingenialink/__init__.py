@@ -29,6 +29,7 @@ except ModuleNotFoundError:
 
 
 __all__ = [
+    "__version__",
     "NetProt",
     "NetDevEvt",
     "NetState",
