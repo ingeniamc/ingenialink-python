@@ -1,11 +1,12 @@
 import atexit
 import os
+import re
 import threading
 import time
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
 import ingenialogger
 
@@ -214,6 +215,40 @@ class EthercatNetwork(Network):
 
         self._lock = threading.Lock()
         set_network_reference(network=self)
+
+    @staticmethod
+    def pysoem_available() -> bool:
+        """Check if pysoem is available.
+
+        Returns:
+            True if pysoem is available, False otherwise.
+        """
+        return pysoem is not None
+
+    @staticmethod
+    def find_adapters() -> list[tuple[int, str, str]]:
+        """Finds all available EtherCAT adapters.
+
+        Returns:
+            interface index, adapter name, interface guid.
+
+        Raises:
+            ImportError: If pysoem is not installed.
+        """  # noqa: DOC502
+        if not pysoem:
+            raise pysoem_import_error
+        adapters = []
+        for interface_index, adapter in enumerate(pysoem.find_adapters()):
+            interface_guid = re.search(r"\{[^}]+\}", adapter.name)
+            if interface_guid is None:
+                # If no GUID is found, skip this adapter
+                continue
+            adapters.append((
+                interface_index,
+                interface_guid.group(0),
+                cast("str", adapter.desc.decode("utf-8")),
+            ))
+        return adapters
 
     def update_sdo_timeout(self, sdo_read_timeout: int, sdo_write_timeout: int) -> None:
         """Update SDO timeouts for all the drives.
