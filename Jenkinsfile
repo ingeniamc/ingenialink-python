@@ -232,14 +232,20 @@ pipeline {
                                 }
                                 stage('Make a static type analysis') {
                                     steps {
-                                        runPython("poetry install --with type,dev")
-                                        runPython("poetry run poe type")
+                                        bat """
+                                            cd ${DOCKER_TMP_PATH}
+                                            poetry install --with type,dev
+                                            poetry run poe type
+                                        """
                                     }
                                 }
                                 stage('Check formatting') {
                                     steps {
-                                        runPython("poetry install --with format,dev")
-                                        runPython("poetry run poe format")
+                                        bat """
+                                            cd ${DOCKER_TMP_PATH}
+                                            poetry install --with format,dev
+                                            poetry run poe format
+                                        """
                                     }
                                 }
                                 stage('Archive artifacts') {
@@ -254,9 +260,13 @@ pipeline {
                                 }
                                 stage('Generate documentation') {
                                     steps {
-                                        runPython("poetry install --with docs,dev")
-                                        runPython("poetry run poe docs")
-                                        bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
+                                        bat """
+                                            cd ${DOCKER_TMP_PATH}
+                                            poetry install --with docs,dev
+                                            poetry run poe docs
+                                            "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
+                                            XCOPY docs.zip ${env.WORKSPACE}
+                                        """
                                         stash includes: 'docs.zip', name: 'docs'
                                     }
                                 }
