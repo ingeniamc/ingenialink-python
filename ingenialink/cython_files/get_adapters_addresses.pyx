@@ -23,7 +23,9 @@ from libc.stdlib cimport malloc, free
 import dataclasses
 import cython
 from libc.string cimport strlen
+from libc.stddef cimport wchar_t
 from libc.stdint cimport uint16_t, uint32_t, uint8_t, int32_t, uint64_t
+from cpython.unicode cimport PyUnicode_FromWideChar
 import logging
 
 _MAX_TRIES = 3
@@ -193,9 +195,7 @@ cdef _pwchar_to_str(WCHAR* wide_str, bint safe_parse=True):
     
     cdef int length = 0
     try:
-        while wide_str[length] != 0:
-            length += 1
-        return (<char *>wide_str)[:length * 2].decode('utf-16le')
+       return PyUnicode_FromWideChar(<wchar_t*>wide_str, -1)
     except Exception as e:
         if safe_parse:
             logger.warning(f"Exception in _pwchar_to_str: {e}")
