@@ -404,10 +404,10 @@ class PDOMap:
         self.__map_object = map_obj
         self.__map_register_index = map_obj.idx
 
-    def map_register_pdo_items(self) -> dict[CanopenRegister, Union[PDOMapItem, None]]:
+    def map_register_values(self) -> dict[CanopenRegister, Optional[int]]:
         """Returns a dictionary with the mapping of the register items.
 
-        Associates which pdo map will be assigned to which register.
+        Associates which pdo mapping value will have each map register
         Unused mapping registers will return as None.
 
         This method does not write the mapping to the slave,
@@ -419,22 +419,24 @@ class PDOMap:
                 The map_object must be set before calling this method.
 
         Returns:
-            dictionary with mapping register as keys and PDOMapItem or None as values.
+            dictionary with mapping register as keys and mapping value or None as values.
         """
         if self.map_object is None:
             raise ValueError("The map_object must be set.")
 
         items_iter = iter(self.items)
 
-        mapping: dict[CanopenRegister, Union[PDOMapItem, None]] = {}
+        mapping: dict[CanopenRegister, Optional[int]] = {}
 
         for map_register in self.map_object.registers:
             if map_register.subidx == 0:
-                # Skip the first register, it is used to store the number of items
+                # Used to store the number of items
+                mapping[map_register] = len(self.items)
                 continue
             try:
-                mapping[map_register] = next(items_iter)
+                mapping[map_register] = next(items_iter).register_mapping
             except StopIteration:
+                # Element of the pdo object mapping unused
                 mapping[map_register] = None
 
         return mapping

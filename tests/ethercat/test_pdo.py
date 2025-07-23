@@ -366,19 +366,22 @@ def test_read_tpdo_map_from_slave(servo: EthercatServo, from_uid: bool):
 def test_map_register_items(servo: EthercatServo):
     pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1")
 
-    pdo_map.add_registers([
-        servo.dictionary.get_register("CL_POS_FBK_VALUE"),
-        servo.dictionary.get_register("DRV_STATE_STATUS"),
-        servo.dictionary.get_register("CL_TOR_FBK_VALUE"),
-    ])
+    item1 = pdo_map.create_item(servo.dictionary.get_register("CL_POS_FBK_VALUE"))
+    item2 = pdo_map.create_item(servo.dictionary.get_register("DRV_STATE_STATUS"))
+    item3 = pdo_map.create_item(servo.dictionary.get_register("CL_TOR_FBK_VALUE"))
+
+    pdo_map.add_item(item1)
+    pdo_map.add_item(item2)
+    pdo_map.add_item(item3)
 
     assert {
-        map_register.identifier: pdo_item.register.identifier if pdo_item is not None else None
-        for map_register, pdo_item in pdo_map.map_register_pdo_items().items()
+        map_register.identifier: mapping_value
+        for map_register, mapping_value in pdo_map.map_register_values().items()
     } == {
-        "ETG_COMMS_TPDO_MAP1_1": "CL_POS_FBK_VALUE",
-        "ETG_COMMS_TPDO_MAP1_2": "DRV_STATE_STATUS",
-        "ETG_COMMS_TPDO_MAP1_3": "CL_TOR_FBK_VALUE",
+        "ETG_COMMS_TPDO_MAP1_TOTAL": 3,
+        "ETG_COMMS_TPDO_MAP1_1": item1.register_mapping,
+        "ETG_COMMS_TPDO_MAP1_2": item2.register_mapping,
+        "ETG_COMMS_TPDO_MAP1_3": item3.register_mapping,
         "ETG_COMMS_TPDO_MAP1_4": None,
         "ETG_COMMS_TPDO_MAP1_5": None,
         "ETG_COMMS_TPDO_MAP1_6": None,
