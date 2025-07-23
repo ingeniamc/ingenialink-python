@@ -82,7 +82,7 @@ def test_rpdo_item_wrong_cyclic(open_dictionary):
     with pytest.raises(ILError) as exc_info:
         RPDOMapItem(register)
     assert (
-        str(exc_info.value) == "Incorrect pdo access. "
+        str(exc_info.value) == "Incorrect pdo access for mapping register CL_POS_FBK_VALUE. "
         "It should be RegCyclicType.RX, "
         "RegCyclicType.SAFETY_OUTPUT, "
         "RegCyclicType.SAFETY_INPUT_OUTPUT. "
@@ -97,7 +97,7 @@ def test_tpdo_item_wrong_cyclic(open_dictionary):
     with pytest.raises(ILError) as exc_info:
         TPDOMapItem(register)
     assert (
-        str(exc_info.value) == "Incorrect pdo access. "
+        str(exc_info.value) == "Incorrect pdo access for mapping register CL_POS_SET_POINT_VALUE. "
         "It should be RegCyclicType.TX, "
         "RegCyclicType.SAFETY_INPUT, "
         "RegCyclicType.SAFETY_INPUT_OUTPUT. "
@@ -420,7 +420,9 @@ def test_pdo_map_from_value(open_dictionary):
 
     tpdo_value = tpdo_map.to_pdo_value()
 
-    rebuild_tpdo_map = TPDOMap.from_pdo_value(tpdo_value, open_dictionary)
+    rebuild_tpdo_map = TPDOMap.from_pdo_value(
+        tpdo_value, open_dictionary.get_object("ETG_COMMS_TPDO_MAP1"), open_dictionary
+    )
 
     for original, rebuild in zip(tpdo_map.items, rebuild_tpdo_map.items):
         if original.register.idx == 0:
