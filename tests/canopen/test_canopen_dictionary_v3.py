@@ -1,22 +1,18 @@
-from os.path import join as join_path
-
 import pytest
 
+import tests.resources.canopen
 from ingenialink import CanopenRegister
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.dictionary import CanopenDictionaryV3
 from ingenialink.dictionary import CanOpenObjectType, Interface, SubnodeType
 from ingenialink.exceptions import ILDictionaryParseError
 
-path_resources = "./tests/resources/canopen/"
-dict_can_v3 = "test_dict_can_v3.0.xdf"
-dict_can_v3_axis = "test_dict_can_v3.0_axis.xdf"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
 @pytest.mark.no_connection
 def test_read_dictionary():
-    dictionary_path = join_path(path_resources, dict_can_v3)
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     expected_device_attr = {
         "path": dictionary_path,
         "version": "3.0",
@@ -46,7 +42,7 @@ def test_read_dictionary_file_not_found():
 
 @pytest.mark.no_connection
 def test_read_dictionary_registers():
-    dictionary_path = join_path(path_resources, dict_can_v3)
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     expected_regs_per_subnode = {
         0: [
             "DRV_DIAG_ERROR_LAST_COM",
@@ -73,7 +69,7 @@ def test_read_dictionary_registers():
 @pytest.mark.no_connection
 def test_read_dictionary_registers_multiaxis():
     expected_num_registers_per_subnode = {0: 4, 1: 1, 2: 1}
-    dictionary_path = join_path(path_resources, dict_can_v3_axis)
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3_AXIS
 
     canopen_dict = CanopenDictionaryV3(dictionary_path)
     assert canopen_dict.subnodes == {
@@ -92,7 +88,7 @@ def test_read_dictionary_categories():
         "OTHERS",
         "IDENTIFICATION",
     ]
-    dictionary_path = join_path(path_resources, dict_can_v3)
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
 
     canopen_dict = CanopenDictionaryV3(dictionary_path)
 
@@ -105,7 +101,7 @@ def test_read_dictionary_errors():
         0x00003280,
         0x00002280,
     ]
-    dictionary_path = join_path(path_resources, dict_can_v3)
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
 
     canopen_dict = CanopenDictionaryV3(dictionary_path)
 
@@ -114,7 +110,7 @@ def test_read_dictionary_errors():
 
 @pytest.mark.no_connection
 def test_read_xdf_register():
-    dictionary_path = join_path(path_resources, dict_can_v3)
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     idx = 0x580F
     subidx = 0x00
     reg_id = "DRV_DIAG_ERROR_LAST_COM"
@@ -130,7 +126,7 @@ def test_read_xdf_register():
 
 @pytest.mark.no_connection
 def test_object():
-    dictionary_path = join_path(path_resources, dict_can_v3)
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     canopen_dict = CanopenDictionaryV3(dictionary_path)
     canopen_object = canopen_dict.get_object("CIA301_COMMS_RPDO1_MAP", 0)
     assert canopen_object.uid == "CIA301_COMMS_RPDO1_MAP"
@@ -147,7 +143,7 @@ def test_object():
 
 @pytest.mark.no_connection
 def test_object_not_exist():
-    dictionary_path = join_path(path_resources, dict_can_v3)
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     canopen_dict = CanopenDictionaryV3(dictionary_path)
     with pytest.raises(KeyError):
         canopen_dict.get_object("NOT_EXISTING_UID", 0)
@@ -155,7 +151,7 @@ def test_object_not_exist():
 
 @pytest.mark.no_connection
 def test_safety_pdo_not_implemented():
-    dictionary_path = join_path(path_resources, dict_can_v3)
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     canopen_dict = CanopenDictionaryV3(dictionary_path)
     with pytest.raises(NotImplementedError):
         canopen_dict.get_safety_rpdo("NOT_EXISTING_UID")
@@ -172,9 +168,14 @@ def test_wrong_dictionary():
 
 
 @pytest.mark.no_connection
-@pytest.mark.parametrize("dictionary_path", [dict_can_v3, dict_can_v3_axis])
+@pytest.mark.parametrize(
+    "dictionary_path",
+    [
+        tests.resources.canopen.TEST_DICT_CAN_V3,
+        tests.resources.canopen.TEST_DICT_CAN_V3_AXIS,
+    ],
+)
 def test_register_default_values(dictionary_path):
-    dictionary_path = join_path(path_resources, dictionary_path)
     expected_defaults_per_subnode = {
         0: {
             "DRV_DIAG_ERROR_LAST_COM": 0,
@@ -198,9 +199,14 @@ def test_register_default_values(dictionary_path):
 
 
 @pytest.mark.no_connection
-@pytest.mark.parametrize("dictionary_path", [dict_can_v3, dict_can_v3_axis])
+@pytest.mark.parametrize(
+    "dictionary_path",
+    [
+        tests.resources.canopen.TEST_DICT_CAN_V3,
+        tests.resources.canopen.TEST_DICT_CAN_V3_AXIS,
+    ],
+)
 def test_register_description(dictionary_path):
-    dictionary_path = join_path(path_resources, dictionary_path)
     expected_description_per_subnode = {
         0: {
             "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
@@ -232,7 +238,7 @@ def test_register_description(dictionary_path):
 
 @pytest.mark.no_connection
 def test_register_bitfields():
-    dictionary_path = join_path(path_resources, dict_can_v3)
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     canopen_dict = CanopenDictionaryV3(dictionary_path)
 
     for registers in canopen_dict._registers.values():
@@ -253,7 +259,7 @@ def test_register_bitfields():
 
 @pytest.mark.no_connection
 def test_register_is_node_id_dependent():
-    dictionary_path = join_path(path_resources, dict_can_v3)
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     canopen_dict = CanopenDictionaryV3(dictionary_path)
     assert canopen_dict.registers(0)["CIA301_COMMS_RPDO1_1"].is_node_id_dependent
     assert not canopen_dict.registers(0)["CIA301_COMMS_RPDO1_2"].is_node_id_dependent

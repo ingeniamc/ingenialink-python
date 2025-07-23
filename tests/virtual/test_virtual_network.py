@@ -3,13 +3,12 @@ import random
 
 import pytest
 
+import tests.resources.ethercat
 from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.exceptions import ILNACKError
 from ingenialink.network import NetState
 from virtual_drive import resources as virtual_drive_resources
 from virtual_drive.core import VirtualDrive
-
-TESTS_RESOURCES_FOLDER = "tests/resources/"
 
 
 @pytest.mark.no_connection
@@ -66,7 +65,7 @@ def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict):
 
 @pytest.mark.no_connection
 def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):
-    dictionary = os.path.join(TESTS_RESOURCES_FOLDER, "ethercat/test_dict_ethercat_old_dist.xdf")
+    dictionary = tests.resources.ethercat.TEST_DICT_ETHERCAT_OLD_DIST
     _, net, servo = virtual_drive_custom_dict(dictionary)
     assert servo is not None and net is not None
     with pytest.raises(ILNACKError):
