@@ -7,7 +7,7 @@ with contextlib.suppress(ImportError):
     import pysoem
 import pytest
 
-from ingenialink.dictionary import Interface
+from ingenialink.dictionary import CanOpenObject, CanOpenObjectType, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
@@ -82,7 +82,7 @@ def test_rpdo_item_wrong_cyclic(open_dictionary):
     with pytest.raises(ILError) as exc_info:
         RPDOMapItem(register)
     assert (
-        str(exc_info.value) == "Incorrect pdo access. "
+        str(exc_info.value) == "Incorrect pdo access for mapping register CL_POS_FBK_VALUE. "
         "It should be RegCyclicType.RX, "
         "RegCyclicType.SAFETY_OUTPUT, "
         "RegCyclicType.SAFETY_INPUT_OUTPUT. "
@@ -97,7 +97,7 @@ def test_tpdo_item_wrong_cyclic(open_dictionary):
     with pytest.raises(ILError) as exc_info:
         TPDOMapItem(register)
     assert (
-        str(exc_info.value) == "Incorrect pdo access. "
+        str(exc_info.value) == "Incorrect pdo access for mapping register CL_POS_SET_POINT_VALUE. "
         "It should be RegCyclicType.TX, "
         "RegCyclicType.SAFETY_INPUT, "
         "RegCyclicType.SAFETY_INPUT_OUTPUT. "
@@ -325,18 +325,76 @@ def create_pdo_maps(servo, rpdo_registers, tpdo_registers):
     return rpdo_map, tpdo_map
 
 
+@pytest.mark.parametrize("from_uid", [True, False])
 @pytest.mark.ethercat
-def test_read_rpdo_map_from_slave(servo: EthercatServo):
-    pdo_map = servo.read_rpdo_map_from_slave("ETG_COMMS_RPDO_MAP1_TOTAL", subnode=0)
+def test_read_rpdo_map_from_slave(servo: EthercatServo, from_uid: bool):
+    uid = "ETG_COMMS_RPDO_MAP1"
+    if from_uid:
+        pdo_map = servo.read_rpdo_map_from_slave(uid)
+    else:
+        obj = servo.dictionary.get_object(uid)
+        pdo_map = servo.read_rpdo_map_from_slave(obj)
+
     assert pdo_map.map_register_index == 0x1600
     assert isinstance(pdo_map, RPDOMap)
+    assert isinstance(pdo_map.map_object, CanOpenObject)
+    assert pdo_map.map_object.idx == 0x1600
+    assert pdo_map.map_object.object_type == CanOpenObjectType.RECORD
+    assert pdo_map.map_object.uid == uid
+    assert len(pdo_map.map_object.registers) == 16
 
 
+@pytest.mark.parametrize("from_uid", [True, False])
 @pytest.mark.ethercat
-def test_read_tpdo_map_from_slave(servo: EthercatServo):
-    pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1_TOTAL", subnode=0)
+def test_read_tpdo_map_from_slave(servo: EthercatServo, from_uid: bool):
+    uid = "ETG_COMMS_TPDO_MAP1"
+    if from_uid:
+        pdo_map = servo.read_tpdo_map_from_slave(uid)
+    else:
+        obj = servo.dictionary.get_object(uid)
+        pdo_map = servo.read_tpdo_map_from_slave(obj)
+
     assert pdo_map.map_register_index == 0x1A00
     assert isinstance(pdo_map, TPDOMap)
+    assert isinstance(pdo_map.map_object, CanOpenObject)
+    assert pdo_map.map_object.idx == 0x1A00
+    assert pdo_map.map_object.object_type == CanOpenObjectType.RECORD
+    assert pdo_map.map_object.uid == uid
+    assert len(pdo_map.map_object.registers) == 16
+
+
+def test_map_register_items(servo: EthercatServo):
+    pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1")
+
+    item1 = pdo_map.create_item(servo.dictionary.get_register("CL_POS_FBK_VALUE"))
+    item2 = pdo_map.create_item(servo.dictionary.get_register("DRV_STATE_STATUS"))
+    item3 = pdo_map.create_item(servo.dictionary.get_register("CL_TOR_FBK_VALUE"))
+
+    pdo_map.add_item(item1)
+    pdo_map.add_item(item2)
+    pdo_map.add_item(item3)
+
+    assert {
+        map_register.identifier: mapping_value
+        for map_register, mapping_value in pdo_map.map_register_values().items()
+    } == {
+        "ETG_COMMS_TPDO_MAP1_TOTAL": 3,
+        "ETG_COMMS_TPDO_MAP1_1": item1.register_mapping,
+        "ETG_COMMS_TPDO_MAP1_2": item2.register_mapping,
+        "ETG_COMMS_TPDO_MAP1_3": item3.register_mapping,
+        "ETG_COMMS_TPDO_MAP1_4": None,
+        "ETG_COMMS_TPDO_MAP1_5": None,
+        "ETG_COMMS_TPDO_MAP1_6": None,
+        "ETG_COMMS_TPDO_MAP1_7": None,
+        "ETG_COMMS_TPDO_MAP1_8": None,
+        "ETG_COMMS_TPDO_MAP1_9": None,
+        "ETG_COMMS_TPDO_MAP1_10": None,
+        "ETG_COMMS_TPDO_MAP1_11": None,
+        "ETG_COMMS_TPDO_MAP1_12": None,
+        "ETG_COMMS_TPDO_MAP1_13": None,
+        "ETG_COMMS_TPDO_MAP1_14": None,
+        "ETG_COMMS_TPDO_MAP1_15": None,
+    }
 
 
 def test_pdo_map_from_value(open_dictionary):
@@ -365,7 +423,9 @@ def test_pdo_map_from_value(open_dictionary):
 
     tpdo_value = tpdo_map.to_pdo_value()
 
-    rebuild_tpdo_map = TPDOMap.from_pdo_value(tpdo_value, open_dictionary)
+    rebuild_tpdo_map = TPDOMap.from_pdo_value(
+        tpdo_value, open_dictionary.get_object("ETG_COMMS_TPDO_MAP1"), open_dictionary
+    )
 
     for original, rebuild in zip(tpdo_map.items, rebuild_tpdo_map.items):
         if original.register.idx == 0:
