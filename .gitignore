@@ -52,3 +52,6 @@ temp/*
 
 # Version
 /ingenialink/_version.py
+
+# Environment
+/.env

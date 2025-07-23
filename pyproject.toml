@@ -35,6 +35,19 @@ dependencies = [
     "multiping==1.1.2",
 ]
 
+[tool.poetry]
+version = "7.4.3"  # base version
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
+[[tool.poetry.source]]
+name = "ingenia"
+url = "http://pypi.ingenia/simple"
+priority = "supplemental"
+
+
 [build-system]
 requires = ["setuptools==75.6.0", "setuptools_scm[toml]>=8", "wheel==0.42.0", "Cython==3.0.11"]
 build-backend = "setuptools.build_meta"
@@ -53,3 +66,108 @@ include = ["ingenialink", "virtual_drive"]
 [tool.setuptools.package-data]
 ingenialink = ["py.typed", "*.pyd"]
 virtual_drive = ["py.typed", "resources/*"]
+
+[tool.poetry.group.dev]
+optional = true
+[tool.poetry.group.dev.dependencies]
+poethepoet = {extras = ["poetry-plugin"], version = "^0.35.0"}
+
+[tool.poetry.group.build]
+optional = true
+[tool.poetry.group.build.dependencies]
+twine = "==6.1.0"
+
+[tool.poetry.group.format]
+optional = true
+[tool.poetry.group.format.dependencies]
+ruff = "==0.9.2"
+
+[tool.poetry.group.type]
+optional = true
+[tool.poetry.group.type.dependencies]
+mypy = "==1.10.0"
+
+[tool.poetry.group.docs]
+optional = true
+[tool.poetry.group.docs.dependencies]
+sphinx = "==7.3.7"
+sphinx-rtd-theme = "==2.0.0"
+sphinxcontrib-bibtex = "==2.6.2"
+nbsphinx = "==0.9.4"
+m2r2 = "==0.3.4"
+jinja2 = "==3.1.4"
+
+[tool.poetry.group.tests]
+optional = true
+[tool.poetry.group.tests.dependencies]
+pytest = "==8.4.1"
+pytest-env = "==1.1.5"
+pytest-cov = "==2.12.1"
+pytest-mock = "==3.6.1"
+pytest-console-scripts = "==1.4.1"
+twisted = "==24.11.0"
+summit-testing-framework = "==0.1.4+pr30b62"
+
+# -----------------------------------------------------------------------
+#                                   TASKS
+# -----------------------------------------------------------------------
+
+# ----------------------------- Build wheel -----------------------------
+[tool.poe.tasks.build]
+help = "Build wheels"
+sequence = [
+    { cmd = "poetry build"},
+    { cmd = "twine check dist/*"}
+]
+
+# ----------------------------- Ruff format -----------------------------
+[tool.poe.tasks.ruff-format-check]
+help = "Format check with ruff"
+cmd = "ruff format --check ingenialink tests virtual_drive"
+
+[tool.poe.tasks.ruff-check]
+help = "Check with ruff"
+cmd = "ruff check ingenialink tests virtual_drive"
+
+[tool.poe.tasks.format]
+help     = "Check format"
+sequence = ["ruff-format-check", "ruff-check"]
+
+# ----------------------------- Ruff reformat -----------------------------
+[tool.poe.tasks.ruff-format]
+help = "Format files with ruff"
+cmd = "ruff format ingenialink tests virtual_drive"
+
+[tool.poe.tasks.ruff-check-fix]
+help = "Fix lint errors"
+cmd = "ruff check --fix ingenialink tests virtual_drive"
+
+[tool.poe.tasks.reformat]
+help     = "Reformat files and fix lint errors"
+sequence = ["ruff-format", "ruff-check-fix"]
+
+# ----------------------------- Mypy -----------------------------
+[tool.poe.tasks.type]
+help = "Run type checks"
+cmd = "mypy ingenialink virtual_drive examples"
+
+# ----------------------------- Documentation -----------------------------
+[tool.poe.tasks.docs]
+help = "Build documentation"
+cmd = "python -I -m sphinx -b html docs _docs"
+
+# ----------------------------- Install wheel -----------------------------
+[tool.poe.tasks.install-wheel]
+cmd = "pip install --force-reinstall --no-deps --no-index --find-links dist/ ingenialink"
+
+# ----------------------------- Run unit tests -----------------------------
+[tool.poe.tasks.tests]
+cmd = "python -I -m pytest tests"
+
+# ----------------------------- Coverage combine -----------------------------
+[tool.poe.tasks.cov-combine]
+cmd = "python -I -m coverage combine"
+
+# ----------------------------- Coverage report -----------------------------
+[tool.poe.tasks.cov-report]
+cmd = "python -I -m coverage xml"

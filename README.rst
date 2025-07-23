@@ -53,8 +53,43 @@ simple usage examples, the API docs, etc.
 .. _documentation: https://distext.ingeniamc.com/doc/ingenialink-python/latest/
 
 
-Run PyTest
-----------
+Virtual environment management with Poetry
+==========================================
+
+Install poetry::
+
+    pip install poetry
+
+Use an environment with a certain Python version::
+
+    poetry env use 3.12
+
+
+Install all dependencies::
+
+    poetry install --all-groups
+
+
+Project Tasks - Poe The Poet plugin
+===================================
+
+To run the tasks use ``poe``. For example, to run the format task::
+
+    poetry poe format
+
+Any extra CLI arguments will be appended. For example, to indicate a certain test for pytest::
+
+    poetry poe tests -k test_servo_fixture.py
+
+Build the module
+================
+
+Activate poetry environment and run the following::
+
+    poetry poe build
+
+Run tests
+=========
 
 Create *tests/setups/tests_setup.py* file with configuration file.
 
@@ -85,6 +120,7 @@ For more information, check *summit-testing-framework* documentation.
 Run tests selecting the markers that you want and are appropriate for your setup.
 Beware that some tests may not be appropiate for the setup that you have and may fail.
 
-.. code-block:: bash
-   
-   tox -e py39 -- -m soem
+Run the tests::
+
+    poetry poe tests
+
