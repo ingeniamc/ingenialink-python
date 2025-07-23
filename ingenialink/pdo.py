@@ -89,7 +89,7 @@ class PDOMapItem:
             formatted_accepted = ", ".join([str(cyclic) for cyclic in self.ACCEPTED_CYCLICS])
 
             raise ILError(
-                f"Incorrect pdo access. "
+                f"Incorrect pdo access for mapping register {self.register.identifier}. "
                 f"It should be {formatted_accepted}."
                 f" obtained: {self.register.pdo_access}"
             )
@@ -403,6 +403,41 @@ class PDOMap:
         """Set the CanOpen object of the mapping register."""
         self.__map_object = map_obj
         self.__map_register_index = map_obj.idx
+
+    def map_register_pdo_items(self) -> dict[CanopenRegister, Union[PDOMapItem, None]]:
+        """Returns a dictionary with the mapping of the register items.
+
+        Associates which pdo map will be assigned to which register.
+        Unused mapping registers will return as None.
+
+        This method does not write the mapping to the slave,
+        or express what the mapping on the slave should be.
+        Use PDOMap.write_to_slave method instead
+
+        Raises:
+            ValueError: If the map_object is None.
+                The map_object must be set before calling this method.
+
+        Returns:
+            dictionary with mapping register as keys and PDOMapItem or None as values.
+        """
+        if self.map_object is None:
+            raise ValueError("The map_object must be set.")
+
+        items_iter = iter(self.items)
+
+        mapping: dict[CanopenRegister, Union[PDOMapItem, None]] = {}
+
+        for map_register in self.map_object.registers:
+            if map_register.subidx == 0:
+                # Skip the first register, it is used to store the number of items
+                continue
+            try:
+                mapping[map_register] = next(items_iter)
+            except StopIteration:
+                mapping[map_register] = None
+
+        return mapping
 
     @property
     def data_length_bits(self) -> int:

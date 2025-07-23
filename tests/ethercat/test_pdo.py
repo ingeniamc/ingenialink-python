@@ -363,6 +363,37 @@ def test_read_tpdo_map_from_slave(servo: EthercatServo, from_uid: bool):
     assert len(pdo_map.map_object.registers) == 16
 
 
+def test_map_register_items(servo: EthercatServo):
+    pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1")
+
+    pdo_map.add_registers([
+        servo.dictionary.get_register("CL_POS_FBK_VALUE"),
+        servo.dictionary.get_register("DRV_STATE_STATUS"),
+        servo.dictionary.get_register("CL_TOR_FBK_VALUE"),
+    ])
+
+    assert {
+        map_register.identifier: pdo_item.register.identifier if pdo_item is not None else None
+        for map_register, pdo_item in pdo_map.map_register_pdo_items().items()
+    } == {
+        "ETG_COMMS_TPDO_MAP1_1": "CL_POS_FBK_VALUE",
+        "ETG_COMMS_TPDO_MAP1_2": "DRV_STATE_STATUS",
+        "ETG_COMMS_TPDO_MAP1_3": "CL_TOR_FBK_VALUE",
+        "ETG_COMMS_TPDO_MAP1_4": None,
+        "ETG_COMMS_TPDO_MAP1_5": None,
+        "ETG_COMMS_TPDO_MAP1_6": None,
+        "ETG_COMMS_TPDO_MAP1_7": None,
+        "ETG_COMMS_TPDO_MAP1_8": None,
+        "ETG_COMMS_TPDO_MAP1_9": None,
+        "ETG_COMMS_TPDO_MAP1_10": None,
+        "ETG_COMMS_TPDO_MAP1_11": None,
+        "ETG_COMMS_TPDO_MAP1_12": None,
+        "ETG_COMMS_TPDO_MAP1_13": None,
+        "ETG_COMMS_TPDO_MAP1_14": None,
+        "ETG_COMMS_TPDO_MAP1_15": None,
+    }
+
+
 def test_pdo_map_from_value(open_dictionary):
     tpdo_map = TPDOMap()
 

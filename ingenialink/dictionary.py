@@ -108,6 +108,11 @@ class CanOpenObject:
     object_type: CanOpenObjectType
     registers: list[CanopenRegister]
 
+    def __post_init__(self) -> None:
+        """Post-initialization method."""
+        # Ensure registers are sorted by subindex
+        self.registers = sorted(self.registers, key=lambda obj: obj.subidx)
+
     def __iter__(self) -> Iterator[CanopenRegister]:
         """Iterator operator.
 
