@@ -1,9 +1,8 @@
-from pathlib import Path
-
 import pytest
 
 from ingenialink.dictionary import Interface, SubnodeType
 from ingenialink.ethernet.dictionary import EthernetDictionaryV3
+from virtual_drive import resources as virtual_drive_resources
 
 SINGLE_AXIS_SUBNODES = {
     0: SubnodeType.COMMUNICATION,
@@ -11,15 +10,10 @@ SINGLE_AXIS_SUBNODES = {
 }
 
 
-@pytest.fixture(scope="session")
-def virtual_dictionary_v3(virtual_drive_resources_folder: str) -> Path:
-    return Path(virtual_drive_resources_folder) / "virtual_drive_v3.0.xdf"
-
-
 @pytest.mark.no_connection
-def test_read_dictionary(virtual_dictionary_v3):
+def test_read_dictionary():
     expected_device_attr = {
-        "path": virtual_dictionary_v3.as_posix(),
+        "path": virtual_drive_resources.VIRTUAL_DRIVE_V3_XDF,
         "version": "3.0",
         "firmware_version": "0.1.0",
         "product_code": 000000,
@@ -31,7 +25,7 @@ def test_read_dictionary(virtual_dictionary_v3):
         "image": "image-text",
     }
 
-    virtual_dict = EthernetDictionaryV3(virtual_dictionary_v3.as_posix())
+    virtual_dict = EthernetDictionaryV3(virtual_drive_resources.VIRTUAL_DRIVE_V3_XDF)
 
     for attr, value in expected_device_attr.items():
         assert getattr(virtual_dict, attr) == value
