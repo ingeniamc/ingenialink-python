@@ -355,9 +355,6 @@ class EthercatServo(PDOServo):
 
     @override
     def generate_pdo_outputs(self) -> None:
-        output = self._process_rpdo()
-        if output is None:
-            return
         self.__slave.output = self._process_rpdo()
 
     def set_pdo_watchdog_time(self, timeout: float) -> None:
