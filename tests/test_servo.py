@@ -13,6 +13,7 @@ from summit_testing_framework.setups.specifiers import (
     RackServiceConfigSpecifier,
 )
 
+import tests.resources
 from ingenialink import RegAccess
 from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.dictionary import Interface
@@ -27,6 +28,7 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState
+from virtual_drive import resources as virtual_drive_resources
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -226,12 +228,10 @@ def test_load_configuration(servo, net):
 
 
 @pytest.mark.no_connection
-def test_load_configuration_strict(
-    mocker, virtual_drive_custom_dict, virtual_drive_resources_folder
-):  # noqa: F811
-    dictionary = os.path.join(virtual_drive_resources_folder, "virtual_drive.xdf")
+def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
+    dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, _, servo = virtual_drive_custom_dict(dictionary)
-    test_file = "./tests/resources/test_config_file.xcf"
+    test_file = tests.resources.TEST_CONFIG_FILE
     mocker.patch("ingenialink.servo.Servo.write", side_effect=ILError("Error writing"))
     with pytest.raises(ILError) as exc_info:
         servo.load_configuration(test_file, strict=True)
@@ -587,11 +587,11 @@ def test_disturbance_overflow(servo):
 
 
 @pytest.mark.no_connection
-def test_subscribe_register_updates(virtual_drive_custom_dict, virtual_drive_resources_folder):  # noqa: F811
+def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
     register_update_callback = RegisterUpdateTest()
 
-    dictionary = os.path.join(virtual_drive_resources_folder, "virtual_drive.xdf")
+    dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, _, servo = virtual_drive_custom_dict(dictionary)
     servo.register_update_subscribe(register_update_callback.register_update_test)
 

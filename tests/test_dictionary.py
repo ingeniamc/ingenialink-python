@@ -1,4 +1,3 @@
-import os
 import tempfile
 from os.path import join as join_path
 from xml.dom import minidom
@@ -6,6 +5,8 @@ from xml.etree import ElementTree
 
 import pytest
 
+import tests.resources.canopen
+import virtual_drive.resources
 from ingenialink.canopen.dictionary import CanopenDictionaryV2, CanopenDictionaryV3
 from ingenialink.dictionary import (
     DictionaryDescriptor,
@@ -20,16 +21,13 @@ from ingenialink.ethernet.dictionary import (
 )
 from ingenialink.servo import DictionaryFactory
 
-PATH_RESOURCE = "./tests/resources/"
-PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
-
 
 @pytest.mark.no_connection
 @pytest.mark.parametrize(
     "dict_path, interface, fw_version, product_code, part_number, revision_number",
     [
         (
-            f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf",
+            tests.resources.canopen.TEST_DICT_CAN_V3,
             Interface.CAN,
             "2.4.1",
             61939713,
@@ -37,7 +35,7 @@ PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
             196617,
         ),
         (
-            f"{PATH_RESOURCE}comkit/com-kit.xdf",
+            tests.resources.comkit.COM_KIT_DICT,
             Interface.ETH,
             "1.4.7",
             123456789,
@@ -45,7 +43,7 @@ PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
             12345,
         ),
         (
-            f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf",
+            tests.resources.ethercat.TEST_DICT_ETHERCAT,
             Interface.ECAT,
             "2.0.1",
             57745409,
@@ -53,7 +51,7 @@ PATH_TO_DICTIONARY = "./virtual_drive/resources/virtual_drive.xdf"
             196635,
         ),
         (
-            f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf",
+            tests.resources.ethercat.TEST_DICT_ETHERCAT,
             Interface.ETH,
             "2.0.1",
             57745409,
@@ -78,11 +76,11 @@ def test_dictionary_description(
 @pytest.mark.parametrize(
     "dict_path, interface, raises",
     [
-        (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.ECAT, ILDictionaryParseError),
-        (f"{PATH_RESOURCE}canopen/test_dict_can.xdf", Interface.ECAT, ILDictionaryParseError),
-        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.CAN, ILDictionaryParseError),
-        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.CAN, ILDictionaryParseError),
-        (f"{PATH_RESOURCE}test_no_dict.xdf", Interface.ECAT, FileNotFoundError),
+        (tests.resources.canopen.TEST_DICT_CAN_V3, Interface.ECAT, ILDictionaryParseError),
+        (tests.resources.canopen.TEST_DICT_CAN, Interface.ECAT, ILDictionaryParseError),
+        (tests.resources.TEST_DICT_ECAT_EOE_v3, Interface.CAN, ILDictionaryParseError),
+        (tests.resources.ethercat.TEST_DICT_ETHERCAT, Interface.CAN, ILDictionaryParseError),
+        ("/invented/path/test_no_dict.xdf", Interface.ECAT, FileNotFoundError),
     ],
 )
 def test_dictionary_description_fail(dict_path, interface, raises):
@@ -93,8 +91,8 @@ def test_dictionary_description_fail(dict_path, interface, raises):
 @pytest.mark.parametrize(
     "dictionary_class, dictionary_path",
     [
-        (CanopenDictionaryV2, f"{PATH_RESOURCE}canopen/test_dict_can.xdf"),
-        (EthernetDictionaryV2, f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf"),
+        (CanopenDictionaryV2, tests.resources.canopen.TEST_DICT_CAN),
+        (EthernetDictionaryV2, tests.resources.ethernet.TEST_DICT_ETHERNET),
     ],
 )
 @pytest.mark.no_connection
@@ -106,8 +104,8 @@ def test_dictionary_v2_image(dictionary_class, dictionary_path):
 @pytest.mark.parametrize(
     "dictionary_class, dictionary_path",
     [
-        (CanopenDictionaryV2, f"{PATH_RESOURCE}canopen/test_dict_can.xdf"),
-        (EthernetDictionaryV2, f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf"),
+        (CanopenDictionaryV2, tests.resources.canopen.TEST_DICT_CAN),
+        (EthernetDictionaryV2, tests.resources.ethernet.TEST_DICT_ETHERNET),
     ],
 )
 @pytest.mark.no_connection
@@ -119,11 +117,12 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
     xml_str = minidom.parseString(ElementTree.tostring(root)).toprettyxml(
         indent="  ", newl="", encoding="UTF-8"
     )
-    temp_file = join_path(PATH_RESOURCE, "temp.xdf")
-    with open(temp_file, "wb") as merged_file:
-        merged_file.write(xml_str)
-    dictionary = dictionary_class(temp_file)
-    os.remove(temp_file)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        temp_file = join_path(tmp_dir, "temp.xdf")
+        with open(temp_file, "wb") as merged_file:
+            merged_file.write(xml_str)
+        dictionary = dictionary_class(temp_file)
+
     assert dictionary.image is None
 
 
@@ -131,15 +130,15 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
 @pytest.mark.parametrize(
     "dict_path, interface, dict_class",
     [
-        (f"{PATH_RESOURCE}canopen/test_dict_can.xdf", Interface.CAN, CanopenDictionaryV2),
-        (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.CAN, CanopenDictionaryV3),
-        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.ECAT, EthercatDictionaryV2),
-        (f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf", Interface.ETH, EthernetDictionaryV2),
-        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.EoE, EthernetDictionaryV2),
-        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.ECAT, EthercatDictionaryV3),
-        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.EoE, EoEDictionaryV3),
-        (f"{PATH_RESOURCE}test_dict_ecat_eoe_safe_v3.0.xdf", Interface.ECAT, EthercatDictionaryV3),
-        (f"{PATH_RESOURCE}test_dict_ecat_eoe_safe_v3.0.xdf", Interface.EoE, EoEDictionaryV3),
+        (tests.resources.canopen.TEST_DICT_CAN, Interface.CAN, CanopenDictionaryV2),
+        (tests.resources.canopen.TEST_DICT_CAN_V3, Interface.CAN, CanopenDictionaryV3),
+        (tests.resources.ethercat.TEST_DICT_ETHERCAT, Interface.ECAT, EthercatDictionaryV2),
+        (tests.resources.ethernet.TEST_DICT_ETHERNET, Interface.ETH, EthernetDictionaryV2),
+        (tests.resources.ethercat.TEST_DICT_ETHERCAT, Interface.EoE, EthernetDictionaryV2),
+        (tests.resources.TEST_DICT_ECAT_EOE_v3, Interface.ECAT, EthercatDictionaryV3),
+        (tests.resources.TEST_DICT_ECAT_EOE_v3, Interface.EoE, EoEDictionaryV3),
+        (tests.resources.TEST_DICT_ECAT_EOE_SAFE_v3, Interface.ECAT, EthercatDictionaryV3),
+        (tests.resources.TEST_DICT_ECAT_EOE_SAFE_v3, Interface.EoE, EoEDictionaryV3),
     ],
 )
 def test_dictionary_factory(dict_path, interface, dict_class):
@@ -151,13 +150,13 @@ def test_dictionary_factory(dict_path, interface, dict_class):
 @pytest.mark.parametrize(
     "dict_path, interface, raises",
     [
-        (f"{PATH_RESOURCE}canopen/test_dict_can.xdf", Interface.ETH, ILDictionaryParseError),
-        (f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf", Interface.ECAT, ILDictionaryParseError),
-        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.CAN, ILDictionaryParseError),
-        (f"{PATH_RESOURCE}ethernet/test_dict_eth.xdf", Interface.CAN, ILDictionaryParseError),
-        (f"{PATH_RESOURCE}ethercat/test_dict_ethercat.xdf", Interface.CAN, ILDictionaryParseError),
-        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.ETH, ILDictionaryParseError),
-        (f"{PATH_RESOURCE}test_dict_ecat_eoe_v3.0.xdf", Interface.CAN, ILDictionaryParseError),
+        (tests.resources.canopen.TEST_DICT_CAN, Interface.ETH, ILDictionaryParseError),
+        (tests.resources.canopen.TEST_DICT_CAN_V3, Interface.ECAT, ILDictionaryParseError),
+        (tests.resources.ethercat.TEST_DICT_ETHERCAT, Interface.CAN, ILDictionaryParseError),
+        (tests.resources.ethernet.TEST_DICT_ETHERNET, Interface.CAN, ILDictionaryParseError),
+        (tests.resources.ethercat.TEST_DICT_ETHERCAT, Interface.CAN, ILDictionaryParseError),
+        (tests.resources.TEST_DICT_ECAT_EOE_v3, Interface.ETH, ILDictionaryParseError),
+        (tests.resources.TEST_DICT_ECAT_EOE_v3, Interface.CAN, ILDictionaryParseError),
     ],
 )
 def test_dictionary_interface_mismatch(dict_path, interface, raises):
@@ -167,8 +166,8 @@ def test_dictionary_interface_mismatch(dict_path, interface, raises):
 
 @pytest.mark.no_connection
 def test_merge_dictionaries_registers():
-    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
-    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    coco_dict_path = tests.resources.comkit.COM_KIT_DICT
+    moco_dict_path = tests.resources.comkit.CORE_DICT
     coco_dict = EthernetDictionaryV2(coco_dict_path)
     moco_dict = EthernetDictionaryV2(moco_dict_path)
     coco_subnode_0_num_regs = len(coco_dict.registers(0))
@@ -188,8 +187,8 @@ def test_merge_dictionaries_registers():
 
 @pytest.mark.no_connection
 def test_merge_dictionaries_errors():
-    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
-    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    coco_dict_path = tests.resources.comkit.COM_KIT_DICT
+    moco_dict_path = tests.resources.comkit.CORE_DICT
     coco_dict = EthernetDictionaryV2(coco_dict_path)
     moco_dict = EthernetDictionaryV2(moco_dict_path)
     coco_num_errors = len(coco_dict.errors)
@@ -203,8 +202,8 @@ def test_merge_dictionaries_errors():
 
 @pytest.mark.no_connection
 def test_merge_dictionaries_attributes():
-    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
-    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    coco_dict_path = tests.resources.comkit.COM_KIT_DICT
+    moco_dict_path = tests.resources.comkit.CORE_DICT
     coco_dict = EthernetDictionaryV2(coco_dict_path)
     assert coco_dict.product_code == 123456789
     assert coco_dict.revision_number == 12345
@@ -225,8 +224,8 @@ def test_merge_dictionaries_attributes():
 
 @pytest.mark.no_connection
 def test_merge_dictionaries_image():
-    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
-    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    coco_dict_path = tests.resources.comkit.COM_KIT_DICT
+    moco_dict_path = tests.resources.comkit.CORE_DICT
     coco_dict = EthernetDictionaryV2(coco_dict_path)
     moco_dict = EthernetDictionaryV2(moco_dict_path)
     assert coco_dict.image is None
@@ -237,8 +236,8 @@ def test_merge_dictionaries_image():
 
 @pytest.mark.no_connection
 def test_merge_dictionaries_new_instance():
-    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
-    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    coco_dict_path = tests.resources.comkit.COM_KIT_DICT
+    moco_dict_path = tests.resources.comkit.CORE_DICT
     dict_a = EthernetDictionaryV2(coco_dict_path)
     dict_b = EthernetDictionaryV2(moco_dict_path)
     dict_c = dict_a + dict_b
@@ -266,8 +265,8 @@ def test_merge_dictionaries_new_instance():
 
 @pytest.mark.no_connection
 def test_merge_dictionaries_order_invariant():
-    coco_dict_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
-    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    coco_dict_path = tests.resources.comkit.COM_KIT_DICT
+    moco_dict_path = tests.resources.comkit.CORE_DICT
     dict_a = EthernetDictionaryV2(coco_dict_path) + EthernetDictionaryV2(moco_dict_path)
     dict_b = EthernetDictionaryV2(moco_dict_path) + EthernetDictionaryV2(coco_dict_path)
     assert dict_a.registers(0).keys() == dict_b.registers(0).keys()
@@ -283,8 +282,8 @@ def test_merge_dictionaries_order_invariant():
 
 @pytest.mark.no_connection
 def test_merge_dictionaries_type_exception():
-    eth_v2_path = f"{PATH_RESOURCE}comkit/com-kit.xdf"
-    can_v2_path = f"{PATH_RESOURCE}canopen/test_dict_can.xdf"
+    eth_v2_path = tests.resources.comkit.COM_KIT_DICT
+    can_v2_path = tests.resources.canopen.TEST_DICT_CAN
     eth_v2_dict = EthernetDictionaryV2(eth_v2_path)
     can_v2_dict = CanopenDictionaryV2(can_v2_path)
     with pytest.raises(TypeError) as exc_info:
@@ -298,7 +297,7 @@ def test_merge_dictionaries_type_exception():
 
 @pytest.mark.no_connection
 def test_merge_dictionaries_no_coco_exception():
-    moco_dict_path = f"{PATH_RESOURCE}comkit/core.xdf"
+    moco_dict_path = tests.resources.comkit.CORE_DICT
     moco_a_dict = EthernetDictionaryV2(moco_dict_path)
     moco_b_dict = EthernetDictionaryV2(moco_dict_path)
     with pytest.raises(ValueError) as exc_info:
@@ -320,7 +319,7 @@ def test_merge_dictionaries_no_coco_exception():
 )
 @pytest.mark.no_connection
 def test_dictionary_no_product_code(xml_attribute, class_attribute):
-    with open(PATH_TO_DICTIONARY, encoding="utf-8") as xdf_file:
+    with open(virtual_drive.resources.VIRTUAL_DRIVE_V2_XDF, encoding="utf-8") as xdf_file:
         tree = ElementTree.parse(xdf_file)
     root = tree.getroot()
     device = root.find(DictionaryV2._DictionaryV2__DICT_ROOT_DEVICE)
@@ -338,7 +337,7 @@ def test_dictionary_no_product_code(xml_attribute, class_attribute):
 
 @pytest.mark.no_connection
 def test_get_register():
-    dict_path = f"{PATH_RESOURCE}ethercat/test_dict_ethercat_axis.xdf"
+    dict_path = tests.resources.ethercat.TEST_DICT_ETHERCAT_AXIS
     dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.ECAT)
 
     # Specify a uid that does not exist
@@ -380,9 +379,9 @@ def test_get_register():
 @pytest.mark.parametrize(
     "dictionary_path, interface",
     [
-        ("./tests/resources/ethernet/test_dict_eth_axis.xdf", Interface.ETH),
-        ("./tests/resources/canopen/test_dict_can_axis.xdf", Interface.CAN),
-        ("./tests/resources/ethercat/test_dict_ethercat_axis.xdf", Interface.ECAT),
+        (tests.resources.ethernet.TEST_DICT_ETHERNET_AXIS, Interface.ETH),
+        (tests.resources.canopen.TEST_DICT_CAN_AXIS, Interface.CAN),
+        (tests.resources.ethercat.TEST_DICT_ETHERCAT_AXIS, Interface.ECAT),
     ],
 )
 @pytest.mark.no_connection
@@ -420,7 +419,7 @@ def test_register_description(dictionary_path, interface):
 
 
 def test_canopen_dictionary_get_register_by_index_subindex():
-    dict_path = f"{PATH_RESOURCE}canopen/test_dict_can_v3.0.xdf"
+    dict_path = tests.resources.canopen.TEST_DICT_CAN_V3
     dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.CAN)
 
     idx = 0x2010

@@ -53,12 +53,6 @@ def pytest_sessionstart(session):
         dynamic_loader((ingenialink_base_path / module_name).resolve())
 
 
-@pytest.fixture(scope="session")
-def virtual_drive_resources_folder():
-    root_folder = Path(__file__).resolve().parent.parent
-    return (root_folder / "virtual_drive/resources/").as_posix()
-
-
 @pytest.fixture()
 def virtual_drive():
     server = VirtualDrive(81)

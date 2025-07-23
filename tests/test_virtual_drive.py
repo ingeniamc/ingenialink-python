@@ -1,5 +1,4 @@
 import time
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -7,6 +6,7 @@ from scipy import signal
 
 from ingenialink.enums.register import RegDtype
 from ingenialink.enums.servo import ServoState
+from virtual_drive import resources as virtual_drive_resources
 from virtual_drive.core import OperationMode, VirtualDrive
 
 MONITORING_CH_DATA_SIZE = 4
@@ -260,7 +260,7 @@ def test_virtual_drive_defaults_from_config():
 
 
 @pytest.mark.no_connection
-def test_virtual_drive_defaults_from_xdf_v3(virtual_drive_resources_folder):
-    server = MockVirtualDrive(81, Path(virtual_drive_resources_folder) / "virtual_drive_v3.0.xdf")
+def test_virtual_drive_defaults_from_xdf_v3():
+    server = MockVirtualDrive(81, virtual_drive_resources.VIRTUAL_DRIVE_V3_XDF)
     assert server.read_config_defaults_calls == 0
     assert server.read_xdf_v3_defaults_calls == 1
