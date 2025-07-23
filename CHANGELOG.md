@@ -18,10 +18,6 @@
 - Added full information of the pdo mapping registers for xdf v2.
 - Allow to fully read/write CanOpenObjects with complete access
 
-## [7.4.4] - 2025-07-08
-### Fixed
-- PyPI publishing.
-
 ## [7.4.3]
 ### Fixed
 - Safety registers/modules availability.
