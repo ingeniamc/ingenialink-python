@@ -6,6 +6,7 @@
 - Method to obtain a canopen/ethercat register from index and subindex.
 - Specific methods for complete-access
 - Methods to read RPDOs and TPDOs from the ethercat slave.
+- Methods to get mapping registers in a PDOMap and respective mapped items.
 
 ### Fixed
 - Default xdf v2 injected safety registers
@@ -14,6 +15,8 @@
 
 ### Changed
 - Added Safety Cyclic types for xdf v3 dictionaries.
+- Added full information of the pdo mapping registers for xdf v2.
+- Allow to fully read/write CanOpenObjects with complete access
 
 ## [7.4.4] - 2025-07-08
 ### Fixed
