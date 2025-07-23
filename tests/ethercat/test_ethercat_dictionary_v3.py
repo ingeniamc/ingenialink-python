@@ -11,10 +11,6 @@ from ingenialink.dictionary import (
 from ingenialink.ethercat.dictionary import EthercatDictionaryV3, EthercatRegister
 from ingenialink.exceptions import ILDictionaryParseError
 
-path_resources = "./tests/resources/"
-dict_ecat_v3 = "test_dict_ecat_eoe_v3.0.xdf"
-dict_ecat_v3_safe = "test_dict_ecat_eoe_safe_v3.0.xdf"
-
 
 @pytest.mark.no_connection
 def test_read_dictionary():
@@ -234,7 +230,7 @@ def test_wrong_dictionary():
     with pytest.raises(
         ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication"
     ):
-        EthercatDictionaryV3("./tests/resources/canopen/test_dict_can_v3.0.xdf", Interface.ECAT)
+        EthercatDictionaryV3(tests.resources.canopen.TEST_DICT_CAN_V3, Interface.ECAT)
 
 
 @pytest.mark.no_connection

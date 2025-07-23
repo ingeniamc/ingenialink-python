@@ -13,6 +13,7 @@ from summit_testing_framework.setups.specifiers import (
     RackServiceConfigSpecifier,
 )
 
+import tests.resources
 from ingenialink import RegAccess
 from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.dictionary import Interface
@@ -230,7 +231,7 @@ def test_load_configuration(servo, net):
 def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, _, servo = virtual_drive_custom_dict(dictionary)
-    test_file = "./tests/resources/test_config_file.xcf"
+    test_file = tests.resources.TEST_CONFIG_FILE
     mocker.patch("ingenialink.servo.Servo.write", side_effect=ILError("Error writing"))
     with pytest.raises(ILError) as exc_info:
         servo.load_configuration(test_file, strict=True)

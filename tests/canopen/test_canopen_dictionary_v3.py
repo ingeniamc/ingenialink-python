@@ -164,7 +164,7 @@ def test_wrong_dictionary():
     with pytest.raises(
         ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication"
     ):
-        CanopenDictionaryV3("./tests/resources/test_dict_ecat_eoe_v3.0.xdf", Interface.CAN)
+        CanopenDictionaryV3(tests.resources.TEST_DICT_ECAT_EOE_v3, Interface.CAN)
 
 
 @pytest.mark.no_connection

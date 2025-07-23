@@ -3,6 +3,8 @@ import time
 
 from bitarray import bitarray
 
+import tests.resources.ethercat
+
 with contextlib.suppress(ImportError):
     import pysoem
 import pytest
@@ -24,7 +26,7 @@ SUBNODE = 1
 
 @pytest.fixture()
 def open_dictionary():
-    dictionary = "./tests/resources/ethercat/test_dict_ethercat.xdf"
+    dictionary = tests.resources.ethercat.TEST_DICT_ETHERCAT
     ethercat_dictionary = DictionaryFactory.create_dictionary(dictionary, Interface.ECAT)
     return ethercat_dictionary
 
