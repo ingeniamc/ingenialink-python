@@ -70,23 +70,27 @@ def archiveWiresharkLogs() {
     archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
 }
 
-def createVirtualEnvironments() {
-    runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION) // Remove poetry install: https://novantamotion.atlassian.net/browse/CIT-412
-    def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
+def createVirtualEnvironments(boolean isWindowsDocker = false) {
+    runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION)
+    def pythonVersions = (isWindowsDocker ? ALL_PYTHON_VERSIONS : RUN_PYTHON_VERSIONS).split(',')
     pythonVersions.each { version ->
+        def venvName = ".venv${version}"
         if (isUnix()) {
             sh """
-                python${version} -m venv --without-pip .venv${version}
-                . .venv${version}/bin/activate
+                python${version} -m venv --without-pip ${venvName}
+                . ${venvName}/bin/activate
                 poetry install --no-root --all-groups
                 deactivate
             """
         } else {
+            def cdCmd = isWindowsDocker ? "cd ${DOCKER_TMP_PATH}" : ""
+            def installWheelCmd = isWindowsDocker ? "" : "poetry run poe install-wheel"
             bat """
-                cd ${DOCKER_TMP_PATH}
-                py -${version} -m venv .venv${version}
-                call .venv${version}/Scripts/activate
+                ${cdCmd}
+                py -${version} -m venv ${venvName}
+                call ${venvName}/Scripts/activate
                 poetry install --no-root --all-groups
+                ${installWheelCmd}
                 deactivate
             """
         }
@@ -122,7 +126,7 @@ def runTestHW(markers, setup_name, extra_args = "") {
                     try {
                         def setupArg = setup_name ? "--setup ${setup_name} " : ""
                         bat """
-                            source .venv${version}/Scripts/activate
+                            call .venv${version}/Scripts/activate
                             poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}"
                             deactivate
                         """
@@ -225,7 +229,7 @@ pipeline {
                                 stage('Create virtual environments') {
                                     steps {
                                         script {
-                                            createVirtualEnvironments()
+                                            createVirtualEnvironments(true)
                                         }
                                     }
                                 }
@@ -477,6 +481,13 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Create virtual environments') {
+                            steps {
+                                script {
+                                    createVirtualEnvironments()
+                                }
+                            }
+                        }
                         stage('EtherCAT Everest') {
                             steps {
                                 runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
@@ -514,6 +525,13 @@ pipeline {
                                     for (stash_name in wheel_stashes) {
                                         unstash stash_name
                                     }
+                                }
+                            }
+                        }
+                        stage('Create virtual environments') {
+                            steps {
+                                script {
+                                    createVirtualEnvironments()
                                 }
                             }
                         }
