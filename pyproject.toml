@@ -113,12 +113,13 @@ summit-testing-framework = "==0.1.4+pr30b62"
 # -----------------------------------------------------------------------
 
 # ----------------------------- Build wheel -----------------------------
-[tool.poe.tasks.build]
+[tool.poe.tasks.build-wheel]
 help = "Build wheels"
-sequence = [
-    { cmd = "poetry build"},
-    { cmd = "twine check dist/*"}
-]
+cmd = "poetry build"
+
+[tool.poe.tasks.check-wheels]
+help = "Check wheels"
+cmd = "twine check dist/*"
 
 # ----------------------------- Ruff format -----------------------------
 [tool.poe.tasks.ruff-format-check]
