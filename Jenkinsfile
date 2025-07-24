@@ -70,31 +70,43 @@ def archiveWiresharkLogs() {
     archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
 }
 
-def activatePoetryEnv(py_version) {
-    runPython("poetry env use ${py_version}")
-}
-
-def setupEnvironments(py_version = null) {
+def createVirtualEnvironments() {
     runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION) // Remove poetry install: https://novantamotion.atlassian.net/browse/CIT-412
-    def pythonVersions = py_version != null ? [py_version] : RUN_PYTHON_VERSIONS.split(',')
+    def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
     pythonVersions.each { version ->
-        activatePoetryEnv(version)
-        runPython("poetry sync --with dev") // Remove all dependencies that are not in the lock file + install main dependencies
+        if (isUnix()) {
+            sh """
+                python${version} -m venv --without-pip .venv${version}
+                . .venv${version}/bin/activate
+                poetry install --no-root --all-groups
+                deactivate
+            """
+        } else {
+            bat """
+                cd ${DOCKER_TMP_PATH}
+                py -${version} -m venv .venv${version}
+                call .venv${version}/Scripts/activate
+                poetry install --no-root --all-groups
+                deactivate
+            """
+        }
     }
 }
 
 def buildWheel(py_version) {
+     echo "Running build for Python ${py_version} in Docker environment"
     if (isUnix()) {
-        runPython("poetry install --no-root --only build,dev") // Install build dependencies
-        runPython("poetry run poe build") // Build wheel
+        sh """
+            . .venv${py_version}/bin/activate
+            poetry run poe build-wheel
+            deactivate
+        """
     } else {
-        echo "Running build for Python ${py_version} in Docker environment"
-        // Remove poetry install: https://novantamotion.atlassian.net/browse/CIT-412
         bat """
             cd ${DOCKER_TMP_PATH}
-            poetry env use ${py_version}
-            poetry sync --no-root --only build,dev
-            poetry run poe build
+            call .venv${py_version}/Scripts/activate
+            poetry run poe build-wheel
+            deactivate
         """
     }
 }
@@ -108,13 +120,12 @@ def runTestHW(markers, setup_name, extra_args = "") {
             pythonVersions.each { version ->
                 withEnv(["WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
                     try {
-                        def py_version = "py" + version.replace(".", "")
                         def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                        activatePoetryEnv(version)
-                        runPython("poetry sync --with dev,tests") // Remove all dependencies except poethepoet (importlib mode)
-                        runPython("poetry run poe install-wheel")
-                        runPython("poetry run poe tests --import-mode=importlib --cov=.venv\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}")
-
+                        bat """
+                            source .venv${version}/Scripts/activate
+                            poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}"
+                            deactivate
+                        """
                     } catch (err) {
                         unstable(message: "Tests failed")
                     } finally {
@@ -211,20 +222,28 @@ pipeline {
                                         bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
                                     }
                                 }
+                                stage('Create virtual environments') {
+                                    steps {
+                                        script {
+                                            createVirtualEnvironments()
+                                        }
+                                    }
+                                }
                                 stage('Build wheels') {
                                     environment {
                                         SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
                                     }
                                     steps {
                                         script {
-                                            runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION)
-                                            def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
+                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
                                                 buildWheel(version)
                                             }
                                         }
                                         bat """
                                             cd ${DOCKER_TMP_PATH}
+                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
+                                            poetry run poe check-wheels
                                             COPY ingenialink\\_version.py ${env.WORKSPACE}\\ingenialink\\_version.py
                                             XCOPY dist ${env.WORKSPACE}\\dist /s /i
                                         """
@@ -234,7 +253,7 @@ pipeline {
                                     steps {
                                         bat """
                                             cd ${DOCKER_TMP_PATH}
-                                            poetry install --with type,dev
+                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
                                             poetry run poe type
                                         """
                                     }
@@ -243,7 +262,7 @@ pipeline {
                                     steps {
                                         bat """
                                             cd ${DOCKER_TMP_PATH}
-                                            poetry install --with format,dev
+                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
                                             poetry run poe format
                                         """
                                     }
@@ -262,7 +281,7 @@ pipeline {
                                     steps {
                                         bat """
                                             cd ${DOCKER_TMP_PATH}
-                                            poetry install --with docs,dev
+                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
                                             poetry run poe docs
                                             "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
                                             XCOPY docs.zip ${env.WORKSPACE}
@@ -277,10 +296,9 @@ pipeline {
                                             pythonVersions.each { version ->
                                                 bat """
                                                     cd ${DOCKER_TMP_PATH}
-                                                    poetry env use ${version}
-                                                    poetry install --with dev,tests
+                                                    call .venv${version}/Scripts/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests -- --import-mode=importlib --cov=.venv\\lib\\site-packages\\ingenialink --junitxml=pytest_reports\\junit-tests.xml --junit-prefix=tests -m docker -o log_cli=True
+                                                    poetry run poe tests -- --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports\\junit-tests.xml --junit-prefix=tests -m docker -o log_cli=True
                                                 """
                                             }
                                         }
@@ -310,10 +328,11 @@ pipeline {
                                 }
                             }
                             stages {
-                                stage ('Setup Poetry environments') {
+                                stage('Create virtual environments') {
                                     steps {
-                                        setupEnvironments(DEFAULT_PYTHON_VERSION)
-                                        activatePoetryEnv(DEFAULT_PYTHON_VERSION)
+                                        script {
+                                            createVirtualEnvironments()
+                                        }
                                     }
                                 }
                                 stage('Build wheels') {
@@ -321,7 +340,7 @@ pipeline {
                                         SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
                                     }
                                     steps {
-                                        buildWheel(PYTHON_VERSION_MAX)
+                                        buildWheel(DEFAULT_PYTHON_VERSION)
                                     }
                                 }
                                 stage('Archive artifacts') {
@@ -339,10 +358,12 @@ pipeline {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
-                                                activatePoetryEnv(version)
-                                                runPython("poetry install --with dev,tests")
-                                                runPython("poetry run poe install-wheel")
-                                                runPython("poetry run poe tests -- --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m no_connection -o log_cli=True")
+                                                sh """
+                                                    . .venv${version}/bin/activate
+                                                    poetry run poe install-wheel
+                                                    poetry run poe tests -- --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m no_connection -o log_cli=True
+                                                    deactivate
+                                                """
                                             }
                                         }
                                     }
@@ -357,10 +378,12 @@ pipeline {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
-                                                activatePoetryEnv(version)
-                                                runPython("poetry install --with dev,tests")
-                                                runPython("poetry run poe install-wheel")
-                                                runPython("poetry run poe tests -- --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP  -o log_cli=True")
+                                                sh """
+                                                    . .venv${version}/bin/activate
+                                                    poetry run poe install-wheel
+                                                    poetry run poe tests -- --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP  -o log_cli=True
+                                                    deactivate
+                                                """
                                             }
                                         }
                                     }
