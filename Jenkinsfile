@@ -70,9 +70,10 @@ def archiveWiresharkLogs() {
     archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
 }
 
-def createVirtualEnvironments(boolean isWindowsDocker = false) {
+def createVirtualEnvironments(boolean installWheel = true, String workingDir = null, String pythonVersionList = "") {
     runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION)
-    def pythonVersions = (isWindowsDocker ? ALL_PYTHON_VERSIONS : RUN_PYTHON_VERSIONS).split(',')
+    def versions = pythonVersionList?.trim() ? pythonVersionList : RUN_PYTHON_VERSIONS
+    def pythonVersions = versions.split(',')
     pythonVersions.each { version ->
         def venvName = ".venv${version}"
         if (isUnix()) {
@@ -83,8 +84,8 @@ def createVirtualEnvironments(boolean isWindowsDocker = false) {
                 deactivate
             """
         } else {
-            def cdCmd = isWindowsDocker ? "cd ${DOCKER_TMP_PATH}" : ""
-            def installWheelCmd = isWindowsDocker ? "" : "poetry run poe install-wheel"
+            def cdCmd = workingDir ? "cd ${workingDir}" : ""
+            def installWheelCmd = installWheel ? "poetry run poe install-wheel" : ""
             bat """
                 ${cdCmd}
                 py -${version} -m venv ${venvName}
@@ -229,7 +230,7 @@ pipeline {
                                 stage('Create virtual environments') {
                                     steps {
                                         script {
-                                            createVirtualEnvironments(true)
+                                            createVirtualEnvironments(false, DOCKER_TMP_PATH, ALL_PYTHON_VERSIONS)
                                         }
                                     }
                                 }
@@ -239,7 +240,7 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                            def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
                                                 buildWheel(version)
                                             }
@@ -576,12 +577,11 @@ pipeline {
                     for (stash_name in wheel_stashes) {
                         unstash stash_name
                     }
-                    bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
-                    runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION)
+                    bat "XCOPY ${env.WORKSPACE} ${DOCKER_TMP_PATH} /s /i /y /e /h"
+                    createVirtualEnvironments(true, DOCKER_TMP_PATH, DEFAULT_PYTHON_VERSION)
                     bat """
                         cd ${DOCKER_TMP_PATH}
-                        poetry env use ${PYTHON_VERSION_MAX}
-                        poetry install --with dev,tests
+                        call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
                         poetry run poe cov-combine --${coverage_files}
                         poetry run poe cov-report
                         XCOPY coverage.xml ${env.WORKSPACE}
