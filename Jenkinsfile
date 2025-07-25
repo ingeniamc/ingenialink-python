@@ -303,7 +303,7 @@ pipeline {
                                                     cd ${DOCKER_TMP_PATH}
                                                     call .venv${version}/Scripts/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests -- --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports\\junit-tests.xml --junit-prefix=tests -m docker -o log_cli=True
+                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports\\junit-tests.xml --junit-prefix=tests -m docker -o log_cli=True
                                                 """
                                             }
                                         }
@@ -366,7 +366,7 @@ pipeline {
                                                 sh """
                                                     . .venv${version}/bin/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests -- --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m no_connection -o log_cli=True
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m no_connection -o log_cli=True
                                                     deactivate
                                                 """
                                             }
@@ -386,7 +386,7 @@ pipeline {
                                                 sh """
                                                     . .venv${version}/bin/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests -- --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP  -o log_cli=True
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP  -o log_cli=True
                                                     deactivate
                                                 """
                                             }
