@@ -90,7 +90,7 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
                 ${cdCmd}
                 py -${version} -m venv ${venvName}
                 call ${venvName}/Scripts/activate
-                poetry install --no-root --all-groups
+                poetry sync --no-root --all-groups
                 ${installWheelCmd}
                 deactivate
             """
