@@ -80,7 +80,7 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
             sh """
                 python${version} -m venv --without-pip ${venvName}
                 . ${venvName}/bin/activate
-                poetry install --no-root --all-groups
+                poetry sync --no-root --all-groups
                 deactivate
             """
         } else {
