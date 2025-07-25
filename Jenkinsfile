@@ -126,9 +126,10 @@ def runTestHW(markers, setup_name, extra_args = "") {
                 withEnv(["WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
                     try {
                         def setupArg = setup_name ? "--setup ${setup_name} " : ""
+                        def venvName = ".venv${version}"
                         bat """
-                            call .venv${version}/Scripts/activate
-                            poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}"
+                            call ${venvName}/Scripts/activate
+                            poetry run poe tests --import-mode=importlib --cov=${venvName}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${version}.xml --junit-prefix=${version} -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}"
                             deactivate
                         """
                     } catch (err) {
@@ -366,7 +367,7 @@ pipeline {
                                                 sh """
                                                     . .venv${version}/bin/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m no_connection -o log_cli=True
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests.xml --junit-prefix=${version} -m no_connection -o log_cli=True
                                                     deactivate
                                                 """
                                             }
@@ -386,7 +387,7 @@ pipeline {
                                                 sh """
                                                     . .venv${version}/bin/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests.xml --junit-prefix=tests -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP  -o log_cli=True
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP  -o log_cli=True
                                                     deactivate
                                                 """
                                             }
