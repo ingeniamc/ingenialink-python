@@ -86,7 +86,7 @@ Build the module
 
 Activate poetry environment and run the following::
 
-    poetry run poe build
+    poetry run poe build-wheel
 
 Run tests
 =========
