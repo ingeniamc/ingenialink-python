@@ -347,6 +347,11 @@ pipeline {
                                     }
                                     steps {
                                         buildWheel(DEFAULT_PYTHON_VERSION)
+                                        sh """
+                                            . .venv${version}/bin/activate
+                                            poetry run poe check-wheels
+                                            deactivate
+                                        """
                                     }
                                 }
                                 stage('Archive artifacts') {
@@ -586,6 +591,7 @@ pipeline {
                         poetry run poe cov-combine --${coverage_files}
                         poetry run poe cov-report
                         XCOPY coverage.xml ${env.WORKSPACE}
+                        deactivate
                     """
                     recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
                     archiveArtifacts artifacts: '*.xml'
