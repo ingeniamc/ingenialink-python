@@ -9,7 +9,7 @@ omit = tests/*
 [paths]
 source =
     ingenialink
-    .venv/lib/site-packages/ingenialink
+    */site-packages/ingenialink
 
 ; Skip empty files
 [report]

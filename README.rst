@@ -75,18 +75,18 @@ Project Tasks - Poe The Poet plugin
 
 To run the tasks use ``poe``. For example, to run the format task::
 
-    poetry poe format
+    poetry run poe format
 
 Any extra CLI arguments will be appended. For example, to indicate a certain test for pytest::
 
-    poetry poe tests -k test_servo_fixture.py
+    poetry run poe tests -k test_servo.py
 
 Build the module
 ================
 
 Activate poetry environment and run the following::
 
-    poetry poe build
+    poetry run poe build-wheel
 
 Run tests
 =========
@@ -118,9 +118,9 @@ Example of a setup:
 For more information, check *summit-testing-framework* documentation.
 
 Run tests selecting the markers that you want and are appropriate for your setup.
-Beware that some tests may not be appropiate for the setup that you have and may fail.
+Beware that some tests may not be appropriate for the setup that you have and may fail.
 
 Run the tests::
 
-    poetry poe tests
+    poetry run poe tests -m {markers}
 
