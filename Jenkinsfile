@@ -348,7 +348,7 @@ pipeline {
                                     steps {
                                         buildWheel(DEFAULT_PYTHON_VERSION)
                                         sh """
-                                            . .venv${version}/bin/activate
+                                            . .venv${DEFAULT_PYTHON_VERSION}/bin/activate
                                             poetry run poe check-wheels
                                             deactivate
                                         """
