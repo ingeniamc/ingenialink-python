@@ -456,14 +456,13 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
         if self.part_number in ["DEN-S-NET-E", "EVS-S-NET-E"]:
             self.is_safe = True
 
-        # Initialize "subnode/axis 0"
-        subnode_0 = 0
-        if subnode_0 not in self.items:
-            self.items[subnode_0] = {}
         for obj in self.__create_pdo_objects():
             for register in obj.registers:
                 self._add_register_list(register)
-            self.items[subnode_0][obj.uid] = obj
+            subnode = obj.registers[0].subnode
+            if subnode not in self.items:
+                self.items[subnode] = {}
+            self.items[subnode][obj.uid] = obj
 
         if self.is_safe:
             for safety_submodule in self._safety_modules:
