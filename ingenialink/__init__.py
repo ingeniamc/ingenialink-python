@@ -13,14 +13,28 @@ from ingenialink.enums.servo import (
 from ingenialink.poller import Poller
 from ingenialink.servo import Servo
 
-from .canopen.dictionary import CanopenDictionaryV2
+# Canopen
+from .canopen.dictionary import CanopenDictionary, CanopenDictionaryV2, CanopenDictionaryV3
 from .canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from .canopen.register import CanopenRegister
 from .canopen.servo import CanopenServo
+from .dictionary import Dictionary, DictionaryV2, DictionaryV3
+
+# Ethercat
+from .ethercat.dictionary import EthercatDictionary, EthercatDictionaryV2, EthercatDictionaryV3
 from .ethercat.network import EthercatNetwork, GilReleaseConfig
+from .ethercat.register import EthercatRegister
+from .ethercat.servo import EthercatServo
+
+# Ethernet
+from .ethernet.dictionary import EthernetDictionary, EthernetDictionaryV2, EthernetDictionaryV3
 from .ethernet.network import EthernetNetwork
+from .ethernet.register import EthernetRegister
 from .ethernet.servo import EthernetServo
+
+# Generic
 from .network import NetDevEvt, NetProt, NetState, Network
+from .register import Register
 
 try:
     from ._version import __version__  # noqa: F401
@@ -39,22 +53,37 @@ __all__ = [
     "ServoUnitsPos",
     "ServoUnitsVel",
     "ServoUnitsAcc",
+    "Register",
     "Network",
     "Servo",
+    "Dictionary",
+    "DictionaryV2",
+    "DictionaryV3",
     "RegDtype",
     "RegAccess",
     "RegPhy",
     "EthercatNetwork",
+    "EthercatServo",
+    "EthercatDictionary",
+    "EthercatDictionaryV2",
+    "EthercatDictionaryV3",
+    "EthercatRegister",
     "GilReleaseConfig",
     "EthernetServo",
+    "EthernetDictionary",
+    "EthernetDictionaryV2",
+    "EthernetDictionaryV3",
+    "EthernetRegister",
     "EthernetNetwork",
     "CanopenNetwork",
+    "CanopenDictionary",
+    "CanopenDictionaryV2",
+    "CanopenDictionaryV3",
     "CanDevice",
     "CanBaudrate",
     "CanopenServo",
     "CanopenRegister",
     "Poller",
-    "CanopenDictionaryV2",
 ]
 
 
