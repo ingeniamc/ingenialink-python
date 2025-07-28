@@ -123,22 +123,6 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 cat_id="FSOE",
             ),
             EthercatRegister(
-                identifier="ETG_COMMS_RPDO_MAP256_TOTAL",
-                idx=0x1700,
-                subidx=0,
-                dtype=RegDtype.U8,
-                access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
-                subnode=1,
-            ),
-            EthercatRegister(
-                identifier="ETG_COMMS_TPDO_MAP256_TOTAL",
-                idx=0x1B00,
-                subidx=0,
-                dtype=RegDtype.U8,
-                access=RegAccess.RO,  # XDF V2 only supports phase I, where the pdo map is read-only
-                subnode=1,
-            ),
-            EthercatRegister(
                 identifier="FSOE_STO",
                 idx=0x6640,
                 subidx=0,
@@ -252,7 +236,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
         )
 
     def __create_pdo_map(
-        self, idx: int, base_uid: str, base_label: str, n_elements: int
+        self, idx: int, base_uid: str, base_label: str, n_elements: int, write_only: bool = False
     ) -> CanOpenObject:
         """Generate PDO map registers.
 
@@ -261,6 +245,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             base_uid: Base unique identifier.
             base_label: Base label.
             n_elements: Number of elements of the pdo map.
+            write_only: If True, the PDO map is write-only (default is False).
 
         Returns:
             CanOpenObject: Object containing the registers for a pdo map.
@@ -280,7 +265,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                         subidx=0x00,
                         pdo_access=RegCyclicType.CONFIG,
                         dtype=RegDtype.U8,
-                        access=RegAccess.RW,
+                        access=RegAccess.RO if write_only else RegAccess.RW,
                         address_type=RegAddressType.NVM_NONE,
                         labels={"en_US": "SubIndex 000"},
                         cat_id="COMMUNICATIONS",
@@ -296,7 +281,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                         subidx=i,
                         pdo_access=RegCyclicType.CONFIG,
                         dtype=RegDtype.U32,
-                        access=RegAccess.RW,
+                        access=RegAccess.RO if write_only else RegAccess.RW,
                         address_type=RegAddressType.NVM_NONE,
                         labels={"en_US": f"{base_label} Element {i}"},
                         cat_id="COMMUNICATIONS",
@@ -363,6 +348,23 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             base_label="TxPDO Map 3",
             n_elements=15,
         )
+
+        if self.is_safe:
+            # XDF V2 only supports phase I, where the pdo map is read-only
+            yield self.__create_pdo_map(
+                idx=0x1700,
+                base_uid="ETG_COMMS_RPDO_MAP256",
+                base_label="RxPDO Map 256",
+                n_elements=16,
+                write_only=True,
+            )
+            yield self.__create_pdo_map(
+                idx=0x1B00,
+                base_uid="ETG_COMMS_TPDO_MAP256",
+                base_label="RxPDO Map 256",
+                n_elements=16,
+                write_only=True,
+            )
 
     @staticmethod
     def __get_cia_offset(subnode: int) -> int:
@@ -442,6 +444,9 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
 
         """
         super()._append_missing_registers()
+        if self.part_number in ["DEN-S-NET-E", "EVS-S-NET-E"]:
+            self.is_safe = True
+
         # Initialize "subnode/axis 0"
         subnode_0 = 0
         if subnode_0 not in self.items:
@@ -450,13 +455,12 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             for register in obj.registers:
                 self._add_register_list(register)
             self.items[subnode_0][obj.uid] = obj
-        if self.part_number not in ["DEN-S-NET-E", "EVS-S-NET-E"]:
-            return
-        self.is_safe = True
-        for safety_submodule in self._safety_modules:
-            self.safety_modules[safety_submodule.module_ident] = safety_submodule
-        for register in self._safety_registers:
-            self._add_register_list(register)
+
+        if self.is_safe:
+            for safety_submodule in self._safety_modules:
+                self.safety_modules[safety_submodule.module_ident] = safety_submodule
+            for register in self._safety_registers:
+                self._add_register_list(register)
 
 
 class EthercatDictionaryV3(EthercatDictionary, DictionaryV3):
