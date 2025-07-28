@@ -236,7 +236,13 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
         )
 
     def __create_pdo_map(
-        self, idx: int, base_uid: str, base_label: str, n_elements: int, write_only: bool = False
+        self,
+        idx: int,
+        base_uid: str,
+        base_label: str,
+        n_elements: int,
+        write_only: bool = False,
+        subnode: int = 0,
     ) -> CanOpenObject:
         """Generate PDO map registers.
 
@@ -246,6 +252,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             base_label: Base label.
             n_elements: Number of elements of the pdo map.
             write_only: If True, the PDO map is write-only (default is False).
+            subnode: Subnode for the registers (default is 0).
 
         Returns:
             CanOpenObject: Object containing the registers for a pdo map.
@@ -260,7 +267,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                     EthercatRegister(
                         identifier=f"{base_uid}_TOTAL",
                         units="none",
-                        subnode=0,
+                        subnode=subnode,
                         idx=idx,
                         subidx=0x00,
                         pdo_access=RegCyclicType.CONFIG,
@@ -276,7 +283,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                     EthercatRegister(
                         identifier=f"{base_uid}_{i}",
                         units="none",
-                        subnode=0,
+                        subnode=subnode,
                         idx=idx,
                         subidx=i,
                         pdo_access=RegCyclicType.CONFIG,
@@ -357,6 +364,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 base_label="RxPDO Map 256",
                 n_elements=16,
                 write_only=True,
+                subnode=1,
             )
             yield self.__create_pdo_map(
                 idx=0x1B00,
@@ -364,6 +372,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 base_label="RxPDO Map 256",
                 n_elements=16,
                 write_only=True,
+                subnode=1,
             )
 
     @staticmethod
