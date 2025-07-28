@@ -27,7 +27,7 @@ out.txt
 
 # Pipenv and venv
 /Pipfile.lock
-/venv
+/.venv*
 
 # Test files
 /pytest_reports/

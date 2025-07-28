@@ -915,21 +915,17 @@ class PDOServo(Servo):
             input_data: Concatenated received data bytes.
 
         """
-        if len(self._tpdo_maps) == 0:
-            return
         for tpdo_map in self._tpdo_maps:
             map_bytes = input_data[: tpdo_map.data_length_bytes]
             tpdo_map.set_item_bytes(map_bytes)
             input_data = input_data[tpdo_map.data_length_bytes :]
 
-    def _process_rpdo(self) -> Optional[bytes]:
+    def _process_rpdo(self) -> bytes:
         """Retrieve the RPDO raw data from each map.
 
         Returns:
             Concatenated data bytes to be sent.
         """
-        if len(self._rpdo_maps) == 0:
-            return None
         output = bytearray()
         for rpdo_map in self._rpdo_maps:
             output += rpdo_map.get_item_bytes()
