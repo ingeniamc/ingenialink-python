@@ -15,7 +15,7 @@ def arguments(setup_descriptor):
 def test_connection_example(arguments, script_runner):
     script_path = "examples/ethercat/ecat_connection.py"
     result = script_runner.run([script_path, *arguments])
-    assert result.returncode == 0
+    assert result.returncode == 0, f"Script failed with stderr:\n{result.stderr}"
 
 
 @pytest.mark.ethercat
@@ -25,7 +25,7 @@ def test_load_firmware_example(arguments, script_runner, mocker, setup_descripto
     arguments[0] = "--firmware_path=dummy_file.lfu"
     script_path = "examples/ethercat/ecat_load_firmware.py"
     result = script_runner.run([script_path, *arguments])
-    assert result.returncode == 0
+    assert result.returncode == 0, f"Script failed with stderr:\n{result.stderr}"
     mock.assert_called_once_with("dummy_file.lfu", False, slave_id=slave_id)
 
 
@@ -38,4 +38,4 @@ def test_pdo_example(setup_descriptor, script_runner):
         f"--dictionary_path={setup_descriptor.drives[0].dictionary}",
         "--auto_stop",
     ])
-    assert result.returncode == 0
+    assert result.returncode == 0, f"Script failed with stderr:\n{result.stderr}"

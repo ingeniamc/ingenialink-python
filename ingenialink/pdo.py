@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import ClassVar, Literal, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, ClassVar, Literal, Optional, TypeVar, Union
 
 import bitarray
 from typing_extensions import override
@@ -16,6 +16,9 @@ from ingenialink.utils._utils import (
     convert_dtype_to_bytes,
     dtype_length_bits,
 )
+
+if TYPE_CHECKING:
+    from ingenialink.dictionary import CanOpenObject
 
 BIT_ENDIAN: Literal["little"] = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
@@ -86,7 +89,7 @@ class PDOMapItem:
             formatted_accepted = ", ".join([str(cyclic) for cyclic in self.ACCEPTED_CYCLICS])
 
             raise ILError(
-                f"Incorrect pdo access. "
+                f"Incorrect pdo access for mapping register {self.register.identifier}. "
                 f"It should be {formatted_accepted}."
                 f" obtained: {self.register.pdo_access}"
             )
@@ -282,6 +285,7 @@ class PDOMap:
     def __init__(self) -> None:
         self.__items: list[PDOMapItem] = []
         self.__map_register_index: Optional[int] = None
+        self.__map_object: Optional[CanOpenObject] = None
         self.__slave: Optional[PDOServo] = None
 
     @property
@@ -386,6 +390,58 @@ class PDOMap:
         self.__map_register_index = index
 
     @property
+    def map_object(self) -> Optional["CanOpenObject"]:
+        """CanOpen object of the mapping register.
+
+        Returns:
+            CanOpen object of the mapping register.
+        """
+        return self.__map_object
+
+    @map_object.setter
+    def map_object(self, map_obj: "CanOpenObject") -> None:
+        """Set the CanOpen object of the mapping register."""
+        self.__map_object = map_obj
+        self.__map_register_index = map_obj.idx
+
+    def map_register_values(self) -> dict[CanopenRegister, Optional[int]]:
+        """Returns a dictionary with the mapping of the register items.
+
+        Associates which pdo mapping value will have each map register
+        Unused mapping registers will return as None.
+
+        This method does not write the mapping to the slave,
+        or express what the mapping on the slave should be.
+        Use PDOMap.write_to_slave method instead
+
+        Raises:
+            ValueError: If the map_object is None.
+                The map_object must be set before calling this method.
+
+        Returns:
+            dictionary with mapping register as keys and mapping value or None as values.
+        """
+        if self.map_object is None:
+            raise ValueError("The map_object must be set.")
+
+        items_iter = iter(self.items)
+
+        mapping: dict[CanopenRegister, Optional[int]] = {}
+
+        for map_register in self.map_object.registers:
+            if map_register.subidx == 0:
+                # Used to store the number of items
+                mapping[map_register] = len(self.items)
+                continue
+            try:
+                mapping[map_register] = next(items_iter).register_mapping
+            except StopIteration:
+                # Element of the pdo object mapping unused
+                mapping[map_register] = None
+
+        return mapping
+
+    @property
     def data_length_bits(self) -> int:
         """Length of the map in bits.
 
@@ -431,20 +487,23 @@ class PDOMap:
 
     @classmethod
     def from_pdo_value(
-        cls: type[PDO_MAP_TYPE], value: bytes, index: int, dictionary: "CanopenDictionary"
+        cls: type[PDO_MAP_TYPE],
+        value: bytes,
+        map_obj: "CanOpenObject",
+        dictionary: "CanopenDictionary",
     ) -> PDO_MAP_TYPE:
         """Create a PDOMap from the full pdo value (accessed via complete access).
 
         Args:
             value: Value of the pdo mapping in bytes.
-            index: Index of the mapping register.
+            map_obj: Mapping Canopen object.
             dictionary: Canopen dictionary to retrieve the registers.
 
         Returns:
             PDOMap instance.
         """
         pdo_map = cls()
-        pdo_map.map_register_index = index
+        pdo_map.map_object = map_obj
 
         # First element of 8 bits, indicates the number of elements in the mapping.
         n_elements = value[0]
@@ -461,7 +520,9 @@ class PDOMap:
 
         return pdo_map
 
-    def write_to_slave(self, max_pdo_items_for_padding: Optional[int] = None) -> None:
+    def write_to_slave(
+        self, max_pdo_items_for_padding: Optional[int] = None, padding: bool = False
+    ) -> None:
         """Write the PDOMap to the slave.
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
@@ -469,6 +530,7 @@ class PDOMap:
         Args:
             max_pdo_items_for_padding: Maximum number of items for padding. If set, it will pad the
                 PDOMap with empty items to reach this number. If None, no padding is done.
+            padding: If True, it will force to zero the unused items in the PDOMap.
 
         Raises:
             ValueError: If the slave is not set or the map_register_index is None.
@@ -486,6 +548,10 @@ class PDOMap:
             self.map_register_index, subindex=0
         )
         value = self.to_pdo_value()
+        if padding:
+            if self.map_object is None:
+                raise ValueError("The map_object must be set to pad the PDOMap.")
+            max_pdo_items_for_padding = len(self.map_object.registers) - 1
         if max_pdo_items_for_padding:
             unused_items = max_pdo_items_for_padding - len(self.__items)
             value += b"\x00" * (unused_items * MAP_REGISTER_BYTES)
