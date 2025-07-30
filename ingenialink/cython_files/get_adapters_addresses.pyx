@@ -27,15 +27,6 @@ from libc.stddef cimport wchar_t
 from libc.stdint cimport uint16_t, uint32_t, uint8_t, int32_t, uint64_t
 from cpython.unicode cimport PyUnicode_FromWideChar
 import logging
-from libc.signal cimport signal, SIGSEGV
-from libc.stdlib cimport exit
-from libc.signal cimport signal, SIGSEGV
-from libc.setjmp cimport jmp_buf, setjmp, longjmp
-
-
-from libc.stdlib cimport malloc, free
-from libc.string cimport memset
-
 
 _MAX_TRIES = 3
 _WORKING_BUFFER_SIZE = 15000
@@ -198,36 +189,13 @@ class CyAdapter:
     Dhcpv6Iaid: int
     FirstDnsSuffix: list[CyFirstDnsSuffix]
 
-cdef jmp_buf jump_buffer
-
-cdef void segfault_handler(int sig) noexcept nogil:
-    """Signal handler for SIGSEGV"""
-    if sig == SIGSEGV:
-        with gil:
-            logger.warning("Segmentation fault detected - jumping back to setjmp point")
-    # Jump back to the setjmp point instead of returning to the faulting instruction
-    longjmp(jump_buffer, 1)
-
-cdef str _pwchar_to_str(WCHAR* wide_str, bint safe_parse=True):
+cdef _pwchar_to_str(WCHAR* wide_str, bint safe_parse=True):
     if wide_str is NULL:
         return None
-
-    # Register signal handler
-    signal(SIGSEGV, segfault_handler)
     
-    cdef:
-        int jump_result
-        int length = 0
-        str result
+    cdef int length = 0
     try:
-        jump_result = setjmp(jump_buffer) # Set jump point
-        if jump_result != 0: # Jumped here from the signal handler - segfault occurred
-            raise RuntimeError("Segmentation fault occurred")
-        result = PyUnicode_FromWideChar(<wchar_t*>wide_str, -1)
-        if result is None:
-            logger.warning("Failed to convert wide string to Python string")
-            raise RuntimeError("Failed to convert wide string to Python string")
-        return result
+       return PyUnicode_FromWideChar(<wchar_t*>wide_str, -1)
     except Exception as e:
         if safe_parse:
             logger.warning(f"Exception in _pwchar_to_str: {e}")
