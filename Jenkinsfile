@@ -497,17 +497,20 @@ pipeline {
                         }
                         stage('EtherCAT Everest') {
                             steps {
-                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
+                                runTestHW("ethercat and not skip_testing_framework", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
+                                runTestHW("ethercat and skip_testing_framework", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", USE_WIRESHARK_LOGGING)
+                                runTestHW("ethercat and not skip_testing_framework", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", USE_WIRESHARK_LOGGING)
+                                runTestHW("ethercat and skip_testing_framework", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Multislave') {
                             steps {
-                                runTestHW("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", USE_WIRESHARK_LOGGING)
+                                runTestHW("multislave and not skip_testing_framework", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", USE_WIRESHARK_LOGGING)
+                                runTestHW("multislave and skip_testing_framework", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Run no-connection tests') {
