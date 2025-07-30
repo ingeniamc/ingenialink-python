@@ -1,19 +1,16 @@
-from os.path import join as join_path
-
 import pytest
 
+import tests.resources
 from ingenialink.bitfield import BitField
 from ingenialink.dictionary import Interface, SubnodeType
 from ingenialink.ethernet.dictionary import EoEDictionaryV3
 
-path_resources = "./tests/resources/"
-dict_eoe_v3 = "test_dict_ecat_eoe_v3.0.xdf"
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
 @pytest.mark.no_connection
 def test_read_dictionary():
-    dictionary_path = join_path(path_resources, dict_eoe_v3)
+    dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     expected_device_attr = {
         "path": dictionary_path,
         "version": "3.0",
@@ -43,7 +40,7 @@ def test_read_dictionary_file_not_found():
 
 @pytest.mark.no_connection
 def test_read_dictionary_registers():
-    dictionary_path = join_path(path_resources, dict_eoe_v3)
+    dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     expected_regs_per_subnode = {
         0: [
             "DRV_DIAG_ERROR_LAST_COM",
@@ -64,7 +61,7 @@ def test_read_dictionary_categories():
         "OTHERS",
         "IDENTIFICATION",
     ]
-    dictionary_path = join_path(path_resources, dict_eoe_v3)
+    dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
 
     ethercat_dict = EoEDictionaryV3(dictionary_path)
 
@@ -77,7 +74,7 @@ def test_read_dictionary_errors():
         0x00003280,
         0x00002280,
     ]
-    dictionary_path = join_path(path_resources, dict_eoe_v3)
+    dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
 
     ethercat_dict = EoEDictionaryV3(dictionary_path)
 
@@ -86,7 +83,7 @@ def test_read_dictionary_errors():
 
 @pytest.mark.no_connection
 def test_object_not_exist():
-    dictionary_path = join_path(path_resources, dict_eoe_v3)
+    dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     ethernet_dict = EoEDictionaryV3(dictionary_path)
     with pytest.raises(KeyError):
         ethernet_dict.get_object("NOT_EXISTING_UID", 0)
@@ -94,7 +91,7 @@ def test_object_not_exist():
 
 @pytest.mark.no_connection
 def test_safety_pdo_not_implemented():
-    dictionary_path = join_path(path_resources, dict_eoe_v3)
+    dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     ethernet_dict = EoEDictionaryV3(dictionary_path)
     with pytest.raises(NotImplementedError):
         ethernet_dict.get_safety_rpdo("NOT_EXISTING_UID")
@@ -104,7 +101,7 @@ def test_safety_pdo_not_implemented():
 
 @pytest.mark.no_connection
 def test_register_default_values():
-    dictionary_path = join_path(path_resources, dict_eoe_v3)
+    dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     expected_defaults_per_subnode = {
         0: {
             "DRV_DIAG_ERROR_LAST_COM": 0,
@@ -122,7 +119,7 @@ def test_register_default_values():
 
 @pytest.mark.no_connection
 def test_register_description():
-    dictionary_path = join_path(path_resources, dict_eoe_v3)
+    dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     expected_description_per_subnode = {
         0: {
             "DRV_DIAG_ERROR_LAST_COM": "Contains the last generated error",
@@ -147,7 +144,7 @@ def test_register_description():
 
 @pytest.mark.no_connection
 def test_register_bitfields():
-    dictionary_path = join_path(path_resources, dict_eoe_v3)
+    dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     canopen_dict = EoEDictionaryV3(dictionary_path)
 
     for registers in canopen_dict._registers.values():

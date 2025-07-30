@@ -1,15 +1,12 @@
-from os.path import join as join_path
-
 import pytest
 
+import tests.resources
 from ingenialink.virtual.dictionary import VirtualDictionary
-
-path_resources = "./tests/resources/"
 
 
 @pytest.mark.no_connection
 def test_read_xdf_register_ethernet():
-    dictionary_path = join_path(path_resources, "ethernet/test_dict_eth.xdf")
+    dictionary_path = tests.resources.ethernet.TEST_DICT_ETHERNET
     address = 0x000F
     reg_id = "DRV_DIAG_ERROR_LAST_COM"
     subnode = 0
@@ -25,7 +22,7 @@ def test_read_xdf_register_ethernet():
 )
 @pytest.mark.no_connection
 def test_read_xdf_register_canopen(reg_id, subnode, address):
-    dictionary_path = join_path(path_resources, "canopen/test_dict_can.xdf")
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN
 
     ethernet_dict = VirtualDictionary(dictionary_path)
 
