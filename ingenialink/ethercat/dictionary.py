@@ -241,7 +241,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
         base_uid: str,
         base_label: str,
         n_elements: int,
-        write_only: bool = False,
+        read_only: bool = False,
         subnode: int = 0,
     ) -> CanOpenObject:
         """Generate PDO map registers.
@@ -251,7 +251,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             base_uid: Base unique identifier.
             base_label: Base label.
             n_elements: Number of elements of the pdo map.
-            write_only: If True, the PDO map is write-only (default is False).
+            read_only: If True, the PDO map is read-only (default is False).
             subnode: Subnode for the registers (default is 0).
 
         Returns:
@@ -272,7 +272,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                         subidx=0x00,
                         pdo_access=RegCyclicType.CONFIG,
                         dtype=RegDtype.U8,
-                        access=RegAccess.RO if write_only else RegAccess.RW,
+                        access=RegAccess.RO if read_only else RegAccess.RW,
                         address_type=RegAddressType.NVM_NONE,
                         labels={"en_US": "SubIndex 000"},
                         cat_id="COMMUNICATIONS",
@@ -288,7 +288,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                         subidx=i,
                         pdo_access=RegCyclicType.CONFIG,
                         dtype=RegDtype.U32,
-                        access=RegAccess.RO if write_only else RegAccess.RW,
+                        access=RegAccess.RO if read_only else RegAccess.RW,
                         address_type=RegAddressType.NVM_NONE,
                         labels={"en_US": f"{base_label} Element {i}"},
                         cat_id="COMMUNICATIONS",
@@ -363,7 +363,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 base_uid="ETG_COMMS_RPDO_MAP256",
                 base_label="RxPDO Map 256",
                 n_elements=16,
-                write_only=True,
+                read_only=True,
                 subnode=1,
             )
             yield self.__create_pdo_map(
@@ -371,7 +371,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 base_uid="ETG_COMMS_TPDO_MAP256",
                 base_label="RxPDO Map 256",
                 n_elements=16,
-                write_only=True,
+                read_only=True,
                 subnode=1,
             )
 
