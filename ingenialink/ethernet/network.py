@@ -8,7 +8,7 @@ from collections import OrderedDict, defaultdict
 from ftplib import FTP
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, cast
 
 import ingenialogger
 from multiping import multi_ping
@@ -99,6 +99,7 @@ class EthernetNetwork(Network):
             self.__subnet = None
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: dict[str, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
+        self.__disconnect_callbacks: dict[str, Optional[Callable[[EthernetServo], None]]] = {}
 
     @staticmethod
     def load_firmware(
@@ -255,6 +256,7 @@ class EthernetNetwork(Network):
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
         is_eoe: bool = False,
+        disconnect_callback: Optional[Callable[[EthernetServo], None]] = None,
     ) -> EthernetServo:
         """Connects to a slave through the given network settings.
 
@@ -268,6 +270,8 @@ class EthernetNetwork(Network):
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
             is_eoe: True if communication is EoE. ``False`` by default.
+            disconnect_callback: Callback function to be called when the servo is disconnected.
+                If not specified, no callback will be called.
 
         Raises:
             ILError: If the drive is not found.
@@ -291,7 +295,7 @@ class EthernetNetwork(Network):
             self.start_status_listener()
         else:
             self.stop_status_listener()
-
+        self.__disconnect_callbacks[target] = disconnect_callback
         return servo
 
     def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override]
@@ -301,6 +305,10 @@ class EthernetNetwork(Network):
             servo: Instance of the servo connected.
 
         """
+        # Notify that disconnect_from_slave has been called
+        callback = self.__disconnect_callbacks[cast("str", servo.target)]
+        if callback:
+            callback(servo)
         self.servos.remove(servo)
         servo.stop_status_listener()
         self.close_socket(servo.socket)

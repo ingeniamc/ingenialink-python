@@ -9,7 +9,7 @@ from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, cast
 
 import can
 import canopen
@@ -232,6 +232,7 @@ class CanopenNetwork(Network):
         self._connection: Optional[NetworkLib] = None
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: dict[int, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
+        self.__disconnect_callbacks: dict[int, Optional[Callable[[CanopenServo], None]]] = {}
 
         self.__connection_args = {
             "interface": self.__device,
@@ -347,6 +348,7 @@ class CanopenNetwork(Network):
         dictionary: str,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[CanopenServo], None]] = None,
     ) -> CanopenServo:
         """Connects to a drive through a given target node ID.
 
@@ -357,6 +359,8 @@ class CanopenNetwork(Network):
                 its status, errors, faults, etc.
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
+            disconnect_callback: Callback function to be called when the servo is disconnected.
+                If not specified, no callback will be called.
 
         Raises:
             ILError: if there aren't nodes in the network.
@@ -388,6 +392,7 @@ class CanopenNetwork(Network):
                 self._set_servo_state(target, NetState.CONNECTED)
                 if net_status_listener:
                     self.start_status_listener()
+                self.__disconnect_callbacks[target] = disconnect_callback
                 return servo
             except Exception as e:
                 logger.error("Failed connecting to node %i. Exception: %s", target, e)
@@ -407,6 +412,10 @@ class CanopenNetwork(Network):
             servo: Instance of the servo connected.
 
         """
+        # Notify that disconnect_from_slave has been called
+        callback = self.__disconnect_callbacks[cast("int", servo.target)]
+        if callback:
+            callback(servo)
         self.stop_status_listener()
         servo.stop_status_listener()
         self.servos.remove(servo)

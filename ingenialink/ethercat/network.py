@@ -211,6 +211,7 @@ class EthercatNetwork(Network):
         self._overlapping_io_map = overlapping_io_map
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
+        self.__disconnect_callbacks: dict[int, Optional[Callable[[EthercatServo], None]]] = {}
 
         self._lock = threading.Lock()
         set_network_reference(network=self)
@@ -339,6 +340,7 @@ class EthercatNetwork(Network):
         dictionary: str,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[EthercatServo], None]] = None,
     ) -> EthercatServo:
         """Connects to a drive through a given slave number.
 
@@ -349,6 +351,8 @@ class EthercatNetwork(Network):
                 its status, errors, faults, etc.
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
+            disconnect_callback: Callback function to be called when the servo is disconnected.
+                If not specified, no callback will be called.
 
         Raises:
             ValueError: If the slave ID is not valid.
@@ -385,6 +389,7 @@ class EthercatNetwork(Network):
         self._set_servo_state(slave_id, NetState.CONNECTED)
         if net_status_listener:
             self.start_status_listener()
+        self.__disconnect_callbacks[slave_id] = disconnect_callback
         return servo
 
     def close_ecat_master(self, release_reference: bool = True) -> None:
@@ -410,6 +415,10 @@ class EthercatNetwork(Network):
             servo: Instance of the servo connected.
 
         """
+        # Notify that disconnect_from_slave has been called
+        callback = self.__disconnect_callbacks[servo.slave_id]
+        if callback:
+            callback(servo)
         if not self._change_nodes_state(servo, pysoem.INIT_STATE):
             logger.warning("Drive can not reach Init state")
         servo.teardown()
