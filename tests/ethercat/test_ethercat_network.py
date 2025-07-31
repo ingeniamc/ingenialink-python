@@ -98,7 +98,9 @@ def test_connect_to_slave_with_callback(setup_descriptor):
 
     net = EthercatNetwork(setup_descriptor.ifname)
     servo = net.connect_to_slave(
-        setup_descriptor.slave, setup_descriptor.dictionary, disconnect_callback=dummy_callback
+        setup_descriptor.slave,
+        setup_descriptor.dictionary,
+        disconnect_callback=dummy_callback,
     )
     assert servo is not None
     assert servo.target == setup_descriptor.slave
