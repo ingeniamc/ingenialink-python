@@ -61,5 +61,5 @@ class VirtualNetwork(EthernetNetwork):
         else:
             self.stop_status_listener()
 
-        self._EthernetNetwork__disconnect_callbacks[VirtualDrive.IP_ADDRESS] = disconnect_callback  # type: ignore [assignment]
+        self._EthernetNetwork__disconnect_callbacks[VirtualDrive.IP_ADDRESS] = disconnect_callback  # type: ignore [attr-defined]
         return servo
