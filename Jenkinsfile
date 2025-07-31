@@ -21,7 +21,8 @@ def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 def RACK_SPECIFIERS_PATH = "tests.setups.rack_specifiers"
 
-DOCKER_TMP_PATH = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
+WIN_DOCKER_TMP_PATH = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
+LIN_DOCKER_TMP_PATH = "/tmp/ingenialink_python"
 
 WIRESHARK_DIR = "wireshark"
 USE_WIRESHARK_LOGGING = ""
@@ -76,15 +77,16 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
     def pythonVersions = versions.split(',')
     pythonVersions.each { version ->
         def venvName = ".venv${version}"
+        def cdCmd = workingDir ? "cd ${workingDir}" : ""
         if (isUnix()) {
             sh """
+                ${cdCmd}
                 python${version} -m venv --without-pip ${venvName}
                 . ${venvName}/bin/activate
                 poetry sync --no-root --all-groups
                 deactivate
             """
         } else {
-            def cdCmd = workingDir ? "cd ${workingDir}" : ""
             def installWheelCmd = installWheel ? "poetry run poe install-wheel" : ""
             bat """
                 ${cdCmd}
@@ -102,13 +104,14 @@ def buildWheel(py_version) {
      echo "Running build for Python ${py_version} in Docker environment"
     if (isUnix()) {
         sh """
+            cd ${LIN_DOCKER_TMP_PATH}
             . .venv${py_version}/bin/activate
             poetry run poe build-wheel
             deactivate
         """
     } else {
         bat """
-            cd ${DOCKER_TMP_PATH}
+            cd ${WIN_DOCKER_TMP_PATH}
             call .venv${py_version}/Scripts/activate
             poetry run poe build-wheel
             deactivate
@@ -225,13 +228,13 @@ pipeline {
                             stages {
                                 stage('Move workspace') {
                                     steps {
-                                        bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y /e /h"
+                                        bat "XCOPY ${env.WORKSPACE} ${WIN_DOCKER_TMP_PATH} /s /i /y /e /h"
                                     }
                                 }
                                 stage('Create virtual environments') {
                                     steps {
                                         script {
-                                            createVirtualEnvironments(false, DOCKER_TMP_PATH, ALL_PYTHON_VERSIONS)
+                                            createVirtualEnvironments(false, WIN_DOCKER_TMP_PATH, ALL_PYTHON_VERSIONS)
                                         }
                                     }
                                 }
@@ -247,7 +250,7 @@ pipeline {
                                             }
                                         }
                                         bat """
-                                            cd ${DOCKER_TMP_PATH}
+                                            cd ${WIN_DOCKER_TMP_PATH}
                                             call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
                                             poetry run poe check-wheels
                                             COPY ingenialink\\_version.py ${env.WORKSPACE}\\ingenialink\\_version.py
@@ -301,10 +304,10 @@ pipeline {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
                                                 bat """
-                                                    cd ${DOCKER_TMP_PATH}
+                                                    cd ${WIN_DOCKER_TMP_PATH}
                                                     call .venv${version}/Scripts/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports\\junit-tests.xml --junit-prefix=tests -m docker -o log_cli=True
+                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m docker -o log_cli=True
                                                 """
                                             }
                                         }
@@ -312,10 +315,11 @@ pipeline {
                                     post {
                                         always {
                                             bat """
-                                                move ${DOCKER_TMP_PATH}\\.coverage .coverage_docker
-                                                move ${DOCKER_TMP_PATH}\\pytest_reports\\junit-tests.xml junit-tests.xml
+                                                mkdir -p pytest_reports
+                                                XCOPY ${WIN_DOCKER_TMP_PATH}\\pytest_reports\\* pytest_reports\\ /s /i /y /e /h
+                                                move ${WIN_DOCKER_TMP_PATH}\\.coverage .coverage_docker
                                             """
-                                            junit "junit-tests.xml"
+                                            junit 'pytest_reports/*.xml'
                                             stash includes: '.coverage_docker', name: '.coverage_docker'
                                             script {
                                                 coverage_stashes.add(".coverage_docker")
@@ -334,11 +338,19 @@ pipeline {
                                 }
                             }
                             stages {
-                                stage('Create virtual environments') {
+                                stage('Move workspace') {
                                     steps {
                                         script {
-                                            createVirtualEnvironments()
+                                            sh """
+                                                mkdir -p ${LIN_DOCKER_TMP_PATH}
+                                                cp -r ${env.WORKSPACE}/. ${LIN_DOCKER_TMP_PATH}
+                                            """
                                         }
+                                    }
+                                }
+                                stage('Create virtual environments') {
+                                    steps {
+                                        createVirtualEnvironments(false, LIN_DOCKER_TMP_PATH)
                                     }
                                 }
                                 stage('Build wheels') {
@@ -346,21 +358,26 @@ pipeline {
                                         SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
                                     }
                                     steps {
-                                        buildWheel(DEFAULT_PYTHON_VERSION)
-                                        sh """
-                                            . .venv${DEFAULT_PYTHON_VERSION}/bin/activate
-                                            poetry run poe check-wheels
-                                            deactivate
-                                        """
+                                        script {
+                                            buildWheel(DEFAULT_PYTHON_VERSION)
+                                            sh """
+                                                cd ${LIN_DOCKER_TMP_PATH}
+                                                . .venv${DEFAULT_PYTHON_VERSION}/bin/activate
+                                                poetry run poe check-wheels
+                                                deactivate
+                                                mkdir -p ${env.WORKSPACE}/dist
+                                                cp dist/* ${env.WORKSPACE}/dist/
+                                            """
+                                        }
                                     }
                                 }
                                 stage('Archive artifacts') {
                                     steps {
-                                        archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
+                                        archiveArtifacts(artifacts: "dist/*", followSymlinks: false)
                                         script {
                                             stash_name = "publish_wheels-linux"
                                             wheel_stashes.add(stash_name)
-                                            stash includes: "dist\\*", name: stash_name
+                                            stash includes: "dist/*", name: stash_name
                                         }
                                     }
                                 }
@@ -370,9 +387,10 @@ pipeline {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
                                                 sh """
+                                                    cd ${LIN_DOCKER_TMP_PATH}
                                                     . .venv${version}/bin/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests.xml --junit-prefix=${version} -m no_connection -o log_cli=True
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m no_connection -o log_cli=True
                                                     deactivate
                                                 """
                                             }
@@ -380,7 +398,11 @@ pipeline {
                                     }
                                     post {
                                         always {
-                                            junit "pytest_reports\\*.xml"
+                                            sh """
+                                                mkdir -p pytest_reports
+                                                cp ${LIN_DOCKER_TMP_PATH}/pytest_reports/* pytest_reports/
+                                            """
+                                            junit 'pytest_reports/*.xml'
                                         }
                                     }
                                 }
@@ -390,9 +412,10 @@ pipeline {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
                                                 sh """
+                                                    cd ${LIN_DOCKER_TMP_PATH}
                                                     . .venv${version}/bin/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP  -o log_cli=True
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
                                                     deactivate
                                                 """
                                             }
@@ -400,7 +423,11 @@ pipeline {
                                     }
                                     post {
                                         always {
-                                            junit "pytest_reports\\*.xml"
+                                            sh """
+                                                mkdir -p pytest_reports
+                                                cp ${LIN_DOCKER_TMP_PATH}/pytest_reports/* pytest_reports/
+                                            """
+                                            junit 'pytest_reports/*.xml'
                                         }
                                     }
                                 }
