@@ -90,7 +90,6 @@ def test_connect_to_no_detected_slave(setup_descriptor):
 
 
 @pytest.mark.ethercat
-@pytest.mark.skip_testing_framework
 def test_connect_to_slave_with_callback(setup_descriptor):
     disconnected_servos = []
 
@@ -99,17 +98,16 @@ def test_connect_to_slave_with_callback(setup_descriptor):
 
     net = EthercatNetwork(setup_descriptor.ifname)
     servo = net.connect_to_slave(
-        setup_descriptor.slave, setup_descriptor.dictionary, callback=dummy_callback
+        setup_descriptor.slave, setup_descriptor.dictionary, disconnect_callback=dummy_callback
     )
     assert servo is not None
     assert servo.target == setup_descriptor.slave
 
     # Disconnect the servo to trigger the callback
     assert len(disconnected_servos) == 0
-    net.disconnect_from_slave(servo)
+    net.disconnect_from_slave(servo)  # this closes the ecat master
     assert len(disconnected_servos) == 1
     assert disconnected_servos[0] == setup_descriptor.slave
-    net.close_ecat_master()
 
 
 @pytest.mark.ethercat
