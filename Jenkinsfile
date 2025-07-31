@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.14') _
+@Library('cicd-lib@0.15') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -30,20 +30,6 @@ START_WIRESHARK_TIMEOUT_S = 10.0
 
 wheel_stashes = []
 coverage_stashes = []
-
-def getVersionForPR() {
-    if (!env.CHANGE_ID) {
-        return ""
-    }
-    def latest_tag = ''
-    if (isUnix()) {
-        sh "git config --global --add safe.directory '*'"
-        latest_tag = sh(returnStdout: true, script: 'git describe --tags --abbrev=0').trim()
-    } else {
-        latest_tag = powershell(returnStdout: true, script: 'git describe --tags --abbrev=0').trim()
-    }
-    return "${latest_tag}+PR${env.CHANGE_ID}B${env.BUILD_NUMBER}"
-}
 
 def reassignFilePermissions() {
     if (isUnix()) {
