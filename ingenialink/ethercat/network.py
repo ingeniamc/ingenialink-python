@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import ingenialogger
 
+from ingenialink.utils.timeout import Timeout
+
 try:
     import pysoem
 except ImportError as ex:
@@ -451,16 +453,26 @@ class EthercatNetwork(Network):
             raise ILError(
                 "The RPDO values should be set before starting the PDO exchange process."
             ) from e
-        self.config_pdo_maps()
-        self._ecat_master.state = pysoem.SAFEOP_STATE
-        if not self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE):
-            raise ILStateError("Drives can not reach SafeOp state")
-        self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
-        init_time = time.time()
-        while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
-            self.send_receive_processdata()
-            if timeout < time.time() - init_time:
-                raise ILStateError("Drives can not reach Op state")
+        with Timeout(timeout) as t:
+            # Configure the PDO maps
+            self.config_pdo_maps()
+
+            # Set all slaves to SafeOp state
+            self._ecat_master.state = pysoem.SAFEOP_STATE
+            while not self._change_nodes_state(
+                op_servo_list, pysoem.SAFEOP_STATE
+            ):
+                if t.has_expired:
+                    raise ILStateError("Drives can not reach SafeOp state")
+
+            # Set all slaves to Op state
+            self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
+            while not self._check_node_state(
+                op_servo_list, pysoem.OP_STATE
+            ):
+                self.send_receive_processdata()
+                if t.has_expired:
+                    raise ILStateError("Drives can not reach Op state")
 
     def stop_pdos(self) -> None:
         """For all slaves in OP or SafeOp state, set state to PreOp."""
