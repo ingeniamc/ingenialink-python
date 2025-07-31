@@ -150,7 +150,7 @@ def test_ethernet_disconnection(setup_descriptor):
     disconnected_servos = []
 
     def dummy_callback(servo):
-        disconnected_servos.append(servo.slave_id)
+        disconnected_servos.append(servo.target)
 
     net = EthernetNetwork()
     servo = net.connect_to_slave(
