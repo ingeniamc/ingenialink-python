@@ -226,7 +226,7 @@ pipeline {
                                 }
                                 stage('Build wheels') {
                                     environment {
-                                        SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
+                                        SETUPTOOLS_SCM_PRETEND_VERSION = getPythonVersionForPr()
                                     }
                                     steps {
                                         script {
@@ -341,7 +341,7 @@ pipeline {
                                 }
                                 stage('Build wheels') {
                                     environment {
-                                        SETUPTOOLS_SCM_PRETEND_VERSION = getVersionForPR()
+                                        SETUPTOOLS_SCM_PRETEND_VERSION = getPythonVersionForPr()
                                     }
                                     steps {
                                         script {
