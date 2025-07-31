@@ -261,7 +261,7 @@ pipeline {
                                 stage('Make a static type analysis') {
                                     steps {
                                         bat """
-                                            cd ${DOCKER_TMP_PATH}
+                                            cd ${WIN_DOCKER_TMP_PATH}
                                             call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
                                             poetry run poe type
                                         """
@@ -270,7 +270,7 @@ pipeline {
                                 stage('Check formatting') {
                                     steps {
                                         bat """
-                                            cd ${DOCKER_TMP_PATH}
+                                            cd ${WIN_DOCKER_TMP_PATH}
                                             call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
                                             poetry run poe format
                                         """
@@ -289,7 +289,7 @@ pipeline {
                                 stage('Generate documentation') {
                                     steps {
                                         bat """
-                                            cd ${DOCKER_TMP_PATH}
+                                            cd ${WIN_DOCKER_TMP_PATH}
                                             call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
                                             poetry run poe docs
                                             "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
@@ -610,10 +610,10 @@ pipeline {
                     for (stash_name in wheel_stashes) {
                         unstash stash_name
                     }
-                    bat "XCOPY ${env.WORKSPACE} ${DOCKER_TMP_PATH} /s /i /y /e /h"
-                    createVirtualEnvironments(true, DOCKER_TMP_PATH, DEFAULT_PYTHON_VERSION)
+                    bat "XCOPY ${env.WORKSPACE} ${WIN_DOCKER_TMP_PATH} /s /i /y /e /h"
+                    createVirtualEnvironments(true, WIN_DOCKER_TMP_PATH, DEFAULT_PYTHON_VERSION)
                     bat """
-                        cd ${DOCKER_TMP_PATH}
+                        cd ${WIN_DOCKER_TMP_PATH}
                         call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
                         poetry run poe cov-combine --${coverage_files}
                         poetry run poe cov-report
