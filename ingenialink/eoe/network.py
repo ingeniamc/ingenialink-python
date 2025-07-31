@@ -5,7 +5,7 @@ import time
 from collections import OrderedDict
 from enum import Enum
 from threading import Thread
-from typing import Optional
+from typing import Callable, Optional
 
 import ingenialogger
 from typing_extensions import override
@@ -87,6 +87,7 @@ class EoENetwork(EthernetNetwork):
         connection_timeout: float = constants.DEFAULT_ETH_CONNECTION_TIMEOUT,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[EthernetServo], None]] = None,
     ) -> EthernetServo:
         """Connects to a slave through the given network settings.
 
@@ -100,6 +101,8 @@ class EoENetwork(EthernetNetwork):
                 its status, errors, faults, etc.
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
+            disconnect_callback: Callback function to be called when the servo is disconnected.
+                If not specified, no callback will be called.
 
         Raises:
             ValueError: ip_address must be a subnetwork of 192.168.3.0/24.
@@ -123,13 +126,14 @@ class EoENetwork(EthernetNetwork):
         self._configured_slaves[ip_address] = slave_id
         self.subscribe_to_status(ip_address, self._recover_from_power_cycle)
         return super().connect_to_slave(
-            ip_address,
-            dictionary,
-            port,
-            connection_timeout,
-            servo_status_listener,
-            net_status_listener,
-            True,
+            target=ip_address,
+            dictionary=dictionary,
+            port=port,
+            connection_timeout=connection_timeout,
+            servo_status_listener=servo_status_listener,
+            net_status_listener=net_status_listener,
+            is_eoe=True,
+            disconnect_callback=disconnect_callback,
         )
 
     def __wait_eoe_starts(self) -> None:
