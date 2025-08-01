@@ -9,7 +9,7 @@ from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Optional, Union, cast
+from typing import Any, Callable, Optional, Union
 
 import can
 import canopen
@@ -23,6 +23,7 @@ from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.servo import Servo
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 
@@ -232,7 +233,6 @@ class CanopenNetwork(Network):
         self._connection: Optional[NetworkLib] = None
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: dict[int, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
-        self.__disconnect_callbacks: dict[int, Optional[Callable[[CanopenServo], None]]] = {}
 
         self.__connection_args = {
             "interface": self.__device,
@@ -348,7 +348,7 @@ class CanopenNetwork(Network):
         dictionary: str,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
-        disconnect_callback: Optional[Callable[[CanopenServo], None]] = None,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> CanopenServo:
         """Connects to a drive through a given target node ID.
 
@@ -386,13 +386,16 @@ class CanopenNetwork(Network):
                 node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
                 servo = CanopenServo(
-                    target, node, dictionary, servo_status_listener=servo_status_listener
+                    target,
+                    node,
+                    dictionary,
+                    servo_status_listener=servo_status_listener,
+                    disconnect_callback=disconnect_callback,
                 )
                 self.servos.append(servo)
                 self._set_servo_state(target, NetState.CONNECTED)
                 if net_status_listener:
                     self.start_status_listener()
-                self.__disconnect_callbacks[target] = disconnect_callback
                 return servo
             except Exception as e:
                 logger.error("Failed connecting to node %i. Exception: %s", target, e)
@@ -413,9 +416,8 @@ class CanopenNetwork(Network):
 
         """
         # Notify that disconnect_from_slave has been called
-        callback = self.__disconnect_callbacks[cast("int", servo.target)]
-        if callback:
-            callback(servo)
+        if servo._disconnect_callback:
+            servo._disconnect_callback(servo)
         self.stop_status_listener()
         servo.stop_status_listener()
         self.servos.remove(servo)

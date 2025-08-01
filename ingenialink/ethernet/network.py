@@ -8,7 +8,7 @@ from collections import OrderedDict, defaultdict
 from ftplib import FTP
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Optional, Union, cast
+from typing import Any, Callable, Optional, Union
 
 import ingenialogger
 from multiping import multi_ping
@@ -17,6 +17,7 @@ from typing_extensions import override
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.servo import Servo
 from ingenialink.utils.udp import UDP
 
 from .servo import EthernetServo
@@ -99,7 +100,6 @@ class EthernetNetwork(Network):
             self.__subnet = None
         self.__listener_net_status: Optional[NetStatusListener] = None
         self.__observers_net_state: dict[str, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
-        self.__disconnect_callbacks: dict[str, Optional[Callable[[EthernetServo], None]]] = {}
 
     @staticmethod
     def load_firmware(
@@ -256,7 +256,7 @@ class EthernetNetwork(Network):
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
         is_eoe: bool = False,
-        disconnect_callback: Optional[Callable[[EthernetServo], None]] = None,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> EthernetServo:
         """Connects to a slave through the given network settings.
 
@@ -282,7 +282,9 @@ class EthernetNetwork(Network):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(connection_timeout)
         sock.connect((target, port))
-        servo = EthernetServo(sock, dictionary, servo_status_listener, is_eoe)
+        servo = EthernetServo(
+            sock, dictionary, servo_status_listener, is_eoe, disconnect_callback=disconnect_callback
+        )
         try:
             servo.get_state()
         except ILError as e:
@@ -295,7 +297,6 @@ class EthernetNetwork(Network):
             self.start_status_listener()
         else:
             self.stop_status_listener()
-        self.__disconnect_callbacks[target] = disconnect_callback
         return servo
 
     def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override]
@@ -306,9 +307,8 @@ class EthernetNetwork(Network):
 
         """
         # Notify that disconnect_from_slave has been called
-        callback = self.__disconnect_callbacks[cast("str", servo.target)]
-        if callback:
-            callback(servo)
+        if servo._disconnect_callback:
+            servo._disconnect_callback(servo)
         self.servos.remove(servo)
         servo.stop_status_listener()
         self.close_socket(servo.socket)

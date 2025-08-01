@@ -15,6 +15,7 @@ from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError
 from ingenialink.network import NetDevEvt, SlaveInfo
+from ingenialink.servo import Servo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -87,7 +88,7 @@ class EoENetwork(EthernetNetwork):
         connection_timeout: float = constants.DEFAULT_ETH_CONNECTION_TIMEOUT,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
-        disconnect_callback: Optional[Callable[[EthernetServo], None]] = None,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> EthernetServo:
         """Connects to a slave through the given network settings.
 

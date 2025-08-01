@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import ingenialogger
 
+from ingenialink.servo import Servo
+
 try:
     import pysoem
 except ImportError as ex:
@@ -211,7 +213,6 @@ class EthercatNetwork(Network):
         self._overlapping_io_map = overlapping_io_map
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
-        self.__disconnect_callbacks: dict[int, Optional[Callable[[EthercatServo], None]]] = {}
 
         self._lock = threading.Lock()
         set_network_reference(network=self)
@@ -340,7 +341,7 @@ class EthercatNetwork(Network):
         dictionary: str,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
-        disconnect_callback: Optional[Callable[[EthercatServo], None]] = None,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> EthercatServo:
         """Connects to a drive through a given slave number.
 
@@ -379,6 +380,7 @@ class EthercatNetwork(Network):
             dictionary,
             servo_status_listener,
             sdo_read_write_release_gil=self.__gil_release_config.sdo_read_write,
+            disconnect_callback=disconnect_callback,
         )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             if servo_status_listener:
@@ -389,7 +391,6 @@ class EthercatNetwork(Network):
         self._set_servo_state(slave_id, NetState.CONNECTED)
         if net_status_listener:
             self.start_status_listener()
-        self.__disconnect_callbacks[slave_id] = disconnect_callback
         return servo
 
     def close_ecat_master(self, release_reference: bool = True) -> None:
@@ -416,9 +417,8 @@ class EthercatNetwork(Network):
 
         """
         # Notify that disconnect_from_slave has been called
-        callback = self.__disconnect_callbacks[servo.slave_id]
-        if callback:
-            callback(servo)
+        if servo._disconnect_callback:
+            servo._disconnect_callback(servo)
         if not self._change_nodes_state(servo, pysoem.INIT_STATE):
             logger.warning("Drive can not reach Init state")
         servo.teardown()
