@@ -459,17 +459,13 @@ class EthercatNetwork(Network):
 
             # Set all slaves to SafeOp state
             self._ecat_master.state = pysoem.SAFEOP_STATE
-            while not self._change_nodes_state(
-                op_servo_list, pysoem.SAFEOP_STATE
-            ):
+            while not self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE):
                 if t.has_expired:
                     raise ILStateError("Drives can not reach SafeOp state")
 
             # Set all slaves to Op state
             self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
-            while not self._check_node_state(
-                op_servo_list, pysoem.OP_STATE
-            ):
+            while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
                 self.send_receive_processdata()
                 if t.has_expired:
                     raise ILStateError("Drives can not reach Op state")
