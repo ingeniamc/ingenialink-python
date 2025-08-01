@@ -41,6 +41,8 @@ class CanopenServo(Servo):
         dictionary_path: Path to the dictionary.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
+        disconnect_callback: Callback function to be called when the servo is disconnected.
+            If not specified, no callback will be called.
 
     """
 
@@ -58,11 +60,14 @@ class CanopenServo(Servo):
         node: canopen.RemoteNode,
         dictionary_path: str,
         servo_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> None:
         self.__node = node
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__node.emcy.add_callback(self._on_emcy)
-        super().__init__(target, dictionary_path, servo_status_listener)
+        super().__init__(
+            target, dictionary_path, servo_status_listener, disconnect_callback=disconnect_callback
+        )
 
     @override
     def read(

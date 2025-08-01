@@ -282,6 +282,7 @@ class Servo:
         target: Union[int, str],
         dictionary_path: str,
         servo_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[["Servo"], None]] = None,
     ):
         self._dictionary = DictionaryFactory.create_dictionary(dictionary_path, self.interface)
         self.target = target
@@ -316,6 +317,7 @@ class Servo:
             self.start_status_listener()
         else:
             self.stop_status_listener()
+        self._disconnect_callback: Optional[Callable[[Servo], None]] = disconnect_callback
 
     def start_status_listener(self) -> None:
         """Start listening for servo status events (ServoState)."""

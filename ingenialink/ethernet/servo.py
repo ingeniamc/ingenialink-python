@@ -1,6 +1,6 @@
 import ipaddress
 import socket
-from typing import Optional
+from typing import Callable, Optional
 
 import ingenialogger
 
@@ -48,12 +48,18 @@ class EthernetServo(Servo):
         dictionary_path: str,
         servo_status_listener: bool = False,
         is_eoe: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> None:
         if is_eoe:
             self.interface = Interface.EoE
         self.socket = socket
         self.ip_address, self.port = self.socket.getpeername()
-        super().__init__(self.ip_address, dictionary_path, servo_status_listener)
+        super().__init__(
+            self.ip_address,
+            dictionary_path,
+            servo_status_listener,
+            disconnect_callback=disconnect_callback,
+        )
 
     def store_tcp_ip_parameters(self) -> None:
         """Stores the TCP/IP values.

@@ -17,6 +17,7 @@ from typing_extensions import override
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.servo import Servo
 from ingenialink.utils.udp import UDP
 
 from .servo import EthernetServo
@@ -255,6 +256,7 @@ class EthernetNetwork(Network):
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
         is_eoe: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> EthernetServo:
         """Connects to a slave through the given network settings.
 
@@ -268,6 +270,8 @@ class EthernetNetwork(Network):
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
             is_eoe: True if communication is EoE. ``False`` by default.
+            disconnect_callback: Callback function to be called when the servo is disconnected.
+                If not specified, no callback will be called.
 
         Raises:
             ILError: If the drive is not found.
@@ -278,7 +282,9 @@ class EthernetNetwork(Network):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(connection_timeout)
         sock.connect((target, port))
-        servo = EthernetServo(sock, dictionary, servo_status_listener, is_eoe)
+        servo = EthernetServo(
+            sock, dictionary, servo_status_listener, is_eoe, disconnect_callback=disconnect_callback
+        )
         try:
             servo.get_state()
         except ILError as e:
@@ -291,7 +297,6 @@ class EthernetNetwork(Network):
             self.start_status_listener()
         else:
             self.stop_status_listener()
-
         return servo
 
     def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override]
@@ -301,6 +306,9 @@ class EthernetNetwork(Network):
             servo: Instance of the servo connected.
 
         """
+        # Notify that disconnect_from_slave has been called
+        if servo._disconnect_callback:
+            servo._disconnect_callback(servo)
         self.servos.remove(servo)
         servo.stop_status_listener()
         self.close_socket(servo.socket)

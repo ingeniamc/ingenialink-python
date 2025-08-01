@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import TYPE_CHECKING, ClassVar, Literal, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Callable, ClassVar, Literal, Optional, TypeVar, Union
 
 import bitarray
 from typing_extensions import override
@@ -668,8 +668,11 @@ class PDOServo(Servo):
         target: Union[int, str],
         dictionary_path: str,
         servo_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ):
-        super().__init__(target, dictionary_path, servo_status_listener)
+        super().__init__(
+            target, dictionary_path, servo_status_listener, disconnect_callback=disconnect_callback
+        )
         self._rpdo_maps: list[RPDOMap] = []
         self._tpdo_maps: list[TPDOMap] = []
 
