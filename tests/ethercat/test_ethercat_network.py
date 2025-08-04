@@ -62,16 +62,14 @@ def test_load_firmware_file_not_found_error(setup_descriptor):
 
 
 @pytest.mark.ethercat
-def test_load_firmware_no_slave_detected_error(mocker, setup_descriptor):
-    net = EthercatNetwork(setup_descriptor.ifname)
-    mocker.patch("os.path.isfile", return_value=True)
+def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loading):
+    net, _ = mocked_network_for_firmware_loading
     slave_id = 23
     with pytest.raises(
         ILError,
         match=f"Slave {slave_id} was not found.",
     ):
         net.load_firmware("dummy_file.lfu", False, slave_id=slave_id)
-    net.close_ecat_master()
 
 
 @pytest.mark.ethercat
