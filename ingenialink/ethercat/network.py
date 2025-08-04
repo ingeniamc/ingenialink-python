@@ -665,7 +665,7 @@ class EthercatNetwork(Network):
                 break
             error_message = (
                 f"Attempt {iteration + 1}: "
-                f"{self.__get_foe_error_message(error_code=foe_write_result)}"
+                f"{self.__get_foe_error_message(error_code=foe_write_result)}."
             )
             logger.info(f"FoE write failed: {error_message}")
             error_messages.append(error_message)

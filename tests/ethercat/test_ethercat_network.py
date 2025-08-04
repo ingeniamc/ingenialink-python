@@ -19,7 +19,22 @@ from ingenialink.ethercat.network import (
     GilReleaseConfig,
     release_network_reference,
 )
-from ingenialink.exceptions import ILError
+from ingenialink.exceptions import ILError, ILFirmwareLoadError
+
+
+@pytest.fixture
+def mocked_network_for_firmware_loading(mocker):
+    net = EthercatNetwork("fake_interface")
+    mocker.patch("os.path.isfile", return_value=True)
+    mocker.patch.object(net, "_force_boot_mode")
+    mocker.patch.object(net, "_start_master")
+    mocker.patch.object(net, "_EthercatNetwork__init_nodes")
+
+    mock_slave = mocker.Mock()
+    net._ecat_master.slaves = [mock_slave]
+    net._EthercatNetwork__last_init_nodes = {1}
+    yield net, mock_slave
+    net.close_ecat_master()
 
 
 @pytest.mark.docker
@@ -57,6 +72,44 @@ def test_load_firmware_no_slave_detected_error(mocker, setup_descriptor):
     ):
         net.load_firmware("dummy_file.lfu", False, slave_id=slave_id)
     net.close_ecat_master()
+
+
+@pytest.mark.ethercat
+def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_loading):
+    net, _ = mocked_network_for_firmware_loading
+    mocker.patch.object(net, "_switch_to_boot_state", side_effect=[True, False])
+    mocker.patch.object(net, "_write_foe", return_value=-5)
+    with pytest.raises(
+        ILFirmwareLoadError,
+        match="The firmware file could not be loaded correctly after 2 attempts. "
+        "Errors:\nAttempt 1: FoE error.\n"
+        "Attempt 2: The slave cannot reach the Boot state.",
+    ):
+        net.load_firmware("dummy_file.sfu", False, slave_id=1)
+
+
+@pytest.mark.ethercat
+def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loading):
+    net, _ = mocked_network_for_firmware_loading
+    mocker.patch("os.path.isfile", return_value=True)
+    mocker.patch.object(net, "_switch_to_boot_state", return_value=True)
+    mocker.patch.object(net, "_write_foe", side_effect=[-5, -3])
+    with pytest.raises(
+        ILFirmwareLoadError,
+        match="The firmware file could not be loaded correctly after 2 attempts. "
+        "Errors:\nAttempt 1: FoE error.\nAttempt 2: Unexpected mailbox received.",
+    ):
+        net.load_firmware("dummy_file.sfu", False, slave_id=1)
+
+
+@pytest.mark.ethercat
+def test_load_firmware_success_after_retry(mocker, mocked_network_for_firmware_loading):
+    net, slave = mocked_network_for_firmware_loading
+    mocker.patch.object(net, "_switch_to_boot_state", side_effect=[False, True])
+    mocker.patch.object(net, "_write_foe", return_value=1)
+    mocker.patch("time.sleep", return_value=None)
+    slave.state_check.return_value = pysoem.PREOP_STATE
+    net.load_firmware("dummy_file.sfu", False, slave_id=1)
 
 
 @pytest.mark.ethercat
