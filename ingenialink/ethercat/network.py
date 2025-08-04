@@ -431,11 +431,11 @@ class EthercatNetwork(Network):
         else:
             self._ecat_master.config_map()
 
-    def start_pdos(self, timeout: float = 1.0) -> None:
+    def start_pdos(self, timeout: float = 2.0) -> None:
         """Set all slaves with mapped PDOs to Operational State.
 
         Args:
-            timeout: timeout in seconds to reach Op state, 1.0 seconds by default.
+            timeout: timeout in seconds to reach Op state, 2.0 seconds by default.
 
         Raises:
             ILError: If the RPDO values are not set before starting the PDO exchange process.
@@ -458,6 +458,7 @@ class EthercatNetwork(Network):
             self.config_pdo_maps()
 
             # Set all slaves to SafeOp state
+            self._ecat_master.state = pysoem.SAFEOP_STATE
             self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE)
             while not self._check_node_state(op_servo_list, pysoem.SAFEOP_STATE):
                 if t.has_expired:
