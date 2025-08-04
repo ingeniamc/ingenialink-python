@@ -458,8 +458,8 @@ class EthercatNetwork(Network):
             self.config_pdo_maps()
 
             # Set all slaves to SafeOp state
-            self._ecat_master.state = pysoem.SAFEOP_STATE
-            while not self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE):
+            self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE)
+            while not self._check_node_state(op_servo_list, pysoem.SAFEOP_STATE):
                 if t.has_expired:
                     raise ILStateError("Drives can not reach SafeOp state")
 
