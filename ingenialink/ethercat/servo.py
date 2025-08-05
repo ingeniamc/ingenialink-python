@@ -66,6 +66,8 @@ class EthercatServo(PDOServo):
             its status, errors, faults, etc.
         sdo_read_write_release_gil: True to release the GIL in SDO read/write operations,
             False otherwise. If not specified, default pysoem configuration will be used.
+        disconnect_callback: Callback function to be called when the servo is disconnected.
+            If not specified, no callback will be called.
 
     Raises:
         ImportError: WinPcap is not installed
@@ -97,6 +99,7 @@ class EthercatServo(PDOServo):
         dictionary_path: str,
         servo_status_listener: bool = False,
         sdo_read_write_release_gil: Optional[bool] = None,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ):
         if not pysoem:
             raise pysoem_import_error
@@ -105,7 +108,12 @@ class EthercatServo(PDOServo):
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
         self.__sdo_read_write_release_gil = sdo_read_write_release_gil
-        super().__init__(slave_id, dictionary_path, servo_status_listener)
+        super().__init__(
+            slave_id,
+            dictionary_path,
+            servo_status_listener,
+            disconnect_callback=disconnect_callback,
+        )
 
     @property  # type: ignore[misc]
     def dictionary(self) -> EthercatDictionary:  # type: ignore[override]
