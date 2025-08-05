@@ -453,10 +453,10 @@ class EthercatNetwork(Network):
             raise ILError(
                 "The RPDO values should be set before starting the PDO exchange process."
             ) from e
-        with Timeout(timeout) as t:
-            # Configure the PDO maps
-            self.config_pdo_maps()
+        # Configure the PDO maps
+        self.config_pdo_maps()
 
+        with Timeout(timeout) as t:
             # Set all slaves to SafeOp state
             self._ecat_master.state = pysoem.SAFEOP_STATE
             self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE)
