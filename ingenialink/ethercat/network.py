@@ -9,9 +9,8 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import ingenialogger
 
-from ingenialink.utils.timeout import Timeout
-
 from ingenialink.servo import Servo
+from ingenialink.utils.timeout import Timeout
 
 try:
     import pysoem
