@@ -1,8 +1,11 @@
+import time
+
 import pytest
 
 from ingenialink.enums.register import RegDtype
 from ingenialink.exceptions import ILValueError
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
+from ingenialink.utils.timeout import Timeout
 
 
 @pytest.mark.no_connection
@@ -68,3 +71,24 @@ def test_weak_lru_cache():
 
     assert result1 == 50
     assert result2 == 50
+
+
+@pytest.mark.no_connection
+def test_timeout():
+    with Timeout(2) as timeout:
+        assert timeout.elapsed_time_s < 0.5
+        assert timeout.elapsed_time_s >= 0
+        assert timeout.remaining_time_s <= 2
+        assert timeout.remaining_time_s > 1.5
+        assert not timeout.has_expired
+
+        time.sleep(1.5)
+        assert timeout.elapsed_time_s >= 1.5
+        assert timeout.remaining_time_s <= 0.5
+        assert not timeout.has_expired
+
+        time.sleep(1)
+
+        assert timeout.elapsed_time_s >= 2.5
+        assert timeout.remaining_time_s == 0
+        assert timeout.has_expired
