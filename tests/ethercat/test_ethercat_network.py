@@ -53,15 +53,15 @@ def test_raise_exception_if_not_winpcap():
         release_network_reference(net)
 
 
-@pytest.mark.ethercat
-def test_load_firmware_file_not_found_error(setup_descriptor):
-    net = EthercatNetwork(setup_descriptor.ifname)
+@pytest.mark.no_connection
+def test_load_firmware_file_not_found_error():
+    net = EthercatNetwork("fake_interface")
     with pytest.raises(FileNotFoundError):
         net.load_firmware("ethercat.sfu", True)
     net.close_ecat_master()
 
 
-@pytest.mark.ethercat
+@pytest.mark.no_connection
 def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loading):
     net, _ = mocked_network_for_firmware_loading
     slave_id = 23
@@ -72,7 +72,7 @@ def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loadi
         net.load_firmware("dummy_file.lfu", False, slave_id=slave_id)
 
 
-@pytest.mark.ethercat
+@pytest.mark.no_connection
 def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_loading):
     net, _ = mocked_network_for_firmware_loading
     mocker.patch.object(net, "_switch_to_boot_state", side_effect=[True, False])
@@ -86,7 +86,7 @@ def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_lo
         net.load_firmware("dummy_file.sfu", False, slave_id=1)
 
 
-@pytest.mark.ethercat
+@pytest.mark.no_connection
 def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loading):
     net, _ = mocked_network_for_firmware_loading
     mocker.patch("os.path.isfile", return_value=True)
@@ -100,7 +100,7 @@ def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loa
         net.load_firmware("dummy_file.sfu", False, slave_id=1)
 
 
-@pytest.mark.ethercat
+@pytest.mark.no_connection
 def test_load_firmware_success_after_retry(mocker, mocked_network_for_firmware_loading):
     net, slave = mocked_network_for_firmware_loading
     mocker.patch.object(net, "_switch_to_boot_state", side_effect=[False, True])
@@ -110,11 +110,11 @@ def test_load_firmware_success_after_retry(mocker, mocked_network_for_firmware_l
     net.load_firmware("dummy_file.sfu", False, slave_id=1)
 
 
-@pytest.mark.ethercat
-def test_wrong_interface_name_error(setup_descriptor):
-    net = EthercatNetwork("not existing ifname")
+@pytest.mark.no_connection
+def test_wrong_interface_name_error():
+    net = EthercatNetwork("fake_interface")
     slave_id = 1
-    dictionary = setup_descriptor.dictionary
+    dictionary = "fake_dictionary.xdf"
     with pytest.raises(ConnectionError):
         net.connect_to_slave(slave_id, dictionary)
     net.close_ecat_master()
