@@ -77,15 +77,6 @@ def ftp_server_manager():
     assert not server.is_alive()
 
 
-@pytest.fixture()
-def connect(setup_descriptor):
-    net = EthernetNetwork()
-    servo = net.connect_to_slave(
-        setup_descriptor.ip, setup_descriptor.dictionary, setup_descriptor.port
-    )
-    return servo, net
-
-
 @pytest.mark.ethernet
 def test_connect_to_slave(servo, net):
     assert servo is not None and net is not None
@@ -155,12 +146,28 @@ def test_ethernet_connection(servo, net, setup_descriptor):
 
 
 @pytest.mark.ethernet
-def test_ethernet_disconnection(connect, setup_descriptor):
-    servo, net = connect
+def test_ethernet_disconnection(setup_descriptor):
+    disconnected_servos = []
+
+    def dummy_callback(servo):
+        disconnected_servos.append(servo.target)
+
+    net = EthernetNetwork()
+    servo = net.connect_to_slave(
+        setup_descriptor.ip,
+        setup_descriptor.dictionary,
+        setup_descriptor.port,
+        disconnect_callback=dummy_callback,
+    )
+    assert servo.target == setup_descriptor.ip
+
+    assert len(disconnected_servos) == 0
     net.disconnect_from_slave(servo)
     assert net.get_servo_state(setup_descriptor.ip) == NetState.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
+    assert len(disconnected_servos) == 1
+    assert disconnected_servos[0] == setup_descriptor.ip
 
 
 @pytest.mark.no_connection

@@ -11,6 +11,8 @@ import ingenialogger
 
 from ingenialink.utils.timeout import Timeout
 
+from ingenialink.servo import Servo
+
 try:
     import pysoem
 except ImportError as ex:
@@ -341,6 +343,7 @@ class EthercatNetwork(Network):
         dictionary: str,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> EthercatServo:
         """Connects to a drive through a given slave number.
 
@@ -351,6 +354,8 @@ class EthercatNetwork(Network):
                 its status, errors, faults, etc.
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
+            disconnect_callback: Callback function to be called when the servo is disconnected.
+                If not specified, no callback will be called.
 
         Raises:
             ValueError: If the slave ID is not valid.
@@ -377,6 +382,7 @@ class EthercatNetwork(Network):
             dictionary,
             servo_status_listener,
             sdo_read_write_release_gil=self.__gil_release_config.sdo_read_write,
+            disconnect_callback=disconnect_callback,
         )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             if servo_status_listener:
@@ -412,6 +418,9 @@ class EthercatNetwork(Network):
             servo: Instance of the servo connected.
 
         """
+        # Notify that disconnect_from_slave has been called
+        if servo._disconnect_callback:
+            servo._disconnect_callback(servo)
         if not self._change_nodes_state(servo, pysoem.INIT_STATE):
             logger.warning("Drive can not reach Init state")
         servo.teardown()
