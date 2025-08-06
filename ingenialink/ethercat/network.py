@@ -627,7 +627,6 @@ class EthercatNetwork(Network):
             ValueError: If the salve ID value is invalid.
             ILError: If no slaves could be found in the network.
             ILError: If the slave ID couldn't be found in the network.
-            ILFirmwareLoadError: If no slave is detected.
             ILFirmwareLoadError: If the FoE write operation is not successful.
         """
         if not isinstance(boot_in_app, bool):
