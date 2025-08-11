@@ -42,6 +42,16 @@ class RegAccess(Enum):
     WO = 2
     """Write-only."""
 
+    @property
+    def allows_read(self) -> bool:
+        """Indicates if the access type allows reading."""
+        return self in (RegAccess.RW, RegAccess.RO)
+
+    @property
+    def allows_write(self) -> bool:
+        """Indicates if the access type allows writing."""
+        return self in (RegAccess.RW, RegAccess.WO)
+
 
 class RegPhy(Enum):
     """Physical Units."""

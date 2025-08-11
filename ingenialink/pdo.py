@@ -526,6 +526,18 @@ class PDOMap:
 
         return pdo_map
 
+    @property
+    def is_editable(self) -> bool:
+        """Check if the PDOMap is editable.
+
+        Returns:
+            bool: True if the PDOMap is editable, False otherwise.
+        """
+        if self.map_object is None:
+            raise ValueError("The map_object must be set to check if the map is editable")
+
+        return self.map_object.registers[0].access.allows_write
+
     def write_to_slave(
         self, max_pdo_items_for_padding: Optional[int] = None, padding: bool = False
     ) -> None:
@@ -659,7 +671,7 @@ class PDOServo(Servo):
 
     AVAILABLE_PDOS = 2
 
-    # TODO Remove
+    # TODO Check what can be removed
     ETG_COMMS_RPDO_ASSIGN_TOTAL = "ETG_COMMS_RPDO_ASSIGN_TOTAL"
     ETG_COMMS_RPDO_ASSIGN_1 = "ETG_COMMS_RPDO_ASSIGN_1"
     ETG_COMMS_RPDO_MAP1_TOTAL = ("ETG_COMMS_RPDO_MAP1_TOTAL",)
@@ -681,8 +693,8 @@ class PDOServo(Servo):
             target, dictionary_path, servo_status_listener, disconnect_callback=disconnect_callback
         )
         # Index of the pdo map -> PDO Map instance
-        self._rpdo_maps: dict[int, RPDOMap] = []
-        self._tpdo_maps: dict[int, TPDOMap] = []
+        self._rpdo_maps: dict[int, RPDOMap] = {}
+        self._tpdo_maps: dict[int, TPDOMap] = {}
 
     @property  # type: ignore[misc]
     def dictionary(self) -> CanopenDictionary:  # type: ignore[override]
@@ -723,7 +735,9 @@ class PDOServo(Servo):
     def map_rpdos(self) -> None:
         """Map the RPDO registers into the servo slave.
 
-        It takes the first available RPDO assignment slot of the slave.
+        It writes the RPDO maps into the slave,
+        saves the RPDO maps in the _rpdo_maps attribute
+        and adds them to the PDO Assign object.
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
 
@@ -737,49 +751,19 @@ class PDOServo(Servo):
                 f" {self.AVAILABLE_PDOS} are available"
             )
         self.write(self.ETG_COMMS_RPDO_ASSIGN_TOTAL, len(self._rpdo_maps), subnode=0)
-        custom_map_index = 0
         rpdo_assigns = b""
-        for rpdo_map in self._rpdo_maps:
-            if rpdo_map.map_register_index is None:
-                self._set_rpdo_map_register(custom_map_index, rpdo_map)
-                custom_map_index += 1
+        for rpdo_map in self._rpdo_maps.values():
+            if rpdo_map.is_editable:
+                rpdo_map.write_to_slave()
             rpdo_assigns += rpdo_map.map_register_index_bytes
         self.write_complete_access(self.ETG_COMMS_RPDO_ASSIGN_1, rpdo_assigns, subnode=0)
-
-    def _set_rpdo_map_register(self, rpdo_map_register_index: int, rpdo_map: RPDOMap) -> None:
-        """Fill RPDO map register with PRDOMap object data.
-
-        Args:
-            rpdo_map_register_index: custom rpdo map register index
-            rpdo_map: custom rpdo data
-
-        Raises:
-            ValueError: If there is an error retrieving the RPDO Map register.
-        """
-        self.write(
-            self.ETG_COMMS_RPDO_MAP1_TOTAL[rpdo_map_register_index],
-            len(rpdo_map.items),
-            subnode=0,
-        )
-        self.write_complete_access(
-            self.ETG_COMMS_RPDO_MAP1_1[rpdo_map_register_index],
-            bytes(rpdo_map.items_mapping),
-            subnode=0,
-        )
-        rpdo_map_register = self.dictionary.registers(0)[
-            self.ETG_COMMS_RPDO_MAP1_TOTAL[rpdo_map_register_index]
-        ]
-        if not isinstance(rpdo_map_register, EthercatRegister):
-            raise ValueError(
-                "Error retrieving the RPDO Map register. Expected EthercatRegister, got:"
-                f" {type(rpdo_map_register)}"
-            )
-        rpdo_map.map_register_index = rpdo_map_register.idx
 
     def map_tpdos(self) -> None:
         """Map the TPDO registers into the servo slave.
 
-        It takes the first available TPDO assignment slot of the slave.
+        It writes the TPDO maps into the slave,
+        saves the TPDO maps in the _tpdo_maps attribute
+        and adds them to the PDO Assign object
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
 
@@ -793,44 +777,12 @@ class PDOServo(Servo):
                 f" {self.AVAILABLE_PDOS} are available"
             )
         self.write(self.ETG_COMMS_TPDO_ASSIGN_TOTAL, len(self._tpdo_maps), subnode=0)
-        custom_map_index = 0
         tpdo_assigns = b""
-        for tpdo_map in self._tpdo_maps:
-            if tpdo_map.map_register_index is None:
-                self._set_tpdo_map_register(custom_map_index, tpdo_map)
-                custom_map_index += 1
+        for tpdo_map in self._tpdo_maps.values():
+            if tpdo_map.is_editable:
+                tpdo_map.write_to_slave()
             tpdo_assigns += tpdo_map.map_register_index_bytes
         self.write_complete_access(self.ETG_COMMS_TPDO_ASSIGN_1, tpdo_assigns, subnode=0)
-
-    def _set_tpdo_map_register(self, tpdo_map_register_index: int, tpdo_map: TPDOMap) -> None:
-        """Fill TPDO map register with TRDOMap object data.
-
-        Args:
-            tpdo_map_register_index: custom tpdo map register index
-            tpdo_map: custom tpdo data
-
-        Raises:
-            ValueError: If there is an error retrieving the TPDO Map register.
-        """
-        self.write(
-            self.ETG_COMMS_TPDO_MAP1_TOTAL[tpdo_map_register_index],
-            len(tpdo_map.items),
-            subnode=0,
-        )
-        self.write_complete_access(
-            self.ETG_COMMS_TPDO_MAP1_1[tpdo_map_register_index],
-            bytes(tpdo_map.items_mapping),
-            subnode=0,
-        )
-        tpdo_map_register = self.dictionary.registers(0)[
-            self.ETG_COMMS_TPDO_MAP1_TOTAL[tpdo_map_register_index]
-        ]
-        if not isinstance(tpdo_map_register, EthercatRegister):
-            raise ValueError(
-                "Error retrieving the TPDO Map register. Expected EthercatRegister, got:"
-                f" {type(tpdo_map_register)}"
-            )
-        tpdo_map.map_register_index = tpdo_map_register.idx
 
     def map_pdos(self, slave_index: int) -> None:  # noqa: ARG002
         """Map RPDO and TPDO register into the slave.
