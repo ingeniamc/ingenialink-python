@@ -531,7 +531,8 @@ class PDOMap:
         """Check if the PDOMap is editable.
 
         Raises:
-            ValueError: If the map_object is None. The map_object must be set to check if the map is editable.
+            ValueError: If the map_object is None.
+                The map_object must be set to check if the map is editable.
 
         Returns:
             bool: True if the PDOMap is editable, False otherwise.
@@ -674,16 +675,11 @@ class PDOServo(Servo):
 
     AVAILABLE_PDOS = 2
 
-    # TODO Check what can be removed
     ETG_COMMS_RPDO_ASSIGN_TOTAL = "ETG_COMMS_RPDO_ASSIGN_TOTAL"
     ETG_COMMS_RPDO_ASSIGN_1 = "ETG_COMMS_RPDO_ASSIGN_1"
-    ETG_COMMS_RPDO_MAP1_TOTAL = ("ETG_COMMS_RPDO_MAP1_TOTAL",)
-    ETG_COMMS_RPDO_MAP1_1 = ("ETG_COMMS_RPDO_MAP1_1",)
 
     ETG_COMMS_TPDO_ASSIGN_TOTAL = "ETG_COMMS_TPDO_ASSIGN_TOTAL"
     ETG_COMMS_TPDO_ASSIGN_1 = "ETG_COMMS_TPDO_ASSIGN_1"
-    ETG_COMMS_TPDO_MAP1_TOTAL = ("ETG_COMMS_TPDO_MAP1_TOTAL",)
-    ETG_COMMS_TPDO_MAP1_1 = ("ETG_COMMS_TPDO_MAP1_1",)
 
     def __init__(
         self,
@@ -720,8 +716,6 @@ class PDOServo(Servo):
         """
         self.check_servo_is_in_preoperational_state()
         self.write(self.ETG_COMMS_RPDO_ASSIGN_TOTAL, 0, subnode=0)
-        for map_register in self.ETG_COMMS_RPDO_MAP1_TOTAL:
-            self.write(map_register, 0, subnode=0)
         self._rpdo_maps.clear()
 
     def reset_tpdo_mapping(self) -> None:
@@ -731,8 +725,6 @@ class PDOServo(Servo):
         """
         self.check_servo_is_in_preoperational_state()
         self.write(self.ETG_COMMS_TPDO_ASSIGN_TOTAL, 0, subnode=0)
-        for map_register in self.ETG_COMMS_TPDO_MAP1_TOTAL:
-            self.write(map_register, 0, subnode=0)
         self._tpdo_maps.clear()
 
     def map_rpdos(self) -> None:

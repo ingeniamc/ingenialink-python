@@ -232,7 +232,7 @@ def test_servo_add_maps(servo, create_pdo_map):
         == servo.dictionary.registers(0)[servo.ETG_COMMS_TPDO_MAP1_TOTAL[0]].idx
     )
     assert tpdo_map.map_register_index_bytes == tpdo_map.map_register_index.to_bytes(2, "little")
-    assert servo.read(EthercatServo.ETG_COMMS_TPDO_MAP1_TOTAL[0], subnode=0) == len(TPDO_REGISTERS)
+    assert servo.read("ETG_COMMS_TPDO_MAP1_TOTAL", subnode=0) == len(TPDO_REGISTERS)
     value = servo._read_raw(
         servo.dictionary.registers(0)[servo.ETG_COMMS_TPDO_ASSIGN_TOTAL], complete_access=True
     )
@@ -245,7 +245,7 @@ def test_servo_add_maps(servo, create_pdo_map):
         == servo.dictionary.registers(0)[servo.ETG_COMMS_RPDO_MAP1_TOTAL[0]].idx
     )
     assert rpdo_map.map_register_index_bytes == rpdo_map.map_register_index.to_bytes(2, "little")
-    assert servo.read(EthercatServo.ETG_COMMS_RPDO_MAP1_TOTAL[0], subnode=0) == len(RPDO_REGISTERS)
+    assert servo.read("ETG_COMMS_RPDO_MAP1_TOTAL", subnode=0) == len(RPDO_REGISTERS)
     value = servo._read_raw(
         servo.dictionary.registers(0)[servo.ETG_COMMS_RPDO_ASSIGN_TOTAL], complete_access=True
     )
