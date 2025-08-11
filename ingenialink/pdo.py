@@ -387,6 +387,12 @@ class PDOMap:
 
     @map_register_index.setter
     def map_register_index(self, index: int) -> None:
+        if self.map_object is not None and self.map_object.idx != index:
+            raise ValueError(
+                "The map_object index does not match the map_register_index. "
+                f"Expected {self.map_object.idx}, got {index}."
+            )
+
         self.__map_register_index = index
 
     @property
