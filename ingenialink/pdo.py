@@ -530,6 +530,9 @@ class PDOMap:
     def is_editable(self) -> bool:
         """Check if the PDOMap is editable.
 
+        Raises:
+            ValueError: If the map_object is None. The map_object must be set to check if the map is editable.
+
         Returns:
             bool: True if the PDOMap is editable, False otherwise.
         """
@@ -813,19 +816,21 @@ class PDOServo(Servo):
 
         Args:
             rpdo_map: The RPDOMap instance to be removed.
-            rpdo_map_index: The index of the RPDOMap list to be removed.
+            rpdo_map_index: The map index of the RPDOMap list to be removed.
 
         Raises:
             ValueError: If the RPDOMap instance is not in the RPDOMap list.
         """
         self.check_servo_is_in_preoperational_state()
         if rpdo_map_index is None and rpdo_map is None:
-            raise ValueError("The RPDOMap instance or the index should be provided.")
+            raise ValueError("The RPDOMap instance or the map index should be provided.")
         if rpdo_map is not None:
-            self._rpdo_maps.remove(rpdo_map)
+            self._rpdo_maps = {
+                idx: rmap for idx, rmap in self._rpdo_maps.items() if rmap is not rpdo_map
+            }
             return
         if rpdo_map_index is not None:
-            self._rpdo_maps.pop(rpdo_map_index)
+            del self._rpdo_maps[rpdo_map_index]
 
     def remove_tpdo_map(
         self, tpdo_map: Optional[TPDOMap] = None, tpdo_map_index: Optional[int] = None
@@ -834,16 +839,18 @@ class PDOServo(Servo):
 
         Args:
             tpdo_map: The TPDOMap instance to be removed.
-            tpdo_map_index: The index of the TPDOMap list to be removed.
+            tpdo_map_index: The map index of the TPDOMap list to be removed.
 
         Raises:
             ValueError: If the TPDOMap instance is not in the TPDOMap list.
 
         """
         if tpdo_map_index is None and tpdo_map is None:
-            raise ValueError("The TPDOMap instance or the index should be provided.")
+            raise ValueError("The TPDOMap instance or the map index should be provided.")
         if tpdo_map is not None:
-            self._tpdo_maps.remove(tpdo_map)
+            self._tpdo_maps = {
+                idx: tmap for idx, tmap in self._tpdo_maps.items() if tmap is not tpdo_map
+            }
             return
         if tpdo_map_index is not None:
             self._tpdo_maps.pop(tpdo_map_index)
@@ -878,7 +885,8 @@ class PDOServo(Servo):
             input_data: Concatenated received data bytes.
 
         """
-        for tpdo_map in self._tpdo_maps:
+        for idx in sorted(self._tpdo_maps):
+            tpdo_map = self._tpdo_maps[idx]
             map_bytes = input_data[: tpdo_map.data_length_bytes]
             tpdo_map.set_item_bytes(map_bytes)
             input_data = input_data[tpdo_map.data_length_bytes :]
@@ -890,6 +898,6 @@ class PDOServo(Servo):
             Concatenated data bytes to be sent.
         """
         output = bytearray()
-        for rpdo_map in self._rpdo_maps:
-            output += rpdo_map.get_item_bytes()
+        for idx in sorted(self._rpdo_maps):
+            output += self._rpdo_maps[idx].get_item_bytes()
         return bytes(output)

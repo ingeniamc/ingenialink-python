@@ -130,9 +130,9 @@ class EthercatServo(PDOServo):
         self.stop_status_listener()
 
         # Remove the servo reference from the pdo maps
-        for rpdo_map in self._rpdo_maps:
+        for rpdo_map in self._rpdo_maps.values():
             rpdo_map.slave = None
-        for tpdo_map in self._tpdo_maps:
+        for tpdo_map in self._tpdo_maps.values():
             tpdo_map.slave = None
         self.__slave = None
         self._lock.release()
@@ -356,18 +356,18 @@ class EthercatServo(PDOServo):
     @override
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
-            if rpdo_map not in self._rpdo_maps:
-                self.__resolve_missing_pdo_map_info(rpdo_map)
+            if rpdo_map not in self._rpdo_maps.values():
                 rpdo_map.slave = self
-                self._rpdo_maps[rpdo_map.map_register_index] = rpdo_map
+                map_obj = self.__resolve_missing_pdo_map_info(rpdo_map)
+                self._rpdo_maps[map_obj.idx] = rpdo_map
         for tpdo_map in tpdo_maps:
-            if tpdo_map not in self._tpdo_maps:
-                self.__resolve_missing_pdo_map_info(tpdo_map)
+            if tpdo_map not in self._tpdo_maps.values():
                 tpdo_map.slave = self
-                self._tpdo_maps[tpdo_map.map_register_index] = tpdo_map
+                map_obj = self.__resolve_missing_pdo_map_info(tpdo_map)
+                self._tpdo_maps[map_obj.idx] = tpdo_map
         self.slave.config_func = self.map_pdos
 
-    def __resolve_missing_pdo_map_info(self, pdo_map: PDOMap) -> None:
+    def __resolve_missing_pdo_map_info(self, pdo_map: PDOMap) -> CanOpenObject:
         """Resolve missing PDO map information.
 
         Sets the map_object of the PDOMap if it is not already set.
@@ -376,14 +376,17 @@ class EthercatServo(PDOServo):
 
         Args:
             pdo_map: PDOMap instance (RPDOMap or TPDOMap).
+
+        Returns:
+            The map_object of the PDOMap instance.
         """
         if pdo_map.map_object:
-            return
+            return pdo_map.map_object
 
         if pdo_map.map_register_index is not None:
             # Extract the map object from the dictionary using the index
-            pdo_map.map_object = self.dictionary.get_object(pdo_map.map_register_index)
-            return
+            pdo_map.map_object = self.dictionary.get_object_by_index(pdo_map.map_register_index)
+            return pdo_map.map_object
 
         # If map or index is not provided, use the default map
         if isinstance(pdo_map, RPDOMap):
@@ -392,6 +395,8 @@ class EthercatServo(PDOServo):
             pdo_map.map_object = self.dictionary.get_object(self.DEFAULT_TPDO_MAP)
         else:
             raise NotImplementedError
+
+        return pdo_map.map_object
 
     @override
     def process_pdo_inputs(self) -> None:
