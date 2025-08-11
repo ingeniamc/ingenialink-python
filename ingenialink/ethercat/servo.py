@@ -25,7 +25,7 @@ from ingenialink.constants import (
 from ingenialink.dictionary import CanOpenObject, Interface
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILEcatStateError, ILIOError
-from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
+from ingenialink.pdo import PDOMap, PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -91,6 +91,10 @@ class EthercatServo(PDOServo):
 
     DEFAULT_EEPROM_OPERATION_TIMEOUT_uS = 200_000
     DEFAULT_EEPROM_READ_BYTES_LENGTH = 2
+
+    # Default PDO maps to assign if not specified
+    DEFAULT_RPDO_MAP = "ETG_COMMS_RPDO_MAP1"
+    DEFAULT_TPDO_MAP = "ETG_COMMS_TPDO_MAP1"
 
     def __init__(
         self,
@@ -353,13 +357,41 @@ class EthercatServo(PDOServo):
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps:
+                self.__resolve_missing_pdo_map_info(rpdo_map)
                 rpdo_map.slave = self
-                self._rpdo_maps.append(rpdo_map)
+                self._rpdo_maps[rpdo_map.map_register_index] = rpdo_map
         for tpdo_map in tpdo_maps:
             if tpdo_map not in self._tpdo_maps:
+                self.__resolve_missing_pdo_map_info(tpdo_map)
                 tpdo_map.slave = self
-                self._tpdo_maps.append(tpdo_map)
+                self._tpdo_maps[tpdo_map.map_register_index] = tpdo_map
         self.slave.config_func = self.map_pdos
+
+    def __resolve_missing_pdo_map_info(self, pdo_map: PDOMap) -> None:
+        """Resolve missing PDO map information.
+
+        Sets the map_object of the PDOMap if it is not already set.
+        It is extracted from map_register_index if indicated.
+        Alternatively, it uses the default map if no map or index is provided.
+
+        Args:
+            pdo_map: PDOMap instance (RPDOMap or TPDOMap).
+        """
+        if pdo_map.map_object:
+            return
+
+        if pdo_map.map_register_index is not None:
+            # Extract the map object from the dictionary using the index
+            pdo_map.map_object = self.dictionary.get_object(pdo_map.map_register_index)
+            return
+
+        # If map or index is not provided, use the default map
+        if isinstance(pdo_map, RPDOMap):
+            pdo_map.map_object = self.dictionary.get_object(self.DEFAULT_RPDO_MAP)
+        elif isinstance(pdo_map, TPDOMap):
+            pdo_map.map_object = self.dictionary.get_object(self.DEFAULT_TPDO_MAP)
+        else:
+            raise NotImplementedError
 
     @override
     def process_pdo_inputs(self) -> None:

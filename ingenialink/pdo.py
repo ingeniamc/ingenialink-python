@@ -659,6 +659,7 @@ class PDOServo(Servo):
 
     AVAILABLE_PDOS = 2
 
+    # TODO Remove
     ETG_COMMS_RPDO_ASSIGN_TOTAL = "ETG_COMMS_RPDO_ASSIGN_TOTAL"
     ETG_COMMS_RPDO_ASSIGN_1 = "ETG_COMMS_RPDO_ASSIGN_1"
     ETG_COMMS_RPDO_MAP1_TOTAL = ("ETG_COMMS_RPDO_MAP1_TOTAL",)
@@ -679,8 +680,9 @@ class PDOServo(Servo):
         super().__init__(
             target, dictionary_path, servo_status_listener, disconnect_callback=disconnect_callback
         )
-        self._rpdo_maps: list[RPDOMap] = []
-        self._tpdo_maps: list[TPDOMap] = []
+        # Index of the pdo map -> PDO Map instance
+        self._rpdo_maps: dict[int, RPDOMap] = []
+        self._tpdo_maps: dict[int, TPDOMap] = []
 
     @property  # type: ignore[misc]
     def dictionary(self) -> CanopenDictionary:  # type: ignore[override]
