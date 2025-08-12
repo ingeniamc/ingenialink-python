@@ -4,7 +4,7 @@ from typing import Optional, Union, cast
 from ingenialogger import get_logger
 
 from ingenialink.enums.register import RegAccess
-from ingenialink.exceptions import ILIOError
+from ingenialink.exceptions import ILEcatStateError, ILIOError
 from ingenialink.pdo import PDOServo
 from ingenialink.register import Register
 from ingenialink.servo import Servo
@@ -166,6 +166,18 @@ class DriveContextManager:
 
         if not isinstance(self.drive, PDOServo):
             return
+
+        # Drive must be in pre-operational state to reset the PDO mapping
+        # https://novantamotion.atlassian.net/browse/INGK-1160
+        if self._reset_tpdo_mapping or self._reset_rpdo_mapping:
+            try:
+                self.drive.check_servo_is_in_preoperational_state()
+            except ILEcatStateError:
+                logger.warning(
+                    "Cannot reset rpdo/tpdo mapping, drive must be in pre-operational state"
+                )
+                return
+
         if self._reset_tpdo_mapping:
             logger.warning(f"{id(self)}: Will reset tpdo mapping")
             self.drive.reset_tpdo_mapping()
