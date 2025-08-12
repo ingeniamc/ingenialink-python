@@ -817,6 +817,8 @@ class PDOServo(Servo):
         if rpdo_map_index is None and rpdo_map is None:
             raise ValueError("The RPDOMap instance or the map index should be provided.")
         if rpdo_map is not None:
+            if rpdo_map not in self._rpdo_maps.values():
+                raise ValueError("The RPDOMap instance is not in the RPDOMaps")
             self._rpdo_maps = {
                 idx: rmap for idx, rmap in self._rpdo_maps.items() if rmap is not rpdo_map
             }
@@ -840,6 +842,8 @@ class PDOServo(Servo):
         if tpdo_map_index is None and tpdo_map is None:
             raise ValueError("The TPDOMap instance or the map index should be provided.")
         if tpdo_map is not None:
+            if tpdo_map not in self._tpdo_maps.values():
+                raise ValueError("The TPDOMap instance is not in the TPDOMaps")
             self._tpdo_maps = {
                 idx: tmap for idx, tmap in self._tpdo_maps.items() if tmap is not tpdo_map
             }
