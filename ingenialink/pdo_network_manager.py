@@ -182,8 +182,8 @@ class PDONetworkManager:
         self._pdo_receive_observers: list[Callable[[], None]] = []
         self._pdo_exceptions_observers: list[Callable[[ILError], None]] = []
 
+    @staticmethod
     def create_pdo_item(
-        self,
         register_uid: str,
         axis: int,
         servo: "EthercatServo",
