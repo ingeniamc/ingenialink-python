@@ -336,6 +336,10 @@ class EthercatNetwork(Network):
         if nodes is not None:
             self.__last_init_nodes = list(range(1, nodes + 1))
 
+        for servo in self.servos:
+            if servo.slave_id in self.__last_init_nodes:
+                servo.update_slave_reference(self._ecat_master.slaves[servo.slave_id - 1])
+
     def connect_to_slave(
         self,
         slave_id: int,

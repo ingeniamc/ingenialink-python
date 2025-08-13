@@ -452,3 +452,14 @@ class EthercatServo(PDOServo):
     def slave(self) -> "CdefSlave":
         """Ethercat slave."""
         return self.__slave
+
+    def update_slave_reference(self, slave: "CdefSlave") -> None:
+        """Update the slave reference.
+
+        Args:
+            slave: The new slave reference.
+        """
+        self.__slave = slave
+        if self._on_emcy not in self.__slave._emcy_callbacks:
+            # Make sure the emergency callback is added only once
+            self.__slave.add_emergency_callback(self._on_emcy)
