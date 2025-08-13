@@ -6,8 +6,8 @@ import pytest
 from summit_testing_framework import dynamic_loader
 
 from ingenialink.virtual.network import VirtualNetwork
+from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
 from virtual_drive.core import VirtualDrive
-from tests.ethercat.mock import pysoem_mock_network # noqa: F401
 
 pytest_plugins = [
     "summit_testing_framework.pytest_addoptions",
