@@ -218,8 +218,8 @@ class PDONetworkManager:
             pdo_map_item.value = value
         return pdo_map_item
 
+    @staticmethod
     def create_pdo_maps(
-        self,
         rpdo_map_items: Union[RPDOMapItem, list[RPDOMapItem]],
         tpdo_map_items: Union[TPDOMapItem, list[TPDOMapItem]],
     ) -> tuple[RPDOMap, TPDOMap]:
@@ -233,16 +233,16 @@ class PDONetworkManager:
             RPDO and TPDO maps.
 
         """
-        rpdo_map = self.create_empty_rpdo_map()
-        tpdo_map = self.create_empty_tpdo_map()
+        rpdo_map = PDONetworkManager.create_empty_rpdo_map()
+        tpdo_map = PDONetworkManager.create_empty_tpdo_map()
         if not isinstance(rpdo_map_items, list):
             rpdo_map_items = [rpdo_map_items]
         if not isinstance(tpdo_map_items, list):
             tpdo_map_items = [tpdo_map_items]
         for rpdo_map_item in rpdo_map_items:
-            self.add_pdo_item_to_map(rpdo_map_item, rpdo_map)
+            PDONetworkManager.add_pdo_item_to_map(rpdo_map_item, rpdo_map)
         for tpdo_map_item in tpdo_map_items:
-            self.add_pdo_item_to_map(tpdo_map_item, tpdo_map)
+            PDONetworkManager.add_pdo_item_to_map(tpdo_map_item, tpdo_map)
         return rpdo_map, tpdo_map
 
     @staticmethod
