@@ -3,7 +3,7 @@ from pysoem import INIT_STATE
 
 
 class MockSoemSlave:
-    def __init__(self, id: int):
+    def __init__(self, id: int):  # noqa: A002 shadows built-in
         self.id = id
         self._emcy_callbacks = []
         self.state: int = INIT_STATE
@@ -17,7 +17,7 @@ class MockSoemSlave:
     def add_emergency_callback(self, callback):
         self._emcy_callbacks.append(callback)
 
-    def state_check(self, expected_state: int, timeout=2000):
+    def state_check(self, **_):
         return self.state
 
     def sdo_write(
@@ -36,7 +36,7 @@ class MockSoemMaster:
     def close(self):
         pass
 
-    def config_init(self, usetable=False, *, release_gil=None):
+    def config_init(self, **_):
         self.slaves = [MockSoemSlave(id=1), MockSoemSlave(id=2), MockSoemSlave(id=3)]
 
         return len(self.slaves)
