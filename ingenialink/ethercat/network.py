@@ -242,7 +242,7 @@ class EthercatNetwork(Network):
         self._pdo_thread_status_observers.append(callback)
 
     def activate_pdos(
-        self, refresh_rate: Optional[float], watchdog_timeout: Optional[float]
+        self, refresh_rate: Optional[float] = None, watchdog_timeout: Optional[float] = None
     ) -> None:
         """Start PDOs and notify the status to the observers.
 
