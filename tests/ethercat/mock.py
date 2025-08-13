@@ -1,12 +1,11 @@
 import pytest
-from pysoem import INIT_STATE
 
 
 class MockSoemSlave:
     def __init__(self, id: int):  # noqa: A002 shadows built-in
         self.id = id
         self._emcy_callbacks = []
-        self.state: int = INIT_STATE
+        self.state: int = 1  # INIT_STATE
 
     def write_state(self):
         pass
