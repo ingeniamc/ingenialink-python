@@ -487,8 +487,8 @@ def test_start_stop_pdo(servo, net):
     start_stop_pdos(net)
     # Re-configure the PDOs and re-start the PDO exchange
     for s in servo:
-        s.remove_rpdo_map(rpdo_map_index=0)
-        s.remove_tpdo_map(tpdo_map_index=0)
+        s.remove_rpdo_map(rpdo_map_index=0x1600)
+        s.remove_tpdo_map(tpdo_map_index=0x1A00)
         rpdo_map, tpdo_map = create_pdo_maps(s, RPDO_REGISTERS, TPDO_REGISTERS)
         for item in rpdo_map.items:
             item.value = 0
