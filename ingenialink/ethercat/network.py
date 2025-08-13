@@ -223,6 +223,8 @@ class EthercatNetwork(Network):
         self._pdo_manager = PDONetworkManager(self)
         # Subscribe to PDO exceptions in the network
         self._pdo_manager.subscribe_to_exceptions(self._pdo_thread_exception_handler)
+        # List of subscribers to PDO thread status
+        self._pdo_thread_status_observers: list[Callable[[bool], None]] = []
 
     @property
     def pdo_manager(self) -> PDONetworkManager:
