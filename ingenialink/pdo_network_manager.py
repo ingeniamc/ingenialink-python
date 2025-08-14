@@ -172,8 +172,8 @@ class PDONetworkManager:
         self._pdo_thread: Optional[PDONetworkManager.ProcessDataThread] = None
         self._pdo_exceptions_observers: list[Callable[[ILError], None]] = []
 
+    @staticmethod
     def create_pdo_item(
-        self,
         register_uid: str,
         axis: int,
         servo: "EthercatServo",
@@ -208,8 +208,8 @@ class PDONetworkManager:
             pdo_map_item.value = value
         return pdo_map_item
 
+    @staticmethod
     def create_pdo_maps(
-        self,
         rpdo_map_items: Union[RPDOMapItem, list[RPDOMapItem]],
         tpdo_map_items: Union[TPDOMapItem, list[TPDOMapItem]],
     ) -> tuple[RPDOMap, TPDOMap]:
@@ -223,16 +223,16 @@ class PDONetworkManager:
             RPDO and TPDO maps.
 
         """
-        rpdo_map = self.create_empty_rpdo_map()
-        tpdo_map = self.create_empty_tpdo_map()
+        rpdo_map = PDONetworkManager.create_empty_rpdo_map()
+        tpdo_map = PDONetworkManager.create_empty_tpdo_map()
         if not isinstance(rpdo_map_items, list):
             rpdo_map_items = [rpdo_map_items]
         if not isinstance(tpdo_map_items, list):
             tpdo_map_items = [tpdo_map_items]
         for rpdo_map_item in rpdo_map_items:
-            self.add_pdo_item_to_map(rpdo_map_item, rpdo_map)
+            PDONetworkManager.add_pdo_item_to_map(rpdo_map_item, rpdo_map)
         for tpdo_map_item in tpdo_map_items:
-            self.add_pdo_item_to_map(tpdo_map_item, tpdo_map)
+            PDONetworkManager.add_pdo_item_to_map(tpdo_map_item, tpdo_map)
         return rpdo_map, tpdo_map
 
     @staticmethod
@@ -277,8 +277,8 @@ class PDONetworkManager:
         """
         return TPDOMap()
 
+    @staticmethod
     def set_pdo_maps_to_slave(
-        self,
         rpdo_maps: Union[RPDOMap, list[RPDOMap]],
         tpdo_maps: Union[TPDOMap, list[TPDOMap]],
         servo: "EthercatServo",
@@ -307,7 +307,8 @@ class PDONetworkManager:
             raise ValueError("Not all elements of the TPDO map list are instances of a TPDO map")
         servo.set_pdo_map_to_slave(rpdo_maps, tpdo_maps)
 
-    def clear_pdo_mapping(self, servo: "EthercatServo") -> None:
+    @staticmethod
+    def clear_pdo_mapping(servo: "EthercatServo") -> None:
         """Clear the PDO mapping within the servo.
 
         Args:
@@ -321,8 +322,8 @@ class PDONetworkManager:
         servo.reset_rpdo_mapping()
         servo.reset_tpdo_mapping()
 
+    @staticmethod
     def remove_rpdo_map(
-        self,
         servo: "EthercatServo",
         rpdo_map: Optional[RPDOMap] = None,
         rpdo_map_index: Optional[int] = None,
@@ -344,8 +345,8 @@ class PDONetworkManager:
             raise ValueError(f"Expected an EthercatServo. Got {type(servo)}")
         servo.remove_rpdo_map(rpdo_map, rpdo_map_index)
 
+    @staticmethod
     def remove_tpdo_map(
-        self,
         servo: "EthercatServo",
         tpdo_map: Optional[TPDOMap] = None,
         tpdo_map_index: Optional[int] = None,
