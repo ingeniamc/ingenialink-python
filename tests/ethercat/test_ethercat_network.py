@@ -1,5 +1,7 @@
 import contextlib
 
+import tests.resources
+
 with contextlib.suppress(ImportError):
     import pysoem
 import threading
@@ -19,7 +21,22 @@ from ingenialink.ethercat.network import (
     GilReleaseConfig,
     release_network_reference,
 )
-from ingenialink.exceptions import ILError
+from ingenialink.exceptions import ILError, ILFirmwareLoadError
+
+
+@pytest.fixture
+def mocked_network_for_firmware_loading(mocker):
+    net = EthercatNetwork("fake_interface")
+    mocker.patch("os.path.isfile", return_value=True)
+    mocker.patch.object(net, "_force_boot_mode")
+    mocker.patch.object(net, "_start_master")
+    mocker.patch.object(net, "_EthercatNetwork__init_nodes")
+
+    mock_slave = mocker.Mock()
+    net._ecat_master.slaves = [mock_slave]
+    net._EthercatNetwork__last_init_nodes = {1}
+    yield net, mock_slave
+    net.close_ecat_master()
 
 
 @pytest.mark.docker
@@ -38,32 +55,68 @@ def test_raise_exception_if_not_winpcap():
         release_network_reference(net)
 
 
-@pytest.mark.ethercat
-def test_load_firmware_file_not_found_error(setup_descriptor):
-    net = EthercatNetwork(setup_descriptor.ifname)
+@pytest.mark.no_connection
+def test_load_firmware_file_not_found_error():
+    net = EthercatNetwork("fake_interface")
     with pytest.raises(FileNotFoundError):
         net.load_firmware("ethercat.sfu", True)
     net.close_ecat_master()
 
 
-@pytest.mark.ethercat
-def test_load_firmware_no_slave_detected_error(mocker, setup_descriptor):
-    net = EthercatNetwork(setup_descriptor.ifname)
-    mocker.patch("os.path.isfile", return_value=True)
+@pytest.mark.no_connection
+def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loading):
+    net, _ = mocked_network_for_firmware_loading
     slave_id = 23
     with pytest.raises(
         ILError,
         match=f"Slave {slave_id} was not found.",
     ):
         net.load_firmware("dummy_file.lfu", False, slave_id=slave_id)
-    net.close_ecat_master()
 
 
-@pytest.mark.ethercat
-def test_wrong_interface_name_error(setup_descriptor):
-    net = EthercatNetwork("not existing ifname")
+@pytest.mark.no_connection
+def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_loading):
+    net, _ = mocked_network_for_firmware_loading
+    mocker.patch.object(net, "_switch_to_boot_state", side_effect=[True, False])
+    mocker.patch.object(net, "_write_foe", return_value=-5)
+    with pytest.raises(
+        ILFirmwareLoadError,
+        match="The firmware file could not be loaded correctly after 2 attempts. "
+        "Errors:\nAttempt 1: FoE error.\n"
+        "Attempt 2: The slave cannot reach the Boot state.",
+    ):
+        net.load_firmware("dummy_file.sfu", False, slave_id=1)
+
+
+@pytest.mark.no_connection
+def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loading):
+    net, _ = mocked_network_for_firmware_loading
+    mocker.patch("os.path.isfile", return_value=True)
+    mocker.patch.object(net, "_switch_to_boot_state", return_value=True)
+    mocker.patch.object(net, "_write_foe", side_effect=[-5, -3])
+    with pytest.raises(
+        ILFirmwareLoadError,
+        match="The firmware file could not be loaded correctly after 2 attempts. "
+        "Errors:\nAttempt 1: FoE error.\nAttempt 2: Unexpected mailbox received.",
+    ):
+        net.load_firmware("dummy_file.sfu", False, slave_id=1)
+
+
+@pytest.mark.no_connection
+def test_load_firmware_success_after_retry(mocker, mocked_network_for_firmware_loading):
+    net, slave = mocked_network_for_firmware_loading
+    mocker.patch.object(net, "_switch_to_boot_state", side_effect=[False, True])
+    mocker.patch.object(net, "_write_foe", return_value=1)
+    mocker.patch("time.sleep", return_value=None)
+    slave.state_check.return_value = pysoem.PREOP_STATE
+    net.load_firmware("dummy_file.sfu", False, slave_id=1)
+
+
+@pytest.mark.no_connection
+def test_wrong_interface_name_error():
+    net = EthercatNetwork("fake_interface")
     slave_id = 1
-    dictionary = setup_descriptor.dictionary
+    dictionary = "fake_dictionary.xdf"
     with pytest.raises(ConnectionError):
         net.connect_to_slave(slave_id, dictionary)
     net.close_ecat_master()
@@ -325,3 +378,26 @@ def test_network_is_not_released_if_gil_operation_ongoing(mocker, setup_descript
     thread_block_lock.join()
     thread_acquire_lock.join()
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks)
+
+
+def test_slave_update_on_config_init(pysoem_mock_network):  # noqa: ARG001
+    net = EthercatNetwork("dummy_ifname")
+
+    servo = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+
+    assert len(net.servos) == 1
+    assert net.servos[0] == servo
+    original_slave = servo.slave
+    # The slave contains the emergency callbacks
+    assert original_slave._emcy_callbacks[0] == servo._on_emcy
+
+    # Now, a method could __init_nodes, which re-creates the pysoem slaves
+    net._EthercatNetwork__init_nodes()
+    assert len(net.servos) == 1
+    # The slave should be updated
+    assert servo.slave is not original_slave
+    # And the emergency callback retained
+    assert original_slave._emcy_callbacks[0] == servo._on_emcy
