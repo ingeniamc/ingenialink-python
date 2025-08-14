@@ -6,12 +6,12 @@ import pytest
 from ingeniamotion.enums import OperationMode
 from summit_testing_framework.setups.descriptors import EthercatMultiSlaveSetup
 
-from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.exceptions import ILError, ILWrongWorkingCountError
 from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.pdo_network_manager import PDONetworkManager
 
 if TYPE_CHECKING:
+    from ingenialink.ethercat.network import EthercatNetwork
     from ingenialink.ethercat.servo import EthercatServo
 
 
@@ -317,3 +317,23 @@ def test_subscribe_exceptions(net: "EthercatNetwork", mocker) -> None:
         == f"Stopping the PDO thread due to the following exception: {error_msg} "
     )
     net.deactivate_pdos()
+
+
+@pytest.mark.ethercat
+def test_subscribe_to_pdo_thread_status(net: "EthercatNetwork", mocker) -> None:
+    status = None
+
+    def status_callback(new_status):
+        nonlocal status
+        status = new_status
+
+    mocker.patch.object(PDONetworkManager, "start_pdos")
+    mocker.patch.object(PDONetworkManager, "stop_pdos")
+
+    net.subscribe_to_pdo_thread_status(status_callback)
+
+    assert status is None
+    net.activate_pdos()
+    assert status is True
+    net.deactivate_pdos()
+    assert status is False
