@@ -9,6 +9,13 @@ _version = re.search(r"__version__\s+=\s+\"(.*)\"", open("ingenialink/__init__.p
 def get_docs_url():
     return f"https://distext.ingeniamc.com/doc/ingenialink-python/{_version}"
 
+
+
+class BinaryDistribution(setuptools.Distribution):
+    def has_ext_modules(self):
+        return True # Force platform-specific wheel builds, even for linux.
+
+
 ext_modules = []
 
 if platform.system() == "Windows":
@@ -31,5 +38,5 @@ setuptools.setup(
         "Source": "https://github.com/ingeniamc/ingenialink-python",
     },
     ext_modules=cythonize(ext_modules, compiler_directives={'language_level': "3"}),
-    has_ext_modules=True, # Force platform-specific wheel builds, even for linux.
+    distclass=BinaryDistribution
 )
