@@ -31,4 +31,5 @@ setuptools.setup(
         "Source": "https://github.com/ingeniamc/ingenialink-python",
     },
     ext_modules=cythonize(ext_modules, compiler_directives={'language_level': "3"}),
+    has_ext_modules=True, # Force platform-specific wheel builds, even for linux.
 )
