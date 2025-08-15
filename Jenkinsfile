@@ -460,7 +460,7 @@ pipeline {
                         }
                         stage('Publish Novanta PyPi') {
                             steps {
-                                publishNovantaPyPi('dist/*.whl')
+                                publishNovantaPyPi('dist/*-win_amd64.whl')
                             }
                         }
                         stage('Publish PyPi') {
