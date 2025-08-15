@@ -43,8 +43,8 @@ name = "PyPI"
 priority = "primary"
 
 [[tool.poetry.source]]
-name = "ingenia"
-url = "http://pypi.ingenia/simple"
+name = "novanta"
+url = "http://pypi.novanta.com/simple"
 priority = "supplemental"
 
 
