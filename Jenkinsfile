@@ -460,6 +460,7 @@ pipeline {
                         }
                         stage('Publish Novanta PyPi') {
                             steps {
+                                sh "pip install --upgrade twine"
                                 publishNovantaPyPi('dist/*.whl')
                             }
                         }
