@@ -231,7 +231,7 @@ def test_start_pdos(
     for s, a in zip(servo, alias):
         rpdo_map = PDONetworkManager.create_empty_rpdo_map()
         tpdo_map = PDONetworkManager.create_empty_tpdo_map()
-        initial_operation_mode = s.read("DRV_OP_CMD", servo=a)
+        initial_operation_mode = s.read("DRV_OP_CMD")
         operation_mode = PDONetworkManager.create_pdo_item(
             "DRV_OP_CMD", servo=s, value=initial_operation_mode.value, axis=DEFAULT_AXIS
         )
@@ -269,11 +269,11 @@ def test_start_pdos(
     assert not net.pdo_manager.is_active
     for s, a in zip(servo, alias):
         # Check that RPDO are being sent
-        assert rpdo_values[a] == s.read("DRV_OP_CMD", servo=a)
+        assert rpdo_values[a] == s.read("DRV_OP_CMD")
         # Check that TPDO are being received
-        assert pytest.approx(tpdo_values[a], abs=2) == s.read("CL_POS_FBK_VALUE", servo=a)
+        assert pytest.approx(tpdo_values[a], abs=2) == s.read("CL_POS_FBK_VALUE")
         # Restore the initial operation mode
-        s.write("DRV_OP_CMD", initial_operation_modes[a], servo=a)
+        s.write("DRV_OP_CMD", initial_operation_modes[a])
         PDONetworkManager.remove_rpdo_map(servo=s, rpdo_map_index=0)
         PDONetworkManager.remove_tpdo_map(servo=s, tpdo_map_index=0)
 
