@@ -3,7 +3,6 @@ import time
 from typing import TYPE_CHECKING, Optional
 
 import pytest
-from ingeniamotion.enums import OperationMode
 from summit_testing_framework.setups.descriptors import EthercatMultiSlaveSetup
 
 from ingenialink.exceptions import ILError, ILWrongWorkingCountError
@@ -236,7 +235,7 @@ def test_start_pdos(
         tpdo_map = PDONetworkManager.create_empty_tpdo_map()
         initial_operation_mode = s.read("DRV_OP_CMD")
         operation_mode = PDONetworkManager.create_pdo_item(
-            "DRV_OP_CMD", servo=s, value=initial_operation_mode.value, axis=DEFAULT_AXIS
+            "DRV_OP_CMD", servo=s, value=initial_operation_mode, axis=DEFAULT_AXIS
         )
         actual_position = PDONetworkManager.create_pdo_item(
             "CL_POS_FBK_VALUE", servo=s, axis=DEFAULT_AXIS
@@ -245,8 +244,9 @@ def test_start_pdos(
         PDONetworkManager.add_pdo_item_to_map(actual_position, tpdo_map)
         PDONetworkManager.set_pdo_maps_to_slave(rpdo_map, tpdo_map, servo=s)
         pdo_map_items[a] = (operation_mode, actual_position)
+        # Choose a random operation mode: [voltage, current, velocity, position]
         random_op_mode = random.choice([
-            op_mode for op_mode in OperationMode if op_mode != initial_operation_mode
+            op_mode for op_mode in [0x00, 0x02, 0x03, 0x04] if op_mode != initial_operation_mode
         ])
         initial_operation_modes[a] = initial_operation_mode
         rpdo_values[a] = random_op_mode
@@ -256,7 +256,7 @@ def test_start_pdos(
     def send_callback():
         for a in alias:
             rpdo_map_item, _ = pdo_map_items[a]
-            rpdo_map_item.value = rpdo_values[a].value
+            rpdo_map_item.value = rpdo_values[a]
 
     def receive_callback():
         for a in alias:
