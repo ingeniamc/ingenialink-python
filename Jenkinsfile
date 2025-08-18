@@ -173,8 +173,6 @@ pipeline {
                 script {
                     if (env.BRANCH_NAME == 'master') {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
-                    } else if (env.BRANCH_NAME == 'develop') {
-                        RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                     } else {
