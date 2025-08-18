@@ -344,3 +344,38 @@ def test_subscribe_to_pdo_thread_status(net: "EthercatNetwork", mocker) -> None:
     assert status is True
     net.deactivate_pdos()
     assert status is False
+
+
+@pytest.mark.ethercat
+def test_subscribe_callbacks(net: "EthercatNetwork", servo: "EthercatServo", mocker) -> None:
+    send_callback = mocker.Mock()
+    receive_callback = mocker.Mock()
+
+    rpdo_map = PDONetworkManager.create_empty_rpdo_map()
+    tpdo_map = PDONetworkManager.create_empty_tpdo_map()
+    initial_operation_mode = servo.read("DRV_OP_CMD")
+    operation_mode = PDONetworkManager.create_pdo_item(
+        "DRV_OP_CMD", servo=servo, value=initial_operation_mode, axis=DEFAULT_AXIS
+    )
+    actual_position = PDONetworkManager.create_pdo_item(
+        "CL_POS_FBK_VALUE", servo=servo, axis=DEFAULT_AXIS
+    )
+    PDONetworkManager.add_pdo_item_to_map(operation_mode, rpdo_map)
+    PDONetworkManager.add_pdo_item_to_map(actual_position, tpdo_map)
+    PDONetworkManager.set_pdo_maps_to_slave(rpdo_maps=rpdo_map, tpdo_maps=tpdo_map, servo=servo)
+
+    rpdo_map.subscribe_to_process_data_event(send_callback)
+    tpdo_map.subscribe_to_process_data_event(receive_callback)
+
+    assert send_callback.call_count == 0
+    assert receive_callback.call_count == 0
+
+    assert not net.pdo_manager.is_active
+    refresh_rate = 0.5
+    net.activate_pdos(refresh_rate=refresh_rate)
+    assert net.pdo_manager.is_active
+    time.sleep(2 * refresh_rate)
+    net.deactivate_pdos()
+
+    assert send_callback.call_count > 0
+    assert receive_callback.call_count > 0
