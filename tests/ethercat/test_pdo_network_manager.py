@@ -1,5 +1,6 @@
 import random
 import time
+from functools import partial
 from typing import TYPE_CHECKING, Optional
 
 import pytest
@@ -231,8 +232,8 @@ def test_start_pdos(
     rpdo_maps: dict[str, PDOMap] = {}
     tpdo_maps: dict[str, PDOMap] = {}
     for s, a in zip(servo, alias):
-        rpdo_map = PDONetworkManager.create_empty_rpdo_map()
-        tpdo_map = PDONetworkManager.create_empty_tpdo_map()
+        rpdo_maps[a] = PDONetworkManager.create_empty_rpdo_map()
+        tpdo_maps[a] = PDONetworkManager.create_empty_tpdo_map()
         initial_operation_mode = s.read("DRV_OP_CMD")
         operation_mode = PDONetworkManager.create_pdo_item(
             "DRV_OP_CMD", servo=s, value=initial_operation_mode, axis=DEFAULT_AXIS
@@ -240,9 +241,9 @@ def test_start_pdos(
         actual_position = PDONetworkManager.create_pdo_item(
             "CL_POS_FBK_VALUE", servo=s, axis=DEFAULT_AXIS
         )
-        PDONetworkManager.add_pdo_item_to_map(operation_mode, rpdo_map)
-        PDONetworkManager.add_pdo_item_to_map(actual_position, tpdo_map)
-        PDONetworkManager.set_pdo_maps_to_slave(rpdo_map, tpdo_map, servo=s)
+        PDONetworkManager.add_pdo_item_to_map(operation_mode, rpdo_maps[a])
+        PDONetworkManager.add_pdo_item_to_map(actual_position, tpdo_maps[a])
+        PDONetworkManager.set_pdo_maps_to_slave(rpdo_maps[a], tpdo_maps[a], servo=s)
         pdo_map_items[a] = (operation_mode, actual_position)
         # Choose a random operation mode: [voltage, current, velocity, position]
         random_op_mode = random.choice([
@@ -250,22 +251,18 @@ def test_start_pdos(
         ])
         initial_operation_modes[a] = initial_operation_mode
         rpdo_values[a] = random_op_mode
-        rpdo_maps[a] = rpdo_map
-        tpdo_maps[a] = tpdo_map
 
-    def send_callback():
-        for a in alias:
-            rpdo_map_item, _ = pdo_map_items[a]
-            rpdo_map_item.value = rpdo_values[a]
+    def send_callback(alias_arg: str) -> None:
+        rpdo_map_item, _ = pdo_map_items[alias_arg]
+        rpdo_map_item.value = rpdo_values[alias_arg]
 
-    def receive_callback():
-        for a in alias:
-            _, tpdo_map_item = pdo_map_items[a]
-            tpdo_values[a] = tpdo_map_item.value
+    def receive_callback(alias_arg: str) -> None:
+        _, tpdo_map_item = pdo_map_items[alias_arg]
+        tpdo_values[alias_arg] = tpdo_map_item.value
 
     for a in alias:
-        rpdo_maps[a].subscribe_to_process_data_event(send_callback)
-        tpdo_maps[a].subscribe_to_process_data_event(receive_callback)
+        rpdo_maps[a].subscribe_to_process_data_event(partial(send_callback, a))
+        tpdo_maps[a].subscribe_to_process_data_event(partial(receive_callback, a))
 
     assert not net.pdo_manager.is_active
     refresh_rate = 0.5
