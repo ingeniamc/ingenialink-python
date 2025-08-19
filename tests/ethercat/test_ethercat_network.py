@@ -1,5 +1,7 @@
 import contextlib
 
+import tests.resources
+
 with contextlib.suppress(ImportError):
     import pysoem
 import threading
@@ -376,3 +378,26 @@ def test_network_is_not_released_if_gil_operation_ongoing(mocker, setup_descript
     thread_block_lock.join()
     thread_acquire_lock.join()
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks)
+
+
+def test_slave_update_on_config_init(pysoem_mock_network):  # noqa: ARG001
+    net = EthercatNetwork("dummy_ifname")
+
+    servo = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+
+    assert len(net.servos) == 1
+    assert net.servos[0] == servo
+    original_slave = servo.slave
+    # The slave contains the emergency callbacks
+    assert original_slave._emcy_callbacks[0] == servo._on_emcy
+
+    # Now, a method could __init_nodes, which re-creates the pysoem slaves
+    net._EthercatNetwork__init_nodes()
+    assert len(net.servos) == 1
+    # The slave should be updated
+    assert servo.slave is not original_slave
+    # And the emergency callback retained
+    assert original_slave._emcy_callbacks[0] == servo._on_emcy
