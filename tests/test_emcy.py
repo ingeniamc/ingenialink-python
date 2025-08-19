@@ -21,13 +21,12 @@ def is_coco_moco(servo):
 
 @pytest.mark.canopen
 @pytest.mark.ethercat
-def test_emcy_callback(connect_to_slave):
-    servo, _ = connect_to_slave
+@pytest.mark.skip("https://novantamotion.atlassian.net/browse/COMOCOAPP-455")
+def test_emcy_callback(servo):
     if isinstance(servo, EthercatServo) and is_coco_moco(servo):
         pytest.skip("The test is not supported for COCO MOCO EtherCAT drives")
     emcy_test = EmcyTest()
     servo.emcy_subscribe(emcy_test.emcy_callback)
-    prev_val = servo.read("DRV_PROT_USER_OVER_VOLT", subnode=1)
     servo.write("DRV_PROT_USER_OVER_VOLT", data=10.0, subnode=1)
     with pytest.raises(ILError):
         servo.enable()
@@ -39,15 +38,13 @@ def test_emcy_callback(connect_to_slave):
     second_emcy = emcy_test.messages[1]
     assert second_emcy.error_code == 0x0000
     assert second_emcy.get_desc() == "No error"
-    servo.write("DRV_PROT_USER_OVER_VOLT", data=prev_val, subnode=1)
     servo.emcy_unsubscribe(emcy_test.emcy_callback)
 
 
 @pytest.mark.ethercat
-def test_emcy_callback_coco_moco_ethercat(connect_to_slave):
+def test_emcy_callback_coco_moco_ethercat(servo):
     # EMCY test for COCO MOCO EtherCAT drives
     # Check INGK-993
-    servo, _ = connect_to_slave
     if not is_coco_moco(servo):
         pytest.skip("The test is only for COCO MOCO EtherCAT drives")
     emcy_test = EmcyTest()

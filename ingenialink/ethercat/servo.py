@@ -1,13 +1,13 @@
 import os
-import time
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional, Union
 
 import ingenialogger
 from typing_extensions import override
 
 from ingenialink import Servo
 from ingenialink.emcy import EmergencyMessage
+from ingenialink.ethercat.dictionary import EthercatDictionary
 
 try:
     import pysoem
@@ -20,11 +20,9 @@ if TYPE_CHECKING:
 
 from ingenialink.constants import (
     CAN_MAX_WRITE_SIZE,
-    CANOPEN_ADDRESS_OFFSET,
     ECAT_STATE_CHANGE_TIMEOUT_US,
-    MAP_ADDRESS_OFFSET,
 )
-from ingenialink.dictionary import Interface
+from ingenialink.dictionary import CanOpenObject, Interface
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILEcatStateError, ILIOError
 from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
@@ -68,6 +66,8 @@ class EthercatServo(PDOServo):
             its status, errors, faults, etc.
         sdo_read_write_release_gil: True to release the GIL in SDO read/write operations,
             False otherwise. If not specified, default pysoem configuration will be used.
+        disconnect_callback: Callback function to be called when the servo is disconnected.
+            If not specified, no callback will be called.
 
     Raises:
         ImportError: WinPcap is not installed
@@ -99,6 +99,7 @@ class EthercatServo(PDOServo):
         dictionary_path: str,
         servo_status_listener: bool = False,
         sdo_read_write_release_gil: Optional[bool] = None,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ):
         if not pysoem:
             raise pysoem_import_error
@@ -107,7 +108,17 @@ class EthercatServo(PDOServo):
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
         self.__sdo_read_write_release_gil = sdo_read_write_release_gil
-        super().__init__(slave_id, dictionary_path, servo_status_listener)
+        super().__init__(
+            slave_id,
+            dictionary_path,
+            servo_status_listener,
+            disconnect_callback=disconnect_callback,
+        )
+
+    @property  # type: ignore[misc]
+    def dictionary(self) -> EthercatDictionary:  # type: ignore[override]
+        """Ethercat dictionary."""
+        return self._dictionary  # type: ignore[return-value]
 
     def teardown(self) -> None:
         """Perform the necessary actions for teardown."""
@@ -137,56 +148,6 @@ class EthercatServo(PDOServo):
             raise ILEcatStateError(
                 f"Servo is in {self.slave.state} state, PDOMap can not be modified."
             )
-
-    def store_parameters(
-        self,
-        subnode: Optional[int] = None,
-        timeout: Optional[float] = DEFAULT_STORE_RECOVERY_TIMEOUT,
-    ) -> None:
-        """Store all the current parameters of the target subnode.
-
-        Args:
-            subnode: Subnode of the axis. `None` by default which stores
-            all the parameters.
-            timeout : how many seconds to wait for the drive to become responsive
-            after the store operation. If ``None`` it will wait forever.
-        """
-        super().store_parameters(subnode)
-        self._wait_until_alive(timeout)
-
-    def restore_parameters(
-        self,
-        subnode: Optional[int] = None,
-        timeout: Optional[float] = DEFAULT_STORE_RECOVERY_TIMEOUT,
-    ) -> None:
-        """Restore all the current parameters of all the slave to default.
-
-        .. note::
-            The drive needs a power cycle after this
-            in order for the changes to be properly applied.
-
-        Args:
-            subnode: Subnode of the axis. `None` by default which restores
-                all the parameters.
-            timeout : how many seconds to wait for the drive to become responsive
-            after the restore operation. If ``None`` it will wait forever.
-        """
-        super().restore_parameters(subnode)
-        self._wait_until_alive(timeout)
-
-    def _wait_until_alive(self, timeout: Optional[float]) -> None:
-        """Wait until the drive becomes responsive.
-
-        Args:
-            timeout : how many seconds to wait for the drive to become responsive.
-            If ``None`` it will wait forever.
-
-        """
-        init_time = time.time()
-        while not self.is_alive():
-            if timeout is not None and (init_time + timeout) < time.time():
-                logger.info("The drive is unresponsive after the recovery timeout.")
-                break
 
     def _read_raw(  # type: ignore [override]
         self,
@@ -294,11 +255,10 @@ class EthercatServo(PDOServo):
         if not super()._is_monitoring_implemented():
             raise NotImplementedError("Monitoring is not supported by this device.")
         if not isinstance(
-            data := self.read(
+            data := self.read_complete_access(
                 self.MONITORING_DATA,
                 subnode=0,
                 buffer_size=self.MONITORING_DATA_BUFFER_SIZE,
-                complete_access=True,
             ),
             bytes,
         ):
@@ -316,43 +276,7 @@ class EthercatServo(PDOServo):
         """
         if not super()._is_disturbance_implemented():
             raise NotImplementedError("Disturbance is not supported by this device.")
-        return self.write(self.DIST_DATA, subnode=0, data=data, complete_access=True)
-
-    @staticmethod
-    def __monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
-        """Map CAN register address to IPB register address.
-
-        Args:
-            subnode: Subnode to be targeted.
-            address: Register address to map.
-
-        Returns:
-            mapped address.
-        """
-        mapped_address: int = address - (
-            CANOPEN_ADDRESS_OFFSET + (MAP_ADDRESS_OFFSET * (subnode - 1))
-        )
-        return mapped_address
-
-    def _monitoring_disturbance_data_to_map_register(
-        self, subnode: int, address: int, dtype: int, size: int
-    ) -> int:
-        """Arrange necessary data to map a monitoring/disturbance register.
-
-        Args:
-            subnode: Subnode to be targeted.
-            address: Register address to map.
-            dtype: Register data type.
-            size: Size of data in bytes.
-
-        Returns:
-            mapped address.
-        """
-        ipb_address = self.__monitoring_disturbance_map_can_address(address, subnode)
-        mapped_address: int = super()._monitoring_disturbance_data_to_map_register(
-            subnode, ipb_address, dtype, size
-        )
-        return mapped_address
+        return self.write_complete_access(self.DIST_DATA, subnode=0, data=data)
 
     def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
         """Subscribe to emergency messages.
@@ -386,6 +310,45 @@ class EthercatServo(PDOServo):
         for callback in self.__emcy_observers:
             callback(emergency_message)
 
+    def read_rpdo_map_from_slave(
+        self, map_obj: Union[str, CanOpenObject], subnode: int = 0, buffer_size: Optional[int] = 0
+    ) -> RPDOMap:
+        """Read the RPDO map from the slave.
+
+        Args:
+            map_obj: UID or object of the RPDO map.
+            subnode: Subnode of the rpdo map.
+            buffer_size: Size of the buffer to read the pdo map.
+
+        Returns:
+            RPDOMap: The RPDO map read from the slave.
+        """
+        if isinstance(map_obj, str):
+            map_obj = self.dictionary.get_object(map_obj, subnode)
+        value = self.read_complete_access(map_obj, subnode, buffer_size)
+        return RPDOMap.from_pdo_value(value, map_obj, self.dictionary)
+
+    def read_tpdo_map_from_slave(
+        self,
+        map_obj: Union[str, CanOpenObject],
+        subnode: int = 0,
+        buffer_size: Optional[int] = None,
+    ) -> TPDOMap:
+        """Read the TPDO map from the slave.
+
+        Args:
+            map_obj: UID or object of the RPDO map.
+            subnode: Subnode of the rpdo map.
+            buffer_size: Size of the buffer to read the pdo map.
+
+        Returns:
+            TPDOMap: The TPDO map read from the slave.
+        """
+        if isinstance(map_obj, str):
+            map_obj = self.dictionary.get_object(map_obj, subnode)
+        value = self.read_complete_access(map_obj, subnode, buffer_size)
+        return TPDOMap.from_pdo_value(value, map_obj, self.dictionary)
+
     @override
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
@@ -404,9 +367,6 @@ class EthercatServo(PDOServo):
 
     @override
     def generate_pdo_outputs(self) -> None:
-        output = self._process_rpdo()
-        if output is None:
-            return
         self.__slave.output = self._process_rpdo()
 
     def set_pdo_watchdog_time(self, timeout: float) -> None:

@@ -1,4 +1,5 @@
 from abc import ABC
+from dataclasses import dataclass
 from typing import Any, Optional, Union
 
 from ingenialink import exceptions as exc
@@ -10,7 +11,7 @@ from ingenialink.enums.register import (
     RegDtype,
     RegPhy,
 )
-from ingenialink.utils._utils import convert_bytes_to_dtype
+from ingenialink.utils._utils import convert_bytes_to_dtype, dtype_length_bits
 
 dtypes_ranges: dict[RegDtype, dict[str, Union[int, float]]] = {
     RegDtype.U8: {"max": 255, "min": 0},
@@ -25,6 +26,15 @@ dtypes_ranges: dict[RegDtype, dict[str, Union[int, float]]] = {
 }
 
 
+@dataclass(frozen=True)
+class MonDistV3:
+    """Monitoring data."""
+
+    address: int
+    subnode: int
+    cyclic: RegCyclicType
+
+
 class Register(ABC):
     """Register Base class.
 
@@ -33,7 +43,7 @@ class Register(ABC):
         access: Access type.
         identifier: Identifier.
         units: Units.
-        cyclic: Cyclic typed register.
+        pdo_access: pdo access.
         phy: Physical units.
         subnode: Subnode.
         storage: Storage.
@@ -46,7 +56,9 @@ class Register(ABC):
         address_type: Address tpye.
         description: Register description.
         default: Register default value.
-        bitfields: Fields that specify groups of bits
+        bitfields: Fields that specify groups of bits.
+        monitoring: monitoring information (address, subnode, cyclic access),
+            None if register is not monitoreable.
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -61,7 +73,7 @@ class Register(ABC):
         access: RegAccess,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
-        cyclic: RegCyclicType = RegCyclicType.CONFIG,
+        pdo_access: RegCyclicType = RegCyclicType.CONFIG,
         phy: RegPhy = RegPhy.NONE,
         subnode: int = 1,
         storage: Any = None,
@@ -77,6 +89,7 @@ class Register(ABC):
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
+        monitoring: Optional[MonDistV3] = None,
     ) -> None:
         if labels is None:
             labels = {}
@@ -89,7 +102,7 @@ class Register(ABC):
         self._access = access.value
         self._identifier = identifier
         self._units = units
-        self._cyclic = cyclic
+        self._pdo_access = pdo_access
         self._phy = phy.value
         self._subnode = subnode
         self._storage = storage
@@ -104,6 +117,7 @@ class Register(ABC):
         self._default = default
         self._enums = enums
         self.__bitfields = bitfields
+        self._monitoring = monitoring
         self.__config_range(reg_range)
 
     def __type_errors(self, dtype: RegDtype, access: RegAccess, phy: RegPhy) -> None:
@@ -163,9 +177,9 @@ class Register(ABC):
         return self._units
 
     @property
-    def cyclic(self) -> RegCyclicType:
-        """Defines if the register is cyclic."""
-        return self._cyclic
+    def pdo_access(self) -> RegCyclicType:
+        """Defines if the register is pdo mappable."""
+        return self._pdo_access
 
     @property
     def phy(self) -> RegPhy:
@@ -221,6 +235,14 @@ class Register(ABC):
         if self._range:
             return self._range
         return (None, None)
+
+    @property
+    def monitoring(self) -> Optional[MonDistV3]:
+        """Containing the address, subnode and cyclic access.
+
+        If the register is not monitoreable, it will contain None.
+        """
+        return self._monitoring
 
     @property
     def labels(self) -> dict[str, str]:
@@ -283,3 +305,20 @@ class Register(ABC):
     def bitfields(self) -> Optional[dict[str, BitField]]:
         """Register bit fields."""
         return self.__bitfields
+
+    @property
+    def bit_length(self) -> int:
+        """Get the bit length of the register.
+
+        Returns:
+            int: bit length of the register.
+        """
+        return dtype_length_bits[self.dtype]
+
+    def __repr__(self) -> str:
+        """String representation of the Register class.
+
+        Returns:
+            str: String representation of the Register instance.
+        """
+        return f"<{self.__class__.__name__} {self.identifier} at 0x{id(self):X} >"

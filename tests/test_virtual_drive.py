@@ -6,7 +6,8 @@ from scipy import signal
 
 from ingenialink.enums.register import RegDtype
 from ingenialink.enums.servo import ServoState
-from virtual_drive.core import OperationMode
+from virtual_drive import resources as virtual_drive_resources
+from virtual_drive.core import OperationMode, VirtualDrive
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -20,16 +21,13 @@ def create_monitoring_disturbance(servo, dist_reg, monit_regs, dist_data):
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
     servo.write("DIST_FREQ_DIV", divisor, subnode=0)
-    servo.disturbance_set_mapped_register(0, reg.address, reg.subnode, reg.dtype.value, 4)
+    servo.disturbance_set_mapped_register(channel=0, uid=reg.identifier, size=4)
     servo.disturbance_write_data([0], [reg.dtype], [dist_data])
     servo.disturbance_enable()
 
     servo.monitoring_disable()
     for idx, key in enumerate(monit_regs):
-        reg = servo._get_reg(key, subnode=1)
-        servo.monitoring_set_mapped_register(
-            idx, reg.address, reg.subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE
-        )
+        servo.monitoring_set_mapped_register(channel=idx, uid=key, size=MONITORING_CH_DATA_SIZE)
 
     servo.write("MON_DIST_FREQ_DIV", divisor, subnode=0)
     servo.write("MON_CFG_SOC_TYPE", 1, subnode=0)
@@ -75,10 +73,7 @@ def test_virtual_drive_write_wrong_enum(virtual_drive):
 @pytest.mark.parametrize(
     "reg, value, subnode", [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)]
 )
-def test_virtual_drive_write_read_compare_responses(
-    connect_to_slave, virtual_drive, reg, value, subnode
-):
-    servo, _ = connect_to_slave
+def test_virtual_drive_write_read_compare_responses(servo, virtual_drive, reg, value, subnode):
     _, virtual_servo = virtual_drive
 
     virtual_response = virtual_servo.write(reg, value, subnode)
@@ -104,11 +99,7 @@ def test_virtual_monitoring(virtual_drive, divisor):
     registers_key = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
     subnode = 1
     for idx, key in enumerate(registers_key):
-        reg = servo._get_reg(key, subnode=1)
-        address = reg.address
-        servo.monitoring_set_mapped_register(
-            idx, address, subnode, reg.dtype.value, MONITORING_CH_DATA_SIZE
-        )
+        servo.monitoring_set_mapped_register(channel=idx, uid=key, size=MONITORING_CH_DATA_SIZE)
 
     servo.write("MON_DIST_FREQ_DIV", divisor, subnode=0)
     servo.write("MON_CFG_SOC_TYPE", 1, subnode=0)
@@ -139,10 +130,8 @@ def test_virtual_disturbance(virtual_drive, register_key):
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
 
-    subnode = 1
     reg = servo._get_reg(register_key, subnode=1)
-    address = reg.address
-    servo.disturbance_set_mapped_register(0, address, subnode, reg.dtype.value, 4)
+    servo.disturbance_set_mapped_register(channel=0, uid=register_key, size=4)
     data_arr = [0.0, -1.0, 2.0, 3.0] if reg.dtype == RegDtype.FLOAT else [0, -1, 2, 3]
 
     channels = [0]
@@ -246,3 +235,32 @@ def test_phasing():
 @pytest.mark.skip
 def test_feedbacks():
     pass
+
+
+class MockVirtualDrive(VirtualDrive):
+    def __init__(self, *args, **kwargs):
+        self.read_config_defaults_calls = 0
+        self.read_xdf_v3_defaults_calls = 0
+        super().__init__(*args, **kwargs)
+
+    def _read_defaults_from_config(self):
+        self.read_config_defaults_calls += 1
+        return super()._read_defaults_from_config()
+
+    def _read_defaults_from_xdf_v3(self):
+        self.read_xdf_v3_defaults_calls += 1
+        return super()._read_defaults_from_xdf_v3()
+
+
+@pytest.mark.no_connection
+def test_virtual_drive_defaults_from_config():
+    server = MockVirtualDrive(81)
+    assert server.read_config_defaults_calls == 1
+    assert server.read_xdf_v3_defaults_calls == 0
+
+
+@pytest.mark.no_connection
+def test_virtual_drive_defaults_from_xdf_v3():
+    server = MockVirtualDrive(81, virtual_drive_resources.VIRTUAL_DRIVE_V3_XDF)
+    assert server.read_config_defaults_calls == 0
+    assert server.read_xdf_v3_defaults_calls == 1

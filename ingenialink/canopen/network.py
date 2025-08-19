@@ -23,6 +23,7 @@ from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.servo import Servo
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
 
@@ -48,7 +49,7 @@ logger = ingenialogger.get_logger(__name__)
 PROG_STAT_1 = CanopenRegister(
     idx=0x1F51,
     subidx=0x01,
-    cyclic=RegCyclicType.CONFIG,
+    pdo_access=RegCyclicType.CONFIG,
     dtype=RegDtype.U8,
     access=RegAccess.RW,
     identifier="CIA302_BL_PROGRAM_CONTROL_1",
@@ -57,7 +58,7 @@ PROG_STAT_1 = CanopenRegister(
 PROG_DL_1 = CanopenRegister(
     idx=0x1F50,
     subidx=0x01,
-    cyclic=RegCyclicType.CONFIG,
+    pdo_access=RegCyclicType.CONFIG,
     dtype=RegDtype.BYTE_ARRAY_512,
     access=RegAccess.RW,
     identifier="CIA302_BL_PROGRAM_DATA",
@@ -66,7 +67,7 @@ PROG_DL_1 = CanopenRegister(
 FORCE_BOOT = CanopenRegister(
     idx=0x5EDE,
     subidx=0x00,
-    cyclic=RegCyclicType.CONFIG,
+    pdo_access=RegCyclicType.CONFIG,
     dtype=RegDtype.U32,
     access=RegAccess.WO,
     identifier="DRV_BOOT_COCO_FORCE",
@@ -76,7 +77,7 @@ FORCE_BOOT = CanopenRegister(
 CIA301_DRV_ID_DEVICE_TYPE = CanopenRegister(
     idx=0x1000,
     subidx=0x00,
-    cyclic=RegCyclicType.CONFIG,
+    pdo_access=RegCyclicType.CONFIG,
     dtype=RegDtype.U32,
     access=RegAccess.RO,
     identifier="",
@@ -347,6 +348,7 @@ class CanopenNetwork(Network):
         dictionary: str,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> CanopenServo:
         """Connects to a drive through a given target node ID.
 
@@ -357,6 +359,8 @@ class CanopenNetwork(Network):
                 its status, errors, faults, etc.
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
+            disconnect_callback: Callback function to be called when the servo is disconnected.
+                If not specified, no callback will be called.
 
         Raises:
             ILError: if there aren't nodes in the network.
@@ -382,7 +386,11 @@ class CanopenNetwork(Network):
                 node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
                 servo = CanopenServo(
-                    target, node, dictionary, servo_status_listener=servo_status_listener
+                    target,
+                    node,
+                    dictionary,
+                    servo_status_listener=servo_status_listener,
+                    disconnect_callback=disconnect_callback,
                 )
                 self.servos.append(servo)
                 self._set_servo_state(target, NetState.CONNECTED)
@@ -407,6 +415,9 @@ class CanopenNetwork(Network):
             servo: Instance of the servo connected.
 
         """
+        # Notify that disconnect_from_slave has been called
+        if servo._disconnect_callback:
+            servo._disconnect_callback(servo)
         self.stop_status_listener()
         servo.stop_status_listener()
         self.servos.remove(servo)

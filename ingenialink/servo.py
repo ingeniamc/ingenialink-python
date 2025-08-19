@@ -9,7 +9,7 @@ import ingenialogger
 import numpy as np
 
 from ingenialink.bitfield import BitField
-from ingenialink.canopen.dictionary import CanopenDictionaryV2
+from ingenialink.canopen.dictionary import CanopenDictionaryV2, CanopenDictionaryV3
 from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
@@ -20,6 +20,7 @@ from ingenialink.constants import (
     PASSWORD_STORE_RESTORE_SUB_0,
 )
 from ingenialink.dictionary import (
+    CanOpenObject,
     Dictionary,
     DictionaryDescriptor,
     DictionaryError,
@@ -31,8 +32,12 @@ from ingenialink.dictionary import (
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.enums.register import RegAccess, RegAddressType, RegDtype
 from ingenialink.enums.servo import ServoState
-from ingenialink.ethercat.dictionary import EthercatDictionaryV2
-from ingenialink.ethernet.dictionary import EthernetDictionaryV2
+from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictionaryV3
+from ingenialink.ethernet.dictionary import (
+    EoEDictionaryV3,
+    EthernetDictionaryV2,
+    EthernetDictionaryV3,
+)
 from ingenialink.exceptions import (
     ILAccessError,
     ILConfigurationError,
@@ -84,7 +89,14 @@ class DictionaryFactory:
         """
         major_version, _ = cls.__get_dictionary_version(dictionary_path)
         if major_version == 3:
-            return DictionaryV3(dictionary_path, interface)
+            if interface == Interface.CAN:
+                return CanopenDictionaryV3(dictionary_path)
+            if interface == Interface.ECAT:
+                return EthercatDictionaryV3(dictionary_path)
+            if interface == Interface.EoE:
+                return EoEDictionaryV3(dictionary_path)
+            if interface in [Interface.ETH, Interface.VIRTUAL]:
+                return EthernetDictionaryV3(dictionary_path)
         if major_version == 2:
             if interface == Interface.CAN:
                 return CanopenDictionaryV2(dictionary_path)
@@ -94,7 +106,9 @@ class DictionaryFactory:
                 return EthernetDictionaryV2(dictionary_path)
             if interface == Interface.VIRTUAL:
                 return VirtualDictionary(dictionary_path)
-        raise NotImplementedError(f"Dictionary version {major_version} is not supported")
+        raise NotImplementedError(
+            f"Dictionary version {major_version} is not supported for interface {interface.name}"
+        )
 
     @classmethod
     def get_dictionary_description(
@@ -258,6 +272,9 @@ class Servo:
     DICTIONARY_INTERFACE_ATTR_CAN = "CAN"
     DICTIONARY_INTERFACE_ATTR_ETH = "ETH"
 
+    __DEFAULT_STORE_RECOVERY_TIMEOUT_S = 4
+    __DEFAULT_RESTORE_RECOVERY_TIMEOUT_S = 1.5
+
     interface: Interface
 
     def __init__(
@@ -265,6 +282,7 @@ class Servo:
         target: Union[int, str],
         dictionary_path: str,
         servo_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[["Servo"], None]] = None,
     ):
         self._dictionary = DictionaryFactory.create_dictionary(dictionary_path, self.interface)
         self.target = target
@@ -299,6 +317,7 @@ class Servo:
             self.start_status_listener()
         else:
             self.stop_status_listener()
+        self._disconnect_callback: Optional[Callable[[Servo], None]] = disconnect_callback
 
     def start_status_listener(self) -> None:
         """Start listening for servo status events (ServoState)."""
@@ -507,9 +526,10 @@ class Servo:
             True if the register can be used for the configuration file. False otherwise.
 
         """
-        return not (
-            register.access != RegAccess.RW or register.address_type == RegAddressType.NVM_NONE
-        )
+        return register.access == RegAccess.RW and register.address_type in [
+            RegAddressType.NVM_CFG,
+            RegAddressType.NVM,
+        ]
 
     def _registers_to_save_in_configuration_file(
         self, subnode: Optional[int]
@@ -565,7 +585,7 @@ class Servo:
                 f"The drive's configuration cannot be restored. The subnode value: {subnode} is"
                 " invalid."
             )
-        time.sleep(1.5)
+        self._wait_for_drive_to_recover(self.__DEFAULT_RESTORE_RECOVERY_TIMEOUT_S)
 
     def store_parameters(self, subnode: Optional[int] = None) -> None:
         """Store all the current parameters of the target subnode.
@@ -579,40 +599,49 @@ class Servo:
 
         """
         r = 0
-        try:
-            if subnode is None:
-                # Store all
-                try:
-                    self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_ALL, subnode=0)
-                    logger.info("Store all successfully done.")
-                except ILError as e:
-                    logger.warning(f"Store all COCO failed. Reason: {e}. Trying MOCO...")
-                    r = -1
-                if r < 0:
-                    for dict_subnode in self.dictionary.subnodes:
-                        if self.dictionary.subnodes[dict_subnode] == SubnodeType.MOTION:
-                            self.write(
-                                reg=self.STORE_MOCO_ALL_REGISTERS,
-                                data=PASSWORD_STORE_ALL,
-                                subnode=dict_subnode,
-                            )
-                            logger.info(f"Store axis {dict_subnode} successfully done.")
-            elif subnode == 0:
-                # Store subnode 0
-                self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
-            elif subnode > 0:
-                # Store axis
-                self.write(
-                    reg=self.STORE_MOCO_ALL_REGISTERS, data=PASSWORD_STORE_ALL, subnode=subnode
-                )
-                logger.info(f"Store axis {subnode} successfully done.")
-            else:
-                raise ILError(
-                    f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
-                    " invalid."
-                )
-        finally:
-            time.sleep(1.5)
+        if subnode is None:
+            # Store all
+            try:
+                self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_ALL, subnode=0)
+                logger.info("Store all successfully done.")
+            except ILError as e:
+                logger.warning(f"Store all COCO failed. Reason: {e}. Trying MOCO...")
+                r = -1
+            if r < 0:
+                for dict_subnode in self.dictionary.subnodes:
+                    if self.dictionary.subnodes[dict_subnode] == SubnodeType.MOTION:
+                        self.write(
+                            reg=self.STORE_MOCO_ALL_REGISTERS,
+                            data=PASSWORD_STORE_ALL,
+                            subnode=dict_subnode,
+                        )
+                        logger.info(f"Store axis {dict_subnode} successfully done.")
+        elif subnode == 0:
+            # Store subnode 0
+            self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_RESTORE_SUB_0, subnode=0)
+        elif subnode > 0:
+            # Store axis
+            self.write(reg=self.STORE_MOCO_ALL_REGISTERS, data=PASSWORD_STORE_ALL, subnode=subnode)
+            logger.info(f"Store axis {subnode} successfully done.")
+        else:
+            raise ILError(
+                f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
+                " invalid."
+            )
+        self._wait_for_drive_to_recover(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
+
+    def _wait_for_drive_to_recover(self, recovery_time: float) -> None:
+        """Wait until the drive recovers from a store/restore operation.
+
+        Args:
+            recovery_time: how many seconds to wait for the drive.
+
+        """
+        time.sleep(recovery_time)
+        # To avoid an error on the first read/write after the drive is
+        # recovered, we try to read the status word register.
+        # Check issue EVR-906.
+        self.is_alive()
 
     def _get_drive_identification(
         self,
@@ -853,27 +882,36 @@ class Servo:
         self.write(self.MONITORING_REMOVE_DATA, data=1, subnode=0)
 
     def monitoring_set_mapped_register(
-        self, channel: int, address: int, subnode: int, dtype: int, size: int
+        self, channel: int, uid: str, size: int, axis: Optional[int] = None
     ) -> None:
         """Set monitoring mapped register.
 
         Args:
             channel: Identity channel number.
-            address: Register address to map.
-            subnode: Subnode to be targeted.
-            dtype: Register data type.
+            uid: Register uid.
             size: Size of data in bytes.
+            axis: axis. Should be specified if multiaxis, None otherwise.
 
+        Raises:
+            RuntimeError: if the register is not monitoreable.
         """
+        register = self.dictionary.get_register(uid, axis=axis)
+        if register.monitoring is None:
+            raise RuntimeError(f"Register {uid} is not monitoreable.")
+
         self.__monitoring_data[channel] = []
-        self.__monitoring_dtype[channel] = RegDtype(dtype)
+        self.__monitoring_dtype[channel] = register.dtype
         self.__monitoring_size[channel] = size
-        data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
+        data = self._monitoring_disturbance_data_to_map_register(
+            register.monitoring.subnode, register.monitoring.address, register.dtype.value, size
+        )
         try:
             self.write(self.__monitoring_map_register(), data=data, subnode=0)
             self.__monitoring_update_num_mapped_registers()
         except ILAccessError:
-            self.write(self.MONITORING_ADD_REGISTERS_OLD, data=address, subnode=0)
+            self.write(
+                self.MONITORING_ADD_REGISTERS_OLD, data=register.monitoring.address, subnode=0
+            )
 
     def monitoring_get_num_mapped_registers(self) -> int:
         """Obtain the number of monitoring mapped registers.
@@ -959,26 +997,35 @@ class Servo:
         self.disturbance_data = b""
 
     def disturbance_set_mapped_register(
-        self, channel: int, address: int, subnode: int, dtype: int, size: int
+        self, channel: int, uid: str, size: int, axis: Optional[int] = None
     ) -> None:
         """Set monitoring mapped register.
 
         Args:
             channel: Identity channel number.
-            address: Register address to map.
-            subnode: Subnode to be targeted.
-            dtype: Register data type.
+            uid: Register uid.
             size: Size of data in bytes.
+            axis: axis. Should be specified if multiaxis, None otherwise.
 
+        Raises:
+            RuntimeError: if the register is not monitoreable.
         """
+        register = self.dictionary.get_register(uid, axis=axis)
+        if register.monitoring is None:
+            raise RuntimeError("Register is not monitoreable.")
+
         self.__disturbance_size[channel] = size
-        self.__disturbance_dtype[channel] = RegDtype(dtype).name
-        data = self._monitoring_disturbance_data_to_map_register(subnode, address, dtype, size)
+        self.__disturbance_dtype[channel] = register.dtype.name
+        data = self._monitoring_disturbance_data_to_map_register(
+            register.monitoring.subnode, register.monitoring.address, register.dtype.value, size
+        )
         try:
             self.write(self.__disturbance_map_register(), data=data, subnode=0)
             self.__disturbance_update_num_mapped_registers()
         except ILRegisterNotFoundError:
-            self.write(self.DISTURBANCE_ADD_REGISTERS_OLD, data=address, subnode=0)
+            self.write(
+                self.DISTURBANCE_ADD_REGISTERS_OLD, data=register.monitoring.address, subnode=0
+            )
 
     def disturbance_get_num_mapped_registers(self) -> int:
         """Obtain the number of disturbance mapped registers.
@@ -1244,7 +1291,6 @@ class Servo:
         reg: Union[str, Register],
         data: Union[int, float, str, bytes],
         subnode: int = 1,
-        **kwargs: Any,
     ) -> None:
         """Writes a data to a target register.
 
@@ -1252,7 +1298,6 @@ class Servo:
             reg: Target register to be written.
             data: Data to be written.
             subnode: Target axis of the drive.
-            **kwargs: Keyword arguments.
 
         Raises:
             ILAccessError: Wrong access to the register.
@@ -1262,18 +1307,19 @@ class Servo:
         if _reg.access == RegAccess.RO:
             raise ILAccessError("Register is Read-only")
         data_bytes = data if isinstance(data, bytes) else convert_dtype_to_bytes(data, _reg.dtype)
-        self._write_raw(_reg, data_bytes, **kwargs)
+        self._write_raw(_reg, data_bytes)
         self._notify_register_update(_reg, data)
 
     def read(
-        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
+        self,
+        reg: Union[str, Register],
+        subnode: int = 1,
     ) -> Union[int, float, str, bytes]:
         """Read a register value from servo.
 
         Args:
             reg: Register.
             subnode: Target axis of the drive.
-            **kwargs: Keyword arguments.
 
         Returns:
             int, float or Value stored in the register.
@@ -1286,10 +1332,61 @@ class Servo:
         if access == RegAccess.WO:
             raise ILAccessError("Register is Write-only")
 
-        raw_read = self._read_raw(_reg, **kwargs)
+        raw_read = self._read_raw(_reg)
+
         value = convert_bytes_to_dtype(raw_read, _reg.dtype)
         self._notify_register_update(_reg, value)
         return value
+
+    def write_complete_access(
+        self, reg: Union[str, Register, CanOpenObject], data: bytes, subnode: int = 1
+    ) -> None:
+        """Write a complete access register.
+
+        Args:
+            reg: Register to be written.
+            data: Data to be written.
+            subnode: Target subnode of the drive.
+        """
+        if isinstance(reg, CanOpenObject):
+            _reg: Register = reg.registers[0]
+        else:
+            _reg = self._get_reg(reg, subnode)
+        self._write_raw(_reg, data, complete_access=True)
+
+    def read_complete_access(
+        self,
+        reg: Union[str, Register, CanOpenObject],
+        subnode: int = 1,
+        buffer_size: Optional[int] = None,
+    ) -> bytes:
+        """Read a complete access register.
+
+        Args:
+            reg: Register to be read.
+            subnode: Target subnode of the drive.
+            buffer_size: Size of the buffer to read.
+
+        Raises:
+            ValueError: if buffer size is not specified or cannot be detected
+
+        Returns:
+            Data read from the register.
+        """
+        if isinstance(reg, CanOpenObject):
+            _reg: Register = reg.registers[0]
+            buffer_size = reg.byte_length
+        else:
+            _reg = self._get_reg(reg, subnode)
+
+        if buffer_size is None:
+            raise ValueError(
+                "Buffer size must be specified for complete access read."
+                "Alternatively, use a CanOpenObject to infer the size required "
+                "automatically."
+            )
+
+        return self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
 
     def read_bitfields(
         self,
@@ -1490,12 +1587,13 @@ class Servo:
         return self.write(self.DIST_DATA, subnode=0, data=data)
 
     @abstractmethod
-    def _write_raw(self, reg: Register, data: bytes) -> None:
+    def _write_raw(self, reg: Register, data: bytes, **kwargs: Any) -> None:
         """Write raw bytes to a target register.
 
         Args:
             reg: Target register to be written.
             data: Data to be written.
+            **kwargs: Additional arguments for the write operation.
 
         Raises:
             ILIOError: Error writing the register.
@@ -1522,11 +1620,12 @@ class Servo:
         raise NotImplementedError
 
     @abstractmethod
-    def _read_raw(self, reg: Register) -> bytes:
+    def _read_raw(self, reg: Register, **kwargs: Any) -> bytes:
         """Read raw bytes from a target register.
 
         Args:
             reg: Register.
+            kwargs: Additional arguments for the read operation.
 
         Returns:
             Raw bytes reading from servo.

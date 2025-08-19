@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.12') _
+@Library('cicd-lib@0.15') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -6,87 +6,169 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.5"
-def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.6"
+LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.5"
+WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.6"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
 DEFAULT_PYTHON_VERSION = "3.9"
 
-ALL_PYTHON_VERSIONS = "py39,py310,py311,py312"
+ALL_PYTHON_VERSIONS = "3.9,3.10,3.11,3.12"
 RUN_PYTHON_VERSIONS = ""
-PYTHON_VERSION_MIN = "py39"
-def PYTHON_VERSION_MAX = "py312"
+PYTHON_VERSION_MIN = "3.9"
+PYTHON_VERSION_MAX = "3.12"
 
 def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
+def RACK_SPECIFIERS_PATH = "tests.setups.rack_specifiers"
 
+WIN_DOCKER_TMP_PATH = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
+LIN_DOCKER_TMP_PATH = "/tmp/ingenialink_python"
+
+WIRESHARK_DIR = "wireshark"
+USE_WIRESHARK_LOGGING = ""
+START_WIRESHARK_TIMEOUT_S = 10.0
+
+wheel_stashes = []
 coverage_stashes = []
 
-// Run this before PYTEST tox command that requires develop ingenialink installation and that 
-// may run in parallel/after with EtherCAT/CANopen tests, because these tests alter its value
-def restoreIngenialinkWheelEnvVar() {
-    env.INGENIALINK_WHEEL_PATH = null
-    env.TOX_SKIP_INSTALL = false
-}
-
-def getWheelPath(tox_skip_install, python_version) {
-    if (tox_skip_install) {
-        script {
-            def pythonVersionTag = "cp${python_version.replace('py', '')}"
-            def files = findFiles(glob: "dist/*${pythonVersionTag}*.whl")
-            if (files.length == 0) {
-                error "No .whl file found for Python version ${python_version} in the dist directory."
-            }
-            def wheelFile = files[0].name
-            return "dist\\${wheelFile}"
-        }
-    }
-    else {
-        return ""
+def reassignFilePermissions() {
+    if (isUnix()) {
+        sh 'chmod -R 777 .'
     }
 }
 
-def runTest(protocol, slave = 0, tox_skip_install = false) {
-    unstash 'wheels'
-    def firstIteration = true
-    def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+def clearWiresharkLogs() {
+    bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
+}
+
+def clearCoverageFiles() {
+    bat(script: 'del /f "*.coverage*"', returnStatus: true)
+}
+
+def runPython(command, py_version = DEFAULT_PYTHON_VERSION) {
+    if (isUnix()) {
+        sh "python${py_version} -I -m ${command}"
+    } else {
+        bat "py -${py_version} -I -m ${command}"
+    }
+}
+
+def archiveWiresharkLogs() {
+    archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
+}
+
+def createVirtualEnvironments(boolean installWheel = true, String workingDir = null, String pythonVersionList = "") {
+    runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION)
+    def versions = pythonVersionList?.trim() ? pythonVersionList : RUN_PYTHON_VERSIONS
+    def pythonVersions = versions.split(',')
     pythonVersions.each { version ->
-        def wheelFile = getWheelPath(tox_skip_install, version)
-        env.TOX_SKIP_INSTALL = tox_skip_install.toString()
-        env.INGENIALINK_WHEEL_PATH = wheelFile
-        try {
-            bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${version} -- " +
-                    "--protocol ${protocol} " +
-                    "--slave ${slave} " +
-                    "--job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${protocol}-${slave}\""
-
-        } catch (err) {
-            unstable(message: "Tests failed")
-        } finally {
-            junit "pytest_reports\\*.xml"
-            // Delete the junit after publishing it so it not re-published on the next stage
-            bat "del /S /Q pytest_reports\\*.xml"
-            if (firstIteration) {
-                def coverage_stash = ".coverage_${protocol}_${slave}"
-                bat "move .coverage ${coverage_stash}"
-                stash includes: coverage_stash, name: coverage_stash
-                coverage_stashes.add(coverage_stash)
-                firstIteration = false
-            }
+        def venvName = ".venv${version}"
+        def cdCmd = workingDir ? "cd ${workingDir}" : ""
+        if (isUnix()) {
+            sh """
+                ${cdCmd}
+                python${version} -m venv --without-pip ${venvName}
+                . ${venvName}/bin/activate
+                poetry sync --no-root --all-groups
+                deactivate
+            """
+        } else {
+            def installWheelCmd = installWheel ? "poetry run poe install-wheel" : ""
+            bat """
+                ${cdCmd}
+                py -${version} -m venv ${venvName}
+                call ${venvName}/Scripts/activate
+                poetry sync --no-root --all-groups
+                ${installWheelCmd}
+                deactivate
+            """
         }
     }
 }
 
-/* Build develop everyday at 19:00 UTC (21:00 Barcelona Time), running all tests */
-CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19 * * *''' : ""
+def buildWheel(py_version) {
+     echo "Running build for Python ${py_version} in Docker environment"
+    if (isUnix()) {
+        sh """
+            cd ${LIN_DOCKER_TMP_PATH}
+            . .venv${py_version}/bin/activate
+            poetry run poe build-wheel
+            deactivate
+        """
+    } else {
+        bat """
+            cd ${WIN_DOCKER_TMP_PATH}
+            call .venv${py_version}/Scripts/activate
+            poetry run poe build-wheel
+            deactivate
+        """
+    }
+}
+
+def runTestHW(markers, setup_name, extra_args = "") {
+    try {
+        timeout(time: 1, unit: 'HOURS') {
+            clearCoverageFiles()
+            def firstIteration = true
+            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+            pythonVersions.each { version ->
+                withEnv(["WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
+                    try {
+                        def setupArg = setup_name ? "--setup ${setup_name} " : ""
+                        def venvName = ".venv${version}"
+                        bat """
+                            call ${venvName}/Scripts/activate
+                            poetry run poe tests --import-mode=importlib --cov=${venvName}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${version}.xml --junit-prefix=${version} -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}"
+                            deactivate
+                        """
+                    } catch (err) {
+                        unstable(message: "Tests failed")
+                    } finally {
+                        junit "pytest_reports\\*.xml"
+                        // Delete the junit after publishing it so it not re-published on the next stage
+                        bat "del /S /Q pytest_reports\\*.xml"
+                        if (firstIteration) {
+                            def coverage_stash = ".coverage_${setup_name}"
+                            bat "move .coverage ${coverage_stash}"
+                            stash includes: coverage_stash, name: coverage_stash
+                            coverage_stashes.add(coverage_stash)
+                            firstIteration = false
+                        }
+                    }
+                }
+            }
+        }
+    } finally {
+        archiveWiresharkLogs()
+        clearWiresharkLogs()
+    }
+}
+
+/* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
+CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * *''' : ""
 
 pipeline {
     agent none
+    options {
+        timestamps()
+    }
     triggers {
         cron(CRON_SETTINGS)
     }
+    parameters {
+        choice(
+                choices: ['MIN', 'MAX', 'MIN_MAX', 'All'],
+                name: 'PYTHON_VERSIONS'
+        )
+        booleanParam(name: 'WIRESHARK_LOGGING', defaultValue: true, description: 'Enable Wireshark logging')
+        choice(
+                choices: ['function', 'module', 'session'],
+                name: 'WIRESHARK_LOGGING_SCOPE'
+        )
+        booleanParam(name: 'CLEAR_SUCCESSFUL_WIRESHARK_LOGS', defaultValue: true, description: 'Clears Wireshark logs if the test passed')
+    }
     stages {
-        stage("Set run python versions") {
+        stage("Set env") {
             steps {
                 script {
                     if (env.BRANCH_NAME == 'master') {
@@ -96,7 +178,23 @@ pipeline {
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                     } else {
-                        RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
+                        if (env.PYTHON_VERSIONS == "MIN_MAX") {
+                          RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
+                        } else if (env.PYTHON_VERSIONS == "MIN") {
+                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
+                        } else if (env.PYTHON_VERSIONS == "MAX") {
+                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MAX
+                        } else if (env.PYTHON_VERSIONS == "All") {
+                          RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
+                        } else { // Branch-indexing
+                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
+                        }
+                    }
+
+                    if (params.WIRESHARK_LOGGING) {
+                        USE_WIRESHARK_LOGGING = "--run_wireshark"
+                    } else {
+                        USE_WIRESHARK_LOGGING = ""
                     }
                 }
             }
@@ -105,81 +203,225 @@ pipeline {
         stage('Build and publish') {
             stages {
                 stage('Build') {
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage ('Git Commit to Build description') {
-                            steps {
-                                // Build description should follow the format VAR1=value1;VAR2=value2...
-                                script {
-                                    def currentCommit = bat(script: "git rev-parse HEAD", returnStdout: true).trim()
-                                    def currentCommitHash = (currentCommit =~ /\b[0-9a-f]{40}\b/)[0]
-                                    echo "Current Commit Hash: ${currentCommitHash}"
-                                    def currentCommitBranch = bat(script: "git branch --contains ${currentCommitHash}", returnStdout: true).trim().split("\n").find { it.contains('*') }.replace('* ', '').trim()
-                                    echo "currentCommitBranch: ${currentCommitBranch}"
-                                    
-                                    if (currentCommitBranch.contains('detached')) {
-                                        def shortCommitHash = (currentCommitBranch =~ /\b[0-9a-f]{7,40}\b/)[0]
-                                        def detachedCommit = bat(script: "git rev-parse ${shortCommitHash}", returnStdout: true).trim()
-                                        def detachedCommitHash = (detachedCommit =~ /\b[0-9a-f]{40}\b/)[0]
-                                        echo "Detached Commit Hash: ${detachedCommitHash}"
-                                        currentBuild.description = "ORIGINAL_GIT_COMMIT_HASH=${detachedCommitHash}"
-                                    } else {
-                                        echo "No detached HEAD state found. Using current commit hash ${currentCommitHash}."
-                                        currentBuild.description = "ORIGINAL_GIT_COMMIT_HASH=${currentCommitHash}"
-                                    }
+                    parallel {
+                        stage('Build Windows') {
+                            agent {
+                                docker {
+                                    label SW_NODE
+                                    image WIN_DOCKER_IMAGE
                                 }
                             }
-                        }
-                        stage('Move workspace') {
-                            steps {
-                                bat "XCOPY ${env.WORKSPACE} C:\\Users\\ContainerAdministrator\\ingenialink_python /s /i /y"
-                            }
-                        }
-                        stage('Type checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e type"
-                            }
-                        }
-                        stage('Format checking') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e format"
-                            }
-                        }
-                        stage('Build') {
-                            steps {
-                                script {
-                                    def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                    pythonVersions.each { version ->
-                                        def distDir = version == PYTHON_VERSION_MIN ? "dist" : "dist_${version}"
-                                        def buildDir = version == PYTHON_VERSION_MIN ? "build" : "build_${version}"
-                                        env.TOX_PYTHON_VERSION = version
-                                        env.TOX_DIST_DIR = distDir
-                                        env.TOX_BUILD_ENV_DIR = buildDir
+                            stages {
+                                stage('Move workspace') {
+                                    steps {
+                                        bat "XCOPY ${env.WORKSPACE} ${WIN_DOCKER_TMP_PATH} /s /i /y /e /h"
+                                    }
+                                }
+                                stage('Create virtual environments') {
+                                    steps {
+                                        script {
+                                            createVirtualEnvironments(false, WIN_DOCKER_TMP_PATH, ALL_PYTHON_VERSIONS)
+                                        }
+                                    }
+                                }
+                                stage('Build wheels') {
+                                    environment {
+                                        SETUPTOOLS_SCM_PRETEND_VERSION = getPythonVersionForPr()
+                                    }
+                                    steps {
+                                        script {
+                                            def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
+                                            pythonVersions.each { version ->
+                                                buildWheel(version)
+                                            }
+                                        }
                                         bat """
-                                            cd C:\\Users\\ContainerAdministrator\\ingenialink_python
-                                            py -${DEFAULT_PYTHON_VERSION} -m tox -e build
-                                            XCOPY ${distDir}\\*.whl ${env.WORKSPACE}\\dist /s /i
+                                            cd ${WIN_DOCKER_TMP_PATH}
+                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
+                                            poetry run poe check-wheels
+                                            COPY ingenialink\\_version.py ${env.WORKSPACE}\\ingenialink\\_version.py
+                                            XCOPY dist ${env.WORKSPACE}\\dist /s /i
                                         """
                                     }
                                 }
+                                stage('Make a static type analysis') {
+                                    steps {
+                                        bat """
+                                            cd ${WIN_DOCKER_TMP_PATH}
+                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
+                                            poetry run poe type
+                                        """
+                                    }
+                                }
+                                stage('Check formatting') {
+                                    steps {
+                                        bat """
+                                            cd ${WIN_DOCKER_TMP_PATH}
+                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
+                                            poetry run poe format
+                                        """
+                                    }
+                                }
+                                stage('Archive artifacts') {
+                                    steps {
+                                        archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
+                                        script {
+                                            stash_name = "publish_wheels-windows"
+                                            wheel_stashes.add(stash_name)
+                                            stash includes: "dist\\*", name: stash_name
+                                        }
+                                    }
+                                }
+                                stage('Generate documentation') {
+                                    steps {
+                                        bat """
+                                            cd ${WIN_DOCKER_TMP_PATH}
+                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
+                                            poetry run poe docs
+                                            "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
+                                            XCOPY docs.zip ${env.WORKSPACE}
+                                        """
+                                        stash includes: 'docs.zip', name: 'docs'
+                                    }
+                                }
+                                stage('Run no-connection tests on docker') {
+                                    steps {
+                                        script {
+                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                            pythonVersions.each { version ->
+                                                bat """
+                                                    cd ${WIN_DOCKER_TMP_PATH}
+                                                    call .venv${version}/Scripts/activate
+                                                    poetry run poe install-wheel
+                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m docker -o log_cli=True
+                                                """
+                                            }
+                                        }
+                                    }
+                                    post {
+                                        always {
+                                            bat """
+                                                mkdir -p pytest_reports
+                                                XCOPY ${WIN_DOCKER_TMP_PATH}\\pytest_reports\\* pytest_reports\\ /s /i /y /e /h
+                                                move ${WIN_DOCKER_TMP_PATH}\\.coverage .coverage_docker
+                                            """
+                                            junit 'pytest_reports/*.xml'
+                                            stash includes: '.coverage_docker', name: '.coverage_docker'
+                                            script {
+                                                coverage_stashes.add(".coverage_docker")
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
-                        stage('Archive artifacts') {
-                            steps {
-                                archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
-                                stash includes: "dist\\*", name: 'wheels'
+                        stage('Build Linux') {
+                            agent {
+                                docker {
+                                    label 'worker'
+                                    image LIN_DOCKER_IMAGE
+                                    args '-u root:root'
+                                }
                             }
-                        }
-                        stage('Generate documentation') {
-                            steps {
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e docs"
-                                bat '''"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256'''
-                                stash includes: 'docs.zip', name: 'docs'
+                            stages {
+                                stage('Move workspace') {
+                                    steps {
+                                        script {
+                                            sh """
+                                                mkdir -p ${LIN_DOCKER_TMP_PATH}
+                                                cp -r ${env.WORKSPACE}/. ${LIN_DOCKER_TMP_PATH}
+                                            """
+                                        }
+                                    }
+                                }
+                                stage('Create virtual environments') {
+                                    steps {
+                                        createVirtualEnvironments(false, LIN_DOCKER_TMP_PATH)
+                                    }
+                                }
+                                stage('Build wheels') {
+                                    environment {
+                                        SETUPTOOLS_SCM_PRETEND_VERSION = getPythonVersionForPr()
+                                    }
+                                    steps {
+                                        script {
+                                            buildWheel(DEFAULT_PYTHON_VERSION)
+                                            sh """
+                                                cd ${LIN_DOCKER_TMP_PATH}
+                                                . .venv${DEFAULT_PYTHON_VERSION}/bin/activate
+                                                poetry run poe check-wheels
+                                                deactivate
+                                                mkdir -p ${env.WORKSPACE}/dist
+                                                cp dist/* ${env.WORKSPACE}/dist/
+                                            """
+                                        }
+                                    }
+                                }
+                                stage('Archive artifacts') {
+                                    steps {
+                                        archiveArtifacts(artifacts: "dist/*", followSymlinks: false)
+                                        script {
+                                            stash_name = "publish_wheels-linux"
+                                            wheel_stashes.add(stash_name)
+                                            stash includes: "dist/*", name: stash_name
+                                        }
+                                    }
+                                }
+                                stage('Run no-connection tests on docker') {
+                                    steps {
+                                        script {
+                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                            pythonVersions.each { version ->
+                                                sh """
+                                                    cd ${LIN_DOCKER_TMP_PATH}
+                                                    . .venv${version}/bin/activate
+                                                    poetry run poe install-wheel
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m no_connection -o log_cli=True
+                                                    deactivate
+                                                """
+                                            }
+                                        }
+                                    }
+                                    post {
+                                        always {
+                                            sh """
+                                                mkdir -p pytest_reports
+                                                cp ${LIN_DOCKER_TMP_PATH}/pytest_reports/* pytest_reports/
+                                            """
+                                            junit 'pytest_reports/*.xml'
+                                        }
+                                    }
+                                }
+                                stage('Run virtual drive tests on docker') {
+                                    steps {
+                                        script {
+                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                            pythonVersions.each { version ->
+                                                sh """
+                                                    cd ${LIN_DOCKER_TMP_PATH}
+                                                    . .venv${version}/bin/activate
+                                                    poetry run poe install-wheel
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
+                                                    deactivate
+                                                """
+                                            }
+                                        }
+                                    }
+                                    post {
+                                        always {
+                                            sh """
+                                                mkdir -p pytest_reports
+                                                cp ${LIN_DOCKER_TMP_PATH}/pytest_reports/* pytest_reports/
+                                            """
+                                            junit 'pytest_reports/*.xml'
+                                        }
+                                    }
+                                }
+                            }
+                            post {
+                                always {
+                                    reassignFilePermissions()
+                                }
                             }
                         }
                     }
@@ -198,20 +440,37 @@ pipeline {
                         publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                     }
                 }
-                stage('Publish to pypi') {
-                    when {
-                        beforeAgent true
-                        branch BRANCH_NAME_MASTER
-                    }
+                stage('Publish wheels') {
                     agent {
                         docker {
                             label 'worker'
                             image PUBLISHER_DOCKER_IMAGE
                         }
                     }
-                    steps {
-                        unstash 'wheels'
-                        publishPyPi("dist/*")
+                    stages {
+                        stage('Unstash')
+                        {
+                            steps {
+                                script {
+                                    for (stash_name in wheel_stashes) {
+                                        unstash stash_name
+                                    }
+                                }
+                            }
+                        }
+                        stage('Publish Ingenia PyPi') {
+                            steps {
+                                publishIngeniaPyPi('dist/*')
+                            }
+                        }
+                        stage('Publish PyPi') {
+                            when {
+                                branch 'master'
+                            }
+                            steps {
+                                publishPyPi('dist/*')
+                            }
+                        }
                     }
                 }
             }
@@ -219,62 +478,6 @@ pipeline {
         
         stage('Tests') {
             parallel {
-                stage('Docker Windows - Tests') {
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage('Run no-connection tests on docker') {
-                            steps {
-                                script {
-                                    restoreIngenialinkWheelEnvVar()
-                                }
-                                bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS} -- " +
-                                        "-m docker "
-                            }
-                            post {
-                                always {
-                                    bat "move .coverage .coverage_docker"
-                                    junit "pytest_reports\\*.xml"
-                                    // Delete the junit after publishing it so it not re-published on the next stage
-                                    bat "del /S /Q pytest_reports\\*.xml"
-                                    stash includes: '.coverage_docker', name: '.coverage_docker'
-                                    script {
-                                        coverage_stashes.add(".coverage_docker")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('Docker Linux - Tests') {
-                    agent {
-                        docker {
-                            label "worker"
-                            image LIN_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage('Run no-connection tests on docker') {
-                            steps {
-                                script {
-                                    restoreIngenialinkWheelEnvVar()
-                                }
-                                sh """
-                                    python${DEFAULT_PYTHON_VERSION} -m tox -e ${RUN_PYTHON_VERSIONS}
-                                """
-                            }
-                            post {
-                                always {
-                                    junit "pytest_reports\\*.xml"
-                                }
-                            }
-                        }
-                    }
-                }
                 stage('EtherCAT/No Connection - Tests') {
                     options {
                         lock(ECAT_NODE_LOCK)
@@ -283,24 +486,46 @@ pipeline {
                         label ECAT_NODE
                     }
                     stages {
+                        stage ("Clear Wireshark logs") {
+                            steps {
+                                clearWiresharkLogs()
+                            }
+                        }
+                        stage('Unstash')
+                        {
+                            steps {
+                                script {
+                                    for (stash_name in wheel_stashes) {
+                                        unstash stash_name
+                                    }
+                                }
+                            }
+                        }
+                        stage('Create virtual environments') {
+                            steps {
+                                script {
+                                    createVirtualEnvironments()
+                                }
+                            }
+                        }
                         stage('EtherCAT Everest') {
                             steps {
-                                runTest("ethercat", 0, true)
+                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Capitan') {
                             steps {
-                                runTest("ethercat", 1, true)
+                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Multislave') {
                             steps {
-                                runTest("multislave", 0, true)
+                                runTestHW("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Run no-connection tests') {
                             steps {
-                                runTest("no_connection", 0, true)
+                                runTestHW("no_connection", null)
                             }
                         }
                     }
@@ -313,24 +538,41 @@ pipeline {
                         label CAN_NODE
                     }
                     stages {
+                        stage('Unstash')
+                        {
+                            steps {
+                                script {
+                                    for (stash_name in wheel_stashes) {
+                                        unstash stash_name
+                                    }
+                                }
+                            }
+                        }
+                        stage('Create virtual environments') {
+                            steps {
+                                script {
+                                    createVirtualEnvironments()
+                                }
+                            }
+                        }
                         stage('CANopen Everest') {
                             steps {
-                                runTest("canopen", 0, true)
+                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP")
                             }
                         }
                         stage('CANopen Capitan') {
                             steps {
-                                runTest("canopen", 1, true)
+                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP")
                             }
                         }
                         stage('Ethernet Everest') {
                             steps {
-                                runTest("ethernet", 0, true)
+                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Ethernet Capitan') {
                             steps {
-                                runTest("ethernet", 1, true)
+                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                     }
@@ -347,15 +589,26 @@ pipeline {
             steps {
                 script {
                     def coverage_files = ""
-
                     for (coverage_stash in coverage_stashes) {
                         unstash coverage_stash
                         coverage_files += " " + coverage_stash
                     }
-                    bat "py -${DEFAULT_PYTHON_VERSION} -m tox -e coverage -- ${coverage_files}"
+                    for (stash_name in wheel_stashes) {
+                        unstash stash_name
+                    }
+                    bat "XCOPY ${env.WORKSPACE} ${WIN_DOCKER_TMP_PATH} /s /i /y /e /h"
+                    createVirtualEnvironments(true, WIN_DOCKER_TMP_PATH, DEFAULT_PYTHON_VERSION)
+                    bat """
+                        cd ${WIN_DOCKER_TMP_PATH}
+                        call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
+                        poetry run poe cov-combine --${coverage_files}
+                        poetry run poe cov-report
+                        XCOPY coverage.xml ${env.WORKSPACE}
+                        deactivate
+                    """
+                    recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
+                    archiveArtifacts artifacts: '*.xml'
                 }
-                recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
-                archiveArtifacts artifacts: '*.xml'
             }
         }
     }

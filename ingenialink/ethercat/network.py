@@ -9,6 +9,9 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import ingenialogger
 
+from ingenialink.servo import Servo
+from ingenialink.utils.timeout import Timeout
+
 try:
     import pysoem
 except ImportError as ex:
@@ -339,6 +342,7 @@ class EthercatNetwork(Network):
         dictionary: str,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> EthercatServo:
         """Connects to a drive through a given slave number.
 
@@ -349,6 +353,8 @@ class EthercatNetwork(Network):
                 its status, errors, faults, etc.
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
+            disconnect_callback: Callback function to be called when the servo is disconnected.
+                If not specified, no callback will be called.
 
         Raises:
             ValueError: If the slave ID is not valid.
@@ -375,6 +381,7 @@ class EthercatNetwork(Network):
             dictionary,
             servo_status_listener,
             sdo_read_write_release_gil=self.__gil_release_config.sdo_read_write,
+            disconnect_callback=disconnect_callback,
         )
         if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
             if servo_status_listener:
@@ -410,6 +417,9 @@ class EthercatNetwork(Network):
             servo: Instance of the servo connected.
 
         """
+        # Notify that disconnect_from_slave has been called
+        if servo._disconnect_callback:
+            servo._disconnect_callback(servo)
         if not self._change_nodes_state(servo, pysoem.INIT_STATE):
             logger.warning("Drive can not reach Init state")
         servo.teardown()
@@ -429,11 +439,11 @@ class EthercatNetwork(Network):
         else:
             self._ecat_master.config_map()
 
-    def start_pdos(self, timeout: float = 1.0) -> None:
+    def start_pdos(self, timeout: float = 2.0) -> None:
         """Set all slaves with mapped PDOs to Operational State.
 
         Args:
-            timeout: timeout in seconds to reach Op state, 1.0 seconds by default.
+            timeout: timeout in seconds to reach Op state, 2.0 seconds by default.
 
         Raises:
             ILError: If the RPDO values are not set before starting the PDO exchange process.
@@ -451,16 +461,23 @@ class EthercatNetwork(Network):
             raise ILError(
                 "The RPDO values should be set before starting the PDO exchange process."
             ) from e
+        # Configure the PDO maps
         self.config_pdo_maps()
-        self._ecat_master.state = pysoem.SAFEOP_STATE
-        if not self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE):
-            raise ILStateError("Drives can not reach SafeOp state")
-        self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
-        init_time = time.time()
-        while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
-            self.send_receive_processdata()
-            if timeout < time.time() - init_time:
-                raise ILStateError("Drives can not reach Op state")
+
+        with Timeout(timeout) as t:
+            # Set all slaves to SafeOp state
+            self._ecat_master.state = pysoem.SAFEOP_STATE
+            self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE)
+            while not self._check_node_state(op_servo_list, pysoem.SAFEOP_STATE):
+                if t.has_expired:
+                    raise ILStateError("Drives can not reach SafeOp state")
+
+            # Set all slaves to Op state
+            self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
+            while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
+                self.send_receive_processdata()
+                if t.has_expired:
+                    raise ILStateError("Drives can not reach Op state")
 
     def stop_pdos(self) -> None:
         """For all slaves in OP or SafeOp state, set state to PreOp."""
@@ -627,7 +644,6 @@ class EthercatNetwork(Network):
             ValueError: If the salve ID value is invalid.
             ILError: If no slaves could be found in the network.
             ILError: If the slave ID couldn't be found in the network.
-            ILFirmwareLoadError: If no slave is detected.
             ILFirmwareLoadError: If the FoE write operation is not successful.
         """
         if not isinstance(boot_in_app, bool):
@@ -651,21 +667,31 @@ class EthercatNetwork(Network):
             raise ILError(f"Slave {slave_id} was not found.")
 
         slave = self._ecat_master.slaves[slave_id - 1]
+        error_messages: list[str] = []
         for iteration in range(self.__MAX_FOE_TRIES):
             if not boot_in_app:
                 self._force_boot_mode(slave)
-            self._switch_to_boot_state(slave)
-
+            if not self._switch_to_boot_state(slave):
+                error_message = f"Attempt {iteration + 1}: The slave cannot reach the Boot state."
+                logger.info(error_message)
+                error_messages.append(error_message)
+                continue
             foe_write_result = self._write_foe(slave, fw_file, password)
             if foe_write_result > 0:
                 break
+            error_message = (
+                f"Attempt {iteration + 1}: "
+                f"{self.__get_foe_error_message(error_code=foe_write_result)}."
+            )
+            logger.info(f"FoE write failed: {error_message}")
+            error_messages.append(error_message)
             self.__init_nodes()
         else:
-            error_message = (
-                "The firmware file could not be loaded correctly."
-                f" {EthercatNetwork.__get_foe_error_message(error_code=foe_write_result)}"
+            combined_errors = "\n".join(error_messages)
+            raise ILFirmwareLoadError(
+                f"The firmware file could not be loaded correctly after {self.__MAX_FOE_TRIES}"
+                f" attempts. Errors:\n{combined_errors}"
             )
-            raise ILFirmwareLoadError(error_message)
         start_time = time.time()
         recovered = False
         while time.time() < (start_time + self.__FOE_RECOVERY_TIMEOUT_S) and not recovered:
@@ -684,16 +710,17 @@ class EthercatNetwork(Network):
         if not is_master_running_before_loading_firmware:
             self.close_ecat_master(release_reference=False)
 
-    def _switch_to_boot_state(self, slave: "CdefSlave") -> None:
+    def _switch_to_boot_state(self, slave: "CdefSlave") -> bool:
         """Transitions the slave to the boot state.
 
-        Raises:
-            ILFirmwareLoadError: if the drive cannot reach the boot state.
+        Returns:
+            True if the slave reached the boot state, False otherwise.
         """
         slave.state = pysoem.BOOT_STATE
         slave.write_state()
-        if slave.state_check(pysoem.BOOT_STATE, ECAT_STATE_CHANGE_TIMEOUT_US) != pysoem.BOOT_STATE:
-            raise ILFirmwareLoadError("The drive cannot reach the boot state.")
+        return bool(
+            slave.state_check(pysoem.BOOT_STATE, ECAT_STATE_CHANGE_TIMEOUT_US) == pysoem.BOOT_STATE
+        )
 
     def _force_boot_mode(self, slave: "CdefSlave") -> None:
         """COMOCO drives need to be forced to boot mode.
