@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.15') _
+@Library('cicd-lib@0.16') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -458,9 +458,9 @@ pipeline {
                                 }
                             }
                         }
-                        stage('Publish Ingenia PyPi') {
+                        stage('Publish Novanta PyPi') {
                             steps {
-                                publishIngeniaPyPi('dist/*')
+                                publishNovantaPyPi('dist/*-win_amd64.whl')
                             }
                         }
                         stage('Publish PyPi') {
