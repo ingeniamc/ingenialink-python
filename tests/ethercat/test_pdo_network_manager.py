@@ -191,16 +191,18 @@ def test_subscribe_callbacks(net: "EthercatNetwork", servo: "EthercatServo", moc
     send_callback = mocker.Mock()
     receive_callback = mocker.Mock()
 
-    rpdo_map = PDONetworkManager.create_empty_rpdo_map()
-    tpdo_map = PDONetworkManager.create_empty_tpdo_map()
+    rpdo_map = RPDOMap()
+    tpdo_map = TPDOMap()
     initial_operation_mode = servo.read("DRV_OP_CMD")
-    operation_mode = PDONetworkManager.create_pdo_item(
-        "DRV_OP_CMD", servo=servo, value=initial_operation_mode, axis=1
+    operation_mode = PDOMap.create_item_from_register_uid(
+        uid="DRV_OP_CMD", dictionary=servo.dictionary, value=initial_operation_mode
     )
-    actual_position = PDONetworkManager.create_pdo_item("CL_POS_FBK_VALUE", servo=servo, axis=1)
-    PDONetworkManager.add_pdo_item_to_map(operation_mode, rpdo_map)
-    PDONetworkManager.add_pdo_item_to_map(actual_position, tpdo_map)
-    PDONetworkManager.set_pdo_maps_to_slave(rpdo_maps=rpdo_map, tpdo_maps=tpdo_map, servo=servo)
+    actual_position = PDOMap.create_item_from_register_uid(
+        uid="CL_POS_FBK_VALUE", dictionary=servo.dictionary
+    )
+    rpdo_map.add_item(operation_mode)
+    tpdo_map.add_item(actual_position)
+    servo.set_pdo_map_to_slave(rpdo_maps=[rpdo_map], tpdo_maps=[tpdo_map])
 
     rpdo_map.subscribe_to_process_data_event(send_callback)
     tpdo_map.subscribe_to_process_data_event(receive_callback)
