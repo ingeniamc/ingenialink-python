@@ -86,7 +86,7 @@ def test_start_pdos(
         )
         rpdo_maps[a].add_item(operation_mode)
         tpdo_maps[a].add_item(actual_position)
-        s.set_pdo_map_to_slave(rpdo_maps[a], tpdo_maps[a])
+        s.set_pdo_map_to_slave([rpdo_maps[a]], [tpdo_maps[a]])
         pdo_map_items[a] = (operation_mode, actual_position)
         # Choose a random operation mode: [voltage, current, velocity, position]
         random_op_mode = random.choice([
