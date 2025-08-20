@@ -195,11 +195,9 @@ def test_subscribe_callbacks(net: "EthercatNetwork", servo: "EthercatServo", moc
     tpdo_map = PDONetworkManager.create_empty_tpdo_map()
     initial_operation_mode = servo.read("DRV_OP_CMD")
     operation_mode = PDONetworkManager.create_pdo_item(
-        "DRV_OP_CMD", servo=servo, value=initial_operation_mode, axis=DEFAULT_AXIS
+        "DRV_OP_CMD", servo=servo, value=initial_operation_mode, axis=1
     )
-    actual_position = PDONetworkManager.create_pdo_item(
-        "CL_POS_FBK_VALUE", servo=servo, axis=DEFAULT_AXIS
-    )
+    actual_position = PDONetworkManager.create_pdo_item("CL_POS_FBK_VALUE", servo=servo, axis=1)
     PDONetworkManager.add_pdo_item_to_map(operation_mode, rpdo_map)
     PDONetworkManager.add_pdo_item_to_map(actual_position, tpdo_map)
     PDONetworkManager.set_pdo_maps_to_slave(rpdo_maps=rpdo_map, tpdo_maps=tpdo_map, servo=servo)
