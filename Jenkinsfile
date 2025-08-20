@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.15') _
+@Library('cicd-lib@0.16') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -172,8 +172,6 @@ pipeline {
             steps {
                 script {
                     if (env.BRANCH_NAME == 'master') {
-                        RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
-                    } else if (env.BRANCH_NAME == 'develop') {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
@@ -458,9 +456,9 @@ pipeline {
                                 }
                             }
                         }
-                        stage('Publish Ingenia PyPi') {
+                        stage('Publish Novanta PyPi') {
                             steps {
-                                publishIngeniaPyPi('dist/*')
+                                publishNovantaPyPi('dist/*-win_amd64.whl')
                             }
                         }
                         stage('Publish PyPi') {

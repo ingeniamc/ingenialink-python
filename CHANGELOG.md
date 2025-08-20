@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [7.5.0] - 2025-08-19
 ### Added
 - Added generic dictionaries specific for communication protocols.
 - Method to obtain a canopen/ethercat register from index and subindex.
