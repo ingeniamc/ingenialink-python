@@ -13,7 +13,6 @@ from ingenialink.pdo_network_manager import PDONetworkManager
 if TYPE_CHECKING:
     from ingenialink.ethercat.network import EthercatNetwork
     from ingenialink.ethercat.servo import EthercatServo
-    from ingenialink.pdo import PDOMap
 
 
 @pytest.mark.ethercat
