@@ -28,6 +28,8 @@ PADDING_REGISTER_IDENTIFIER = "PADDING"
 MAP_REGISTER_BYTES = 4
 """Number of bytes used to store each mapping register information."""
 
+PDO_MAP_ITEM_TYPE = TypeVar("PDO_MAP_ITEM_TYPE", bound="PDOMapItem")
+
 
 class PDOMapItem:
     """Abstract class to represent a register in the PDO mapping.
@@ -325,7 +327,7 @@ class PDOMap:
         dictionary: "Dictionary",
         axis: Optional[int] = None,
         value: Optional[Union[int, float]] = None,
-    ) -> "PDOMapItem":
+    ) -> Union[RPDOMapItem, TPDOMapItem]:
         """Create a PDOMapItem from a register uid.
 
         Args:
@@ -567,7 +569,9 @@ class PDOMap:
         return pdo_map
 
     @classmethod
-    def from_pdo_items(cls, items: Union["PDOMapItem", list["PDOMapItem"]]) -> "PDOMap":
+    def from_pdo_items(
+        cls: type[PDO_MAP_TYPE], items: Union[PDO_MAP_ITEM_TYPE, list[PDO_MAP_ITEM_TYPE]]
+    ) -> PDO_MAP_TYPE:
         """Create a PDOMap from a list of PDOMapItems.
 
         Args:
