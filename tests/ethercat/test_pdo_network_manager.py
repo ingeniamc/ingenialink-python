@@ -1,173 +1,17 @@
 import random
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import pytest
 from summit_testing_framework.setups.descriptors import EthercatMultiSlaveSetup
 
 from ingenialink.exceptions import ILError, ILWrongWorkingCountError
-from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
+from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
 from ingenialink.pdo_network_manager import PDONetworkManager
 
 if TYPE_CHECKING:
     from ingenialink.ethercat.network import EthercatNetwork
     from ingenialink.ethercat.servo import EthercatServo
-
-
-DEFAULT_AXIS = 1
-
-
-@pytest.mark.ethercat
-def test_create_rpdo_item(servo: "EthercatServo") -> None:
-    position_set_point_initial_value = 100
-    position_set_point = PDONetworkManager.create_pdo_item(
-        "CL_POS_SET_POINT_VALUE",
-        servo=servo,
-        value=position_set_point_initial_value,
-        axis=DEFAULT_AXIS,
-    )
-    assert isinstance(position_set_point, RPDOMapItem)
-    assert position_set_point.value == position_set_point_initial_value
-
-
-@pytest.mark.ethercat
-def test_create_tpdo_item(servo: "EthercatServo"):
-    actual_position = PDONetworkManager.create_pdo_item(
-        "CL_POS_FBK_VALUE", servo=servo, axis=DEFAULT_AXIS
-    )
-    assert isinstance(actual_position, TPDOMapItem)
-
-
-@pytest.mark.ethercat
-def test_create_rpdo_item_no_initial_value(servo: "EthercatServo"):
-    with pytest.raises(AttributeError):
-        PDONetworkManager.create_pdo_item("CL_POS_SET_POINT_VALUE", servo=servo, axis=DEFAULT_AXIS)
-
-
-@pytest.mark.virtual
-def test_create_empty_rpdo_map():
-    rpdo_map = PDONetworkManager.create_empty_rpdo_map()
-    assert isinstance(rpdo_map, RPDOMap)
-    assert len(rpdo_map.items) == 0
-
-
-@pytest.mark.virtual
-def test_create_empty_tpdo_map():
-    tpdo_map = PDONetworkManager.create_empty_tpdo_map()
-    assert isinstance(tpdo_map, TPDOMap)
-    assert len(tpdo_map.items) == 0
-
-
-@pytest.mark.ethercat
-def test_create_pdo_maps_single_item(servo: "EthercatServo"):
-    position_set_point = PDONetworkManager.create_pdo_item(
-        "CL_POS_SET_POINT_VALUE", servo=servo, value=0, axis=DEFAULT_AXIS
-    )
-    actual_position = PDONetworkManager.create_pdo_item(
-        "CL_POS_FBK_VALUE", servo=servo, axis=DEFAULT_AXIS
-    )
-    rpdo_map, tpdo_map = PDONetworkManager.create_pdo_maps(position_set_point, actual_position)
-    assert isinstance(rpdo_map, RPDOMap)
-    assert len(rpdo_map.items) == 1
-    assert position_set_point in rpdo_map.items
-    assert isinstance(tpdo_map, TPDOMap)
-    assert len(tpdo_map.items) == 1
-    assert actual_position in tpdo_map.items
-
-
-@pytest.mark.ethercat
-def test_create_pdo_maps_list_items(servo: "EthercatServo"):
-    rpdo_regs = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
-    tpdo_regs = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
-    rpdo_items = [
-        PDONetworkManager.create_pdo_item(rpdo_reg, servo=servo, value=0, axis=DEFAULT_AXIS)
-        for rpdo_reg in rpdo_regs
-    ]
-    tpdo_items = [
-        PDONetworkManager.create_pdo_item(tpdo_reg, servo=servo, axis=DEFAULT_AXIS)
-        for tpdo_reg in tpdo_regs
-    ]
-    rpdo_map, tpdo_map = PDONetworkManager.create_pdo_maps(rpdo_items, tpdo_items)
-    assert isinstance(rpdo_map, RPDOMap)
-    assert len(rpdo_map.items) == len(rpdo_items)
-    assert isinstance(tpdo_map, TPDOMap)
-    assert len(tpdo_map.items) == len(tpdo_items)
-
-
-@pytest.mark.ethercat
-@pytest.mark.parametrize(
-    "register, value, pdo_type",
-    [
-        ("CL_POS_FBK_VALUE", None, "tpdo"),
-        ("CL_VEL_SET_POINT_VALUE", 0, "rpdo"),
-    ],
-)
-def test_add_pdo_item_to_map(
-    servo: "EthercatServo", register: str, value: Optional[int], pdo_type: str
-):
-    if pdo_type == "rpdo":
-        pdo_map = PDONetworkManager.create_empty_rpdo_map()
-    else:
-        pdo_map = PDONetworkManager.create_empty_tpdo_map()
-    pdo_map_item = PDONetworkManager.create_pdo_item(
-        register, servo=servo, value=value, axis=DEFAULT_AXIS
-    )
-    PDONetworkManager.add_pdo_item_to_map(pdo_map_item, pdo_map)
-    assert len(pdo_map.items) == 1
-    assert pdo_map_item in pdo_map.items
-
-
-@pytest.mark.ethercat
-@pytest.mark.parametrize(
-    "register, value, pdo_type",
-    [
-        ("CL_POS_FBK_VALUE", None, "tpdo"),
-        ("CL_VEL_SET_POINT_VALUE", 0, "rpdo"),
-    ],
-)
-def test_add_pdo_item_to_map_exceptions(
-    servo: "EthercatServo", register: str, value: Optional[int], pdo_type: str
-) -> None:
-    if pdo_type == "tpdo":
-        pdo_map = PDONetworkManager.create_empty_rpdo_map()
-    else:
-        pdo_map = PDONetworkManager.create_empty_tpdo_map()
-    pdo_map_item = PDONetworkManager.create_pdo_item(
-        register, servo=servo, value=value, axis=DEFAULT_AXIS
-    )
-    with pytest.raises(ValueError):
-        PDONetworkManager.add_pdo_item_to_map(pdo_map_item, pdo_map)
-
-
-@pytest.mark.ethercat
-@pytest.mark.parametrize(
-    "rpdo_maps, tpdo_maps",
-    [
-        [["rpdo", "rpdo"], ["rpdo", "tpdo"]],
-        [["rpdo", "tpdo"], ["tpdo", "tpdo"]],
-    ],
-)
-def test_set_pdo_maps_to_slave_exception(
-    servo: "EthercatServo", rpdo_maps: list[str], tpdo_maps: list[str]
-) -> None:
-    rx_maps = []
-    tx_maps = []
-    for map_type in rpdo_maps:
-        pdo_map = (
-            PDONetworkManager.create_empty_rpdo_map()
-            if map_type == "rpdo"
-            else PDONetworkManager.create_empty_tpdo_map()
-        )
-        rx_maps.append(pdo_map)
-    for map_type in tpdo_maps:
-        pdo_map = (
-            PDONetworkManager.create_empty_rpdo_map()
-            if map_type == "rpdo"
-            else PDONetworkManager.create_empty_tpdo_map()
-        )
-        tx_maps.append(pdo_map)
-    with pytest.raises(ValueError):
-        PDONetworkManager.set_pdo_maps_to_slave(rx_maps, tx_maps, servo)
 
 
 @pytest.mark.ethercat
@@ -228,18 +72,18 @@ def test_start_pdos(
     rpdo_values = {}
     tpdo_values = {}
     for s, a in zip(servo, alias):
-        rpdo_map = PDONetworkManager.create_empty_rpdo_map()
-        tpdo_map = PDONetworkManager.create_empty_tpdo_map()
+        rpdo_map = RPDOMap()
+        tpdo_map = TPDOMap()
         initial_operation_mode = s.read("DRV_OP_CMD")
-        operation_mode = PDONetworkManager.create_pdo_item(
-            "DRV_OP_CMD", servo=s, value=initial_operation_mode, axis=DEFAULT_AXIS
+        operation_mode = PDOMap.create_item_from_register_uid(
+            "DRV_OP_CMD", dictionary=s.dictionary, value=initial_operation_mode, axis=1
         )
-        actual_position = PDONetworkManager.create_pdo_item(
-            "CL_POS_FBK_VALUE", servo=s, axis=DEFAULT_AXIS
+        actual_position = PDOMap.create_item_from_register_uid(
+            "CL_POS_FBK_VALUE", dictionary=s.dictionary, axis=1
         )
-        PDONetworkManager.add_pdo_item_to_map(operation_mode, rpdo_map)
-        PDONetworkManager.add_pdo_item_to_map(actual_position, tpdo_map)
-        PDONetworkManager.set_pdo_maps_to_slave(rpdo_map, tpdo_map, servo=s)
+        rpdo_map.add_item(operation_mode)
+        tpdo_map.add_item(actual_position)
+        servo.set_pdo_map_to_slave(rpdo_map, tpdo_map)
         pdo_map_items[a] = (operation_mode, actual_position)
         # Choose a random operation mode: [voltage, current, velocity, position]
         random_op_mode = random.choice([
@@ -274,8 +118,8 @@ def test_start_pdos(
         assert pytest.approx(tpdo_values[a], abs=2) == s.read("CL_POS_FBK_VALUE")
         # Restore the initial operation mode
         s.write("DRV_OP_CMD", initial_operation_modes[a])
-        PDONetworkManager.remove_rpdo_map(servo=s, rpdo_map_index=0)
-        PDONetworkManager.remove_tpdo_map(servo=s, tpdo_map_index=0)
+        s.remove_rpdo_map(rpdo_map_index=0)
+        s.remove_tpdo_map(tpdo_map_index=0)
 
 
 @pytest.mark.ethercat
