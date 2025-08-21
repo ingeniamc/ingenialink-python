@@ -357,14 +357,20 @@ class EthercatServo(PDOServo):
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps.values():
+                logger.info(f"Adding RPDO map {rpdo_map.idx} to slave {self.slave_id}.")
                 rpdo_map.slave = self
                 map_obj = self.__resolve_missing_pdo_map_info(rpdo_map)
                 self._rpdo_maps[map_obj.idx] = rpdo_map
+            else:
+                logger.info(f"RPDO map {rpdo_map.idx} already exists, skipping.")
         for tpdo_map in tpdo_maps:
             if tpdo_map not in self._tpdo_maps.values():
+                logger.info(f"Adding TPDO map {tpdo_map.idx} to slave {self.slave_id}.")
                 tpdo_map.slave = self
                 map_obj = self.__resolve_missing_pdo_map_info(tpdo_map)
                 self._tpdo_maps[map_obj.idx] = tpdo_map
+            else:
+                logger.info(f"TPDO map {tpdo_map.idx} already exists, skipping.")
         self.slave.config_func = self.map_pdos
 
     def __resolve_missing_pdo_map_info(self, pdo_map: PDOMap) -> CanOpenObject:
@@ -380,18 +386,23 @@ class EthercatServo(PDOServo):
         Returns:
             The map_object of the PDOMap instance.
         """
+        logger.info("Resolving missing PDO map information.")
         if pdo_map.map_object:
+            logger.info("PDO map object already set, skipping resolution.")
             return pdo_map.map_object
 
         if pdo_map.map_register_index is not None:
+            logger.info("Extracting map object from dictionary using index.")
             # Extract the map object from the dictionary using the index
             pdo_map.map_object = self.dictionary.get_object_by_index(pdo_map.map_register_index)
             return pdo_map.map_object
 
         # If map or index is not provided, use the default map
         if isinstance(pdo_map, RPDOMap):
+            logger.info("Using default RPDO map from dictionary.")
             pdo_map.map_object = self.dictionary.get_object(self.DEFAULT_RPDO_MAP)
         elif isinstance(pdo_map, TPDOMap):
+            logger.info("Using default TPDO map from dictionary.")
             pdo_map.map_object = self.dictionary.get_object(self.DEFAULT_TPDO_MAP)
         else:
             raise NotImplementedError
