@@ -222,6 +222,7 @@ class EthercatNetwork(Network):
         # Create the PDO manager
         self._pdo_manager = PDONetworkManager(self)
         # Subscribe to PDO exceptions in the network
+        self.__exceptions_in_thread: int = 0
         self._pdo_manager.subscribe_to_exceptions(self._pdo_thread_exception_handler)
         # List of subscribers to PDO thread status
         self._pdo_thread_status_observers: list[Callable[[bool], None]] = []
@@ -260,13 +261,25 @@ class EthercatNetwork(Network):
             watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
              to the refresh rate.
         """
+        n_exceptions = self.__exceptions_in_thread
         self.pdo_manager.start_pdos(refresh_rate=refresh_rate, watchdog_timeout=watchdog_timeout)
-        self._notify_pdo_thread_status(True)
+        # Make sure that there were no exceptions while starting the PDOs to notify activation
+        if self.__exceptions_in_thread == n_exceptions:
+            self._notify_pdo_thread_status(True)
+        else:
+            logger.error("There was an exception starting the PDOs, they have not been activated.")
 
     def deactivate_pdos(self) -> None:
         """Stop PDOs and notify the status to the observers."""
+        n_exceptions = self.__exceptions_in_thread
         self.pdo_manager.stop_pdos()
-        self._notify_pdo_thread_status(False)
+        # Make sure that there were no exceptions while stopping the PDOs to notify deactivation
+        if self.__exceptions_in_thread == n_exceptions:
+            self._notify_pdo_thread_status(False)
+        else:
+            logger.error(
+                "There was an exception stopping the PDOs, they have not been deactivated."
+            )
 
     def _pdo_thread_exception_handler(self, exc: Exception) -> None:
         """Callback method for the PDO thread exceptions.
@@ -274,6 +287,7 @@ class EthercatNetwork(Network):
         Args:
             exc: The exception that occurred.
         """
+        self.__exceptions_in_thread += 1
         logger.error(f"An exception occurred during the PDO exchange: {exc}")
         self._notify_pdo_thread_status(False)
 
