@@ -241,6 +241,15 @@ class EthercatNetwork(Network):
             return
         self._pdo_thread_status_observers.append(callback)
 
+    def unsubscribe_from_pdo_thread_status(self, callback: Callable[[bool], None]) -> None:
+        """Unsubscribe from PDO thread status changes.
+
+        Args:
+            callback: Callback function.
+        """
+        if callback in self._pdo_thread_status_observers:
+            self._pdo_thread_status_observers.remove(callback)
+
     def activate_pdos(
         self, refresh_rate: Optional[float] = None, watchdog_timeout: Optional[float] = None
     ) -> None:
