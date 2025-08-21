@@ -43,8 +43,8 @@ name = "PyPI"
 priority = "primary"
 
 [[tool.poetry.source]]
-name = "ingenia"
-url = "http://pypi.ingenia/simple"
+name = "novanta"
+url = "http://pypi.novanta.com/simple"
 priority = "supplemental"
 
 
@@ -112,7 +112,7 @@ pytest-cov = "==2.12.1"
 pytest-mock = "==3.6.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==24.11.0"
-summit-testing-framework = "==0.1.4+pr30b62"
+summit-testing-framework = "==0.1.4+gabbc726"
 
 # -----------------------------------------------------------------------
 #                                   TASKS

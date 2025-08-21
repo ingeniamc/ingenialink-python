@@ -336,6 +336,13 @@ class EthercatNetwork(Network):
         if nodes is not None:
             self.__last_init_nodes = list(range(1, nodes + 1))
 
+        # For every init_nodes, pysoem generates a new CdefSlave object.
+        # Servos that are already "connected" to the network
+        # must update their slave reference
+        for servo in self.servos:
+            if servo.slave_id in self.__last_init_nodes:
+                servo.update_slave_reference(self._ecat_master.slaves[servo.slave_id - 1])
+
     def connect_to_slave(
         self,
         slave_id: int,
@@ -644,7 +651,6 @@ class EthercatNetwork(Network):
             ValueError: If the salve ID value is invalid.
             ILError: If no slaves could be found in the network.
             ILError: If the slave ID couldn't be found in the network.
-            ILFirmwareLoadError: If no slave is detected.
             ILFirmwareLoadError: If the FoE write operation is not successful.
         """
         if not isinstance(boot_in_app, bool):
@@ -668,21 +674,31 @@ class EthercatNetwork(Network):
             raise ILError(f"Slave {slave_id} was not found.")
 
         slave = self._ecat_master.slaves[slave_id - 1]
+        error_messages: list[str] = []
         for iteration in range(self.__MAX_FOE_TRIES):
             if not boot_in_app:
                 self._force_boot_mode(slave)
-            self._switch_to_boot_state(slave)
-
+            if not self._switch_to_boot_state(slave):
+                error_message = f"Attempt {iteration + 1}: The slave cannot reach the Boot state."
+                logger.info(error_message)
+                error_messages.append(error_message)
+                continue
             foe_write_result = self._write_foe(slave, fw_file, password)
             if foe_write_result > 0:
                 break
+            error_message = (
+                f"Attempt {iteration + 1}: "
+                f"{self.__get_foe_error_message(error_code=foe_write_result)}."
+            )
+            logger.info(f"FoE write failed: {error_message}")
+            error_messages.append(error_message)
             self.__init_nodes()
         else:
-            error_message = (
-                "The firmware file could not be loaded correctly."
-                f" {EthercatNetwork.__get_foe_error_message(error_code=foe_write_result)}"
+            combined_errors = "\n".join(error_messages)
+            raise ILFirmwareLoadError(
+                f"The firmware file could not be loaded correctly after {self.__MAX_FOE_TRIES}"
+                f" attempts. Errors:\n{combined_errors}"
             )
-            raise ILFirmwareLoadError(error_message)
         start_time = time.time()
         recovered = False
         while time.time() < (start_time + self.__FOE_RECOVERY_TIMEOUT_S) and not recovered:
@@ -701,16 +717,17 @@ class EthercatNetwork(Network):
         if not is_master_running_before_loading_firmware:
             self.close_ecat_master(release_reference=False)
 
-    def _switch_to_boot_state(self, slave: "CdefSlave") -> None:
+    def _switch_to_boot_state(self, slave: "CdefSlave") -> bool:
         """Transitions the slave to the boot state.
 
-        Raises:
-            ILFirmwareLoadError: if the drive cannot reach the boot state.
+        Returns:
+            True if the slave reached the boot state, False otherwise.
         """
         slave.state = pysoem.BOOT_STATE
         slave.write_state()
-        if slave.state_check(pysoem.BOOT_STATE, ECAT_STATE_CHANGE_TIMEOUT_US) != pysoem.BOOT_STATE:
-            raise ILFirmwareLoadError("The drive cannot reach the boot state.")
+        return bool(
+            slave.state_check(pysoem.BOOT_STATE, ECAT_STATE_CHANGE_TIMEOUT_US) == pysoem.BOOT_STATE
+        )
 
     def _force_boot_mode(self, slave: "CdefSlave") -> None:
         """COMOCO drives need to be forced to boot mode.
