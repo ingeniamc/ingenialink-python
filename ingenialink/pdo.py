@@ -1,8 +1,8 @@
-import logging
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Callable, ClassVar, Literal, Optional, TypeVar, Union
 
 import bitarray
+from ingenialogger import ingenialogger
 from typing_extensions import override
 
 from ingenialink.bitfield import BitField
@@ -28,6 +28,8 @@ PADDING_REGISTER_IDENTIFIER = "PADDING"
 
 MAP_REGISTER_BYTES = 4
 """Number of bytes used to store each mapping register information."""
+
+logger = ingenialogger.get_logger(__name__)
 
 
 class PDOMapItem:
@@ -751,12 +753,12 @@ class PDOServo(Servo):
         self.write(self.ETG_COMMS_RPDO_ASSIGN_TOTAL, len(self._rpdo_maps), subnode=0)
         rpdo_assigns = b""
         for rpdo_map in self._rpdo_maps.values():
-            logging.info(f"map rpdos iterating through {rpdo_map.map_register_index}")
+            logger.info(f"map rpdos iterating through {rpdo_map.map_register_index}")
             if rpdo_map.is_editable:
-                logging.info("mapping is editable, writing it to the slave")
+                logger.info("mapping is editable, writing it to the slave")
                 rpdo_map.write_to_slave()
             else:
-                logging.info("mapping is not editable. Assuming it already corresponds")
+                logger.info("mapping is not editable. Assuming it already corresponds")
             rpdo_assigns += rpdo_map.map_register_index_bytes
         self.write_complete_access(self.ETG_COMMS_RPDO_ASSIGN_1, rpdo_assigns, subnode=0)
 
@@ -781,12 +783,12 @@ class PDOServo(Servo):
         self.write(self.ETG_COMMS_TPDO_ASSIGN_TOTAL, len(self._tpdo_maps), subnode=0)
         tpdo_assigns = b""
         for tpdo_map in self._tpdo_maps.values():
-            logging.info(f"map tpdos iterating through {tpdo_map.map_register_index}")
+            logger.info(f"map tpdos iterating through {tpdo_map.map_register_index}")
             if tpdo_map.is_editable:
-                logging.info("mapping is editable, writing it to the slave")
+                logger.info("mapping is editable, writing it to the slave")
                 tpdo_map.write_to_slave()
             else:
-                logging.info("mapping is not editable. Assuming it already corresponds")
+                logger.info("mapping is not editable. Assuming it already corresponds")
             tpdo_assigns += tpdo_map.map_register_index_bytes
         self.write_complete_access(self.ETG_COMMS_TPDO_ASSIGN_1, tpdo_assigns, subnode=0)
 
@@ -831,11 +833,11 @@ class PDOServo(Servo):
             if rpdo_map not in self._rpdo_maps.values():
                 raise ValueError("The RPDOMap instance is not in the RPDOMaps")
 
-            logging.info(f"Removing rpdo map. Previous lenght {len(self._rpdo_maps)}")
+            logger.info(f"Removing rpdo map. Previous lenght {len(self._rpdo_maps)}")
             self._rpdo_maps = {
                 idx: rmap for idx, rmap in self._rpdo_maps.items() if rmap is not rpdo_map
             }
-            logging.info(f"after length {len(self._rpdo_maps)}")
+            logger.info(f"after length {len(self._rpdo_maps)}")
             return
         if rpdo_map_index is not None:
             del self._rpdo_maps[rpdo_map_index]
@@ -858,11 +860,11 @@ class PDOServo(Servo):
         if tpdo_map is not None:
             if tpdo_map not in self._tpdo_maps.values():
                 raise ValueError("The TPDOMap instance is not in the TPDOMaps")
-            logging.info(f"Removing tpdo map. Previous lenght {len(self._tpdo_maps)}")
+            logger.info(f"Removing tpdo map. Previous lenght {len(self._tpdo_maps)}")
             self._tpdo_maps = {
                 idx: tmap for idx, tmap in self._tpdo_maps.items() if tmap is not tpdo_map
             }
-            logging.info(f"after length {len(self._tpdo_maps)}")
+            logger.info(f"after length {len(self._tpdo_maps)}")
             return
         if tpdo_map_index is not None:
             self._tpdo_maps.pop(tpdo_map_index)

@@ -357,20 +357,24 @@ class EthercatServo(PDOServo):
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
             if rpdo_map not in self._rpdo_maps.values():
-                logger.info(f"Adding RPDO map {rpdo_map.idx} to slave {self.slave_id}.")
+                logger.info(
+                    f"Adding RPDO map {rpdo_map.map_register_index} to slave {self.slave_id}."
+                )
                 rpdo_map.slave = self
                 map_obj = self.__resolve_missing_pdo_map_info(rpdo_map)
                 self._rpdo_maps[map_obj.idx] = rpdo_map
             else:
-                logger.info(f"RPDO map {rpdo_map.idx} already exists, skipping.")
+                logger.info(f"RPDO map {rpdo_map.map_register_index} already exists, skipping.")
         for tpdo_map in tpdo_maps:
             if tpdo_map not in self._tpdo_maps.values():
-                logger.info(f"Adding TPDO map {tpdo_map.idx} to slave {self.slave_id}.")
+                logger.info(
+                    f"Adding TPDO map {tpdo_map.map_register_index} to slave {self.slave_id}."
+                )
                 tpdo_map.slave = self
                 map_obj = self.__resolve_missing_pdo_map_info(tpdo_map)
                 self._tpdo_maps[map_obj.idx] = tpdo_map
             else:
-                logger.info(f"TPDO map {tpdo_map.idx} already exists, skipping.")
+                logger.info(f"TPDO map {tpdo_map.map_register_index} already exists, skipping.")
         self.slave.config_func = self.map_pdos
 
     def __resolve_missing_pdo_map_info(self, pdo_map: PDOMap) -> CanOpenObject:
