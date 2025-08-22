@@ -188,8 +188,12 @@ def test_subscribe_to_pdo_thread_status(net: "EthercatNetwork", mocker) -> None:
 
 @pytest.mark.ethercat
 def test_subscribe_callbacks(net: "EthercatNetwork", servo: "EthercatServo", mocker) -> None:
+    # Network callbacks - notifications for all PDO maps
     send_callback = mocker.Mock()
     receive_callback = mocker.Mock()
+    # PDO map callbacks
+    rpdo_callback = mocker.Mock()
+    tpdo_callback = mocker.Mock()
 
     rpdo_map = RPDOMap()
     tpdo_map = TPDOMap()
@@ -204,18 +208,37 @@ def test_subscribe_callbacks(net: "EthercatNetwork", servo: "EthercatServo", moc
     tpdo_map.add_item(actual_position)
     servo.set_pdo_map_to_slave(rpdo_maps=[rpdo_map], tpdo_maps=[tpdo_map])
 
-    rpdo_map.subscribe_to_process_data_event(send_callback)
-    tpdo_map.subscribe_to_process_data_event(receive_callback)
+    # Subscribe to PDO map process data events
+    rpdo_map.subscribe_to_process_data_event(rpdo_callback)
+    tpdo_map.subscribe_to_process_data_event(tpdo_callback)
 
-    assert send_callback.call_count == 0
+    # Subscribe to all PDO map process data events - network subscription
+    net.subscribe_to_receive_process_data(receive_callback)
+    net.subscribe_to_send_process_data(send_callback)
+
+    assert rpdo_callback.call_count == 0
+    assert tpdo_callback.call_count == 0
     assert receive_callback.call_count == 0
+    assert send_callback.call_count == 0
 
     assert not net.pdo_manager.is_active
     refresh_rate = 0.5
     net.activate_pdos(refresh_rate=refresh_rate)
     assert net.pdo_manager.is_active
     time.sleep(2 * refresh_rate)
-    net.deactivate_pdos()
+    n_rpdo_callbacks = rpdo_callback.call_count
+    n_tpdo_callbacks = tpdo_callback.call_count
+    assert n_rpdo_callbacks > 0
+    assert n_tpdo_callbacks > 0
+    assert receive_callback.call_count == n_rpdo_callbacks
+    assert send_callback.call_count == n_tpdo_callbacks
 
-    assert send_callback.call_count > 0
-    assert receive_callback.call_count > 0
+    # If unsubscribe from network, PDO map notifications are still sent
+    net.unsubscribe_from_send_process_data(send_callback)
+    net.unsubscribe_from_receive_process_data(receive_callback)
+    time.sleep(2 * refresh_rate)
+    assert rpdo_callback.call_count > n_rpdo_callbacks
+    assert tpdo_callback.call_count > n_tpdo_callbacks
+    assert receive_callback.call_count < rpdo_callback.call_count
+    assert send_callback.call_count < tpdo_callback.call_count
+    net.deactivate_pdos()
