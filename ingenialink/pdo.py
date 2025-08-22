@@ -755,8 +755,8 @@ class PDOServo(Servo):
         for rpdo_map in self._rpdo_maps.values():
             logger.info(f"map rpdos iterating through {rpdo_map.map_register_index}")
             if rpdo_map.is_editable:
-                logger.info("mapping is editable, writing it to the slave")
-                rpdo_map.write_to_slave()
+                logger.info("DELETED mapping is editable, writing it to the slave")
+                # rpdo_map.write_to_slave()
             else:
                 logger.info("mapping is not editable. Assuming it already corresponds")
             rpdo_assigns += rpdo_map.map_register_index_bytes
@@ -785,8 +785,8 @@ class PDOServo(Servo):
         for tpdo_map in self._tpdo_maps.values():
             logger.info(f"map tpdos iterating through {tpdo_map.map_register_index}")
             if tpdo_map.is_editable:
-                logger.info("mapping is editable, writing it to the slave")
-                tpdo_map.write_to_slave()
+                logger.info("DELETED mapping is editable, writing it to the slave")
+                # tpdo_map.write_to_slave()
             else:
                 logger.info("mapping is not editable. Assuming it already corresponds")
             tpdo_assigns += tpdo_map.map_register_index_bytes
