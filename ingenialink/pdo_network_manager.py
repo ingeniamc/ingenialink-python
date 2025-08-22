@@ -26,7 +26,7 @@ class PDONetworkManager:
             refresh_rate: Determines how often (seconds) the PDO values will be updated.
             watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
              to the refresh rate.
-            notify_send_process_data: Callback to notify when process data is about to bes sent.
+            notify_send_process_data: Callback to notify when process data is about to be sent.
             notify_receive_process_data: Callback to notify when process data is received.
             notify_exceptions: Callback to notify when an exception is raised.
 
