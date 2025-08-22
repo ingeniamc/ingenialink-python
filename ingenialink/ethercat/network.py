@@ -227,31 +227,10 @@ class EthercatNetwork(Network):
         # List of subscribers to PDO thread status
         self._pdo_thread_status_observers: list[Callable[[bool], None]] = []
 
-        self.__send_process_data_callback: list[Callable[[], None]] = []
-        self.__receive_process_data_callback: list[Callable[[], None]] = []
-
     @property
     def pdo_manager(self) -> PDONetworkManager:
         """Returns the PDO manager."""
         return self._pdo_manager
-
-    def subscribe_to_send_process_data(self, callback: Callable[[], None]) -> None:
-        """Subscribe to be notified when new send process data is available.
-
-        Args:
-            callback: Callback function.
-        """
-        if callback not in self.__send_process_data_callback:
-            self.__send_process_data_callback.append(callback)
-
-    def subscribe_to_receive_process_data(self, callback: Callable[[], None]) -> None:
-        """Subscribe to be notified when new receive process data is available.
-
-        Args:
-            callback: Callback function.
-        """
-        if callback not in self.__receive_process_data_callback:
-            self.__receive_process_data_callback.append(callback)
 
     def subscribe_to_pdo_thread_status(self, callback: Callable[[bool], None]) -> None:
         """Subscribe be notified when the PDO process data thread status changes.
@@ -262,24 +241,6 @@ class EthercatNetwork(Network):
         if callback in self._pdo_thread_status_observers:
             return
         self._pdo_thread_status_observers.append(callback)
-
-    def unsubscribe_from_send_process_data(self, callback: Callable[[], None]) -> None:
-        """Unsubscribe from send process data notifications.
-
-        Args:
-            callback: Callback function.
-        """
-        if callback in self.__send_process_data_callback:
-            self.__send_process_data_callback.remove(callback)
-
-    def unsubscribe_from_receive_process_data(self, callback: Callable[[], None]) -> None:
-        """Unsubscribe from receive process data notifications.
-
-        Args:
-            callback: Callback function.
-        """
-        if callback in self.__receive_process_data_callback:
-            self.__receive_process_data_callback.remove(callback)
 
     def unsubscribe_from_pdo_thread_status(self, callback: Callable[[bool], None]) -> None:
         """Unsubscribe from PDO thread status changes.
@@ -621,16 +582,6 @@ class EthercatNetwork(Network):
             logger.warning("Not all drives could reach the Init state")
         self.__init_nodes()
 
-    def __notify_send_process_data(self) -> None:
-        """Notify the send process data callbacks."""
-        for callback in self.__send_process_data_callback:
-            callback()
-
-    def __notify_receive_process_data(self) -> None:
-        """Notify the receive process data callbacks."""
-        for callback in self.__receive_process_data_callback:
-            callback()
-
     def send_receive_processdata(
         self, timeout: float = ECAT_PROCESSDATA_TIMEOUT_S, *, release_gil: Optional[bool] = None
     ) -> None:
@@ -648,7 +599,6 @@ class EthercatNetwork(Network):
         """
         if release_gil is None:
             release_gil = self.__gil_release_config.send_receive_processdata
-        self.__notify_send_process_data()
         for servo in self.servos:
             servo.generate_pdo_outputs()
         self._lock.acquire()
@@ -676,7 +626,6 @@ class EthercatNetwork(Network):
                 f"Processdata working count is wrong, expected: {self._ecat_master.expected_wkc},"
                 f" real: {processdata_wkc}. {servos_state_msg}"
             )
-        self.__notify_receive_process_data()
         for servo in self.servos:
             servo.process_pdo_inputs()
 

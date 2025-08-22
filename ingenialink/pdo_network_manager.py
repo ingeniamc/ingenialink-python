@@ -26,6 +26,8 @@ class PDONetworkManager:
             refresh_rate: Determines how often (seconds) the PDO values will be updated.
             watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
              to the refresh rate.
+            notify_send_process_data: Callback to notify when process data is about to bes sent.
+            notify_receive_process_data: Callback to notify when process data is received.
             notify_exceptions: Callback to notify when an exception is raised.
 
         Raises:
@@ -45,6 +47,8 @@ class PDONetworkManager:
             net: "EthercatNetwork",
             refresh_rate: Optional[float],
             watchdog_timeout: Optional[float],
+            notify_send_process_data: Callable[[], None],
+            notify_receive_process_data: Callable[[], None],
             notify_exceptions: Callable[[ILError], None],
         ) -> None:
             super().__init__()
@@ -58,6 +62,8 @@ class PDONetworkManager:
                 )
             self._refresh_rate = refresh_rate
             self._watchdog_timeout = watchdog_timeout
+            self._notify_send_process_data = notify_send_process_data
+            self._notify_receive_process_data = notify_receive_process_data
             self._notify_exceptions = notify_exceptions
             self._pd_thread_stop_event = threading.Event()
 
@@ -72,6 +78,7 @@ class PDONetworkManager:
             iteration_duration: float = -1
             while not self._pd_thread_stop_event.is_set():
                 time_start = time.perf_counter()
+                self._notify_send_process_data()
                 try:
                     if first_iteration:
                         self._net.start_pdos()
@@ -108,6 +115,7 @@ class PDONetworkManager:
                         )
                     )
                 else:
+                    self._notify_receive_process_data()
                     while (
                         remaining_loop_time := self._refresh_rate
                         - (time.perf_counter() - time_start)
@@ -166,6 +174,8 @@ class PDONetworkManager:
         self._net = net
         self.logger = ingenialogger.get_logger(__name__)
         self._pdo_thread: Optional[PDONetworkManager.ProcessDataThread] = None
+        self._pdo_send_observers: list[Callable[[], None]] = []
+        self._pdo_receive_observers: list[Callable[[], None]] = []
         self._pdo_exceptions_observers: list[Callable[[ILError], None]] = []
 
     def start_pdos(
@@ -190,6 +200,8 @@ class PDONetworkManager:
             net=self._net,
             refresh_rate=refresh_rate,
             watchdog_timeout=watchdog_timeout,
+            notify_send_process_data=self._notify_send_process_data,
+            notify_receive_process_data=self._notify_receive_process_data,
             notify_exceptions=self._notify_exceptions,
         )
         self._pdo_thread.start()
@@ -217,6 +229,26 @@ class PDONetworkManager:
             return False
         return self._pdo_thread.is_alive()
 
+    def subscribe_to_send_process_data(self, callback: Callable[[], None]) -> None:
+        """Subscribe be notified when the RPDO values will be sent.
+
+        Args:
+            callback: Callback function.
+        """
+        if callback in self._pdo_send_observers:
+            return
+        self._pdo_send_observers.append(callback)
+
+    def subscribe_to_receive_process_data(self, callback: Callable[[], None]) -> None:
+        """Subscribe be notified when the TPDO values are received.
+
+        Args:
+            callback: Callback function.
+        """
+        if callback in self._pdo_receive_observers:
+            return
+        self._pdo_receive_observers.append(callback)
+
     def subscribe_to_exceptions(self, callback: Callable[[ILError], None]) -> None:
         """Subscribe be notified when there is an exception in the PDO process data thread.
 
@@ -230,6 +262,26 @@ class PDONetworkManager:
             return
         self._pdo_exceptions_observers.append(callback)
 
+    def unsubscribe_to_send_process_data(self, callback: Callable[[], None]) -> None:
+        """Unsubscribe from the send process data notifications.
+
+        Args:
+            callback: Subscribed callback function.
+        """
+        if callback not in self._pdo_send_observers:
+            return
+        self._pdo_send_observers.remove(callback)
+
+    def unsubscribe_to_receive_process_data(self, callback: Callable[[], None]) -> None:
+        """Unsubscribe from the receive process data notifications.
+
+        Args:
+            callback: Subscribed callback function.
+        """
+        if callback not in self._pdo_receive_observers:
+            return
+        self._pdo_receive_observers.remove(callback)
+
     def unsubscribe_to_exceptions(self, callback: Callable[[ILError], None]) -> None:
         """Unsubscribe from the exceptions in the process data notifications.
 
@@ -240,6 +292,16 @@ class PDONetworkManager:
         if callback not in self._pdo_exceptions_observers:
             return
         self._pdo_exceptions_observers.remove(callback)
+
+    def _notify_send_process_data(self) -> None:
+        """Notify subscribers that the RPDO values will be sent."""
+        for callback in self._pdo_send_observers:
+            callback()
+
+    def _notify_receive_process_data(self) -> None:
+        """Notify subscribers that the TPDO values were received."""
+        for callback in self._pdo_receive_observers:
+            callback()
 
     def _notify_exceptions(self, exc: ILError) -> None:
         """Notify subscribers that there was an exception.
