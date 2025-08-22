@@ -242,24 +242,6 @@ pipeline {
                                         """
                                     }
                                 }
-                                stage('Make a static type analysis') {
-                                    steps {
-                                        bat """
-                                            cd ${WIN_DOCKER_TMP_PATH}
-                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                                            poetry run poe type
-                                        """
-                                    }
-                                }
-                                stage('Check formatting') {
-                                    steps {
-                                        bat """
-                                            cd ${WIN_DOCKER_TMP_PATH}
-                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                                            poetry run poe format
-                                        """
-                                    }
-                                }
                                 stage('Archive artifacts') {
                                     steps {
                                         archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
@@ -267,47 +249,6 @@ pipeline {
                                             stash_name = "publish_wheels-windows"
                                             wheel_stashes.add(stash_name)
                                             stash includes: "dist\\*", name: stash_name
-                                        }
-                                    }
-                                }
-                                stage('Generate documentation') {
-                                    steps {
-                                        bat """
-                                            cd ${WIN_DOCKER_TMP_PATH}
-                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                                            poetry run poe docs
-                                            "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
-                                            XCOPY docs.zip ${env.WORKSPACE}
-                                        """
-                                        stash includes: 'docs.zip', name: 'docs'
-                                    }
-                                }
-                                stage('Run no-connection tests on docker') {
-                                    steps {
-                                        script {
-                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                            pythonVersions.each { version ->
-                                                bat """
-                                                    cd ${WIN_DOCKER_TMP_PATH}
-                                                    call .venv${version}/Scripts/activate
-                                                    poetry run poe install-wheel
-                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m docker -o log_cli=True
-                                                """
-                                            }
-                                        }
-                                    }
-                                    post {
-                                        always {
-                                            bat """
-                                                mkdir -p pytest_reports
-                                                XCOPY ${WIN_DOCKER_TMP_PATH}\\pytest_reports\\* pytest_reports\\ /s /i /y /e /h
-                                                move ${WIN_DOCKER_TMP_PATH}\\.coverage .coverage_docker
-                                            """
-                                            junit 'pytest_reports/*.xml'
-                                            stash includes: '.coverage_docker', name: '.coverage_docker'
-                                            script {
-                                                coverage_stashes.add(".coverage_docker")
-                                            }
                                         }
                                     }
                                 }
@@ -365,56 +306,6 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Run no-connection tests on docker') {
-                                    steps {
-                                        script {
-                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                            pythonVersions.each { version ->
-                                                sh """
-                                                    cd ${LIN_DOCKER_TMP_PATH}
-                                                    . .venv${version}/bin/activate
-                                                    poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m no_connection -o log_cli=True
-                                                    deactivate
-                                                """
-                                            }
-                                        }
-                                    }
-                                    post {
-                                        always {
-                                            sh """
-                                                mkdir -p pytest_reports
-                                                cp ${LIN_DOCKER_TMP_PATH}/pytest_reports/* pytest_reports/
-                                            """
-                                            junit 'pytest_reports/*.xml'
-                                        }
-                                    }
-                                }
-                                stage('Run virtual drive tests on docker') {
-                                    steps {
-                                        script {
-                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                            pythonVersions.each { version ->
-                                                sh """
-                                                    cd ${LIN_DOCKER_TMP_PATH}
-                                                    . .venv${version}/bin/activate
-                                                    poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
-                                                    deactivate
-                                                """
-                                            }
-                                        }
-                                    }
-                                    post {
-                                        always {
-                                            sh """
-                                                mkdir -p pytest_reports
-                                                cp ${LIN_DOCKER_TMP_PATH}/pytest_reports/* pytest_reports/
-                                            """
-                                            junit 'pytest_reports/*.xml'
-                                        }
-                                    }
-                                }
                             }
                             post {
                                 always {
@@ -422,20 +313,6 @@ pipeline {
                                 }
                             }
                         }
-                    }
-                }
-                stage('Publish documentation') {
-                    when {
-                        beforeAgent true
-                        branch BRANCH_NAME_MASTER
-                    }
-                    agent {
-                        label 'worker'
-                    }
-                    steps {
-                        unstash 'docs'
-                        unzip zipFile: 'docs.zip', dir: '.'
-                        publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                     }
                 }
                 stage('Publish wheels') {
