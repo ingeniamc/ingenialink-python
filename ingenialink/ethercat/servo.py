@@ -356,9 +356,6 @@ class EthercatServo(PDOServo):
     @override
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
-            if rpdo_map.is_editable:
-                logger.info(f"Writing RPDO map {rpdo_map.map_register_index} to slave from the method set_pdo_map_to_slave.")
-                rpdo_map.write_to_slave()
             if rpdo_map not in self._rpdo_maps.values():
                 logger.info(
                     f"Adding RPDO map {rpdo_map.map_register_index} to slave {self.slave_id}."
@@ -368,10 +365,10 @@ class EthercatServo(PDOServo):
                 self._rpdo_maps[map_obj.idx] = rpdo_map
             else:
                 logger.info(f"RPDO map {rpdo_map.map_register_index} already exists, skipping.")
-        for tpdo_map in tpdo_maps:
-            if tpdo_map.is_editable:
-                logger.info(f"Writing TPDO map {tpdo_map.map_register_index} to slave from the method set_pdo_map_to_slave.")
+            if rpdo_map.is_editable:
+                logger.info(f"Writing RPDO map {rpdo_map.map_register_index} to slave from the method set_pdo_map_to_slave.")
                 rpdo_map.write_to_slave()
+        for tpdo_map in tpdo_maps:
             if tpdo_map not in self._tpdo_maps.values():
                 logger.info(
                     f"Adding TPDO map {tpdo_map.map_register_index} to slave {self.slave_id}."
@@ -381,6 +378,9 @@ class EthercatServo(PDOServo):
                 self._tpdo_maps[map_obj.idx] = tpdo_map
             else:
                 logger.info(f"TPDO map {tpdo_map.map_register_index} already exists, skipping.")
+            if tpdo_map.is_editable:
+                logger.info(f"Writing TPDO map {tpdo_map.map_register_index} to slave from the method set_pdo_map_to_slave.")
+                tpdo_map.write_to_slave()
         self.slave.config_func = self.map_pdos
 
     def __resolve_missing_pdo_map_info(self, pdo_map: PDOMap) -> CanOpenObject:
