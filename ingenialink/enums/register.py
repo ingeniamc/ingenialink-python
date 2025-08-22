@@ -70,6 +70,7 @@ class RegAddressType(Enum):
     NVM_CFG = 2
     NVM_LOCK = 3
     NVM_HW = 4
+    NVM_INDIRECT = 5
 
 
 class RegCyclicType(Enum):
@@ -79,6 +80,9 @@ class RegCyclicType(Enum):
     TX = "CYCLIC_TX"
     RXTX = "CYCLIC_RXTX"
     CONFIG = "CONFIG"
+    SAFETY_INPUT = "CYCLIC_SI"
+    SAFETY_OUTPUT = "CYCLIC_SO"
+    SAFETY_INPUT_OUTPUT = "CYCLIC_SISO"
 
 
 _DEPRECATED = {

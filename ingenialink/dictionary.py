@@ -1,5 +1,7 @@
 import copy
 import enum
+import math
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -22,7 +24,8 @@ from ingenialink.enums.register import (
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILDictionaryParseError
-from ingenialink.register import Register
+from ingenialink.register import MonDistV3, Register
+from ingenialink.utils._utils import weak_lru
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -81,8 +84,6 @@ class SubnodeType(enum.Enum):
     """Communication"""
     MOTION = enum.auto()
     """Motion"""
-    SAFETY = enum.auto()
-    """Safety"""
 
 
 class CanOpenObjectType(enum.Enum):
@@ -102,9 +103,15 @@ class CanOpenObjectType(enum.Enum):
 class CanOpenObject:
     """CanOpenObject."""
 
-    uid: Optional[str]
+    uid: str
+    idx: int
     object_type: CanOpenObjectType
     registers: list[CanopenRegister]
+
+    def __post_init__(self) -> None:
+        """Post-initialization method."""
+        # Ensure registers are sorted by subindex
+        self.registers = sorted(self.registers, key=lambda obj: obj.subidx)
 
     def __iter__(self) -> Iterator[CanopenRegister]:
         """Iterator operator.
@@ -113,6 +120,28 @@ class CanOpenObject:
             Iterator operator.
         """
         return self.registers.__iter__()
+
+    @property
+    def bit_length(self) -> int:
+        """Get the bit length of the object.
+
+        Returns:
+            int: bit length of the object.
+        """
+        bit_length = sum(register.bit_length for register in self.registers)
+        if self.object_type in [CanOpenObjectType.ARRAY, CanOpenObjectType.RECORD]:
+            # In arrays and records, between index 0 and 1 there's a padding of 8 bits
+            bit_length += 8
+        return bit_length
+
+    @property
+    def byte_length(self) -> int:
+        """Get the byte length of the object.
+
+        Returns:
+            int: byte length of the object.
+        """
+        return math.ceil(self.bit_length / 8)
 
 
 @dataclass
@@ -368,6 +397,8 @@ class Dictionary(XMLBase, ABC):
             return RegAddressType.NVM_LOCK
         if address_type == "NVM_HW":
             return RegAddressType.NVM_HW
+        if address_type == "NVM_INDIRECT":
+            return RegAddressType.NVM_INDIRECT
         raise ILDictionaryParseError(f"The address type {address_type} does not exist.")
 
     @staticmethod
@@ -387,8 +418,6 @@ class Dictionary(XMLBase, ABC):
             return SubnodeType.COMMUNICATION
         if subnode == "Motion":
             return SubnodeType.MOTION
-        if subnode == "Safety":
-            return SubnodeType.SAFETY
         raise ILDictionaryParseError(f"{subnode=} does not exist.")
 
     @classmethod
@@ -445,11 +474,67 @@ class Dictionary(XMLBase, ABC):
         """
         return self._registers[subnode]
 
+    def all_registers(self) -> Iterator[Register]:
+        """Iterator for all registers.
+
+        Yields:
+            Register
+        """
+        for subnode in self._registers.values():
+            yield from subnode.values()
+
+    def all_objs(self) -> Iterator[CanOpenObject]:
+        """Iterator for all items.
+
+        Yields:
+            CanOpenObject
+        """
+        for subnode in self.items.values():
+            yield from subnode.values()
+
+    @weak_lru()
+    def get_register(self, uid: str, axis: Optional[int] = None) -> Register:
+        """Gets the targeted register.
+
+        Args:
+            uid: register uid.
+            axis: axis. Should be specified if multiaxis, None otherwise.
+
+        Raises:
+            KeyError: if the specified axis does not exist.
+            KeyError: if the register is not present in the specified axis.
+            ValueError: if the register is not found in any axis, if axis is not provided.
+            ValueError: if the register is found in multiple axis, if axis is provided.
+
+        Returns:
+            register.
+        """
+        if axis is not None:
+            if axis not in self._registers:
+                raise KeyError(f"{axis=} does not exist.")
+            registers = self.registers(axis)
+            if uid not in registers:
+                raise KeyError(f"Register {uid} not present in {axis=}")
+            return registers[uid]
+
+        matching_registers: list[Register] = []
+        for axis in self.subnodes:
+            axis_registers = self.registers(axis)
+            if uid in axis_registers:
+                matching_registers.append(axis_registers[uid])
+
+        if len(matching_registers) == 0:
+            raise ValueError(f"Register {uid} not found.")
+        if len(matching_registers) > 1:
+            raise ValueError(f"Register {uid} found in multiple axis. Axis should be specified.")
+
+        return matching_registers[0]
+
     @abstractmethod
     def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
 
-    def get_object(self, uid: str, subnode: int) -> CanOpenObject:
+    def get_object(self, uid: str, subnode: Optional[int] = None) -> CanOpenObject:
         """Return object by an UID and subnode.
 
         Args:
@@ -463,6 +548,8 @@ class Dictionary(XMLBase, ABC):
             KeyError: Object does not exist
 
         """
+        if subnode is None:
+            subnode = 0
         if subnode in self.items and uid in self.items[subnode]:
             return self.items[subnode][uid]
         raise KeyError(f"Object {uid} in subnode {subnode} not exist")
@@ -665,7 +752,7 @@ class DictionaryV3(Dictionary):
     __ACCESS_ATTR = "access"
     __DTYPE_ATTR = "dtype"
     __UID_ATTR = "id"
-    __CYCLIC_ATTR = "cyclic"
+    __PDO_ACCESS_ATTR = "pdo_access"
     __DESCRIPTION_ATTR = "desc"
     __DEFAULT_ATTR = "default"
     __CAT_ID_ATTR = "cat_id"
@@ -679,6 +766,7 @@ class DictionaryV3(Dictionary):
     __SUBITEM_ELEMENT = "Subitem"
     __INDEX_ATTR = "index"
     __SUBINDEX_ATTR = "subindex"
+    __AXIS_ATTR = "axis"
 
     __MCB_REGISTERS_ELEMENT = "MCBRegisters"
     __MCB_REGISTER_ELEMENT = "MCBRegister"
@@ -705,6 +793,11 @@ class DictionaryV3(Dictionary):
     __RANGE_MIN_ATTR = "min"
     __RANGE_MAX_ATTR = "max"
 
+    __MONITORING_ELEMENT = "MonDistV3"
+    __MONITORING_ADDRESS_ATTR = "address"
+    __MONITORING_SUBNODE_ATTR = "subnode"
+    __MONITORING_CYCLIC_ATTR = "cyclic"
+
     __SAFETY_PDOS_ELEMENT = "SafetyPDOs"
     __RPDO_ELEMENT = "RPDO"
     __TPDO_ELEMENT = "TPDO"
@@ -721,6 +814,28 @@ class DictionaryV3(Dictionary):
     __APPLICATION_PARAMETERS_ELEMENT = "ApplicationParameters"
     __APPLICATION_PARAMETER_ELEMENT = "ApplicationParameter"
     __APPLICATION_PARAMETER_UID_ATTR = "id"
+
+    def __init__(self, dictionary_path: str, interface: Optional[Interface] = None) -> None:
+        """Initialize the DictionaryV3 instance.
+
+        Args:
+            dictionary_path: Path to the Ingenia dictionary.
+            interface: communication interface for retro compatibility,
+                specific classes should be used instead of this argument.
+
+        """
+        if self.__class__ is DictionaryV3 or interface:
+            warnings.warn(
+                "Using DictionaryV3 as an instance classis deprecated, "
+                "use a specific class instead, like EthercatDictionaryV3",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if interface is None:
+            interface = self.interface
+
+        super().__init__(dictionary_path, interface)
 
     @staticmethod
     def _interface_to_device_element(interface: Interface) -> str:
@@ -935,8 +1050,6 @@ class DictionaryV3(Dictionary):
             root: ECATDevice element
 
         """
-        subnodes_element = self._find_and_check(root, self.__SUBNODES_ELEMENT)
-        self.__read_subnodes(subnodes_element)
         registers_element = self._find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
             registers_element, self.__CANOPEN_OBJECT_ELEMENT
@@ -959,8 +1072,6 @@ class DictionaryV3(Dictionary):
             root: CANDevice element
 
         """
-        subnodes_element = self._find_and_check(root, self.__SUBNODES_ELEMENT)
-        self.__read_subnodes(subnodes_element)
         registers_element = self._find_and_check(root, self.__CANOPEN_OBJECTS_ELEMENT)
         register_element_list = self._findall_and_check(
             registers_element, self.__CANOPEN_OBJECT_ELEMENT
@@ -1040,6 +1151,26 @@ class DictionaryV3(Dictionary):
             return range_min, range_max
         return None, None
 
+    def __read_monitoring(
+        self, monitoring_elem: Optional[ElementTree.Element]
+    ) -> Optional[MonDistV3]:
+        """Process Monitoring element.
+
+        Args:
+            monitoring_elem: Monitoring element.
+
+        Returns:
+            Monitoring data, None if the register is not monitoreable.
+        """
+        if monitoring_elem is None:
+            return None
+
+        return MonDistV3(
+            address=int(monitoring_elem.attrib[self.__MONITORING_ADDRESS_ATTR], 16),
+            subnode=int(monitoring_elem.attrib[self.__MONITORING_SUBNODE_ATTR]),
+            cyclic=RegCyclicType(monitoring_elem.attrib[self.__MONITORING_CYCLIC_ATTR]),
+        )
+
     def __read_enumeration(
         self, enumerations_element: Optional[ElementTree.Element]
     ) -> Optional[dict[str, int]]:
@@ -1085,6 +1216,26 @@ class DictionaryV3(Dictionary):
 
         return None
 
+    def __add_register(self, register: Register, axis: int) -> None:
+        """Adds a register to register list.
+
+        Args:
+            register: register to add.
+            axis: register's axis.
+
+        Raises:
+            ValueError: if register identifier is not provided.
+        """
+        if axis not in self._registers:
+            self._registers[axis] = {}
+            if axis == 0:
+                self.subnodes[axis] = SubnodeType.COMMUNICATION
+            else:
+                self.subnodes[axis] = SubnodeType.MOTION
+        if register.identifier is None:
+            raise ValueError("Identifier must be provided.")
+        self._registers[axis][register.identifier] = register
+
     def __read_mcb_register(self, register: ElementTree.Element) -> None:
         """Process MCBRegister element and add it to _registers.
 
@@ -1100,7 +1251,7 @@ class DictionaryV3(Dictionary):
         access = ACCESS_XDF_OPTIONS[register.attrib[self.__ACCESS_ATTR]]
         dtype = DTYPE_XDF_OPTIONS[register.attrib[self.__DTYPE_ATTR]]
         identifier = register.attrib[self.__UID_ATTR]
-        cyclic = RegCyclicType(register.attrib[self.__CYCLIC_ATTR])
+        pdo_access = RegCyclicType(register.attrib[self.__PDO_ACCESS_ATTR])
         description = register.attrib[self.__DESCRIPTION_ATTR]
         default = bytes.fromhex(register.attrib[self.__DEFAULT_ATTR])
         cat_id = register.attrib[self.__CAT_ID_ATTR]
@@ -1111,6 +1262,9 @@ class DictionaryV3(Dictionary):
         # Range
         range_elem = register.find(self.__RANGE_ELEMENT)
         reg_range = self.__read_range(range_elem)
+        # Monitoring
+        monitoring_elem = register.find(self.__MONITORING_ELEMENT)
+        monitoring = self.__read_monitoring(monitoring_elem)
         # Enumerations
         enumerations_element = register.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
@@ -1124,7 +1278,7 @@ class DictionaryV3(Dictionary):
             access,
             identifier=identifier,
             units=units,
-            cyclic=cyclic,
+            pdo_access=pdo_access,
             subnode=subnode,
             reg_range=reg_range,
             labels=labels,
@@ -1134,10 +1288,9 @@ class DictionaryV3(Dictionary):
             description=description,
             default=default,
             bitfields=bitfields,
+            monitoring=monitoring,
         )
-        if subnode not in self._registers:
-            self._registers[subnode] = {}
-        self._registers[subnode][identifier] = ethernet_register
+        self.__add_register(register=ethernet_register, axis=subnode)
 
     def __read_canopen_object(self, root: ElementTree.Element) -> None:
         """Process CANopenObject element and add it to registers_group if has UID.
@@ -1147,25 +1300,27 @@ class DictionaryV3(Dictionary):
 
         """
         object_uid = root.attrib.get(self.__UID_ATTR)
-        reg_index = int(root.attrib[self.__INDEX_ATTR], 16)
-        subnode = int(root.attrib[self.__SUBNODE_ATTR])
+        obj_index = int(root.attrib[self.__INDEX_ATTR], 16)
+        axis = int(root.attrib[self.__AXIS_ATTR]) if self.__AXIS_ATTR in root.attrib else 0
         data_type = DictionaryV3._get_canopen_object_data_type_options(
             root.attrib[self.__OBJECT_DATA_TYPE_ATTR]
         )
         subitems_element = self._find_and_check(root, self.__SUBITEMS_ELEMENT)
         subitem_list = self._findall_and_check(subitems_element, self.__SUBITEM_ELEMENT)
         register_list = [
-            self.__read_canopen_subitem(subitem, reg_index, subnode) for subitem in subitem_list
+            self.__read_canopen_subitem(subitem, obj_index, axis) for subitem in subitem_list
         ]
         if object_uid:
             register_list.sort(key=lambda val: val.subidx)
-            if subnode not in self.items:
-                self.items[subnode] = {}
-            self.items[subnode][object_uid] = CanOpenObject(object_uid, data_type, register_list)
+            if axis not in self.items:
+                self.items[axis] = {}
+            self.items[axis][object_uid] = CanOpenObject(
+                object_uid, obj_index, data_type, register_list
+            )
 
     def __read_canopen_subitem(
         self, subitem: ElementTree.Element, reg_index: int, subnode: int
-    ) -> CanopenRegister:
+    ) -> Union[CanopenRegister, EthercatRegister]:
         """Process Subitem element and add it to _registers.
 
         Args:
@@ -1176,15 +1331,18 @@ class DictionaryV3(Dictionary):
         Returns:
             Subitem register
 
+        Raises:
+            ValueError: if Canopen/Ethercat register cannot be created for
+                the communication interface.
         """
-        reg_subindex = int(subitem.attrib[self.__SUBINDEX_ATTR])
+        reg_subindex: int = int(subitem.attrib[self.__SUBINDEX_ATTR])
         address_type = Dictionary._get_address_type_xdf_options(
             subitem.attrib[self.__ADDRESS_TYPE_ATTR]
         )
         access = ACCESS_XDF_OPTIONS[subitem.attrib[self.__ACCESS_ATTR]]
         dtype = DTYPE_XDF_OPTIONS[subitem.attrib[self.__DTYPE_ATTR]]
         identifier = subitem.attrib[self.__UID_ATTR]
-        cyclic = RegCyclicType(subitem.attrib[self.__CYCLIC_ATTR])
+        pdo_access = RegCyclicType(subitem.attrib[self.__PDO_ACCESS_ATTR])
         description = subitem.attrib[self.__DESCRIPTION_ATTR]
         default = bytes.fromhex(subitem.attrib[self.__DEFAULT_ATTR])
         cat_id = subitem.attrib[self.__CAT_ID_ATTR]
@@ -1199,6 +1357,9 @@ class DictionaryV3(Dictionary):
         # Range
         range_elem = subitem.find(self.__RANGE_ELEMENT)
         reg_range = self.__read_range(range_elem)
+        # Monitoring
+        monitoring_elem = subitem.find(self.__MONITORING_ELEMENT)
+        monitoring = self.__read_monitoring(monitoring_elem)
         # Enumerations
         enumerations_element = subitem.find(self.__ENUMERATIONS_ELEMENT)
         enums = self.__read_enumeration(enumerations_element)
@@ -1206,14 +1367,23 @@ class DictionaryV3(Dictionary):
         bitfields_element = subitem.find(self.__BITFIELDS_ELEMENT)
         bitfields = self.__read_bitfields(bitfields_element)
 
-        canopen_register = CanopenRegister(
-            reg_index,
-            reg_subindex,
-            dtype,
-            access,
+        if self.interface == Interface.CAN:
+            register_instance = CanopenRegister
+        elif self.interface == Interface.ECAT:
+            register_instance = EthercatRegister
+        else:
+            raise ValueError(
+                f"Cannot create Canopen/Ethercat register for interface {self.interface}"
+            )
+
+        reg = register_instance(
+            idx=reg_index,
+            subidx=reg_subindex,
+            dtype=dtype,
+            access=access,
             identifier=identifier,
             units=units,
-            cyclic=cyclic,
+            pdo_access=pdo_access,
             subnode=subnode,
             reg_range=reg_range,
             labels=labels,
@@ -1223,12 +1393,11 @@ class DictionaryV3(Dictionary):
             description=description,
             default=default,
             bitfields=bitfields,
+            monitoring=monitoring,
             is_node_id_dependent=is_node_id_dependent,
         )
-        if subnode not in self._registers:
-            self._registers[subnode] = {}
-        self._registers[subnode][identifier] = canopen_register
-        return canopen_register
+        self.__add_register(register=reg, axis=subnode)
+        return reg
 
     def __read_safety_pdos(self, root: ElementTree.Element) -> None:
         """Process SafetyPDOs element.
@@ -1610,7 +1779,7 @@ class DictionaryV2(Dictionary):
 
         try:
             units = register.attrib["units"]
-            cyclic = RegCyclicType(register.attrib.get("cyclic", "CONFIG"))
+            pdo_access = RegCyclicType(register.attrib.get("cyclic", "CONFIG"))
 
             # Data type
             dtype_aux = register.attrib["dtype"]
@@ -1659,12 +1828,14 @@ class DictionaryV2(Dictionary):
             # Known bitfields.
             bitfields = self._get_known_register_bitfields(identifier)
 
+            description = register.attrib.get("desc")
+
             current_read_register = Register(
                 dtype,
                 access,
                 identifier=identifier,
                 units=units,
-                cyclic=cyclic,
+                pdo_access=pdo_access,
                 subnode=subnode,
                 storage=storage,
                 reg_range=reg_range,
@@ -1674,6 +1845,7 @@ class DictionaryV2(Dictionary):
                 internal_use=internal_use,
                 address_type=address_type,
                 bitfields=bitfields,
+                description=description,
             )
 
             return current_read_register

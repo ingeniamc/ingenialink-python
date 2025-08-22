@@ -1,4 +1,5 @@
 import socket
+from typing import Callable, Optional
 
 import ingenialogger
 
@@ -6,6 +7,7 @@ from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.exceptions import ILError
 from ingenialink.network import NetState
+from ingenialink.servo import Servo
 from ingenialink.virtual.servo import VirtualServo
 from virtual_drive.core import VirtualDrive
 
@@ -22,6 +24,7 @@ class VirtualNetwork(EthernetNetwork):
         connection_timeout: float = DEFAULT_ETH_CONNECTION_TIMEOUT,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> VirtualServo:
         """Connects to a slave through the given network settings.
 
@@ -33,6 +36,8 @@ class VirtualNetwork(EthernetNetwork):
                 its status, errors, faults, etc.
             net_status_listener: Toggle the listener of the network
                 status, connection and disconnection.
+            disconnect_callback: Callback function to be called when the servo is disconnected.
+                If not specified, no callback will be called.
 
         Raises:
             ILError: if the drive is not found in IP.
@@ -43,7 +48,9 @@ class VirtualNetwork(EthernetNetwork):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(connection_timeout)
         sock.connect((VirtualDrive.IP_ADDRESS, port))
-        servo = VirtualServo(sock, dictionary, servo_status_listener)
+        servo = VirtualServo(
+            sock, dictionary, servo_status_listener, disconnect_callback=disconnect_callback
+        )
         try:
             servo.get_state()
         except ILError as e:
@@ -56,5 +63,4 @@ class VirtualNetwork(EthernetNetwork):
             self.start_status_listener()
         else:
             self.stop_status_listener()
-
         return servo

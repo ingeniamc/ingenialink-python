@@ -1,5 +1,6 @@
 import pytest
 
+import tests.resources
 from ingenialink import RegAccess, RegDtype
 from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.dictionary import Interface
@@ -8,7 +9,7 @@ from ingenialink.register import Register
 
 @pytest.mark.no_connection
 def test_from_xcf():
-    test_file = "./tests/resources/test_config_file.xcf"
+    test_file = tests.resources.TEST_CONFIG_FILE
     conf_file = ConfigurationFile.load_from_xcf(test_file)
     assert conf_file.device.interface == Interface.CAN
     assert conf_file.device.part_number == "EVE-NET-C"

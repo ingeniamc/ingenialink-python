@@ -80,14 +80,14 @@
         </Axis>
         <Axis subnode="1">
           <Registers>
-            <Register address_type="NVM_HW" access="r" address="0x270300" dtype="u32" id="DRV_PS_FREQ_4" units="Hz" subnode="1" cyclic="CONFIG" desc="Contains the selectable commutation frequency 4 (Also maximum PWM frequency)" cat_id="INTERNAL">
+            <Register address_type="NVM_HW" access="r" address="0x270300" dtype="u32" id="DRV_DIAG_ERROR_LAST" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
               <Labels>
-                <Label lang="en_US">Power stage frequency 4</Label>
+                <Label lang="en_US">Last error</Label>
               </Labels>
             </Register>
-            <Register address_type="NVM_HW" access="r" address="0x270400" dtype="u32" id="DRV_PS_DEAD_TIME" units="ns" subnode="1" cyclic="CONFIG" desc="Dead-time applied to PWM generation to avoid shoot-through in the power stage" cat_id="INTERNAL">
+            <Register address_type="NVM_HW" access="r" address="0x270400" dtype="u32" id="DRV_OP_CMD" units="-" subnode="1" cyclic="CYCLIC_RX" desc="User requested mode of operation" cat_id="TARGET">
               <Labels>
-                <Label lang="en_US">Power stage dead-time (ns)</Label>
+                <Label lang="en_US">Operation mode</Label>
               </Labels>
             </Register>
             <Register address_type="NVM_HW" access="r" address="0x270600" dtype="u32" id="DRV_PS_MIN_LOW_SIDE_ON_TIME" units="ns" subnode="1" cyclic="CONFIG" desc="Minimum time the power stage low side should be enabled for a proper current measurement." cat_id="INTERNAL">
@@ -109,14 +109,14 @@
         </Axis>
         <Axis subnode="2">
           <Registers>
-            <Register address_type="NVM_HW" access="r" address="0x270300" dtype="u32" id="DRV_PS_FREQ_4" units="Hz" subnode="2" cyclic="CONFIG" desc="Contains the selectable commutation frequency 4 (Also maximum PWM frequency)" cat_id="INTERNAL">
+            <Register address_type="NVM_HW" access="r" address="0x270300" dtype="u32" id="DRV_DIAG_ERROR_LAST" units="-" subnode="2" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
               <Labels>
-                <Label lang="en_US">Power stage frequency 4</Label>
+                <Label lang="en_US">Last error</Label>
               </Labels>
             </Register>
-            <Register address_type="NVM_HW" access="r" address="0x270400" dtype="u32" id="DRV_PS_DEAD_TIME" units="ns" subnode="2" cyclic="CONFIG" desc="Dead-time applied to PWM generation to avoid shoot-through in the power stage" cat_id="INTERNAL">
+            <Register address_type="NVM_HW" access="r" address="0x270400" dtype="u32" id="DRV_STATE_CONTROL" units="-" subnode="2" cyclic="CYCLIC_RX" desc="Parameter to manage the drive state machine. It is compliant with DS402." cat_id="TARGET">
               <Labels>
-                <Label lang="en_US">Power stage dead-time (ns)</Label>
+                <Label lang="en_US">Control word</Label>
               </Labels>
             </Register>
             <Register address_type="NVM_HW" access="r" address="0x270600" dtype="u32" id="DRV_PS_MIN_LOW_SIDE_ON_TIME" units="ns" subnode="2" cyclic="CONFIG" desc="Minimum time the power stage low side should be enabled for a proper current measurement." cat_id="INTERNAL">

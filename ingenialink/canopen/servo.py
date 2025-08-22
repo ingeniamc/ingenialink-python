@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Union
+from typing import Callable, Optional, Union
 
 import canopen
 import ingenialogger
@@ -41,6 +41,8 @@ class CanopenServo(Servo):
         dictionary_path: Path to the dictionary.
         servo_status_listener: Toggle the listener of the servo for
             its status, errors, faults, etc.
+        disconnect_callback: Callback function to be called when the servo is disconnected.
+            If not specified, no callback will be called.
 
     """
 
@@ -58,15 +60,20 @@ class CanopenServo(Servo):
         node: canopen.RemoteNode,
         dictionary_path: str,
         servo_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> None:
         self.__node = node
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__node.emcy.add_callback(self._on_emcy)
-        super().__init__(target, dictionary_path, servo_status_listener)
+        super().__init__(
+            target, dictionary_path, servo_status_listener, disconnect_callback=disconnect_callback
+        )
 
     @override
     def read(
-        self, reg: Union[str, Register], subnode: int = 1, **kwargs: Any
+        self,
+        reg: Union[str, Register],
+        subnode: int = 1,
     ) -> Union[int, float, str, bytes]:
         value = super().read(reg, subnode=subnode)
         if isinstance(value, str):
@@ -176,34 +183,6 @@ class CanopenServo(Servo):
                     f" and dtype {target_register.dtype}: {register.storage} is an string"
                 )
         return register.storage
-
-    @staticmethod
-    def _monitoring_disturbance_map_can_address(address: int, subnode: int) -> int:
-        """Map CAN register address to IPB register address.
-
-        Returns:
-            Map CAN register address.
-        """
-        return address - (0x2000 + (0x800 * (subnode - 1)))
-
-    def _monitoring_disturbance_data_to_map_register(
-        self, subnode: int, address: int, dtype: int, size: int
-    ) -> int:
-        """Arrange necessary data to map a monitoring/disturbance register.
-
-        Args:
-            subnode: Subnode to be targeted.
-            address: Register address to map.
-            dtype: Register data type.
-            size: Size of data in bytes.
-
-        Returns:
-            data to map a monitoring/disturbance register.
-        """
-        ipb_address = self._monitoring_disturbance_map_can_address(address, subnode)
-        return super()._monitoring_disturbance_data_to_map_register(
-            subnode, ipb_address, dtype, size
-        )
 
     @property
     def node(self) -> canopen.RemoteNode:

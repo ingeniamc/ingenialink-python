@@ -1,11 +1,10 @@
-import os
-
 import pytest
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
 from ingenialink.register import RegAccess, RegDtype, Register, RegPhy
+from virtual_drive import resources as virtual_drive_resources
 
 
 @pytest.fixture
@@ -39,7 +38,7 @@ def test_getters_register():
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
         "units": "none",
-        "cyclic": "CONFIG",
+        "pdo_access": "CONFIG",
         "phy": RegPhy.NONE,
         "subnode": 0,
         "storage": 1,
@@ -54,7 +53,7 @@ def test_getters_register():
 
     assert register.identifier == reg_kwargs["identifier"]
     assert register.units == reg_kwargs["units"]
-    assert register.cyclic == reg_kwargs["cyclic"]
+    assert register.pdo_access == reg_kwargs["pdo_access"]
     assert register.dtype == reg_dtype
     assert register.access == reg_access
     assert register.phy == reg_kwargs["phy"]
@@ -183,7 +182,7 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
         "access": RegAccess.RW,
         "identifier": "",
         "units": "",
-        "cyclic": "CONFIG",
+        "pdo_access": "CONFIG",
     }
     register = EthernetRegister(**ethernet_param_dict)
     assert mapped_address_eth == register.mapped_address
@@ -202,7 +201,7 @@ def test_register_mapped_address(subnode, address, mapped_address_eth, mapped_ad
 )
 @pytest.mark.no_connection
 def test_bit_register(connect_virtual_drive_with_bool_register, write_value, expected_read_value):
-    dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
+    dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     boolean_reg_uid = "TEST_BOOLEAN"
     servo, _ = connect_virtual_drive_with_bool_register(dictionary)
 
@@ -216,7 +215,7 @@ def test_bit_register(connect_virtual_drive_with_bool_register, write_value, exp
 )
 @pytest.mark.no_connection
 def test_bit_register_write_invalid_value(connect_virtual_drive_with_bool_register, write_value):
-    dictionary = os.path.join("virtual_drive/resources/", "virtual_drive.xdf")
+    dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     servo, _ = connect_virtual_drive_with_bool_register(dictionary)
     with pytest.raises(ValueError) as exc_info:
         servo.write("TEST_BOOLEAN", write_value)

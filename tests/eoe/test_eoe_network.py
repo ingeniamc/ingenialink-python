@@ -7,23 +7,10 @@ from ingenialink.ethernet.network import NetProt
 from ingenialink.ethernet.servo import EthernetServo
 
 
-@pytest.fixture()
-def connect(read_config):
-    protocol_contents = read_config["eoe"]
-    net = EoENetwork(protocol_contents["ifname"])
-    servo = net.connect_to_slave(
-        slave_id=protocol_contents["slave"],
-        ip_address=protocol_contents["ip"],
-        dictionary=protocol_contents["dictionary"],
-    )
-    return servo, net
-
-
 @pytest.mark.eoe
-def test_eoe_connection(connect_to_slave):
+def test_eoe_connection(servo, net):
     eoe_service_ip = "127.0.0.1"
     eoe_service_port = 8888
-    servo, net = connect_to_slave
     net_socket = net._eoe_socket
     ip, port = net_socket.getpeername()
     assert servo.is_alive()
@@ -39,24 +26,39 @@ def test_eoe_connection(connect_to_slave):
 
 
 @pytest.mark.eoe
-def test_eoe_connection_wrong_ip_address(read_config):
-    protocol_contents = read_config["eoe"]
-    net = EoENetwork(protocol_contents["ifname"])
+def test_eoe_connection_wrong_ip_address(setup_descriptor):
+    net = EoENetwork(setup_descriptor.ifname)
     with pytest.raises(ValueError):
         net.connect_to_slave(
-            slave_id=protocol_contents["slave"],
+            slave_id=setup_descriptor.slave,
             ip_address="192.168.2.22",
-            dictionary=protocol_contents["dictionary"],
+            dictionary=setup_descriptor.dictionary,
         )
 
 
 @pytest.mark.eoe
-def test_eoe_disconnection(connect):
-    servo, net = connect
+def test_eoe_disconnection(setup_descriptor):
+    disconnected_servos = []
+
+    def dummy_callback(servo):
+        disconnected_servos.append(servo.ip)
+
+    net = EoENetwork(setup_descriptor.ifname)
+    servo = net.connect_to_slave(
+        slave_id=setup_descriptor.slave,
+        ip_address=setup_descriptor.ip,
+        dictionary=setup_descriptor.dictionary,
+        disconnect_callback=dummy_callback,
+    )
+    assert servo.target == setup_descriptor.ip
+
+    assert len(disconnected_servos) == 0
     net.disconnect_from_slave(servo)
     assert not net._eoe_service_init
     assert not net._eoe_service_started
     assert len(net.servos) == 0
+    assert len(disconnected_servos) == 1
+    assert disconnected_servos[0] == setup_descriptor.ip
 
 
 @pytest.mark.parametrize(

@@ -8,7 +8,7 @@ from ingenialink.enums.register import (
     RegDtype,
     RegPhy,
 )
-from ingenialink.register import Register
+from ingenialink.register import MonDistV3, Register
 
 
 class CanopenRegister(Register):
@@ -21,7 +21,7 @@ class CanopenRegister(Register):
         access: Access type.
         identifier: Identifier.
         units: Units.
-        cyclic: Cyclic typed register.
+        pdo_access: pdo access.
         phy: Physical units.
         subnode: Subnode.
         storage: Storage.
@@ -34,7 +34,9 @@ class CanopenRegister(Register):
         address_type: Address Type.
         description: Register description.
         default: Register default value.
-        bitfields: Fields that specify groups of bits
+        bitfields: Fields that specify groups of bits.
+        monitoring: monitoring information (address, subnode, cyclic access),
+            None if register is not monitoreable.
 
     Raises:
         TypeError: If any of the parameters has invalid type.
@@ -51,7 +53,7 @@ class CanopenRegister(Register):
         access: RegAccess,
         identifier: Optional[str] = None,
         units: Optional[str] = None,
-        cyclic: RegCyclicType = RegCyclicType.CONFIG,
+        pdo_access: RegCyclicType = RegCyclicType.CONFIG,
         phy: RegPhy = RegPhy.NONE,
         subnode: int = 1,
         storage: Any = None,
@@ -67,6 +69,7 @@ class CanopenRegister(Register):
         description: Optional[str] = None,
         default: Optional[bytes] = None,
         bitfields: Optional[dict[str, BitField]] = None,
+        monitoring: Optional[MonDistV3] = None,
         is_node_id_dependent: bool = False,
     ):
         super().__init__(
@@ -74,7 +77,7 @@ class CanopenRegister(Register):
             access,
             identifier,
             units,
-            cyclic,
+            pdo_access,
             phy,
             subnode,
             storage,
@@ -88,6 +91,7 @@ class CanopenRegister(Register):
             description,
             default,
             bitfields,
+            monitoring=monitoring,
         )
 
         self.__idx = idx

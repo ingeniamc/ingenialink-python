@@ -1,10 +1,25 @@
 # Changelog
 
-## [7.4.4] - 2025-07-08
-### Fixed
-- PyPI publishing.
+## [7.5.0] - 2025-08-19
+### Added
+- Added generic dictionaries specific for communication protocols.
+- Method to obtain a canopen/ethercat register from index and subindex.
+- Specific methods for complete-access
+- Methods to read RPDOs and TPDOs from the ethercat slave.
+- Methods to get mapping registers in a PDOMap and respective mapped items.
+- Callback mechanism to notify when a servo is disconnected from a network.
 
-## [7.4.3] - 2025-07-08
+### Fixed
+- Default xdf v2 injected safety registers
+- Fixed complete-access for reading registers
+- Removed value updated notification when accessing with complete access
+
+### Changed
+- Added Safety Cyclic types for xdf v3 dictionaries.
+- Added full information of the pdo mapping registers for xdf v2.
+- Allow to fully read/write CanOpenObjects with complete access
+
+## [7.4.3]
 ### Fixed
 - Safety registers/modules availability.
 
@@ -15,6 +30,8 @@
 ### Added
 - Implement the scan method for Ethernet networks.
 - GIL release control for EtherCAT functions.
+  Created ConfigurationFile class, used in load_configuration, save_configuration and check_configuration
+- Functions to update pysoem timeouts
 
 ### Deprecated
 - Changed `Enums` names to follow CapWords convention. Old names are still supported, but will soon be deprecated.
@@ -23,10 +40,6 @@
 - Change dictionary registers groups to objects
 - Parse CanOpen object type from xdf v3 dictionaries
 - FoE using PySOEM.
-
-### Added
-- Created ConfigurationFile class, used in load_configuration, save_configuration and check_configuration
-- Functions to update pysoem timeouts
 
 ### Fixed
 - FTP login exception.
