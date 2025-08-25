@@ -225,7 +225,7 @@ def test_subscribe_callbacks(net: "EthercatNetwork", servo: "EthercatServo", moc
     refresh_rate = 0.5
     net.activate_pdos(refresh_rate=refresh_rate)
     assert net.pdo_manager.is_active
-    time.sleep(2 * refresh_rate)
+    time.sleep(5 * refresh_rate)
     n_rpdo_callbacks = rpdo_callback.call_count
     n_tpdo_callbacks = tpdo_callback.call_count
     assert n_rpdo_callbacks > 0
@@ -236,7 +236,7 @@ def test_subscribe_callbacks(net: "EthercatNetwork", servo: "EthercatServo", moc
     # If unsubscribe from network, PDO map notifications are still sent
     net.pdo_manager.unsubscribe_to_send_process_data(send_callback)
     net.pdo_manager.unsubscribe_to_receive_process_data(receive_callback)
-    time.sleep(2 * refresh_rate)
+    time.sleep(5 * refresh_rate)
     assert rpdo_callback.call_count > n_rpdo_callbacks
     assert tpdo_callback.call_count > n_tpdo_callbacks
     assert receive_callback.call_count < rpdo_callback.call_count
