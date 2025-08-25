@@ -8,6 +8,7 @@
 - Methods to read RPDOs and TPDOs from the ethercat slave.
 - Methods to get mapping registers in a PDOMap and respective mapped items.
 - Callback mechanism to notify when a servo is disconnected from a network.
+- Added PDONetworkManager to manage all the PDO functionalities.
 
 ### Fixed
 - Default xdf v2 injected safety registers

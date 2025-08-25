@@ -64,7 +64,7 @@ class ProcessDataExample:
         """Create a PDO Map with the RPDO and TPDO registers.
 
         Returns:
-            Tuple with the RPDOMap and TPDOMap created
+            Tuple with the RPDOMap and TPDOMap created.
         """
         rpdo_map = RPDOMap()
         tpdo_map = TPDOMap()
@@ -111,7 +111,8 @@ class ProcessDataExample:
         for index, _ in enumerate(self.servos):
             sys.stdout.write(f"Drive: {index} ")
             console_output = " ".join(
-                f"{item.register.identifier}: {item.value!r}" for item in self.tpdo_maps[index].items
+                f"{item.register.identifier}: {item.value!r}"
+                for item in self.tpdo_maps[index].items
             )
             sys.stdout.write(console_output + " ")
         sys.stdout.flush()
