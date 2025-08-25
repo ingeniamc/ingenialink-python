@@ -282,11 +282,12 @@ class PDOMap:
 
     _PDO_MAP_ITEM_CLASS = PDOMapItem
 
-    def __init__(self) -> None:
+    def __init__(self, is_dirty: bool = True) -> None:
         self.__items: list[PDOMapItem] = []
         self.__map_register_index: Optional[int] = None
         self.__map_object: Optional[CanOpenObject] = None
         self.__slave: Optional[PDOServo] = None
+        self.__is_dirty = is_dirty
 
     @property
     def slave(self) -> Optional["PDOServo"]:
@@ -328,6 +329,7 @@ class PDOMap:
             item: Item to be added.
         """
         self.__check_servo_is_in_preoperational_state()
+        self.__is_dirty = True
         self.__items.append(item)
 
     def add_registers(
@@ -346,6 +348,7 @@ class PDOMap:
             registers: Register object or list of Registers.
         """
         self.__check_servo_is_in_preoperational_state()
+        self.__is_dirty = True
         if not isinstance(registers, list):
             registers = [registers]
         for register in registers:
@@ -497,6 +500,7 @@ class PDOMap:
         value: bytes,
         map_obj: "CanOpenObject",
         dictionary: "CanopenDictionary",
+        is_dirty: bool,
     ) -> PDO_MAP_TYPE:
         """Create a PDOMap from the full pdo value (accessed via complete access).
 
@@ -504,11 +508,12 @@ class PDOMap:
             value: Value of the pdo mapping in bytes.
             map_obj: Mapping Canopen object.
             dictionary: Canopen dictionary to retrieve the registers.
+            is_dirty: If the map has been modified since last read and not written to the slave.
 
         Returns:
             PDOMap instance.
         """
-        pdo_map = cls()
+        pdo_map = cls(is_dirty=is_dirty)
         pdo_map.map_object = map_obj
 
         # First element of 8 bits, indicates the number of elements in the mapping.
@@ -523,6 +528,8 @@ class PDOMap:
             )
             item = cls._PDO_MAP_ITEM_CLASS.from_register_mapping(item_map, dictionary)
             pdo_map.add_item(item)
+
+        pdo_map.__is_dirty = False
 
         return pdo_map
 
@@ -541,6 +548,15 @@ class PDOMap:
             raise ValueError("The map_object must be set to check if the map is editable")
 
         return self.map_object.registers[0].access.allows_write
+
+    @property
+    def is_dirty(self) -> bool:
+        """Check if the PDOMap has been modified since last read and not written to the slave.
+
+        Returns:
+            bool: True if the PDOMap is dirty, False otherwise.
+        """
+        return self.__is_dirty
 
     def write_to_slave(
         self, max_pdo_items_for_padding: Optional[int] = None, padding: bool = False
@@ -578,6 +594,7 @@ class PDOMap:
             unused_items = max_pdo_items_for_padding - len(self.__items)
             value += b"\x00" * (unused_items * MAP_REGISTER_BYTES)
         self.__slave.write_complete_access(reg, value)
+        self.__is_dirty = False
 
     def set_item_bytes(self, data_bytes: bytes) -> None:
         """Set the items raw data from a byte array.
@@ -748,7 +765,7 @@ class PDOServo(Servo):
         self.write(self.ETG_COMMS_RPDO_ASSIGN_TOTAL, len(self._rpdo_maps), subnode=0)
         rpdo_assigns = b""
         for rpdo_map in self._rpdo_maps.values():
-            if rpdo_map.is_editable:
+            if rpdo_map.is_editable and rpdo_map.is_dirty:
                 rpdo_map.write_to_slave()
             rpdo_assigns += rpdo_map.map_register_index_bytes
         self.write_complete_access(self.ETG_COMMS_RPDO_ASSIGN_1, rpdo_assigns, subnode=0)
@@ -774,7 +791,7 @@ class PDOServo(Servo):
         self.write(self.ETG_COMMS_TPDO_ASSIGN_TOTAL, len(self._tpdo_maps), subnode=0)
         tpdo_assigns = b""
         for tpdo_map in self._tpdo_maps.values():
-            if tpdo_map.is_editable:
+            if tpdo_map.is_editable and tpdo_map.is_dirty:
                 tpdo_map.write_to_slave()
             tpdo_assigns += tpdo_map.map_register_index_bytes
         self.write_complete_access(self.ETG_COMMS_TPDO_ASSIGN_1, tpdo_assigns, subnode=0)
