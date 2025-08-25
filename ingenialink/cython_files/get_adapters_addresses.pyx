@@ -23,10 +23,15 @@ from libc.stdlib cimport malloc, free
 import dataclasses
 import cython
 from libc.string cimport strlen
+from libc.stddef cimport wchar_t
 from libc.stdint cimport uint16_t, uint32_t, uint8_t, int32_t, uint64_t
+from cpython.unicode cimport PyUnicode_FromWideChar
+import logging
 
 _MAX_TRIES = 3
 _WORKING_BUFFER_SIZE = 15000
+
+logger = logging.getLogger(__name__)
 
 cdef extern from "winerror.h":
     enum:
@@ -131,7 +136,7 @@ class CyFirstPrefix:
 @cython.cclass
 @dataclasses.dataclass
 class CyFirstDnsSuffix:
-    String: list[str]
+    String: str
 
 @cython.cclass
 @dataclasses.dataclass
@@ -184,131 +189,226 @@ class CyAdapter:
     Dhcpv6Iaid: int
     FirstDnsSuffix: list[CyFirstDnsSuffix]
 
-cdef _pwchar_to_str(WCHAR* wide_str):
+cdef _pwchar_to_str(WCHAR* wide_str, bint safe_parse=True):
     if wide_str is NULL:
         return None
     
     cdef int length = 0
-    while wide_str[length] != 0:
-        length += 1
-    return (<char *>wide_str)[:length * 2].decode('utf-16le')
+    try:
+       return PyUnicode_FromWideChar(<wchar_t*>wide_str, -1)
+    except Exception as e:
+        if safe_parse:
+            logger.warning(f"Exception in _pwchar_to_str: {e}")
+            return None
+        raise e
 
-cdef CySocketAddress _parse_socket_address(SOCKET_ADDRESS socket_address):
+cdef CySocketAddress _parse_socket_address(SOCKET_ADDRESS socket_address, bint safe_parse=True):
     if socket_address.lpSockaddr == NULL:
-        lpSockaddr = CylpSockaddr(sa_data=None, sa_family=None)
-    else:
+        return CySocketAddress(
+            lpSockaddr=CylpSockaddr(sa_data=None, sa_family=None),
+            iSockaddrLength=socket_address.iSockaddrLength,
+        )
+    
+    try:
         lpSockaddr = CylpSockaddr(sa_data=socket_address.lpSockaddr.sa_data[:14], sa_family=socket_address.lpSockaddr.sa_family)
-    return CySocketAddress(
-        lpSockaddr=lpSockaddr,
-        iSockaddrLength=socket_address.iSockaddrLength,
-    )
+        return CySocketAddress(
+            lpSockaddr=lpSockaddr,
+            iSockaddrLength=socket_address.iSockaddrLength,
+        )
+    except Exception as e:
+        if safe_parse:
+            logger.warning(f"Exception in _parse_socket_address: {e}")
+            lpSockaddr = CylpSockaddr(sa_data=None, sa_family=None)
+            return CySocketAddress(
+                lpSockaddr=CylpSockaddr(sa_data=None, sa_family=None),
+                iSockaddrLength=socket_address.iSockaddrLength,
+            )
+        else:
+            raise e
 
-cdef list[CyFirstUnicastAddress] _parse_unicast_address(IP_ADAPTER_UNICAST_ADDRESS_LH* data):
+cdef list[CyFirstUnicastAddress] _parse_unicast_address(IP_ADAPTER_UNICAST_ADDRESS_LH* data, bint safe_parse=True):
     cdef IP_ADAPTER_UNICAST_ADDRESS_LH* current_data = data
     parsed_data = []
 
-    while current_data:
-        address = CyFirstUnicastAddress(
-            Alignment=current_data.Alignment,
-            Length=current_data.Length,
-            Flags=current_data.Flags,
-            Address=_parse_socket_address(current_data.Address),
-            PrefixOrigin=<int>current_data.PrefixOrigin,
-            SuffixOrigin=<int>current_data.SuffixOrigin,
-            DadState=<int>current_data.DadState,
-            ValidLifetime=current_data.ValidLifetime,
-            PreferredLifetime=current_data.PreferredLifetime,
-            LeaseLifetime=current_data.LeaseLifetime,
-            OnLinkPrefixLength=current_data.OnLinkPrefixLength,
-        )
-        parsed_data.append(address)
-        current_data = current_data.Next
-    return parsed_data
+    try:
+        while current_data:
+            address = CyFirstUnicastAddress(
+                Alignment=current_data.Alignment,
+                Length=current_data.Length,
+                Flags=current_data.Flags,
+                Address=_parse_socket_address(current_data.Address, False),
+                PrefixOrigin=<int>current_data.PrefixOrigin,
+                SuffixOrigin=<int>current_data.SuffixOrigin,
+                DadState=<int>current_data.DadState,
+                ValidLifetime=current_data.ValidLifetime,
+                PreferredLifetime=current_data.PreferredLifetime,
+                LeaseLifetime=current_data.LeaseLifetime,
+                OnLinkPrefixLength=current_data.OnLinkPrefixLength,
+            )
+            parsed_data.append(address)
+            current_data = current_data.Next
+        return parsed_data
+    except Exception as e:
+        if safe_parse:
+            logger.warning(f"Exception in _parse_unicast_address: {e}")
+            return []
+        raise e
 
 ctypedef fused AnycastMulticastAddress:
     IP_ADAPTER_ANYCAST_ADDRESS_XP
     IP_ADAPTER_MULTICAST_ADDRESS_XP
 
-cdef list[CyFirstAnycastMulticastAddress] _parse_anycast_multicast_address(AnycastMulticastAddress* data):
+cdef list[CyFirstAnycastMulticastAddress] _parse_anycast_multicast_address(AnycastMulticastAddress* data, bint safe_parse=True):
     cdef AnycastMulticastAddress* current_data = data
     parsed_data = []
 
-    while current_data:
-        address = CyFirstAnycastMulticastAddress(
-            Alignment=current_data.Alignment,
-            Length=current_data.Length,
-            Flags=current_data.Flags,
-            Address=_parse_socket_address(current_data.Address),
-        )
-        parsed_data.append(address)
-        current_data = current_data.Next
-    return parsed_data
+    try:
+        while current_data:
+            address = CyFirstAnycastMulticastAddress(
+                Alignment=current_data.Alignment,
+                Length=current_data.Length,
+                Flags=current_data.Flags,
+                Address=_parse_socket_address(current_data.Address, False),
+            )
+            parsed_data.append(address)
+            current_data = current_data.Next
+        return parsed_data
+    except Exception as e:
+        if safe_parse:
+            logger.warning(f"Exception in _parse_anycast_multicast_address: {e}")
+            return []
+        raise e
 
 ctypedef fused AnyServerAddress:
     IP_ADAPTER_DNS_SERVER_ADDRESS_XP
     IP_ADAPTER_WINS_SERVER_ADDRESS_LH
     IP_ADAPTER_GATEWAY_ADDRESS_LH
 
-cdef list[CyFirstAnyServerAddress] _parse_any_server_address(AnyServerAddress* data):
+cdef list[CyFirstAnyServerAddress] _parse_any_server_address(AnyServerAddress* data, bint safe_parse=True):
     cdef AnyServerAddress* current_data = data
     parsed_data = []
 
-    while current_data:
-        address = CyFirstAnyServerAddress(
-            Alignment=current_data.Alignment,
-            Length=current_data.Length,
-            Reserved=current_data.Reserved,
-            Address=_parse_socket_address(current_data.Address),
-        )
-        parsed_data.append(address)
-        current_data = current_data.Next
-    return parsed_data
+    try:
+        while current_data:
+            address = CyFirstAnyServerAddress(
+                Alignment=current_data.Alignment,
+                Length=current_data.Length,
+                Reserved=current_data.Reserved,
+                Address=_parse_socket_address(current_data.Address, False),
+            )
+            parsed_data.append(address)
+            current_data = current_data.Next
+        return parsed_data
+    except Exception as e:
+        if safe_parse:
+            logger.warning(f"Exception in _parse_any_server_address: {e}")
+            return []
+        raise e
 
-cdef list[CyFirstPrefix] _parse_adapter_prefix(IP_ADAPTER_PREFIX_XP* data):
+cdef list[CyFirstPrefix] _parse_adapter_prefix(IP_ADAPTER_PREFIX_XP* data, bint safe_parse=True):
     cdef IP_ADAPTER_PREFIX_XP* current_data = data
     parsed_data = []
 
-    while current_data:
-        prefix = CyFirstPrefix(
-            Alignment=current_data.Alignment,
-            Length=current_data.Length,
-            Flags=current_data.Flags,
-            Address=_parse_socket_address(current_data.Address),
-            PrefixLength=current_data.PrefixLength
-        )
-        parsed_data.append(prefix)
-        current_data = current_data.Next
-    return parsed_data
+    try:
+        while current_data:
+            prefix = CyFirstPrefix(
+                Alignment=current_data.Alignment,
+                Length=current_data.Length,
+                Flags=current_data.Flags,
+                Address=_parse_socket_address(current_data.Address, False),
+                PrefixLength=current_data.PrefixLength
+            )
+            parsed_data.append(prefix)
+            current_data = current_data.Next
+        return parsed_data
+    except Exception as e:
+        if safe_parse:
+            logger.warning(f"Exception in _parse_adapter_prefix: {e}")
+            return []
+        raise e
 
-cdef list[CyFirstDnsSuffix] _parse_dns_suffix(IP_ADAPTER_DNS_SUFFIX* data):
+cdef list[CyFirstDnsSuffix] _parse_dns_suffix(IP_ADAPTER_DNS_SUFFIX* data, bint safe_parse=True):
     cdef IP_ADAPTER_DNS_SUFFIX* current_data = data
     parsed_data = []
 
-    while current_data:
-        parsed_data.append(
-            CyFirstDnsSuffix(
-                String=[current_data.String[i].decode("utf-8") for i in range(MAX_DNS_SUFFIX_STRING_LENGTH) if current_data.String[i] is not None]
-            )
-        )
-        current_data = current_data.Next
-    return parsed_data
+    try:
+        while current_data:
+            dns_suffix_string = _pwchar_to_str(current_data.String, False)
+            if dns_suffix_string: 
+                parsed_data.append(
+                    CyFirstDnsSuffix(String=dns_suffix_string)
+                )
+            current_data = current_data.Next
+        return parsed_data
+    except Exception as e:
+        if safe_parse:
+            return []
+        raise e
 
-cdef str _parse_physical_address(uint8_t* physical_adress, uint32_t physical_adress_length):
+cdef str _parse_physical_address(uint8_t* physical_adress, uint32_t physical_adress_length, bint safe_parse=True):
     if physical_adress_length == 0:
         return ""
     result = ""
-    for i in range(physical_adress_length):
-        if i == (physical_adress_length - 1):
-            result += "%.2X" % physical_adress[i]
-        else:
-            result += "%.2X-" % physical_adress[i]
-    return result
 
-cdef str _parse_network_guid(NET_IF_NETWORK_GUID guid):
-    parsed_guid = f"{guid.Data1:08x}-{guid.Data2:04x}-{guid.Data3:04x}-"
-    for i in range(8):
-        parsed_guid += f"{guid.Data4[i]:02x}"
-    return parsed_guid
+    try:
+        for i in range(physical_adress_length):
+            if i == (physical_adress_length - 1):
+                result += "%.2X" % physical_adress[i]
+            else:
+                result += "%.2X-" % physical_adress[i]
+        return result
+    except Exception as e:
+        if safe_parse:
+            logger.warning(f"Exception in _parse_physical_address: {e}")
+            return ""
+        raise e
+
+cdef str _parse_network_guid(NET_IF_NETWORK_GUID guid, bint safe_parse=True):
+    try:
+        parsed_guid = f"{guid.Data1:08x}-{guid.Data2:04x}-{guid.Data3:04x}-"
+        for i in range(8):
+            parsed_guid += f"{guid.Data4[i]:02x}"
+        return parsed_guid
+    except Exception as e:
+        if safe_parse:
+            logger.warning(f"Exception in _parse_network_guid: {e}")
+            return ""
+        raise e
+
+cdef str _parse_adapter_name(char* value, str encoding="utf-8", bint safe_parse=True):
+    try:
+        return value.decode(encoding)
+    except Exception as e:
+        if safe_parse:
+            logger.warning(f"Exception in _parse_adapter_name: {e}")
+            return ""
+        raise e
+
+cdef str _parse_zone_indices(uint32_t* zone_indices_array, bint safe_parse=True):
+    try:
+        return ' '.join('%lx' % zone_indices_array[i] for i in range(16))
+    except Exception as e:
+        if safe_parse:
+            logger.warning(f"Exception in _parse_zone_indices: {e}")
+            return ""
+        raise e
+
+cdef str _parse_dhcpv6_client_duid(uint8_t* duid_array, uint32_t duid_length, bint safe_parse=True):
+    try:
+        if duid_length == 0:
+            return ""
+        result = ""
+        for i in range(duid_length):
+            if i == (duid_length - 1):
+                result += "%.2X" % duid_array[i]
+            else:
+                result += "%.2X-" % duid_array[i]
+        return result
+    except Exception as e:
+        if safe_parse:
+            logger.warning(f"Exception in _parse_dhcpv6_client_duid: {e}")
+            return ""
+        raise e
 
 cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
     cdef PIP_ADAPTER_ADDRESSES_LH current_adapter = adapters_addresses
@@ -319,7 +419,7 @@ cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
             Alignment=current_adapter.Alignment,
             Length=current_adapter.Length,
             IfIndex=current_adapter.IfIndex,
-            AdapterName=current_adapter.AdapterName.decode("utf-8"),
+            AdapterName=_parse_adapter_name(current_adapter.AdapterName),
             FirstUnicastAddress=_parse_unicast_address(current_adapter.FirstUnicastAddress),
             FirstAnycastAddress=_parse_anycast_multicast_address(current_adapter.FirstAnycastAddress),
             FirstMulticastAddress=_parse_anycast_multicast_address(current_adapter.FirstMulticastAddress),
@@ -344,7 +444,7 @@ cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
             IfType=current_adapter.IfType,
             OperStatus=<int>current_adapter.OperStatus,
             Ipv6IfIndex=current_adapter.Ipv6IfIndex,
-            ZoneIndices=' '.join('%lx' % current_adapter.ZoneIndices[i] for i in range(16)),
+            ZoneIndices=_parse_zone_indices(<uint32_t*>current_adapter.ZoneIndices),
             FirstPrefix=_parse_adapter_prefix(current_adapter.FirstPrefix),
             TransmitLinkSpeed=current_adapter.TransmitLinkSpeed,
             ReceiveLinkSpeed=current_adapter.ReceiveLinkSpeed,
@@ -359,7 +459,7 @@ cdef list _parse_adapters(PIP_ADAPTER_ADDRESSES_LH adapters_addresses):
             ConnectionType=<int>current_adapter.ConnectionType,
             TunnelType=<int>current_adapter.TunnelType,
             Dhcpv6Server=_parse_socket_address(current_adapter.Dhcpv6Server),
-            Dhcpv6ClientDuid=current_adapter.Dhcpv6ClientDuid.decode("utf-8"),
+            Dhcpv6ClientDuid=_parse_dhcpv6_client_duid(current_adapter.Dhcpv6ClientDuid, current_adapter.Dhcpv6ClientDuidLength),
             Dhcpv6ClientDuidLength=current_adapter.Dhcpv6ClientDuidLength,
             Dhcpv6Iaid=current_adapter.Dhcpv6Iaid,
             FirstDnsSuffix=_parse_dns_suffix(current_adapter.FirstDnsSuffix)
@@ -435,3 +535,22 @@ def get_adapters_addresses(
     for adapter_family in adapter_families:
         adapters.extend(_get_adapters_addresses_by_family(adapter_family, scan_flags))
     return adapters
+
+def get_adapter(ifname: str, adapter_family: AdapterFamily = AdapterFamily.UNSPEC, scan_flags: list[ScanFlags] | ScanFlags = [ScanFlags.INCLUDE_PREFIX, ScanFlags.INCLUDE_ALL_INTERFACES]) -> CyAdapter | None:
+    """Retrieves the address of a specific adapter by its name.
+
+    Args:
+        ifname: The name of the adapter to retrieve.
+            Should match the AdapterName field in the CyAdapter structure, ex:
+                AdapterName='{129BCE68-6859-4A78-B17E-6A80054E9F98}'
+        adapter_family: The address family to filter by (default is UNSPEC).
+        scan_flags: Flags to control the scanning behavior (default includes prefix).
+
+    Returns:
+        The adapter information or None if not found.
+    """
+    adapters = get_adapters_addresses(adapter_families=adapter_family, scan_flags=scan_flags)
+    for adapter in adapters:
+        if adapter.AdapterName == ifname:
+            return adapter
+    return None
