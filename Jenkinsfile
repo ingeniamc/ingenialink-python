@@ -182,6 +182,9 @@ pipeline {
                             RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
                         } else if (env.PYTHON_VERSIONS == "MAX") {
                             RUN_PYTHON_VERSIONS = PYTHON_VERSION_MAX
+                            // Change the default python version so that virtual environments will match
+                            // the selected python version
+                            DEFAULT_PYTHON_VERSION = PYTHON_VERSION_MAX
                         } else if (env.PYTHON_VERSIONS == "All") {
                             RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                         } else { // Branch-indexing/timer
