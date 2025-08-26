@@ -145,7 +145,7 @@ def runTestHW(markers, setup_name, extra_args = "") {
 }
 
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
-CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * *''' : ""
+CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
 
 pipeline {
     agent none
@@ -187,12 +187,8 @@ pipeline {
                             DEFAULT_PYTHON_VERSION = PYTHON_VERSION_MAX
                         } else if (env.PYTHON_VERSIONS == "All") {
                             RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
-                        } else { // Branch-indexing/timer
-                            if (env.BRANCH_NAME == 'develop') {
-                                RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
-                            } else {
-                                RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
-                            }
+                        } else { // Branch-indexing
+                            RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
                         }
                     }
 
