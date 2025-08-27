@@ -157,7 +157,7 @@ pipeline {
         timestamps()
     }
     triggers {
-        cron(CRON_SETTINGS)
+        parameterizedCron(CRON_SETTINGS)
     }
     parameters {
         choice(
