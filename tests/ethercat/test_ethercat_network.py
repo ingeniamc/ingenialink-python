@@ -75,10 +75,10 @@ def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loadi
 
 
 @pytest.mark.ethercat
-def test_find_adapters(read_config):
+def test_find_adapters(setup_descriptor):
     """Test that find_adapters returns a list of EtherCATNetwork instances."""
     adapter_found = False
-    ifname = read_config["ethercat"]["ifname"]
+    ifname = setup_descriptor.ifname
     for adapter in EthercatNetwork.find_adapters():
         _, interface_guid, _ = adapter
         interface_guid = f"\\Device\\NPF_{interface_guid}"
