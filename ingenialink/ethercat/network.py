@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
 import ingenialogger
 
+from ingenialink.pdo_network_manager import PDONetworkManager
 from ingenialink.servo import Servo
 from ingenialink.utils.timeout import Timeout
 
@@ -219,6 +220,14 @@ class EthercatNetwork(Network):
         self._lock = threading.Lock()
         set_network_reference(network=self)
 
+        # Create the PDO manager
+        self._pdo_manager = PDONetworkManager(self)
+        # Subscribe to PDO exceptions in the network
+        self.__exceptions_in_thread: int = 0
+        self._pdo_manager.subscribe_to_exceptions(self._pdo_thread_exception_handler)
+        # List of subscribers to PDO thread status
+        self._pdo_thread_status_observers: list[Callable[[bool], None]] = []
+
     @staticmethod
     def pysoem_available() -> bool:
         """Check if pysoem is available.
@@ -252,6 +261,79 @@ class EthercatNetwork(Network):
                 cast("str", adapter.desc.decode("utf-8")),
             ))
         return adapters
+
+    @property
+    def pdo_manager(self) -> PDONetworkManager:
+        """Returns the PDO manager."""
+        return self._pdo_manager
+
+    def subscribe_to_pdo_thread_status(self, callback: Callable[[bool], None]) -> None:
+        """Subscribe be notified when the PDO process data thread status changes.
+
+        Args:
+            callback: Callback function.
+        """
+        if callback in self._pdo_thread_status_observers:
+            return
+        self._pdo_thread_status_observers.append(callback)
+
+    def unsubscribe_from_pdo_thread_status(self, callback: Callable[[bool], None]) -> None:
+        """Unsubscribe from PDO thread status changes.
+
+        Args:
+            callback: Callback function.
+        """
+        if callback in self._pdo_thread_status_observers:
+            self._pdo_thread_status_observers.remove(callback)
+
+    def activate_pdos(
+        self, refresh_rate: Optional[float] = None, watchdog_timeout: Optional[float] = None
+    ) -> None:
+        """Start PDOs and notify the status to the observers.
+
+        Args:
+            refresh_rate: Determines how often (seconds) the PDO values will be updated.
+            watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
+             to the refresh rate.
+        """
+        n_exceptions = self.__exceptions_in_thread
+        self.pdo_manager.start_pdos(refresh_rate=refresh_rate, watchdog_timeout=watchdog_timeout)
+        # Make sure that there were no exceptions while starting the PDOs to notify activation
+        if self.__exceptions_in_thread == n_exceptions:
+            self._notify_pdo_thread_status(True)
+        else:
+            logger.error("There was an exception starting the PDOs, they have not been activated.")
+
+    def deactivate_pdos(self) -> None:
+        """Stop PDOs and notify the status to the observers."""
+        n_exceptions = self.__exceptions_in_thread
+        self.pdo_manager.stop_pdos()
+        # Make sure that there were no exceptions while stopping the PDOs to notify deactivation
+        if self.__exceptions_in_thread == n_exceptions:
+            self._notify_pdo_thread_status(False)
+        else:
+            logger.error(
+                "There was an exception stopping the PDOs, they have not been deactivated."
+            )
+
+    def _pdo_thread_exception_handler(self, exc: Exception) -> None:
+        """Callback method for the PDO thread exceptions.
+
+        Args:
+            exc: The exception that occurred.
+        """
+        self.__exceptions_in_thread += 1
+        logger.error(f"An exception occurred during the PDO exchange: {exc}")
+        self._notify_pdo_thread_status(False)
+
+    def _notify_pdo_thread_status(self, status: bool) -> None:
+        """Notify changes in PDO thread status.
+
+        Args:
+            status: New status of the PDO thread. True if the PDO thread is active, False otherwise.
+        """
+        for callback in self._pdo_thread_status_observers:
+            callback(status)
 
     def update_sdo_timeout(self, sdo_read_timeout: int, sdo_write_timeout: int) -> None:
         """Update SDO timeouts for all the drives.

@@ -61,6 +61,10 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
     runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION)
     def versions = pythonVersionList?.trim() ? pythonVersionList : RUN_PYTHON_VERSIONS
     def pythonVersions = versions.split(',')
+    // Ensure DEFAULT_PYTHON_VERSION is included if not already present
+    if (!pythonVersions.contains(DEFAULT_PYTHON_VERSION)) {
+        pythonVersions = pythonVersions + [DEFAULT_PYTHON_VERSION]
+    }
     pythonVersions.each { version ->
         def venvName = ".venv${version}"
         def cdCmd = workingDir ? "cd ${workingDir}" : ""
@@ -145,7 +149,7 @@ def runTestHW(markers, setup_name, extra_args = "") {
 }
 
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
-CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * *''' : ""
+CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
 
 pipeline {
     agent none
@@ -153,7 +157,7 @@ pipeline {
         timestamps()
     }
     triggers {
-        cron(CRON_SETTINGS)
+        parameterizedCron(CRON_SETTINGS)
     }
     parameters {
         choice(
@@ -177,15 +181,15 @@ pipeline {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                     } else {
                         if (env.PYTHON_VERSIONS == "MIN_MAX") {
-                          RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
+                            RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
                         } else if (env.PYTHON_VERSIONS == "MIN") {
-                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
+                            RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
                         } else if (env.PYTHON_VERSIONS == "MAX") {
-                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MAX
+                            RUN_PYTHON_VERSIONS = PYTHON_VERSION_MAX
                         } else if (env.PYTHON_VERSIONS == "All") {
-                          RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
+                            RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                         } else { // Branch-indexing
-                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
+                            RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
                         }
                     }
 
@@ -458,7 +462,7 @@ pipeline {
                         }
                         stage('Publish Novanta PyPi') {
                             steps {
-                                publishNovantaPyPi('dist/*-win_amd64.whl')
+                                publishNovantaPyPi('dist/*')
                             }
                         }
                         stage('Publish PyPi') {

@@ -18,7 +18,7 @@ from ingenialink.utils._utils import (
 )
 
 if TYPE_CHECKING:
-    from ingenialink.dictionary import CanOpenObject
+    from ingenialink.dictionary import CanOpenObject, Dictionary
 
 BIT_ENDIAN: Literal["little"] = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
@@ -27,6 +27,8 @@ PADDING_REGISTER_IDENTIFIER = "PADDING"
 
 MAP_REGISTER_BYTES = 4
 """Number of bytes used to store each mapping register information."""
+
+PDO_MAP_ITEM_TYPE = TypeVar("PDO_MAP_ITEM_TYPE", bound="PDOMapItem")
 
 
 class PDOMapItem:
@@ -319,6 +321,44 @@ class PDOMap:
         item = self._PDO_MAP_ITEM_CLASS(register, size_bits)
         return item
 
+    @staticmethod
+    def create_item_from_register_uid(
+        uid: str,
+        dictionary: "Dictionary",
+        axis: Optional[int] = None,
+        value: Optional[Union[int, float]] = None,
+    ) -> Union[RPDOMapItem, TPDOMapItem]:
+        """Create a PDOMapItem from a register uid.
+
+        Args:
+            uid: register uid to be mapped.
+            dictionary: servo dictionary to retrieve the registers.
+            axis: servo axis. Defaults to None.
+                Should be specified if multiaxis, None otherwise.
+            value: Initial value for an RPDO register.
+
+        Returns:
+            PDOMapItem instance.
+
+        Raises:
+            ValueError: If there is a type mismatch retrieving the register object.
+            ValueError: if the pdo access type is not supported.
+            AttributeError: If an initial value is not provided for an RPDO register.
+        """
+        # Retrieve the register from the dictionary using the uid
+        register = dictionary.get_register(uid, axis)
+        if not isinstance(register, (EthercatRegister, CanopenRegister)):
+            raise ValueError("Expected register type to be EthercatRegister or CanopenRegister.")
+        if register.pdo_access == RegCyclicType.RX:
+            pdo_map_item = RPDOMapItem(register)
+            if value is None:
+                raise AttributeError("A initial value is required for a RPDO.")
+            pdo_map_item.value = value
+            return pdo_map_item
+        elif register.pdo_access == RegCyclicType.TX:
+            return TPDOMapItem(register)
+        raise ValueError(f"Unexpected PDO access type: {register.pdo_access}")
+
     def add_item(self, item: PDOMapItem) -> None:
         """Append a new item.
 
@@ -326,8 +366,16 @@ class PDOMap:
 
         Args:
             item: Item to be added.
+
+        Raises:
+            ValueError: If the item is not of the expected type.
         """
         self.__check_servo_is_in_preoperational_state()
+        if not isinstance(item, self._PDO_MAP_ITEM_CLASS):
+            raise ValueError(
+                f"Expected {self._PDO_MAP_ITEM_CLASS}, got {type(item)}. "
+                "Cannot add item to the map."
+            )
         self.__items.append(item)
 
     def add_registers(
@@ -518,6 +566,31 @@ class PDOMap:
             item = cls._PDO_MAP_ITEM_CLASS.from_register_mapping(item_map, dictionary)
             pdo_map.add_item(item)
 
+        return pdo_map
+
+    @classmethod
+    def from_pdo_items(
+        cls: type[PDO_MAP_TYPE], items: Union[PDO_MAP_ITEM_TYPE, list[PDO_MAP_ITEM_TYPE]]
+    ) -> PDO_MAP_TYPE:
+        """Create a PDOMap from a list of PDOMapItems.
+
+        Args:
+            items: List of PDOMapItems.
+            dictionary: Canopen dictionary to retrieve the registers.
+
+        Returns:
+            PDOMap instance.
+
+        Raises:
+            ValueError: If the items are not of the expected type.
+        """
+        pdo_map = cls()
+        if not isinstance(items, list):
+            items = [items]
+        for item in items:
+            if not isinstance(item, cls._PDO_MAP_ITEM_CLASS):
+                raise ValueError(f"Expected item to be of type {cls._PDO_MAP_ITEM_CLASS}.")
+            pdo_map.add_item(item)
         return pdo_map
 
     def write_to_slave(
