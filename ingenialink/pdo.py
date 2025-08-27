@@ -529,8 +529,6 @@ class PDOMap:
             item = cls._PDO_MAP_ITEM_CLASS.from_register_mapping(item_map, dictionary)
             pdo_map.add_item(item)
 
-        pdo_map.__is_dirty = False
-
         return pdo_map
 
     @property
