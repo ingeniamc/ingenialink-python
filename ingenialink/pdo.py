@@ -561,7 +561,7 @@ class PDOMap:
         Returns:
             PDOMap instance.
         """
-        pdo_map = cls(is_dirty=is_dirty)
+        pdo_map = cls()
         pdo_map.map_object = map_obj
 
         # First element of 8 bits, indicates the number of elements in the mapping.
@@ -576,6 +576,8 @@ class PDOMap:
             )
             item = cls._PDO_MAP_ITEM_CLASS.from_register_mapping(item_map, dictionary)
             pdo_map.add_item(item)
+
+        pdo_map.__is_dirty = is_dirty
 
         return pdo_map
 
