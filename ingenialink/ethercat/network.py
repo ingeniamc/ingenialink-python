@@ -535,7 +535,6 @@ class EthercatNetwork(Network):
             timeout: timeout in seconds to reach Op state, 2.0 seconds by default.
 
         Raises:
-            ILError: If the RPDO values are not set before starting the PDO exchange process.
             ILStateError: If slaves can not reach SafeOp or Op state.
         """
         op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
