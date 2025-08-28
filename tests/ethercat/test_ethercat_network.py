@@ -74,6 +74,20 @@ def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loadi
         net.load_firmware("dummy_file.lfu", False, slave_id=slave_id)
 
 
+@pytest.mark.ethercat
+def test_find_adapters(setup_descriptor):
+    """Test that find_adapters returns a list of EtherCATNetwork instances."""
+    adapter_found = False
+    ifname = setup_descriptor.ifname
+    for adapter in EthercatNetwork.find_adapters():
+        _, interface_guid, _ = adapter
+        interface_guid = f"\\Device\\NPF_{interface_guid}"
+        if interface_guid == ifname:
+            adapter_found = True
+            break
+    assert adapter_found is True
+
+
 @pytest.mark.no_connection
 def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_loading):
     net, _ = mocked_network_for_firmware_loading
