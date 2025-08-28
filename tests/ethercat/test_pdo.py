@@ -453,7 +453,7 @@ def test_read_tpdo_map_from_slave(servo: EthercatServo, from_uid: bool):
     assert len(pdo_map.map_object.registers) == 16
 
 
-@pytest.mark.no_connection
+@pytest.mark.ethercat
 def test_map_register_items(servo: EthercatServo):
     pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1")
 
