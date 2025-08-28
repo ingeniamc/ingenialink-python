@@ -544,7 +544,7 @@ class EthercatNetwork(Network):
             return
         try:
             for servo in op_servo_list:
-                for rpdo_map in servo._rpdo_maps:
+                for rpdo_map in servo._rpdo_maps.values():
                     rpdo_map.get_item_bytes()
         except ILError as e:
             raise ILError(

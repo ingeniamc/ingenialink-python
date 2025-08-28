@@ -118,8 +118,7 @@ def test_start_pdos(
         assert pytest.approx(tpdo_values[a], abs=2) == s.read("CL_POS_FBK_VALUE")
         # Restore the initial operation mode
         s.write("DRV_OP_CMD", initial_operation_modes[a])
-        s.remove_rpdo_map(rpdo_map_index=0)
-        s.remove_tpdo_map(tpdo_map_index=0)
+        s.reset_pdo_mapping()
 
 
 @pytest.mark.ethercat
