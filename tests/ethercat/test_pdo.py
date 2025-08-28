@@ -1,5 +1,6 @@
 import contextlib
 import time
+from typing import TYPE_CHECKING, Optional
 
 from bitarray import bitarray
 
@@ -14,10 +15,13 @@ from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILEcatStateError, ILError
-from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
+from ingenialink.pdo import PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
 from ingenialink.servo import DictionaryFactory
 from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_length_bits
+
+if TYPE_CHECKING:
+    from ingenialink.dictionary import Dictionary
 
 TPDO_REGISTERS = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
 RPDO_REGISTERS = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
@@ -141,7 +145,7 @@ def test_pdo_item_register_mapping(open_dictionary, uid, expected_value):
 
 
 @pytest.mark.no_connection
-def test_pdo_create_item(open_dictionary):
+def test_pdo_create_item(open_dictionary: "Dictionary"):
     ethercat_dictionary = open_dictionary
     rpdo_map = RPDOMap()
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
@@ -151,17 +155,106 @@ def test_pdo_create_item(open_dictionary):
 
 
 @pytest.mark.no_connection
-def test_pdo_add_item(open_dictionary):
-    ethercat_dictionary = open_dictionary
-    rpdo_map = RPDOMap()
-    register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
+def test_create_rpdo_item(open_dictionary: "Dictionary") -> None:
+    position_set_point_initial_value = 100
+    position_set_point = PDOMap.create_item_from_register_uid(
+        uid="CL_POS_SET_POINT_VALUE",
+        dictionary=open_dictionary,
+        value=position_set_point_initial_value,
+    )
+    assert isinstance(position_set_point, RPDOMapItem)
+    assert position_set_point.value == position_set_point_initial_value
 
-    assert len(rpdo_map.items) == 0
-    item = rpdo_map.create_item(register)
-    rpdo_map.add_item(item)
 
+@pytest.mark.no_connection
+def test_create_tpdo_item(open_dictionary: "Dictionary") -> None:
+    actual_position = PDOMap.create_item_from_register_uid(
+        uid="CL_POS_FBK_VALUE", dictionary=open_dictionary
+    )
+    assert isinstance(actual_position, TPDOMapItem)
+
+
+@pytest.mark.no_connection
+def test_create_rpdo_item_no_initial_value(open_dictionary: "Dictionary") -> None:
+    with pytest.raises(AttributeError):
+        PDOMap.create_item_from_register_uid("CL_POS_SET_POINT_VALUE", dictionary=open_dictionary)
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize(
+    "register, value, pdo_type",
+    [
+        ("CL_POS_FBK_VALUE", None, "tpdo"),
+        ("CL_VEL_SET_POINT_VALUE", 0, "rpdo"),
+    ],
+)
+def test_pdo_add_item(open_dictionary, register: str, value: Optional[int], pdo_type: str) -> None:
+    pdo_map = RPDOMap() if pdo_type == "rpdo" else TPDOMap()
+    assert len(pdo_map.items) == 0
+    item = PDOMap.create_item_from_register_uid(
+        uid=register, dictionary=open_dictionary, axis=SUBNODE, value=value
+    )
+    pdo_map.add_item(item)
+    assert len(pdo_map.items) == 1
+    assert pdo_map.items[0] == item
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize(
+    "register, value, pdo_type",
+    [
+        ("CL_POS_FBK_VALUE", None, "tpdo"),
+        ("CL_VEL_SET_POINT_VALUE", 0, "rpdo"),
+    ],
+)
+def test_pdo_add_item_exceptions(
+    open_dictionary, register: str, value: Optional[int], pdo_type: str
+) -> None:
+    pdo_map = RPDOMap() if pdo_type == "tpdo" else TPDOMap()
+    assert len(pdo_map.items) == 0
+    item = PDOMap.create_item_from_register_uid(
+        uid=register, dictionary=open_dictionary, axis=SUBNODE, value=value
+    )
+    with pytest.raises(ValueError):
+        pdo_map.add_item(item)
+
+
+@pytest.mark.no_connection
+def test_create_pdo_maps_single_item(open_dictionary: "Dictionary") -> None:
+    position_set_point = PDOMap.create_item_from_register_uid(
+        uid="CL_POS_SET_POINT_VALUE", dictionary=open_dictionary, value=0
+    )
+    actual_position = PDOMap.create_item_from_register_uid(
+        uid="CL_POS_FBK_VALUE", dictionary=open_dictionary
+    )
+    rpdo_map = RPDOMap.from_pdo_items(position_set_point)
+    tpdo_map = TPDOMap.from_pdo_items(actual_position)
+    assert isinstance(rpdo_map, RPDOMap)
     assert len(rpdo_map.items) == 1
-    assert rpdo_map.items[0] == item
+    assert position_set_point in rpdo_map.items
+    assert isinstance(tpdo_map, TPDOMap)
+    assert len(tpdo_map.items) == 1
+    assert actual_position in tpdo_map.items
+
+
+@pytest.mark.no_connection
+def test_create_pdo_maps_list_items(open_dictionary: "Dictionary") -> None:
+    rpdo_regs = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
+    tpdo_regs = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
+    rpdo_items = [
+        PDOMap.create_item_from_register_uid(rpdo_reg, dictionary=open_dictionary, value=0)
+        for rpdo_reg in rpdo_regs
+    ]
+    tpdo_items = [
+        PDOMap.create_item_from_register_uid(tpdo_reg, dictionary=open_dictionary)
+        for tpdo_reg in tpdo_regs
+    ]
+    rpdo_map = RPDOMap.from_pdo_items(rpdo_items)
+    tpdo_map = TPDOMap.from_pdo_items(tpdo_items)
+    assert isinstance(rpdo_map, RPDOMap)
+    assert len(rpdo_map.items) == len(rpdo_items)
+    assert isinstance(tpdo_map, TPDOMap)
+    assert len(tpdo_map.items) == len(tpdo_items)
 
 
 @pytest.mark.no_connection
@@ -750,3 +843,17 @@ def test_tpdo_map_set_items_bytes(create_pdo_map):
     tpdo_map.set_item_bytes(data_bytes)
     for idx, item in enumerate(tpdo_map.items):
         assert item.value == idx
+
+
+@pytest.mark.no_connection
+def test_create_empty_rpdo_map():
+    rpdo_map = RPDOMap()
+    assert isinstance(rpdo_map, RPDOMap)
+    assert len(rpdo_map.items) == 0
+
+
+@pytest.mark.no_connection
+def test_create_empty_tpdo_map():
+    tpdo_map = TPDOMap()
+    assert isinstance(tpdo_map, TPDOMap)
+    assert len(tpdo_map.items) == 0
