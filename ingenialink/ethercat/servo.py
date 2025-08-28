@@ -330,7 +330,7 @@ class EthercatServo(PDOServo):
         if isinstance(map_obj, str):
             map_obj = self.dictionary.get_object(map_obj, subnode)
         value = self.read_complete_access(map_obj, subnode, buffer_size)
-        return RPDOMap.from_pdo_value(value, map_obj, self.dictionary)
+        return RPDOMap.from_pdo_value(value, map_obj, self.dictionary, is_dirty=False)
 
     def read_tpdo_map_from_slave(
         self,
@@ -351,7 +351,7 @@ class EthercatServo(PDOServo):
         if isinstance(map_obj, str):
             map_obj = self.dictionary.get_object(map_obj, subnode)
         value = self.read_complete_access(map_obj, subnode, buffer_size)
-        return TPDOMap.from_pdo_value(value, map_obj, self.dictionary)
+        return TPDOMap.from_pdo_value(value, map_obj, self.dictionary, is_dirty=False)
 
     @override
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
