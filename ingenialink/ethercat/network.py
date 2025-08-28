@@ -542,14 +542,6 @@ class EthercatNetwork(Network):
         if not op_servo_list:
             logger.warning("There are no PDOs assigned to any connected slave.")
             return
-        try:
-            for servo in op_servo_list:
-                for rpdo_map in servo._rpdo_maps:
-                    rpdo_map.get_item_bytes()
-        except ILError as e:
-            raise ILError(
-                "The RPDO values should be set before starting the PDO exchange process."
-            ) from e
         # Configure the PDO maps
         self.config_pdo_maps()
 
