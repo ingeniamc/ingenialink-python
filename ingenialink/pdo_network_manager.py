@@ -267,7 +267,6 @@ class PDONetworkManager:
 
         Args:
             callback: Subscribed callback function.
-
         """
         if callback not in self._pdo_send_observers:
             return
@@ -278,7 +277,6 @@ class PDONetworkManager:
 
         Args:
             callback: Subscribed callback function.
-
         """
         if callback not in self._pdo_receive_observers:
             return
