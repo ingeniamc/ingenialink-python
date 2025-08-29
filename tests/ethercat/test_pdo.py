@@ -457,6 +457,7 @@ def test_read_tpdo_map_from_slave(servo: EthercatServo, from_uid: bool):
 def test_map_register_items(servo: EthercatServo):
     pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1")
 
+    pdo_map.clear()
     item1 = pdo_map.create_item(servo.dictionary.get_register("CL_POS_FBK_VALUE"))
     item2 = pdo_map.create_item(servo.dictionary.get_register("DRV_STATE_STATUS"))
     item3 = pdo_map.create_item(servo.dictionary.get_register("CL_TOR_FBK_VALUE"))

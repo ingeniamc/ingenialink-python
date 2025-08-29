@@ -403,6 +403,11 @@ class PDOMap:
             item = self.create_item(register)
             self.add_item(item)
 
+    def clear(self) -> None:
+        """Clear all items."""
+        self.__is_dirty = True
+        self.__items.clear()
+
     @property
     def items(self) -> list[PDOMapItem]:
         """List of items.
