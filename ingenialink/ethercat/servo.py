@@ -25,7 +25,7 @@ from ingenialink.constants import (
 from ingenialink.dictionary import CanOpenObject, Interface
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILEcatStateError, ILIOError
-from ingenialink.pdo import PDOServo, RPDOMap, TPDOMap
+from ingenialink.pdo import PDOMap, PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -92,6 +92,10 @@ class EthercatServo(PDOServo):
     DEFAULT_EEPROM_OPERATION_TIMEOUT_uS = 200_000
     DEFAULT_EEPROM_READ_BYTES_LENGTH = 2
 
+    # Default PDO maps to assign if not specified
+    DEFAULT_RPDO_MAP = "ETG_COMMS_RPDO_MAP1"
+    DEFAULT_TPDO_MAP = "ETG_COMMS_TPDO_MAP1"
+
     def __init__(
         self,
         slave: "CdefSlave",
@@ -126,9 +130,9 @@ class EthercatServo(PDOServo):
         self.stop_status_listener()
 
         # Remove the servo reference from the pdo maps
-        for rpdo_map in self._rpdo_maps:
+        for rpdo_map in self._rpdo_maps.values():
             rpdo_map.slave = None
-        for tpdo_map in self._tpdo_maps:
+        for tpdo_map in self._tpdo_maps.values():
             tpdo_map.slave = None
         self.__slave = None
         self._lock.release()
@@ -326,7 +330,7 @@ class EthercatServo(PDOServo):
         if isinstance(map_obj, str):
             map_obj = self.dictionary.get_object(map_obj, subnode)
         value = self.read_complete_access(map_obj, subnode, buffer_size)
-        return RPDOMap.from_pdo_value(value, map_obj, self.dictionary)
+        return RPDOMap.from_pdo_value(value, map_obj, self.dictionary, is_dirty=False)
 
     def read_tpdo_map_from_slave(
         self,
@@ -347,19 +351,52 @@ class EthercatServo(PDOServo):
         if isinstance(map_obj, str):
             map_obj = self.dictionary.get_object(map_obj, subnode)
         value = self.read_complete_access(map_obj, subnode, buffer_size)
-        return TPDOMap.from_pdo_value(value, map_obj, self.dictionary)
+        return TPDOMap.from_pdo_value(value, map_obj, self.dictionary, is_dirty=False)
 
     @override
     def set_pdo_map_to_slave(self, rpdo_maps: list[RPDOMap], tpdo_maps: list[TPDOMap]) -> None:
         for rpdo_map in rpdo_maps:
-            if rpdo_map not in self._rpdo_maps:
+            if rpdo_map not in self._rpdo_maps.values():
                 rpdo_map.slave = self
-                self._rpdo_maps.append(rpdo_map)
+                map_obj = self.__resolve_missing_pdo_map_info(rpdo_map)
+                self._rpdo_maps[map_obj.idx] = rpdo_map
         for tpdo_map in tpdo_maps:
-            if tpdo_map not in self._tpdo_maps:
+            if tpdo_map not in self._tpdo_maps.values():
                 tpdo_map.slave = self
-                self._tpdo_maps.append(tpdo_map)
+                map_obj = self.__resolve_missing_pdo_map_info(tpdo_map)
+                self._tpdo_maps[map_obj.idx] = tpdo_map
         self.slave.config_func = self.map_pdos
+
+    def __resolve_missing_pdo_map_info(self, pdo_map: PDOMap) -> CanOpenObject:
+        """Resolve missing PDO map information.
+
+        Sets the map_object of the PDOMap if it is not already set.
+        It is extracted from map_register_index if indicated.
+        Alternatively, it uses the default map if no map or index is provided.
+
+        Args:
+            pdo_map: PDOMap instance (RPDOMap or TPDOMap).
+
+        Returns:
+            The map_object of the PDOMap instance.
+        """
+        if pdo_map.map_object:
+            return pdo_map.map_object
+
+        if pdo_map.map_register_index is not None:
+            # Extract the map object from the dictionary using the index
+            pdo_map.map_object = self.dictionary.get_object_by_index(pdo_map.map_register_index)
+            return pdo_map.map_object
+
+        # If map or index is not provided, use the default map
+        if isinstance(pdo_map, RPDOMap):
+            pdo_map.map_object = self.dictionary.get_object(self.DEFAULT_RPDO_MAP)
+        elif isinstance(pdo_map, TPDOMap):
+            pdo_map.map_object = self.dictionary.get_object(self.DEFAULT_TPDO_MAP)
+        else:
+            raise NotImplementedError
+
+        return pdo_map.map_object
 
     @override
     def process_pdo_inputs(self) -> None:
