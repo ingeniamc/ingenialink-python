@@ -453,9 +453,11 @@ def test_read_tpdo_map_from_slave(servo: EthercatServo, from_uid: bool):
     assert len(pdo_map.map_object.registers) == 16
 
 
+@pytest.mark.ethercat
 def test_map_register_items(servo: EthercatServo):
     pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1")
 
+    pdo_map.clear()
     item1 = pdo_map.create_item(servo.dictionary.get_register("CL_POS_FBK_VALUE"))
     item2 = pdo_map.create_item(servo.dictionary.get_register("DRV_STATE_STATUS"))
     item3 = pdo_map.create_item(servo.dictionary.get_register("CL_TOR_FBK_VALUE"))
@@ -487,6 +489,7 @@ def test_map_register_items(servo: EthercatServo):
     }
 
 
+@pytest.mark.no_connection
 def test_pdo_map_from_value(open_dictionary):
     tpdo_map = TPDOMap()
 
@@ -514,8 +517,13 @@ def test_pdo_map_from_value(open_dictionary):
     tpdo_value = tpdo_map.to_pdo_value()
 
     rebuild_tpdo_map = TPDOMap.from_pdo_value(
-        tpdo_value, open_dictionary.get_object("ETG_COMMS_TPDO_MAP1"), open_dictionary
+        tpdo_value,
+        open_dictionary.get_object("ETG_COMMS_TPDO_MAP1"),
+        open_dictionary,
+        is_dirty=False,
     )
+
+    assert rebuild_tpdo_map.is_dirty is False
 
     for original, rebuild in zip(tpdo_map.items, rebuild_tpdo_map.items):
         if original.register.idx == 0:
