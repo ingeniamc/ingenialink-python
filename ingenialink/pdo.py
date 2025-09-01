@@ -403,6 +403,11 @@ class PDOMap:
             item = self.create_item(register)
             self.add_item(item)
 
+    def clear(self) -> None:
+        """Clear all items."""
+        self.__is_dirty = True
+        self.__items.clear()
+
     @property
     def items(self) -> list[PDOMapItem]:
         """List of items.
@@ -561,7 +566,7 @@ class PDOMap:
         Returns:
             PDOMap instance.
         """
-        pdo_map = cls(is_dirty=is_dirty)
+        pdo_map = cls()
         pdo_map.map_object = map_obj
 
         # First element of 8 bits, indicates the number of elements in the mapping.
@@ -576,6 +581,8 @@ class PDOMap:
             )
             item = cls._PDO_MAP_ITEM_CLASS.from_register_mapping(item_map, dictionary)
             pdo_map.add_item(item)
+
+        pdo_map.__is_dirty = is_dirty
 
         return pdo_map
 
