@@ -6,6 +6,7 @@ import ingenialogger
 from typing_extensions import override
 
 from ingenialink import Servo
+from ingenialink.csv_configuration_file import CSVConfigurationFile
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
 
@@ -24,7 +25,7 @@ from ingenialink.constants import (
 )
 from ingenialink.dictionary import CanOpenObject, Interface
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILEcatStateError, ILIOError
+from ingenialink.exceptions import ILEcatStateError, ILError, ILIOError
 from ingenialink.pdo import PDOMap, PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
@@ -500,3 +501,25 @@ class EthercatServo(PDOServo):
         if self._on_emcy not in self.__slave._emcy_callbacks:
             # Make sure the emergency callback is added only once
             self.__slave.add_emergency_callback(self._on_emcy)
+
+    @override
+    def save_configuration_csv(self, config_file: str, subnode: Optional[int] = None) -> None:
+        if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
+            raise ILError("Invalid subnode")
+        csv_configuration_file = CSVConfigurationFile()
+        for configuration_registers in self._registers_to_save_in_configuration_file(
+            subnode
+        ).values():
+            for configuration_register in configuration_registers:
+                if not isinstance(configuration_register, EthercatRegister):
+                    continue
+                try:
+                    storage = self._read_raw(configuration_register)
+                    csv_configuration_file.add_register(configuration_register, storage.hex())
+                except (ILError, NotImplementedError) as e:
+                    logger.error(
+                        "Exception during save_configuration, register %s: %s",
+                        str(configuration_register.identifier),
+                        e,
+                    )
+        csv_configuration_file.write_to_file(config_file)

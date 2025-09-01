@@ -516,6 +516,20 @@ class Servo:
                     )
         xcf_instance.save_to_xcf(config_file)
 
+    def save_configuration_csv(self, config_file: str, subnode: Optional[int] = None) -> None:
+        """Save a drive configuration in CSV format.
+
+        Args:
+            config_file: Destination path for the configuration file.
+            subnode: Subnode of the axis.
+
+        Raises:
+            NotImplementedError: CSV configuration files are only supported for EtherCAT drives.
+            ILError: if the subnode is invalid.
+
+        """
+        raise NotImplementedError
+
     def _is_register_valid_for_configuration_file(self, register: Register) -> bool:
         """Check if a register is valid for the configuration file.
 
