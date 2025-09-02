@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Added
+- Method to export EtherCAT drive configuration to CSV
+
 ## [7.5.0] - 2025-08-19
 ### Added
 - Added generic dictionaries specific for communication protocols.
