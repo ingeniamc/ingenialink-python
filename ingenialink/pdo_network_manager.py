@@ -109,11 +109,14 @@ class PDONetworkManager:
                     )
                 except Exception as il_error:
                     self._pd_thread_stop_event.set()
-                    self._notify_exceptions(
-                        ILError(
-                            f"Could not start the PDOs due to the following exception: {il_error}"
+                    if first_iteration:
+                        self._notify_exceptions(
+                            ILError(f"Could not start the PDOs due to exception: {il_error}")
                         )
-                    )
+                    else:
+                        self._notify_exceptions(
+                            ILError(f"Exception during PDO exchange: {il_error}")
+                        )
                 else:
                     self._notify_receive_process_data()
                     while (
