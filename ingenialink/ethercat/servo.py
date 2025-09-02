@@ -506,7 +506,7 @@ class EthercatServo(PDOServo):
     def save_configuration_csv(self, config_file: str, subnode: Optional[int] = None) -> None:
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ILError("Invalid subnode")
-        csv_configuration_file = CSVConfigurationFile()
+        csv_configuration_file = CSVConfigurationFile(config_file)
         for configuration_registers in self._registers_to_save_in_configuration_file(
             subnode
         ).values():
@@ -515,11 +515,11 @@ class EthercatServo(PDOServo):
                     continue
                 try:
                     storage = self._read_raw(configuration_register)
-                    csv_configuration_file.add_register(configuration_register, storage.hex())
+                    csv_configuration_file.add_register(configuration_register, storage)
                 except (ILError, NotImplementedError) as e:
                     logger.error(
                         "Exception during save_configuration, register %s: %s",
                         str(configuration_register.identifier),
                         e,
                     )
-        csv_configuration_file.write_to_file(config_file)
+        csv_configuration_file.write_to_file()

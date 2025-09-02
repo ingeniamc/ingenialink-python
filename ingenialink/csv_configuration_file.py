@@ -14,7 +14,7 @@ class RegisterRow:
     value: str
 
     @classmethod
-    def from_register(cls, register: EthercatRegister, storage: str) -> "RegisterRow":
+    def from_register(cls, register: EthercatRegister, storage: bytes) -> "RegisterRow":
         """Create a RegisterRow from an EthercatRegister and a storage value.
 
         Args:
@@ -27,14 +27,15 @@ class RegisterRow:
         """
         index = f"0x{register.idx:04X}"
         subindex = f"0x{register.subidx:02X}"
-        value = f"0x{storage.upper()}"
+        value = f"0x{storage.hex().upper()}"
         return cls(index, subindex, value)
 
     def to_bytes(self) -> bytes:
         """Return the row data as UTF-8 encoded bytes for the CRC calculation."""
-        return f"{self.index},{self.subindex},{self.value}".encode()
+        return ",".join(self.csv_row).encode()
 
-    def to_list(self) -> list[str]:
+    @property
+    def csv_row(self) -> list[str]:
         """Return the row data as a list for CSV writing."""
         return [self.index, self.subindex, self.value]
 
@@ -46,13 +47,20 @@ class CSVConfigurationFile:
 
     """
 
-    __VERSION = "v1.0"
+    __VERSION = "v1"
 
-    def __init__(self) -> None:
+    def __init__(self, filename: str) -> None:
+        """Initialize the CSVConfigurationFile.
+
+        Args:
+            filename: The name of the file to write the configuration to.
+
+        """
+        self.__filename = filename
         self.__data: list[RegisterRow] = []
         self.__crc = 0x0000
 
-    def add_register(self, register: EthercatRegister, storage: str) -> None:
+    def add_register(self, register: EthercatRegister, storage: bytes) -> None:
         """Add a register to the CSV configuration.
 
         Args:
@@ -63,18 +71,14 @@ class CSVConfigurationFile:
         self.__calculate_crc(row)
         self.__data.append(row)
 
-    def write_to_file(self, filename: str) -> None:
-        """Generate the CSV configuration file.
-
-        Args:
-            filename: The name of the file to generate.
-        """
-        with open(filename, mode="w", newline="") as file:
+    def write_to_file(self) -> None:
+        """Generate the CSV configuration file."""
+        with open(self.__filename, mode="w", newline="") as file:
             writer = csv.writer(file)
             writer.writerow([self.__VERSION])
             writer.writerow([f"0x{self.__crc:04X}"])
             for row in self.__data:
-                writer.writerow(row.to_list())
+                writer.writerow(row.csv_row)
 
     def __calculate_crc(self, row: RegisterRow) -> None:
         """Calculate the CRC for a given row and update the internal CRC state.
