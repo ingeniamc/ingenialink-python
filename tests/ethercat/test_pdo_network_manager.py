@@ -1,5 +1,6 @@
 import random
 import time
+from functools import partial
 from typing import TYPE_CHECKING
 
 import pytest
@@ -71,9 +72,11 @@ def test_start_pdos(
     initial_operation_modes = {}
     rpdo_values = {}
     tpdo_values = {}
+    rpdo_maps: dict[str, PDOMap] = {}
+    tpdo_maps: dict[str, PDOMap] = {}
     for s, a in zip(servo, alias):
-        rpdo_map = RPDOMap()
-        tpdo_map = TPDOMap()
+        rpdo_maps[a] = RPDOMap()
+        tpdo_maps[a] = TPDOMap()
         initial_operation_mode = s.read("DRV_OP_CMD")
         operation_mode = PDOMap.create_item_from_register_uid(
             "DRV_OP_CMD", dictionary=s.dictionary, value=initial_operation_mode, axis=1
@@ -81,9 +84,9 @@ def test_start_pdos(
         actual_position = PDOMap.create_item_from_register_uid(
             "CL_POS_FBK_VALUE", dictionary=s.dictionary, axis=1
         )
-        rpdo_map.add_item(operation_mode)
-        tpdo_map.add_item(actual_position)
-        s.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+        rpdo_maps[a].add_item(operation_mode)
+        tpdo_maps[a].add_item(actual_position)
+        s.set_pdo_map_to_slave([rpdo_maps[a]], [tpdo_maps[a]])
         pdo_map_items[a] = (operation_mode, actual_position)
         # Choose a random operation mode: [voltage, current, velocity, position]
         random_op_mode = random.choice([
@@ -92,18 +95,18 @@ def test_start_pdos(
         initial_operation_modes[a] = initial_operation_mode
         rpdo_values[a] = random_op_mode
 
-    def send_callback():
-        for a in alias:
-            rpdo_map_item, _ = pdo_map_items[a]
-            rpdo_map_item.value = rpdo_values[a]
+    def send_callback(alias_arg: str) -> None:
+        rpdo_map_item, _ = pdo_map_items[alias_arg]
+        rpdo_map_item.value = rpdo_values[alias_arg]
 
-    def receive_callback():
-        for a in alias:
-            _, tpdo_map_item = pdo_map_items[a]
-            tpdo_values[a] = tpdo_map_item.value
+    def receive_callback(alias_arg: str) -> None:
+        _, tpdo_map_item = pdo_map_items[alias_arg]
+        tpdo_values[alias_arg] = tpdo_map_item.value
 
-    net.pdo_manager.subscribe_to_send_process_data(send_callback)
-    net.pdo_manager.subscribe_to_receive_process_data(receive_callback)
+    for a in alias:
+        rpdo_maps[a].subscribe_to_process_data_event(partial(send_callback, a))
+        tpdo_maps[a].subscribe_to_process_data_event(partial(receive_callback, a))
+
     assert not net.pdo_manager.is_active
     refresh_rate = 0.5
     net.activate_pdos(refresh_rate=refresh_rate)
@@ -180,3 +183,68 @@ def test_subscribe_to_pdo_thread_status(net: "EthercatNetwork", mocker) -> None:
     assert status is True
     net.deactivate_pdos()
     assert status is False
+
+
+@pytest.mark.ethercat
+def test_subscribe_callbacks(net: "EthercatNetwork", servo: "EthercatServo", mocker) -> None:
+    # Network callbacks - notifications for all PDO maps
+    send_callback = mocker.Mock()
+    receive_callback = mocker.Mock()
+    # PDO map callbacks
+    rpdo_callback = mocker.Mock()
+    tpdo_callback = mocker.Mock()
+
+    rpdo_map = RPDOMap()
+    tpdo_map = TPDOMap()
+    initial_operation_mode = servo.read("DRV_OP_CMD")
+    operation_mode = PDOMap.create_item_from_register_uid(
+        uid="DRV_OP_CMD", dictionary=servo.dictionary, value=initial_operation_mode
+    )
+    actual_position = PDOMap.create_item_from_register_uid(
+        uid="CL_POS_FBK_VALUE", dictionary=servo.dictionary
+    )
+    rpdo_map.add_item(operation_mode)
+    tpdo_map.add_item(actual_position)
+    servo.set_pdo_map_to_slave(rpdo_maps=[rpdo_map], tpdo_maps=[tpdo_map])
+
+    # Subscribe to PDO map process data events
+    rpdo_map.subscribe_to_process_data_event(rpdo_callback)
+    tpdo_map.subscribe_to_process_data_event(tpdo_callback)
+
+    # Subscribe to all PDO map process data events - network subscription
+    net.pdo_manager.subscribe_to_receive_process_data(receive_callback)
+    net.pdo_manager.subscribe_to_send_process_data(send_callback)
+
+    assert rpdo_callback.call_count == 0
+    assert tpdo_callback.call_count == 0
+    assert receive_callback.call_count == 0
+    assert send_callback.call_count == 0
+
+    assert not net.pdo_manager.is_active
+    refresh_rate = 0.5
+    net.activate_pdos(refresh_rate=refresh_rate)
+    assert net.pdo_manager.is_active
+    time.sleep(5 * refresh_rate)
+    assert rpdo_callback.call_count > 0
+    assert tpdo_callback.call_count > 0
+    assert receive_callback.call_count > 0
+    assert send_callback.call_count > 0
+
+    # If unsubscribe from network, PDO map notifications are still sent
+    net.pdo_manager.unsubscribe_to_send_process_data(send_callback)
+    net.pdo_manager.unsubscribe_to_receive_process_data(receive_callback)
+    n_send_callbacks = send_callback.call_count
+    n_receive_callbacks = receive_callback.call_count
+    n_rpdo_callbacks = rpdo_callback.call_count
+    n_tpdo_callbacks = tpdo_callback.call_count
+    # Sleep to allow more notifications to be sent
+    time.sleep(5 * refresh_rate)
+    # PDO map notifications have been sent
+    assert rpdo_callback.call_count > n_rpdo_callbacks
+    assert tpdo_callback.call_count > n_tpdo_callbacks
+    # No new notifications have been received for send and receive callbacks
+    assert receive_callback.call_count < rpdo_callback.call_count
+    assert send_callback.call_count < tpdo_callback.call_count
+    assert receive_callback.call_count == n_receive_callbacks
+    assert send_callback.call_count == n_send_callbacks
+    net.deactivate_pdos()

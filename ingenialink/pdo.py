@@ -291,6 +291,9 @@ class PDOMap:
         self.__slave: Optional[PDOServo] = None
         self.__is_dirty = is_dirty
 
+        # Observer callback
+        self._observer_callback: Optional[Callable[[], None]] = None
+
     @property
     def slave(self) -> Optional["PDOServo"]:
         """Servo to which this PDO is mapped, None if it's not mapped to any servo."""
@@ -303,6 +306,28 @@ class PDOMap:
     def __check_servo_is_in_preoperational_state(self) -> None:
         if self.slave is not None:
             self.slave.check_servo_is_in_preoperational_state()
+
+    def subscribe_to_process_data_event(self, callback: Callable[[], None]) -> None:
+        """Subscribe to process data notifications.
+
+        Args:
+            callback: Subscribed callback function.
+
+        Raises:
+            ValueError: If a callback has already been set.
+        """
+        if self._observer_callback is not None:
+            raise ValueError("Callback has already been set, unsubscribe first")
+        self._observer_callback = callback
+
+    def unsubscribe_to_process_data_event(self) -> None:
+        """Unsubscribe from process data notifications."""
+        self._observer_callback = None
+
+    def _notify_process_data_event(self) -> None:
+        """Notify the observers about the process data event."""
+        if self._observer_callback is not None:
+            self._observer_callback()
 
     def create_item(
         self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
@@ -981,6 +1006,7 @@ class PDOServo(Servo):
             map_bytes = input_data[: tpdo_map.data_length_bytes]
             tpdo_map.set_item_bytes(map_bytes)
             input_data = input_data[tpdo_map.data_length_bytes :]
+            tpdo_map._notify_process_data_event()
 
     def _process_rpdo(self) -> bytes:
         """Retrieve the RPDO raw data from each map.
@@ -990,5 +1016,6 @@ class PDOServo(Servo):
         """
         output = bytearray()
         for idx in sorted(self._rpdo_maps):
+            self._rpdo_maps[idx]._notify_process_data_event()
             output += self._rpdo_maps[idx].get_item_bytes()
         return bytes(output)

@@ -570,21 +570,12 @@ class EthercatNetwork(Network):
             timeout: timeout in seconds to reach Op state, 2.0 seconds by default.
 
         Raises:
-            ILError: If the RPDO values are not set before starting the PDO exchange process.
             ILStateError: If slaves can not reach SafeOp or Op state.
         """
         op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
         if not op_servo_list:
             logger.warning("There are no PDOs assigned to any connected slave.")
             return
-        try:
-            for servo in op_servo_list:
-                for rpdo_map in servo._rpdo_maps.values():
-                    rpdo_map.get_item_bytes()
-        except ILError as e:
-            raise ILError(
-                "The RPDO values should be set before starting the PDO exchange process."
-            ) from e
         # Configure the PDO maps
         self.config_pdo_maps()
 
