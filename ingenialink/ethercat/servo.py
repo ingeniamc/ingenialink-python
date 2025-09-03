@@ -9,6 +9,7 @@ from ingenialink import Servo
 from ingenialink.csv_configuration_file import CSVConfigurationFile
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.utils._utils import dtype_value
 
 try:
     import pysoem
@@ -515,6 +516,10 @@ class EthercatServo(PDOServo):
                     continue
                 try:
                     storage = self._read_raw(configuration_register)
+                    # Trim read data to avoid reading garbage
+                    # To be fixed in INGK-1176
+                    bytes_length, _ = dtype_value[configuration_register.dtype]
+                    storage = storage[:bytes_length]
                     csv_configuration_file.add_register(configuration_register, storage)
                 except (ILError, NotImplementedError) as e:
                     logger.error(
