@@ -9,6 +9,7 @@ from ingenialink import Servo
 from ingenialink.csv_configuration_file import CSVConfigurationFile
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.register import Register
 from ingenialink.utils._utils import dtype_value
 
 try:
@@ -97,6 +98,8 @@ class EthercatServo(PDOServo):
     # Default PDO maps to assign if not specified
     DEFAULT_RPDO_MAP = "ETG_COMMS_RPDO_MAP1"
     DEFAULT_TPDO_MAP = "ETG_COMMS_TPDO_MAP1"
+
+    __EXCLUDED_REGISTERS_FROM_CONFIG_FILE = frozenset({"COMMS_ETH_MAC"})
 
     def __init__(
         self,
@@ -528,3 +531,8 @@ class EthercatServo(PDOServo):
                         e,
                     )
         csv_configuration_file.write_to_file()
+
+    def _is_register_valid_for_configuration_file(self, register: Register) -> bool:
+        if not super()._is_register_valid_for_configuration_file(register):
+            return False
+        return register.identifier not in self.__EXCLUDED_REGISTERS_FROM_CONFIG_FILE
