@@ -6,8 +6,8 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.5"
-WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.6"
+LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
+WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.7"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
 DEFAULT_PYTHON_VERSION = "3.9"
@@ -58,7 +58,6 @@ def archiveWiresharkLogs() {
 }
 
 def createVirtualEnvironments(boolean installWheel = true, String workingDir = null, String pythonVersionList = "") {
-    runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION)
     def versions = pythonVersionList?.trim() ? pythonVersionList : RUN_PYTHON_VERSIONS
     def pythonVersions = versions.split(',')
     // Ensure DEFAULT_PYTHON_VERSION is included if not already present
