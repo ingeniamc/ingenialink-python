@@ -72,6 +72,7 @@ virtual_drive = ["py.typed", "resources/*"]
 optional = true
 [tool.poetry.group.dev.dependencies]
 poethepoet = {extras = ["poetry-plugin"], version = "^0.35.0"}
+Cython  = "==3.0.11"
 
 # Dependencies for build wheel tasks
 [tool.poetry.group.build]
@@ -126,6 +127,10 @@ cmd = "poetry build"
 [tool.poe.tasks.check-wheels]
 help = "Check wheels"
 cmd = "twine check dist/*"
+
+[tool.poe.tasks.build-cython]
+help = "Build Cython"
+cmd = "python setup.py build_ext --inplace"
 
 # ----------------------------- Ruff format -----------------------------
 [tool.poe.tasks.ruff-format-check]
