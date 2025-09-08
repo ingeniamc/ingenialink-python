@@ -187,7 +187,7 @@ class PDONetworkManager:
     def check_safe_pdo_configuration(self) -> bool:
         """Returns True if safe drives have their safe PDOs configured.
 
-        If there are not safe drives connected to the network, it also returns True.
+        If there are no safe drives connected to the network, it also returns True.
         """
         for servo in self._net.servos:
             if not servo.dictionary.is_safe:
