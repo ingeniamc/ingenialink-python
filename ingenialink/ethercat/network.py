@@ -334,7 +334,7 @@ class EthercatNetwork(Network):
         if len(restore_servos):
             if not self._change_nodes_state(restore_servos, pysoem.INIT_STATE):
                 logger.warning("Not all drives could reach the Init state")
-            self.__init_nodes()  # type: ignore [attr-defined]
+            self.__init_nodes()
         # Deactivate the PDOs - PDOs will be deactivated for all servos in the network
         if self.pdo_manager.is_active:
             self.deactivate_pdos()
