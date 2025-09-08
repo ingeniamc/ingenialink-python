@@ -7,7 +7,7 @@ import pytest
 from summit_testing_framework.setups.descriptors import EthercatMultiSlaveSetup
 
 from ingenialink.exceptions import ILError, ILWrongWorkingCountError
-from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
+from ingenialink.pdo import PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.pdo_network_manager import PDONetworkManager
 
 if TYPE_CHECKING:
@@ -248,3 +248,68 @@ def test_subscribe_callbacks(net: "EthercatNetwork", servo: "EthercatServo", moc
     assert receive_callback.call_count == n_receive_callbacks
     assert send_callback.call_count == n_send_callbacks
     net.deactivate_pdos()
+
+
+@pytest.mark.ethercat
+def test_check_safe_pdo_configuration_not_safe_drive(
+    net: "EthercatNetwork", servo: "EthercatServo"
+) -> None:
+    """If drive is not safe, it is considered that the configuration is valid."""
+    assert servo.dictionary.is_safe is False
+    valid_safe_pdo_config: bool = net.pdo_manager.check_safe_pdo_configuration()
+    assert valid_safe_pdo_config is True
+
+
+@pytest.mark.fsoe
+def test_check_safe_pdo_configuration_safe_drive(
+    net: "EthercatNetwork", servo: "EthercatServo"
+) -> None:
+    # Nothing mapped yet
+    assert servo.dictionary.is_safe is True
+    valid_safe_pdo_config = net.pdo_manager.check_safe_pdo_configuration()
+    assert valid_safe_pdo_config is False
+
+    # Add a padding item to both RPDO and TPDO maps
+    padding_rpdo_item = RPDOMapItem(size_bits=8)
+    padding_rpdo_item.raw_data_bytes = int.to_bytes(0, 1, "little")
+    padding_tpdo_item = TPDOMapItem(size_bits=8)
+    padding_tpdo_item.raw_data_bytes = int.to_bytes(0, 1, "little")
+    rpdo_map = RPDOMap.from_pdo_items(padding_rpdo_item)
+    tpdo_map = TPDOMap.from_pdo_items(padding_tpdo_item)
+
+    # Set safety indexes to PDO maps
+    rpdo_map.map_register_index = 0x1700
+    tpdo_map.map_register_index = 0x1B00
+
+    # Map safe PDOs
+    servo.set_pdo_map_to_slave(rpdo_maps=[rpdo_map], tpdo_maps=[tpdo_map])
+    valid_safe_pdo_config = net.pdo_manager.check_safe_pdo_configuration()
+    assert valid_safe_pdo_config is True
+
+
+@pytest.mark.fsoe
+def test_start_pdos_in_safe_drive_without_safe_pdos_mapped_triggers_error(
+    net: "EthercatNetwork", servo: "EthercatServo"
+) -> None:
+    """If drive is safe, but safe PDOs are not mapped, an error is raised when starting PDOs."""
+    assert servo.dictionary.is_safe is True
+    valid_safe_pdo_config = net.pdo_manager.check_safe_pdo_configuration()
+    assert valid_safe_pdo_config is False
+
+    exceptions = []
+
+    def exception_callback(exc):
+        exceptions.append(exc)
+
+    net.pdo_manager.subscribe_to_exceptions(exception_callback)
+
+    assert len(exceptions) == 0
+    refresh_rate: float = 0.5
+    net.activate_pdos(refresh_rate=refresh_rate)
+    time.sleep(2 * refresh_rate)
+    assert len(exceptions) == 1
+
+    assert (
+        "The PDO exchange has been stopped due to a wrong PDO configuration in a safe drive. "
+        "Please, check that the safe PDOs are correctly mapped."
+    ) in str(exceptions[0])

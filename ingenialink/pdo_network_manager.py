@@ -18,6 +18,9 @@ class PDONetworkManager:
         net: Ethercat network.
     """
 
+    __SAFE_RPDO_UID: str = "ETG_COMMS_RPDO_MAP256"
+    __SAFE_TPDO_UID: str = "ETG_COMMS_TPDO_MAP256"
+
     class ProcessDataThread(threading.Thread):
         """Manage the PDO exchange.
 
@@ -181,6 +184,22 @@ class PDONetworkManager:
         self._pdo_receive_observers: list[Callable[[], None]] = []
         self._pdo_exceptions_observers: list[Callable[[ILError], None]] = []
 
+    def check_safe_pdo_configuration(self) -> bool:
+        """Returns True if safe drives have their safe PDOs configured.
+
+        If there are not safe drives connected to the network, it also returns True.
+        """
+        for servo in self._net.servos:
+            if not servo.dictionary.is_safe:
+                continue
+            safe_rpdo_idx = servo.dictionary.get_object(self.__SAFE_RPDO_UID, subnode=1).idx
+            if servo._rpdo_maps.get(safe_rpdo_idx, None) is None:
+                return False
+            safe_tpdo_idx = servo.dictionary.get_object(self.__SAFE_TPDO_UID, subnode=1).idx
+            if servo._tpdo_maps.get(safe_tpdo_idx, None) is None:
+                return False
+        return True
+
     def start_pdos(
         self,
         refresh_rate: Optional[float] = None,
@@ -312,6 +331,11 @@ class PDONetworkManager:
         Args:
             exc: Exception that was raised in the PDO process data thread.
         """
+        if not self.check_safe_pdo_configuration():
+            exc = ILError(
+                f"{exc} \nThe PDO exchange has been stopped due to a wrong PDO configuration "
+                "in a safe drive. Please, check that the safe PDOs are correctly mapped. "
+            )
         self.logger.error(exc)
         for callback in self._pdo_exceptions_observers:
             callback(exc)
