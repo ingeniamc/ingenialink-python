@@ -525,10 +525,14 @@ pipeline {
                             }
                         }
                         stage("Safety Denali Phase I") {
-                            runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP", USE_WIRESHARK_LOGGING)
+                            steps {
+                                runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP", USE_WIRESHARK_LOGGING)
+                            }
                         }
                         stage("Safety Denali Phase II") {
-                            runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP", USE_WIRESHARK_LOGGING)
+                            steps {
+                                runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP", USE_WIRESHARK_LOGGING)
+                            }
                         }
                         stage('Run no-connection tests') {
                             steps {
