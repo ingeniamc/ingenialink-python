@@ -132,8 +132,11 @@ class PDONetworkManager:
         def stop(self) -> None:
             """Stop the PDO exchange."""
             self._pd_thread_stop_event.set()
-            self.join()
             self._net.stop_pdos()
+            # Only join if we're not trying to join the current thread
+            # (e.g., when stopping from an exception handler running in this thread)
+            if threading.current_thread() != self:
+                self.join()
 
         @staticmethod
         def high_precision_sleep(duration: float) -> None:

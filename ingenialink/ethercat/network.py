@@ -319,11 +319,26 @@ class EthercatNetwork(Network):
     def _pdo_thread_exception_handler(self, exc: Exception) -> None:
         """Callback method for the PDO thread exceptions.
 
+        If an exception occurs during the PDO exchange, the servos are set to PreOp state.
+
         Args:
             exc: The exception that occurred.
         """
         self.__exceptions_in_thread += 1
         logger.error(f"An exception occurred during the PDO exchange: {exc}")
+
+        # Restore all servos to PreOp state
+        restore_servos = [
+            s for s in self.servos if s.slave is not None and s.slave.state != pysoem.PREOP_STATE
+        ]
+        if len(restore_servos):
+            if not self._change_nodes_state(restore_servos, pysoem.INIT_STATE):
+                logger.warning("Not all drives could reach the Init state")
+            self.__init_nodes()  # type: ignore [attr-defined]
+        # Deactivate the PDOs - PDOs will be deactivated for all servos in the network
+        if self.pdo_manager.is_active:
+            self.deactivate_pdos()
+
         self._notify_pdo_thread_status(False)
 
     def _notify_pdo_thread_status(self, status: bool) -> None:
