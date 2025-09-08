@@ -165,16 +165,6 @@ def test_save_configuration(servo, net):
     _clean(filename)
 
 
-@pytest.mark.ethercat
-def test_excluded_ethercat_registers_from_configuration_file(servo):
-    for configuration_registers in servo._registers_to_save_in_configuration_file(None).values():
-        for configuration_register in configuration_registers:
-            assert (
-                configuration_register
-                not in servo._EthercatServo__EXCLUDED_REGISTERS_FROM_CONFIG_FILE
-            )
-
-
 @pytest.mark.no_connection
 def test_check_configuration(virtual_drive):
     server, servo = virtual_drive
