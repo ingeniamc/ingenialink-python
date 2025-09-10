@@ -434,13 +434,13 @@ class PDOMap:
         self.__items.clear()
 
     @property
-    def items(self) -> list[PDOMapItem]:
-        """List of items.
+    def items(self) -> tuple[PDOMapItem, ...]:
+        """Tuple of items (immutable).
 
         Returns:
-            List of items.
+            Tuple of items.
         """
-        return self.__items
+        return tuple(self.__items)
 
     @property
     def map_register_index_bytes(self) -> bytes:
