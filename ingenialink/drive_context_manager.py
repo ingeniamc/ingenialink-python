@@ -97,20 +97,20 @@ class DriveContextManager:
 
         # Reset the whole rpdo/tpdo mapping if needed
         if _PDO_RPDO_MAP_REGISTER_UID in uid:
-            logger.info(
+            logger.debug(
                 f"{id(self)}: {uid=} has been changed, will reset rpdo mapping on context exit"
             )
             self._reset_rpdo_mapping = True
             return
         if _PDO_TPDO_MAP_REGISTER_UID in uid:
-            logger.info(
+            logger.debug(
                 f"{id(self)}: {uid=} has been changed, will reset tpdo mapping on context exit"
             )
             self._reset_tpdo_mapping = True
             return
 
         self._registers_changed[dict_key] = value
-        logger.info(f"{id(self)}: {uid=} changed from {previous_value!r} to {value!r}")
+        logger.debug(f"{id(self)}: {uid=} changed from {previous_value!r} to {value!r}")
 
     def _store_register_data(self) -> None:
         """Saves the value of all registers."""
@@ -189,8 +189,10 @@ class DriveContextManager:
         """Subscribes to register update callbacks and saves the drive values."""
         self._store_register_data()
         self.drive.register_update_subscribe(self._register_update_callback)
+        self.drive.register_update_complete_access_subscribe(self._register_update_callback)
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore [no-untyped-def]
         """Unsubscribes from register updates and restores the drive values."""
         self.drive.register_update_unsubscribe(self._register_update_callback)
+        self.drive.register_update_complete_access_unsubscribe(self._register_update_callback)
         self._restore_register_data()

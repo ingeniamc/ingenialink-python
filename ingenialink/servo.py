@@ -313,6 +313,9 @@ class Servo:
         self.__register_update_observers: list[
             Callable[[Servo, Register, Union[int, float, str, bytes]], None]
         ] = []
+        self.__register_update_complete_access_observers: list[
+            Callable[[Servo, Register, Union[int, float, str, bytes]], None]
+        ] = []
         if servo_status_listener:
             self.start_status_listener()
         else:
@@ -1367,6 +1370,7 @@ class Servo:
         else:
             _reg = self._get_reg(reg, subnode)
         self._write_raw(_reg, data, complete_access=True)
+        self._notify_register_update_complete_access(_reg, data)
 
     def read_complete_access(
         self,
@@ -1400,7 +1404,9 @@ class Servo:
                 "automatically."
             )
 
-        return self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
+        value = self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
+        self._notify_register_update_complete_access(_reg, value)
+        return value
 
     def read_bitfields(
         self,
@@ -1483,7 +1489,6 @@ class Servo:
 
         Args:
             callback: Callable that takes a Servo and a Register instance as arguments.
-
         """
         self.__register_update_observers.append(callback)
 
@@ -1494,9 +1499,30 @@ class Servo:
 
         Args:
             callback: Subscribed callback.
-
         """
         self.__register_update_observers.remove(callback)
+
+    def register_update_complete_access_subscribe(
+        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None]
+    ) -> None:
+        """Subscribe to complete access register updates.
+
+        The callback will be called when a complete access read/write operation occurs.
+
+        Args:
+            callback: Callable that takes a Servo and a Register instance as arguments.
+        """
+        self.__register_update_complete_access_observers.append(callback)
+
+    def register_update_complete_access_unsubscribe(
+        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None]
+    ) -> None:
+        """Unsubscribe to complete access register updates.
+
+        Args:
+            callback: Subscribed callback.
+        """
+        self.__register_update_complete_access_observers.remove(callback)
 
     def _notify_register_update(self, reg: Register, data: Union[int, float, str, bytes]) -> None:
         """Notify a register update to the observers.
@@ -1509,6 +1535,23 @@ class Servo:
 
         """
         for callback in self.__register_update_observers:
+            callback(
+                self,
+                reg,
+                data,
+            )
+
+    def _notify_register_update_complete_access(self, reg: Register, data: bytes) -> None:
+        """Notify a complete access register update to the observers.
+
+        The updated value is stored in the register's storage attribute.
+
+        Args:
+            reg: Updated register.
+            data: Updated value.
+
+        """
+        for callback in self.__register_update_complete_access_observers:
             callback(
                 self,
                 reg,
