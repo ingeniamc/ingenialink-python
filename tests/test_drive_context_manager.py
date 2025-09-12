@@ -130,12 +130,14 @@ def test_drive_context_manager_with_do_not_restore_registers(setup_manager):
 
 
 @pytest.mark.ethercat
+@pytest.mark.parametrize("reset_pdo_mapping", [True, False])
 def test_drive_context_manager_restores_complete_access_registers(
     setup_manager: tuple["EthercatServo", "EthercatNetwork", str, "DriveEnvironmentController"],
     setup_descriptor: "DriveEcatSetup",
+    reset_pdo_mapping: bool,
 ) -> None:
     servo, _, _, _ = setup_manager
-    context = DriveContextManager(servo)
+    context = DriveContextManager(servo=servo, reset_pdo_mapping=reset_pdo_mapping)
 
     servo.reset_rpdo_mapping()
     servo.reset_tpdo_mapping()
@@ -201,22 +203,21 @@ def test_drive_context_manager_restores_complete_access_registers(
         )
 
     # Registers restored by restoring the PDO mapping
-    assert servo.read(servo.ETG_COMMS_RPDO_ASSIGN_1, subnode=0) == previous_etg_comms_rpdo_assign_1
-    assert servo.read(servo.ETG_COMMS_TPDO_ASSIGN_1, subnode=0) == previous_etg_comms_tpdo_assign_1
+    registers_to_check = [
+        (servo.ETG_COMMS_RPDO_ASSIGN_1, previous_etg_comms_rpdo_assign_1),
+        (servo.ETG_COMMS_TPDO_ASSIGN_1, previous_etg_comms_tpdo_assign_1),
+        (f"ETG_COMMS_RPDO_{rpdo_map_str}_TOTAL", previous_etg_comms_rpdo_map1_total),
+        (f"ETG_COMMS_TPDO_{tpdo_map_str}_TOTAL", previous_etg_comms_tpdo_map1_total),
+    ]
 
-    assert (
-        servo.read(f"ETG_COMMS_RPDO_{rpdo_map_str}_TOTAL", subnode=0)
-        == previous_etg_comms_rpdo_map1_total
-    )
-    assert (
-        servo.read(f"ETG_COMMS_TPDO_{tpdo_map_str}_TOTAL", subnode=0)
-        == previous_etg_comms_tpdo_map1_total
-    )
-    assert (
-        servo.read(f"ETG_COMMS_RPDO_{rpdo_map_str}_TOTAL", subnode=0)
-        == previous_etg_comms_rpdo_map1_total
-    )
-    assert (
-        servo.read(f"ETG_COMMS_TPDO_{tpdo_map_str}_TOTAL", subnode=0)
-        == previous_etg_comms_tpdo_map1_total
-    )
+    for register_name, expected_value in registers_to_check:
+        current_value = servo.read(register_name, subnode=0)
+        if reset_pdo_mapping:
+            assert current_value == expected_value, (
+                f"{register_name} should be restored to {expected_value}, got {current_value}"
+            )
+        else:
+            assert current_value != expected_value, (
+                f"{register_name} should not be restored, expected != {expected_value}, "
+                f"got {current_value}"
+            )
