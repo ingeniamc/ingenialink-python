@@ -319,11 +319,16 @@ class EthercatNetwork(Network):
     def _pdo_thread_exception_handler(self, exc: Exception) -> None:
         """Callback method for the PDO thread exceptions.
 
+        If an exception occurs during the PDO exchange, the servos are set to PreOp state.
+
         Args:
             exc: The exception that occurred.
         """
         self.__exceptions_in_thread += 1
         logger.error(f"An exception occurred during the PDO exchange: {exc}")
+        # Deactivate the PDOs - PDOs will be deactivated for all servos in the network
+        if self.pdo_manager.is_active:
+            self.deactivate_pdos()
         self._notify_pdo_thread_status(False)
 
     def _notify_pdo_thread_status(self, status: bool) -> None:
@@ -595,16 +600,14 @@ class EthercatNetwork(Network):
                     raise ILStateError("Drives can not reach Op state")
 
     def stop_pdos(self) -> None:
-        """For all slaves in OP or SafeOp state, set state to PreOp."""
+        """For all slaves not in PreOp state, set state to PreOp."""
         self._ecat_master.read_state()
-        op_servo_list = [
-            servo
-            for servo in self.servos
-            if servo.slave.state in [pysoem.OP_STATE, pysoem.SAFEOP_STATE]
+        restore_servos_list = [
+            servo for servo in self.servos if servo.slave.state != pysoem.PREOP_STATE
         ]
-        if len(op_servo_list) == 0:
+        if len(restore_servos_list) == 0:
             return
-        if not self._change_nodes_state(op_servo_list, pysoem.INIT_STATE):
+        if not self._change_nodes_state(restore_servos_list, pysoem.INIT_STATE):
             logger.warning("Not all drives could reach the Init state")
         self.__init_nodes()
 
