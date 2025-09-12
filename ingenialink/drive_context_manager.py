@@ -28,6 +28,7 @@ class DriveContextManager:
         servo: Servo,
         axis: Optional[int] = None,
         do_not_restore_registers: Optional[list[str]] = None,
+        reset_pdo_mapping: bool = True,
     ) -> None:
         """Initializes the registers that shouldn't be stored.
 
@@ -37,9 +38,12 @@ class DriveContextManager:
             stored/restored. Defaults to None.
             do_not_restore_registers: list of registers that should not be stored/restored.
                 Defaults to [].
+            reset_pdo_mapping: if True, will reset the PDO mapping on context exit if any of
+                the PDO mapping registers have been changed. Defaults to True.
         """
         self.drive = servo
         self._axis: Optional[int] = axis
+        self._reset_pdo_mapping: bool = reset_pdo_mapping
 
         self._do_not_restore_registers: set[str] = (
             set(do_not_restore_registers) if isinstance(do_not_restore_registers, list) else set()
@@ -100,6 +104,8 @@ class DriveContextManager:
 
         # Reset the whole rpdo/tpdo mapping if needed
         if _PDO_RPDO_MAP_REGISTER_UID in uid:
+            if not self._reset_pdo_mapping:
+                return
             logger.debug(
                 f"{id(self)}: {uid=} has been changed, will reset rpdo mapping on context exit"
             )
@@ -109,6 +115,8 @@ class DriveContextManager:
                 self._pdo_registers_changed[dict_key] = value
             return
         if _PDO_TPDO_MAP_REGISTER_UID in uid:
+            if not self._reset_pdo_mapping:
+                return
             logger.debug(
                 f"{id(self)}: {uid=} has been changed, will reset tpdo mapping on context exit"
             )
@@ -156,7 +164,7 @@ class DriveContextManager:
         registers_to_restore = [self._registers_changed]
         # Drive must be in pre-operational state to reset the PDO mapping
         # https://novantamotion.atlassian.net/browse/INGK-1160
-        if self._reset_tpdo_mapping or self._reset_rpdo_mapping:
+        if self._reset_pdo_mapping and (self._reset_tpdo_mapping or self._reset_rpdo_mapping):
             try:
                 self.drive.check_servo_is_in_preoperational_state()
                 if self._reset_tpdo_mapping:
