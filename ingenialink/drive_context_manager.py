@@ -61,6 +61,9 @@ class DriveContextManager:
         # order that must be followed for that, just restore the whole mapping
         self._reset_rpdo_mapping: bool = False
         self._reset_tpdo_mapping: bool = False
+        self._pdo_registers_changed: OrderedDict[tuple[int, str], Union[int, float, str, bytes]] = (
+            OrderedDict()
+        )
 
     def _register_update_callback(
         self,
@@ -77,6 +80,14 @@ class DriveContextManager:
             register: register.
             value: changed value.
         """
+
+        def _get_previous_value(
+            registers_changed: OrderedDict[tuple[int, str], Union[int, float, str, bytes]],
+        ) -> Optional[Union[int, float, str, bytes]]:
+            if dict_key in registers_changed:
+                return registers_changed[dict_key]
+            return self._original_register_values[register.subnode][uid]
+
         uid: str = cast("str", register.identifier)
         if register.access in [RegAccess.WO, RegAccess.RO]:
             return
@@ -87,28 +98,30 @@ class DriveContextManager:
 
         dict_key = (register.subnode, uid)
 
-        # Check if the new value is different from the previous one
-        if dict_key in self._registers_changed:
-            previous_value = self._registers_changed[dict_key]
-        else:
-            previous_value = self._original_register_values[register.subnode][uid]
-        if value == previous_value:
-            return
-
         # Reset the whole rpdo/tpdo mapping if needed
         if _PDO_RPDO_MAP_REGISTER_UID in uid:
             logger.debug(
                 f"{id(self)}: {uid=} has been changed, will reset rpdo mapping on context exit"
             )
             self._reset_rpdo_mapping = True
+            previous_value = _get_previous_value(self._pdo_registers_changed)
+            if value != previous_value:
+                self._pdo_registers_changed[dict_key] = value
             return
         if _PDO_TPDO_MAP_REGISTER_UID in uid:
             logger.debug(
                 f"{id(self)}: {uid=} has been changed, will reset tpdo mapping on context exit"
             )
             self._reset_tpdo_mapping = True
+            previous_value = _get_previous_value(self._pdo_registers_changed)
+            if value != previous_value:
+                self._pdo_registers_changed[dict_key] = value
             return
 
+        # Check if the new value is different from the previous one
+        previous_value = _get_previous_value(self._registers_changed)
+        if value == previous_value:
+            return
         self._registers_changed[dict_key] = value
         logger.debug(f"{id(self)}: {uid=} changed from {previous_value!r} to {value!r}")
 
@@ -140,50 +153,52 @@ class DriveContextManager:
 
     def _restore_register_data(self) -> None:
         """Restores the drive values."""
-        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
-        restored_registers: dict[int, list[str]] = {axis: [] for axis in axes}
-        for (axis, uid), current_value in reversed(self._registers_changed.items()):
-            # No original data for the register
-            if uid not in self._original_register_values[axis]:
-                continue
-            # Register has already been restored with a newer value than the evaluated one
-            if uid in restored_registers[axis]:
-                continue
-            restore_value = self._original_register_values[axis][uid]
-            # No change with respect to the original value
-            if current_value == restore_value:
-                continue
-
-            try:
-                self.drive.write(uid, restore_value, subnode=axis)
-            except Exception as e:
-                logger.error(
-                    f"{id(self)}: {uid} failed to restore value={current_value!r} "
-                    f"to {restore_value!r} with exception '{e}', trying again..."
-                )
-                self.drive.write(uid, restore_value, subnode=axis)
-            restored_registers[axis].append(uid)
-
-        if not isinstance(self.drive, PDOServo):
-            return
-
+        registers_to_restore = [self._registers_changed]
         # Drive must be in pre-operational state to reset the PDO mapping
         # https://novantamotion.atlassian.net/browse/INGK-1160
         if self._reset_tpdo_mapping or self._reset_rpdo_mapping:
             try:
                 self.drive.check_servo_is_in_preoperational_state()
+                if self._reset_tpdo_mapping:
+                    logger.warning(f"{id(self)}: Will reset tpdo mapping")
+                    self.drive.reset_tpdo_mapping()
+                if self._reset_rpdo_mapping:
+                    logger.warning(f"{id(self)}: Will reset rpdo mapping")
+                    self.drive.reset_rpdo_mapping()
+                registers_to_restore.append(self._pdo_registers_changed)
             except ILEcatStateError:
                 logger.warning(
                     "Cannot reset rpdo/tpdo mapping, drive must be in pre-operational state"
                 )
-                return
 
-        if self._reset_tpdo_mapping:
-            logger.warning(f"{id(self)}: Will reset tpdo mapping")
-            self.drive.reset_tpdo_mapping()
-        if self._reset_rpdo_mapping:
-            logger.warning(f"{id(self)}: Will reset rpdo mapping")
-            self.drive.reset_rpdo_mapping()
+        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
+        restored_registers: dict[int, list[str]] = {axis: [] for axis in axes}
+        for restore_list in registers_to_restore:
+            for (axis, uid), current_value in reversed(restore_list.items()):
+                # No original data for the register
+                if uid not in self._original_register_values[axis]:
+                    continue
+                # Register has already been restored with a newer value than the evaluated one
+                if uid in restored_registers[axis]:
+                    continue
+                restore_value = self._original_register_values[axis][uid]
+                # No change with respect to the original value
+                if current_value == restore_value:
+                    continue
+
+                try:
+                    logger.debug(f"Restoring {uid=} to {restore_value!r} on {axis=}")
+                    self.drive.write(uid, restore_value, subnode=axis)
+                except Exception as e:
+                    logger.error(
+                        f"{id(self)}: {uid} failed to restore value={current_value!r} "
+                        f"to {restore_value!r} with exception '{e}', trying again..."
+                    )
+                    self.drive.write(uid, restore_value, subnode=axis)
+                restored_registers[axis].append(uid)
+
+        if not isinstance(self.drive, PDOServo):
+            return
 
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
