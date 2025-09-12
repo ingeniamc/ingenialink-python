@@ -150,8 +150,8 @@ def test_drive_context_manager_restores_complete_access_registers(
         register = servo.dictionary.get_register(rpdo_register)
         rpdo_map.add_registers(register)
 
-    previous_etg_comms_rpdo_assign_1 = servo.read(servo.ETG_COMMS_RPDO_ASSIGN_1, subnode=1)
-    previous_etg_comms_tpdo_assign_1 = servo.read(servo.ETG_COMMS_TPDO_ASSIGN_1, subnode=1)
+    previous_etg_comms_rpdo_assign_1 = servo.read(servo.ETG_COMMS_RPDO_ASSIGN_1, subnode=0)
+    previous_etg_comms_tpdo_assign_1 = servo.read(servo.ETG_COMMS_TPDO_ASSIGN_1, subnode=0)
 
     with context:
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
