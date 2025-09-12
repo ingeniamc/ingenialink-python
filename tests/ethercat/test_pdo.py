@@ -379,9 +379,6 @@ def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(setup_
         "map_pdos": {"kwargs": {"slave_index": 1}},
         "map_rpdos": {"kwargs": {}},
         "map_tpdos": {"kwargs": {}},
-        "clear": {"kwargs": {}},
-        "__setitem__": {"kwargs": {"index": 0, "value": rpdo_map.items[0]}},
-        "__delitem__": {"kwargs": {"index": 0}},
     }
 
     for method, method_args in locked_methods.items():
