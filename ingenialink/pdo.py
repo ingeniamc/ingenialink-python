@@ -430,8 +430,67 @@ class PDOMap:
 
     def clear(self) -> None:
         """Clear all items."""
+        self.__check_servo_is_in_preoperational_state()
         self.__is_dirty = True
         self.__items.clear()
+
+    def __getitem__(self, index: int) -> PDOMapItem:
+        """Get item by index.
+
+        Args:
+            index: Index of the item.
+
+        Returns:
+            Item at the given index.
+
+        Raises:
+            IndexError: If the index is out of range.
+        """
+        return self.__items.__getitem__(index)
+
+    def __setitem__(self, index: int, item: PDOMapItem) -> None:
+        """Set item at the given index.
+
+        Args:
+            index: Index of the item.
+            item: Item to be set.
+
+        Raises:
+            IndexError: If the index is out of range.
+            ValueError: If the item is not of the expected type.
+        """
+        self.__check_servo_is_in_preoperational_state()
+        if not isinstance(item, self._PDO_MAP_ITEM_CLASS):
+            raise ValueError(
+                f"Expected {self._PDO_MAP_ITEM_CLASS}, got {type(item)}. "
+                "Cannot set item to the map."
+            )
+        self.__is_dirty = True
+        self.__setitem__(index, item)
+
+    def __delitem__(self, index: int) -> None:
+        """Delete item at the given index.
+
+        Args:
+            index: Index of the item.
+
+        Raises:
+            IndexError: If the index is out of range.
+        """
+        self.__check_servo_is_in_preoperational_state()
+        self.__is_dirty = True
+        self.__items.__delitem__(index)
+
+    def __contains__(self, item: PDOMapItem) -> bool:
+        """Check if the item is in the PDOMap.
+
+        Args:
+            item: Item to be checked.
+
+        Returns:
+            True if the item is in the PDOMap, False otherwise.
+        """
+        return self.__items.__contains__(item)
 
     @property
     def items(self) -> tuple[PDOMapItem, ...]:

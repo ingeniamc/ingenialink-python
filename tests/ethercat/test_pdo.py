@@ -270,6 +270,7 @@ def test_pdo_add_registers(open_dictionary):
 
     assert len(rpdo_map.items) == 1
     assert rpdo_map.items[0].register == register1
+    assert rpdo_map[0].register == register1
 
     rpdo_map.add_registers([register1, register2])
 
@@ -277,6 +278,9 @@ def test_pdo_add_registers(open_dictionary):
     assert rpdo_map.items[0].register == register1
     assert rpdo_map.items[1].register == register1
     assert rpdo_map.items[2].register == register2
+    assert rpdo_map[0].register == register1
+    assert rpdo_map[1].register == register1
+    assert rpdo_map[2].register == register2
 
 
 @pytest.mark.no_connection
@@ -375,6 +379,9 @@ def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(setup_
         "map_pdos": {"kwargs": {"slave_index": 1}},
         "map_rpdos": {"kwargs": {}},
         "map_tpdos": {"kwargs": {}},
+        "clear": {"kwargs": {}},
+        "__setitem__": {"kwargs": {"index": 0, "value": rpdo_map.items[0]}},
+        "__delitem__": {"kwargs": {"index": 0}},
     }
 
     for method, method_args in locked_methods.items():
