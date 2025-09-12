@@ -164,7 +164,11 @@ class DriveContextManager:
         registers_to_restore = [self._registers_changed]
         # Drive must be in pre-operational state to reset the PDO mapping
         # https://novantamotion.atlassian.net/browse/INGK-1160
-        if self._reset_pdo_mapping and (self._reset_tpdo_mapping or self._reset_rpdo_mapping):
+        if (
+            self._reset_pdo_mapping
+            and isinstance(self.drive, PDOServo)
+            and (self._reset_tpdo_mapping or self._reset_rpdo_mapping)
+        ):
             try:
                 self.drive.check_servo_is_in_preoperational_state()
                 if self._reset_tpdo_mapping:
@@ -204,9 +208,6 @@ class DriveContextManager:
                     )
                     self.drive.write(uid, restore_value, subnode=axis)
                 restored_registers[axis].append(uid)
-
-        if not isinstance(self.drive, PDOServo):
-            return
 
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
