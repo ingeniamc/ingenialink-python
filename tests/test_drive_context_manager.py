@@ -158,11 +158,11 @@ def test_drive_context_manager_restores_complete_access_registers(
         servo.map_pdos(slave_index=setup_descriptor.slave)
 
         assert (
-            servo.read(servo.ETG_COMMS_RPDO_ASSIGN_1, subnode=1) != previous_etg_comms_rpdo_assign_1
+            servo.read(servo.ETG_COMMS_RPDO_ASSIGN_1, subnode=0) != previous_etg_comms_rpdo_assign_1
         )
         assert (
-            servo.read(servo.ETG_COMMS_TPDO_ASSIGN_1, subnode=1) != previous_etg_comms_tpdo_assign_1
+            servo.read(servo.ETG_COMMS_TPDO_ASSIGN_1, subnode=0) != previous_etg_comms_tpdo_assign_1
         )
 
-    assert servo.read(servo.ETG_COMMS_RPDO_ASSIGN_1, subnode=1) == previous_etg_comms_rpdo_assign_1
-    assert servo.read(servo.ETG_COMMS_TPDO_ASSIGN_1, subnode=1) == previous_etg_comms_tpdo_assign_1
+    assert servo.read(servo.ETG_COMMS_RPDO_ASSIGN_1, subnode=0) == previous_etg_comms_rpdo_assign_1
+    assert servo.read(servo.ETG_COMMS_TPDO_ASSIGN_1, subnode=0) == previous_etg_comms_tpdo_assign_1
