@@ -192,7 +192,7 @@ class DriveContextManager:
         else:
             self._objects_changed[register.subnode][obj.uid].append(register.identifier)
         self._update_reset_pdo_mapping_flags(uid=register.identifier)
-        logger.debug(f"{id(self)}: Object {obj.uid=} changed using complete access to {value}.")
+        logger.debug(f"{id(self)}: Object {obj.uid} changed using complete access to {value!r}.")
 
     def _store_register_data(self) -> None:
         """Saves the value of all registers."""
@@ -200,16 +200,13 @@ class DriveContextManager:
         for axis in axes:
             self._original_register_values[axis] = {}
             for uid, register in self.drive.dictionary.registers(subnode=axis).items():
-                if register.identifier in self._do_not_restore_registers:
+                if uid in self._do_not_restore_registers:
                     continue
                 if register.access in [RegAccess.WO, RegAccess.RO]:
                     continue
                 # These registers will be restored by resetting the PDO mapping
                 # or with complete access
-                if (
-                    _PDO_RPDO_MAP_REGISTER_UID in register.identifier
-                    or _PDO_TPDO_MAP_REGISTER_UID in register.identifier
-                ):
+                if _PDO_RPDO_MAP_REGISTER_UID in uid or _PDO_TPDO_MAP_REGISTER_UID in uid:
                     continue
 
                 try:
