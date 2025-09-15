@@ -80,11 +80,34 @@ class DriveContextManager:
         self._reset_rpdo_mapping: bool = False
         self._reset_tpdo_mapping: bool = False
 
+    def _update_reset_pdo_mapping_flags(self, uid: str) -> bool:
+        """Updates the flags that indicate whether the RPDO or TPDO mapping should be reset.
+
+        Args:
+            uid: The UID of the register that has been changed.
+
+        Returns:
+            True if the register affects the PDO mapping, False otherwise.
+        """
+        if _PDO_RPDO_MAP_REGISTER_UID in uid:
+            logger.debug(
+                f"{id(self)}: {uid=} has been changed, will reset rpdo mapping on context exit"
+            )
+            self._reset_rpdo_mapping = True
+            return True
+        elif _PDO_TPDO_MAP_REGISTER_UID in uid:
+            logger.debug(
+                f"{id(self)}: {uid=} has been changed, will reset tpdo mapping on context exit"
+            )
+            self._reset_tpdo_mapping = True
+            return True
+        return False
+
     def _register_update_callback(
         self,
         servo: Servo,  # noqa: ARG002
         register: Register,
-        value: Optional[Union[int, float, str, bytes]],
+        value: Union[int, float, str, bytes],
     ) -> None:
         """Saves the register uids that are changed.
 
@@ -94,9 +117,6 @@ class DriveContextManager:
             servo: servo.
             register: register.
             value: changed value.
-                If a register is changed using complete access, it will be considered
-                that all registers in the object should be restored.
-                Therefore, the value may be None in that case.
         """
         uid: str = cast("str", register.identifier)
         if register.access in [RegAccess.WO, RegAccess.RO]:
@@ -107,17 +127,8 @@ class DriveContextManager:
             return
 
         # Reset the whole rpdo/tpdo mapping if needed
-        if _PDO_RPDO_MAP_REGISTER_UID in uid:
-            logger.debug(
-                f"{id(self)}: {uid=} has been changed, will reset rpdo mapping on context exit"
-            )
-            self._reset_rpdo_mapping = True
-            return
-        if _PDO_TPDO_MAP_REGISTER_UID in uid:
-            logger.debug(
-                f"{id(self)}: {uid=} has been changed, will reset tpdo mapping on context exit"
-            )
-            self._reset_tpdo_mapping = True
+        reset_pdo_mapping = self._update_reset_pdo_mapping_flags(uid=uid)
+        if reset_pdo_mapping:
             return
 
         # Check if the new value is different from the previous one
@@ -180,6 +191,7 @@ class DriveContextManager:
             self._objects_changed[register.subnode][obj.uid] = [register.identifier]
         else:
             self._objects_changed[register.subnode][obj.uid].append(register.identifier)
+        self._update_reset_pdo_mapping_flags(uid=register.identifier)
         logger.debug(f"{id(self)}: Object {obj.uid=} changed using complete access to {value}.")
 
     def _store_register_data(self) -> None:
