@@ -314,7 +314,7 @@ class Servo:
             Callable[[Servo, Register, Union[int, float, str, bytes]], None]
         ] = []
         self.__register_update_complete_access_observers: list[
-            Callable[[Servo, Register, Union[int, float, str, bytes]], None]
+            Callable[[Servo, Register, Union[int, float, str, bytes], str], None]
         ] = []
         if servo_status_listener:
             self.start_status_listener()
@@ -1370,7 +1370,7 @@ class Servo:
         else:
             _reg = self._get_reg(reg, subnode)
         self._write_raw(_reg, data, complete_access=True)
-        self._notify_register_update_complete_access(_reg, data)
+        self._notify_register_update_complete_access(_reg, data, operation="write")
 
     def read_complete_access(
         self,
@@ -1405,7 +1405,7 @@ class Servo:
             )
 
         value = self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
-        self._notify_register_update_complete_access(_reg, value)
+        self._notify_register_update_complete_access(_reg, value, operation="read")
         return value
 
     def read_bitfields(
@@ -1503,7 +1503,7 @@ class Servo:
         self.__register_update_observers.remove(callback)
 
     def register_update_complete_access_subscribe(
-        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None]
+        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes], str], None]
     ) -> None:
         """Subscribe to complete access register updates.
 
@@ -1515,7 +1515,7 @@ class Servo:
         self.__register_update_complete_access_observers.append(callback)
 
     def register_update_complete_access_unsubscribe(
-        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes]], None]
+        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes], str], None]
     ) -> None:
         """Unsubscribe to complete access register updates.
 
@@ -1541,7 +1541,9 @@ class Servo:
                 data,
             )
 
-    def _notify_register_update_complete_access(self, reg: Register, data: bytes) -> None:
+    def _notify_register_update_complete_access(
+        self, reg: Register, data: bytes, operation: str
+    ) -> None:
         """Notify a complete access register update to the observers.
 
         The updated value is stored in the register's storage attribute.
@@ -1549,6 +1551,7 @@ class Servo:
         Args:
             reg: Updated register.
             data: Updated value.
+            operation: 'read' or 'write' depending on the operation performed.
 
         """
         for callback in self.__register_update_complete_access_observers:
@@ -1556,6 +1559,7 @@ class Servo:
                 self,
                 reg,
                 data,
+                operation,
             )
 
     def replace_dictionary(self, dictionary: str) -> None:
