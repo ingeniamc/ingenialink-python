@@ -93,7 +93,7 @@ def test_drive_context_manager_nested_contexts(setup_manager):
 def test_drive_context_manager_skips_default_do_not_restore_registers(setup_manager):
     servo, _, _, _ = setup_manager
     context = DriveContextManager(servo)
-    assert len(context._do_not_restore_registers) == 4
+    assert len(context._do_not_restore_registers) == 5
 
     # If not additional ignored registers are added,
     # the default ones are the ones that are troublesome
@@ -103,6 +103,7 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(setup_mana
         servo.STORE_MOCO_ALL_REGISTERS,
         servo.RESTORE_COCO_ALL,
         servo.RESTORE_MOCO_ALL_REGISTERS,
+        "COMMS_ETH_MAC",
     }
 
 
@@ -114,7 +115,7 @@ def test_drive_context_manager_with_do_not_restore_registers(setup_manager):
     servo, _, _, _ = setup_manager
     context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
     assert (
-        len(context._do_not_restore_registers) == 5
+        len(context._do_not_restore_registers) == 6
     )  # COCO-MOCO store/restore registers + _USER_OVER_VOLTAGE_UID
 
     new_reg_value = 100.0
@@ -140,83 +141,27 @@ def test_drive_context_manager_restores_complete_access_registers(
     servo.reset_rpdo_mapping()
     servo.reset_tpdo_mapping()
 
-    rpdo_map = RPDOMap()
     tpdo_map = TPDOMap()
     tpdo_registers = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE", "CL_TOR_FBK_VALUE"]
-    rpdo_registers = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE", "CL_TOR_SET_POINT_VALUE"]
     for tpdo_register in tpdo_registers:
         register = servo.dictionary.get_register(tpdo_register)
         tpdo_map.add_registers(register)
+
+    rpdo_map = RPDOMap()
+    rpdo_registers = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE", "CL_TOR_SET_POINT_VALUE"]
     for rpdo_register in rpdo_registers:
         register = servo.dictionary.get_register(rpdo_register)
         rpdo_map.add_registers(register)
 
-    previous_etg_comms_rpdo_assign_1 = servo.read(servo.ETG_COMMS_RPDO_ASSIGN_1, subnode=0)
-    previous_etg_comms_tpdo_assign_1 = servo.read(servo.ETG_COMMS_TPDO_ASSIGN_1, subnode=0)
-
-    # Set the RPDO map index
-    etg_comms_rpdo_map1 = servo.dictionary.get_object("ETG_COMMS_RPDO_MAP1", subnode=0)
-    if previous_etg_comms_rpdo_assign_1 == etg_comms_rpdo_map1.idx:
-        map_register_idx = servo.dictionary.get_object("ETG_COMMS_RPDO_MAP2", subnode=0).idx
-        rpdo_map_str = "MAP2"
-    else:
-        map_register_idx = etg_comms_rpdo_map1.idx
-        rpdo_map_str = "MAP1"
-    rpdo_map.map_register_index = map_register_idx
-
-    # Set the TPDO map index
-    etg_comms_tpdo_map1 = servo.dictionary.get_object("ETG_COMMS_TPDO_MAP1", subnode=0)
-    if previous_etg_comms_tpdo_assign_1 == etg_comms_tpdo_map1.idx:
-        map_register_idx = servo.dictionary.get_object("ETG_COMMS_TPDO_MAP2", subnode=0).idx
-        tpdo_map_str = "MAP2"
-    else:
-        map_register_idx = etg_comms_tpdo_map1.idx
-        tpdo_map_str = "MAP1"
-    tpdo_map.map_register_index = map_register_idx
-
-    previous_etg_comms_rpdo_map1_total = servo.read(
-        f"ETG_COMMS_RPDO_{rpdo_map_str}_TOTAL", subnode=0
-    )
-    previous_etg_comms_tpdo_map1_total = servo.read(
-        f"ETG_COMMS_TPDO_{tpdo_map_str}_TOTAL", subnode=0
-    )
-
     with context:
+        assert context._registers_changed == {}
+        assert context._objects_changed == {}
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
         servo.map_pdos(slave_index=setup_descriptor.slave)
 
-        assert (
-            servo.read(servo.ETG_COMMS_RPDO_ASSIGN_1, subnode=0) != previous_etg_comms_rpdo_assign_1
-        )
-        assert (
-            servo.read(servo.ETG_COMMS_TPDO_ASSIGN_1, subnode=0) != previous_etg_comms_tpdo_assign_1
-        )
-        assert (
-            servo.read(f"ETG_COMMS_RPDO_{rpdo_map_str}_TOTAL", subnode=0)
-            != previous_etg_comms_rpdo_map1_total
-        )
-        assert (
-            servo.read(f"ETG_COMMS_TPDO_{tpdo_map_str}_TOTAL", subnode=0)
-            != previous_etg_comms_tpdo_map1_total
-        )
-
-    # Registers restored by restoring the PDO mapping
-    assert servo.read(servo.ETG_COMMS_RPDO_ASSIGN_1, subnode=0) == previous_etg_comms_rpdo_assign_1
-    assert servo.read(servo.ETG_COMMS_TPDO_ASSIGN_1, subnode=0) == previous_etg_comms_tpdo_assign_1
-
-    assert (
-        servo.read(f"ETG_COMMS_RPDO_{rpdo_map_str}_TOTAL", subnode=0)
-        == previous_etg_comms_rpdo_map1_total
-    )
-    assert (
-        servo.read(f"ETG_COMMS_TPDO_{tpdo_map_str}_TOTAL", subnode=0)
-        == previous_etg_comms_tpdo_map1_total
-    )
-    assert (
-        servo.read(f"ETG_COMMS_RPDO_{rpdo_map_str}_TOTAL", subnode=0)
-        == previous_etg_comms_rpdo_map1_total
-    )
-    assert (
-        servo.read(f"ETG_COMMS_TPDO_{tpdo_map_str}_TOTAL", subnode=0)
-        == previous_etg_comms_tpdo_map1_total
-    )
+        assert context._registers_changed == {}
+        assert len(context._objects_changed[0]) == 4
+        assert "ETG_COMMS_RPDO_ASSIGN" in context._objects_changed[0]
+        assert "ETG_COMMS_TPDO_ASSIGN" in context._objects_changed[0]
+        assert "ETG_COMMS_RPDO_MAP1" in context._objects_changed[0]
+        assert "ETG_COMMS_TPDO_MAP1" in context._objects_changed[0]

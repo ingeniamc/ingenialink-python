@@ -29,6 +29,7 @@ class DriveContextManager:
         servo: Servo,
         axis: Optional[int] = None,
         do_not_restore_registers: Optional[list[str]] = None,
+        complete_access_objects: Optional[list[str]] = None,
     ) -> None:
         """Initializes the registers that shouldn't be stored.
 
@@ -37,7 +38,11 @@ class DriveContextManager:
             axis: axis to store/restore registers. If not specified, all axis will be
             stored/restored. Defaults to None.
             do_not_restore_registers: list of registers that should not be stored/restored.
-                Defaults to [].
+                Defaults to None.
+            complete_access_objects: list of objects that should be read using complete access.
+                Objects containing "ETG_COMMS_RPDO_" and "ETG_COMMS_TPDO_" are always read using
+                complete access.
+                Defaults to None.
         """
         self.drive = servo
         self._axis: Optional[int] = axis
@@ -50,13 +55,24 @@ class DriveContextManager:
             servo.STORE_MOCO_ALL_REGISTERS,
             servo.RESTORE_COCO_ALL,
             servo.RESTORE_MOCO_ALL_REGISTERS,
+            "COMMS_ETH_MAC",
         ])
 
+        # Set the objects that should be read using complete access
+        self._complete_access_objects: set[str] = (
+            set(complete_access_objects) if isinstance(complete_access_objects, list) else set()
+        )
+
         self._original_register_values: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
-        # Key: (subnode, uid), (value, complete access flag)
-        self._registers_changed: OrderedDict[
-            tuple[int, str], tuple[Union[int, float, str, bytes], bool]
-        ] = OrderedDict()
+
+        self._original_canopen_object_values: dict[int, dict[str, bytes]] = {}
+
+        # Key: (axis, uid), value
+        self._registers_changed: OrderedDict[tuple[int, str], Union[int, float, str, bytes]] = (
+            OrderedDict()
+        )
+        # Key: axis, value
+        self._objects_changed: OrderedDict[int, dict[str, list[str]]] = OrderedDict()
 
         # If registers that contain the prefixes defined in _PDO_MAP_REGISTERS_UID
         # present a change, do not restore the exact same value because there is an
@@ -69,7 +85,6 @@ class DriveContextManager:
         servo: Servo,  # noqa: ARG002
         register: Register,
         value: Optional[Union[int, float, str, bytes]],
-        complete_access: bool = False,
     ) -> None:
         """Saves the register uids that are changed.
 
@@ -82,8 +97,6 @@ class DriveContextManager:
                 If a register is changed using complete access, it will be considered
                 that all registers in the object should be restored.
                 Therefore, the value may be None in that case.
-            complete_access: True if the register has been changed using complete access.
-                Defaults to False.
         """
         uid: str = cast("str", register.identifier)
         if register.access in [RegAccess.WO, RegAccess.RO]:
@@ -92,14 +105,6 @@ class DriveContextManager:
             return
         if uid not in self._original_register_values[register.subnode]:
             return
-        dict_key = (register.subnode, uid)
-
-        def __compare_values() -> Optional[Union[int, float, str, bytes]]:
-            if dict_key in self._registers_changed:
-                previous_value = self._registers_changed[dict_key][0]
-            previous_value = self._original_register_values[register.subnode][uid]
-            current_value = value if value is not None else previous_value
-            return previous_value, current_value
 
         # Reset the whole rpdo/tpdo mapping if needed
         if _PDO_RPDO_MAP_REGISTER_UID in uid:
@@ -116,10 +121,14 @@ class DriveContextManager:
             return
 
         # Check if the new value is different from the previous one
-        previous_value, current_value = __compare_values()
+        dict_key = (register.subnode, uid)
+        if dict_key in self._registers_changed:
+            previous_value = self._registers_changed[dict_key]
+        previous_value = self._original_register_values[register.subnode][uid]
+        current_value = value if value is not None else previous_value
         if current_value == previous_value:
             return
-        self._registers_changed[dict_key] = (current_value, complete_access)
+        self._registers_changed[dict_key] = current_value
         logger.debug(f"{id(self)}: {uid=} changed from {previous_value!r} to {current_value!r}")
 
     def _complete_access_register_update_callback(
@@ -141,12 +150,12 @@ class DriveContextManager:
             ValueError: if the register identifier is None.
             ValueError: if the register does not have idx attribute to retrieve main object.
             ValueError: if the servo dictionary is not a CanopenDictionary instance.
+            RuntimeError: if the register has been changed using complete access, but the
+                object original value was not stored.
         """
         if operation == "read":
             return
-        self._register_update_callback(
-            servo=servo, register=register, value=value, complete_access=True
-        )
+
         if register.identifier is None:
             raise ValueError("Register identifier cannot be None in complete access.")
         if not hasattr(register, "idx"):
@@ -158,12 +167,20 @@ class DriveContextManager:
         # assume that all the registers in the main object have been changed
         # and should be restored
         obj = servo.dictionary.get_object_by_index(index=register.idx)
-        for reg in obj.registers:
-            if reg.identifier == register.identifier:
-                continue
-            self._register_update_callback(
-                servo=servo, register=reg, value=None, complete_access=True
+
+        if obj.uid not in self._original_canopen_object_values[register.subnode]:
+            raise RuntimeError(
+                f"Changed register {register.identifier} using complete access, "
+                f"but object {obj.uid} original value not stored."
             )
+
+        if register.subnode not in self._objects_changed:
+            self._objects_changed[register.subnode] = {}
+        if obj.uid not in self._objects_changed[register.subnode]:
+            self._objects_changed[register.subnode][obj.uid] = [register.identifier]
+        else:
+            self._objects_changed[register.subnode][obj.uid].append(register.identifier)
+        logger.debug(f"{id(self)}: Object {obj.uid=} changed using complete access to {value}.")
 
     def _store_register_data(self) -> None:
         """Saves the value of all registers."""
@@ -174,6 +191,13 @@ class DriveContextManager:
                 if register.identifier in self._do_not_restore_registers:
                     continue
                 if register.access in [RegAccess.WO, RegAccess.RO]:
+                    continue
+                # These registers will be restored by resetting the PDO mapping
+                # or with complete access
+                if (
+                    _PDO_RPDO_MAP_REGISTER_UID in register.identifier
+                    or _PDO_TPDO_MAP_REGISTER_UID in register.identifier
+                ):
                     continue
 
                 try:
@@ -191,14 +215,40 @@ class DriveContextManager:
                         continue
                 self._original_register_values[axis][uid] = register_value
 
+    def _store_objects_data(self) -> None:
+        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
+        for axis in axes:
+            self._original_canopen_object_values[axis] = {}
+            if axis not in self.drive.dictionary.items:
+                continue
+            for uid, obj in self.drive.dictionary.items[axis].items():
+                # Always read the rpdo/tpdo map objects using complete access
+                if (
+                    (_PDO_RPDO_MAP_REGISTER_UID not in uid)
+                    and (_PDO_TPDO_MAP_REGISTER_UID not in uid)
+                    and (uid not in self._complete_access_objects)
+                ):
+                    continue
+
+                try:
+                    obj_value = self.drive.read_complete_access(obj, subnode=axis)
+                except Exception as e:
+                    logger.warning(
+                        f"{id(self)}: '{e}' happened while trying to read {uid=} from "
+                        f"{axis=}, trying again..."
+                    )
+                    try:
+                        obj_value = self.drive.read_complete_access(obj, subnode=axis)
+                    except Exception:
+                        continue
+                self._original_canopen_object_values[axis][uid] = obj_value
+
     def _restore_register_data(self) -> None:
         """Restores the drive values."""
         axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
         restored_registers: dict[int, list[str]] = {axis: [] for axis in axes}
 
-        for (axis, uid), (current_value, complete_access) in reversed(
-            self._registers_changed.items()
-        ):
+        for (axis, uid), current_value in reversed(self._registers_changed.items()):
             # No original data for the register
             if uid not in self._original_register_values[axis]:
                 continue
@@ -207,7 +257,7 @@ class DriveContextManager:
                 continue
             restore_value = self._original_register_values[axis][uid]
             # No change with respect to the original value
-            if current_value == restore_value and not complete_access:
+            if current_value == restore_value:
                 continue
 
             try:
@@ -220,6 +270,24 @@ class DriveContextManager:
                 )
                 self.drive.write(uid, restore_value, subnode=axis)
             restored_registers[axis].append(uid)
+
+    def _restore_objects_data(self) -> None:
+        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
+        restored_objects: dict[int, list[str]] = {axis: [] for axis in axes}
+
+        for axis, obj in reversed(self._objects_changed.items()):
+            for uid, registers in obj.items():
+                # Object has already been restored with a newer value than the evaluated one
+                if uid in restored_objects[axis]:
+                    continue
+                restore_value = self._original_canopen_object_values[axis][uid]
+                for register in registers:
+                    logger.debug(
+                        f"Restoring register {register} from object {uid=} on {axis=} "
+                        "using complete access."
+                    )
+                    self.drive.write_complete_access(register, restore_value, subnode=axis)
+                restored_objects[axis].append(uid)
 
         # Drive must be in pre-operational state to reset the PDO mapping
         # https://novantamotion.atlassian.net/browse/INGK-1160
@@ -242,6 +310,7 @@ class DriveContextManager:
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
         self._store_register_data()
+        self._store_objects_data()
         self.drive.register_update_subscribe(self._register_update_callback)
         self.drive.register_update_complete_access_subscribe(
             self._complete_access_register_update_callback
@@ -254,3 +323,4 @@ class DriveContextManager:
             self._complete_access_register_update_callback
         )
         self._restore_register_data()
+        self._restore_objects_data()
