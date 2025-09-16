@@ -270,6 +270,7 @@ def test_pdo_add_registers(open_dictionary):
 
     assert len(rpdo_map.items) == 1
     assert rpdo_map.items[0].register == register1
+    assert rpdo_map[0].register == register1
 
     rpdo_map.add_registers([register1, register2])
 
@@ -277,6 +278,9 @@ def test_pdo_add_registers(open_dictionary):
     assert rpdo_map.items[0].register == register1
     assert rpdo_map.items[1].register == register1
     assert rpdo_map.items[2].register == register2
+    assert rpdo_map[0].register == register1
+    assert rpdo_map[1].register == register1
+    assert rpdo_map[2].register == register2
 
 
 @pytest.mark.no_connection
