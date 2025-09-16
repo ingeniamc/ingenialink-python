@@ -174,6 +174,8 @@ class DriveContextManager:
         """
         if operation == "read":
             return
+        if register.access in [RegAccess.WO, RegAccess.RO]:
+            return
 
         if register.identifier is None:
             raise ValueError("Register identifier cannot be None in complete access.")
