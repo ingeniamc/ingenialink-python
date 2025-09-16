@@ -17,6 +17,12 @@ logger = get_logger(__name__)
 _PDO_RPDO_MAP_REGISTER_UID = "ETG_COMMS_RPDO_"
 _PDO_TPDO_MAP_REGISTER_UID = "ETG_COMMS_TPDO_"
 
+# Monitoring and disturbance objects
+# In CANopen dictionaries, the uid is "MON_DATA_VALUE" and "DIST_DATA_VALUE"
+# In EtherCAT dictionaries, the uid is "MON_DATA" and "DIST_DATA"
+_MON_DATA_OBJECT_UID = "MON_DATA"
+_DIST_DATA_OBJECT_UID = "DIST_DATA"
+
 
 class DriveContextManager:
     """Context used to make modifications in the drive.
@@ -42,7 +48,8 @@ class DriveContextManager:
             complete_access_objects: list of objects that should be read using complete access.
                 Objects containing "ETG_COMMS_RPDO_" and "ETG_COMMS_TPDO_" are always read using
                 complete access.
-                Also disturbance data objects should be read using complete access.
+            Also, monitoring and disturbance data objects ("MON_DATA" and "DIST_DATA")
+                should be read using complete access.
                 Defaults to None.
         """
         self.drive = servo
@@ -63,7 +70,6 @@ class DriveContextManager:
         self._complete_access_objects: set[str] = (
             set(complete_access_objects) if isinstance(complete_access_objects, list) else set()
         )
-        self._complete_access_objects.update(["MON_DATA", "DIST_DATA"])
 
         self._original_register_values: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
 
@@ -237,6 +243,8 @@ class DriveContextManager:
                 if (
                     (_PDO_RPDO_MAP_REGISTER_UID not in uid)
                     and (_PDO_TPDO_MAP_REGISTER_UID not in uid)
+                    and (_MON_DATA_OBJECT_UID not in uid)
+                    and (_DIST_DATA_OBJECT_UID not in uid)
                     and (uid not in self._complete_access_objects)
                 ):
                     continue

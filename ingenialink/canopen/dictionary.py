@@ -88,27 +88,15 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
     @cached_property
     def _monitoring_disturbance_objects(self) -> list["CanOpenObject"]:
         monitoring_obj = CanOpenObject(
-            uid="MON_DATA",
+            uid="MON_DATA_VALUE",
             idx=0x58B2,
             object_type=CanOpenObjectType.RECORD,
             registers=[
                 CanopenRegister(
-                    identifier="MON_DATA_SUBINDEX_0",
-                    units="none",
-                    idx=0x58B2,
-                    subidx=0x00,
-                    pdo_access=RegCyclicType.CONFIG,
-                    dtype=RegDtype.U8,
-                    access=RegAccess.RW,
-                    subnode=0,
-                    labels={"en_US": "SubIndex 000"},
-                    cat_id="MONITORING",
-                ),
-                CanopenRegister(
                     identifier="MON_DATA_VALUE",
                     units="none",
                     idx=0x58B2,
-                    subidx=0x01,
+                    subidx=0x00,
                     pdo_access=RegCyclicType.CONFIG,
                     dtype=RegDtype.BYTE_ARRAY_512,
                     access=RegAccess.RO,
@@ -119,27 +107,15 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
             ],
         )
         disturbance_obj = CanOpenObject(
-            uid="DIST_DATA",
+            uid="DIST_DATA_VALUE",
             idx=0x58B4,
             object_type=CanOpenObjectType.RECORD,
             registers=[
                 CanopenRegister(
-                    identifier="DIST_DATA_SUBINDEX_0",
-                    units="none",
-                    idx=0x58B4,
-                    subidx=0x00,
-                    pdo_access=RegCyclicType.CONFIG,
-                    dtype=RegDtype.U8,
-                    access=RegAccess.RW,
-                    subnode=0,
-                    labels={"en_US": "SubIndex 000"},
-                    cat_id="MONITORING",
-                ),
-                CanopenRegister(
                     identifier="DIST_DATA_VALUE",
                     units="none",
                     idx=0x58B4,
-                    subidx=0x01,
+                    subidx=0x00,
                     pdo_access=RegCyclicType.CONFIG,
                     dtype=RegDtype.BYTE_ARRAY_512,
                     access=RegAccess.WO,
