@@ -40,6 +40,7 @@ dtype_length_bits: dict[RegDtype, int] = {
     RegDtype.S64: 64,
     RegDtype.FLOAT: 32,
     RegDtype.BOOL: 1,
+    RegDtype.BYTE_ARRAY_512: 512 * 8,
 }
 
 VALID_BIT_REGISTER_VALUES = [0, 1, True, False]

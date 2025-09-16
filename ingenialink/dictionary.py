@@ -1626,6 +1626,10 @@ class DictionaryV2(Dictionary):
         return None
 
     @property
+    def _monitoring_disturbance_objects(self) -> list["CanOpenObject"]:
+        raise NotImplementedError
+
+    @property
     @abstractmethod
     def _monitoring_disturbance_registers(
         self,
@@ -1876,6 +1880,17 @@ class DictionaryV2(Dictionary):
             self.categories._categories[category] = {"en_US": category.capitalize()}
         self._registers[subnode][identifier] = register
 
+    def _add_canopen_object(self, canopen_object: "CanOpenObject") -> None:
+        """Adds Canopen object into the items list.
+
+        Args:
+            canopen_object: Canopen object to add.
+        """
+        axis = canopen_object.registers[0].subnode
+        if axis not in self.items:
+            self.items[axis] = {}
+        self.items[axis][canopen_object.uid] = canopen_object
+
     def _append_missing_registers(
         self,
     ) -> None:
@@ -1887,3 +1902,7 @@ class DictionaryV2(Dictionary):
         if self.__MON_DIST_STATUS_REGISTER in self._registers[0]:
             for register in self._monitoring_disturbance_registers:
                 self._add_register_list(register)
+
+            if self.interface in [Interface.CAN, Interface.ECAT]:
+                for obj in self._monitoring_disturbance_objects:
+                    self._add_canopen_object(obj)

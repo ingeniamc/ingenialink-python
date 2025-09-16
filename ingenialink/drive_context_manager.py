@@ -63,7 +63,7 @@ class DriveContextManager:
         self._complete_access_objects: set[str] = (
             set(complete_access_objects) if isinstance(complete_access_objects, list) else set()
         )
-        self._complete_access_objects.update([servo.DIST_DATA])
+        self._complete_access_objects.update(["MON_DATA", "DIST_DATA"])
 
         self._original_register_values: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
 

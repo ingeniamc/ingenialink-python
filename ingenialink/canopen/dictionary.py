@@ -11,6 +11,7 @@ from ingenialink.constants import (
 )
 from ingenialink.dictionary import (
     CanOpenObject,
+    CanOpenObjectType,
     Dictionary,
     DictionarySafetyModule,
     DictionaryV2,
@@ -82,36 +83,78 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
 
     Args:
         dictionary_path: Path to the Ingenia dictionary.
-
     """
+
+    @cached_property
+    def _monitoring_disturbance_objects(self) -> list["CanOpenObject"]:
+        monitoring_obj = CanOpenObject(
+            uid="MON_DATA",
+            idx=0x58B2,
+            object_type=CanOpenObjectType.RECORD,
+            registers=[
+                CanopenRegister(
+                    identifier="MON_DATA_SUBINDEX_0",
+                    units="none",
+                    idx=0x58B2,
+                    subidx=0x00,
+                    pdo_access=RegCyclicType.CONFIG,
+                    dtype=RegDtype.U8,
+                    access=RegAccess.RW,
+                    subnode=0,
+                    labels={"en_US": "SubIndex 000"},
+                    cat_id="MONITORING",
+                ),
+                CanopenRegister(
+                    identifier="MON_DATA_VALUE",
+                    units="none",
+                    idx=0x58B2,
+                    subidx=0x01,
+                    pdo_access=RegCyclicType.CONFIG,
+                    dtype=RegDtype.BYTE_ARRAY_512,
+                    access=RegAccess.RO,
+                    subnode=0,
+                    labels={"en_US": "Monitoring data"},
+                    cat_id="MONITORING",
+                ),
+            ],
+        )
+        disturbance_obj = CanOpenObject(
+            uid="DIST_DATA",
+            idx=0x58B4,
+            object_type=CanOpenObjectType.RECORD,
+            registers=[
+                CanopenRegister(
+                    identifier="DIST_DATA_SUBINDEX_0",
+                    units="none",
+                    idx=0x58B4,
+                    subidx=0x00,
+                    pdo_access=RegCyclicType.CONFIG,
+                    dtype=RegDtype.U8,
+                    access=RegAccess.RW,
+                    subnode=0,
+                    labels={"en_US": "SubIndex 000"},
+                    cat_id="MONITORING",
+                ),
+                CanopenRegister(
+                    identifier="DIST_DATA_VALUE",
+                    units="none",
+                    idx=0x58B4,
+                    subidx=0x01,
+                    pdo_access=RegCyclicType.CONFIG,
+                    dtype=RegDtype.BYTE_ARRAY_512,
+                    access=RegAccess.WO,
+                    subnode=0,
+                    labels={"en_US": "Disturbance data"},
+                    cat_id="MONITORING",
+                ),
+            ],
+        )
+        return [monitoring_obj, disturbance_obj]
 
     @cached_property
     def _monitoring_disturbance_registers(self) -> list[CanopenRegister]:
         return [
-            CanopenRegister(
-                identifier="MON_DATA_VALUE",
-                units="none",
-                idx=0x58B2,
-                subidx=0x00,
-                pdo_access=RegCyclicType.CONFIG,
-                dtype=RegDtype.BYTE_ARRAY_512,
-                access=RegAccess.RO,
-                subnode=0,
-                labels={"en_US": "Monitoring data"},
-                cat_id="MONITORING",
-            ),
-            CanopenRegister(
-                identifier="DIST_DATA_VALUE",
-                units="none",
-                idx=0x58B4,
-                subidx=0x00,
-                pdo_access=RegCyclicType.CONFIG,
-                dtype=RegDtype.BYTE_ARRAY_512,
-                access=RegAccess.WO,
-                subnode=0,
-                labels={"en_US": "Disturbance data"},
-                cat_id="MONITORING",
-            ),
+            register for obj in self._monitoring_disturbance_objects for register in obj.registers
         ]
 
     @cached_property
