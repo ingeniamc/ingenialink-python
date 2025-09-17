@@ -12,7 +12,6 @@ from ingenialink.servo import RegisterAccessOperation, Servo
 
 if TYPE_CHECKING:
     from ingenialink.canopen.register import CanopenRegister
-    from ingenialink.ethercat.register import EthercatRegister
 
 logger = get_logger(__name__)
 
@@ -159,7 +158,7 @@ class DriveContextManager:
     def _complete_access_callback(
         self,
         servo: Servo,  # noqa: ARG002
-        register: Union["CanopenRegister", "EthercatRegister"],
+        register: Union["CanopenRegister"],
         value: Union[int, float, str, bytes],
         operation: RegisterAccessOperation,
     ) -> None:

@@ -1314,9 +1314,10 @@ class DictionaryV3(Dictionary):
             register_list.sort(key=lambda val: val.subidx)
             if axis not in self.items:
                 self.items[axis] = {}
-            self.items[axis][object_uid] = CanOpenObject(
-                object_uid, obj_index, data_type, register_list
-            )
+            obj = CanOpenObject(object_uid, obj_index, data_type, register_list)
+            self.items[axis][object_uid] = obj
+            for reg in register_list:
+                reg.obj = obj
 
     def __read_canopen_subitem(
         self, subitem: ElementTree.Element, reg_index: int, subnode: int
