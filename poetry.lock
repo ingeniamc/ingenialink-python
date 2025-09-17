@@ -3622,13 +3622,13 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.1.5+pr48b5"
+version = "0.1.5+pr48b8"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "summit_testing_framework-0.1.5+pr48b5-py3-none-any.whl", hash = "sha256:f1fa587cdd296dc1bfd96871b012b29dfb7c3f1d35d53d8afb406965d34fd7e9"},
+    {file = "summit_testing_framework-0.1.5+pr48b8-py3-none-any.whl", hash = "sha256:5c0c2f00c75c0418d12528a577ff432374cf1ad6c9e16d1a6ccd04136042c021"},
 ]
 
 [package.dependencies]
@@ -4283,4 +4283,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "c21934099ab12495ad70555fc0d4d3aebb832e17ea78f03911a8dbed40eb2b77"
+content-hash = "f2ea683959689a6d12162c9cfc80bdca3aa3a40c9486a0ab1b35976ef1db3cf4"
