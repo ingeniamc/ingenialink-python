@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Optional, Union, cast
 
 from ingenialogger import get_logger
 
-from ingenialink.canopen.dictionary import CanopenDictionary
+from ingenialink.dictionary import CanOpenObject
 from ingenialink.enums.register import RegAccess
 from ingenialink.exceptions import ILEcatStateError, ILIOError
 from ingenialink.pdo import PDOServo
@@ -78,14 +78,12 @@ class DriveContextManager:
 
         self._original_register_values: dict[int, dict[str, Union[int, float, str, bytes]]] = {}
 
-        self._original_canopen_object_values: dict[int, dict[str, bytes]] = {}
+        self._original_canopen_object_values: dict[CanOpenObject, bytes] = {}
 
         # Key: (axis, uid), value
-        self._registers_changed: OrderedDict[tuple[int, str], Union[int, float, str, bytes]] = (
-            OrderedDict()
-        )
-        # Key: axis, (object uid, [register uids])
-        self._objects_changed: OrderedDict[int, dict[str, list[str]]] = OrderedDict()
+        self._registers_changed = OrderedDict[tuple[int, str], Union[int, float, str, bytes]]()
+
+        self._objects_changed = set[CanOpenObject]()
 
         # If registers that contain the prefixes defined in _PDO_MAP_REGISTERS_UID
         # present a change, do not restore the exact same value because there is an
@@ -178,32 +176,17 @@ class DriveContextManager:
         """
         if operation is RegisterAccessOperation.READ:
             return
-        if register.access in [RegAccess.WO, RegAccess.RO]:
-            return
-
-        if register.identifier is None:
-            raise ValueError("Register identifier cannot be None in complete access.")
-        if not isinstance(servo.dictionary, CanopenDictionary):
-            raise ValueError("Servo dictionary is not a CanopenDictionary instance.")
 
         # If the register has been changed using complete access,
         # assume that all the registers in the main object have been changed
         # and should be restored
-        obj = servo.dictionary.get_object_by_index(index=register.idx)
+        obj = register.obj
+        if obj is None:
+            raise ValueError(f"Register {register} has no object associated.")
 
-        if obj.uid not in self._original_canopen_object_values[register.subnode]:
-            raise RuntimeError(
-                f"Changed register {register.identifier} using complete access, "
-                f"but object {obj.uid} original value not stored."
-            )
+        self._objects_changed.add(obj)
 
-        if register.subnode not in self._objects_changed:
-            self._objects_changed[register.subnode] = {}
-        if obj.uid not in self._objects_changed[register.subnode]:
-            self._objects_changed[register.subnode][obj.uid] = [register.identifier]
-        else:
-            self._objects_changed[register.subnode][obj.uid].append(register.identifier)
-        self._update_reset_pdo_mapping_flags(uid=register.identifier)
+        # self._update_reset_pdo_mapping_flags(uid=register.identifier) TODO
         logger.debug(f"{id(self)}: Object {obj.uid} changed using complete access to {value!r}.")
 
     def _store_register_data(self) -> None:
@@ -237,34 +220,29 @@ class DriveContextManager:
                 self._original_register_values[axis][uid] = register_value
 
     def _store_objects_data(self) -> None:
-        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
-        for axis in axes:
-            self._original_canopen_object_values[axis] = {}
-            if axis not in self.drive.dictionary.items:
+        for obj in self.drive.dictionary.all_objs():
+            uid = obj.uid
+            # Always read the rpdo/tpdo map objects using complete access
+            if (
+                (_PDO_RPDO_MAP_REGISTER_UID not in uid)
+                and (_PDO_TPDO_MAP_REGISTER_UID not in uid)
+                and (_MON_DATA_OBJECT_UID not in uid)
+                and (_DIST_DATA_OBJECT_UID not in uid)
+                and (uid not in self._complete_access_objects)
+            ):
                 continue
-            for uid, obj in self.drive.dictionary.items[axis].items():
-                # Always read the rpdo/tpdo map objects using complete access
-                if (
-                    (_PDO_RPDO_MAP_REGISTER_UID not in uid)
-                    and (_PDO_TPDO_MAP_REGISTER_UID not in uid)
-                    and (_MON_DATA_OBJECT_UID not in uid)
-                    and (_DIST_DATA_OBJECT_UID not in uid)
-                    and (uid not in self._complete_access_objects)
-                ):
-                    continue
 
+            try:
+                obj_value = self.drive.read_complete_access(obj)
+            except Exception as e:
+                logger.warning(
+                    f"{id(self)}: '{e}' happened while trying to read {obj}, trying again..."
+                )
                 try:
-                    obj_value = self.drive.read_complete_access(obj, subnode=axis)
-                except Exception as e:
-                    logger.warning(
-                        f"{id(self)}: '{e}' happened while trying to read {uid=} from "
-                        f"{axis=}, trying again..."
-                    )
-                    try:
-                        obj_value = self.drive.read_complete_access(obj, subnode=axis)
-                    except Exception:
-                        continue
-                self._original_canopen_object_values[axis][uid] = obj_value
+                    obj_value = self.drive.read_complete_access(obj)
+                except Exception:
+                    continue
+            self._original_canopen_object_values[obj] = obj_value
 
     def _restore_register_data(self) -> None:
         """Restores the drive values."""
@@ -295,22 +273,12 @@ class DriveContextManager:
             restored_registers[axis].append(uid)
 
     def _restore_objects_data(self) -> None:
-        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
-        restored_objects: dict[int, list[str]] = {axis: [] for axis in axes}
-
-        for axis, obj in reversed(self._objects_changed.items()):
-            for uid, registers in obj.items():
-                # Object has already been restored with a newer value than the evaluated one
-                if uid in restored_objects[axis]:
-                    continue
-                restore_value = self._original_canopen_object_values[axis][uid]
-                for register in registers:
-                    logger.debug(
-                        f"Restoring register {register} from object {uid=} on {axis=} "
-                        "using complete access."
-                    )
-                    self.drive.write_complete_access(register, restore_value, subnode=axis)
-                restored_objects[axis].append(uid)
+        for obj in self._objects_changed:
+            restore_value = self._original_canopen_object_values.get(obj, None)
+            if restore_value is None:
+                raise ValueError(f"No original data for the object {obj} to restore.")
+            logger.debug(f"Restoring {obj} using complete access.")
+            self.drive.write_complete_access(obj, restore_value)
 
         # Drive must be in pre-operational state to reset the PDO mapping
         # https://novantamotion.atlassian.net/browse/INGK-1160

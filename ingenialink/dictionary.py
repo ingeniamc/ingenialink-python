@@ -143,6 +143,22 @@ class CanOpenObject:
         """
         return math.ceil(self.bit_length / 8)
 
+    def __repr__(self) -> str:
+        """String representation of the CanOpenObject class.
+
+        Returns:
+            str: String representation of the CanOpenObject instance.
+        """
+        return f"<{self.__class__.__name__} {self.uid} (idx: 0x{self.idx:X}) at 0x{id(self):X} >"
+
+    def __hash__(self) -> int:
+        """Hash of the CanOpenObject instance.
+
+        Returns:
+            int: Hash of the CanOpenObject instance.
+        """
+        return id(self)
+
 
 @dataclass
 class DictionarySafetyPDO:
