@@ -207,7 +207,7 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
     def _append_missing_registers(self) -> None:
         super()._append_missing_registers()
 
-        if self.__MON_DIST_STATUS_REGISTER in self._registers[0]:
+        if self._DictionaryV2__MON_DIST_STATUS_REGISTER in self._registers[0]:  # type: ignore[attr-defined]
             for obj in self._monitoring_disturbance_objects:
                 self._add_canopen_object(obj)
 

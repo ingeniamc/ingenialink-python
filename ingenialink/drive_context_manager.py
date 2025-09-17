@@ -108,14 +108,14 @@ class DriveContextManager:
                 f"{id(self)}: {uid=} has been changed, will reset rpdo mapping on context exit"
             )
             self._reset_rpdo_mapping = True
-            return True
         elif _PDO_TPDO_MAP_REGISTER_UID in uid:
             logger.debug(
                 f"{id(self)}: {uid=} has been changed, will reset tpdo mapping on context exit"
             )
             self._reset_tpdo_mapping = True
-            return True
-        return False
+        else:
+            return False
+        return True
 
     def _register_update_callback(
         self,
