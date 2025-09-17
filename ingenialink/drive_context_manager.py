@@ -169,7 +169,6 @@ class DriveContextManager:
             operation: read or write depending on the operation performed.
 
         Raises:
-            ValueError: if the register identifier is None.
             ValueError: if the servo dictionary is not a CanopenDictionary instance.
             RuntimeError: if the register has been changed using complete access, but the
                 object original value was not stored.
