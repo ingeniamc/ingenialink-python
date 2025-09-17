@@ -79,7 +79,7 @@ class DriveContextManager:
         self._registers_changed: OrderedDict[tuple[int, str], Union[int, float, str, bytes]] = (
             OrderedDict()
         )
-        # Key: axis, value
+        # Key: axis, (object uid, [register uids])
         self._objects_changed: OrderedDict[int, dict[str, list[str]]] = OrderedDict()
 
         # If registers that contain the prefixes defined in _PDO_MAP_REGISTERS_UID
