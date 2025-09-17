@@ -193,6 +193,24 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
             )
             return None
 
+    def _add_canopen_object(self, canopen_object: "CanOpenObject") -> None:
+        """Adds Canopen object into the items list.
+
+        Args:
+            canopen_object: Canopen object to add.
+        """
+        axis = canopen_object.registers[0].subnode
+        if axis not in self.items:
+            self.items[axis] = {}
+        self.items[axis][canopen_object.uid] = canopen_object
+
+    def _append_missing_registers(self):
+        super()._append_missing_registers()
+
+        if self.__MON_DIST_STATUS_REGISTER in self._registers[0]:
+            for obj in self._monitoring_disturbance_objects:
+                self._add_canopen_object(obj)
+
 
 class CanopenDictionaryV3(CanopenDictionary, DictionaryV3):
     """Contains all registers and information of a CANopen dictionary.
