@@ -152,7 +152,7 @@ class DriveContextManager:
         self._registers_changed[dict_key] = current_value
         logger.debug(f"{id(self)}: {uid=} changed from {previous_value!r} to {current_value!r}")
 
-    def _complete_access_register_update_callback(
+    def _complete_access_callback(
         self,
         servo: Servo,  # noqa: ARG002
         register: Register,
@@ -335,15 +335,11 @@ class DriveContextManager:
         self._store_register_data()
         self._store_objects_data()
         self.drive.register_update_subscribe(self._register_update_callback)
-        self.drive.register_update_complete_access_subscribe(
-            self._complete_access_register_update_callback
-        )
+        self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore [no-untyped-def]
         """Unsubscribes from register updates and restores the drive values."""
         self.drive.register_update_unsubscribe(self._register_update_callback)
-        self.drive.register_update_complete_access_unsubscribe(
-            self._complete_access_register_update_callback
-        )
+        self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
         self._restore_register_data()
         self._restore_objects_data()
