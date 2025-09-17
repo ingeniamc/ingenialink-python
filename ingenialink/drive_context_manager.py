@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Optional, Union, cast
+from typing import TYPE_CHECKING, Optional, Union, cast
 
 from ingenialogger import get_logger
 
@@ -9,6 +9,10 @@ from ingenialink.exceptions import ILEcatStateError, ILIOError
 from ingenialink.pdo import PDOServo
 from ingenialink.register import Register
 from ingenialink.servo import RegisterAccessOperation, Servo
+
+if TYPE_CHECKING:
+    from ingenialink.canopen.register import CanopenRegister
+    from ingenialink.ethercat.register import EthercatRegister
 
 logger = get_logger(__name__)
 
@@ -155,7 +159,7 @@ class DriveContextManager:
     def _complete_access_callback(
         self,
         servo: Servo,  # noqa: ARG002
-        register: Register,
+        register: Union["CanopenRegister", "EthercatRegister"],
         value: Union[int, float, str, bytes],
         operation: RegisterAccessOperation,
     ) -> None:
@@ -169,7 +173,6 @@ class DriveContextManager:
 
         Raises:
             ValueError: if the register identifier is None.
-            ValueError: if the register does not have idx attribute to retrieve main object.
             ValueError: if the servo dictionary is not a CanopenDictionary instance.
             RuntimeError: if the register has been changed using complete access, but the
                 object original value was not stored.
@@ -181,8 +184,6 @@ class DriveContextManager:
 
         if register.identifier is None:
             raise ValueError("Register identifier cannot be None in complete access.")
-        if not hasattr(register, "idx"):
-            raise ValueError("Register does not have idx attribute to retrieve main object.")
         if not isinstance(servo.dictionary, CanopenDictionary):
             raise ValueError("Servo dictionary is not a CanopenDictionary instance.")
 

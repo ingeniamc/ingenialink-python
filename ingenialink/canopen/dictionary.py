@@ -204,7 +204,7 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
             self.items[axis] = {}
         self.items[axis][canopen_object.uid] = canopen_object
 
-    def _append_missing_registers(self):
+    def _append_missing_registers(self) -> None:
         super()._append_missing_registers()
 
         if self.__MON_DIST_STATUS_REGISTER in self._registers[0]:
