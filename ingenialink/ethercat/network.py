@@ -546,9 +546,6 @@ class EthercatNetwork(Network):
             servo: Instance of the servo connected.
 
         """
-        # Notify that disconnect_from_slave has been called
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
         if not self._change_nodes_state(servo, pysoem.INIT_STATE):
             logger.warning("Drive can not reach Init state")
         servo.teardown()
@@ -556,6 +553,9 @@ class EthercatNetwork(Network):
         if not self.servos:
             self.stop_status_listener()
             self.close_ecat_master()
+        # Notify that disconnect_from_slave has been called
+        if servo._disconnect_callback:
+            servo._disconnect_callback(servo)
 
     def config_pdo_maps(self) -> None:
         """Configure the PDO maps.
