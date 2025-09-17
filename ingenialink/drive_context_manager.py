@@ -12,6 +12,7 @@ from ingenialink.servo import RegisterAccessOperation, Servo
 
 if TYPE_CHECKING:
     from ingenialink.canopen.register import CanopenRegister
+    from ingenialink.dictionary import CanOpenObject
     from ingenialink.ethercat.register import EthercatRegister
 
 logger = get_logger(__name__)
@@ -85,8 +86,8 @@ class DriveContextManager:
         self._registers_changed: OrderedDict[tuple[int, str], Union[int, float, str, bytes]] = (
             OrderedDict()
         )
-        # Key: axis, (object uid, [register uids])
-        self._objects_changed: OrderedDict[int, dict[str, list[str]]] = OrderedDict()
+        # Key: axis, (object uid, object)
+        self._objects_changed: OrderedDict[int, dict[str, CanOpenObject]] = OrderedDict()
 
         # If registers that contain the prefixes defined in _PDO_MAP_REGISTERS_UID
         # present a change, do not restore the exact same value because there is an
@@ -172,7 +173,6 @@ class DriveContextManager:
             operation: read or write depending on the operation performed.
 
         Raises:
-            ValueError: if the register identifier is None.
             ValueError: if the servo dictionary is not a CanopenDictionary instance.
             RuntimeError: if the register has been changed using complete access, but the
                 object original value was not stored.
@@ -182,8 +182,6 @@ class DriveContextManager:
         if register.access in [RegAccess.WO, RegAccess.RO]:
             return
 
-        if register.identifier is None:
-            raise ValueError("Register identifier cannot be None in complete access.")
         if not isinstance(servo.dictionary, CanopenDictionary):
             raise ValueError("Servo dictionary is not a CanopenDictionary instance.")
 
@@ -200,11 +198,8 @@ class DriveContextManager:
 
         if register.subnode not in self._objects_changed:
             self._objects_changed[register.subnode] = {}
-        if obj.uid not in self._objects_changed[register.subnode]:
-            self._objects_changed[register.subnode][obj.uid] = [register.identifier]
-        else:
-            self._objects_changed[register.subnode][obj.uid].append(register.identifier)
-        self._update_reset_pdo_mapping_flags(uid=register.identifier)
+        self._objects_changed[register.subnode][obj.uid] = obj
+        self._update_reset_pdo_mapping_flags(uid=obj.uid)
         logger.debug(f"{id(self)}: Object {obj.uid} changed using complete access to {value!r}.")
 
     def _store_register_data(self) -> None:
@@ -299,18 +294,17 @@ class DriveContextManager:
         axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
         restored_objects: dict[int, list[str]] = {axis: [] for axis in axes}
 
-        for axis, obj in reversed(self._objects_changed.items()):
-            for uid, registers in obj.items():
+        for axis, objects in reversed(self._objects_changed.items()):
+            for uid, obj in objects.items():
                 # Object has already been restored with a newer value than the evaluated one
                 if uid in restored_objects[axis]:
                     continue
                 restore_value = self._original_canopen_object_values[axis][uid]
-                for register in registers:
-                    logger.debug(
-                        f"Restoring register {register} from object {uid=} on {axis=} "
-                        "using complete access."
-                    )
-                    self.drive.write_complete_access(register, restore_value, subnode=axis)
+                logger.debug(
+                    f"Restoring object {obj.uid} from object {uid=} on {axis=} "
+                    "using complete access."
+                )
+                self.drive.write_complete_access(obj, restore_value, subnode=axis)
                 restored_objects[axis].append(uid)
 
         # Drive must be in pre-operational state to reset the PDO mapping
