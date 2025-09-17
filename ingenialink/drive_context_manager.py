@@ -5,8 +5,7 @@ from ingenialogger import get_logger
 
 from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.enums.register import RegAccess
-from ingenialink.exceptions import ILEcatStateError, ILIOError
-from ingenialink.pdo import PDOServo
+from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import RegisterAccessOperation, Servo
 
@@ -17,8 +16,7 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-# These registers cannot be restored in whatever order, if
-# they have been altered, just restore the rpdo and tpdo maps
+# PDO map registers
 _PDO_RPDO_MAP_REGISTER_UID = "ETG_COMMS_RPDO_"
 _PDO_TPDO_MAP_REGISTER_UID = "ETG_COMMS_TPDO_"
 
@@ -89,35 +87,6 @@ class DriveContextManager:
         # Key: axis, (object uid, object)
         self._objects_changed: OrderedDict[int, dict[str, CanOpenObject]] = OrderedDict()
 
-        # If registers that contain the prefixes defined in _PDO_MAP_REGISTERS_UID
-        # present a change, do not restore the exact same value because there is an
-        # order that must be followed for that, just restore the whole mapping
-        self._reset_rpdo_mapping: bool = False
-        self._reset_tpdo_mapping: bool = False
-
-    def _update_reset_pdo_mapping_flags(self, uid: str) -> bool:
-        """Updates the flags that indicate whether the RPDO or TPDO mapping should be reset.
-
-        Args:
-            uid: The UID of the register that has been changed.
-
-        Returns:
-            True if the register affects the PDO mapping, False otherwise.
-        """
-        if _PDO_RPDO_MAP_REGISTER_UID in uid:
-            logger.debug(
-                f"{id(self)}: {uid=} has been changed, will reset rpdo mapping on context exit"
-            )
-            self._reset_rpdo_mapping = True
-        elif _PDO_TPDO_MAP_REGISTER_UID in uid:
-            logger.debug(
-                f"{id(self)}: {uid=} has been changed, will reset tpdo mapping on context exit"
-            )
-            self._reset_tpdo_mapping = True
-        else:
-            return False
-        return True
-
     def _register_update_callback(
         self,
         servo: Servo,  # noqa: ARG002
@@ -139,11 +108,6 @@ class DriveContextManager:
         if uid in self._do_not_restore_registers:
             return
         if uid not in self._original_register_values[register.subnode]:
-            return
-
-        # Reset the whole rpdo/tpdo mapping if needed
-        reset_pdo_mapping = self._update_reset_pdo_mapping_flags(uid=uid)
-        if reset_pdo_mapping:
             return
 
         # Check if the new value is different from the previous one
@@ -199,7 +163,6 @@ class DriveContextManager:
         if register.subnode not in self._objects_changed:
             self._objects_changed[register.subnode] = {}
         self._objects_changed[register.subnode][obj.uid] = obj
-        self._update_reset_pdo_mapping_flags(uid=obj.uid)
         logger.debug(f"{id(self)}: Object {obj.uid} changed using complete access to {value!r}.")
 
     def _store_register_data(self) -> None:
@@ -211,10 +174,6 @@ class DriveContextManager:
                 if uid in self._do_not_restore_registers:
                     continue
                 if register.access in [RegAccess.WO, RegAccess.RO]:
-                    continue
-                # These registers will be restored by resetting the PDO mapping
-                # or with complete access
-                if _PDO_RPDO_MAP_REGISTER_UID in uid or _PDO_TPDO_MAP_REGISTER_UID in uid:
                     continue
 
                 try:
@@ -306,24 +265,6 @@ class DriveContextManager:
                 )
                 self.drive.write_complete_access(obj, restore_value, subnode=axis)
                 restored_objects[axis].append(uid)
-
-        # Drive must be in pre-operational state to reset the PDO mapping
-        # https://novantamotion.atlassian.net/browse/INGK-1160
-        if isinstance(self.drive, PDOServo) and (
-            self._reset_tpdo_mapping or self._reset_rpdo_mapping
-        ):
-            try:
-                self.drive.check_servo_is_in_preoperational_state()
-                if self._reset_tpdo_mapping:
-                    logger.warning(f"{id(self)}: Will reset tpdo mapping")
-                    self.drive.reset_tpdo_mapping()
-                if self._reset_rpdo_mapping:
-                    logger.warning(f"{id(self)}: Will reset rpdo mapping")
-                    self.drive.reset_rpdo_mapping()
-            except ILEcatStateError:
-                logger.warning(
-                    "Cannot reset rpdo/tpdo mapping, drive must be in pre-operational state"
-                )
 
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
