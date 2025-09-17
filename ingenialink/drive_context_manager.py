@@ -159,7 +159,7 @@ class DriveContextManager:
         value: Union[int, float, str, bytes],
         operation: str,
     ) -> None:
-        """Completes the access register update callback.
+        """Callback for registers changed using complete access.
 
         Args:
             servo: servo.
