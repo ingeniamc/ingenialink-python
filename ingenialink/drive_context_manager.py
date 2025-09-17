@@ -8,7 +8,7 @@ from ingenialink.enums.register import RegAccess
 from ingenialink.exceptions import ILEcatStateError, ILIOError
 from ingenialink.pdo import PDOServo
 from ingenialink.register import Register
-from ingenialink.servo import Servo
+from ingenialink.servo import RegisterAccessOperation, Servo
 
 logger = get_logger(__name__)
 
@@ -157,7 +157,7 @@ class DriveContextManager:
         servo: Servo,  # noqa: ARG002
         register: Register,
         value: Union[int, float, str, bytes],
-        operation: str,
+        operation: RegisterAccessOperation,
     ) -> None:
         """Callback for registers changed using complete access.
 
@@ -165,7 +165,7 @@ class DriveContextManager:
             servo: servo.
             register: register.
             value: changed value.
-            operation: 'read' or 'write' depending on the operation performed.
+            operation: read or write depending on the operation performed.
 
         Raises:
             ValueError: if the register identifier is None.
@@ -174,7 +174,7 @@ class DriveContextManager:
             RuntimeError: if the register has been changed using complete access, but the
                 object original value was not stored.
         """
-        if operation == "read":
+        if operation is RegisterAccessOperation.READ:
             return
         if register.access in [RegAccess.WO, RegAccess.RO]:
             return

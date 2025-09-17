@@ -2,6 +2,7 @@ import re
 import threading
 import time
 from abc import abstractmethod
+from enum import Enum, auto
 from typing import Any, Callable, Optional, Union
 from xml.etree import ElementTree
 
@@ -55,6 +56,13 @@ from ingenialink.virtual.dictionary import VirtualDictionary
 logger = ingenialogger.get_logger(__name__)
 
 OPERATION_TIME_OUT = -3
+
+
+class RegisterAccessOperation(Enum):
+    """Register operation."""
+
+    READ = auto()
+    WRITE = auto()
 
 
 class DictionaryFactory:
@@ -314,7 +322,9 @@ class Servo:
             Callable[[Servo, Register, Union[int, float, str, bytes]], None]
         ] = []
         self.__register_update_complete_access_observers: list[
-            Callable[[Servo, Register, Union[int, float, str, bytes], str], None]
+            Callable[
+                [Servo, Register, Union[int, float, str, bytes], RegisterAccessOperation], None
+            ]
         ] = []
         if servo_status_listener:
             self.start_status_listener()
@@ -1370,7 +1380,9 @@ class Servo:
         else:
             _reg = self._get_reg(reg, subnode)
         self._write_raw(_reg, data, complete_access=True)
-        self._notify_register_update_complete_access(_reg, data, operation="write")
+        self._notify_register_update_complete_access(
+            _reg, data, operation=RegisterAccessOperation.WRITE
+        )
 
     def read_complete_access(
         self,
@@ -1405,7 +1417,9 @@ class Servo:
             )
 
         value = self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
-        self._notify_register_update_complete_access(_reg, value, operation="read")
+        self._notify_register_update_complete_access(
+            _reg, value, operation=RegisterAccessOperation.READ
+        )
         return value
 
     def read_bitfields(
@@ -1503,7 +1517,10 @@ class Servo:
         self.__register_update_observers.remove(callback)
 
     def register_update_complete_access_subscribe(
-        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes], str], None]
+        self,
+        callback: Callable[
+            ["Servo", Register, Union[int, float, str, bytes], RegisterAccessOperation], None
+        ],
     ) -> None:
         """Subscribe to complete access register updates.
 
@@ -1515,7 +1532,10 @@ class Servo:
         self.__register_update_complete_access_observers.append(callback)
 
     def register_update_complete_access_unsubscribe(
-        self, callback: Callable[["Servo", Register, Union[int, float, str, bytes], str], None]
+        self,
+        callback: Callable[
+            ["Servo", Register, Union[int, float, str, bytes], RegisterAccessOperation], None
+        ],
     ) -> None:
         """Unsubscribe to complete access register updates.
 
@@ -1542,7 +1562,7 @@ class Servo:
             )
 
     def _notify_register_update_complete_access(
-        self, reg: Register, data: bytes, operation: str
+        self, reg: Register, data: bytes, operation: RegisterAccessOperation
     ) -> None:
         """Notify a complete access register update to the observers.
 
@@ -1551,7 +1571,7 @@ class Servo:
         Args:
             reg: Updated register.
             data: Updated value.
-            operation: 'read' or 'write' depending on the operation performed.
+            operation: read or write depending on the operation performed.
 
         """
         for callback in self.__register_update_complete_access_observers:
