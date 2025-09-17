@@ -306,15 +306,15 @@ class EthernetNetwork(Network):
             servo: Instance of the servo connected.
 
         """
-        # Notify that disconnect_from_slave has been called
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
         self.servos.remove(servo)
         servo.stop_status_listener()
         self.close_socket(servo.socket)
         self._set_servo_state(servo.ip_address, NetState.DISCONNECTED)
         if len(self.servos) == 0:
             self.stop_status_listener()
+        # Notify that disconnect_from_slave has been called
+        if servo._disconnect_callback:
+            servo._disconnect_callback(servo)
 
     @staticmethod
     def close_socket(sock: socket.socket) -> None:

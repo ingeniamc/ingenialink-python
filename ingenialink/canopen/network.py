@@ -415,14 +415,14 @@ class CanopenNetwork(Network):
             servo: Instance of the servo connected.
 
         """
-        # Notify that disconnect_from_slave has been called
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
         self.stop_status_listener()
         servo.stop_status_listener()
         self.servos.remove(servo)
         if not self.servos:
             self._teardown_connection()
+        # Notify that disconnect_from_slave has been called
+        if servo._disconnect_callback:
+            servo._disconnect_callback(servo)
 
     def _setup_connection(self) -> None:
         """Creates a network interface object.
