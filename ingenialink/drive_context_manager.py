@@ -63,6 +63,8 @@ class DriveContextManager:
             servo.STORE_MOCO_ALL_REGISTERS,
             servo.RESTORE_COCO_ALL,
             servo.RESTORE_MOCO_ALL_REGISTERS,
+            # Mac address should not be restored, in certain FW versions the reading of MAC
+            # address provides different values each time
             "COMMS_ETH_MAC",
         ])
 
