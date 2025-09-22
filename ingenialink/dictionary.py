@@ -143,6 +143,22 @@ class CanOpenObject:
         """
         return math.ceil(self.bit_length / 8)
 
+    def __repr__(self) -> str:
+        """String representation of the CanOpenObject class.
+
+        Returns:
+            str: String representation of the CanOpenObject instance.
+        """
+        return f"<{self.__class__.__name__} {self.uid} (idx: 0x{self.idx:X}) at 0x{id(self):X} >"
+
+    def __hash__(self) -> int:
+        """Hash of the CanOpenObject instance.
+
+        Returns:
+            int: Hash of the CanOpenObject instance.
+        """
+        return id(self)
+
 
 @dataclass
 class DictionarySafetyPDO:
@@ -1314,9 +1330,10 @@ class DictionaryV3(Dictionary):
             register_list.sort(key=lambda val: val.subidx)
             if axis not in self.items:
                 self.items[axis] = {}
-            self.items[axis][object_uid] = CanOpenObject(
-                object_uid, obj_index, data_type, register_list
-            )
+            obj = CanOpenObject(object_uid, obj_index, data_type, register_list)
+            self.items[axis][object_uid] = obj
+            for reg in register_list:
+                reg.obj = obj
 
     def __read_canopen_subitem(
         self, subitem: ElementTree.Element, reg_index: int, subnode: int

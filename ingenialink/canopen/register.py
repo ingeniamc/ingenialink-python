@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
@@ -9,6 +9,9 @@ from ingenialink.enums.register import (
     RegPhy,
 )
 from ingenialink.register import MonDistV3, Register
+
+if TYPE_CHECKING:
+    from ingenialink.dictionary import CanOpenObject
 
 
 class CanopenRegister(Register):
@@ -71,6 +74,7 @@ class CanopenRegister(Register):
         bitfields: Optional[dict[str, BitField]] = None,
         monitoring: Optional[MonDistV3] = None,
         is_node_id_dependent: bool = False,
+        obj: Optional["CanOpenObject"] = None,
     ):
         super().__init__(
             dtype,
@@ -97,6 +101,7 @@ class CanopenRegister(Register):
         self.__idx = idx
         self.__subidx = subidx
         self.__is_node_id_dependent = is_node_id_dependent
+        self.obj = obj
 
     @property
     def idx(self) -> int:

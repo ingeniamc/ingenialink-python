@@ -204,6 +204,9 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
             self.items[axis] = {}
         self.items[axis][canopen_object.uid] = canopen_object
 
+        for reg in canopen_object.registers:
+            reg.obj = canopen_object
+
     def _append_missing_registers(self) -> None:
         super()._append_missing_registers()
 
