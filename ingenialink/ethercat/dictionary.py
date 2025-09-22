@@ -239,7 +239,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
         Returns:
             CanOpenObject: Object containing the registers for a pdo map assign.
         """
-        return CanOpenObject(
+        canopen_object = CanOpenObject(
             uid=base_uid,
             idx=idx,
             object_type=CanOpenObjectType.ARRAY,
@@ -279,6 +279,9 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 ],
             ),
         )
+        for reg in canopen_object.registers:
+            reg.obj = canopen_object
+        return canopen_object
 
     def __create_pdo_map(
         self,
@@ -302,7 +305,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
         Returns:
             CanOpenObject: Object containing the registers for a pdo map.
         """
-        return CanOpenObject(
+        canopen_object = CanOpenObject(
             uid=base_uid,
             idx=idx,
             object_type=CanOpenObjectType.RECORD,
@@ -342,6 +345,9 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 ]
             ),
         )
+        for reg in canopen_object.registers:
+            reg.obj = canopen_object
+        return canopen_object
 
     def __create_pdo_objects(self) -> Iterator[CanOpenObject]:
         # RPDO Assignments

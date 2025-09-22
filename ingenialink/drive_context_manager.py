@@ -149,7 +149,6 @@ class DriveContextManager:
 
         self._objects_changed.add(obj)
 
-        # self._update_reset_pdo_mapping_flags(uid=register.identifier) TODO
         logger.debug(f"{id(self)}: Object {obj.uid} changed using complete access to {value!r}.")
 
     def _store_register_data(self) -> None:
