@@ -155,14 +155,15 @@ def test_drive_context_manager_restores_complete_access_registers(
 
     with context:
         assert context._registers_changed == {}
-        assert context._objects_changed == {}
+        assert context._objects_changed == set()
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
         servo.map_pdos(slave_index=setup_descriptor.slave)
 
         assert (0, "ETG_COMMS_RPDO_ASSIGN_TOTAL") in context._registers_changed
         assert (0, "ETG_COMMS_TPDO_ASSIGN_TOTAL") in context._registers_changed
-        assert len(context._objects_changed[0]) == 4
-        assert "ETG_COMMS_RPDO_ASSIGN" in context._objects_changed[0]
-        assert "ETG_COMMS_TPDO_ASSIGN" in context._objects_changed[0]
-        assert "ETG_COMMS_RPDO_MAP1" in context._objects_changed[0]
-        assert "ETG_COMMS_TPDO_MAP1" in context._objects_changed[0]
+        assert len(context._objects_changed) == 4
+        objects_uids = [obj.uid for obj in context._objects_changed]
+        assert "ETG_COMMS_RPDO_ASSIGN" in objects_uids
+        assert "ETG_COMMS_TPDO_ASSIGN" in objects_uids
+        assert "ETG_COMMS_RPDO_MAP1" in objects_uids
+        assert "ETG_COMMS_TPDO_MAP1" in objects_uids
