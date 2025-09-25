@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-# PDO map registers
+# PDO registers
 _PDO_RPDO_MAP_REGISTER_UID = "ETG_COMMS_RPDO_"
 _PDO_TPDO_MAP_REGISTER_UID = "ETG_COMMS_TPDO_"
 
