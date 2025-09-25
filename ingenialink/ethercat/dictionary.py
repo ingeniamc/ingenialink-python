@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 from functools import cached_property
-from typing import Optional
+from typing import Optional, cast
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -47,32 +47,77 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
     """
 
     @cached_property
+    def _monitoring_disturbance_objects(self) -> list["CanOpenObject"]:
+        monitoring_obj = CanOpenObject(
+            uid="MON_DATA",
+            idx=0x58B2,
+            object_type=CanOpenObjectType.RECORD,
+            registers=[
+                EthercatRegister(
+                    identifier="MON_DATA_SUBINDEX_0",
+                    units="none",
+                    idx=0x58B2,
+                    subidx=0x00,
+                    pdo_access=RegCyclicType.CONFIG,
+                    dtype=RegDtype.U8,
+                    access=RegAccess.RW,
+                    subnode=0,
+                    labels={"en_US": "SubIndex 000"},
+                    cat_id="MONITORING",
+                ),
+                EthercatRegister(
+                    identifier="MON_DATA_VALUE",
+                    units="none",
+                    idx=0x58B2,
+                    subidx=0x01,
+                    pdo_access=RegCyclicType.CONFIG,
+                    dtype=RegDtype.BYTE_ARRAY_512,
+                    access=RegAccess.RO,
+                    subnode=0,
+                    labels={"en_US": "Monitoring data"},
+                    cat_id="MONITORING",
+                ),
+            ],
+        )
+        disturbance_obj = CanOpenObject(
+            uid="DIST_DATA",
+            idx=0x58B4,
+            object_type=CanOpenObjectType.RECORD,
+            registers=[
+                EthercatRegister(
+                    identifier="DIST_DATA_SUBINDEX_0",
+                    units="none",
+                    idx=0x58B4,
+                    subidx=0x00,
+                    pdo_access=RegCyclicType.CONFIG,
+                    dtype=RegDtype.U8,
+                    access=RegAccess.RW,
+                    subnode=0,
+                    labels={"en_US": "SubIndex 000"},
+                    cat_id="MONITORING",
+                ),
+                EthercatRegister(
+                    identifier="DIST_DATA_VALUE",
+                    units="none",
+                    idx=0x58B4,
+                    subidx=0x01,
+                    pdo_access=RegCyclicType.CONFIG,
+                    dtype=RegDtype.BYTE_ARRAY_512,
+                    access=RegAccess.WO,
+                    subnode=0,
+                    labels={"en_US": "Disturbance data"},
+                    cat_id="MONITORING",
+                ),
+            ],
+        )
+        return [monitoring_obj, disturbance_obj]
+
+    @cached_property
     def _monitoring_disturbance_registers(self) -> list[EthercatRegister]:
         return [
-            EthercatRegister(
-                identifier="MON_DATA_VALUE",
-                units="none",
-                subnode=0,
-                idx=0x58B2,
-                subidx=0x01,
-                pdo_access=RegCyclicType.CONFIG,
-                dtype=RegDtype.BYTE_ARRAY_512,
-                access=RegAccess.RO,
-                labels={"en_US": "Monitoring data"},
-                cat_id="MONITORING",
-            ),
-            EthercatRegister(
-                identifier="DIST_DATA_VALUE",
-                units="none",
-                subnode=0,
-                idx=0x58B4,
-                subidx=0x01,
-                pdo_access=RegCyclicType.CONFIG,
-                dtype=RegDtype.BYTE_ARRAY_512,
-                access=RegAccess.WO,
-                labels={"en_US": "Disturbance data"},
-                cat_id="MONITORING",
-            ),
+            cast("EthercatRegister", register)
+            for obj in self._monitoring_disturbance_objects
+            for register in obj.registers
         ]
 
     @cached_property
@@ -194,7 +239,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
         Returns:
             CanOpenObject: Object containing the registers for a pdo map assign.
         """
-        return CanOpenObject(
+        canopen_object = CanOpenObject(
             uid=base_uid,
             idx=idx,
             object_type=CanOpenObjectType.ARRAY,
@@ -234,6 +279,9 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 ],
             ),
         )
+        for reg in canopen_object.registers:
+            reg.obj = canopen_object
+        return canopen_object
 
     def __create_pdo_map(
         self,
@@ -257,7 +305,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
         Returns:
             CanOpenObject: Object containing the registers for a pdo map.
         """
-        return CanOpenObject(
+        canopen_object = CanOpenObject(
             uid=base_uid,
             idx=idx,
             object_type=CanOpenObjectType.RECORD,
@@ -297,6 +345,9 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 ]
             ),
         )
+        for reg in canopen_object.registers:
+            reg.obj = canopen_object
+        return canopen_object
 
     def __create_pdo_objects(self) -> Iterator[CanOpenObject]:
         # RPDO Assignments

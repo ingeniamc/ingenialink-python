@@ -1,6 +1,16 @@
+from typing import TYPE_CHECKING
+
 import pytest
 
 from ingenialink.drive_context_manager import DriveContextManager
+from ingenialink.pdo import RPDOMap, TPDOMap
+
+if TYPE_CHECKING:
+    from summit_testing_framework.setups.descriptors import DriveEcatSetup
+    from summit_testing_framework.setups.environment_control import DriveEnvironmentController
+
+    from ingenialink.ethercat.network import EthercatNetwork
+    from ingenialink.ethercat.servo import EthercatServo
 
 _USER_OVER_VOLTAGE_UID = "DRV_PROT_USER_OVER_VOLT"
 _USER_UNDER_VOLTAGE_UID = "DRV_PROT_USER_UNDER_VOLT"
@@ -83,7 +93,7 @@ def test_drive_context_manager_nested_contexts(setup_manager):
 def test_drive_context_manager_skips_default_do_not_restore_registers(setup_manager):
     servo, _, _, _ = setup_manager
     context = DriveContextManager(servo)
-    assert len(context._do_not_restore_registers) == 4
+    assert len(context._do_not_restore_registers) == 5
 
     # If not additional ignored registers are added,
     # the default ones are the ones that are troublesome
@@ -93,6 +103,7 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(setup_mana
         servo.STORE_MOCO_ALL_REGISTERS,
         servo.RESTORE_COCO_ALL,
         servo.RESTORE_MOCO_ALL_REGISTERS,
+        "COMMS_ETH_MAC",
     }
 
 
@@ -104,7 +115,7 @@ def test_drive_context_manager_with_do_not_restore_registers(setup_manager):
     servo, _, _, _ = setup_manager
     context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
     assert (
-        len(context._do_not_restore_registers) == 5
+        len(context._do_not_restore_registers) == 6
     )  # COCO-MOCO store/restore registers + _USER_OVER_VOLTAGE_UID
 
     new_reg_value = 100.0
@@ -117,3 +128,42 @@ def test_drive_context_manager_with_do_not_restore_registers(setup_manager):
         assert _read_user_over_voltage_uid(servo) == new_reg_value
 
     assert _read_user_over_voltage_uid(servo) == new_reg_value
+
+
+@pytest.mark.ethercat
+def test_drive_context_manager_restores_complete_access_registers(
+    setup_manager: tuple["EthercatServo", "EthercatNetwork", str, "DriveEnvironmentController"],
+    setup_descriptor: "DriveEcatSetup",
+) -> None:
+    servo, _, _, _ = setup_manager
+    context = DriveContextManager(servo)
+
+    servo.reset_rpdo_mapping()
+    servo.reset_tpdo_mapping()
+
+    tpdo_map = TPDOMap()
+    tpdo_registers = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE", "CL_TOR_FBK_VALUE"]
+    for tpdo_register in tpdo_registers:
+        register = servo.dictionary.get_register(tpdo_register)
+        tpdo_map.add_registers(register)
+
+    rpdo_map = RPDOMap()
+    rpdo_registers = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE", "CL_TOR_SET_POINT_VALUE"]
+    for rpdo_register in rpdo_registers:
+        register = servo.dictionary.get_register(rpdo_register)
+        rpdo_map.add_registers(register)
+
+    with context:
+        assert context._registers_changed == {}
+        assert context._objects_changed == set()
+        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+        servo.map_pdos(slave_index=setup_descriptor.slave)
+
+        assert (0, "ETG_COMMS_RPDO_ASSIGN_TOTAL") in context._registers_changed
+        assert (0, "ETG_COMMS_TPDO_ASSIGN_TOTAL") in context._registers_changed
+        assert len(context._objects_changed) == 4
+        objects_uids = [obj.uid for obj in context._objects_changed]
+        assert "ETG_COMMS_RPDO_ASSIGN" in objects_uids
+        assert "ETG_COMMS_TPDO_ASSIGN" in objects_uids
+        assert "ETG_COMMS_RPDO_MAP1" in objects_uids
+        assert "ETG_COMMS_TPDO_MAP1" in objects_uids

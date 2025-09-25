@@ -2,6 +2,7 @@ import re
 import threading
 import time
 from abc import abstractmethod
+from enum import Enum, auto
 from typing import Any, Callable, Optional, Union
 from xml.etree import ElementTree
 
@@ -10,6 +11,7 @@ import numpy as np
 
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.dictionary import CanopenDictionaryV2, CanopenDictionaryV3
+from ingenialink.canopen.register import CanopenRegister
 from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
@@ -33,6 +35,7 @@ from ingenialink.emcy import EmergencyMessage
 from ingenialink.enums.register import RegAccess, RegAddressType, RegDtype
 from ingenialink.enums.servo import ServoState
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictionaryV3
+from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.dictionary import (
     EoEDictionaryV3,
     EthernetDictionaryV2,
@@ -55,6 +58,13 @@ from ingenialink.virtual.dictionary import VirtualDictionary
 logger = ingenialogger.get_logger(__name__)
 
 OPERATION_TIME_OUT = -3
+
+
+class RegisterAccessOperation(Enum):
+    """Register operation."""
+
+    READ = auto()
+    WRITE = auto()
 
 
 class DictionaryFactory:
@@ -312,6 +322,17 @@ class Servo:
         self.__disturbance_dtype: dict[int, str] = {}
         self.__register_update_observers: list[
             Callable[[Servo, Register, Union[int, float, str, bytes]], None]
+        ] = []
+        self.__register_update_complete_access_observers: list[
+            Callable[
+                [
+                    Servo,
+                    Union[CanopenRegister, EthercatRegister],
+                    Union[int, float, str, bytes],
+                    RegisterAccessOperation,
+                ],
+                None,
+            ]
         ] = []
         if servo_status_listener:
             self.start_status_listener()
@@ -1353,7 +1374,10 @@ class Servo:
         return value
 
     def write_complete_access(
-        self, reg: Union[str, Register, CanOpenObject], data: bytes, subnode: int = 1
+        self,
+        reg: Union[str, CanopenRegister, EthercatRegister, CanOpenObject],
+        data: bytes,
+        subnode: int = 1,
     ) -> None:
         """Write a complete access register.
 
@@ -1361,16 +1385,24 @@ class Servo:
             reg: Register to be written.
             data: Data to be written.
             subnode: Target subnode of the drive.
+
+        Raises:
+            TypeError: if the register is not a CanopenRegister or EthercatRegister.
         """
-        if isinstance(reg, CanOpenObject):
-            _reg: Register = reg.registers[0]
-        else:
+        if not isinstance(reg, CanOpenObject):
             _reg = self._get_reg(reg, subnode)
+            if not isinstance(_reg, (CanopenRegister, EthercatRegister)):
+                raise TypeError("Register must be a CanopenRegister or EthercatRegister")
+        else:
+            _reg = reg.registers[0]
         self._write_raw(_reg, data, complete_access=True)
+        self._notify_register_update_complete_access(
+            _reg, data, operation=RegisterAccessOperation.WRITE
+        )
 
     def read_complete_access(
         self,
-        reg: Union[str, Register, CanOpenObject],
+        reg: Union[str, CanopenRegister, EthercatRegister, CanOpenObject],
         subnode: int = 1,
         buffer_size: Optional[int] = None,
     ) -> bytes:
@@ -1383,15 +1415,18 @@ class Servo:
 
         Raises:
             ValueError: if buffer size is not specified or cannot be detected
+            TypeError: if the register is not a CanopenRegister or EthercatRegister.
 
         Returns:
             Data read from the register.
         """
-        if isinstance(reg, CanOpenObject):
-            _reg: Register = reg.registers[0]
-            buffer_size = reg.byte_length
-        else:
+        if not isinstance(reg, CanOpenObject):
             _reg = self._get_reg(reg, subnode)
+            if not isinstance(_reg, (CanopenRegister, EthercatRegister)):
+                raise TypeError("Register must be a CanopenRegister or EthercatRegister")
+        else:
+            _reg = reg.registers[0]
+            buffer_size = reg.byte_length
 
         if buffer_size is None:
             raise ValueError(
@@ -1400,7 +1435,11 @@ class Servo:
                 "automatically."
             )
 
-        return self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
+        value = self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
+        self._notify_register_update_complete_access(
+            _reg, value, operation=RegisterAccessOperation.READ
+        )
+        return value
 
     def read_bitfields(
         self,
@@ -1483,7 +1522,6 @@ class Servo:
 
         Args:
             callback: Callable that takes a Servo and a Register instance as arguments.
-
         """
         self.__register_update_observers.append(callback)
 
@@ -1494,9 +1532,48 @@ class Servo:
 
         Args:
             callback: Subscribed callback.
-
         """
         self.__register_update_observers.remove(callback)
+
+    def register_update_complete_access_subscribe(
+        self,
+        callback: Callable[
+            [
+                "Servo",
+                Union[CanopenRegister, EthercatRegister],
+                Union[int, float, str, bytes],
+                RegisterAccessOperation,
+            ],
+            None,
+        ],
+    ) -> None:
+        """Subscribe to complete access register updates.
+
+        The callback will be called when a complete access read/write operation occurs.
+
+        Args:
+            callback: Callable that takes a Servo and a Register instance as arguments.
+        """
+        self.__register_update_complete_access_observers.append(callback)
+
+    def register_update_complete_access_unsubscribe(
+        self,
+        callback: Callable[
+            [
+                "Servo",
+                Union[CanopenRegister, EthercatRegister],
+                Union[int, float, str, bytes],
+                RegisterAccessOperation,
+            ],
+            None,
+        ],
+    ) -> None:
+        """Unsubscribe to complete access register updates.
+
+        Args:
+            callback: Subscribed callback.
+        """
+        self.__register_update_complete_access_observers.remove(callback)
 
     def _notify_register_update(self, reg: Register, data: Union[int, float, str, bytes]) -> None:
         """Notify a register update to the observers.
@@ -1513,6 +1590,29 @@ class Servo:
                 self,
                 reg,
                 data,
+            )
+
+    def _notify_register_update_complete_access(
+        self,
+        reg: Union[CanopenRegister, EthercatRegister],
+        data: bytes,
+        operation: RegisterAccessOperation,
+    ) -> None:
+        """Notify a complete access register update to the observers.
+
+        The updated value is stored in the register's storage attribute.
+
+        Args:
+            reg: Updated register.
+            data: Updated value.
+            operation: read or write depending on the operation performed.
+        """
+        for callback in self.__register_update_complete_access_observers:
+            callback(
+                self,
+                reg,
+                data,
+                operation,
             )
 
     def replace_dictionary(self, dictionary: str) -> None:

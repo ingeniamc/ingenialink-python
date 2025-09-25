@@ -11,6 +11,7 @@ from ingenialink.constants import (
 )
 from ingenialink.dictionary import (
     CanOpenObject,
+    CanOpenObjectType,
     Dictionary,
     DictionarySafetyModule,
     DictionaryV2,
@@ -82,36 +83,54 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
 
     Args:
         dictionary_path: Path to the Ingenia dictionary.
-
     """
+
+    @cached_property
+    def _monitoring_disturbance_objects(self) -> list["CanOpenObject"]:
+        monitoring_obj = CanOpenObject(
+            uid="MON_DATA_VALUE",
+            idx=0x58B2,
+            object_type=CanOpenObjectType.RECORD,
+            registers=[
+                CanopenRegister(
+                    identifier="MON_DATA_VALUE",
+                    units="none",
+                    idx=0x58B2,
+                    subidx=0x00,
+                    pdo_access=RegCyclicType.CONFIG,
+                    dtype=RegDtype.BYTE_ARRAY_512,
+                    access=RegAccess.RO,
+                    subnode=0,
+                    labels={"en_US": "Monitoring data"},
+                    cat_id="MONITORING",
+                ),
+            ],
+        )
+        disturbance_obj = CanOpenObject(
+            uid="DIST_DATA_VALUE",
+            idx=0x58B4,
+            object_type=CanOpenObjectType.RECORD,
+            registers=[
+                CanopenRegister(
+                    identifier="DIST_DATA_VALUE",
+                    units="none",
+                    idx=0x58B4,
+                    subidx=0x00,
+                    pdo_access=RegCyclicType.CONFIG,
+                    dtype=RegDtype.BYTE_ARRAY_512,
+                    access=RegAccess.WO,
+                    subnode=0,
+                    labels={"en_US": "Disturbance data"},
+                    cat_id="MONITORING",
+                ),
+            ],
+        )
+        return [monitoring_obj, disturbance_obj]
 
     @cached_property
     def _monitoring_disturbance_registers(self) -> list[CanopenRegister]:
         return [
-            CanopenRegister(
-                identifier="MON_DATA_VALUE",
-                units="none",
-                idx=0x58B2,
-                subidx=0x00,
-                pdo_access=RegCyclicType.CONFIG,
-                dtype=RegDtype.BYTE_ARRAY_512,
-                access=RegAccess.RO,
-                subnode=0,
-                labels={"en_US": "Monitoring data"},
-                cat_id="MONITORING",
-            ),
-            CanopenRegister(
-                identifier="DIST_DATA_VALUE",
-                units="none",
-                idx=0x58B4,
-                subidx=0x00,
-                pdo_access=RegCyclicType.CONFIG,
-                dtype=RegDtype.BYTE_ARRAY_512,
-                access=RegAccess.WO,
-                subnode=0,
-                labels={"en_US": "Disturbance data"},
-                cat_id="MONITORING",
-            ),
+            register for obj in self._monitoring_disturbance_objects for register in obj.registers
         ]
 
     @cached_property
@@ -173,6 +192,27 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}"
             )
             return None
+
+    def _add_canopen_object(self, canopen_object: "CanOpenObject") -> None:
+        """Adds Canopen object into the items list.
+
+        Args:
+            canopen_object: Canopen object to add.
+        """
+        axis = canopen_object.registers[0].subnode
+        if axis not in self.items:
+            self.items[axis] = {}
+        self.items[axis][canopen_object.uid] = canopen_object
+
+        for reg in canopen_object.registers:
+            reg.obj = canopen_object
+
+    def _append_missing_registers(self) -> None:
+        super()._append_missing_registers()
+
+        if self._DictionaryV2__MON_DIST_STATUS_REGISTER in self._registers[0]:  # type: ignore[attr-defined]
+            for obj in self._monitoring_disturbance_objects:
+                self._add_canopen_object(obj)
 
 
 class CanopenDictionaryV3(CanopenDictionary, DictionaryV3):
