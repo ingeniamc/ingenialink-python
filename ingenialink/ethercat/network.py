@@ -1,14 +1,16 @@
 import atexit
 import os
+import re
 import threading
 import time
 from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
 import ingenialogger
 
+from ingenialink.pdo_network_manager import PDONetworkManager
 from ingenialink.servo import Servo
 from ingenialink.utils.timeout import Timeout
 
@@ -218,6 +220,126 @@ class EthercatNetwork(Network):
         self._lock = threading.Lock()
         set_network_reference(network=self)
 
+        # Create the PDO manager
+        self._pdo_manager = PDONetworkManager(self)
+        # Subscribe to PDO exceptions in the network
+        self.__exceptions_in_thread: int = 0
+        self._pdo_manager.subscribe_to_exceptions(self._pdo_thread_exception_handler)
+        # List of subscribers to PDO thread status
+        self._pdo_thread_status_observers: list[Callable[[bool], None]] = []
+
+    @staticmethod
+    def pysoem_available() -> bool:
+        """Check if pysoem is available.
+
+        Returns:
+            True if pysoem is available, False otherwise.
+        """
+        return pysoem is not None
+
+    @staticmethod
+    def find_adapters() -> list[tuple[int, str, str]]:
+        """Finds all available EtherCAT adapters.
+
+        Returns:
+            interface index, adapter name, interface guid.
+
+        Raises:
+            ImportError: If pysoem is not installed.
+        """  # noqa: DOC502
+        if not pysoem:
+            raise pysoem_import_error
+        adapters = []
+        for interface_index, adapter in enumerate(pysoem.find_adapters()):
+            interface_guid = re.search(r"\{[^}]+\}", adapter.name)
+            if interface_guid is None:
+                # If no GUID is found, skip this adapter
+                continue
+            adapters.append((
+                interface_index,
+                interface_guid.group(0),
+                cast("str", adapter.desc.decode("utf-8")),
+            ))
+        return adapters
+
+    @property
+    def pdo_manager(self) -> PDONetworkManager:
+        """Returns the PDO manager."""
+        return self._pdo_manager
+
+    def subscribe_to_pdo_thread_status(self, callback: Callable[[bool], None]) -> None:
+        """Subscribe be notified when the PDO process data thread status changes.
+
+        Args:
+            callback: Callback function.
+        """
+        if callback in self._pdo_thread_status_observers:
+            return
+        self._pdo_thread_status_observers.append(callback)
+
+    def unsubscribe_from_pdo_thread_status(self, callback: Callable[[bool], None]) -> None:
+        """Unsubscribe from PDO thread status changes.
+
+        Args:
+            callback: Callback function.
+        """
+        if callback in self._pdo_thread_status_observers:
+            self._pdo_thread_status_observers.remove(callback)
+
+    def activate_pdos(
+        self, refresh_rate: Optional[float] = None, watchdog_timeout: Optional[float] = None
+    ) -> None:
+        """Start PDOs and notify the status to the observers.
+
+        Args:
+            refresh_rate: Determines how often (seconds) the PDO values will be updated.
+            watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
+             to the refresh rate.
+        """
+        n_exceptions = self.__exceptions_in_thread
+        self.pdo_manager.start_pdos(refresh_rate=refresh_rate, watchdog_timeout=watchdog_timeout)
+        # Make sure that there were no exceptions while starting the PDOs to notify activation
+        if self.__exceptions_in_thread == n_exceptions:
+            self._notify_pdo_thread_status(True)
+        else:
+            logger.error("There was an exception starting the PDOs, they have not been activated.")
+
+    def deactivate_pdos(self) -> None:
+        """Stop PDOs and notify the status to the observers."""
+        n_exceptions = self.__exceptions_in_thread
+        self.pdo_manager.stop_pdos()
+        # Make sure that there were no exceptions while stopping the PDOs to notify deactivation
+        if self.__exceptions_in_thread == n_exceptions:
+            self._notify_pdo_thread_status(False)
+        else:
+            logger.error(
+                "There was an exception stopping the PDOs, they have not been deactivated."
+            )
+
+    def _pdo_thread_exception_handler(self, exc: Exception) -> None:
+        """Callback method for the PDO thread exceptions.
+
+        If an exception occurs during the PDO exchange, the servos are set to PreOp state.
+
+        Args:
+            exc: The exception that occurred.
+        """
+        self.__exceptions_in_thread += 1
+        logger.error(f"An exception occurred during the PDO exchange: {exc}")
+        # Deactivate the PDOs - PDOs will be deactivated for all servos in the network
+        if self.pdo_manager.is_active:
+            self.deactivate_pdos()
+        self._notify_pdo_thread_status(False)
+
+    def _notify_pdo_thread_status(self, status: bool) -> None:
+        """Notify changes in PDO thread status.
+
+        Args:
+            status: New status of the PDO thread. True if the PDO thread is active, False otherwise.
+        """
+        for callback in self._pdo_thread_status_observers:
+            callback(status)
+
     def update_sdo_timeout(self, sdo_read_timeout: int, sdo_write_timeout: int) -> None:
         """Update SDO timeouts for all the drives.
 
@@ -336,6 +458,13 @@ class EthercatNetwork(Network):
         if nodes is not None:
             self.__last_init_nodes = list(range(1, nodes + 1))
 
+        # For every init_nodes, pysoem generates a new CdefSlave object.
+        # Servos that are already "connected" to the network
+        # must update their slave reference
+        for servo in self.servos:
+            if servo.slave_id in self.__last_init_nodes:
+                servo.update_slave_reference(self._ecat_master.slaves[servo.slave_id - 1])
+
     def connect_to_slave(
         self,
         slave_id: int,
@@ -417,9 +546,6 @@ class EthercatNetwork(Network):
             servo: Instance of the servo connected.
 
         """
-        # Notify that disconnect_from_slave has been called
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
         if not self._change_nodes_state(servo, pysoem.INIT_STATE):
             logger.warning("Drive can not reach Init state")
         servo.teardown()
@@ -427,6 +553,9 @@ class EthercatNetwork(Network):
         if not self.servos:
             self.stop_status_listener()
             self.close_ecat_master()
+        # Notify that disconnect_from_slave has been called
+        if servo._disconnect_callback:
+            servo._disconnect_callback(servo)
 
     def config_pdo_maps(self) -> None:
         """Configure the PDO maps.
@@ -446,21 +575,12 @@ class EthercatNetwork(Network):
             timeout: timeout in seconds to reach Op state, 2.0 seconds by default.
 
         Raises:
-            ILError: If the RPDO values are not set before starting the PDO exchange process.
             ILStateError: If slaves can not reach SafeOp or Op state.
         """
         op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
         if not op_servo_list:
             logger.warning("There are no PDOs assigned to any connected slave.")
             return
-        try:
-            for servo in op_servo_list:
-                for rpdo_map in servo._rpdo_maps:
-                    rpdo_map.get_item_bytes()
-        except ILError as e:
-            raise ILError(
-                "The RPDO values should be set before starting the PDO exchange process."
-            ) from e
         # Configure the PDO maps
         self.config_pdo_maps()
 
@@ -480,16 +600,14 @@ class EthercatNetwork(Network):
                     raise ILStateError("Drives can not reach Op state")
 
     def stop_pdos(self) -> None:
-        """For all slaves in OP or SafeOp state, set state to PreOp."""
+        """For all slaves not in PreOp state, set state to PreOp."""
         self._ecat_master.read_state()
-        op_servo_list = [
-            servo
-            for servo in self.servos
-            if servo.slave.state in [pysoem.OP_STATE, pysoem.SAFEOP_STATE]
+        restore_servos_list = [
+            servo for servo in self.servos if servo.slave.state != pysoem.PREOP_STATE
         ]
-        if len(op_servo_list) == 0:
+        if len(restore_servos_list) == 0:
             return
-        if not self._change_nodes_state(op_servo_list, pysoem.INIT_STATE):
+        if not self._change_nodes_state(restore_servos_list, pysoem.INIT_STATE):
             logger.warning("Not all drives could reach the Init state")
         self.__init_nodes()
 

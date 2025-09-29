@@ -1,9 +1,13 @@
 import contextlib
 
+import tests.resources
+
 with contextlib.suppress(ImportError):
     import pysoem
+import random
 import threading
 import time
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pytest
@@ -20,6 +24,12 @@ from ingenialink.ethercat.network import (
     release_network_reference,
 )
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
+
+if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
+
+    from ingenialink.ethercat.servo import EthercatServo
 
 
 @pytest.fixture
@@ -70,6 +80,20 @@ def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loadi
         match=f"Slave {slave_id} was not found.",
     ):
         net.load_firmware("dummy_file.lfu", False, slave_id=slave_id)
+
+
+@pytest.mark.ethercat
+def test_find_adapters(setup_descriptor):
+    """Test that find_adapters returns a list of EtherCATNetwork instances."""
+    adapter_found = False
+    ifname = setup_descriptor.ifname
+    for adapter in EthercatNetwork.find_adapters():
+        _, interface_guid, _ = adapter
+        interface_guid = f"\\Device\\NPF_{interface_guid}"
+        if interface_guid == ifname:
+            adapter_found = True
+            break
+    assert adapter_found is True
 
 
 @pytest.mark.no_connection
@@ -376,3 +400,82 @@ def test_network_is_not_released_if_gil_operation_ongoing(mocker, setup_descript
     thread_block_lock.join()
     thread_acquire_lock.join()
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks)
+
+
+def test_slave_update_on_config_init(pysoem_mock_network):  # noqa: ARG001
+    net = EthercatNetwork("dummy_ifname")
+
+    servo = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+
+    assert len(net.servos) == 1
+    assert net.servos[0] == servo
+    original_slave = servo.slave
+    # The slave contains the emergency callbacks
+    assert original_slave._emcy_callbacks[0] == servo._on_emcy
+
+    # Now, a method could __init_nodes, which re-creates the pysoem slaves
+    net._EthercatNetwork__init_nodes()
+    assert len(net.servos) == 1
+    # The slave should be updated
+    assert servo.slave is not original_slave
+    # And the emergency callback retained
+    assert original_slave._emcy_callbacks[0] == servo._on_emcy
+
+
+@pytest.mark.ethercat
+def test_slave_is_in_preop_state_if_exception_in_pdo_thread(
+    net: "EthercatNetwork", servo: "EthercatServo", mocker: "MockerFixture"
+) -> None:
+    rpdo_map: RPDOMap = RPDOMap()
+    tpdo_map: TPDOMap = TPDOMap()
+    initial_operation_mode: int = cast("int", servo.read("DRV_OP_CMD"))
+    operation_mode = PDOMap.create_item_from_register_uid(
+        "DRV_OP_CMD", dictionary=servo.dictionary, value=initial_operation_mode, axis=1
+    )
+    actual_position = PDOMap.create_item_from_register_uid(
+        "CL_POS_FBK_VALUE", dictionary=servo.dictionary, axis=1
+    )
+    rpdo_map.add_item(operation_mode)
+    tpdo_map.add_item(actual_position)
+    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+    pdo_map_items = (operation_mode, actual_position)
+    # Choose a random operation mode: [voltage, current, velocity, position]
+    random_op_mode = random.choice([
+        op_mode for op_mode in [0x00, 0x02, 0x03, 0x04] if op_mode != initial_operation_mode
+    ])
+    initial_operation_mode = initial_operation_mode
+    rpdo_value = random_op_mode
+
+    def send_callback() -> None:
+        rpdo_map_item, _ = pdo_map_items
+        rpdo_map_item.value = rpdo_value  # type: ignore[misc]
+
+    def receive_callback() -> None:
+        return
+
+    rpdo_map.subscribe_to_process_data_event(send_callback)
+    tpdo_map.subscribe_to_process_data_event(receive_callback)
+
+    def mock_send_receive_processdata(*args, **kwargs) -> None:  # type: ignore [no-untyped-def]  # noqa: ARG001
+        raise RuntimeError("Test error in PDO thread")
+
+    refresh_rate: float = 0.5
+    net.activate_pdos(refresh_rate=refresh_rate)
+    time.sleep(2 * refresh_rate)
+    assert net._EthercatNetwork__exceptions_in_thread == 0
+
+    # Mock to raise an exception
+    mocker.patch.object(
+        EthercatNetwork,
+        "send_receive_processdata",
+        side_effect=mock_send_receive_processdata,
+    )
+    time.sleep(4 * refresh_rate)
+    assert net._EthercatNetwork__exceptions_in_thread > 0
+
+    # Net should restore servos to PREOP state
+    assert servo.slave is not None
+    assert servo.slave.state is pysoem.PREOP_STATE

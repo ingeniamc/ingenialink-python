@@ -36,15 +36,15 @@ dependencies = [
 ]
 
 [tool.poetry]
-version = "7.4.3"  # base version
+version = "7.5.1"  # base version
 
 [[tool.poetry.source]]
 name = "PyPI"
 priority = "primary"
 
 [[tool.poetry.source]]
-name = "ingenia"
-url = "http://pypi.ingenia/simple"
+name = "novanta"
+url = "http://pypi.novanta.com/simple"
 priority = "supplemental"
 
 
@@ -72,6 +72,7 @@ virtual_drive = ["py.typed", "resources/*"]
 optional = true
 [tool.poetry.group.dev.dependencies]
 poethepoet = {extras = ["poetry-plugin"], version = "^0.35.0"}
+Cython  = "==3.0.11"
 
 # Dependencies for build wheel tasks
 [tool.poetry.group.build]
@@ -112,7 +113,7 @@ pytest-cov = "==2.12.1"
 pytest-mock = "==3.6.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==24.11.0"
-summit-testing-framework = "==0.1.4+gabbc726"
+summit-testing-framework = "==0.1.5+pr48b17"
 
 # -----------------------------------------------------------------------
 #                                   TASKS
@@ -126,6 +127,10 @@ cmd = "poetry build"
 [tool.poe.tasks.check-wheels]
 help = "Check wheels"
 cmd = "twine check dist/*"
+
+[tool.poe.tasks.build-cython]
+help = "Build Cython"
+cmd = "python setup.py build_ext --inplace"
 
 # ----------------------------- Ruff format -----------------------------
 [tool.poe.tasks.ruff-format-check]

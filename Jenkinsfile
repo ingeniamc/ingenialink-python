@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.15') _
+@Library('cicd-lib@0.16') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -6,8 +6,8 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.5"
-WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.6"
+LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
+WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.7"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
 DEFAULT_PYTHON_VERSION = "3.9"
@@ -58,9 +58,12 @@ def archiveWiresharkLogs() {
 }
 
 def createVirtualEnvironments(boolean installWheel = true, String workingDir = null, String pythonVersionList = "") {
-    runPython("pip install poetry==2.1.3", DEFAULT_PYTHON_VERSION)
     def versions = pythonVersionList?.trim() ? pythonVersionList : RUN_PYTHON_VERSIONS
     def pythonVersions = versions.split(',')
+    // Ensure DEFAULT_PYTHON_VERSION is included if not already present
+    if (!pythonVersions.contains(DEFAULT_PYTHON_VERSION)) {
+        pythonVersions = pythonVersions + [DEFAULT_PYTHON_VERSION]
+    }
     pythonVersions.each { version ->
         def venvName = ".venv${version}"
         def cdCmd = workingDir ? "cd ${workingDir}" : ""
@@ -145,7 +148,7 @@ def runTestHW(markers, setup_name, extra_args = "") {
 }
 
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
-CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * *''' : ""
+CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
 
 pipeline {
     agent none
@@ -153,14 +156,14 @@ pipeline {
         timestamps()
     }
     triggers {
-        cron(CRON_SETTINGS)
+        parameterizedCron(CRON_SETTINGS)
     }
     parameters {
         choice(
                 choices: ['MIN', 'MAX', 'MIN_MAX', 'All'],
                 name: 'PYTHON_VERSIONS'
         )
-        booleanParam(name: 'WIRESHARK_LOGGING', defaultValue: true, description: 'Enable Wireshark logging')
+        booleanParam(name: 'WIRESHARK_LOGGING', defaultValue: false, description: 'Enable Wireshark logging')
         choice(
                 choices: ['function', 'module', 'session'],
                 name: 'WIRESHARK_LOGGING_SCOPE'
@@ -173,21 +176,19 @@ pipeline {
                 script {
                     if (env.BRANCH_NAME == 'master') {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
-                    } else if (env.BRANCH_NAME == 'develop') {
-                        RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
                         RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                     } else {
                         if (env.PYTHON_VERSIONS == "MIN_MAX") {
-                          RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
+                            RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
                         } else if (env.PYTHON_VERSIONS == "MIN") {
-                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
+                            RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
                         } else if (env.PYTHON_VERSIONS == "MAX") {
-                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MAX
+                            RUN_PYTHON_VERSIONS = PYTHON_VERSION_MAX
                         } else if (env.PYTHON_VERSIONS == "All") {
-                          RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
+                            RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
                         } else { // Branch-indexing
-                          RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
+                            RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
                         }
                     }
 
@@ -458,9 +459,9 @@ pipeline {
                                 }
                             }
                         }
-                        stage('Publish Ingenia PyPi') {
+                        stage('Publish Novanta PyPi') {
                             steps {
-                                publishIngeniaPyPi('dist/*')
+                                publishNovantaPyPi('dist/*')
                             }
                         }
                         stage('Publish PyPi') {
@@ -521,6 +522,16 @@ pipeline {
                         stage('EtherCAT Multislave') {
                             steps {
                                 runTestHW("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", USE_WIRESHARK_LOGGING)
+                            }
+                        }
+                        stage("Safety Denali Phase I") {
+                            steps {
+                                runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP", USE_WIRESHARK_LOGGING)
+                            }
+                        }
+                        stage("Safety Denali Phase II") {
+                            steps {
+                                runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Run no-connection tests') {

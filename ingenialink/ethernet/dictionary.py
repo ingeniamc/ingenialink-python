@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -15,6 +15,10 @@ from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.register import MonDistV3
+
+if TYPE_CHECKING:
+    from ingenialink.dictionary import CanOpenObject
+
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -38,6 +42,10 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
         dictionary_path: Path to the Ingenia dictionary.
 
     """
+
+    @property
+    def _monitoring_disturbance_objects(self) -> list["CanOpenObject"]:
+        raise NotImplementedError("CanOpen objects are not implemented for this device.")
 
     @cached_property
     def _monitoring_disturbance_registers(self) -> list[EthernetRegister]:

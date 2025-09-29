@@ -18,7 +18,7 @@ from ingenialink.utils._utils import (
 )
 
 if TYPE_CHECKING:
-    from ingenialink.dictionary import CanOpenObject
+    from ingenialink.dictionary import CanOpenObject, Dictionary
 
 BIT_ENDIAN: Literal["little"] = "little"
 bitarray._set_default_endian(BIT_ENDIAN)
@@ -27,6 +27,8 @@ PADDING_REGISTER_IDENTIFIER = "PADDING"
 
 MAP_REGISTER_BYTES = 4
 """Number of bytes used to store each mapping register information."""
+
+PDO_MAP_ITEM_TYPE = TypeVar("PDO_MAP_ITEM_TYPE", bound="PDOMapItem")
 
 
 class PDOMapItem:
@@ -282,11 +284,15 @@ class PDOMap:
 
     _PDO_MAP_ITEM_CLASS = PDOMapItem
 
-    def __init__(self) -> None:
+    def __init__(self, is_dirty: bool = True) -> None:
         self.__items: list[PDOMapItem] = []
         self.__map_register_index: Optional[int] = None
         self.__map_object: Optional[CanOpenObject] = None
         self.__slave: Optional[PDOServo] = None
+        self.__is_dirty = is_dirty
+
+        # Observer callback
+        self._observer_callback: Optional[Callable[[], None]] = None
 
     @property
     def slave(self) -> Optional["PDOServo"]:
@@ -300,6 +306,28 @@ class PDOMap:
     def __check_servo_is_in_preoperational_state(self) -> None:
         if self.slave is not None:
             self.slave.check_servo_is_in_preoperational_state()
+
+    def subscribe_to_process_data_event(self, callback: Callable[[], None]) -> None:
+        """Subscribe to process data notifications.
+
+        Args:
+            callback: Subscribed callback function.
+
+        Raises:
+            ValueError: If a callback has already been set.
+        """
+        if self._observer_callback is not None:
+            raise ValueError("Callback has already been set, unsubscribe first")
+        self._observer_callback = callback
+
+    def unsubscribe_to_process_data_event(self) -> None:
+        """Unsubscribe from process data notifications."""
+        self._observer_callback = None
+
+    def _notify_process_data_event(self) -> None:
+        """Notify the observers about the process data event."""
+        if self._observer_callback is not None:
+            self._observer_callback()
 
     def create_item(
         self, register: Union[EthercatRegister, CanopenRegister], size_bits: Optional[int] = None
@@ -319,6 +347,44 @@ class PDOMap:
         item = self._PDO_MAP_ITEM_CLASS(register, size_bits)
         return item
 
+    @staticmethod
+    def create_item_from_register_uid(
+        uid: str,
+        dictionary: "Dictionary",
+        axis: Optional[int] = None,
+        value: Optional[Union[int, float]] = None,
+    ) -> Union[RPDOMapItem, TPDOMapItem]:
+        """Create a PDOMapItem from a register uid.
+
+        Args:
+            uid: register uid to be mapped.
+            dictionary: servo dictionary to retrieve the registers.
+            axis: servo axis. Defaults to None.
+                Should be specified if multiaxis, None otherwise.
+            value: Initial value for an RPDO register.
+
+        Returns:
+            PDOMapItem instance.
+
+        Raises:
+            ValueError: If there is a type mismatch retrieving the register object.
+            ValueError: if the pdo access type is not supported.
+            AttributeError: If an initial value is not provided for an RPDO register.
+        """
+        # Retrieve the register from the dictionary using the uid
+        register = dictionary.get_register(uid, axis)
+        if not isinstance(register, (EthercatRegister, CanopenRegister)):
+            raise ValueError("Expected register type to be EthercatRegister or CanopenRegister.")
+        if register.pdo_access == RegCyclicType.RX:
+            pdo_map_item = RPDOMapItem(register)
+            if value is None:
+                raise AttributeError("A initial value is required for a RPDO.")
+            pdo_map_item.value = value
+            return pdo_map_item
+        elif register.pdo_access == RegCyclicType.TX:
+            return TPDOMapItem(register)
+        raise ValueError(f"Unexpected PDO access type: {register.pdo_access}")
+
     def add_item(self, item: PDOMapItem) -> None:
         """Append a new item.
 
@@ -326,8 +392,17 @@ class PDOMap:
 
         Args:
             item: Item to be added.
+
+        Raises:
+            ValueError: If the item is not of the expected type.
         """
         self.__check_servo_is_in_preoperational_state()
+        if not isinstance(item, self._PDO_MAP_ITEM_CLASS):
+            raise ValueError(
+                f"Expected {self._PDO_MAP_ITEM_CLASS}, got {type(item)}. "
+                "Cannot add item to the map."
+            )
+        self.__is_dirty = True
         self.__items.append(item)
 
     def add_registers(
@@ -346,20 +421,85 @@ class PDOMap:
             registers: Register object or list of Registers.
         """
         self.__check_servo_is_in_preoperational_state()
+        self.__is_dirty = True
         if not isinstance(registers, list):
             registers = [registers]
         for register in registers:
             item = self.create_item(register)
             self.add_item(item)
 
-    @property
-    def items(self) -> list[PDOMapItem]:
-        """List of items.
+    def clear(self) -> None:
+        """Clear all items."""
+        self.__check_servo_is_in_preoperational_state()
+        self.__is_dirty = True
+        self.__items.clear()
+
+    def __getitem__(self, index: int) -> PDOMapItem:
+        """Get item by index.
+
+        Args:
+            index: Index of the item.
 
         Returns:
-            List of items.
+            Item at the given index.
+
+        Raises:
+            IndexError: If the index is out of range.
         """
-        return self.__items
+        return self.__items.__getitem__(index)
+
+    def __setitem__(self, index: int, item: PDOMapItem) -> None:
+        """Set item at the given index.
+
+        Args:
+            index: Index of the item.
+            item: Item to be set.
+
+        Raises:
+            IndexError: If the index is out of range.
+            ValueError: If the item is not of the expected type.
+        """
+        self.__check_servo_is_in_preoperational_state()
+        if not isinstance(item, self._PDO_MAP_ITEM_CLASS):
+            raise ValueError(
+                f"Expected {self._PDO_MAP_ITEM_CLASS}, got {type(item)}. "
+                "Cannot set item to the map."
+            )
+        self.__is_dirty = True
+        self.__setitem__(index, item)
+
+    def __delitem__(self, index: int) -> None:
+        """Delete item at the given index.
+
+        Args:
+            index: Index of the item.
+
+        Raises:
+            IndexError: If the index is out of range.
+        """
+        self.__check_servo_is_in_preoperational_state()
+        self.__is_dirty = True
+        self.__items.__delitem__(index)
+
+    def __contains__(self, item: PDOMapItem) -> bool:
+        """Check if the item is in the PDOMap.
+
+        Args:
+            item: Item to be checked.
+
+        Returns:
+            True if the item is in the PDOMap, False otherwise.
+        """
+        return self.__items.__contains__(item)
+
+    @property
+    def items(self) -> tuple[PDOMapItem, ...]:
+        """Tuple of items (immutable).
+
+        Returns:
+            Tuple of items.
+        """
+        return tuple(self.__items)
 
     @property
     def map_register_index_bytes(self) -> bytes:
@@ -387,6 +527,12 @@ class PDOMap:
 
     @map_register_index.setter
     def map_register_index(self, index: int) -> None:
+        if self.map_object is not None and self.map_object.idx != index:
+            raise ValueError(
+                "The map_object index does not match the map_register_index. "
+                f"Expected {self.map_object.idx}, got {index}."
+            )
+
         self.__map_register_index = index
 
     @property
@@ -491,6 +637,7 @@ class PDOMap:
         value: bytes,
         map_obj: "CanOpenObject",
         dictionary: "CanopenDictionary",
+        is_dirty: bool,
     ) -> PDO_MAP_TYPE:
         """Create a PDOMap from the full pdo value (accessed via complete access).
 
@@ -498,6 +645,7 @@ class PDOMap:
             value: Value of the pdo mapping in bytes.
             map_obj: Mapping Canopen object.
             dictionary: Canopen dictionary to retrieve the registers.
+            is_dirty: If the map has been modified since last read and not written to the slave.
 
         Returns:
             PDOMap instance.
@@ -518,7 +666,59 @@ class PDOMap:
             item = cls._PDO_MAP_ITEM_CLASS.from_register_mapping(item_map, dictionary)
             pdo_map.add_item(item)
 
+        pdo_map.__is_dirty = is_dirty
+
         return pdo_map
+
+    @classmethod
+    def from_pdo_items(
+        cls: type[PDO_MAP_TYPE], items: Union[PDO_MAP_ITEM_TYPE, list[PDO_MAP_ITEM_TYPE]]
+    ) -> PDO_MAP_TYPE:
+        """Create a PDOMap from a list of PDOMapItems.
+
+        Args:
+            items: List of PDOMapItems.
+            dictionary: Canopen dictionary to retrieve the registers.
+
+        Returns:
+            PDOMap instance.
+
+        Raises:
+            ValueError: If the items are not of the expected type.
+        """
+        pdo_map = cls()
+        if not isinstance(items, list):
+            items = [items]
+        for item in items:
+            if not isinstance(item, cls._PDO_MAP_ITEM_CLASS):
+                raise ValueError(f"Expected item to be of type {cls._PDO_MAP_ITEM_CLASS}.")
+            pdo_map.add_item(item)
+        return pdo_map
+
+    @property
+    def is_editable(self) -> bool:
+        """Check if the PDOMap is editable.
+
+        Raises:
+            ValueError: If the map_object is None.
+                The map_object must be set to check if the map is editable.
+
+        Returns:
+            bool: True if the PDOMap is editable, False otherwise.
+        """
+        if self.map_object is None:
+            raise ValueError("The map_object must be set to check if the map is editable")
+
+        return self.map_object.registers[0].access.allows_write
+
+    @property
+    def is_dirty(self) -> bool:
+        """Check if the PDOMap has been modified since last read and not written to the slave.
+
+        Returns:
+            bool: True if the PDOMap is dirty, False otherwise.
+        """
+        return self.__is_dirty
 
     def write_to_slave(
         self, max_pdo_items_for_padding: Optional[int] = None, padding: bool = False
@@ -556,6 +756,7 @@ class PDOMap:
             unused_items = max_pdo_items_for_padding - len(self.__items)
             value += b"\x00" * (unused_items * MAP_REGISTER_BYTES)
         self.__slave.write_complete_access(reg, value)
+        self.__is_dirty = False
 
     def set_item_bytes(self, data_bytes: bytes) -> None:
         """Set the items raw data from a byte array.
@@ -655,13 +856,9 @@ class PDOServo(Servo):
 
     ETG_COMMS_RPDO_ASSIGN_TOTAL = "ETG_COMMS_RPDO_ASSIGN_TOTAL"
     ETG_COMMS_RPDO_ASSIGN_1 = "ETG_COMMS_RPDO_ASSIGN_1"
-    ETG_COMMS_RPDO_MAP1_TOTAL = ("ETG_COMMS_RPDO_MAP1_TOTAL",)
-    ETG_COMMS_RPDO_MAP1_1 = ("ETG_COMMS_RPDO_MAP1_1",)
 
     ETG_COMMS_TPDO_ASSIGN_TOTAL = "ETG_COMMS_TPDO_ASSIGN_TOTAL"
     ETG_COMMS_TPDO_ASSIGN_1 = "ETG_COMMS_TPDO_ASSIGN_1"
-    ETG_COMMS_TPDO_MAP1_TOTAL = ("ETG_COMMS_TPDO_MAP1_TOTAL",)
-    ETG_COMMS_TPDO_MAP1_1 = ("ETG_COMMS_TPDO_MAP1_1",)
 
     def __init__(
         self,
@@ -673,8 +870,9 @@ class PDOServo(Servo):
         super().__init__(
             target, dictionary_path, servo_status_listener, disconnect_callback=disconnect_callback
         )
-        self._rpdo_maps: list[RPDOMap] = []
-        self._tpdo_maps: list[TPDOMap] = []
+        # Index of the pdo map -> PDO Map instance
+        self._rpdo_maps: dict[int, RPDOMap] = {}
+        self._tpdo_maps: dict[int, TPDOMap] = {}
 
     @property  # type: ignore[misc]
     def dictionary(self) -> CanopenDictionary:  # type: ignore[override]
@@ -697,8 +895,6 @@ class PDOServo(Servo):
         """
         self.check_servo_is_in_preoperational_state()
         self.write(self.ETG_COMMS_RPDO_ASSIGN_TOTAL, 0, subnode=0)
-        for map_register in self.ETG_COMMS_RPDO_MAP1_TOTAL:
-            self.write(map_register, 0, subnode=0)
         self._rpdo_maps.clear()
 
     def reset_tpdo_mapping(self) -> None:
@@ -708,14 +904,14 @@ class PDOServo(Servo):
         """
         self.check_servo_is_in_preoperational_state()
         self.write(self.ETG_COMMS_TPDO_ASSIGN_TOTAL, 0, subnode=0)
-        for map_register in self.ETG_COMMS_TPDO_MAP1_TOTAL:
-            self.write(map_register, 0, subnode=0)
         self._tpdo_maps.clear()
 
     def map_rpdos(self) -> None:
         """Map the RPDO registers into the servo slave.
 
-        It takes the first available RPDO assignment slot of the slave.
+        It writes the RPDO maps into the slave,
+        saves the RPDO maps in the _rpdo_maps attribute
+        and adds them to the PDO Assign object.
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
 
@@ -729,49 +925,19 @@ class PDOServo(Servo):
                 f" {self.AVAILABLE_PDOS} are available"
             )
         self.write(self.ETG_COMMS_RPDO_ASSIGN_TOTAL, len(self._rpdo_maps), subnode=0)
-        custom_map_index = 0
         rpdo_assigns = b""
-        for rpdo_map in self._rpdo_maps:
-            if rpdo_map.map_register_index is None:
-                self._set_rpdo_map_register(custom_map_index, rpdo_map)
-                custom_map_index += 1
+        for rpdo_map in self._rpdo_maps.values():
+            if rpdo_map.is_editable and rpdo_map.is_dirty:
+                rpdo_map.write_to_slave()
             rpdo_assigns += rpdo_map.map_register_index_bytes
         self.write_complete_access(self.ETG_COMMS_RPDO_ASSIGN_1, rpdo_assigns, subnode=0)
-
-    def _set_rpdo_map_register(self, rpdo_map_register_index: int, rpdo_map: RPDOMap) -> None:
-        """Fill RPDO map register with PRDOMap object data.
-
-        Args:
-            rpdo_map_register_index: custom rpdo map register index
-            rpdo_map: custom rpdo data
-
-        Raises:
-            ValueError: If there is an error retrieving the RPDO Map register.
-        """
-        self.write(
-            self.ETG_COMMS_RPDO_MAP1_TOTAL[rpdo_map_register_index],
-            len(rpdo_map.items),
-            subnode=0,
-        )
-        self.write_complete_access(
-            self.ETG_COMMS_RPDO_MAP1_1[rpdo_map_register_index],
-            bytes(rpdo_map.items_mapping),
-            subnode=0,
-        )
-        rpdo_map_register = self.dictionary.registers(0)[
-            self.ETG_COMMS_RPDO_MAP1_TOTAL[rpdo_map_register_index]
-        ]
-        if not isinstance(rpdo_map_register, EthercatRegister):
-            raise ValueError(
-                "Error retrieving the RPDO Map register. Expected EthercatRegister, got:"
-                f" {type(rpdo_map_register)}"
-            )
-        rpdo_map.map_register_index = rpdo_map_register.idx
 
     def map_tpdos(self) -> None:
         """Map the TPDO registers into the servo slave.
 
-        It takes the first available TPDO assignment slot of the slave.
+        It writes the TPDO maps into the slave,
+        saves the TPDO maps in the _tpdo_maps attribute
+        and adds them to the PDO Assign object
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
 
@@ -785,44 +951,12 @@ class PDOServo(Servo):
                 f" {self.AVAILABLE_PDOS} are available"
             )
         self.write(self.ETG_COMMS_TPDO_ASSIGN_TOTAL, len(self._tpdo_maps), subnode=0)
-        custom_map_index = 0
         tpdo_assigns = b""
-        for tpdo_map in self._tpdo_maps:
-            if tpdo_map.map_register_index is None:
-                self._set_tpdo_map_register(custom_map_index, tpdo_map)
-                custom_map_index += 1
+        for tpdo_map in self._tpdo_maps.values():
+            if tpdo_map.is_editable and tpdo_map.is_dirty:
+                tpdo_map.write_to_slave()
             tpdo_assigns += tpdo_map.map_register_index_bytes
         self.write_complete_access(self.ETG_COMMS_TPDO_ASSIGN_1, tpdo_assigns, subnode=0)
-
-    def _set_tpdo_map_register(self, tpdo_map_register_index: int, tpdo_map: TPDOMap) -> None:
-        """Fill TPDO map register with TRDOMap object data.
-
-        Args:
-            tpdo_map_register_index: custom tpdo map register index
-            tpdo_map: custom tpdo data
-
-        Raises:
-            ValueError: If there is an error retrieving the TPDO Map register.
-        """
-        self.write(
-            self.ETG_COMMS_TPDO_MAP1_TOTAL[tpdo_map_register_index],
-            len(tpdo_map.items),
-            subnode=0,
-        )
-        self.write_complete_access(
-            self.ETG_COMMS_TPDO_MAP1_1[tpdo_map_register_index],
-            bytes(tpdo_map.items_mapping),
-            subnode=0,
-        )
-        tpdo_map_register = self.dictionary.registers(0)[
-            self.ETG_COMMS_TPDO_MAP1_TOTAL[tpdo_map_register_index]
-        ]
-        if not isinstance(tpdo_map_register, EthercatRegister):
-            raise ValueError(
-                "Error retrieving the TPDO Map register. Expected EthercatRegister, got:"
-                f" {type(tpdo_map_register)}"
-            )
-        tpdo_map.map_register_index = tpdo_map_register.idx
 
     def map_pdos(self, slave_index: int) -> None:  # noqa: ARG002
         """Map RPDO and TPDO register into the slave.
@@ -853,19 +987,23 @@ class PDOServo(Servo):
 
         Args:
             rpdo_map: The RPDOMap instance to be removed.
-            rpdo_map_index: The index of the RPDOMap list to be removed.
+            rpdo_map_index: The map index of the RPDOMap list to be removed.
 
         Raises:
             ValueError: If the RPDOMap instance is not in the RPDOMap list.
         """
         self.check_servo_is_in_preoperational_state()
         if rpdo_map_index is None and rpdo_map is None:
-            raise ValueError("The RPDOMap instance or the index should be provided.")
+            raise ValueError("The RPDOMap instance or the map index should be provided.")
         if rpdo_map is not None:
-            self._rpdo_maps.remove(rpdo_map)
+            if rpdo_map not in self._rpdo_maps.values():
+                raise ValueError("The RPDOMap instance is not in the RPDOMaps")
+            self._rpdo_maps = {
+                idx: rmap for idx, rmap in self._rpdo_maps.items() if rmap is not rpdo_map
+            }
             return
         if rpdo_map_index is not None:
-            self._rpdo_maps.pop(rpdo_map_index)
+            del self._rpdo_maps[rpdo_map_index]
 
     def remove_tpdo_map(
         self, tpdo_map: Optional[TPDOMap] = None, tpdo_map_index: Optional[int] = None
@@ -874,16 +1012,20 @@ class PDOServo(Servo):
 
         Args:
             tpdo_map: The TPDOMap instance to be removed.
-            tpdo_map_index: The index of the TPDOMap list to be removed.
+            tpdo_map_index: The map index of the TPDOMap list to be removed.
 
         Raises:
             ValueError: If the TPDOMap instance is not in the TPDOMap list.
 
         """
         if tpdo_map_index is None and tpdo_map is None:
-            raise ValueError("The TPDOMap instance or the index should be provided.")
+            raise ValueError("The TPDOMap instance or the map index should be provided.")
         if tpdo_map is not None:
-            self._tpdo_maps.remove(tpdo_map)
+            if tpdo_map not in self._tpdo_maps.values():
+                raise ValueError("The TPDOMap instance is not in the TPDOMaps")
+            self._tpdo_maps = {
+                idx: tmap for idx, tmap in self._tpdo_maps.items() if tmap is not tpdo_map
+            }
             return
         if tpdo_map_index is not None:
             self._tpdo_maps.pop(tpdo_map_index)
@@ -918,10 +1060,12 @@ class PDOServo(Servo):
             input_data: Concatenated received data bytes.
 
         """
-        for tpdo_map in self._tpdo_maps:
+        for idx in sorted(self._tpdo_maps):
+            tpdo_map = self._tpdo_maps[idx]
             map_bytes = input_data[: tpdo_map.data_length_bytes]
             tpdo_map.set_item_bytes(map_bytes)
             input_data = input_data[tpdo_map.data_length_bytes :]
+            tpdo_map._notify_process_data_event()
 
     def _process_rpdo(self) -> bytes:
         """Retrieve the RPDO raw data from each map.
@@ -930,6 +1074,7 @@ class PDOServo(Servo):
             Concatenated data bytes to be sent.
         """
         output = bytearray()
-        for rpdo_map in self._rpdo_maps:
-            output += rpdo_map.get_item_bytes()
+        for idx in sorted(self._rpdo_maps):
+            self._rpdo_maps[idx]._notify_process_data_event()
+            output += self._rpdo_maps[idx].get_item_bytes()
         return bytes(output)

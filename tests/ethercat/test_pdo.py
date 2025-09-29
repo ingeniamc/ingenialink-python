@@ -1,5 +1,6 @@
 import contextlib
 import time
+from typing import TYPE_CHECKING, Optional
 
 from bitarray import bitarray
 
@@ -14,10 +15,13 @@ from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILEcatStateError, ILError
-from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
+from ingenialink.pdo import PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
 from ingenialink.servo import DictionaryFactory
 from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_length_bits
+
+if TYPE_CHECKING:
+    from ingenialink.dictionary import Dictionary
 
 TPDO_REGISTERS = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
 RPDO_REGISTERS = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
@@ -141,7 +145,7 @@ def test_pdo_item_register_mapping(open_dictionary, uid, expected_value):
 
 
 @pytest.mark.no_connection
-def test_pdo_create_item(open_dictionary):
+def test_pdo_create_item(open_dictionary: "Dictionary"):
     ethercat_dictionary = open_dictionary
     rpdo_map = RPDOMap()
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
@@ -151,17 +155,106 @@ def test_pdo_create_item(open_dictionary):
 
 
 @pytest.mark.no_connection
-def test_pdo_add_item(open_dictionary):
-    ethercat_dictionary = open_dictionary
-    rpdo_map = RPDOMap()
-    register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
+def test_create_rpdo_item(open_dictionary: "Dictionary") -> None:
+    position_set_point_initial_value = 100
+    position_set_point = PDOMap.create_item_from_register_uid(
+        uid="CL_POS_SET_POINT_VALUE",
+        dictionary=open_dictionary,
+        value=position_set_point_initial_value,
+    )
+    assert isinstance(position_set_point, RPDOMapItem)
+    assert position_set_point.value == position_set_point_initial_value
 
-    assert len(rpdo_map.items) == 0
-    item = rpdo_map.create_item(register)
-    rpdo_map.add_item(item)
 
+@pytest.mark.no_connection
+def test_create_tpdo_item(open_dictionary: "Dictionary") -> None:
+    actual_position = PDOMap.create_item_from_register_uid(
+        uid="CL_POS_FBK_VALUE", dictionary=open_dictionary
+    )
+    assert isinstance(actual_position, TPDOMapItem)
+
+
+@pytest.mark.no_connection
+def test_create_rpdo_item_no_initial_value(open_dictionary: "Dictionary") -> None:
+    with pytest.raises(AttributeError):
+        PDOMap.create_item_from_register_uid("CL_POS_SET_POINT_VALUE", dictionary=open_dictionary)
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize(
+    "register, value, pdo_type",
+    [
+        ("CL_POS_FBK_VALUE", None, "tpdo"),
+        ("CL_VEL_SET_POINT_VALUE", 0, "rpdo"),
+    ],
+)
+def test_pdo_add_item(open_dictionary, register: str, value: Optional[int], pdo_type: str) -> None:
+    pdo_map = RPDOMap() if pdo_type == "rpdo" else TPDOMap()
+    assert len(pdo_map.items) == 0
+    item = PDOMap.create_item_from_register_uid(
+        uid=register, dictionary=open_dictionary, axis=SUBNODE, value=value
+    )
+    pdo_map.add_item(item)
+    assert len(pdo_map.items) == 1
+    assert pdo_map.items[0] == item
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize(
+    "register, value, pdo_type",
+    [
+        ("CL_POS_FBK_VALUE", None, "tpdo"),
+        ("CL_VEL_SET_POINT_VALUE", 0, "rpdo"),
+    ],
+)
+def test_pdo_add_item_exceptions(
+    open_dictionary, register: str, value: Optional[int], pdo_type: str
+) -> None:
+    pdo_map = RPDOMap() if pdo_type == "tpdo" else TPDOMap()
+    assert len(pdo_map.items) == 0
+    item = PDOMap.create_item_from_register_uid(
+        uid=register, dictionary=open_dictionary, axis=SUBNODE, value=value
+    )
+    with pytest.raises(ValueError):
+        pdo_map.add_item(item)
+
+
+@pytest.mark.no_connection
+def test_create_pdo_maps_single_item(open_dictionary: "Dictionary") -> None:
+    position_set_point = PDOMap.create_item_from_register_uid(
+        uid="CL_POS_SET_POINT_VALUE", dictionary=open_dictionary, value=0
+    )
+    actual_position = PDOMap.create_item_from_register_uid(
+        uid="CL_POS_FBK_VALUE", dictionary=open_dictionary
+    )
+    rpdo_map = RPDOMap.from_pdo_items(position_set_point)
+    tpdo_map = TPDOMap.from_pdo_items(actual_position)
+    assert isinstance(rpdo_map, RPDOMap)
     assert len(rpdo_map.items) == 1
-    assert rpdo_map.items[0] == item
+    assert position_set_point in rpdo_map.items
+    assert isinstance(tpdo_map, TPDOMap)
+    assert len(tpdo_map.items) == 1
+    assert actual_position in tpdo_map.items
+
+
+@pytest.mark.no_connection
+def test_create_pdo_maps_list_items(open_dictionary: "Dictionary") -> None:
+    rpdo_regs = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
+    tpdo_regs = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
+    rpdo_items = [
+        PDOMap.create_item_from_register_uid(rpdo_reg, dictionary=open_dictionary, value=0)
+        for rpdo_reg in rpdo_regs
+    ]
+    tpdo_items = [
+        PDOMap.create_item_from_register_uid(tpdo_reg, dictionary=open_dictionary)
+        for tpdo_reg in tpdo_regs
+    ]
+    rpdo_map = RPDOMap.from_pdo_items(rpdo_items)
+    tpdo_map = TPDOMap.from_pdo_items(tpdo_items)
+    assert isinstance(rpdo_map, RPDOMap)
+    assert len(rpdo_map.items) == len(rpdo_items)
+    assert isinstance(tpdo_map, TPDOMap)
+    assert len(tpdo_map.items) == len(tpdo_items)
 
 
 @pytest.mark.no_connection
@@ -177,6 +270,7 @@ def test_pdo_add_registers(open_dictionary):
 
     assert len(rpdo_map.items) == 1
     assert rpdo_map.items[0].register == register1
+    assert rpdo_map[0].register == register1
 
     rpdo_map.add_registers([register1, register2])
 
@@ -184,6 +278,9 @@ def test_pdo_add_registers(open_dictionary):
     assert rpdo_map.items[0].register == register1
     assert rpdo_map.items[1].register == register1
     assert rpdo_map.items[2].register == register2
+    assert rpdo_map[0].register == register1
+    assert rpdo_map[1].register == register1
+    assert rpdo_map[2].register == register2
 
 
 @pytest.mark.no_connection
@@ -227,25 +324,20 @@ def test_servo_add_maps(servo, create_pdo_map):
 
     assert servo.read(EthercatServo.ETG_COMMS_TPDO_ASSIGN_TOTAL, subnode=0) == 1
     assert len(servo._tpdo_maps) == 1
-    assert (
-        tpdo_map.map_register_index
-        == servo.dictionary.registers(0)[servo.ETG_COMMS_TPDO_MAP1_TOTAL[0]].idx
-    )
+    assert tpdo_map.map_register_index == servo.dictionary.get_object("ETG_COMMS_TPDO_MAP1").idx
     assert tpdo_map.map_register_index_bytes == tpdo_map.map_register_index.to_bytes(2, "little")
-    assert servo.read(EthercatServo.ETG_COMMS_TPDO_MAP1_TOTAL[0], subnode=0) == len(TPDO_REGISTERS)
+    assert servo.read("ETG_COMMS_TPDO_MAP1_TOTAL", subnode=0) == len(TPDO_REGISTERS)
     value = servo._read_raw(
-        servo.dictionary.registers(0)[servo.ETG_COMMS_TPDO_ASSIGN_TOTAL], complete_access=True
+        servo.dictionary.registers(0)[EthercatServo.ETG_COMMS_TPDO_ASSIGN_TOTAL],
+        complete_access=True,
     )
     assert int.to_bytes(0x1A00, 2, "little") == value[2:4]
 
     assert servo.read(EthercatServo.ETG_COMMS_RPDO_ASSIGN_TOTAL, subnode=0) == 1
     assert len(servo._rpdo_maps) == 1
-    assert (
-        rpdo_map.map_register_index
-        == servo.dictionary.registers(0)[servo.ETG_COMMS_RPDO_MAP1_TOTAL[0]].idx
-    )
+    assert rpdo_map.map_register_index == servo.dictionary.get_object("ETG_COMMS_RPDO_MAP1").idx
     assert rpdo_map.map_register_index_bytes == rpdo_map.map_register_index.to_bytes(2, "little")
-    assert servo.read(EthercatServo.ETG_COMMS_RPDO_MAP1_TOTAL[0], subnode=0) == len(RPDO_REGISTERS)
+    assert servo.read("ETG_COMMS_RPDO_MAP1_TOTAL", subnode=0) == len(RPDO_REGISTERS)
     value = servo._read_raw(
         servo.dictionary.registers(0)[servo.ETG_COMMS_RPDO_ASSIGN_TOTAL], complete_access=True
     )
@@ -365,9 +457,11 @@ def test_read_tpdo_map_from_slave(servo: EthercatServo, from_uid: bool):
     assert len(pdo_map.map_object.registers) == 16
 
 
+@pytest.mark.ethercat
 def test_map_register_items(servo: EthercatServo):
     pdo_map = servo.read_tpdo_map_from_slave("ETG_COMMS_TPDO_MAP1")
 
+    pdo_map.clear()
     item1 = pdo_map.create_item(servo.dictionary.get_register("CL_POS_FBK_VALUE"))
     item2 = pdo_map.create_item(servo.dictionary.get_register("DRV_STATE_STATUS"))
     item3 = pdo_map.create_item(servo.dictionary.get_register("CL_TOR_FBK_VALUE"))
@@ -399,6 +493,7 @@ def test_map_register_items(servo: EthercatServo):
     }
 
 
+@pytest.mark.no_connection
 def test_pdo_map_from_value(open_dictionary):
     tpdo_map = TPDOMap()
 
@@ -426,8 +521,13 @@ def test_pdo_map_from_value(open_dictionary):
     tpdo_value = tpdo_map.to_pdo_value()
 
     rebuild_tpdo_map = TPDOMap.from_pdo_value(
-        tpdo_value, open_dictionary.get_object("ETG_COMMS_TPDO_MAP1"), open_dictionary
+        tpdo_value,
+        open_dictionary.get_object("ETG_COMMS_TPDO_MAP1"),
+        open_dictionary,
+        is_dirty=False,
     )
+
+    assert rebuild_tpdo_map.is_dirty is False
 
     for original, rebuild in zip(tpdo_map.items, rebuild_tpdo_map.items):
         if original.register.idx == 0:
@@ -483,17 +583,17 @@ def test_start_stop_pdo(servo, net):
     start_stop_pdos(net)
     for index, s in enumerate(servo):
         # Check that RPDOs are being received by the slave
-        assert s._rpdo_maps[0].items[0].value == s.read(operation_mode_uid)
+        assert s._rpdo_maps[0x1600].items[0].value == s.read(operation_mode_uid)
         # Check that TPDOs are being sent by the slave
-        assert s._tpdo_maps[0].items[0].value == s.read(tpdo_registers[0])
+        assert s._tpdo_maps[0x1A00].items[0].value == s.read(tpdo_registers[0])
         # Restore the previous operation mode
         s.write(operation_mode_uid, current_operation_mode[index])
     # Check that PDOs can be re-started with the same configuration
     start_stop_pdos(net)
     # Re-configure the PDOs and re-start the PDO exchange
     for s in servo:
-        s.remove_rpdo_map(rpdo_map_index=0)
-        s.remove_tpdo_map(tpdo_map_index=0)
+        s.remove_rpdo_map(rpdo_map_index=0x1600)
+        s.remove_tpdo_map(tpdo_map_index=0x1A00)
         rpdo_map, tpdo_map = create_pdo_maps(s, RPDO_REGISTERS, TPDO_REGISTERS)
         for item in rpdo_map.items:
             item.value = 0
@@ -510,13 +610,14 @@ def test_start_pdo_error_rpod_values_not_set(servo, net, create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_set_pdo_map_to_slave(servo, create_pdo_map):
+def test_set_pdo_map_to_slave(servo: EthercatServo, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+    # By default they are assigned to first pdo map
     assert len(servo._rpdo_maps) == 1
-    assert servo._rpdo_maps[0] == rpdo_map
+    assert servo._rpdo_maps[0x1600] == rpdo_map
     assert len(servo._tpdo_maps) == 1
-    assert servo._tpdo_maps[0] == tpdo_map
+    assert servo._tpdo_maps[0x1A00] == tpdo_map
     assert servo.slave.config_func is not None
 
     servo.map_pdos(1)
@@ -524,27 +625,42 @@ def test_set_pdo_map_to_slave(servo, create_pdo_map):
     assert servo.read(servo.ETG_COMMS_TPDO_ASSIGN_TOTAL, subnode=0) == 1
     assert servo.read(servo.ETG_COMMS_RPDO_ASSIGN_TOTAL, subnode=0) == 1
 
-    new_rdpo_map = RPDOMap()
-    new_tpdo_map = TPDOMap()
-    servo.set_pdo_map_to_slave([new_rdpo_map], [new_tpdo_map])
-    # Check that the previous mapping was not deleted
-    assert servo.read(servo.ETG_COMMS_TPDO_ASSIGN_TOTAL, subnode=0) == 1
-    assert servo.read(servo.ETG_COMMS_RPDO_ASSIGN_TOTAL, subnode=0) == 1
+    # Creating and setting new maps for the same index replaces the previous ones
+    replace_rpdo_map = RPDOMap()
+    replace_rpdo_map.map_register_index = rpdo_map.map_register_index
+    replace_tpdo_map = TPDOMap()
+    replace_tpdo_map.map_register_index = tpdo_map.map_register_index
+    servo.set_pdo_map_to_slave([replace_rpdo_map], [replace_tpdo_map])
+    assert len(servo._rpdo_maps) == 1
+    assert servo._rpdo_maps[0x1600] == replace_rpdo_map
+    assert len(servo._tpdo_maps) == 1
+    assert servo._tpdo_maps[0x1A00] == replace_tpdo_map
+
+    # Other pdo maps can be added as long as they use a different map
+    other_rpdo_map = RPDOMap()
+    other_rpdo_map.map_object = servo.dictionary.get_object("ETG_COMMS_RPDO_MAP2")
+    other_tpdo_map = TPDOMap()
+    other_tpdo_map.map_object = servo.dictionary.get_object("ETG_COMMS_TPDO_MAP2")
+    servo.set_pdo_map_to_slave([other_rpdo_map], [other_tpdo_map])
     # Check that the new PDOMaps were added
     assert len(servo._rpdo_maps) == 2
-    assert servo._rpdo_maps[1] == new_rdpo_map
+    assert servo._rpdo_maps[0x1600] == replace_rpdo_map
+    assert servo._rpdo_maps[0x1601] == other_rpdo_map
     assert len(servo._tpdo_maps) == 2
-    assert servo._tpdo_maps[1] == new_tpdo_map
+    assert servo._tpdo_maps[0x1A00] == replace_tpdo_map
+    assert servo._tpdo_maps[0x1A01] == other_tpdo_map
 
     # Add same maps again
-    servo.set_pdo_map_to_slave([new_rdpo_map, rpdo_map], [new_tpdo_map, tpdo_map])
+    servo.set_pdo_map_to_slave(
+        [replace_rpdo_map, other_rpdo_map], [replace_tpdo_map, other_tpdo_map]
+    )
     # Check that nothing changes
     assert len(servo._rpdo_maps) == 2
-    assert servo._rpdo_maps[0] == rpdo_map
-    assert servo._rpdo_maps[1] == new_rdpo_map
+    assert servo._rpdo_maps[0x1600] == replace_rpdo_map
+    assert servo._rpdo_maps[0x1601] == other_rpdo_map
     assert len(servo._tpdo_maps) == 2
-    assert servo._tpdo_maps[0] == tpdo_map
-    assert servo._tpdo_maps[1] == new_tpdo_map
+    assert servo._tpdo_maps[0x1A00] == replace_tpdo_map
+    assert servo._tpdo_maps[0x1A01] == other_tpdo_map
 
 
 @pytest.mark.no_connection
@@ -672,27 +788,27 @@ def test_map_pdo_with_bools(open_dictionary):
 
 
 @pytest.mark.ethercat
-def test_remove_rpdo_map(servo, create_pdo_map):
+def test_remove_rpdo_map(servo: EthercatServo, create_pdo_map):
     _, rpdo_map = create_pdo_map
     servo.set_pdo_map_to_slave([rpdo_map], [])
     assert len(servo._rpdo_maps) > 0
     servo.remove_rpdo_map(rpdo_map)
     assert len(servo._rpdo_maps) == 0
-    servo._rpdo_maps.append(rpdo_map)
-    servo.remove_rpdo_map(rpdo_map_index=0)
+    servo._rpdo_maps[0x1600] = rpdo_map
+    servo.remove_rpdo_map(rpdo_map_index=0x1600)
     assert len(servo._rpdo_maps) == 0
 
 
 @pytest.mark.ethercat
-def test_remove_rpdo_map_exceptions(servo, create_pdo_map):
+def test_remove_rpdo_map_exceptions(servo: EthercatServo, create_pdo_map):
     tpdo_map, rpdo_map = create_pdo_map
     servo.set_pdo_map_to_slave([rpdo_map], [])
     with pytest.raises(ValueError):
         servo.remove_rpdo_map()
     with pytest.raises(ValueError):
         servo.remove_rpdo_map(tpdo_map)
-    with pytest.raises(IndexError):
-        servo.remove_rpdo_map(rpdo_map_index=1)
+    with pytest.raises(KeyError):
+        servo.remove_rpdo_map(rpdo_map_index=0x1602)
 
 
 @pytest.mark.ethercat
@@ -702,21 +818,21 @@ def test_remove_tpdo_map(servo, create_pdo_map):
     assert len(servo._tpdo_maps) > 0
     servo.remove_tpdo_map(tpdo_map)
     assert len(servo._tpdo_maps) == 0
-    servo._tpdo_maps.append(tpdo_map)
-    servo.remove_tpdo_map(tpdo_map_index=0)
+    servo._tpdo_maps[0x1A00] = tpdo_map
+    servo.remove_tpdo_map(tpdo_map_index=0x1A00)
     assert len(servo._tpdo_maps) == 0
 
 
 @pytest.mark.ethercat
-def test_remove_tpdo_map_exceptions(servo, create_pdo_map):
+def test_remove_tpdo_map_exceptions(servo: EthercatServo, create_pdo_map):
     _, rpdo_map = create_pdo_map
     servo.set_pdo_map_to_slave([rpdo_map], [])
     with pytest.raises(ValueError):
         servo.remove_rpdo_map()
     with pytest.raises(ValueError):
         servo.remove_tpdo_map(rpdo_map)
-    with pytest.raises(IndexError):
-        servo.remove_tpdo_map(tpdo_map_index=1)
+    with pytest.raises(KeyError):
+        servo.remove_tpdo_map(tpdo_map_index=0x1A01)
 
 
 @pytest.mark.no_connection
@@ -739,3 +855,17 @@ def test_tpdo_map_set_items_bytes(create_pdo_map):
     tpdo_map.set_item_bytes(data_bytes)
     for idx, item in enumerate(tpdo_map.items):
         assert item.value == idx
+
+
+@pytest.mark.no_connection
+def test_create_empty_rpdo_map():
+    rpdo_map = RPDOMap()
+    assert isinstance(rpdo_map, RPDOMap)
+    assert len(rpdo_map.items) == 0
+
+
+@pytest.mark.no_connection
+def test_create_empty_tpdo_map():
+    tpdo_map = TPDOMap()
+    assert isinstance(tpdo_map, TPDOMap)
+    assert len(tpdo_map.items) == 0
