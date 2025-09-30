@@ -224,3 +224,14 @@ def test_safety_pdo_not_implemented():
         ethercat_dict.get_safety_rpdo("NOT_EXISTING_UID")
     with pytest.raises(NotImplementedError):
         ethercat_dict.get_safety_tpdo("NOT_EXISTING_UID")
+
+
+@pytest.mark.no_connection
+def test_registers_from_canopen_objects_have_object_reference():
+    dictionary_path = tests.resources.ethercat.TEST_DICT_ETHERCAT
+    ethercat_dict = EthercatDictionaryV2(dictionary_path)
+
+    for obj in ethercat_dict.all_objs():
+        for reg in obj.registers:
+            assert reg.obj is obj
+            assert ethercat_dict.get_register(reg.identifier).obj is obj
