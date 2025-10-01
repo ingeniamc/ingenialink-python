@@ -137,13 +137,17 @@ class ConfigRegister:
         Returns:
             ConfigRegister filled with XML element data
         """
-        uid = element.attrib[cls.__ID_ATTR]
-        subnode = int(element.attrib[cls.__SUBNODE_ATTR])
-        dtype = DTYPE_XDF_OPTIONS[element.attrib[cls.__DTYPE_ATTR]]
-        access = ACCESS_XDF_OPTIONS[element.attrib[cls.__ACCESS_ATTR]]
+        uid = cls.__get_attribute_from_element(element, cls.__ID_ATTR)
+        subnode_str = cls.__get_attribute_from_element(element, cls.__SUBNODE_ATTR)
+        subnode = int(subnode_str)
+        dtype_str = cls.__get_attribute_from_element(element, cls.__DTYPE_ATTR)
+        dtype = DTYPE_XDF_OPTIONS[dtype_str]
+        access_str = cls.__get_attribute_from_element(element, cls.__ACCESS_ATTR)
+        access = ACCESS_XDF_OPTIONS[access_str]
+        storage_str = cls.__get_attribute_from_element(element, cls.__STORAGE_ATTR)
         storage: Union[float, int, str, bool]
         if dtype == RegDtype.FLOAT:
-            storage = float(element.attrib[cls.__STORAGE_ATTR])
+            storage = float(storage_str)
         elif dtype in [
             RegDtype.S8,
             RegDtype.U8,
@@ -154,13 +158,13 @@ class ConfigRegister:
             RegDtype.S64,
             RegDtype.U64,
         ]:
-            storage = int(element.attrib[cls.__STORAGE_ATTR])
+            storage = int(storage_str)
         elif dtype == RegDtype.STR:
-            storage = element.attrib[cls.__STORAGE_ATTR]
+            storage = storage_str
         elif dtype == RegDtype.BOOL:
-            storage = bool(element.attrib[cls.__STORAGE_ATTR])
+            storage = bool(storage_str)
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"dtype {dtype} not implemented for register {uid}.")
         return cls(uid, subnode, dtype, access, storage)
 
     @classmethod
@@ -195,6 +199,34 @@ class ConfigRegister:
         else:
             register_xml.set(self.__STORAGE_ATTR, str(self.storage))
         return register_xml
+
+    @classmethod
+    def __get_attribute_from_element(
+        cls,
+        element: ElementTree.Element,
+        attribute: str,
+    ) -> str:
+        """Get attribute value from XML element.
+
+        Args:
+            element: XML element.
+            attribute: attribute name.
+
+        Returns:
+            attribute value.
+
+        Raises:
+            ValueError: attribute not found in element.
+
+        """
+        attr_value = element.attrib.get(attribute)
+        if attr_value is not None:
+            return attr_value
+        error_msg = f"Missing {attribute} attribute"
+        register_uid = element.attrib.get(cls.__ID_ATTR)
+        if register_uid is not None:
+            error_msg += f" for register {register_uid}."
+        raise ValueError(error_msg)
 
 
 class ConfigurationFile(XMLBase, ABC):
@@ -289,8 +321,8 @@ class ConfigurationFile(XMLBase, ABC):
         for reg in register_element_list:
             try:
                 xcf_instance.add_config_register(ConfigRegister.from_xcf(reg))
-            except (ValueError, KeyError) as e:  # noqa: PERF203
-                logger.warning(f"{reg}: {e}")
+            except (ValueError, KeyError, NotImplementedError) as e:  # noqa: PERF203
+                logger.warning(f"Cannot load register. {e}")
         xcf_instance.major_version = major_version
         xcf_instance.minor_version = minor_version
         return xcf_instance
