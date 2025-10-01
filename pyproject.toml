@@ -1,5 +1,5 @@
 [project]
-dynamic = ["version", "urls"]
+dynamic = ["version"]
 
 name = "ingenialink"
 description = "IngeniaLink Communications Library"
@@ -34,6 +34,11 @@ dependencies = [
     "bitarray==2.9.2",
     "multiping==1.1.2",
 ]
+
+[project.urls]
+Homepage = "https://www.ingeniamc.com"
+Documentation = "https://distext.ingeniamc.com/doc/ingenialink-python/latest/"
+Source = "https://github.com/ingeniamc/ingenialink-python"
 
 [tool.poetry]
 version = "7.5.1"  # base version
