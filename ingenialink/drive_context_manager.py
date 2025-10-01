@@ -147,6 +147,14 @@ class DriveContextManager:
         if obj is None:
             raise ValueError(f"Register {register} has no object associated.")
 
+        # Only restore the object if all its registers allow write access
+        # If at least one register is read-only, do not restore the object,
+        # restore the register individually instead
+        restore_object = all(reg.access in [RegAccess.RW, RegAccess.WO] for reg in obj.registers)
+        if not restore_object:
+            self._register_update_callback(servo=servo, register=register, value=value)
+            return
+
         self._objects_changed.add(obj)
 
         logger.debug(f"{id(self)}: Object {obj.uid} changed using complete access to {value!r}.")
