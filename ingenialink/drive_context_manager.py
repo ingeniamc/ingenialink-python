@@ -150,8 +150,7 @@ class DriveContextManager:
         # Only restore the object if all its registers allow write access
         # If at least one register is read-only, do not restore the object,
         # restore the register individually instead
-        restore_object = all(reg.access in [RegAccess.RW, RegAccess.WO] for reg in obj.registers)
-        if not restore_object:
+        if not obj.all_registers_writable:
             self._register_update_callback(servo=servo, register=register, value=value)
             return
 
