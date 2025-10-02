@@ -23,7 +23,6 @@ from ingenialink.ethernet.dictionary import (
     EoEDictionaryV3,
     EthernetDictionaryV2,
 )
-from ingenialink.register import RegAccess
 from ingenialink.servo import DictionaryFactory
 
 
