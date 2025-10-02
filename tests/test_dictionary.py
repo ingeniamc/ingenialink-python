@@ -8,12 +8,16 @@ import pytest
 import tests.resources.canopen
 import virtual_drive.resources
 from ingenialink.canopen.dictionary import CanopenDictionaryV2, CanopenDictionaryV3
+from ingenialink.canopen.register import CanopenRegister
 from ingenialink.dictionary import (
+    CanOpenObject,
+    CanOpenObjectType,
     DictionaryDescriptor,
     DictionaryV2,
     ILDictionaryParseError,
     Interface,
 )
+from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictionaryV3
 from ingenialink.ethernet.dictionary import (
     EoEDictionaryV3,
@@ -427,3 +431,53 @@ def test_canopen_dictionary_get_register_by_index_subindex():
     register = dictionary.get_register_by_index_subindex(idx, subidx)
     assert register.idx == idx
     assert register.subidx == subidx
+
+
+@pytest.mark.no_connection
+def test_canopen_object_writable_registers():
+    obj = CanOpenObject(
+        uid="MON_DATA_VALUE",
+        idx=0x58B2,
+        object_type=CanOpenObjectType.RECORD,
+        registers=[
+            CanopenRegister(
+                identifier="RANDOM_REG_1",
+                idx=0x58B2,
+                subidx=0x00,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.RW,
+            ),
+            CanopenRegister(
+                identifier="RANDOM_REG_2",
+                idx=0x58B4,
+                subidx=0x00,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.WO,
+            ),
+        ],
+    )
+    assert obj.all_registers_writable is True
+
+    # Change one register to RO, object should not be writable anymore
+    obj = CanOpenObject(
+        uid="MON_DATA_VALUE",
+        idx=0x58B2,
+        object_type=CanOpenObjectType.RECORD,
+        registers=[
+            CanopenRegister(
+                identifier="RANDOM_REG_1",
+                idx=0x58B2,
+                subidx=0x00,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.RO,
+            ),
+            CanopenRegister(
+                identifier="RANDOM_REG_2",
+                idx=0x58B4,
+                subidx=0x00,
+                dtype=RegDtype.BYTE_ARRAY_512,
+                access=RegAccess.WO,
+            ),
+        ],
+    )
+    assert obj.all_registers_writable is False

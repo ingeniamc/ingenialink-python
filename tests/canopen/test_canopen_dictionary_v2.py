@@ -135,3 +135,14 @@ def test_safety_pdo_not_implemented():
         canopen_dict.get_safety_rpdo("NOT_EXISTING_UID")
     with pytest.raises(NotImplementedError):
         canopen_dict.get_safety_tpdo("NOT_EXISTING_UID")
+
+
+@pytest.mark.no_connection
+def test_registers_from_canopen_objects_have_object_reference():
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN
+    ethercat_dict = CanopenDictionaryV2(dictionary_path)
+
+    for obj in ethercat_dict.all_objs():
+        for reg in obj.registers:
+            assert reg.obj is obj
+            assert ethercat_dict.get_register(reg.identifier).obj is obj

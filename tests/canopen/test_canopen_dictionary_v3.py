@@ -264,3 +264,14 @@ def test_register_is_node_id_dependent():
     assert canopen_dict.registers(0)["CIA301_COMMS_RPDO1_1"].is_node_id_dependent
     assert not canopen_dict.registers(0)["CIA301_COMMS_RPDO1_2"].is_node_id_dependent
     assert not canopen_dict.registers(0)["CIA301_COMMS_RPDO1_3"].is_node_id_dependent
+
+
+@pytest.mark.no_connection
+def test_registers_from_canopen_objects_have_object_reference():
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
+    ethercat_dict = CanopenDictionaryV3(dictionary_path)
+
+    for obj in ethercat_dict.all_objs():
+        for reg in obj.registers:
+            assert reg.obj is obj
+            assert ethercat_dict.get_register(reg.identifier).obj is obj

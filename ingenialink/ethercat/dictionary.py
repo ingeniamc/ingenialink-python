@@ -495,6 +495,20 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             )
             return None
 
+    def _add_canopen_object(self, canopen_object: "CanOpenObject") -> None:
+        """Adds Canopen object into the items list.
+
+        Args:
+            canopen_object: Canopen object to add.
+        """
+        axis = canopen_object.registers[0].subnode
+        if axis not in self.items:
+            self.items[axis] = {}
+        self.items[axis][canopen_object.uid] = canopen_object
+
+        for reg in canopen_object.registers:
+            reg.obj = canopen_object
+
     def _append_missing_registers(
         self,
     ) -> None:
@@ -504,6 +518,11 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
 
         """
         super()._append_missing_registers()
+
+        if self._DictionaryV2__MON_DIST_STATUS_REGISTER in self._registers[0]:  # type: ignore[attr-defined]
+            for obj in self._monitoring_disturbance_objects:
+                self._add_canopen_object(obj)
+
         if self.part_number in ["DEN-S-NET-E", "EVS-S-NET-E"]:
             self.is_safe = True
 

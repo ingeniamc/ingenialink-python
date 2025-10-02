@@ -147,6 +147,13 @@ class DriveContextManager:
         if obj is None:
             raise ValueError(f"Register {register} has no object associated.")
 
+        # Only restore the object if all its registers allow write access
+        # If at least one register is read-only, do not restore the object,
+        # restore the register individually instead
+        if not obj.all_registers_writable:
+            self._register_update_callback(servo=servo, register=register, value=value)
+            return
+
         self._objects_changed.add(obj)
 
         logger.debug(f"{id(self)}: Object {obj.uid} changed using complete access to {value!r}.")
@@ -232,6 +239,9 @@ class DriveContextManager:
 
     def _restore_objects_data(self) -> None:
         for obj in self._objects_changed:
+            # https://novantamotion.atlassian.net/browse/DRIVSUS-137
+            if _MON_DATA_OBJECT_UID in obj.uid or _DIST_DATA_OBJECT_UID in obj.uid:
+                continue
             restore_value = self._original_canopen_object_values.get(obj, None)
             if restore_value is None:
                 raise ValueError(f"No original data for the object {obj} to restore.")
