@@ -297,3 +297,14 @@ def test_register_bitfields():
                 }
             else:
                 assert register.bitfields is None
+
+
+@pytest.mark.no_connection
+def test_registers_from_canopen_objects_have_object_reference():
+    dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
+    ethercat_dict = EthercatDictionaryV3(dictionary_path)
+
+    for obj in ethercat_dict.all_objs():
+        for reg in obj.registers:
+            assert reg.obj is obj
+            assert ethercat_dict.get_register(reg.identifier).obj is obj
