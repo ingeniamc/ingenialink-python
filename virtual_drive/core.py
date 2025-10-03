@@ -1503,20 +1503,21 @@ class VirtualDrive(Thread):
                 )
 
     def _store_product_identification_from_dictionary(self) -> None:
-        if self.__dictionary.product_code is not None:
-            for subnode in range(2):
-                self.set_value_by_id(
-                    subnode,
-                    EthernetServo.PRODUCT_ID_REGISTERS[subnode],
-                    self.__dictionary.product_code,
-                )
-        if self.__dictionary.revision_number is not None:
-            for subnode in range(2):
-                self.set_value_by_id(
-                    subnode,
-                    EthernetServo.REVISION_NUMBER_REGISTERS[subnode],
-                    self.__dictionary.revision_number,
-                )
+        for subnode in range(2):
+            product_register = EthernetServo.PRODUCT_ID_REGISTERS[subnode]
+            revision_register = EthernetServo.REVISION_NUMBER_REGISTERS[subnode]
+
+            if (
+                self.__dictionary.product_code is not None
+                and product_register in self.__dictionary.registers(subnode)
+            ):
+                self.set_value_by_id(subnode, product_register, self.__dictionary.product_code)
+
+            if (
+                self.__dictionary.revision_number is not None
+                and revision_register in self.__dictionary.registers(subnode)
+            ):
+                self.set_value_by_id(subnode, revision_register, self.__dictionary.revision_number)
 
     def _init_registers(self) -> None:
         """Initialize the registers using the configuration file."""
