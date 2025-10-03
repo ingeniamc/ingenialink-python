@@ -1502,6 +1502,22 @@ class VirtualDrive(Thread):
                     dict_register.default,
                 )
 
+    def _store_product_identification_from_dictionary(self) -> None:
+        if self.__dictionary.product_code is not None:
+            for subnode in range(2):
+                self.set_value_by_id(
+                    subnode,
+                    EthernetServo.PRODUCT_ID_REGISTERS[subnode],
+                    self.__dictionary.product_code,
+                )
+        if self.__dictionary.revision_number is not None:
+            for subnode in range(2):
+                self.set_value_by_id(
+                    subnode,
+                    EthernetServo.REVISION_NUMBER_REGISTERS[subnode],
+                    self.__dictionary.revision_number,
+                )
+
     def _init_registers(self) -> None:
         """Initialize the registers using the configuration file."""
         if isinstance(self.__dictionary, DictionaryV3):
@@ -1509,6 +1525,7 @@ class VirtualDrive(Thread):
         else:
             self._read_defaults_from_config()
 
+        self._store_product_identification_from_dictionary()
         value: Union[str, int]
         for subnode in self.__dictionary.subnodes:
             for reg_id, reg in self.__dictionary.registers(subnode).items():
