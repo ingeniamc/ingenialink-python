@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from scipy import signal
 
+import tests.resources
 from ingenialink.enums.register import RegDtype
 from ingenialink.enums.servo import ServoState
 from virtual_drive import resources as virtual_drive_resources
@@ -264,3 +265,17 @@ def test_virtual_drive_defaults_from_xdf_v3():
     server = MockVirtualDrive(81, virtual_drive_resources.VIRTUAL_DRIVE_V3_XDF)
     assert server.read_config_defaults_calls == 0
     assert server.read_xdf_v3_defaults_calls == 1
+
+
+@pytest.mark.no_connection
+def test_virtual_drive_identification_with_custom_dictionary(virtual_drive_custom_dict):
+    dictionary = tests.resources.DEN_NET_E_2_8_0_xdf_v3
+    _, _, servo = virtual_drive_custom_dict(dictionary)
+    product_code_coco = servo.read(servo.PRODUCT_ID_REGISTERS[0], subnode=0)
+    product_code_moco = servo.read(servo.PRODUCT_ID_REGISTERS[1], subnode=1)
+    assert product_code_coco == 58789890
+    assert product_code_moco == 58789890
+    revision_number_coco = servo.read(servo.REVISION_NUMBER_REGISTERS[0], subnode=0)
+    revision_number_moco = servo.read(servo.REVISION_NUMBER_REGISTERS[1], subnode=1)
+    assert revision_number_coco == 327680
+    assert revision_number_moco == 327680
