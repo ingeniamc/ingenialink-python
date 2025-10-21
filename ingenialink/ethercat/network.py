@@ -497,6 +497,8 @@ class EthercatNetwork(Network):
             raise ValueError("Invalid slave ID value")
         if not self.__is_master_running:
             self._start_master()
+            if self not in ETHERCAT_NETWORK_REFERENCES:
+                set_network_reference(network=self)
         if slave_id not in self.__last_init_nodes:
             self.__init_nodes()
         if len(self.__last_init_nodes) == 0:

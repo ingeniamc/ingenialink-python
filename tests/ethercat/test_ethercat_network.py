@@ -356,6 +356,37 @@ def test_master_reference_is_kept_after_scan(setup_descriptor):
 
 
 @pytest.mark.ethercat
+def test_network_reference_is_added_back_if_servo_connected_after_close(setup_descriptor):
+    previous_networks = ETHERCAT_NETWORK_REFERENCES.copy()
+    net = EthercatNetwork(setup_descriptor.ifname, gil_release_config=GilReleaseConfig.always())
+    assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
+    assert net in ETHERCAT_NETWORK_REFERENCES
+
+    assert len(net.servos) == 0
+    servo = net.connect_to_slave(
+        setup_descriptor.slave,
+        setup_descriptor.dictionary.as_posix(),
+    )
+    assert len(net.servos) == 1
+
+    net.disconnect_from_slave(servo)
+    assert len(net.servos) == 0
+    assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks)
+
+    # Connect again to a servo, the network reference should be added back
+    servo = net.connect_to_slave(
+        setup_descriptor.slave,
+        setup_descriptor.dictionary.as_posix(),
+    )
+    assert len(net.servos) == 1
+
+    assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
+    assert net in ETHERCAT_NETWORK_REFERENCES
+
+    net.disconnect_from_slave(servo)
+
+
+@pytest.mark.ethercat
 def test_network_is_not_released_if_gil_operation_ongoing(mocker, setup_descriptor):
     blocking_time = 5
 
