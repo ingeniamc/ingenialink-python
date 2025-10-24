@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import pytest
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from summit_testing_framework.setups.environment_control import DriveEnvironmentController
 
     from ingenialink.ethercat.network import EthercatNetwork
-    from ingenialink.ethercat.servo import EthercatServo
+    from ingenialink.network import Network
 
 _USER_OVER_VOLTAGE_UID = "DRV_PROT_USER_OVER_VOLT"
 _USER_UNDER_VOLTAGE_UID = "DRV_PROT_USER_UNDER_VOLT"
@@ -28,8 +28,11 @@ def _read_user_under_voltage_uid(servo):
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_context_manager(setup_manager):
-    servo, _, _, _ = setup_manager
+def test_drive_context_manager(
+    setup_manager: Union["Network", Union[str, list[str]], "DriveEnvironmentController"],
+):
+    net, _, _ = setup_manager
+    servo = net.servos[0]
     context = DriveContextManager(servo)
 
     new_reg_value = 100.0
@@ -57,8 +60,11 @@ def test_drive_context_manager(setup_manager):
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_context_manager_nested_contexts(setup_manager):
-    servo, _, _, _ = setup_manager
+def test_drive_context_manager_nested_contexts(
+    setup_manager: Union["Network", Union[str, list[str]], "DriveEnvironmentController"],
+):
+    net, _, _ = setup_manager
+    servo = net.servos[0]
     context = DriveContextManager(servo)
 
     new_over_volt_value = 100.0
@@ -90,8 +96,11 @@ def test_drive_context_manager_nested_contexts(setup_manager):
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_context_manager_skips_default_do_not_restore_registers(setup_manager):
-    servo, _, _, _ = setup_manager
+def test_drive_context_manager_skips_default_do_not_restore_registers(
+    setup_manager: Union["Network", Union[str, list[str]], "DriveEnvironmentController"],
+):
+    net, _, _ = setup_manager
+    servo = net.servos[0]
     context = DriveContextManager(servo)
     assert len(context._do_not_restore_registers) == 5
 
@@ -111,8 +120,11 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(setup_mana
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_context_manager_with_do_not_restore_registers(setup_manager):
-    servo, _, _, _ = setup_manager
+def test_drive_context_manager_with_do_not_restore_registers(
+    setup_manager: Union["Network", Union[str, list[str]], "DriveEnvironmentController"],
+):
+    net, _, _ = setup_manager
+    servo = net.servos[0]
     context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
     assert (
         len(context._do_not_restore_registers) == 6
@@ -132,10 +144,11 @@ def test_drive_context_manager_with_do_not_restore_registers(setup_manager):
 
 @pytest.mark.ethercat
 def test_drive_context_manager_restores_complete_access_registers(
-    setup_manager: tuple["EthercatServo", "EthercatNetwork", str, "DriveEnvironmentController"],
+    setup_manager: tuple["EthercatNetwork", str, "DriveEnvironmentController"],
     setup_descriptor: "DriveEcatSetup",
 ) -> None:
-    servo, _, _, _ = setup_manager
+    net, _, _ = setup_manager
+    servo = net.servos[0]
     context = DriveContextManager(servo)
 
     servo.reset_rpdo_mapping()
