@@ -3,14 +3,20 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
-from ingenialink.dictionary import Interface
+from ingenialink.dictionary import Dictionary, DictionaryV3, Interface
 from ingenialink.ethernet.dictionary import EthernetDictionaryV2
 from ingenialink.ethernet.register import EthernetRegister
 
 logger = ingenialogger.get_logger(__name__)
 
 
-class VirtualDictionary(EthernetDictionaryV2):
+class VirtualDictionary(Dictionary):
+    """Base class for Virtual dictionaries."""
+
+    interface = Interface.VIRTUAL
+
+
+class VirtualDictionaryV2(VirtualDictionary, EthernetDictionaryV2):
     """Contains all registers and information of a dictionary compatible with the virtual drive.
 
     It adapts a canopen dictionary to work in the ethernet communication used for the virtual drive.
@@ -19,8 +25,6 @@ class VirtualDictionary(EthernetDictionaryV2):
         dictionary_path: Path to the Ingenia dictionary.
 
     """
-
-    interface = Interface.VIRTUAL
 
     def _transform_canopen_index_to_mcb_address(self, index: int, subnode: int) -> int:
         """Transfrom CANopen index to MCB address.
@@ -93,3 +97,12 @@ class VirtualDictionary(EthernetDictionaryV2):
                 f"Register with ID {current_read_register.identifier} has not attribute {ke}"
             )
             return None
+
+
+class VirtualDictionaryV3(VirtualDictionary, DictionaryV3):
+    """Contains all registers and information of a EoE dictionary.
+
+    Args:
+        dictionary_path: Path to the Ingenia dictionary.
+
+    """

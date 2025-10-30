@@ -131,8 +131,35 @@
 					</Error>
 				</Errors>
 			</CANDevice>
+          <ETHDevice firmwareVersion="2.4.1" ProductCode="61939713" PartNumber="EVS-NET-C" RevisionNumber="196617">
+            <Subnodes>
+              <Subnode index="0">Communication</Subnode>
+              <Subnode index="1">Motion</Subnode>
+            </Subnodes>
+            <MCBRegisters>
+                <MCBRegister address="0x000F" subnode="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" units="none" pdo_access="CYCLIC_TX" desc="Contains the last generated error" default="00000000" cat_id="REPORTING">
+                <MonDistV3 address="0x000F" subnode="0" cyclic="CYCLIC_TX"/>
+                <Labels>
+                  <Label lang="en_US">Last error</Label>
+                </Labels>
+              </MCBRegister>
+            </MCBRegisters>
+            <Errors>
+                <Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
+                    <Labels>
+                        <Label lang="en_US">STO is active and could have disabled the power stage disabled</Label>
+                    </Labels>
+                </Error>
+                <Error id="0x00002280" affected_module="Power stage" error_type="cyclic">
+                    <Labels>
+                        <Label lang="en_US">HW over current</Label>
+                    </Labels>
+                </Error>
+            </Errors>
+          </ETHDevice>
 		</Devices>
 	</Body>
 	<DriveImage encoding="xs:base64Binary">
+		image-text
 	</DriveImage>
 </IngeniaDictionary>
