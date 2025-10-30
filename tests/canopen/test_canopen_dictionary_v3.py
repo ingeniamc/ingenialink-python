@@ -23,7 +23,7 @@ def test_read_dictionary():
         "interface": Interface.CAN,
         "subnodes": SINGLE_AXIS_BASE_SUBNODES,
         "is_safe": False,
-        "image": None,
+        "image": "image-text",
     }
 
     canopen_dict = CanopenDictionaryV3(dictionary_path)
