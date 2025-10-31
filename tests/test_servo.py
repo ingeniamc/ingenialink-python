@@ -317,6 +317,28 @@ def test_store_parameters(servo, environment):
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
 
+@pytest.mark.fsoe
+def test_store_safe_parameters(servo, environment):
+    ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO"
+
+    initial_register_value = servo.read(ss1_time_to_sto_register)
+    new_register_value = initial_register_value + 5
+
+    servo.write(ss1_time_to_sto_register, new_register_value)
+
+    assert servo.read(ss1_time_to_sto_register) == new_register_value
+
+    servo.store_parameters()
+
+    assert servo.read(ss1_time_to_sto_register) == new_register_value
+
+    environment.power_cycle(wait_for_drives=False)
+
+    wait_until_alive(servo, timeout=20)
+
+    assert servo.read(ss1_time_to_sto_register) == new_register_value
+
+
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
@@ -338,6 +360,28 @@ def test_restore_parameters(servo, environment):
     wait_until_alive(servo, timeout=20)
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
+
+
+@pytest.mark.fsoe
+def test_restore_safe_parameters(servo, environment):
+    ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO"
+
+    initial_register_value = servo.read(ss1_time_to_sto_register)
+    new_register_value = initial_register_value + 5
+
+    servo.write(ss1_time_to_sto_register, new_register_value)
+
+    assert servo.read(ss1_time_to_sto_register) == new_register_value
+
+    servo.restore_parameters()
+
+    assert servo.read(ss1_time_to_sto_register) == new_register_value
+
+    environment.power_cycle(wait_for_drives=False)
+
+    wait_until_alive(servo, timeout=20)
+
+    assert servo.read(ss1_time_to_sto_register) != new_register_value
 
 
 @pytest.mark.canopen
