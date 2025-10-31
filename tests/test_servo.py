@@ -317,9 +317,9 @@ def test_store_parameters(servo, environment):
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
 
-@pytest.mark.fsoe
+@pytest.mark.fsoe_phase2
 def test_store_safe_parameters(servo, environment):
-    ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO"
+    ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO_1"
 
     initial_register_value = servo.read(ss1_time_to_sto_register)
     new_register_value = initial_register_value + 5
@@ -362,9 +362,9 @@ def test_restore_parameters(servo, environment):
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
 
 
-@pytest.mark.fsoe
+@pytest.mark.fsoe_phase2
 def test_restore_safe_parameters(servo, environment):
-    ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO"
+    ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO_1"
 
     initial_register_value = servo.read(ss1_time_to_sto_register)
     new_register_value = initial_register_value + 5
