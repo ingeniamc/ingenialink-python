@@ -317,6 +317,26 @@ def test_store_parameters(servo, environment):
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
 
+@pytest.mark.fsoe
+def test_store_safe_parameters(servo, environment):
+    ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO_1"
+    # Change the value of a safe parameter
+    initial_register_value = servo.read(ss1_time_to_sto_register)
+    new_register_value = initial_register_value + 5
+    # Write the new value
+    servo.write(ss1_time_to_sto_register, new_register_value)
+    # Verify that the value was changed
+    assert servo.read(ss1_time_to_sto_register) == new_register_value
+    # Store the parameters
+    servo.store_parameters()
+    # Power cycle the drive
+    environment.power_cycle(wait_for_drives=False)
+    # Wait until the drive recovers from the power cycle
+    wait_until_alive(servo, timeout=20)
+    # Verify that the value is retained after power cycling
+    assert servo.read(ss1_time_to_sto_register) == new_register_value
+
+
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
@@ -338,6 +358,26 @@ def test_restore_parameters(servo, environment):
     wait_until_alive(servo, timeout=20)
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
+
+
+@pytest.mark.fsoe
+def test_restore_safe_parameters(servo, environment):
+    ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO_1"
+    # Change the value of a safe parameter
+    initial_register_value = servo.read(ss1_time_to_sto_register)
+    new_register_value = initial_register_value + 5
+    # Write the new value
+    servo.write(ss1_time_to_sto_register, new_register_value)
+    # Verify that the value was changed
+    assert servo.read(ss1_time_to_sto_register) == new_register_value
+    # Restore parameters
+    servo.restore_parameters()
+    # Power cycle the drive
+    environment.power_cycle(wait_for_drives=False)
+    # Wait until the drive recovers from the power cycle
+    wait_until_alive(servo, timeout=20)
+    # Verify that the value is restored to the default value after power cycling
+    assert servo.read(ss1_time_to_sto_register) != new_register_value
 
 
 @pytest.mark.canopen

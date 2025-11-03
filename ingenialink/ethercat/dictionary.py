@@ -163,7 +163,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
-                subnode=0,
+                subnode=1,
                 labels={"en_US": "SS1 Time to STO"},
                 cat_id="FSOE",
             ),

@@ -6,6 +6,7 @@ import ingenialogger
 from typing_extensions import override
 
 from ingenialink import Servo
+from ingenialink.constants import PASSWORD_RESTORE_SAFETY_REGS, PASSWORD_STORE_SAFETY_REGS
 from ingenialink.csv_configuration_file import CSVConfigurationFile
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
@@ -153,6 +154,26 @@ class EthercatServo(PDOServo):
             raise ILEcatStateError(
                 f"Servo is in {self.slave.state} state, PDOMap can not be modified."
             )
+
+    @override
+    def store_parameters(self, subnode: Optional[int] = None) -> None:
+        if self.dictionary.is_safe and subnode is None:
+            self.__store_safe_registers()
+        return super().store_parameters(subnode=subnode)
+
+    def __store_safe_registers(self) -> None:
+        self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_SAFETY_REGS, subnode=0)
+        logger.info("Store safety registers successful.")
+
+    @override
+    def restore_parameters(self, subnode: Optional[int] = None) -> None:
+        if self.dictionary.is_safe and subnode is None:
+            self.__restore_safe_registers()
+        return super().restore_parameters(subnode=subnode)
+
+    def __restore_safe_registers(self) -> None:
+        self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_RESTORE_SAFETY_REGS, subnode=0)
+        logger.info("Restore safety registers successful.")
 
     def _read_raw(  # type: ignore [override]
         self,
