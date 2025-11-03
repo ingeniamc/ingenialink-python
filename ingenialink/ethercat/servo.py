@@ -162,11 +162,8 @@ class EthercatServo(PDOServo):
         return super().store_parameters(subnode=subnode)
 
     def __store_safe_registers(self) -> None:
-        try:
-            self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_SAFETY_REGS, subnode=0)
-            logger.info("Store safety registers successful.")
-        except ILError as e:
-            logger.info(f"Store safety registers failed. Reason: {e}")
+        self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_SAFETY_REGS, subnode=0)
+        logger.info("Store safety registers successful.")
 
     @override
     def restore_parameters(self, subnode: Optional[int] = None) -> None:
@@ -175,11 +172,8 @@ class EthercatServo(PDOServo):
         return super().restore_parameters(subnode=subnode)
 
     def __restore_safe_registers(self) -> None:
-        try:
-            self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_RESTORE_SAFETY_REGS, subnode=0)
-            logger.info("Restore safety registers successful.")
-        except ILError as e:
-            logger.info(f"Restore safety registers failed. Reason: {e}")
+        self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_RESTORE_SAFETY_REGS, subnode=0)
+        logger.info("Restore safety registers successful.")
 
     def _read_raw(  # type: ignore [override]
         self,
