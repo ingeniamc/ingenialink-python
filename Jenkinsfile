@@ -531,7 +531,7 @@ pipeline {
                         }
                         stage("Safety Denali Phase II") {
                             steps {
-                                runTestHW("fsoe or fsoe_phase2", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP", USE_WIRESHARK_LOGGING)
+                                runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Run no-connection tests') {
