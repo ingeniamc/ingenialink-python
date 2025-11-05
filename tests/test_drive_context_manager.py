@@ -29,7 +29,7 @@ def _read_user_under_voltage_uid(servo):
 @pytest.mark.canopen
 @pytest.mark.virtual
 def test_drive_context_manager(
-    setup_manager: Union["Network", Union[str, list[str]], "DriveEnvironmentController"],
+    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
 ):
     net, _, _ = setup_manager
     servo = net.servos[0]
@@ -61,7 +61,7 @@ def test_drive_context_manager(
 @pytest.mark.canopen
 @pytest.mark.virtual
 def test_drive_context_manager_nested_contexts(
-    setup_manager: Union["Network", Union[str, list[str]], "DriveEnvironmentController"],
+    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
 ):
     net, _, _ = setup_manager
     servo = net.servos[0]
@@ -97,7 +97,7 @@ def test_drive_context_manager_nested_contexts(
 @pytest.mark.canopen
 @pytest.mark.virtual
 def test_drive_context_manager_skips_default_do_not_restore_registers(
-    setup_manager: Union["Network", Union[str, list[str]], "DriveEnvironmentController"],
+    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
 ):
     net, _, _ = setup_manager
     servo = net.servos[0]
@@ -121,7 +121,7 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(
 @pytest.mark.canopen
 @pytest.mark.virtual
 def test_drive_context_manager_with_do_not_restore_registers(
-    setup_manager: Union["Network", Union[str, list[str]], "DriveEnvironmentController"],
+    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
 ):
     net, _, _ = setup_manager
     servo = net.servos[0]
