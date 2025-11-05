@@ -1,6 +1,6 @@
 import contextlib
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 from bitarray import bitarray
 
@@ -21,7 +21,10 @@ from ingenialink.servo import DictionaryFactory
 from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_length_bits
 
 if TYPE_CHECKING:
+    from summit_testing_framework.setups.environment_control import DriveEnvironmentController
+
     from ingenialink.dictionary import Dictionary
+    from ingenialink.ethercat.network import EthercatNetwork
 
 TPDO_REGISTERS = ["CL_POS_FBK_VALUE", "CL_VEL_FBK_VALUE"]
 RPDO_REGISTERS = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
@@ -345,8 +348,11 @@ def test_servo_add_maps(servo, create_pdo_map):
 
 
 @pytest.mark.ethercat
-def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(setup_manager):
-    servo, net, _, _ = setup_manager
+def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(
+    setup_manager: tuple["EthercatNetwork", Union[str, list[str]], "DriveEnvironmentController"],
+):
+    net, _, _ = setup_manager
+    servo = net.servos[0]
     operation_mode_uid = "DRV_OP_CMD"
     rpdo_registers = [operation_mode_uid]
     operation_mode_display_uid = "DRV_OP_VALUE"
