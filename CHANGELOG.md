@@ -1,9 +1,12 @@
 # Changelog
 
+## [Unreleased]
+### Added
+- Fix PDO item creation for 0 bits registers
+
 ## [7.5.1] - 2025-09-25
 ### Added
 - Method to export EtherCAT drive configuration to CSV
-- Fix PDO item creation for 0 bits registers
 
 ## [7.5.0] - 2025-08-19
 ### Added
