@@ -158,6 +158,13 @@ def test_pdo_create_item(open_dictionary: "Dictionary"):
 
 
 @pytest.mark.no_connection
+def test_pdo_create_item_no_register_zero_bits():
+    """Check that padding register with 0 bits can be created."""
+    rpdo_map = RPDOMap()
+    rpdo_map.create_item(register=None, size_bits=0)
+
+
+@pytest.mark.no_connection
 def test_create_rpdo_item(open_dictionary: "Dictionary") -> None:
     position_set_point_initial_value = 100
     position_set_point = PDOMap.create_item_from_register_uid(
