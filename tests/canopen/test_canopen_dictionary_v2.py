@@ -45,8 +45,9 @@ def test_read_dictionary_registers():
             "DRV_AXIS_NUMBER",
             "COMMS_ETH_IP",
             "COMMS_ETH_NET_MASK",
+            "CIA301_DRV_ID_DEVICE_TYPE",
         ],
-        1: ["COMMU_ANGLE_SENSOR"],
+        1: ["COMMU_ANGLE_SENSOR", "CIA402_DRV_STATE_CONTROL"],
     }
 
     canopen_dict = CanopenDictionaryV2(tests.resources.canopen.TEST_DICT_CAN)
@@ -87,6 +88,7 @@ def test_read_dictionary_categories():
         "COMMUTATION",
         "REPORTING",
         "MONITORING",
+        "CIA402",
     ]
 
     canopen_dict = CanopenDictionaryV2(tests.resources.canopen.TEST_DICT_CAN)

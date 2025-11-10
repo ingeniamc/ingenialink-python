@@ -27,3 +27,16 @@ def test_read_xdf_register_canopen(reg_id, subnode, address):
     ethernet_dict = VirtualDictionaryV2(dictionary_path)
 
     assert ethernet_dict.registers(subnode)[reg_id].address == address
+
+
+@pytest.mark.no_connection
+def test_no_cia_registers_in_dictionary():
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN
+
+    virtual_dict = VirtualDictionaryV2(dictionary_path)
+
+    assert "CIA402" not in virtual_dict.categories.category_ids
+
+    for subnode in virtual_dict.subnodes:
+        for register in virtual_dict.registers(subnode):
+            assert not register.startswith("CIA")

@@ -49,7 +49,7 @@ class VirtualDictionaryV2(VirtualDictionary, EthernetDictionaryV2):
             return None
 
         if self.dict_interface == "CAN" and (
-            register.attrib["cat_id"] == "CIA402" or register.attrib["id"].startswith("CIA402_")
+            register.attrib["cat_id"] == "CIA402" or register.attrib["id"].startswith("CIA")
         ):
             return None
 
