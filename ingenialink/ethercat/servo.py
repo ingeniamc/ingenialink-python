@@ -509,26 +509,33 @@ class EthercatServo(PDOServo):
 
     @property
     def slave(self) -> "CdefSlave":
-        """Ethercat slave."""
+        """PySOEM slave reference.
+
+        Raises:
+            ILError: If the slave reference is not available.
+        """
         if self.__slave is None:
             raise ILError("Slave reference is not available.")
         return self.__slave
 
     @property
     def slave_exists(self) -> bool:
+        """Check if the slave reference exists.
+
+        After a reconfiguration of the network, the slave reference could be None.
+        """
         return self.__slave is not None
 
     def update_slave_reference(self, slave: Optional["CdefSlave"]) -> None:
         """Update the slave reference.
 
         Args:
-            slave: The new slave reference.
+            slave: The new slave reference. None if the slave is not present.
         """
         self.__slave = slave
-        if slave is not None:
-            if self._on_emcy not in slave._emcy_callbacks:
-                # Make sure the emergency callback is added only once
-                slave.add_emergency_callback(self._on_emcy)
+        if slave is not None and self._on_emcy not in slave._emcy_callbacks:
+            # Make sure the emergency callback is added only once
+            slave.add_emergency_callback(self._on_emcy)
 
     @override
     def save_configuration_csv(self, config_file: str, subnode: Optional[int] = None) -> None:

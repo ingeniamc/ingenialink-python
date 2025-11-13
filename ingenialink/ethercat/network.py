@@ -459,12 +459,14 @@ class EthercatNetwork(Network):
             self.__last_init_nodes = list(range(1, nodes + 1))
 
         # For every init_nodes, pysoem generates a new CdefSlave object.
-        # Servos that are already "connected" to the network
-        # must update their slave reference
         for servo in self.servos:
             if servo.slave_id in self.__last_init_nodes:
+                # Servos that are already "connected" to the network
+                # must update their slave reference
                 servo.update_slave_reference(self._ecat_master.slaves[servo.slave_id - 1])
             else:
+                # Servos that are not in init_nodes must set their slave reference to None
+                # The slave object is no longer valid and contains wrong information
                 servo.update_slave_reference(None)
 
     def connect_to_slave(
