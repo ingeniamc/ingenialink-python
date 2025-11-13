@@ -371,6 +371,68 @@ def test_change_nodes_state_with_non_existent_slave(pysoem_mock_network):
     net.close_ecat_master()
 
 
+def test_disconnect_from_slave_with_non_existent_slave(pysoem_mock_network):
+    """Test that disconnect_from_slave works when the slave doesn't exist.
+
+    This verifies that disconnecting a servo whose slave reference has been set to None
+    (because the physical slave disappeared) doesn't crash the application.
+    """
+    # Track disconnect callback invocations
+    disconnect_called = []
+
+    def disconnect_callback(servo):
+        disconnect_called.append(servo.slave_id)
+
+    net = EthercatNetwork("dummy_ifname")
+
+    # Connect to 2 slaves with disconnect callbacks
+    servo1 = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        disconnect_callback=disconnect_callback,
+    )
+    servo2 = net.connect_to_slave(
+        slave_id=2,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        disconnect_callback=disconnect_callback,
+    )
+
+    # Both servos should initially have valid references
+    assert servo1.slave_exists is True
+    assert servo2.slave_exists is True
+    assert len(net.servos) == 2
+
+    # Simulate servo2 disappearing by shrinking the network to 1 slave
+    pysoem_mock_network.set_num_slaves(1)
+    net._EthercatNetwork__init_nodes()
+
+    # servo2 should now have slave_exists = False
+    assert servo1.slave_exists is True
+    assert servo2.slave_exists is False
+
+    # Disconnect servo2 - should work without crashing even though slave doesn't exist
+    net.disconnect_from_slave(servo2)
+
+    # Verify servo2 was removed from the network
+    assert len(net.servos) == 1
+    assert servo2 not in net.servos
+    assert servo1 in net.servos
+
+    # Verify disconnect callback was called for servo2
+    assert 2 in disconnect_called
+
+    # Network should still be running because servo1 is still connected
+    assert net._EthercatNetwork__is_master_running is True
+
+    # Now disconnect servo1 (which still exists) - should work normally
+    net.disconnect_from_slave(servo1)
+
+    # Verify servo1 was removed and network was closed
+    assert len(net.servos) == 0
+    assert 1 in disconnect_called
+    assert net._EthercatNetwork__is_master_running is False
+
+
 @pytest.mark.no_connection
 def test_gil_configuration():
     gil_config_1 = GilReleaseConfig.always()
