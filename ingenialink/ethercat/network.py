@@ -690,6 +690,8 @@ class EthercatNetwork(Network):
         """
         node_list = nodes if isinstance(nodes, list) else [nodes]
         for drive in node_list:
+            if not drive.slave_exists:
+                continue
             drive.slave.state = target_state
             drive.slave.write_state()
         return self._check_node_state(nodes, target_state)

@@ -301,6 +301,76 @@ def test_check_node_state_with_non_existent_slave(pysoem_mock_network):
     net.close_ecat_master()
 
 
+def test_change_nodes_state_with_non_existent_slave(pysoem_mock_network):
+    """Test that _change_nodes_state handles slaves with slave_exists=False.
+
+    This verifies that the method doesn't crash when trying to change state of a servo
+    whose slave reference has been set to None (slave doesn't exist).
+    """
+    net = EthercatNetwork("dummy_ifname")
+
+    # Connect to 3 slaves
+    servo1 = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+    servo2 = net.connect_to_slave(
+        slave_id=2,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+    servo3 = net.connect_to_slave(
+        slave_id=3,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+
+    # All servos should initially have valid references
+    assert servo1.slave_exists is True
+    assert servo2.slave_exists is True
+    assert servo3.slave_exists is True
+
+    # Get initial state of servo1
+    initial_state = servo1.slave.state
+
+    # Simulate servo2 and servo3 disappearing by shrinking the network to 1 slave
+    pysoem_mock_network.set_num_slaves(1)
+    net._EthercatNetwork__init_nodes()
+
+    # servo1 should still exist, but servo2 and servo3 should not
+    assert servo1.slave_exists is True
+    assert servo2.slave_exists is False
+    assert servo3.slave_exists is False
+
+    # _change_nodes_state should handle a list containing non-existent slaves
+    # It should skip the non-existent slaves when changing state, but return False
+    # because _check_node_state requires ALL nodes to exist and match the target state
+    target_state = pysoem.SAFEOP_STATE  # Use a different state than initial
+    result = net._change_nodes_state([servo1, servo2, servo3], target_state)
+
+    # servo1's state should be changed to the target state
+    assert servo1.slave.state == target_state
+
+    # The method should return False because servo2 and servo3 don't exist
+    assert result is False
+
+    # Change state with only the existing servo - should return True
+    result = net._change_nodes_state([servo1], pysoem.OP_STATE)
+    assert result is True
+    assert servo1.slave.state == pysoem.OP_STATE
+
+    # Change servo1 back and test with only non-existent slaves - should return False
+    servo1.slave.state = initial_state
+    result = net._change_nodes_state([servo2, servo3], pysoem.OP_STATE)
+    assert result is False
+    # servo1 state should not have changed
+    assert servo1.slave.state == initial_state
+
+    # Test with a single non-existent servo - should return False
+    result = net._change_nodes_state(servo2, pysoem.OP_STATE)
+    assert result is False
+
+    net.close_ecat_master()
+
+
 @pytest.mark.no_connection
 def test_gil_configuration():
     gil_config_1 = GilReleaseConfig.always()
