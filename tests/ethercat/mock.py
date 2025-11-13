@@ -46,7 +46,7 @@ class MockSoemSlave:
         self._emcy_callbacks.append(callback)
 
     def state_check(self, expected_state: int, timeout: int = 50000):  # noqa: ARG002
-        return self.state
+        return expected_state if self.state == expected_state else self.state
 
     def sdo_write(
         self, index: int, subindex: int, data: bytes, ca: bool = False, *, release_gil=None

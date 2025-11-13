@@ -713,7 +713,10 @@ class EthercatNetwork(Network):
         self._ecat_master.read_state()
 
         return all(
-            target_state == drive.slave.state_check(target_state, ECAT_STATE_CHANGE_TIMEOUT_US)
+            (drive.slave_exists)
+            and (
+                target_state == drive.slave.state_check(target_state, ECAT_STATE_CHANGE_TIMEOUT_US)
+            )
             for drive in node_list
         )
 

@@ -261,6 +261,46 @@ def test_check_node_state(servo, net):
     assert not net._check_node_state([], pysoem.PREOP_STATE)
 
 
+def test_check_node_state_with_non_existent_slave(pysoem_mock_network):
+    """Test that _check_node_state handles slaves with slave_exists=False.
+
+    This verifies that the method doesn't crash when checking state of a servo
+    whose slave reference has been set to None (slave doesn't exist).
+    """
+    net = EthercatNetwork("dummy_ifname")
+
+    # Connect to 2 slaves
+    servo1 = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+    servo2 = net.connect_to_slave(
+        slave_id=2,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+
+    # Both servos should initially have valid references
+    assert servo1.slave_exists is True
+    assert servo2.slave_exists is True
+
+    # Simulate servo2 disappearing by shrinking the network to 1 slave
+    pysoem_mock_network.set_num_slaves(1)
+    net._EthercatNetwork__init_nodes()
+
+    # servo2 should now have slave_exists = False
+    assert servo1.slave_exists is True
+    assert servo2.slave_exists is False
+
+    # _check_node_state should handle a list containing a non-existent slave
+    # It should return False because servo2 doesn't exist (can't check its state)
+    assert not net._check_node_state([servo1, servo2], pysoem.INIT_STATE)
+
+    # With only the existing servo, it should work normally (mock defaults to INIT_STATE)
+    assert net._check_node_state([servo1], pysoem.INIT_STATE)
+
+    net.close_ecat_master()
+
+
 @pytest.mark.no_connection
 def test_gil_configuration():
     gil_config_1 = GilReleaseConfig.always()
