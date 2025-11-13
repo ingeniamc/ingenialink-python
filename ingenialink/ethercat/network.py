@@ -1,4 +1,5 @@
 import atexit
+import contextlib
 import os
 import re
 import threading
@@ -133,28 +134,37 @@ class NetStatusListener(Thread):
         self.__stop = False
         self._ecat_master = self.__network._ecat_master
 
+    def process(self) -> None:
+        """Process network status for all servos.
+
+        This method checks the status of all servos in the network and notifies
+        subscribers of any state changes (connection/disconnection).
+        """
+        self._ecat_master.read_state()
+        for servo in self.__network.servos:
+            slave_id = servo.slave_id
+            servo_state = self.__network.get_servo_state(slave_id)
+            is_servo_alive = servo.slave_exists and (servo.slave.state != pysoem.NONE_STATE)
+            if not is_servo_alive and servo_state == NetState.CONNECTED:
+                self.__network._notify_status(slave_id, NetDevEvt.REMOVED)
+                self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
+            if (
+                is_servo_alive
+                and servo_state == NetState.DISCONNECTED
+                and self.__network._recover_from_disconnection()
+            ):
+                self.__network._notify_status(slave_id, NetDevEvt.ADDED)
+                self.__network._set_servo_state(slave_id, NetState.CONNECTED)
+
     def run(self) -> None:
-        """Check the network status."""
+        """Check the network status continuously."""
         while not self.__stop:
-            self._ecat_master.read_state()
-            for servo in self.__network.servos:
-                slave_id = servo.slave_id
-                servo_state = self.__network.get_servo_state(slave_id)
-                is_servo_alive = servo.slave_exists and (servo.slave.state != pysoem.NONE_STATE)
-                if not is_servo_alive and servo_state == NetState.CONNECTED:
-                    self.__network._notify_status(slave_id, NetDevEvt.REMOVED)
-                    self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
-                if (
-                    is_servo_alive
-                    and servo_state == NetState.DISCONNECTED
-                    and self.__network._recover_from_disconnection()
-                ):
-                    self.__network._notify_status(slave_id, NetDevEvt.ADDED)
-                    self.__network._set_servo_state(slave_id, NetState.CONNECTED)
-                time.sleep(self.__refresh_time)
+            with contextlib.suppress(Exception):
+                self.process()
+            time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
-        """Check the network status."""
+        """Stop the network status listener."""
         self.__stop = True
 
 
@@ -454,7 +464,9 @@ class EthercatNetwork(Network):
         nodes = self._ecat_master.config_init(release_gil=release_gil)
         self._lock.release()
         if len(self.servos):
-            self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
+            self._change_nodes_state(
+                [servo for servo in self.servos if servo.slave_exists], pysoem.PREOP_STATE
+            )
         if nodes is not None:
             self.__last_init_nodes = list(range(1, nodes + 1))
 

@@ -24,6 +24,7 @@ from ingenialink.ethercat.network import (
     release_network_reference,
 )
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
 
 if TYPE_CHECKING:
@@ -454,6 +455,185 @@ def test_slave_update_on_config_init(pysoem_mock_network):  # noqa: ARG001
     assert servo.slave is not original_slave
     # And the emergency callback retained
     assert original_slave._emcy_callbacks[0] == servo._on_emcy
+
+
+def test_slave_reference_set_to_none_when_not_in_init_nodes(pysoem_mock_network):
+    """Test that servo's slave reference is set to None when slave_id is not in __last_init_nodes.
+
+    This verifies the fix for INGK-1211 where missing slaves after config_init
+    should have their slave references set to None.
+    """
+    net = EthercatNetwork("dummy_ifname")
+
+    # Connect to slaves 1, 2, and 3 (default is 3 slaves)
+    servo1 = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+    servo2 = net.connect_to_slave(
+        slave_id=2,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+    servo3 = net.connect_to_slave(
+        slave_id=3,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+
+    assert len(net.servos) == 3
+    assert servo1.slave_exists is True
+    assert servo2.slave_exists is True
+    assert servo3.slave_exists is True
+
+    # Simulate the network shrinking to only 1 slave
+    # This simulates slaves 2 and 3 being physically disconnected
+    pysoem_mock_network.set_num_slaves(1)
+    net._EthercatNetwork__init_nodes()
+
+    # Servo 1 should still have a valid reference (it's still present)
+    assert servo1.slave_exists is True
+    assert servo1.slave.id == 1
+
+    # Servos 2 and 3 should have None references (they disappeared)
+    assert servo2.slave_exists is False
+    assert servo3.slave_exists is False
+
+    net.close_ecat_master()
+
+
+def test_net_status_listener_handles_none_slave_reference(pysoem_mock_network, mocker):  # noqa: ARG001
+    """Test that NetStatusListener doesn't crash when servo.slave is None.
+
+    This verifies the fix for INGK-1211 where the listener checks slave_exists
+    before accessing servo.slave.state.
+    """
+    net = EthercatNetwork("dummy_ifname")
+
+    servo = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+
+    # Verify initial state
+    assert net.get_servo_state(1) == NetState.CONNECTED
+    assert servo.slave_exists is True
+
+    # Start the status listener to initialize __listener_net_status
+    net.start_status_listener()
+
+    # Manually set the slave reference to None to simulate a missing slave
+    servo.update_slave_reference(None)
+
+    # Manually trigger the listener's process method to detect the missing slave
+    net._EthercatNetwork__listener_net_status.process()
+
+    # The listener should have detected the None reference and set state to DISCONNECTED
+    assert servo.slave_exists is False
+    assert net.get_servo_state(1) == NetState.DISCONNECTED, (
+        "NetStatusListener should detect None slave reference and set state to DISCONNECTED"
+    )
+
+    net.stop_status_listener()
+    net.close_ecat_master()
+
+
+def test_net_status_listener_detects_slave_removal(pysoem_mock_network, mocker):  # noqa: ARG001
+    """Test that NetStatusListener properly detects when a slave is removed.
+
+    This verifies the complete flow: slave disappears -> config_init sets reference to None
+    -> listener detects removal.
+    """
+    # Track callback invocations
+    removal_detected = threading.Event()
+
+    def status_callback(event: NetDevEvt):
+        if event == NetDevEvt.REMOVED:
+            removal_detected.set()
+
+    net = EthercatNetwork("dummy_ifname")
+
+    servo = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+
+    # Subscribe to status changes
+    net.subscribe_to_status(1, status_callback)
+
+    # Start the status listener to initialize __listener_net_status
+    net.start_status_listener()
+
+    # Verify initial state
+    assert net.get_servo_state(1) == NetState.CONNECTED
+    assert servo.slave_exists is True
+
+    # Simulate slave removal by setting reference to None
+    servo.update_slave_reference(None)
+
+    # Manually trigger the listener's process method to detect the removal
+    net._EthercatNetwork__listener_net_status.process()
+
+    # The listener should have detected the removal and called the callback
+    assert removal_detected.is_set(), "NetStatusListener should detect slave removal"
+    assert net.get_servo_state(1) == NetState.DISCONNECTED
+
+    net.stop_status_listener()
+    net.close_ecat_master()
+
+
+def test_net_status_listener_detects_slave_reconnection(pysoem_mock_network, mocker):
+    """Test that NetStatusListener properly detects when a slave reconnects.
+
+    This verifies the complete flow: slave reappears -> config_init updates reference
+    -> listener detects reconnection.
+    """
+    # Track callback invocations
+    events_detected = []
+
+    def status_callback(event: NetDevEvt):
+        events_detected.append(event)
+
+    # Mock _recover_from_disconnection to return True
+    mocker.patch.object(EthercatNetwork, "_recover_from_disconnection", return_value=True)
+
+    net = EthercatNetwork("dummy_ifname")
+
+    net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+
+    # Subscribe to status changes
+    net.subscribe_to_status(1, status_callback)
+
+    # Start the status listener to initialize __listener_net_status
+    net.start_status_listener()
+
+    # Verify initial state
+    assert net.get_servo_state(1) == NetState.CONNECTED
+
+    # Simulate slave removal by shrinking the network to 0 slaves
+    pysoem_mock_network.set_num_slaves(0)
+    net._EthercatNetwork__init_nodes()
+
+    # Manually trigger the listener's process method to detect removal
+    net._EthercatNetwork__listener_net_status.process()
+
+    assert NetDevEvt.REMOVED in events_detected
+    assert net.get_servo_state(1) == NetState.DISCONNECTED
+
+    # Simulate slave reconnection by expanding the network back to 1 slave
+    pysoem_mock_network.set_num_slaves(1)
+    net._EthercatNetwork__init_nodes()
+
+    # Manually trigger the listener's process method to detect reconnection
+    net._EthercatNetwork__listener_net_status.process()
+
+    # The listener should have detected the reconnection
+    assert NetDevEvt.ADDED in events_detected
+    assert net.get_servo_state(1) == NetState.CONNECTED
+
+    net.stop_status_listener()
+    net.close_ecat_master()
 
 
 @pytest.mark.ethercat
