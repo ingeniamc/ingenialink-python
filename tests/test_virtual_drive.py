@@ -35,7 +35,7 @@ def create_monitoring_disturbance(servo, dist_reg, monit_regs, dist_data):
     servo.write("MON_CFG_WINDOW_SAMP", MONITORING_NUM_SAMPLES, subnode=0)
 
 
-@pytest.mark.no_connection
+
 def test_connect_to_virtual(virtual_drive):
     _, servo = virtual_drive
     time.sleep(1)
@@ -46,7 +46,7 @@ def test_connect_to_virtual(virtual_drive):
 @pytest.mark.parametrize(
     "reg, value, subnode", [("CL_AUX_FBK_SENSOR", 4, 1), ("DIST_CFG_REG0_MAP", 4, 0)]
 )
-@pytest.mark.no_connection
+
 def test_virtual_drive_write_read(virtual_drive, reg, value, subnode):
     _, virtual_servo = virtual_drive
 
@@ -56,7 +56,7 @@ def test_virtual_drive_write_read(virtual_drive, reg, value, subnode):
     assert response == value
 
 
-@pytest.mark.no_connection
+
 def test_virtual_drive_write_wrong_enum(virtual_drive):
     _, virtual_servo = virtual_drive
 
@@ -91,7 +91,7 @@ def test_virtual_drive_write_read_compare_responses(servo, virtual_drive, reg, v
     assert saved_value == new_value
 
 
-@pytest.mark.no_connection
+
 @pytest.mark.parametrize("divisor", [1, 2])
 def test_virtual_monitoring(virtual_drive, divisor):
     _, servo = virtual_drive
@@ -123,7 +123,7 @@ def test_virtual_monitoring(virtual_drive, divisor):
         assert data == expected_data
 
 
-@pytest.mark.no_connection
+
 @pytest.mark.parametrize("register_key", ["CL_VEL_FBK_VALUE", "CL_POS_FBK_VALUE"])
 def test_virtual_disturbance(virtual_drive, register_key):
     server, servo = virtual_drive
@@ -142,7 +142,7 @@ def test_virtual_disturbance(virtual_drive, register_key):
     assert np.array_equal(server._disturbance.channels_data[0], data_arr)
 
 
-@pytest.mark.no_connection
+
 def test_virtual_motor_enable_disable(virtual_drive):
     _, servo = virtual_drive
 
@@ -153,7 +153,7 @@ def test_virtual_motor_enable_disable(virtual_drive):
     assert servo.get_state() == ServoState.DISABLED
 
 
-@pytest.mark.no_connection
+
 @pytest.mark.parametrize(
     "plant_name,dist_reg,monit_regs,op_mode",
     [
@@ -253,21 +253,21 @@ class MockVirtualDrive(VirtualDrive):
         return super()._read_defaults_from_xdf_v3()
 
 
-@pytest.mark.no_connection
+
 def test_virtual_drive_defaults_from_config():
     server = MockVirtualDrive(81)
     assert server.read_config_defaults_calls == 1
     assert server.read_xdf_v3_defaults_calls == 0
 
 
-@pytest.mark.no_connection
+
 def test_virtual_drive_defaults_from_xdf_v3():
     server = MockVirtualDrive(81, virtual_drive_resources.VIRTUAL_DRIVE_V3_XDF)
     assert server.read_config_defaults_calls == 0
     assert server.read_xdf_v3_defaults_calls == 1
 
 
-@pytest.mark.no_connection
+
 def test_virtual_drive_identification_with_custom_dictionary(virtual_drive_custom_dict):
     dictionary = tests.resources.DEN_NET_E_2_8_0_xdf_v3
     _, _, servo = virtual_drive_custom_dict(dictionary)

@@ -4,7 +4,7 @@ import tests.resources
 from ingenialink.virtual.dictionary import VirtualDictionaryV2
 
 
-@pytest.mark.no_connection
+
 def test_read_xdf_register_ethernet():
     dictionary_path = tests.resources.ethernet.TEST_DICT_ETHERNET
     address = 0x000F
@@ -20,7 +20,7 @@ def test_read_xdf_register_ethernet():
     "reg_id,subnode,address",
     [("DRV_DIAG_ERROR_LAST_COM", 0, 0xF), ("COMMU_ANGLE_SENSOR", 1, 0x151)],
 )
-@pytest.mark.no_connection
+
 def test_read_xdf_register_canopen(reg_id, subnode, address):
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN
 

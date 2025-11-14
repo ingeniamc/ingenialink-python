@@ -285,7 +285,7 @@ pipeline {
                                         stash includes: 'docs.zip', name: 'docs'
                                     }
                                 }
-                                stage('Run no-connection tests on docker') {
+                                stage('Run unit tests on docker') {
                                     steps {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
@@ -294,7 +294,7 @@ pipeline {
                                                     cd ${WIN_DOCKER_TMP_PATH}
                                                     call .venv${version}/Scripts/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m docker -o log_cli=True
+                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "not develop and not virtual and not ethernet and not ethercat and not eoe and not canopen and not multislave and not docker and not fsoe" -o log_cli=True
                                                 """
                                             }
                                         }
@@ -368,7 +368,7 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Run no-connection tests on docker') {
+                                stage('Run unit tests on docker') {
                                     steps {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
@@ -377,7 +377,7 @@ pipeline {
                                                     cd ${LIN_DOCKER_TMP_PATH}
                                                     . .venv${version}/bin/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m no_connection -o log_cli=True
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "not develop and not virtual and not ethernet and not ethercat and not eoe and not canopen and not multislave and not docker and not fsoe" -o log_cli=True
                                                     deactivate
                                                 """
                                             }
@@ -532,11 +532,6 @@ pipeline {
                         stage("Safety Denali Phase II") {
                             steps {
                                 runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP", USE_WIRESHARK_LOGGING)
-                            }
-                        }
-                        stage('Run no-connection tests') {
-                            steps {
-                                runTestHW("no_connection", null)
                             }
                         }
                     }

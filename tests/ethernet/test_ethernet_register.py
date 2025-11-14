@@ -4,7 +4,7 @@ from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.register import RegAccess, RegAddressType, RegDtype, RegPhy
 
 
-@pytest.mark.no_connection
+
 def test_getters_ethernet_register():
     reg_address = 0x58F0
     reg_dtype = RegDtype.U32

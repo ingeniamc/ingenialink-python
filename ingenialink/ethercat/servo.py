@@ -508,7 +508,7 @@ class EthercatServo(PDOServo):
         self._write_esc_eeprom(address=0, data=data)
 
     @property
-    def slave(self) -> "CdefSlave":
+    def slave(self) -> Optional["CdefSlave"]:
         """PySOEM slave reference.
 
         Raises:

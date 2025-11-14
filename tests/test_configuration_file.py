@@ -29,7 +29,7 @@ class RegisterXCFElementFactory:
         return ElementTree.Element("Register", attrib=attrs)
 
 
-@pytest.mark.no_connection
+
 def test_from_xcf():
     test_file = tests.resources.TEST_CONFIG_FILE
     conf_file = ConfigurationFile.load_from_xcf(test_file)
@@ -48,7 +48,7 @@ def test_from_xcf():
     assert conf_file.registers[0].storage == 0
 
 
-@pytest.mark.no_connection
+
 def test_from_register():
     conf_file = ConfigurationFile.create_empty_configuration(Interface.CAN, "a", 0, 0, "0.0.0")
     reg = Register(RegDtype.FLOAT, RegAccess.RW, "TEST_REG", subnode=2)
@@ -60,14 +60,14 @@ def test_from_register():
     assert conf_file.registers[0].storage == 5.5
 
 
-@pytest.mark.no_connection
+
 def test_to_xcf_fail_no_device():
     with pytest.raises(ValueError):
         conf = ConfigurationFile.create_empty_configuration(Interface.CAN, "a", 0, 0, "0.0.0")
         conf.save_to_xcf("test_path")
 
 
-@pytest.mark.no_connection
+
 @pytest.mark.parametrize("missing_attr", RegisterXCFElementFactory.DEFAULT_ATTRIBUTES.keys())
 def test_config_register_from_xcf_missing_attribute(missing_attr):
     register_xcf_element = RegisterXCFElementFactory.create(missing_attr)

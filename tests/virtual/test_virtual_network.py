@@ -11,7 +11,7 @@ from virtual_drive import resources as virtual_drive_resources
 from virtual_drive.core import VirtualDrive
 
 
-@pytest.mark.no_connection
+
 def test_connect_to_virtual_drive(virtual_drive_custom_dict):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, net, servo = virtual_drive_custom_dict(dictionary)
@@ -21,7 +21,7 @@ def test_connect_to_virtual_drive(virtual_drive_custom_dict):
     assert fw_version is not None and fw_version != ""
 
 
-@pytest.mark.no_connection
+
 def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, net, servo = virtual_drive_custom_dict(dictionary)
@@ -31,7 +31,7 @@ def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     assert servo.socket._closed
 
 
-@pytest.mark.no_connection
+
 def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict):
     dictionaries = [
         "//azr-srv-ingfs1/pool/distext/products/EVE-XCR/firmware/2.7.0/eve-xcr-c_eth_2.7.0.xdf",
@@ -63,7 +63,7 @@ def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict):
                 assert pytest.approx(value) == server.get_value_by_id(1, reg_key)
 
 
-@pytest.mark.no_connection
+
 def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):
     dictionary = tests.resources.ethercat.TEST_DICT_ETHERCAT_OLD_DIST
     _, net, servo = virtual_drive_custom_dict(dictionary)

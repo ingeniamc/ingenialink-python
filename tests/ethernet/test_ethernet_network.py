@@ -170,14 +170,14 @@ def test_ethernet_disconnection(setup_descriptor):
     assert disconnected_servos[0] == setup_descriptor.ip
 
 
-@pytest.mark.no_connection
+
 def test_load_firmware_file_not_found():
     virtual_net = EthernetNetwork()
     with pytest.raises(FileNotFoundError):
         virtual_net.load_firmware("no_file")
 
 
-@pytest.mark.no_connection
+
 def test_load_firmware_no_connection():
     fw_file = "temp_file.lfu"
     with open(fw_file, "w"):
@@ -188,7 +188,7 @@ def test_load_firmware_no_connection():
     os.remove(fw_file)
 
 
-@pytest.mark.no_connection
+
 def test_load_firmware_wrong_user_pwd(ftp_server_manager):
     """Testing failed ftp firmware load with fake FTP server."""
     fw_file = "temp_file.lfu"
@@ -211,7 +211,7 @@ def test_load_firmware_wrong_user_pwd(ftp_server_manager):
     os.remove(fw_file)
 
 
-@pytest.mark.no_connection
+
 def test_load_firmware_error_during_loading(mocker, ftp_server_manager):
     """Testing failed ftp firmware load with fake FTP server."""
     fw_file = "temp_file.lfu"
@@ -231,7 +231,7 @@ def test_load_firmware_error_during_loading(mocker, ftp_server_manager):
     os.remove(fw_file)
 
 
-@pytest.mark.no_connection
+
 def test_net_status_listener(virtual_drive, mocker):
     server, _ = virtual_drive
     net = EthernetNetwork()
@@ -259,7 +259,7 @@ def test_net_status_listener(virtual_drive, mocker):
     assert status_list[1] == NetDevEvt.ADDED
 
 
-@pytest.mark.no_connection
+
 def test_unsubscribe_from_status(virtual_drive, mocker):
     server, _ = virtual_drive
     net = EthernetNetwork()

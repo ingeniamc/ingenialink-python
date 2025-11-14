@@ -12,7 +12,7 @@ from ingenialink.ethercat.dictionary import EthercatDictionaryV3, EthercatRegist
 from ingenialink.exceptions import ILDictionaryParseError
 
 
-@pytest.mark.no_connection
+
 def test_read_dictionary():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     expected_device_attr = {
@@ -33,7 +33,7 @@ def test_read_dictionary():
         assert getattr(ethercat_dict, attr) == value
 
 
-@pytest.mark.no_connection
+
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
@@ -41,7 +41,7 @@ def test_read_dictionary_file_not_found():
         EthercatDictionaryV3(dictionary_path)
 
 
-@pytest.mark.no_connection
+
 def test_read_dictionary_registers():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     expected_regs_per_subnode = {
@@ -64,7 +64,7 @@ def test_read_dictionary_registers():
             assert isinstance(reg, EthercatRegister)
 
 
-@pytest.mark.no_connection
+
 def test_read_dictionary_categories():
     expected_categories = [
         "OTHERS",
@@ -77,7 +77,7 @@ def test_read_dictionary_categories():
     assert ethercat_dict.categories.category_ids == expected_categories
 
 
-@pytest.mark.no_connection
+
 def test_read_dictionary_errors():
     expected_errors = [
         0x00003280,
@@ -90,7 +90,7 @@ def test_read_dictionary_errors():
     assert list(ethercat_dict.errors) == expected_errors
 
 
-@pytest.mark.no_connection
+
 def test_read_xdf_register():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     idx = 0x580F
@@ -106,7 +106,7 @@ def test_read_xdf_register():
     assert target_register.subidx == subidx
 
 
-@pytest.mark.no_connection
+
 def test_object_registers():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     ethercat_dict = EthercatDictionaryV3(dictionary_path)
@@ -121,7 +121,7 @@ def test_object_registers():
         assert reg.subidx == reg_subindex[index]
 
 
-@pytest.mark.no_connection
+
 def test_object_not_exist():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     ethercat_dict = EthercatDictionaryV3(dictionary_path)
@@ -129,7 +129,7 @@ def test_object_not_exist():
         ethercat_dict.get_object("NOT_EXISTING_UID", 0)
 
 
-@pytest.mark.no_connection
+
 def test_safety_rpdo():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     ethercat_dict = EthercatDictionaryV3(dictionary_path)
@@ -151,7 +151,7 @@ def test_safety_rpdo():
         assert pdo_entry.register == entry_reg
 
 
-@pytest.mark.no_connection
+
 def test_safety_rpdo_not_exist():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     ethercat_dict = EthercatDictionaryV3(dictionary_path)
@@ -159,7 +159,7 @@ def test_safety_rpdo_not_exist():
         ethercat_dict.get_safety_rpdo("READ_ONLY_TPDO_1")
 
 
-@pytest.mark.no_connection
+
 def test_safety_tpdo():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     ethercat_dict = EthercatDictionaryV3(dictionary_path)
@@ -181,7 +181,7 @@ def test_safety_tpdo():
         assert pdo_entry.register == entry_reg
 
 
-@pytest.mark.no_connection
+
 def test_safety_tpdo_not_exist():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     ethercat_dict = EthercatDictionaryV3(dictionary_path)
@@ -189,7 +189,7 @@ def test_safety_tpdo_not_exist():
         ethercat_dict.get_safety_tpdo("READ_ONLY_RPDO_1")
 
 
-@pytest.mark.no_connection
+
 def test_safety_modules():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_SAFE_v3
     ethercat_dict = EthercatDictionaryV3(dictionary_path)
@@ -217,7 +217,7 @@ def test_safety_modules():
             assert param.uid in expected_app_params
 
 
-@pytest.mark.no_connection
+
 def test_safety_module_not_exist():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_SAFE_v3
     ethercat_dict = EthercatDictionaryV3(dictionary_path)
@@ -225,7 +225,7 @@ def test_safety_module_not_exist():
         ethercat_dict.get_safety_module("0x3800007")
 
 
-@pytest.mark.no_connection
+
 def test_wrong_dictionary():
     with pytest.raises(
         ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication"
@@ -233,7 +233,7 @@ def test_wrong_dictionary():
         EthercatDictionaryV3(tests.resources.canopen.TEST_DICT_CAN_V3, Interface.ECAT)
 
 
-@pytest.mark.no_connection
+
 def test_register_default_values():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     expected_defaults_per_subnode = {
@@ -254,7 +254,7 @@ def test_register_default_values():
             assert register.default == expected_defaults_per_subnode[subnode][register.identifier]
 
 
-@pytest.mark.no_connection
+
 def test_register_description():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     expected_description_per_subnode = {
@@ -278,7 +278,7 @@ def test_register_description():
             )
 
 
-@pytest.mark.no_connection
+
 def test_register_bitfields():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     canopen_dict = EthercatDictionaryV3(dictionary_path)
@@ -299,7 +299,7 @@ def test_register_bitfields():
                 assert register.bitfields is None
 
 
-@pytest.mark.no_connection
+
 def test_registers_from_canopen_objects_have_object_reference():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     ethercat_dict = EthercatDictionaryV3(dictionary_path)

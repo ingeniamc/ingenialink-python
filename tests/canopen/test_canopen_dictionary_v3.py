@@ -10,7 +10,7 @@ from ingenialink.exceptions import ILDictionaryParseError
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
-@pytest.mark.no_connection
+
 def test_read_dictionary():
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     expected_device_attr = {
@@ -32,7 +32,7 @@ def test_read_dictionary():
         assert getattr(canopen_dict, attr) == value
 
 
-@pytest.mark.no_connection
+
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
@@ -40,7 +40,7 @@ def test_read_dictionary_file_not_found():
         CanopenDictionaryV3(dictionary_path)
 
 
-@pytest.mark.no_connection
+
 def test_read_dictionary_registers():
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     expected_regs_per_subnode = {
@@ -66,7 +66,7 @@ def test_read_dictionary_registers():
             assert isinstance(reg, CanopenRegister)
 
 
-@pytest.mark.no_connection
+
 def test_read_dictionary_registers_multiaxis():
     expected_num_registers_per_subnode = {0: 4, 1: 1, 2: 1}
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3_AXIS
@@ -82,7 +82,7 @@ def test_read_dictionary_registers_multiaxis():
         assert num_registers == expected_num_registers_per_subnode[subnode]
 
 
-@pytest.mark.no_connection
+
 def test_read_dictionary_categories():
     expected_categories = [
         "OTHERS",
@@ -95,7 +95,7 @@ def test_read_dictionary_categories():
     assert canopen_dict.categories.category_ids == expected_categories
 
 
-@pytest.mark.no_connection
+
 def test_read_dictionary_errors():
     expected_errors = [
         0x00003280,
@@ -108,7 +108,7 @@ def test_read_dictionary_errors():
     assert list(canopen_dict.errors) == expected_errors
 
 
-@pytest.mark.no_connection
+
 def test_read_xdf_register():
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     idx = 0x580F
@@ -124,7 +124,7 @@ def test_read_xdf_register():
     assert target_register.subidx == subidx
 
 
-@pytest.mark.no_connection
+
 def test_object():
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     canopen_dict = CanopenDictionaryV3(dictionary_path)
@@ -141,7 +141,7 @@ def test_object():
         assert reg.subidx == reg_subindex[index]
 
 
-@pytest.mark.no_connection
+
 def test_object_not_exist():
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     canopen_dict = CanopenDictionaryV3(dictionary_path)
@@ -149,7 +149,7 @@ def test_object_not_exist():
         canopen_dict.get_object("NOT_EXISTING_UID", 0)
 
 
-@pytest.mark.no_connection
+
 def test_safety_pdo_not_implemented():
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     canopen_dict = CanopenDictionaryV3(dictionary_path)
@@ -159,7 +159,7 @@ def test_safety_pdo_not_implemented():
         canopen_dict.get_safety_tpdo("NOT_EXISTING_UID")
 
 
-@pytest.mark.no_connection
+
 def test_wrong_dictionary():
     with pytest.raises(
         ILDictionaryParseError, match="Dictionary cannot be used for the chosen communication"
@@ -167,7 +167,7 @@ def test_wrong_dictionary():
         CanopenDictionaryV3(tests.resources.TEST_DICT_ECAT_EOE_v3, Interface.CAN)
 
 
-@pytest.mark.no_connection
+
 @pytest.mark.parametrize(
     "dictionary_path",
     [
@@ -198,7 +198,7 @@ def test_register_default_values(dictionary_path):
             assert register.default == expected_defaults_per_subnode[subnode][register.identifier]
 
 
-@pytest.mark.no_connection
+
 @pytest.mark.parametrize(
     "dictionary_path",
     [
@@ -236,7 +236,7 @@ def test_register_description(dictionary_path):
             )
 
 
-@pytest.mark.no_connection
+
 def test_register_bitfields():
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     canopen_dict = CanopenDictionaryV3(dictionary_path)
@@ -257,7 +257,7 @@ def test_register_bitfields():
                 assert register.bitfields is None
 
 
-@pytest.mark.no_connection
+
 def test_register_is_node_id_dependent():
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     canopen_dict = CanopenDictionaryV3(dictionary_path)
@@ -266,7 +266,7 @@ def test_register_is_node_id_dependent():
     assert not canopen_dict.registers(0)["CIA301_COMMS_RPDO1_3"].is_node_id_dependent
 
 
-@pytest.mark.no_connection
+
 def test_registers_from_canopen_objects_have_object_reference():
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN_V3
     ethercat_dict = CanopenDictionaryV3(dictionary_path)
