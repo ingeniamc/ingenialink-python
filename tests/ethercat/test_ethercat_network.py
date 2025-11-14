@@ -48,6 +48,7 @@ def mocked_network_for_firmware_loading(mocker):
     net.close_ecat_master()
 
 
+@pytest.mark.no_pcap
 def test_raise_exception_if_not_winpcap():
     try:
         import pysoem  # noqa: F401
