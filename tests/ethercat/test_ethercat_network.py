@@ -48,12 +48,11 @@ def mocked_network_for_firmware_loading(mocker):
     net.close_ecat_master()
 
 
-@pytest.mark.docker
 def test_raise_exception_if_not_winpcap():
     try:
         import pysoem  # noqa: F401
 
-        pytest.skip("WinPcap is installed")
+        pytest.fail("WinPcap appears to be installed and thus the test cannot be executed.")
     except ImportError:
         pass
     previous_networks = ETHERCAT_NETWORK_REFERENCES.copy()
