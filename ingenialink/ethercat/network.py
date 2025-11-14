@@ -1,5 +1,4 @@
 import atexit
-import contextlib
 import os
 import re
 import threading
@@ -159,8 +158,10 @@ class NetStatusListener(Thread):
     def run(self) -> None:
         """Check the network status continuously."""
         while not self.__stop:
-            with contextlib.suppress(Exception):
+            try:
                 self.process()
+            except Exception as e:
+                logger.exception(f"Exception occurred while processing network status: {e}")
             time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
