@@ -1,8 +1,5 @@
-import pytest
-
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.register import RegAccess, RegAddressType, RegDtype, RegPhy
-
 
 
 def test_getters_ethercat_register():

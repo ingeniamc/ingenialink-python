@@ -26,7 +26,6 @@ from ingenialink.ethernet.dictionary import (
 from ingenialink.servo import DictionaryFactory
 
 
-
 @pytest.mark.parametrize(
     "dict_path, interface, fw_version, product_code, part_number, revision_number",
     [
@@ -76,7 +75,6 @@ def test_dictionary_description(
     )
 
 
-
 @pytest.mark.parametrize(
     "dict_path, interface, raises",
     [
@@ -99,7 +97,6 @@ def test_dictionary_description_fail(dict_path, interface, raises):
         (EthernetDictionaryV2, tests.resources.ethernet.TEST_DICT_ETHERNET),
     ],
 )
-
 def test_dictionary_v2_image(dictionary_class, dictionary_path):
     dictionary = dictionary_class(dictionary_path)
     assert isinstance(dictionary.image, str)
@@ -112,7 +109,6 @@ def test_dictionary_v2_image(dictionary_class, dictionary_path):
         (EthernetDictionaryV2, tests.resources.ethernet.TEST_DICT_ETHERNET),
     ],
 )
-
 def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
     with open(dictionary_path, encoding="utf-8") as xdf_file:
         tree = ElementTree.parse(xdf_file)
@@ -128,7 +124,6 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
         dictionary = dictionary_class(temp_file)
 
     assert dictionary.image is None
-
 
 
 @pytest.mark.parametrize(
@@ -150,7 +145,6 @@ def test_dictionary_factory(dict_path, interface, dict_class):
     assert isinstance(test_dict, dict_class)
 
 
-
 @pytest.mark.parametrize(
     "dict_path, interface, raises",
     [
@@ -166,7 +160,6 @@ def test_dictionary_factory(dict_path, interface, dict_class):
 def test_dictionary_interface_mismatch(dict_path, interface, raises):
     with pytest.raises(raises):
         DictionaryFactory.create_dictionary(dict_path, interface)
-
 
 
 def test_merge_dictionaries_registers():
@@ -189,7 +182,6 @@ def test_merge_dictionaries_registers():
     assert merged_dict_subnode_1_num_regs == coco_subnode_1_num_regs + moco_subnode_1_num_regs
 
 
-
 def test_merge_dictionaries_errors():
     coco_dict_path = tests.resources.comkit.COM_KIT_DICT
     moco_dict_path = tests.resources.comkit.CORE_DICT
@@ -202,7 +194,6 @@ def test_merge_dictionaries_errors():
     merged_dict = coco_dict + moco_dict
     merged_dict_num_errors = len(merged_dict.errors)
     assert merged_dict_num_errors == coco_num_errors + moco_num_errors
-
 
 
 def test_merge_dictionaries_attributes():
@@ -226,7 +217,6 @@ def test_merge_dictionaries_attributes():
     assert merged_dict.coco_product_code == 123456789
 
 
-
 def test_merge_dictionaries_image():
     coco_dict_path = tests.resources.comkit.COM_KIT_DICT
     moco_dict_path = tests.resources.comkit.CORE_DICT
@@ -236,7 +226,6 @@ def test_merge_dictionaries_image():
     assert isinstance(moco_dict.image, str)
     merged_dict = coco_dict + moco_dict
     assert merged_dict.image == moco_dict.image
-
 
 
 def test_merge_dictionaries_new_instance():
@@ -267,7 +256,6 @@ def test_merge_dictionaries_new_instance():
     assert id(dict_b.interface) == id(dict_c.interface)
 
 
-
 def test_merge_dictionaries_order_invariant():
     coco_dict_path = tests.resources.comkit.COM_KIT_DICT
     moco_dict_path = tests.resources.comkit.CORE_DICT
@@ -284,7 +272,6 @@ def test_merge_dictionaries_order_invariant():
     assert dict_a.coco_product_code == dict_b.coco_product_code
 
 
-
 def test_merge_dictionaries_type_exception():
     eth_v2_path = tests.resources.comkit.COM_KIT_DICT
     can_v2_path = tests.resources.canopen.TEST_DICT_CAN
@@ -297,7 +284,6 @@ def test_merge_dictionaries_type_exception():
         " 'ingenialink.ethernet.dictionary.EthernetDictionaryV2'>, got: <class"
         " 'ingenialink.canopen.dictionary.CanopenDictionaryV2'>"
     )
-
 
 
 def test_merge_dictionaries_no_coco_exception():
@@ -321,7 +307,6 @@ def test_merge_dictionaries_no_coco_exception():
         ("PartNumber", "part_number"),
     ],
 )
-
 def test_dictionary_no_product_code(xml_attribute, class_attribute):
     with open(virtual_drive.resources.VIRTUAL_DRIVE_V2_XDF, encoding="utf-8") as xdf_file:
         tree = ElementTree.parse(xdf_file)
@@ -337,7 +322,6 @@ def test_dictionary_no_product_code(xml_attribute, class_attribute):
             merged_file.write(xml_str)
         dictionary = EthernetDictionaryV2(temp_file)
     assert getattr(dictionary, class_attribute) is None
-
 
 
 def test_get_register():
@@ -388,7 +372,6 @@ def test_get_register():
         (tests.resources.ethercat.TEST_DICT_ETHERCAT_AXIS, Interface.ECAT),
     ],
 )
-
 def test_register_description(dictionary_path, interface):
     expected_description_per_subnode = {
         0: {
@@ -431,7 +414,6 @@ def test_canopen_dictionary_get_register_by_index_subindex():
     register = dictionary.get_register_by_index_subindex(idx, subidx)
     assert register.idx == idx
     assert register.subidx == subidx
-
 
 
 def test_canopen_object_writable_registers():

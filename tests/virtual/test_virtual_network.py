@@ -11,7 +11,6 @@ from virtual_drive import resources as virtual_drive_resources
 from virtual_drive.core import VirtualDrive
 
 
-
 def test_connect_to_virtual_drive(virtual_drive_custom_dict):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, net, servo = virtual_drive_custom_dict(dictionary)
@@ -21,7 +20,6 @@ def test_connect_to_virtual_drive(virtual_drive_custom_dict):
     assert fw_version is not None and fw_version != ""
 
 
-
 def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, net, servo = virtual_drive_custom_dict(dictionary)
@@ -29,7 +27,6 @@ def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     assert net.get_servo_state(VirtualDrive.IP_ADDRESS) == NetState.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
-
 
 
 def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict):
@@ -61,7 +58,6 @@ def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict):
                     value = int(value)
                 servo.write(reg_key, value)
                 assert pytest.approx(value) == server.get_value_by_id(1, reg_key)
-
 
 
 def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):

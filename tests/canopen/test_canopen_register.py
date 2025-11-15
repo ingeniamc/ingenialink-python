@@ -11,7 +11,6 @@ from ingenialink.canopen.register import (
 from ingenialink.dictionary import Dictionary
 
 
-
 def test_getters_canopen_register():
     reg_idx = 0x58F0
     reg_subidx = 0x00

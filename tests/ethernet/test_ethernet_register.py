@@ -1,8 +1,5 @@
-import pytest
-
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.register import RegAccess, RegAddressType, RegDtype, RegPhy
-
 
 
 def test_getters_ethernet_register():

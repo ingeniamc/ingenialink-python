@@ -22,7 +22,6 @@ def virtual_network():
     return net
 
 
-
 def test_getters_canopen(virtual_network):
     assert virtual_network.device == test_bus
     assert virtual_network.channel == test_channel
@@ -51,7 +50,6 @@ def test_connect_to_slave_target_not_in_nodes(setup_descriptor):
     net._teardown_connection()
 
 
-
 def test_connect_to_slave_none_nodes(virtual_network):
     net = virtual_network
     with pytest.raises(ILError):
@@ -67,7 +65,6 @@ def test_scan_slaves(setup_descriptor):
     )
     slaves = net.scan_slaves()
     assert len(slaves) > 0
-
 
 
 @pytest.mark.parametrize("can_device", [CanDevice.PCAN, CanDevice.KVASER, CanDevice.IXXAT])
@@ -132,7 +129,6 @@ def test_disconnect_from_slave(setup_descriptor):
     assert len(net.servos) == 0
     assert len(disconnected_servos) == 1
     assert disconnected_servos[0] == setup_descriptor.node_id
-
 
 
 def test_setup_and_teardown_connection(virtual_network):

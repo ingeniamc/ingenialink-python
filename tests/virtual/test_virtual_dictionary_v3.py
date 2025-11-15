@@ -11,7 +11,6 @@ SINGLE_AXIS_SUBNODES = {
 }
 
 
-
 @pytest.mark.parametrize(
     "dictionary_path, expected_device_attr",
     [
@@ -66,7 +65,6 @@ def test_read_dictionary(dictionary_path, expected_device_attr):
     virtual_dict = VirtualDictionaryV3(dictionary_path)
     for attr, value in expected_device_attr.items():
         assert getattr(virtual_dict, attr) == value
-
 
 
 def test_read_dictionary_file_not_found():

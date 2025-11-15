@@ -54,7 +54,6 @@ def create_pdo_map(open_dictionary):
     return tpdo_map, rpdo_map
 
 
-
 def test_pdo_text_representation(create_pdo_map):
     tpdo_map, _rpdo_map = create_pdo_map
 
@@ -63,7 +62,6 @@ def test_pdo_text_representation(create_pdo_map):
         "CL_POS_FBK_VALUE     | 0..0                 | 4..0                \n"
         "CL_VEL_FBK_VALUE     | 4..0                 | 4..0                "
     )
-
 
 
 def test_rpdo_item(open_dictionary):
@@ -84,7 +82,6 @@ def test_rpdo_item(open_dictionary):
     assert rpdo_item.raw_data_bits.to01() == "11110000000000000000000000000000"
 
 
-
 def test_rpdo_item_wrong_cyclic(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
@@ -99,7 +96,6 @@ def test_rpdo_item_wrong_cyclic(open_dictionary):
     )
 
 
-
 def test_tpdo_item_wrong_cyclic(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
@@ -112,7 +108,6 @@ def test_tpdo_item_wrong_cyclic(open_dictionary):
         "RegCyclicType.SAFETY_INPUT_OUTPUT. "
         "obtained: RegCyclicType.RX"
     )
-
 
 
 def test_tpdo_item(open_dictionary):
@@ -134,7 +129,6 @@ def test_tpdo_item(open_dictionary):
     assert tpdo_item.value == 15
 
 
-
 @pytest.mark.parametrize(
     "uid, expected_value",
     [("CL_POS_FBK_VALUE", 0x20300020), ("CL_VEL_FBK_VALUE", 0x20310020)],
@@ -147,7 +141,6 @@ def test_pdo_item_register_mapping(open_dictionary, uid, expected_value):
     assert expected_value == tpdo_item.register_mapping
 
 
-
 def test_pdo_create_item(open_dictionary: "Dictionary"):
     ethercat_dictionary = open_dictionary
     rpdo_map = RPDOMap()
@@ -155,7 +148,6 @@ def test_pdo_create_item(open_dictionary: "Dictionary"):
 
     item = rpdo_map.create_item(register)
     assert item.register == register
-
 
 
 def test_pdo_create_item_no_register_zero_bits():
@@ -175,7 +167,6 @@ def test_create_rpdo_item(open_dictionary: "Dictionary") -> None:
     assert position_set_point.value == position_set_point_initial_value
 
 
-
 def test_create_tpdo_item(open_dictionary: "Dictionary") -> None:
     actual_position = PDOMap.create_item_from_register_uid(
         uid="CL_POS_FBK_VALUE", dictionary=open_dictionary
@@ -183,11 +174,9 @@ def test_create_tpdo_item(open_dictionary: "Dictionary") -> None:
     assert isinstance(actual_position, TPDOMapItem)
 
 
-
 def test_create_rpdo_item_no_initial_value(open_dictionary: "Dictionary") -> None:
     with pytest.raises(AttributeError):
         PDOMap.create_item_from_register_uid("CL_POS_SET_POINT_VALUE", dictionary=open_dictionary)
-
 
 
 @pytest.mark.parametrize(
@@ -206,7 +195,6 @@ def test_pdo_add_item(open_dictionary, register: str, value: Optional[int], pdo_
     pdo_map.add_item(item)
     assert len(pdo_map.items) == 1
     assert pdo_map.items[0] == item
-
 
 
 @pytest.mark.parametrize(
@@ -228,7 +216,6 @@ def test_pdo_add_item_exceptions(
         pdo_map.add_item(item)
 
 
-
 def test_create_pdo_maps_single_item(open_dictionary: "Dictionary") -> None:
     position_set_point = PDOMap.create_item_from_register_uid(
         uid="CL_POS_SET_POINT_VALUE", dictionary=open_dictionary, value=0
@@ -244,7 +231,6 @@ def test_create_pdo_maps_single_item(open_dictionary: "Dictionary") -> None:
     assert isinstance(tpdo_map, TPDOMap)
     assert len(tpdo_map.items) == 1
     assert actual_position in tpdo_map.items
-
 
 
 def test_create_pdo_maps_list_items(open_dictionary: "Dictionary") -> None:
@@ -264,7 +250,6 @@ def test_create_pdo_maps_list_items(open_dictionary: "Dictionary") -> None:
     assert len(rpdo_map.items) == len(rpdo_items)
     assert isinstance(tpdo_map, TPDOMap)
     assert len(tpdo_map.items) == len(tpdo_items)
-
 
 
 def test_pdo_add_registers(open_dictionary):
@@ -290,7 +275,6 @@ def test_pdo_add_registers(open_dictionary):
     assert rpdo_map[0].register == register1
     assert rpdo_map[1].register == register1
     assert rpdo_map[2].register == register2
-
 
 
 def test_pdo_map(create_pdo_map):
@@ -505,7 +489,6 @@ def test_map_register_items(servo: EthercatServo):
     }
 
 
-
 def test_pdo_map_from_value(open_dictionary):
     tpdo_map = TPDOMap()
 
@@ -675,7 +658,6 @@ def test_set_pdo_map_to_slave(servo: EthercatServo, create_pdo_map):
     assert servo._tpdo_maps[0x1A01] == other_tpdo_map
 
 
-
 def test_pdo_item_bool():
     register = EthercatRegister(0, 1, RegDtype.BOOL, RegAccess.RW, pdo_access=RegCyclicType.RX)
     rpdo_item = RPDOMapItem(register)
@@ -696,7 +678,6 @@ def test_pdo_item_bool():
     assert rpdo_item.raw_data_bytes == b"\x00"
 
 
-
 def test_pdo_item_custom_size(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
@@ -713,7 +694,6 @@ def test_pdo_item_custom_size(open_dictionary):
     assert tpdo_item.raw_data_bytes == b"\x09"
 
 
-
 def test_pdo_item_custom_size_wrong_length(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
@@ -724,7 +704,6 @@ def test_pdo_item_custom_size_wrong_length(open_dictionary):
         tpdo_item.raw_data_bits = bitarray("1001")
 
     assert str(exc_info.value) == "Wrong size. Expected 5, obtained 4"
-
 
 
 def test_rpdo_padding():
@@ -740,7 +719,6 @@ def test_rpdo_padding():
     assert len(rpdo_item.raw_data_bits) == size_bits
 
 
-
 def test_tpdo_padding():
     size_bits = 4
     tpdo_item = TPDOMapItem(size_bits=size_bits)
@@ -752,7 +730,6 @@ def test_tpdo_padding():
     assert padding_register.dtype == RegDtype.STR
     tpdo_item.raw_data_bytes = int.to_bytes(0, 1, "little")
     assert len(tpdo_item.raw_data_bits) == size_bits
-
 
 
 def test_pdo_padding_exceptions():
@@ -768,7 +745,6 @@ def test_pdo_padding_exceptions():
     with pytest.raises(NotImplementedError) as exc_info:
         _ = padding_item.value
     assert str(exc_info.value) == "The register value must be read by the raw_data_bytes attribute."
-
 
 
 def test_map_pdo_with_bools(open_dictionary):
@@ -847,7 +823,6 @@ def test_remove_tpdo_map_exceptions(servo: EthercatServo, create_pdo_map):
         servo.remove_tpdo_map(tpdo_map_index=0x1A01)
 
 
-
 def test_rpdo_map_set_items_bytes(create_pdo_map):
     _, rpdo_map = create_pdo_map
     data_bytes = b""
@@ -856,7 +831,6 @@ def test_rpdo_map_set_items_bytes(create_pdo_map):
     rpdo_map.set_item_bytes(data_bytes)
     for idx, item in enumerate(rpdo_map.items):
         assert item.value == idx
-
 
 
 def test_tpdo_map_set_items_bytes(create_pdo_map):
@@ -869,12 +843,10 @@ def test_tpdo_map_set_items_bytes(create_pdo_map):
         assert item.value == idx
 
 
-
 def test_create_empty_rpdo_map():
     rpdo_map = RPDOMap()
     assert isinstance(rpdo_map, RPDOMap)
     assert len(rpdo_map.items) == 0
-
 
 
 def test_create_empty_tpdo_map():

@@ -10,7 +10,6 @@ BITFIELD_EXAMPLES = {
 }
 
 
-
 @pytest.mark.parametrize(
     "value, values",
     [
@@ -22,7 +21,6 @@ BITFIELD_EXAMPLES = {
 )
 def test_parse_bitfields(value, values):
     assert BitField.parse_bitfields(BITFIELD_EXAMPLES, value) == values
-
 
 
 @pytest.mark.parametrize(
@@ -42,7 +40,6 @@ def test_set_bitfields(old_value, new_value, values):
     assert BitField.set_bitfields(BITFIELD_EXAMPLES, values, old_value) == new_value
 
 
-
 @pytest.mark.parametrize(
     "values, error",
     [
@@ -55,7 +52,6 @@ def test_set_bitfield_over_max_value(values, error):
         BitField.set_bitfields(BITFIELD_EXAMPLES, values, 0)
 
     assert ex.value.args[0] == error
-
 
 
 def test_read_status_word_known_bitfields(virtual_drive):  # noqa: F811
@@ -93,7 +89,6 @@ def test_read_status_word_known_bitfields(virtual_drive):  # noqa: F811
         "VOLTAGE_ENABLED": 0,
         "WARNING": 0,
     }
-
 
 
 def test_write_control_word_known_bitfields(virtual_drive, mocker):  # noqa: F811

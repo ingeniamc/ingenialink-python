@@ -64,13 +64,11 @@ def test_raise_exception_if_not_winpcap():
         release_network_reference(net)
 
 
-
 def test_load_firmware_file_not_found_error():
     net = EthercatNetwork("fake_interface")
     with pytest.raises(FileNotFoundError):
         net.load_firmware("ethercat.sfu", True)
     net.close_ecat_master()
-
 
 
 def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loading):
@@ -97,7 +95,6 @@ def test_find_adapters(setup_descriptor):
     assert adapter_found is True
 
 
-
 def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_loading):
     net, _ = mocked_network_for_firmware_loading
     mocker.patch.object(net, "_switch_to_boot_state", side_effect=[True, False])
@@ -109,7 +106,6 @@ def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_lo
         "Attempt 2: The slave cannot reach the Boot state.",
     ):
         net.load_firmware("dummy_file.sfu", False, slave_id=1)
-
 
 
 def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loading):
@@ -125,7 +121,6 @@ def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loa
         net.load_firmware("dummy_file.sfu", False, slave_id=1)
 
 
-
 def test_load_firmware_success_after_retry(mocker, mocked_network_for_firmware_loading):
     net, slave = mocked_network_for_firmware_loading
     mocker.patch.object(net, "_switch_to_boot_state", side_effect=[False, True])
@@ -133,7 +128,6 @@ def test_load_firmware_success_after_retry(mocker, mocked_network_for_firmware_l
     mocker.patch("time.sleep", return_value=None)
     slave.state_check.return_value = pysoem.PREOP_STATE
     net.load_firmware("dummy_file.sfu", False, slave_id=1)
-
 
 
 def test_wrong_interface_name_error():
@@ -433,7 +427,6 @@ def test_disconnect_from_slave_with_non_existent_slave(pysoem_mock_network):
     assert net._EthercatNetwork__is_master_running is False
 
 
-
 def test_gil_configuration():
     gil_config_1 = GilReleaseConfig.always()
     assert all([
@@ -459,7 +452,6 @@ def test_gil_configuration():
     assert gil_config_3.foe_read_write is None
     assert gil_config_3.send_receive_processdata is None
     assert gil_config_3.always_release is False
-
 
 
 def test_release_network_reference_raises_error_if_wrong_network():

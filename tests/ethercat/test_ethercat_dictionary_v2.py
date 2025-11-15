@@ -7,7 +7,6 @@ from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictio
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
-
 def test_read_dictionary():
     dictionary_path = tests.resources.ethercat.TEST_DICT_ETHERCAT
     expected_device_attr = {
@@ -28,13 +27,11 @@ def test_read_dictionary():
         assert getattr(ethercat_dict, attr) == value
 
 
-
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
     with pytest.raises(FileNotFoundError):
         EthercatDictionaryV2(dictionary_path)
-
 
 
 def test_read_dictionary_registers():
@@ -81,7 +78,6 @@ def test_read_dictionary_registers():
 
     for subnode in expected_regs_per_subnode:
         assert expected_regs_per_subnode[subnode] == list(ethercat_dict.registers(subnode))
-
 
 
 def test_pdo_maps_equivalence():
@@ -131,7 +127,6 @@ def test_pdo_maps_equivalence():
             assert len(item_v3.registers) == len(item_v2.registers)
 
 
-
 def test_read_dictionary_registers_multiaxis():
     expected_num_registers_per_subnode = {0: 106, 1: 2, 2: 2}
     dictionary_path = tests.resources.ethercat.TEST_DICT_ETHERCAT_AXIS
@@ -146,7 +141,6 @@ def test_read_dictionary_registers_multiaxis():
     for subnode in expected_num_registers_per_subnode:
         num_registers = len(ethercat_dict.registers(subnode))
         assert num_registers == expected_num_registers_per_subnode[subnode]
-
 
 
 def test_read_dictionary_categories():
@@ -165,7 +159,6 @@ def test_read_dictionary_categories():
     assert ethercat_dict.categories.category_ids == expected_categories
 
 
-
 def test_read_dictionary_errors():
     expected_errors = [
         0x00003280,
@@ -178,7 +171,6 @@ def test_read_dictionary_errors():
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
 
     assert list(ethercat_dict.errors) == expected_errors
-
 
 
 def test_read_xdf_register():
@@ -194,7 +186,6 @@ def test_read_xdf_register():
     assert ethercat_dict.registers(subnode)[reg_id].subidx == subidx
 
 
-
 @pytest.mark.parametrize(
     "register_uid, subnode, idx",
     [("DIST_CFG_REG0_MAP", 0, 0x5890), ("DRV_OP_CMD", 1, 0x2014), ("DRV_STATE_CONTROL", 2, 0x2810)],
@@ -208,13 +199,11 @@ def test_mcb_to_can_mapping(register_uid, subnode, idx):
     assert ethercat_register.idx == idx
 
 
-
 def test_object_not_exist():
     dictionary_path = tests.resources.ethercat.TEST_DICT_ETHERCAT
     ethercat_dict = EthercatDictionaryV2(dictionary_path)
     with pytest.raises(KeyError):
         ethercat_dict.get_object("NOT_EXISTING_UID", 0)
-
 
 
 def test_safety_pdo_not_implemented():
@@ -224,7 +213,6 @@ def test_safety_pdo_not_implemented():
         ethercat_dict.get_safety_rpdo("NOT_EXISTING_UID")
     with pytest.raises(NotImplementedError):
         ethercat_dict.get_safety_tpdo("NOT_EXISTING_UID")
-
 
 
 def test_registers_from_canopen_objects_have_object_reference():

@@ -7,7 +7,6 @@ from ingenialink.dictionary import Interface, SubnodeType
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
-
 def test_read_dictionary():
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN
     expected_device_attr = {
@@ -28,13 +27,11 @@ def test_read_dictionary():
         assert getattr(canopen_dict, attr) == value
 
 
-
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
     with pytest.raises(FileNotFoundError):
         CanopenDictionaryV2(dictionary_path)
-
 
 
 def test_read_dictionary_registers():
@@ -56,7 +53,6 @@ def test_read_dictionary_registers():
         assert expected_regs_per_subnode[subnode] == list(canopen_dict.registers(subnode))
 
 
-
 def test_read_dictionary_registers_multiaxis():
     expected_num_registers_per_subnode = {0: 6, 1: 5, 2: 5}
 
@@ -71,14 +67,12 @@ def test_read_dictionary_registers_multiaxis():
         assert num_registers == expected_num_registers_per_subnode[subnode]
 
 
-
 def test_read_dictionary_registers_attr_errors():
     canopen_dict = CanopenDictionaryV2(tests.resources.canopen.TEST_DICT_CAN_NO_ATTR_REG)
 
     for subnode in range(2):
         num_registers = len(canopen_dict.registers(subnode))
         assert num_registers == 0
-
 
 
 def test_read_dictionary_categories():
@@ -96,7 +90,6 @@ def test_read_dictionary_categories():
     assert canopen_dict.categories.category_ids == expected_categories
 
 
-
 def test_read_dictionary_errors():
     expected_errors = [
         0x00003280,
@@ -108,7 +101,6 @@ def test_read_dictionary_errors():
     canopen_dict = CanopenDictionaryV2(tests.resources.canopen.TEST_DICT_CAN)
 
     assert list(canopen_dict.errors) == expected_errors
-
 
 
 def test_read_xdf_register():
@@ -123,12 +115,10 @@ def test_read_xdf_register():
     assert canopen_dict.registers(subnode)[reg_id].subidx == subidx
 
 
-
 def test_object_not_exist():
     canopen_dict = CanopenDictionaryV2(tests.resources.canopen.TEST_DICT_CAN)
     with pytest.raises(KeyError):
         canopen_dict.get_object("NOT_EXISTING_UID", 0)
-
 
 
 def test_safety_pdo_not_implemented():
@@ -137,7 +127,6 @@ def test_safety_pdo_not_implemented():
         canopen_dict.get_safety_rpdo("NOT_EXISTING_UID")
     with pytest.raises(NotImplementedError):
         canopen_dict.get_safety_tpdo("NOT_EXISTING_UID")
-
 
 
 def test_registers_from_canopen_objects_have_object_reference():

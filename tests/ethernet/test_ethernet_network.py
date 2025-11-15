@@ -170,12 +170,10 @@ def test_ethernet_disconnection(setup_descriptor):
     assert disconnected_servos[0] == setup_descriptor.ip
 
 
-
 def test_load_firmware_file_not_found():
     virtual_net = EthernetNetwork()
     with pytest.raises(FileNotFoundError):
         virtual_net.load_firmware("no_file")
-
 
 
 def test_load_firmware_no_connection():
@@ -186,7 +184,6 @@ def test_load_firmware_no_connection():
     with pytest.raises(ILFirmwareLoadError):
         virtual_net.load_firmware(fw_file, target="127.0.0.1", ftp_user="", ftp_pwd="")
     os.remove(fw_file)
-
 
 
 def test_load_firmware_wrong_user_pwd(ftp_server_manager):
@@ -211,7 +208,6 @@ def test_load_firmware_wrong_user_pwd(ftp_server_manager):
     os.remove(fw_file)
 
 
-
 def test_load_firmware_error_during_loading(mocker, ftp_server_manager):
     """Testing failed ftp firmware load with fake FTP server."""
     fw_file = "temp_file.lfu"
@@ -229,7 +225,6 @@ def test_load_firmware_error_during_loading(mocker, ftp_server_manager):
     assert str(excinfo.value) == "Unable to load the FW file through FTP."
     assert isinstance(excinfo.value.__cause__, error_temp)
     os.remove(fw_file)
-
 
 
 def test_net_status_listener(virtual_drive, mocker):
@@ -257,7 +252,6 @@ def test_net_status_listener(virtual_drive, mocker):
     # Assert that the net status callback is notified of net status change event
     assert len(status_list) == 2
     assert status_list[1] == NetDevEvt.ADDED
-
 
 
 def test_unsubscribe_from_status(virtual_drive, mocker):

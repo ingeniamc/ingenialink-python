@@ -165,7 +165,6 @@ def test_save_configuration(servo, net):
     _clean(filename)
 
 
-
 def test_check_configuration(virtual_drive):
     server, servo = virtual_drive
 
@@ -225,7 +224,6 @@ def test_load_configuration(servo, net):
         else:
             assert value == register.storage
     _clean(filename)
-
 
 
 def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
@@ -626,7 +624,6 @@ def test_disturbance_overflow(servo):
         servo.disturbance_write_data(0, RegDtype.U16, data)
 
 
-
 def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
     register_update_callback = RegisterUpdateTest()
@@ -651,7 +648,6 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     servo.register_update_unsubscribe(register_update_callback.register_update_test)
 
     servo.write(user_over_voltage_uid, data=previous_reg_value, subnode=1)
-
 
 
 @pytest.mark.parametrize(

@@ -8,7 +8,6 @@ from ingenialink.ethernet.dictionary import EoEDictionaryV3
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
 
 
-
 def test_read_dictionary():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     expected_device_attr = {
@@ -30,13 +29,11 @@ def test_read_dictionary():
         assert getattr(ethercat_dict, attr) == value
 
 
-
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 
     with pytest.raises(FileNotFoundError):
         EoEDictionaryV3(dictionary_path)
-
 
 
 def test_read_dictionary_registers():
@@ -55,7 +52,6 @@ def test_read_dictionary_registers():
         assert expected_regs_per_subnode[subnode] == list(ethercat_dict.registers(subnode))
 
 
-
 def test_read_dictionary_categories():
     expected_categories = [
         "OTHERS",
@@ -66,7 +62,6 @@ def test_read_dictionary_categories():
     ethercat_dict = EoEDictionaryV3(dictionary_path)
 
     assert ethercat_dict.categories.category_ids == expected_categories
-
 
 
 def test_read_dictionary_errors():
@@ -81,13 +76,11 @@ def test_read_dictionary_errors():
     assert list(ethercat_dict.errors) == expected_errors
 
 
-
 def test_object_not_exist():
     dictionary_path = tests.resources.TEST_DICT_ECAT_EOE_v3
     ethernet_dict = EoEDictionaryV3(dictionary_path)
     with pytest.raises(KeyError):
         ethernet_dict.get_object("NOT_EXISTING_UID", 0)
-
 
 
 def test_safety_pdo_not_implemented():
@@ -97,7 +90,6 @@ def test_safety_pdo_not_implemented():
         ethernet_dict.get_safety_rpdo("NOT_EXISTING_UID")
     with pytest.raises(NotImplementedError):
         ethernet_dict.get_safety_tpdo("NOT_EXISTING_UID")
-
 
 
 def test_register_default_values():
@@ -115,7 +107,6 @@ def test_register_default_values():
     for subnode, registers in ethercat_dict._registers.items():
         for register in registers.values():
             assert register.default == expected_defaults_per_subnode[subnode][register.identifier]
-
 
 
 def test_register_description():
@@ -140,7 +131,6 @@ def test_register_description():
                 register.description
                 == expected_description_per_subnode[subnode][register.identifier]
             )
-
 
 
 def test_register_bitfields():

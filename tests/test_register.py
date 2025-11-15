@@ -30,7 +30,6 @@ def connect_virtual_drive_with_bool_register(virtual_drive_custom_dict):
     return connect
 
 
-
 def test_getters_register():
     reg_dtype = RegDtype.U32
     reg_access = RegAccess.RW
@@ -68,7 +67,6 @@ def test_getters_register():
     assert register.storage_valid
 
 
-
 def test_register_type_errors():
     dtype = "False type"
     access = RegAccess.RW
@@ -84,7 +82,6 @@ def test_register_type_errors():
     access = RegAccess.RW
     with pytest.raises(ILValueError):
         Register(dtype, access, phy="False Phy")
-
 
 
 def test_register_get_storage():
@@ -123,7 +120,6 @@ def test_register_get_storage():
     assert register.storage == 123
 
 
-
 def test_register_set_storage():
     access = RegAccess.RW
     dtype = RegDtype.FLOAT
@@ -147,13 +143,13 @@ def test_register_set_storage():
         (RegDtype.FLOAT, (None, None), (-3.4e38, 3.4e38), float),
     ],
 )
-
 def test_register_range(dtype, reg_range, expected_range, reg_type):
     register = Register(dtype, RegAccess.RW, reg_range=reg_range)
 
     assert type(register.range[0]) is reg_type
     assert type(register.range[1]) is reg_type
     assert register.range == expected_range
+
 
 @pytest.mark.parametrize(
     "write_value, expected_read_value,",
@@ -164,7 +160,6 @@ def test_register_range(dtype, reg_range, expected_range, reg_type):
         (True, True),
     ],
 )
-
 def test_bit_register(connect_virtual_drive_with_bool_register, write_value, expected_read_value):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     boolean_reg_uid = "TEST_BOOLEAN"
@@ -178,7 +173,6 @@ def test_bit_register(connect_virtual_drive_with_bool_register, write_value, exp
     "write_value",
     [2, "one"],
 )
-
 def test_bit_register_write_invalid_value(connect_virtual_drive_with_bool_register, write_value):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     servo, _ = connect_virtual_drive_with_bool_register(dictionary)
