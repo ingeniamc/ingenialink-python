@@ -148,3 +148,15 @@ def test_registers_from_canopen_objects_have_object_reference():
         for reg in obj.registers:
             assert reg.obj is obj
             assert ethercat_dict.get_register(reg.identifier).obj is obj
+
+
+@pytest.mark.parametrize(
+    "register_uid, subnode, expected_monitoring_address",
+    [("DRV_DIAG_ERROR_LAST", 1, 0x000F), ("DRV_DIAG_ERROR_LAST", 2, 0x000F)],
+)
+@pytest.mark.no_connection
+def test_register_monitoring_address(register_uid, subnode, expected_monitoring_address):
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_AXIS
+    canopen_dict = CanopenDictionaryV2(dictionary_path)
+    reg = canopen_dict.registers(subnode)[register_uid]
+    assert reg.monitoring.address == expected_monitoring_address
