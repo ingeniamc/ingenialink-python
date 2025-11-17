@@ -148,11 +148,6 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 cat_id="MDP",
                 description="Configured module ident of the module 1",
                 units=None,
-                enums={
-                    "Safety drive": 58720259,
-                    "Safety drive with SRA CRC": 58720260,
-                    "Safety drive with Safety Project CRC": 58720261,
-                },
             ),
             EthercatRegister(
                 identifier="FSOE_SAFE_INPUTS_MAP",
