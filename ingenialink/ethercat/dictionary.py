@@ -160,9 +160,14 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 subnode=1,
                 cat_id="FSOE",
                 labels={"en_US": "Safe Inputs Map"},
-                reg_range=(0, 2),
+                reg_range=(0, 65535),
                 description="Links the value read in the safe inputs to a Safety Function instance",
                 units=None,
+                enums={
+                    "Disabled": 0,
+                    "Safety Inputs linked to STO instance": 1,
+                    "Safety Inputs linked to SS1 instance": 2,
+                },
             ),
             EthercatRegister(
                 identifier="FSOE_SS1_TIME_TO_STO_1",
