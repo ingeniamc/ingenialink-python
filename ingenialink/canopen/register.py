@@ -114,11 +114,6 @@ class CanopenRegister(Register):
         return self.__subidx
 
     @property
-    def mapped_address(self) -> int:
-        """Register mapped address used for monitoring/disturbance."""
-        return self.idx
-
-    @property
     def is_node_id_dependent(self) -> bool:
         """True if register values depends on Node Id."""
         return self.__is_node_id_dependent

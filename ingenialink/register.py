@@ -297,11 +297,6 @@ class Register(ABC):
         return convert_bytes_to_dtype(self._default, self.dtype)
 
     @property
-    def mapped_address(self) -> int:
-        """Register mapped address used for monitoring/disturbance."""
-        raise NotImplementedError
-
-    @property
     def bitfields(self) -> Optional[dict[str, BitField]]:
         """Register bit fields."""
         return self.__bitfields
