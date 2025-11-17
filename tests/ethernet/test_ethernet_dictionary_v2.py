@@ -131,3 +131,15 @@ def test_safety_pdo_not_implemented():
         ethernet_dict.get_safety_rpdo("NOT_EXISTING_UID")
     with pytest.raises(NotImplementedError):
         ethernet_dict.get_safety_tpdo("NOT_EXISTING_UID")
+
+
+@pytest.mark.parametrize(
+    "register_uid, subnode, expected_monitoring_address",
+    [("DRV_DIAG_ERROR_LAST", 1, 0x000F), ("DRV_DIAG_ERROR_LAST", 2, 0x080F)],
+)
+@pytest.mark.no_connection
+def test_register_monitoring_address(register_uid, subnode, expected_monitoring_address):
+    dictionary_path = tests.resources.ethernet.TEST_DICT_ETHERNET_AXIS
+    ethernet_dict = EthernetDictionaryV2(dictionary_path)
+    reg = ethernet_dict.registers(subnode)[register_uid]
+    assert reg.monitoring.address == expected_monitoring_address

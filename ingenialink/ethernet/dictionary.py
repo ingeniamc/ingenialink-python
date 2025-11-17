@@ -4,6 +4,7 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
+from ingenialink.constants import MAP_ADDRESS_OFFSET
 from ingenialink.dictionary import (
     Dictionary,
     DictionarySafetyModule,
@@ -91,8 +92,14 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
 
             monitoring: Optional[MonDistV3] = None
             if current_read_register.pdo_access != RegCyclicType.CONFIG:
+                if current_read_register.subnode > 1:
+                    mapped_address = reg_address + MAP_ADDRESS_OFFSET * (
+                        current_read_register.subnode - 1
+                    )
+                else:
+                    mapped_address = reg_address
                 monitoring = MonDistV3(
-                    address=reg_address,
+                    address=mapped_address,
                     subnode=current_read_register.subnode,
                     cyclic=current_read_register.pdo_access,
                 )

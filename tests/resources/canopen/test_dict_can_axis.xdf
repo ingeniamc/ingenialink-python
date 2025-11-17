@@ -80,7 +80,7 @@
         </Axis>
         <Axis subnode="1">
           <Registers>
-            <Register address_type="NVM_HW" access="r" address="0x270300" dtype="u32" id="DRV_DIAG_ERROR_LAST" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
+            <Register address_type="NVM_HW" access="r" address="0x200F00" dtype="u32" id="DRV_DIAG_ERROR_LAST" units="-" subnode="1" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
               <Labels>
                 <Label lang="en_US">Last error</Label>
               </Labels>
@@ -109,7 +109,7 @@
         </Axis>
         <Axis subnode="2">
           <Registers>
-            <Register address_type="NVM_HW" access="r" address="0x270300" dtype="u32" id="DRV_DIAG_ERROR_LAST" units="-" subnode="2" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
+            <Register address_type="NVM_HW" access="r" address="0x280F00" dtype="u32" id="DRV_DIAG_ERROR_LAST" units="-" subnode="2" cyclic="CYCLIC_TX" desc="Contains the last generated error" cat_id="REPORTING">
               <Labels>
                 <Label lang="en_US">Last error</Label>
               </Labels>
