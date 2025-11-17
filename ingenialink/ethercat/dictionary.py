@@ -133,6 +133,8 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 subnode=1,
                 labels={"en_US": "Safety address"},
                 cat_id="FSOE",
+                description="Contains the safety address",
+                units=None,
             ),
             EthercatRegister(
                 identifier="MDP_CONFIGURED_MODULE_1",
@@ -144,6 +146,9 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 subnode=0,
                 labels={"en_US": "Configured module ident of the module 1"},
                 cat_id="MDP",
+                reg_range=(58720259, 58720261),
+                description="Configured module ident of the module 1",
+                units=None,
             ),
             EthercatRegister(
                 identifier="FSOE_SAFE_INPUTS_MAP",
@@ -155,6 +160,9 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 subnode=1,
                 cat_id="FSOE",
                 labels={"en_US": "Safe Inputs Map"},
+                reg_range=(0, 2),
+                description="Links the value read in the safe inputs to a Safety Function instance",
+                units=None,
             ),
             EthercatRegister(
                 identifier="FSOE_SS1_TIME_TO_STO_1",
@@ -166,6 +174,9 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 subnode=1,
                 labels={"en_US": "SS1 Time to STO"},
                 cat_id="FSOE",
+                reg_range=(0, 10000),
+                description="Time that will take a SS1 function to transition to STO",
+                units="ms",
             ),
             EthercatRegister(
                 identifier="FSOE_STO",
@@ -175,7 +186,14 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 access=RegAccess.RO,
                 pdo_access=RegCyclicType.SAFETY_INPUT_OUTPUT,
                 subnode=1,
+                labels={"en_US": "STO Command"},
                 cat_id="FSOE",
+                description=(
+                    "Safe Torque Off Safety function. "
+                    "Commands the STO when writing. "
+                    "Reports the STO status when reading."
+                ),
+                units=None,
             ),
             EthercatRegister(
                 identifier="FSOE_SS1_1",
@@ -185,7 +203,13 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 access=RegAccess.RO,
                 pdo_access=RegCyclicType.SAFETY_INPUT_OUTPUT,
                 subnode=1,
+                labels={"en_US": "SS1 Command"},
                 cat_id="FSOE",
+                description=(
+                    "SS1 Safety function.Commands the SS1 when writing. "
+                    "Reports the SS1 status when reading."
+                ),
+                units=None,
             ),
             EthercatRegister(
                 identifier="FSOE_SAFE_INPUTS_VALUE",
@@ -195,7 +219,12 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 access=RegAccess.RO,
                 pdo_access=RegCyclicType.SAFETY_INPUT,
                 subnode=1,
+                labels={"en_US": "Safe Inputs Value"},
                 cat_id="FSOE",
+                description=(
+                    "Value of the safe inputs combined with AND logic. Only updated in OP state"
+                ),
+                units=None,
             ),
         ]
 
