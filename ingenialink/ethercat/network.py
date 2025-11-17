@@ -133,28 +133,39 @@ class NetStatusListener(Thread):
         self.__stop = False
         self._ecat_master = self.__network._ecat_master
 
+    def process(self) -> None:
+        """Process network status for all servos.
+
+        This method checks the status of all servos in the network and notifies
+        subscribers of any state changes (connection/disconnection).
+        """
+        self._ecat_master.read_state()
+        for servo in self.__network.servos:
+            slave_id = servo.slave_id
+            servo_state = self.__network.get_servo_state(slave_id)
+            is_servo_alive = servo.slave_exists and (servo.slave.state != pysoem.NONE_STATE)
+            if not is_servo_alive and servo_state == NetState.CONNECTED:
+                self.__network._notify_status(slave_id, NetDevEvt.REMOVED)
+                self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
+            if (
+                is_servo_alive
+                and servo_state == NetState.DISCONNECTED
+                and self.__network._recover_from_disconnection()
+            ):
+                self.__network._notify_status(slave_id, NetDevEvt.ADDED)
+                self.__network._set_servo_state(slave_id, NetState.CONNECTED)
+
     def run(self) -> None:
-        """Check the network status."""
+        """Check the network status continuously."""
         while not self.__stop:
-            self._ecat_master.read_state()
-            for servo in self.__network.servos:
-                slave_id = servo.slave_id
-                servo_state = self.__network.get_servo_state(slave_id)
-                is_servo_alive = servo.slave.state != pysoem.NONE_STATE
-                if not is_servo_alive and servo_state == NetState.CONNECTED:
-                    self.__network._notify_status(slave_id, NetDevEvt.REMOVED)
-                    self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
-                if (
-                    is_servo_alive
-                    and servo_state == NetState.DISCONNECTED
-                    and self.__network._recover_from_disconnection()
-                ):
-                    self.__network._notify_status(slave_id, NetDevEvt.ADDED)
-                    self.__network._set_servo_state(slave_id, NetState.CONNECTED)
-                time.sleep(self.__refresh_time)
+            try:
+                self.process()
+            except Exception as e:
+                logger.exception(f"Exception occurred while processing network status: {e}")
+            time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
-        """Check the network status."""
+        """Stop the network status listener."""
         self.__stop = True
 
 
@@ -454,16 +465,22 @@ class EthercatNetwork(Network):
         nodes = self._ecat_master.config_init(release_gil=release_gil)
         self._lock.release()
         if len(self.servos):
-            self._change_nodes_state(self.servos, pysoem.PREOP_STATE)
+            self._change_nodes_state(
+                [servo for servo in self.servos if servo.slave_exists], pysoem.PREOP_STATE
+            )
         if nodes is not None:
             self.__last_init_nodes = list(range(1, nodes + 1))
 
         # For every init_nodes, pysoem generates a new CdefSlave object.
-        # Servos that are already "connected" to the network
-        # must update their slave reference
         for servo in self.servos:
             if servo.slave_id in self.__last_init_nodes:
+                # Servos that are already "connected" to the network
+                # must update their slave reference
                 servo.update_slave_reference(self._ecat_master.slaves[servo.slave_id - 1])
+            else:
+                # Servos that are not in init_nodes must set their slave reference to None
+                # The slave object is no longer valid and contains wrong information
+                servo.update_slave_reference(None)
 
     def connect_to_slave(
         self,
@@ -674,6 +691,8 @@ class EthercatNetwork(Network):
         """
         node_list = nodes if isinstance(nodes, list) else [nodes]
         for drive in node_list:
+            if not drive.slave_exists:
+                continue
             drive.slave.state = target_state
             drive.slave.write_state()
         return self._check_node_state(nodes, target_state)
@@ -697,7 +716,10 @@ class EthercatNetwork(Network):
         self._ecat_master.read_state()
 
         return all(
-            target_state == drive.slave.state_check(target_state, ECAT_STATE_CHANGE_TIMEOUT_US)
+            (drive.slave_exists)
+            and (
+                target_state == drive.slave.state_check(target_state, ECAT_STATE_CHANGE_TIMEOUT_US)
+            )
             for drive in node_list
         )
 
