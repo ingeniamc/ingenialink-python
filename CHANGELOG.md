@@ -1,8 +1,12 @@
 # Changelog
 
-## [Unreleased]
+## [7.5.2] - 2025-11-24
 ### Added
-- Fix PDO item creation for 0 bits registers
+- Fix PDO item creation for 0 bits registers.
+- Enhanced store and restore methods to ensure compatibility with safe drives.
+
+### Fixed
+- Corrected Monitoring/Disturbance register addresses for multi-axis drives.
 
 ## [7.5.1] - 2025-09-25
 ### Added
