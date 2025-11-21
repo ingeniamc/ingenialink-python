@@ -278,11 +278,19 @@ pipeline {
                                         bat """
                                             cd ${WIN_DOCKER_TMP_PATH}
                                             call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
+                                            poetry run poe install-wheel
                                             poetry run poe docs
-                                            "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
-                                            XCOPY docs.zip ${env.WORKSPACE}
                                         """
-                                        stash includes: 'docs.zip', name: 'docs'
+                                    }
+                                    post {
+                                        success {
+                                            bat """
+                                                cd ${WIN_DOCKER_TMP_PATH}
+                                                "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
+                                                XCOPY docs.zip ${env.WORKSPACE}
+                                            """
+                                            stash includes: 'docs.zip', name: 'docs'
+                                        }
                                     }
                                 }
                                 stage('Run no-connection tests on docker') {
