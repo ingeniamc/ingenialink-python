@@ -1,8 +1,9 @@
 import sys
-import re
 from os.path import abspath, join, dirname
 from datetime import datetime
 import os
+
+from ingenialink import __version__
 
 # try:
 #     from unittest.mock import MagicMock
@@ -17,11 +18,8 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               'sphinx.ext.coverage', 'sphinx.ext.viewcode',
               'sphinx.ext.napoleon', 'm2r2']
 
-_version = re.search(r'__version__\s+=\s+\"(.*)\"',
-                     open('../ingenialink/__init__.py').read()).group(1)
-
 project = 'ingenialink'
-version = _version
+version = __version__
 release = version
 author = 'Novanta'
 year = datetime.now().year

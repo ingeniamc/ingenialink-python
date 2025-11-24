@@ -6,6 +6,7 @@ import ingenialogger
 from typing_extensions import override
 
 from ingenialink import Servo
+from ingenialink.constants import PASSWORD_RESTORE_SAFETY_REGS, PASSWORD_STORE_SAFETY_REGS
 from ingenialink.csv_configuration_file import CSVConfigurationFile
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
@@ -108,7 +109,7 @@ class EthercatServo(PDOServo):
     ):
         if not pysoem:
             raise pysoem_import_error
-        self.__slave: CdefSlave = slave
+        self.__slave: Optional[CdefSlave] = slave
         self.slave_id = slave_id
         self.__emcy_observers: list[Callable[[EmergencyMessage], None]] = []
         self.__slave.add_emergency_callback(self._on_emcy)
@@ -154,6 +155,26 @@ class EthercatServo(PDOServo):
                 f"Servo is in {self.slave.state} state, PDOMap can not be modified."
             )
 
+    @override
+    def store_parameters(self, subnode: Optional[int] = None) -> None:
+        if self.dictionary.is_safe and subnode is None:
+            self.__store_safe_registers()
+        return super().store_parameters(subnode=subnode)
+
+    def __store_safe_registers(self) -> None:
+        self.write(reg=self.STORE_COCO_ALL, data=PASSWORD_STORE_SAFETY_REGS, subnode=0)
+        logger.info("Store safety registers successful.")
+
+    @override
+    def restore_parameters(self, subnode: Optional[int] = None) -> None:
+        if self.dictionary.is_safe and subnode is None:
+            self.__restore_safe_registers()
+        return super().restore_parameters(subnode=subnode)
+
+    def __restore_safe_registers(self) -> None:
+        self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_RESTORE_SAFETY_REGS, subnode=0)
+        logger.info("Restore safety registers successful.")
+
     def _read_raw(  # type: ignore [override]
         self,
         reg: EthercatRegister,
@@ -166,7 +187,7 @@ class EthercatServo(PDOServo):
             release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
         try:
-            value: bytes = self.__slave.sdo_read(
+            value: bytes = self.slave.sdo_read(
                 reg.idx, reg.subidx, buffer_size, complete_access, release_gil=release_gil
             )
         except (
@@ -195,7 +216,7 @@ class EthercatServo(PDOServo):
             release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
         try:
-            self.__slave.sdo_write(
+            self.slave.sdo_write(
                 reg.idx, reg.subidx, data, complete_access, release_gil=release_gil
             )
         except (
@@ -401,11 +422,11 @@ class EthercatServo(PDOServo):
 
     @override
     def process_pdo_inputs(self) -> None:
-        self._process_tpdo(self.__slave.input)
+        self._process_tpdo(self.slave.input)
 
     @override
     def generate_pdo_outputs(self) -> None:
-        self.__slave.output = self._process_rpdo()
+        self.slave.output = self._process_rpdo()
 
     def set_pdo_watchdog_time(self, timeout: float) -> None:
         """Set the process data watchdog time.
@@ -488,19 +509,33 @@ class EthercatServo(PDOServo):
 
     @property
     def slave(self) -> "CdefSlave":
-        """Ethercat slave."""
+        """PySOEM slave reference.
+
+        Raises:
+            ILError: If the slave reference is not available.
+        """
+        if self.__slave is None:
+            raise ILError("Slave reference is not available.")
         return self.__slave
 
-    def update_slave_reference(self, slave: "CdefSlave") -> None:
+    @property
+    def slave_exists(self) -> bool:
+        """Check if the slave reference exists.
+
+        After a reconfiguration of the network, the slave reference could be None.
+        """
+        return self.__slave is not None
+
+    def update_slave_reference(self, slave: Optional["CdefSlave"]) -> None:
         """Update the slave reference.
 
         Args:
-            slave: The new slave reference.
+            slave: The new slave reference. None if the slave is not present.
         """
         self.__slave = slave
-        if self._on_emcy not in self.__slave._emcy_callbacks:
+        if slave is not None and self._on_emcy not in slave._emcy_callbacks:
             # Make sure the emergency callback is added only once
-            self.__slave.add_emergency_callback(self._on_emcy)
+            slave.add_emergency_callback(self._on_emcy)
 
     @override
     def save_configuration_csv(self, config_file: str, subnode: Optional[int] = None) -> None:

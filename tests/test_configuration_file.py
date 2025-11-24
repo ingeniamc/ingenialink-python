@@ -1,10 +1,32 @@
+from typing import ClassVar
+from xml.etree import ElementTree
+
 import pytest
 
 import tests.resources
 from ingenialink import RegAccess, RegDtype
-from ingenialink.configuration_file import ConfigurationFile
+from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
 from ingenialink.dictionary import Interface
 from ingenialink.register import Register
+
+
+class RegisterXCFElementFactory:
+    DEFAULT_ATTRIBUTES: ClassVar[dict] = {
+        ConfigRegister._ConfigRegister__ID_ATTR: "PROF_MAX_VEL",
+        ConfigRegister._ConfigRegister__SUBNODE_ATTR: "1",
+        ConfigRegister._ConfigRegister__DTYPE_ATTR: "float",
+        ConfigRegister._ConfigRegister__ACCESS_ATTR: "rw",
+        ConfigRegister._ConfigRegister__STORAGE_ATTR: "20.0",
+    }
+
+    @classmethod
+    def create(cls, missing_attibute):
+        attrs = cls.DEFAULT_ATTRIBUTES.copy()
+
+        if missing_attibute is not None:
+            attrs.pop(missing_attibute)
+
+        return ElementTree.Element("Register", attrib=attrs)
 
 
 @pytest.mark.no_connection
@@ -43,3 +65,20 @@ def test_to_xcf_fail_no_device():
     with pytest.raises(ValueError):
         conf = ConfigurationFile.create_empty_configuration(Interface.CAN, "a", 0, 0, "0.0.0")
         conf.save_to_xcf("test_path")
+
+
+@pytest.mark.no_connection
+@pytest.mark.parametrize("missing_attr", RegisterXCFElementFactory.DEFAULT_ATTRIBUTES.keys())
+def test_config_register_from_xcf_missing_attribute(missing_attr):
+    register_xcf_element = RegisterXCFElementFactory.create(missing_attr)
+    with pytest.raises(ValueError) as exc_info:
+        ConfigRegister.from_xcf(register_xcf_element)
+
+    error_msg = str(exc_info.value)
+    if missing_attr == ConfigRegister._ConfigRegister__ID_ATTR:
+        assert error_msg == "Missing id attribute"
+    else:
+        assert (
+            error_msg == f"Missing {missing_attr} attribute for register "
+            f"{register_xcf_element.attrib.get('id')}."
+        )

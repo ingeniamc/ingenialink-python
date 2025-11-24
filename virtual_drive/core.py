@@ -23,7 +23,7 @@ from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.servo import DictionaryFactory
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.utils.mcb import MCB
-from ingenialink.virtual.dictionary import VirtualDictionary
+from ingenialink.virtual.dictionary import VirtualDictionaryV2
 from virtual_drive import constants
 
 from .environment import Environment
@@ -1344,7 +1344,7 @@ class VirtualDrive(Thread):
 
         self._init_registers()
         self._update_registers()
-        if self.is_monitoring_available and isinstance(self.__dictionary, VirtualDictionary):
+        if self.is_monitoring_available and isinstance(self.__dictionary, VirtualDictionaryV2):
             self._create_monitoring_disturbance_registers()
         self._init_register_signals()
         self.__set_motor_ready_to_switch_on()
@@ -1502,6 +1502,23 @@ class VirtualDrive(Thread):
                     dict_register.default,
                 )
 
+    def _store_product_identification_from_dictionary(self) -> None:
+        for subnode in range(2):
+            product_register = EthernetServo.PRODUCT_ID_REGISTERS[subnode]
+            revision_register = EthernetServo.REVISION_NUMBER_REGISTERS[subnode]
+
+            if (
+                self.__dictionary.product_code is not None
+                and product_register in self.__dictionary.registers(subnode)
+            ):
+                self.set_value_by_id(subnode, product_register, self.__dictionary.product_code)
+
+            if (
+                self.__dictionary.revision_number is not None
+                and revision_register in self.__dictionary.registers(subnode)
+            ):
+                self.set_value_by_id(subnode, revision_register, self.__dictionary.revision_number)
+
     def _init_registers(self) -> None:
         """Initialize the registers using the configuration file."""
         if isinstance(self.__dictionary, DictionaryV3):
@@ -1509,6 +1526,7 @@ class VirtualDrive(Thread):
         else:
             self._read_defaults_from_config()
 
+        self._store_product_identification_from_dictionary()
         value: Union[str, int]
         for subnode in self.__dictionary.subnodes:
             for reg_id, reg in self.__dictionary.registers(subnode).items():
@@ -1544,7 +1562,7 @@ class VirtualDrive(Thread):
         Raises:
             ValueError: if the register is not an EthernetRegister.
         """
-        if not isinstance(self.__dictionary, VirtualDictionary):
+        if not isinstance(self.__dictionary, VirtualDictionaryV2):
             return
         custom_regs = {
             EthernetServo.MONITORING_DATA: self.__dictionary.registers(0)[

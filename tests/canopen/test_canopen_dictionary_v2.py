@@ -45,8 +45,9 @@ def test_read_dictionary_registers():
             "DRV_AXIS_NUMBER",
             "COMMS_ETH_IP",
             "COMMS_ETH_NET_MASK",
+            "CIA301_DRV_ID_DEVICE_TYPE",
         ],
-        1: ["COMMU_ANGLE_SENSOR"],
+        1: ["COMMU_ANGLE_SENSOR", "CIA402_DRV_STATE_CONTROL"],
     }
 
     canopen_dict = CanopenDictionaryV2(tests.resources.canopen.TEST_DICT_CAN)
@@ -87,6 +88,7 @@ def test_read_dictionary_categories():
         "COMMUTATION",
         "REPORTING",
         "MONITORING",
+        "CIA402",
     ]
 
     canopen_dict = CanopenDictionaryV2(tests.resources.canopen.TEST_DICT_CAN)
@@ -135,3 +137,26 @@ def test_safety_pdo_not_implemented():
         canopen_dict.get_safety_rpdo("NOT_EXISTING_UID")
     with pytest.raises(NotImplementedError):
         canopen_dict.get_safety_tpdo("NOT_EXISTING_UID")
+
+
+@pytest.mark.no_connection
+def test_registers_from_canopen_objects_have_object_reference():
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN
+    ethercat_dict = CanopenDictionaryV2(dictionary_path)
+
+    for obj in ethercat_dict.all_objs():
+        for reg in obj.registers:
+            assert reg.obj is obj
+            assert ethercat_dict.get_register(reg.identifier).obj is obj
+
+
+@pytest.mark.parametrize(
+    "register_uid, subnode, expected_monitoring_address",
+    [("DRV_DIAG_ERROR_LAST", 1, 0x000F), ("DRV_DIAG_ERROR_LAST", 2, 0x000F)],
+)
+@pytest.mark.no_connection
+def test_register_monitoring_address(register_uid, subnode, expected_monitoring_address):
+    dictionary_path = tests.resources.canopen.TEST_DICT_CAN_AXIS
+    canopen_dict = CanopenDictionaryV2(dictionary_path)
+    reg = canopen_dict.registers(subnode)[register_uid]
+    assert reg.monitoring.address == expected_monitoring_address

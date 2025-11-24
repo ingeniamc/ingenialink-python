@@ -4,7 +4,7 @@ import math
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
 from typing import Optional, Union
@@ -107,11 +107,15 @@ class CanOpenObject:
     idx: int
     object_type: CanOpenObjectType
     registers: list[CanopenRegister]
+    all_registers_writable: bool = field(init=False)
 
     def __post_init__(self) -> None:
         """Post-initialization method."""
         # Ensure registers are sorted by subindex
         self.registers = sorted(self.registers, key=lambda obj: obj.subidx)
+        self.all_registers_writable = all(
+            reg.access in [RegAccess.RW, RegAccess.WO] for reg in self.registers
+        )
 
     def __iter__(self) -> Iterator[CanopenRegister]:
         """Iterator operator.

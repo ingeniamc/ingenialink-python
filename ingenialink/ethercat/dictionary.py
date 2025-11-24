@@ -133,6 +133,8 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 subnode=1,
                 labels={"en_US": "Safety address"},
                 cat_id="FSOE",
+                description="Contains the safety address",
+                units=None,
             ),
             EthercatRegister(
                 identifier="MDP_CONFIGURED_MODULE_1",
@@ -144,6 +146,8 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 subnode=0,
                 labels={"en_US": "Configured module ident of the module 1"},
                 cat_id="MDP",
+                description="Configured module ident of the module 1",
+                units=None,
             ),
             EthercatRegister(
                 identifier="FSOE_SAFE_INPUTS_MAP",
@@ -155,6 +159,13 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 subnode=1,
                 cat_id="FSOE",
                 labels={"en_US": "Safe Inputs Map"},
+                description="Links the value read in the safe inputs to a Safety Function instance",
+                units=None,
+                enums={
+                    "Disabled": 0,
+                    "Safety Inputs linked to STO instance": 1,
+                    "Safety Inputs linked to SS1 instance": 2,
+                },
             ),
             EthercatRegister(
                 identifier="FSOE_SS1_TIME_TO_STO_1",
@@ -163,9 +174,12 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 pdo_access=RegCyclicType.CONFIG,
                 dtype=RegDtype.U16,
                 access=RegAccess.RW,
-                subnode=0,
+                subnode=1,
                 labels={"en_US": "SS1 Time to STO"},
                 cat_id="FSOE",
+                reg_range=(0, 10000),
+                description="Time that will take a SS1 function to transition to STO",
+                units="ms",
             ),
             EthercatRegister(
                 identifier="FSOE_STO",
@@ -175,7 +189,14 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 access=RegAccess.RO,
                 pdo_access=RegCyclicType.SAFETY_INPUT_OUTPUT,
                 subnode=1,
+                labels={"en_US": "STO Command"},
                 cat_id="FSOE",
+                description=(
+                    "Safe Torque Off Safety function. "
+                    "Commands the STO when writing. "
+                    "Reports the STO status when reading."
+                ),
+                units=None,
             ),
             EthercatRegister(
                 identifier="FSOE_SS1_1",
@@ -185,7 +206,13 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 access=RegAccess.RO,
                 pdo_access=RegCyclicType.SAFETY_INPUT_OUTPUT,
                 subnode=1,
+                labels={"en_US": "SS1 Command"},
                 cat_id="FSOE",
+                description=(
+                    "SS1 Safety function.Commands the SS1 when writing. "
+                    "Reports the SS1 status when reading."
+                ),
+                units=None,
             ),
             EthercatRegister(
                 identifier="FSOE_SAFE_INPUTS_VALUE",
@@ -195,7 +222,12 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 access=RegAccess.RO,
                 pdo_access=RegCyclicType.SAFETY_INPUT,
                 subnode=1,
+                labels={"en_US": "Safe Inputs Value"},
                 cat_id="FSOE",
+                description=(
+                    "Value of the safe inputs combined with AND logic. Only updated in OP state"
+                ),
+                units=None,
             ),
         ]
 
@@ -495,6 +527,20 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             )
             return None
 
+    def _add_canopen_object(self, canopen_object: "CanOpenObject") -> None:
+        """Adds Canopen object into the items list.
+
+        Args:
+            canopen_object: Canopen object to add.
+        """
+        axis = canopen_object.registers[0].subnode
+        if axis not in self.items:
+            self.items[axis] = {}
+        self.items[axis][canopen_object.uid] = canopen_object
+
+        for reg in canopen_object.registers:
+            reg.obj = canopen_object
+
     def _append_missing_registers(
         self,
     ) -> None:
@@ -504,6 +550,11 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
 
         """
         super()._append_missing_registers()
+
+        if self._DictionaryV2__MON_DIST_STATUS_REGISTER in self._registers[0]:  # type: ignore[attr-defined]
+            for obj in self._monitoring_disturbance_objects:
+                self._add_canopen_object(obj)
+
         if self.part_number in ["DEN-S-NET-E", "EVS-S-NET-E"]:
             self.is_safe = True
 

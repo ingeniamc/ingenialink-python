@@ -73,6 +73,16 @@
             <Enum value="8">Incremental encoder 2</Enum>
           </Enumerations>
         </Register>
+        <Register access="rw" address_type="NVM_NONE" address="0x604000"  dtype="u16" id="CIA402_DRV_STATE_CONTROL" units="-" subnode="1"  desc="" cat_id="CIA402">
+            <Labels>
+                <Label lang="en_US">Control Word</Label>
+            </Labels>
+        </Register>
+        <Register access="r" address_type="NVM_NONE" address="0x100000"  dtype="u32" id="CIA301_DRV_ID_DEVICE_TYPE" units="-" subnode="0" cyclic="CONFIG" desc="This object shall provide information about the device type. The object describes the type of the logical device and its functionality." cat_id="IDENTIFICATION">
+            <Labels>
+                <Label lang="en_US">Device type</Label>
+            </Labels>
+        </Register>
       </Registers>
     </Device>
     <Errors>

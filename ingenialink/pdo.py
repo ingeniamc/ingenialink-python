@@ -77,7 +77,7 @@ class PDOMapItem:
                 access=RegAccess.RW,
             )
         self.register = register
-        self.size_bits = size_bits or dtype_length_bits[register.dtype]
+        self.size_bits = dtype_length_bits[register.dtype] if size_bits is None else size_bits
         self._raw_data_bits: Optional[bitarray.bitarray] = None
         self._check_if_mappable()
 
