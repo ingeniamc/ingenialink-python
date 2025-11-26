@@ -377,7 +377,7 @@ pipeline {
                                                     cd ${LIN_DOCKER_TMP_PATH}
                                                     . .venv${version}/bin/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "not develop and not virtual and not ethernet and not ethercat and not eoe and not canopen and not multislave and not fsoe" -o log_cli=True
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "not develop and not virtual and not ethernet and not ethercat and not eoe and not canopen and not multislave and not fsoe and not no_pcap" -o log_cli=True
                                                     deactivate
                                                 """
                                             }
