@@ -285,7 +285,7 @@ pipeline {
                                         stash includes: 'docs.zip', name: 'docs'
                                     }
                                 }
-                                stage('Run no-pcap tests on docker') {
+                                stage('Run units tests windows docker (no-pcap) tests on docker') {
                                     steps {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
@@ -294,7 +294,7 @@ pipeline {
                                                     cd ${WIN_DOCKER_TMP_PATH}
                                                     call .venv${version}/Scripts/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m no_pcap -o log_cli=True
+                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "not develop and not virtual and not ethernet and not ethercat and not eoe and not canopen and not multislave and not fsoe" -o log_cli=True
                                                 """
                                             }
                                         }
@@ -368,7 +368,7 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Run unit tests on docker') {
+                                stage('Run unit tests on linux docker') {
                                     steps {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
