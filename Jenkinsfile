@@ -36,13 +36,11 @@ def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe",
 
 /**
  * Build an exclusion string like: 'not develop and not virtual and not ethernet ...'
- * @param excludes List additional markers to exclude (list of strings)
- * @return A string with 'not <marker>' joined with ' and ' suitable for pytest - e.g. 'not develop and not virtual'
+ * @param excludes List markers to exclude (list of strings)
+ * @return A string with 'not <marker>' joined with ' and ' suitable for pytest
  */
 def markersExcludeString(excludes = []) {
-    /* Do NOT include any defaults here by default; build from the provided list only */
-    def exclusions = (excludes ?: [])
-    return exclusions.collect { "not ${it}" }.join(' and ')
+  return excludes.collect { "not ${it}" }.join(' and ')
 }
 
 def reassignFilePermissions() {
