@@ -31,6 +31,20 @@ START_WIRESHARK_TIMEOUT_S = 10.0
 wheel_stashes = []
 coverage_stashes = []
 
+/* List of markers that require hardware */
+def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
+
+/**
+ * Build an exclusion string like: 'not develop and not virtual and not ethernet ...'
+ * @param excludes List additional markers to exclude (list of strings)
+ * @return A string with 'not <marker>' joined with ' and ' suitable for pytest - e.g. 'not develop and not virtual'
+ */
+def markersExcludeString(excludes = []) {
+    /* Do NOT include any defaults here by default; build from the provided list only */
+    def exclusions = (excludes ?: [])
+    return exclusions.collect { "not ${it}" }.join(' and ')
+}
+
 def reassignFilePermissions() {
     if (isUnix()) {
         sh 'chmod -R 777 .'
@@ -290,11 +304,12 @@ pipeline {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
+                                                def win_marker = markersExcludeString(["virtual"] + HARDWARE_MARKERS)
                                                 bat """
                                                     cd ${WIN_DOCKER_TMP_PATH}
                                                     call .venv${version}/Scripts/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "not develop and not virtual and not ethernet and not ethercat and not eoe and not canopen and not multislave and not fsoe" -o log_cli=True
+                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${win_marker}" -o log_cli=True
                                                 """
                                             }
                                         }
@@ -372,12 +387,13 @@ pipeline {
                                     steps {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                            pythonVersions.each { version ->
+                                              pythonVersions.each { version ->
+                                                def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
                                                 sh """
                                                     cd ${LIN_DOCKER_TMP_PATH}
                                                     . .venv${version}/bin/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "not develop and not virtual and not ethernet and not ethercat and not eoe and not canopen and not multislave and not fsoe and not no_pcap" -o log_cli=True
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${lin_marker}" -o log_cli=True
                                                     deactivate
                                                 """
                                             }
