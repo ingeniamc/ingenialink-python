@@ -120,7 +120,7 @@ def buildWheel(py_version) {
     }
 }
 
-def runTestHW(markers, setup_name, extra_args = "") {
+def runTestHW(markers, setup_name = "", extra_args = "") {
     try {
         timeout(time: 1, unit: 'HOURS') {
             clearCoverageFiles()
@@ -302,6 +302,7 @@ pipeline {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
+                                                /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
                                                 def win_marker = markersExcludeString(["virtual"] + HARDWARE_MARKERS)
                                                 bat """
                                                     cd ${WIN_DOCKER_TMP_PATH}
@@ -386,6 +387,7 @@ pipeline {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                               pythonVersions.each { version ->
+                                                /* Linux has libpcap installed so does not run no_pcap, but runs pcap tests */
                                                 def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
                                                 sh """
                                                     cd ${LIN_DOCKER_TMP_PATH}
@@ -523,9 +525,16 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Pcap Tests') {
+                            steps {
+                                /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
+                                run on ethercat machine */
+                                runTestHW("pcap")
+                            }
+                        }
                         stage('EtherCAT Everest') {
                             steps {
-                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
+                                runTestHW("ethercat and pcap", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Capitan') {
