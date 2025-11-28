@@ -303,7 +303,7 @@ pipeline {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
                                                 /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
-                                                def win_marker = markersExcludeString(["virtual"] + HARDWARE_MARKERS)
+                                                def win_marker = markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
                                                 bat """
                                                     cd ${WIN_DOCKER_TMP_PATH}
                                                     call .venv${version}/Scripts/activate
