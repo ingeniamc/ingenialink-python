@@ -64,7 +64,7 @@ def test_raise_exception_if_not_winpcap():
         release_network_reference(net)
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_load_firmware_file_not_found_error():
     net = EthercatNetwork("fake_interface")
     with pytest.raises(FileNotFoundError):
@@ -72,7 +72,7 @@ def test_load_firmware_file_not_found_error():
     net.close_ecat_master()
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loading):
     net, _ = mocked_network_for_firmware_loading
     slave_id = 23
@@ -97,7 +97,7 @@ def test_find_adapters(setup_descriptor):
     assert adapter_found is True
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_loading):
     net, _ = mocked_network_for_firmware_loading
     mocker.patch.object(net, "_switch_to_boot_state", side_effect=[True, False])
@@ -111,7 +111,7 @@ def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_lo
         net.load_firmware("dummy_file.sfu", False, slave_id=1)
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loading):
     net, _ = mocked_network_for_firmware_loading
     mocker.patch("os.path.isfile", return_value=True)
@@ -125,7 +125,7 @@ def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loa
         net.load_firmware("dummy_file.sfu", False, slave_id=1)
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_load_firmware_success_after_retry(mocker, mocked_network_for_firmware_loading):
     net, slave = mocked_network_for_firmware_loading
     mocker.patch.object(net, "_switch_to_boot_state", side_effect=[False, True])
@@ -135,7 +135,7 @@ def test_load_firmware_success_after_retry(mocker, mocked_network_for_firmware_l
     net.load_firmware("dummy_file.sfu", False, slave_id=1)
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_wrong_interface_name_error():
     net = EthercatNetwork("fake_interface")
     slave_id = 1
@@ -261,7 +261,7 @@ def test_check_node_state(servo, net):
     assert not net._check_node_state([], pysoem.PREOP_STATE)
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_check_node_state_with_non_existent_slave(pysoem_mock_network):
     """Test that _check_node_state handles slaves with slave_exists=False.
 
@@ -302,7 +302,7 @@ def test_check_node_state_with_non_existent_slave(pysoem_mock_network):
     net.close_ecat_master()
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_change_nodes_state_with_non_existent_slave(pysoem_mock_network):
     """Test that _change_nodes_state handles slaves with slave_exists=False.
 
@@ -373,7 +373,7 @@ def test_change_nodes_state_with_non_existent_slave(pysoem_mock_network):
     net.close_ecat_master()
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_disconnect_from_slave_with_non_existent_slave(pysoem_mock_network):
     """Test that disconnect_from_slave works when the slave doesn't exist.
 
@@ -607,7 +607,7 @@ def test_network_is_not_released_if_gil_operation_ongoing(mocker, setup_descript
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks)
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_slave_update_on_config_init(pysoem_mock_network):  # noqa: ARG001
     net = EthercatNetwork("dummy_ifname")
 
@@ -631,7 +631,7 @@ def test_slave_update_on_config_init(pysoem_mock_network):  # noqa: ARG001
     assert original_slave._emcy_callbacks[0] == servo._on_emcy
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_slave_reference_set_to_none_when_not_in_init_nodes(pysoem_mock_network):
     """Test that servo's slave reference is set to None when slave_id is not in __last_init_nodes.
 
@@ -675,7 +675,7 @@ def test_slave_reference_set_to_none_when_not_in_init_nodes(pysoem_mock_network)
     net.close_ecat_master()
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_net_status_listener_handles_none_slave_reference(pysoem_mock_network, mocker):  # noqa: ARG001
     """Test that NetStatusListener doesn't crash when servo.slave is None.
 
@@ -712,7 +712,7 @@ def test_net_status_listener_handles_none_slave_reference(pysoem_mock_network, m
     net.close_ecat_master()
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_net_status_listener_detects_slave_removal(pysoem_mock_network, mocker):  # noqa: ARG001
     """Test that NetStatusListener properly detects when a slave is removed.
 
@@ -757,7 +757,7 @@ def test_net_status_listener_detects_slave_removal(pysoem_mock_network, mocker):
     net.close_ecat_master()
 
 
-@pytest.mark.ethercat
+@pytest.mark.pcap
 def test_net_status_listener_detects_slave_reconnection(pysoem_mock_network, mocker):
     """Test that NetStatusListener properly detects when a slave reconnects.
 
