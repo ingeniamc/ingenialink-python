@@ -534,7 +534,7 @@ pipeline {
                         }
                         stage('EtherCAT Everest') {
                             steps {
-                                runTestHW("ethercat and pcap", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
+                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Capitan') {
