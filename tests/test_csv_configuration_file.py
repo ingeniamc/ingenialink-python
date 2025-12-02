@@ -2,14 +2,11 @@ import csv
 import struct
 from pathlib import Path
 
-import pytest
-
 from ingenialink.csv_configuration_file import CSVConfigurationFile, RegisterRow
 from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 
 
-@pytest.mark.no_connection
 def test_register_row_formatting():
     reg = EthercatRegister(0x2025, 0x00, RegDtype.U32, RegAccess.RW)
     row = RegisterRow.from_register(reg, b"\x00\x00\xa0A")
@@ -20,7 +17,6 @@ def test_register_row_formatting():
     assert row.to_bytes() == b"0x2025,0x00,0x41A00000"
 
 
-@pytest.mark.no_connection
 def test_csv_configuration_file(tmp_path: Path):
     file_path = tmp_path / "config.csv"
     cfg = CSVConfigurationFile(str(file_path))
@@ -39,7 +35,6 @@ def test_csv_configuration_file(tmp_path: Path):
     assert data_rows == [["0x2025", "0x00", "0x41A00000"], ["0x209A", "0x00", "0x3F800000"]]
 
 
-@pytest.mark.no_connection
 def test_format_value_for_csv():
     reg = EthercatRegister(0x2025, 0x00, RegDtype.U32, RegAccess.RW)
     register_float_value = 20.0

@@ -165,7 +165,6 @@ def test_save_configuration(servo, net):
     _clean(filename)
 
 
-@pytest.mark.no_connection
 def test_check_configuration(virtual_drive):
     server, servo = virtual_drive
 
@@ -227,7 +226,6 @@ def test_load_configuration(servo, net):
     _clean(filename)
 
 
-@pytest.mark.no_connection
 def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, _, servo = virtual_drive_custom_dict(dictionary)
@@ -626,7 +624,6 @@ def test_disturbance_overflow(servo):
         servo.disturbance_write_data(0, RegDtype.U16, data)
 
 
-@pytest.mark.no_connection
 def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
     register_update_callback = RegisterUpdateTest()
@@ -653,7 +650,6 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     servo.write(user_over_voltage_uid, data=previous_reg_value, subnode=1)
 
 
-@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "status_word, state",
     [

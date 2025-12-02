@@ -11,7 +11,6 @@ SINGLE_AXIS_SUBNODES = {
 }
 
 
-@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "dictionary_path, expected_device_attr",
     [
@@ -68,7 +67,6 @@ def test_read_dictionary(dictionary_path, expected_device_attr):
         assert getattr(virtual_dict, attr) == value
 
 
-@pytest.mark.no_connection
 def test_read_dictionary_file_not_found():
     dictionary_path = "false.xdf"
 

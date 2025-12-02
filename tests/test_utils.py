@@ -8,7 +8,6 @@ from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_by
 from ingenialink.utils.timeout import Timeout
 
 
-@pytest.mark.no_connection
 @pytest.mark.parametrize(
     "byts, value, dtype",
     [
@@ -31,7 +30,6 @@ def test_bytes_dtype_conversions(byts, value, dtype):
     assert convert_dtype_to_bytes(value, dtype) == byts
 
 
-@pytest.mark.no_connection
 def test_null_terminated_string():
     assert (
         convert_bytes_to_dtype(
@@ -41,7 +39,6 @@ def test_null_terminated_string():
     )
 
 
-@pytest.mark.no_connection
 def test_convert_bytes_to_dtype_wrong_string():
     wrong_data = b"\xff\xff\xff\xff\xff\x00"
     with pytest.raises(ILValueError):
@@ -59,7 +56,6 @@ class ExpensiveCalculator:
         return x * self.factor
 
 
-@pytest.mark.no_connection
 def test_weak_lru_cache():
     calc = ExpensiveCalculator(10)
 
@@ -73,7 +69,6 @@ def test_weak_lru_cache():
     assert result2 == 50
 
 
-@pytest.mark.no_connection
 def test_timeout():
     with Timeout(2) as timeout:
         assert timeout.elapsed_time_s < 0.5

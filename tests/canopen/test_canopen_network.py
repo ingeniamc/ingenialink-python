@@ -22,7 +22,6 @@ def virtual_network():
     return net
 
 
-@pytest.mark.no_connection
 def test_getters_canopen(virtual_network):
     assert virtual_network.device == test_bus
     assert virtual_network.channel == test_channel
@@ -51,7 +50,6 @@ def test_connect_to_slave_target_not_in_nodes(setup_descriptor):
     net._teardown_connection()
 
 
-@pytest.mark.no_connection
 def test_connect_to_slave_none_nodes(virtual_network):
     net = virtual_network
     with pytest.raises(ILError):
@@ -69,7 +67,6 @@ def test_scan_slaves(setup_descriptor):
     assert len(slaves) > 0
 
 
-@pytest.mark.no_connection
 @pytest.mark.parametrize("can_device", [CanDevice.PCAN, CanDevice.KVASER, CanDevice.IXXAT])
 def test_scan_slaves_missing_drivers(can_device):
     net = CanopenNetwork(
@@ -134,7 +131,6 @@ def test_disconnect_from_slave(setup_descriptor):
     assert disconnected_servos[0] == setup_descriptor.node_id
 
 
-@pytest.mark.no_connection
 def test_setup_and_teardown_connection(virtual_network):
     if platform.system() != "Windows":
         pytest.skip("Only for window machines")

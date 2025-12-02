@@ -31,6 +31,18 @@ START_WIRESHARK_TIMEOUT_S = 10.0
 wheel_stashes = []
 coverage_stashes = []
 
+/* List of markers that require hardware */
+def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
+
+/**
+ * Build an exclusion string like: 'not develop and not virtual and not ethernet ...'
+ * @param excludes List markers to exclude (list of strings)
+ * @return A string with 'not <marker>' joined with ' and ' suitable for pytest
+ */
+def markersExcludeString(excludes = []) {
+  return excludes.collect { "not ${it}" }.join(' and ')
+}
+
 def reassignFilePermissions() {
     if (isUnix()) {
         sh 'chmod -R 777 .'
@@ -108,7 +120,7 @@ def buildWheel(py_version) {
     }
 }
 
-def runTestHW(markers, setup_name, extra_args = "") {
+def runTestHW(markers, setup_name = "", extra_args = "") {
     try {
         timeout(time: 1, unit: 'HOURS') {
             clearCoverageFiles()
@@ -293,16 +305,18 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Run no-connection tests on docker') {
+                                stage('Run units tests windows docker (no-pcap) tests on docker') {
                                     steps {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
+                                                /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
+                                                def win_marker = markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
                                                 bat """
                                                     cd ${WIN_DOCKER_TMP_PATH}
                                                     call .venv${version}/Scripts/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m docker -o log_cli=True
+                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${win_marker}" -o log_cli=True
                                                 """
                                             }
                                         }
@@ -376,16 +390,18 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Run no-connection tests on docker') {
+                                stage('Run unit tests on linux docker') {
                                     steps {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                            pythonVersions.each { version ->
+                                              pythonVersions.each { version ->
+                                                /* Linux has libpcap installed so does not run no_pcap, but runs pcap tests */
+                                                def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
                                                 sh """
                                                     cd ${LIN_DOCKER_TMP_PATH}
                                                     . .venv${version}/bin/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m no_connection -o log_cli=True
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${lin_marker}" -o log_cli=True
                                                     deactivate
                                                 """
                                             }
@@ -517,6 +533,13 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Pcap Tests') {
+                            steps {
+                                /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
+                                run on ethercat machine */
+                                runTestHW("pcap")
+                            }
+                        }
                         stage('EtherCAT Everest') {
                             steps {
                                 runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
@@ -540,11 +563,6 @@ pipeline {
                         stage("Safety Denali Phase II") {
                             steps {
                                 runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP", USE_WIRESHARK_LOGGING)
-                            }
-                        }
-                        stage('Run no-connection tests') {
-                            steps {
-                                runTestHW("no_connection", null)
                             }
                         }
                     }
