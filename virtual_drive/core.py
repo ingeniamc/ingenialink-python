@@ -28,6 +28,7 @@ from virtual_drive import constants
 
 from .environment import Environment
 from .gpios import Gpios
+from .resources.table import VTable
 
 if TYPE_CHECKING:
     from .signals import Signal
@@ -1318,10 +1319,13 @@ class VirtualDrive(Thread):
 
         self.environment = Environment()
         self.__gpios = Gpios(self.environment)
+        self.__user_memory = VTable(depth=256)
 
         self.__register_signals: dict[str, Signal[Any]] = {
             "IO_IN_VALUE": self.__gpios.value,
             "IO_IN_POLARITY": self.__gpios.polarity,
+            "MEM_USR_ADDR": self.__user_memory.index,
+            "MEM_USR_DATA": self.__user_memory.value,
         }
 
         default_dictionary = os.path.join(
