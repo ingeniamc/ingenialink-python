@@ -463,3 +463,43 @@ def test_canopen_object_writable_registers():
         ],
     )
     assert obj.all_registers_writable is False
+
+
+@pytest.mark.parametrize(
+    "interface",
+    [
+        Interface.CAN,
+        Interface.ETH,
+        Interface.ECAT,
+        Interface.EoE,
+    ],
+)
+def test_parse_tables(interface):
+    """Test that the dictionary with tables is parsed correctly."""
+
+    dict_path = tests.resources.TEST_DICTIONARY_WITH_TABLES
+    expected_tables = {
+        "COGGING_COMP_TABLE": {
+            "id": "COGGING_COMP_TABLE",
+            "id_index": "COGGING_COMP_TABLE_INDEX",
+            "id_value": "COGGING_COMP_TABLE_VALUE",
+        },
+        "MEM_USR_DATA": {
+            "id": "MEM_USR_DATA",
+            "id_index": "MEM_USR_ADDR",
+            "id_value": "MEM_USR_DATA",
+        },
+    }
+    dictionary = DictionaryFactory.create_dictionary(dict_path, interface)
+    tables = dictionary.tables
+    assert isinstance(tables, dict)
+    found_tables = {
+        uid: {
+            "id": table.id,
+            "id_index": table.id_index,
+            "id_value": table.id_value,
+        }
+        for uid, table in dictionary.tables.items()
+    }
+
+    assert found_tables == expected_tables

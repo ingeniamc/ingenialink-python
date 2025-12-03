@@ -270,6 +270,20 @@ class DictionaryError:
 
 
 @dataclass
+class DictionaryTable:
+    """Class to store a dictionary table."""
+
+    id: str
+    """Table ID."""
+
+    id_index: str
+    """The uid of the register used to access the table index."""
+
+    id_value: str
+    """The uid of the register used to read/write the table value"""
+
+
+@dataclass
 class DictionaryDescriptor:
     """Class to store a dictionary error."""
 
@@ -386,6 +400,7 @@ class Dictionary(XMLBase, ABC):
         self.safety_modules = {}
         self._registers = {}
         self.subnodes = {}
+        self.tables: dict[str, DictionaryTable] = {}
         self.path = dictionary_path
         """Path of the dictionary."""
         self.interface = interface
@@ -795,6 +810,12 @@ class DictionaryV3(Dictionary):
     __ERRORS_ELEMENT = "Errors"
     __ERROR_ELEMENT = "Error"
 
+    __TABLES_ELEMENT = "Tables"
+    __TABLE_ELEMENT = "Table"
+    __TABLE_ID_ATTR = "id"
+    __TABLE_ID_INDEX_ATTR = "id_index"
+    __TABLE_ID_VALUE_ATTR = "id_value"
+
     __LABELS_ELEMENT = "Labels"
     __LABEL_ELEMENT = "Label"
     __LABEL_LANG_ATTR = "lang"
@@ -1062,6 +1083,7 @@ class DictionaryV3(Dictionary):
             self.__read_mcb_register(register_element)
         errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
+        self._read_tables(root)
 
     def __read_device_ecat(self, root: ElementTree.Element) -> None:
         """Process ECATDevice element.
@@ -1078,6 +1100,7 @@ class DictionaryV3(Dictionary):
             self.__read_canopen_object(register_element)
         errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
+        self._read_tables(root)
         safety_pdos_element = root.find(self.__SAFETY_PDOS_ELEMENT)
         if safety_pdos_element is not None:
             self.__read_safety_pdos(safety_pdos_element)
@@ -1100,6 +1123,7 @@ class DictionaryV3(Dictionary):
             self.__read_canopen_object(register_element)
         errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
+        self._read_tables(root)
 
     def __read_subnodes(self, root: ElementTree.Element) -> None:
         """Process Subnodes element and fill subnodes.
@@ -1518,6 +1542,31 @@ class DictionaryV3(Dictionary):
             module_ident=module_ident,
             application_parameters=application_parameters,
         )
+
+    def _read_tables(self, root: ElementTree.Element) -> None:
+        """Process Tables element.
+
+        Args:
+            root: Root parent element where the <Tables> element is located.
+
+        """
+        tables_element = root.find(self.__TABLES_ELEMENT)
+        if tables_element is None:
+            # Element not mandatory
+            return
+
+        table_elements = tables_element.findall(self.__TABLE_ELEMENT)
+        for table_element in table_elements:
+            uid = table_element.attrib.get(self.__TABLE_ID_ATTR)
+            id_index = table_element.attrib.get(self.__TABLE_ID_INDEX_ATTR)
+            id_value = table_element.attrib.get(self.__TABLE_ID_VALUE_ATTR)
+
+            table = DictionaryTable(
+                id=str(uid),
+                id_index=str(id_index),
+                id_value=str(id_value),
+            )
+            self.tables[table.id] = table
 
 
 class DictionaryV2(Dictionary):
