@@ -13,6 +13,7 @@ from typing import Any, Callable, Optional, Union
 import ingenialogger
 from multiping import multi_ping
 from typing_extensions import override
+from virtual_drive.resources import VIRTUAL_DRIVE_V2_XDF
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
@@ -36,9 +37,7 @@ MAX_NUM_UNSUCCESSFUL_PINGS = 3
 MAX_NUMBER_OF_SCAN_TRIES = 2
 SCAN_CONNECTION_TIMEOUT = 0.5
 
-VIRTUAL_DRIVE_DICTIONARY = os.path.join(
-    os.path.dirname(__file__), "..", "..", "virtual_drive", "resources", "virtual_drive.xdf"
-)
+VIRTUAL_DRIVE_DICTIONARY = VIRTUAL_DRIVE_V2_XDF
 
 
 class NetStatusListener(Thread):
