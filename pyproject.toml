@@ -31,15 +31,13 @@ dependencies = [
     "pysoem>=1.1.11, <1.2.0",
     "bitarray==2.9.2",
     "multiping==1.1.2",
+    "virtual_drive==0.0.0+pr1b5"
 ]
 
 [project.urls]
 Homepage = "https://www.ingeniamc.com"
 Documentation = "https://distext.ingeniamc.com/doc/ingenialink-python/latest/"
 Source = "https://github.com/ingeniamc/ingenialink-python"
-
-[project.optional-dependencies]
-virtual_drive = ["virtual_drive==0.0.0+pr1b5"]
 
 [tool.poetry]
 version = "7.5.2"  # base version
