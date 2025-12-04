@@ -84,7 +84,7 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
                 ${cdCmd}
                 python${version} -m venv --without-pip ${venvName}
                 . ${venvName}/bin/activate
-                poetry sync --no-root --all-groups
+                poetry sync --no-root --all-groups --extras virtual_drive
                 deactivate
             """
         } else {
@@ -93,7 +93,7 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
                 ${cdCmd}
                 py -${version} -m venv ${venvName}
                 call ${venvName}/Scripts/activate
-                poetry sync --no-root --all-groups
+                poetry sync --no-root --all-groups --extras virtual_drive
                 ${installWheelCmd}
                 deactivate
             """

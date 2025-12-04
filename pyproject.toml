@@ -31,7 +31,6 @@ dependencies = [
     "pysoem>=1.1.11, <1.2.0",
     "bitarray==2.9.2",
     "multiping==1.1.2",
-    "virtual_drive==0.0.0+pr1b5"
 ]
 
 [project.urls]
@@ -41,6 +40,9 @@ Source = "https://github.com/ingeniamc/ingenialink-python"
 
 [tool.poetry]
 version = "7.5.2"  # base version
+
+[project.optional-dependencies]
+virtual_drive = ["virtual_drive==0.0.0+pr1b8"]
 
 [[tool.poetry.source]]
 name = "PyPI"
