@@ -3624,13 +3624,13 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.1.5+pr54b1"
+version = "0.1.5+pr54b2"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "summit_testing_framework-0.1.5+pr54b1-py3-none-any.whl", hash = "sha256:23a562307c589c2785aecf6b9a9966d53da61faea902be509850e267a81a72b3"},
+    {file = "summit_testing_framework-0.1.5+pr54b2-py3-none-any.whl", hash = "sha256:06f1eca1364a85326c4d35ea8b3b7292fc8f6b28525b98e7c7617033c6b91153"},
 ]
 
 [package.dependencies]
@@ -3884,14 +3884,14 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "virtual-drive"
-version = "0.0.0+pr1b8"
+version = "0.0.0+pr1b11"
 description = "Emulates a Summit drive for development and testing purposes."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "extra == \"virtual-drive\""
 files = [
-    {file = "virtual_drive-0.0.0+pr1b8-py3-none-any.whl", hash = "sha256:bcd4cbc158235d7d40dee3ebf4096a504d564c6cd9f1efe60d3256a0d868e1f2"},
+    {file = "virtual_drive-0.0.0+pr1b11-py3-none-any.whl", hash = "sha256:bcee6abb7f31a652951848e4917b09555232167148e9347017243531af1922c7"},
 ]
 
 [package.dependencies]
@@ -4312,4 +4312,4 @@ virtual-drive = ["virtual_drive"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "8613f4b997d9d47b69b35687cdbf3e7da9a0d0e0bb70bd0e3643b760a1dd595c"
+content-hash = "7593e1deee5df0b013e15ae59110d810ca4cd7fbf048fbc0d7ee2680e7ac1947"
