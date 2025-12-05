@@ -568,6 +568,41 @@ class Dictionary(XMLBase, ABC):
 
         return matching_registers[0]
 
+    @weak_lru()
+    def get_table(self, uid: str, axis: Optional[int] = None) -> DictionaryTable:
+        """Gets the targeted table.
+
+        Args:
+            uid: table uid.
+            axis: axis. Should be specified if multiaxis, None otherwise.
+
+        Raises:
+            KeyError: if the specified axis does not exist.
+            KeyError: if the table is not present in the specified axis.
+            ValueError: if the table is not found in any axis, if axis is not provided.
+            ValueError: if the table is found in multiple axis, if axis is provided.
+
+        Returns:
+            table.
+        """
+        if axis is not None:
+            if axis not in self._tables:
+                raise KeyError(f"{axis=} does not exist.")
+            if uid not in self._tables[axis]:
+                raise KeyError(f"Table {uid} not present in {axis=}")
+            return self._tables[axis][uid]
+
+        matching_tables: list[DictionaryTable] = [
+            self._tables[axis][uid] for axis in self._tables if uid in self._tables[axis]
+        ]
+
+        if len(matching_tables) == 0:
+            raise ValueError(f"Table {uid} not found.")
+        if len(matching_tables) > 1:
+            raise ValueError(f"Table {uid} found in multiple axis. Axis should be specified.")
+
+        return matching_tables[0]
+
     @abstractmethod
     def read_dictionary(self) -> None:
         """Reads the dictionary file and initializes all its components."""
