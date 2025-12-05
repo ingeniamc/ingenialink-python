@@ -479,27 +479,38 @@ def test_parse_tables(interface):
 
     dict_path = tests.resources.TEST_DICTIONARY_WITH_TABLES
     expected_tables = {
-        "COGGING_COMP_TABLE": {
-            "id": "COGGING_COMP_TABLE",
-            "id_index": "COGGING_COMP_TABLE_INDEX",
-            "id_value": "COGGING_COMP_TABLE_VALUE",
+        0: {
+            "MEM_USR_DATA": {
+                "id": "MEM_USR_DATA",
+                "axis": None,
+                "id_index": "MEM_USR_ADDR",
+                "id_value": "MEM_USR_DATA",
+            },
         },
-        "MEM_USR_DATA": {
-            "id": "MEM_USR_DATA",
-            "id_index": "MEM_USR_ADDR",
-            "id_value": "MEM_USR_DATA",
+        1: {
+            "COGGING_COMP_TABLE": {
+                "id": "COGGING_COMP_TABLE",
+                "axis": 1,
+                "id_index": "COGGING_COMP_TABLE_INDEX",
+                "id_value": "COGGING_COMP_TABLE_VALUE",
+            },
         },
     }
     dictionary = DictionaryFactory.create_dictionary(dict_path, interface)
-    tables = dictionary.tables
-    assert isinstance(tables, dict)
-    found_tables = {
-        uid: {
-            "id": table.id,
-            "id_index": table.id_index,
-            "id_value": table.id_value,
-        }
-        for uid, table in dictionary.tables.items()
-    }
+    assert isinstance(dictionary._tables, dict)
 
-    assert found_tables == expected_tables
+    for axis, tables in expected_tables.items():
+        axis_tables = dictionary._tables[axis]
+        assert isinstance(axis_tables, dict)
+
+        found_tables = {
+            uid: {
+                "id": table.id,
+                "axis": table.axis,
+                "id_index": table.id_index,
+                "id_value": table.id_value,
+            }
+            for uid, table in axis_tables.items()
+        }
+
+        assert found_tables == tables

@@ -276,6 +276,9 @@ class DictionaryTable:
     id: str
     """Table ID."""
 
+    axis: Optional[int]
+    """Axis the table belongs to. None if belongs to non-multiaxis register."""
+
     id_index: str
     """The uid of the register used to access the table index."""
 
@@ -400,7 +403,7 @@ class Dictionary(XMLBase, ABC):
         self.safety_modules = {}
         self._registers = {}
         self.subnodes = {}
-        self.tables: dict[str, DictionaryTable] = {}
+        self._tables = dict[int, dict[str, DictionaryTable]]()
         self.path = dictionary_path
         """Path of the dictionary."""
         self.interface = interface
@@ -813,6 +816,7 @@ class DictionaryV3(Dictionary):
     __TABLES_ELEMENT = "Tables"
     __TABLE_ELEMENT = "Table"
     __TABLE_ID_ATTR = "id"
+    __TABLE_AXIS_ATTR = "axis"
     __TABLE_ID_INDEX_ATTR = "id_index"
     __TABLE_ID_VALUE_ATTR = "id_value"
 
@@ -1557,16 +1561,21 @@ class DictionaryV3(Dictionary):
 
         table_elements = tables_element.findall(self.__TABLE_ELEMENT)
         for table_element in table_elements:
-            uid = table_element.attrib.get(self.__TABLE_ID_ATTR)
-            id_index = table_element.attrib.get(self.__TABLE_ID_INDEX_ATTR)
-            id_value = table_element.attrib.get(self.__TABLE_ID_VALUE_ATTR)
+            uid = str(table_element.attrib.get(self.__TABLE_ID_ATTR))
+            _axis = table_element.attrib.get(self.__TABLE_AXIS_ATTR)
+            axis = int(_axis) if _axis is not None else 0
+            id_index = str(table_element.attrib.get(self.__TABLE_ID_INDEX_ATTR))
+            id_value = str(table_element.attrib.get(self.__TABLE_ID_VALUE_ATTR))
 
             table = DictionaryTable(
-                id=str(uid),
-                id_index=str(id_index),
-                id_value=str(id_value),
+                id=uid,
+                axis=axis if _axis is not None else None,
+                id_index=id_index,
+                id_value=id_value,
             )
-            self.tables[table.id] = table
+            if axis not in self._tables:
+                self._tables[axis] = {}
+            self._tables[axis][uid] = table
 
 
 class DictionaryV2(Dictionary):
