@@ -78,7 +78,7 @@
           </Error>
         </Errors>
         <Tables>
-          <Table id="COGGING_COMP_TABLE" id_index="COGGING_COMP_TABLE_INDEX" id_value="COGGING_COMP_TABLE_VALUE"/>
+          <Table id="COGGING_COMP_TABLE" axis="1" id_index="COGGING_COMP_TABLE_INDEX" id_value="COGGING_COMP_TABLE_VALUE"/>
           <Table id="MEM_USR_DATA" id_index="MEM_USR_ADDR" id_value="MEM_USR_DATA"/>
         </Tables>
       </ECATDevice>
@@ -118,7 +118,7 @@
           </Error>
         </Errors>
         <Tables>
-          <Table id="COGGING_COMP_TABLE" id_index="COGGING_COMP_TABLE_INDEX" id_value="COGGING_COMP_TABLE_VALUE"/>
+          <Table id="COGGING_COMP_TABLE" axis="1" id_index="COGGING_COMP_TABLE_INDEX" id_value="COGGING_COMP_TABLE_VALUE"/>
           <Table id="MEM_USR_DATA" id_index="MEM_USR_ADDR" id_value="MEM_USR_DATA"/>
         </Tables>
       </EoEDevice>
@@ -158,7 +158,7 @@
           </Error>
         </Errors>
         <Tables>
-          <Table id="COGGING_COMP_TABLE" id_index="COGGING_COMP_TABLE_INDEX" id_value="COGGING_COMP_TABLE_VALUE"/>
+          <Table id="COGGING_COMP_TABLE" axis="1" id_index="COGGING_COMP_TABLE_INDEX" id_value="COGGING_COMP_TABLE_VALUE"/>
           <Table id="MEM_USR_DATA" id_index="MEM_USR_ADDR" id_value="MEM_USR_DATA"/>
         </Tables>
       </ETHDevice>
@@ -222,7 +222,7 @@
           </Error>
         </Errors>
         <Tables>
-          <Table id="COGGING_COMP_TABLE" id_index="COGGING_COMP_TABLE_INDEX" id_value="COGGING_COMP_TABLE_VALUE"/>
+          <Table id="COGGING_COMP_TABLE" axis="1" id_index="COGGING_COMP_TABLE_INDEX" id_value="COGGING_COMP_TABLE_VALUE"/>
           <Table id="MEM_USR_DATA" id_index="MEM_USR_ADDR" id_value="MEM_USR_DATA"/>
         </Tables>
       </CANDevice>
