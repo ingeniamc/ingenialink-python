@@ -38,7 +38,7 @@ class Table:
         )
 
         min_index, max_index = self.__index_register.range
-        if min_index is not int or max_index is not int:
+        if not isinstance(min_index, int) or not isinstance(max_index, int):
             raise ValueError("Index register must have integer range.")
 
         if min_index < 0:
