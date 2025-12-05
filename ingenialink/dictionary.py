@@ -496,6 +496,7 @@ class Dictionary(XMLBase, ABC):
         other_dict_copy = copy.deepcopy(other_dict)
         self_dict_copy._merge_registers(other_dict_copy)
         self_dict_copy._merge_errors(other_dict_copy)
+        self_dict_copy._merge_tables(other_dict_copy)
         self_dict_copy._merge_attributes(other_dict_copy)
         self_dict_copy._set_image(other_dict_copy)
         return self_dict_copy
@@ -706,6 +707,18 @@ class Dictionary(XMLBase, ABC):
 
         """
         self.errors.update(other_dict.errors)
+
+    def _merge_tables(self, other_dict: "Dictionary") -> None:
+        """Add the tables from another dictionary to the dictionary instance.
+
+        Args:
+            other_dict: The other dictionary instance.
+
+        """
+        for axis, tables in other_dict._tables.items():
+            if axis not in self._tables:
+                self._tables[axis] = {}
+            self._tables[axis].update(tables)
 
     def _set_image(self, other_dict: "Dictionary") -> None:
         """Set the image attribute.

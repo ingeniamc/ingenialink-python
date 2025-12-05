@@ -228,6 +228,47 @@ def test_merge_dictionaries_image():
     assert merged_dict.image == moco_dict.image
 
 
+def test_merge_dictionaries_tables():
+    """Test that tables are merged when using + operator."""
+    coco_dict_path = tests.resources.comkit.COM_KIT_DICT
+    moco_dict_path = tests.resources.comkit.CORE_DICT
+    coco_dict = EthernetDictionaryV2(coco_dict_path)
+    moco_dict = EthernetDictionaryV2(moco_dict_path)
+
+    # Manually add tables to the dictionaries for testing
+    # Add a table to coco_dict (subnode 0)
+    dict_with_tables = DictionaryFactory.create_dictionary(
+        tests.resources.TEST_DICTIONARY_WITH_TABLES, Interface.ETH
+    )
+    if 0 not in coco_dict._tables:
+        coco_dict._tables[0] = {}
+    coco_dict._tables[0]["TEST_TABLE_COCO"] = dict_with_tables._tables[0]["MEM_USR_DATA"]
+
+    # Add a table to moco_dict (subnode 1)
+    if 1 not in moco_dict._tables:
+        moco_dict._tables[1] = {}
+    moco_dict._tables[1]["TEST_TABLE_MOCO"] = dict_with_tables._tables[1]["COGGING_COMP_TABLE"]
+
+    # Verify both have tables
+    assert "TEST_TABLE_COCO" in coco_dict._tables[0]
+    assert "TEST_TABLE_MOCO" in moco_dict._tables[1]
+
+    # Merge dictionaries using + operator
+    merged_dict = coco_dict + moco_dict
+
+    # Verify both tables are present in merged dictionary
+    assert "TEST_TABLE_COCO" in merged_dict._tables[0]
+    assert "TEST_TABLE_MOCO" in merged_dict._tables[1]
+
+    # Verify the tables are deep copies (not the same objects)
+    assert id(coco_dict._tables[0]["TEST_TABLE_COCO"]) != id(
+        merged_dict._tables[0]["TEST_TABLE_COCO"]
+    )
+    assert id(moco_dict._tables[1]["TEST_TABLE_MOCO"]) != id(
+        merged_dict._tables[1]["TEST_TABLE_MOCO"]
+    )
+
+
 def test_merge_dictionaries_new_instance():
     coco_dict_path = tests.resources.comkit.COM_KIT_DICT
     moco_dict_path = tests.resources.comkit.CORE_DICT
