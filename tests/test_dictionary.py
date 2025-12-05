@@ -514,3 +514,45 @@ def test_parse_tables(interface):
         }
 
         assert found_tables == tables
+
+
+def test_get_table():
+    """Test that get_table method works correctly."""
+    dict_path = tests.resources.TEST_DICTIONARY_WITH_TABLES
+    dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.ETH)
+
+    # Specify a uid that does not exist
+    uid = "TEST_UID"
+    with pytest.raises(ValueError, match=f"Table {uid} not found."):
+        dictionary.get_table(uid=uid, axis=None)
+    # Specify a uid and axis that does not exist
+    with pytest.raises(KeyError, match="axis=3 does not exist."):
+        dictionary.get_table(uid=uid, axis=3)
+
+    # Table present in only one axis (axis 1), no axis specified - should succeed
+    uid = "COGGING_COMP_TABLE"
+    table = dictionary.get_table(uid=uid, axis=None)
+    assert table.id == uid
+    assert table.axis == 1
+    assert table.id_index == "COGGING_COMP_TABLE_INDEX"
+    assert table.id_value == "COGGING_COMP_TABLE_VALUE"
+
+    # Specify axis explicitly
+    table_axis1 = dictionary.get_table(uid=uid, axis=1)
+    assert table_axis1.id == uid
+    assert table_axis1.axis == 1
+
+    # Specify wrong axis for this table
+    with pytest.raises(KeyError, match=f"Table {uid} not present in axis=0"):
+        dictionary.get_table(uid=uid, axis=0)
+
+    # Specify a unique uid without providing the axis (axis 0)
+    uid = "MEM_USR_DATA"
+    table_1 = dictionary.get_table(uid=uid, axis=None)
+    assert table_1.axis is None
+    assert table_1.id == uid
+    assert table_1.id_index == "MEM_USR_ADDR"
+    assert table_1.id_value == "MEM_USR_DATA"
+    # Specify the same uid, providing the axis, tables should match
+    table_2 = dictionary.get_table(uid=uid, axis=0)
+    assert table_1 == table_2
