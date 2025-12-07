@@ -7,7 +7,7 @@ class VTable:
     def __init__(self, depth: int):
         self.__values = [0] * depth
 
-        self.index = Signal[int](0)
+        self.index = Signal[int](-1)
         self.value = Signal[int](0)
 
         self.index.watch(self.__index_changed)
@@ -19,7 +19,7 @@ class VTable:
     def __value_changed(self) -> None:
         current_index = self.index.get()
 
-        if current_index > len(self.__values):
+        if current_index > len(self.__values) or current_index < 0:
             return
 
         self.__values[current_index] = self.value.get()

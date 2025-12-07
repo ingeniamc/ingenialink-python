@@ -60,7 +60,7 @@ def real_servo_with_tables(servo) -> tuple[Servo, Table]:
     servo.dictionary._tables[0]["MEM_USR"] = mem_usr_table
 
     # Now get the table from the servo
-    table = servo.get_table(uid="MEM_USR", axis=0)
+    table = servo.get_table(uid="MEM_USR", axis=None)
     return servo, table
 
 
