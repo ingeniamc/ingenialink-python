@@ -2,6 +2,8 @@ from virtual_drive.signals import Signal
 
 
 class VTable:
+    """A table that holds values that can be accessed and modified via index and value signals."""
+
     def __init__(self, depth: int):
         self.__values = [0] * depth
 
