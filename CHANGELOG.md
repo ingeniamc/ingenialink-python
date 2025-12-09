@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Added
+- Parsing of Dictionary tables
+
 ## [7.5.2] - 2025-11-24
 ### Added
 - Fix PDO item creation for 0 bits registers.
