@@ -403,7 +403,7 @@ class Dictionary(XMLBase, ABC):
         self.safety_modules = {}
         self._registers = {}
         self.subnodes = {}
-        self._tables = dict[int, dict[str, DictionaryTable]]()
+        self._tables: dict[int, dict[str, DictionaryTable]] = {}
         self.path = dictionary_path
         """Path of the dictionary."""
         self.interface = interface
