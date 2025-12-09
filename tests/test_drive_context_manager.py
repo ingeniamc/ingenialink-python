@@ -27,6 +27,7 @@ def _read_user_under_voltage_uid(servo):
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.canopen
+@pytest.mark.virtual
 def test_drive_context_manager(
     setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
 ):
@@ -58,6 +59,7 @@ def test_drive_context_manager(
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.canopen
+@pytest.mark.virtual
 def test_drive_context_manager_nested_contexts(
     setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
 ):
@@ -93,6 +95,7 @@ def test_drive_context_manager_nested_contexts(
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.canopen
+@pytest.mark.virtual
 def test_drive_context_manager_skips_default_do_not_restore_registers(
     setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
 ):
@@ -116,6 +119,7 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.canopen
+@pytest.mark.virtual
 def test_drive_context_manager_with_do_not_restore_registers(
     setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
 ):

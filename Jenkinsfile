@@ -417,6 +417,31 @@ pipeline {
                                         }
                                     }
                                 }
+                                stage('Run virtual drive tests on docker') {
+                                    steps {
+                                        script {
+                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                            pythonVersions.each { version ->
+                                                sh """
+                                                    cd ${LIN_DOCKER_TMP_PATH}
+                                                    . .venv${version}/bin/activate
+                                                    poetry run poe install-wheel
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
+                                                    deactivate
+                                                """
+                                            }
+                                        }
+                                    }
+                                    post {
+                                        always {
+                                            sh """
+                                                mkdir -p pytest_reports
+                                                cp ${LIN_DOCKER_TMP_PATH}/pytest_reports/* pytest_reports/
+                                            """
+                                            junit 'pytest_reports/*.xml'
+                                        }
+                                    }
+                                }
                             }
                             post {
                                 always {
