@@ -4,10 +4,10 @@ from pathlib import Path
 
 import pytest
 from summit_testing_framework import dynamic_loader
+from virtual_drive.core import VirtualDrive
 
 from ingenialink.virtual.network import VirtualNetwork
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
-from virtual_drive.core import VirtualDrive
 
 pytest_plugins = [
     "summit_testing_framework.pytest_addoptions",

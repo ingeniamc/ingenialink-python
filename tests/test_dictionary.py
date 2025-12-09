@@ -4,9 +4,9 @@ from xml.dom import minidom
 from xml.etree import ElementTree
 
 import pytest
+import virtual_drive.resources
 
 import tests.resources.canopen
-import virtual_drive.resources
 from ingenialink.canopen.dictionary import CanopenDictionaryV2, CanopenDictionaryV3
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.dictionary import (
