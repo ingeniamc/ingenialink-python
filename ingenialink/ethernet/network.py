@@ -54,7 +54,6 @@ class NetStatusListener(Thread):
         self.__network = network
         self.__refresh_time = refresh_time
         self.__stop = False
-        self.__max_unsuccessful_pings = MAX_NUM_UNSUCCESSFUL_PINGS
 
     def process(self) -> None:
         """Process network status for all servos.
@@ -63,20 +62,17 @@ class NetStatusListener(Thread):
         subscribers of any state changes (connection/disconnection).
         """
         for servo in self.__network.servos:
-            unsuccessful_pings = 0
             servo_ip = servo.ip_address
             servo_state = self.__network.get_servo_state(servo_ip)
-            while unsuccessful_pings < self.__max_unsuccessful_pings:
-                response = servo.is_alive()
-                if not response:
-                    unsuccessful_pings += 1
-                else:
-                    break
-            ping_response = unsuccessful_pings != self.__max_unsuccessful_pings
+            ping_response = EthernetNetwork._ping_servo(servo)
             if servo_state == NetState.CONNECTED and not ping_response:
                 self.__network._notify_status(servo_ip, NetDevEvt.REMOVED)
                 self.__network._set_servo_state(servo_ip, NetState.DISCONNECTED)
-            if servo_state == NetState.DISCONNECTED and ping_response:
+            if (
+                servo_state == NetState.DISCONNECTED
+                and ping_response
+                and self.__network.recover_from_disconnection(servo)
+            ):
                 self.__network._notify_status(servo_ip, NetDevEvt.ADDED)
                 self.__network._set_servo_state(servo_ip, NetState.CONNECTED)
 
@@ -351,6 +347,52 @@ class EthernetNetwork(Network):
         """Notify subscribers of a network state change."""
         for callback in self.__observers_net_state[ip]:
             callback(status)
+
+    @staticmethod
+    def _ping_servo(servo: EthernetServo) -> bool:
+        """Ping a servo to check if it's alive.
+
+        Args:
+            servo: The servo to ping.
+
+        Returns:
+            True if the servo responds to the ping, False otherwise.
+
+        Raises:
+            Exception: If an error occurs while pinging the servo.
+        """
+        unsuccessful_pings = 0
+        try:
+            while unsuccessful_pings < MAX_NUM_UNSUCCESSFUL_PINGS:
+                # Check if the servo is alive by attempting to read its state
+                if not servo.is_alive():
+                    unsuccessful_pings += 1
+                else:
+                    return True
+            return False
+        except Exception as e:
+            logger.warning(f"Exception while pinging servo at IP {servo.ip_address}: {e}")
+            raise e
+
+    def recover_from_disconnection(self, servo: EthernetServo) -> bool:
+        """Recover the communication with a servo after a disconnection.
+
+        This method attempts to re-establish communication with a servo
+        that has been previously disconnected. It checks if the servo
+        is responding again.
+
+        Args:
+            servo: The servo to recover communication with.
+
+        Returns:
+            True if communication with the servo is recovered, False otherwise.
+        """
+        if EthernetNetwork._ping_servo(servo):
+            logger.info(f"Communication with servo at IP {servo.ip_address} recovered.")
+            return True
+        else:
+            logger.warning(f"Failed to recover communication with servo at IP {servo.ip_address}.")
+            return False
 
     def subscribe_to_status(self, ip: str, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
         """Subscribe to network state changes.
