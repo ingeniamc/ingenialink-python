@@ -187,7 +187,7 @@ pipeline {
                 'ethercat_multislave',
                 'fsoe.*',
                 'fsoe_phase1',
-                'fsoe_phase2'
+                'fsoe_phase2',
                 'canopen.*',
                 'canopen_everest',
                 'canopen_capitan',
