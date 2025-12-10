@@ -2028,10 +2028,9 @@ files = [
 name = "numpy"
 version = "1.26.4"
 description = "Fundamental package for array computing in Python"
-optional = true
+optional = false
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "extra == \"virtual-drive\""
 files = [
     {file = "numpy-1.26.4-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:9ff0f4f29c51e2803569d7a51c2304de5554655a60c5d776e35b4a41413830d0"},
     {file = "numpy-1.26.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:2e4ee3380d6de9c9ec04745830fd9e2eccb3e6cf790d39d7b98ffd19b0dd754a"},
@@ -3884,14 +3883,14 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "virtual-drive"
-version = "0.0.0+pr1b11"
+version = "0.0+gced50b1fe"
 description = "Emulates a Summit drive for development and testing purposes."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "extra == \"virtual-drive\""
 files = [
-    {file = "virtual_drive-0.0.0+pr1b11-py3-none-any.whl", hash = "sha256:bcee6abb7f31a652951848e4917b09555232167148e9347017243531af1922c7"},
+    {file = "virtual_drive-0.0+gced50b1fe-py3-none-any.whl", hash = "sha256:bc7d80e5c644cc30c7daf53b5ee2fc13730636c4d6e305cd2cdc77a5856a8874"},
 ]
 
 [package.dependencies]
@@ -4312,4 +4311,4 @@ virtual-drive = ["virtual_drive"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "114a082488816910488cc27d49fd4e74f6489f722a649554bd1caa13d8caf9a7"
+content-hash = "07ac17ad5e411976d011e35957fd76af4cc887280572c4b39b6d769f8b9f6a63"

@@ -67,7 +67,7 @@ Use an environment with a certain Python version::
 
 Install all dependencies::
 
-    poetry install --all-groups
+    poetry install --all-groups --extras virtual_drive
 
 
 Project Tasks - Poe The Poet plugin
