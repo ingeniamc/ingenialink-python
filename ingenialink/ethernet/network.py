@@ -56,26 +56,37 @@ class NetStatusListener(Thread):
         self.__stop = False
         self.__max_unsuccessful_pings = MAX_NUM_UNSUCCESSFUL_PINGS
 
+    def process(self) -> None:
+        """Process network status for all servos.
+
+        This method checks the status of all servos in the network and notifies
+        subscribers of any state changes (connection/disconnection).
+        """
+        for servo in self.__network.servos:
+            unsuccessful_pings = 0
+            servo_ip = servo.ip_address
+            servo_state = self.__network.get_servo_state(servo_ip)
+            while unsuccessful_pings < self.__max_unsuccessful_pings:
+                response = servo.is_alive()
+                if not response:
+                    unsuccessful_pings += 1
+                else:
+                    break
+            ping_response = unsuccessful_pings != self.__max_unsuccessful_pings
+            if servo_state == NetState.CONNECTED and not ping_response:
+                self.__network._notify_status(servo_ip, NetDevEvt.REMOVED)
+                self.__network._set_servo_state(servo_ip, NetState.DISCONNECTED)
+            if servo_state == NetState.DISCONNECTED and ping_response:
+                self.__network._notify_status(servo_ip, NetDevEvt.ADDED)
+                self.__network._set_servo_state(servo_ip, NetState.CONNECTED)
+
     def run(self) -> None:
         """Check the network status."""
         while not self.__stop:
-            for servo in self.__network.servos:
-                unsuccessful_pings = 0
-                servo_ip = servo.ip_address
-                servo_state = self.__network.get_servo_state(servo_ip)
-                while unsuccessful_pings < self.__max_unsuccessful_pings:
-                    response = servo.is_alive()
-                    if not response:
-                        unsuccessful_pings += 1
-                    else:
-                        break
-                ping_response = unsuccessful_pings != self.__max_unsuccessful_pings
-                if servo_state == NetState.CONNECTED and not ping_response:
-                    self.__network._notify_status(servo_ip, NetDevEvt.REMOVED)
-                    self.__network._set_servo_state(servo_ip, NetState.DISCONNECTED)
-                if servo_state == NetState.DISCONNECTED and ping_response:
-                    self.__network._notify_status(servo_ip, NetDevEvt.ADDED)
-                    self.__network._set_servo_state(servo_ip, NetState.CONNECTED)
+            try:
+                self.process()
+            except Exception as e:
+                logger.exception(f"Exception occurred while processing network status: {e}")
             time.sleep(self.__refresh_time)
 
     def stop(self) -> None:

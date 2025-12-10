@@ -174,30 +174,48 @@ class NetStatusListener(Thread):
         self.__network = network
         self.__stop = False
 
+    def process(self, timestamps: dict[int, float]) -> dict[int, float]:
+        """Process network status for all servos.
+
+        This method checks the status of all servos in the network and notifies
+        subscribers of any state changes (connection/disconnection).
+
+        Args:
+            timestamps: Dictionary mapping node IDs to their last known timestamps.
+
+        Returns:
+            Updated timestamps dictionary.
+        """
+        for node_id, node in list(self.__network._connection.nodes.items()):
+            sleep(1.5)
+            current_timestamp = node.nmt.timestamp
+            if node_id not in timestamps:
+                timestamps[node_id] = current_timestamp
+                continue
+            is_alive = current_timestamp != timestamps[node_id]
+            servo_state = self.__network.get_servo_state(node_id)
+            if is_alive:
+                if servo_state != NetState.CONNECTED:
+                    self.__network._notify_status(node_id, NetDevEvt.ADDED)
+                    self.__network._set_servo_state(node_id, NetState.CONNECTED)
+                timestamps[node_id] = node.nmt.timestamp
+            elif servo_state == NetState.DISCONNECTED:
+                self.__network._reset_connection()
+            else:
+                self.__network._notify_status(node_id, NetDevEvt.REMOVED)
+                self.__network._set_servo_state(node_id, NetState.DISCONNECTED)
+        return timestamps
+
     def run(self) -> None:
         """Check the network status."""
-        timestamps = {}
         if self.__network._connection is None:
             return
+        timestamps = {}
         while not self.__stop:
-            for node_id, node in list(self.__network._connection.nodes.items()):
-                sleep(1.5)
-                current_timestamp = node.nmt.timestamp
-                if node_id not in timestamps:
-                    timestamps[node_id] = current_timestamp
-                    continue
-                is_alive = current_timestamp != timestamps[node_id]
-                servo_state = self.__network.get_servo_state(node_id)
-                if is_alive:
-                    if servo_state != NetState.CONNECTED:
-                        self.__network._notify_status(node_id, NetDevEvt.ADDED)
-                        self.__network._set_servo_state(node_id, NetState.CONNECTED)
-                    timestamps[node_id] = node.nmt.timestamp
-                elif servo_state == NetState.DISCONNECTED:
-                    self.__network._reset_connection()
-                else:
-                    self.__network._notify_status(node_id, NetDevEvt.REMOVED)
-                    self.__network._set_servo_state(node_id, NetState.DISCONNECTED)
+            try:
+                timestamps = self.process(timestamps)
+            except Exception as e:  # noqa: PERF203
+                logger.exception(f"Exception occurred while processing network status: {e}")
 
     def stop(self) -> None:
         """Stop the listener."""
