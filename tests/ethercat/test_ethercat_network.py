@@ -770,8 +770,8 @@ def test_net_status_listener_detects_slave_reconnection(pysoem_mock_network, moc
     def status_callback(event: NetDevEvt):
         events_detected.append(event)
 
-    # Mock _recover_from_disconnection to return True
-    mocker.patch.object(EthercatNetwork, "_recover_from_disconnection", return_value=True)
+    # Mock recover_from_disconnection to return True
+    mocker.patch.object(EthercatNetwork, "recover_from_disconnection", return_value=True)
 
     net = EthercatNetwork("dummy_ifname")
 
